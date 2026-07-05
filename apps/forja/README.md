@@ -29,11 +29,12 @@ Mobile FFI ships parsers only (no librqbit); torrent playback uses `libtorrent_f
 
 ### Android (NDK)
 
+Release APK bundles Rust automatically (`forjaBuildRust=true`). Debug needs a manual build or env flag:
+
 ```bash
-# NDK r26+ via Android Studio or ANDROID_NDK_HOME
-./scripts/build_rust_mobile.sh android
+./scripts/build_rust_mobile.sh android          # optional pre-build
 FORJA_BUILD_RUST_ANDROID=1 flutter run -d android
-# or: forjaBuildRust=true in android/gradle.properties
+flutter build apk                               # release — builds Rust via preReleaseBuild
 ```
 
 See [crates/README.md](../../crates/README.md) for NDK discovery details.

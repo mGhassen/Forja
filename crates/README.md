@@ -27,17 +27,23 @@ Set one of:
 
 Output: `apps/forja/android/app/src/main/jniLibs/arm64-v8a/libforja_ffi.so`
 
-Release build with Rust bundled:
+Release APK bundles Rust automatically (`forjaBuildRust=true` → `preReleaseBuild`):
 
 ```bash
-./scripts/build_rust_mobile.sh android
-FORJA_BUILD_RUST_ANDROID=1 flutter build apk
-# or forjaBuildRust=true in apps/forja/android/gradle.properties
+flutter build apk
+```
+
+Debug with Rust:
+
+```bash
+FORJA_BUILD_RUST_ANDROID=1 flutter run -d android
 ```
 
 ### iOS
 
-Requires macOS + Xcode. Output: `apps/forja/ios/Runner/Frameworks/libforja_ffi.dylib` (Xcode copy phase).
+Requires macOS + Xcode. Release/Profile builds compile Rust via `build_rust_ios.sh`; output lands in `apps/forja/ios/Runner/Frameworks/libforja_ffi.dylib` (Xcode copy phase embeds it).
+
+Debug: run `./scripts/build_rust_mobile.sh ios` once, or set `FORJA_BUILD_RUST_IOS=0` to skip the release build phase.
 
 ## Test
 

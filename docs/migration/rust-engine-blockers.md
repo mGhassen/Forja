@@ -12,8 +12,8 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 
 | Status | Count | IDs |
 |--------|------:|-----|
-| In progress | 5 | B1 · B2 · B3 · B6 · B7 |
-| Done / by design | 4 | B4 · B5 · B8 · B9 |
+| In progress | 4 | B1 · B2 · B3 · B6 |
+| Done / by design | 5 | B4 · B5 · B7 · B8 · B9 |
 
 **Step 9 unlock:** 0 / 3 items done (see [Step 9 map](#step-9--open-work-mapped-to-blockers)).
 
@@ -41,7 +41,7 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 | B4 | App `integration_test/` | **medium** | done (core) | Optional UI E2E · magnet→play |
 | B5 | Webstreamr golden fixtures | **medium** | done | Optional filelions/voe stream-path goldens |
 | B6 | RFC-009 parity gaps | **medium** | in progress | “Full parity suite” acceptance checkbox |
-| B7 | Mobile Rust FFI packaging | **high** | in progress | Same parser engine on iOS/Android · CI mobile build |
+| B7 | Mobile Rust FFI packaging | **high** | done (parsers) | librqbit mobile (B2) |
 | B8 | Dylib load / dev ergonomics | **low** | done | Optional full-app CI artifact job |
 | B9 | RFC-009 sync | **low** | done | Update RFC status when Step 9 completes |
 
@@ -52,22 +52,18 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 ## Dependency chain
 
 ```
-B7 mobile Rust not bundled in release builds (forjaBuildRust off by default)
- └── mobile release APK/IPA may fall back to Dart reference unless build flags set
+B7 mobile Rust bundled in release builds (forjaBuildRust=true · iOS Release phase)
+ └── debug mobile still needs manual build or env flags for Rust
 
 B1 Dart reference kept
- └── internal fallback until B7 closed on all platforms
-
-B4 integration smoke — done (11 tests in CI)
-B5 webstreamr goldens — done
+ └── delete only after release builds proven on all platforms (Step 9)
 ```
 
 **Unlock order (recommended):**
 
-1. B7 — enable Rust in release builds (flags documented; optional default flip)  
-2. B6 — RFC sign-off (lulustream/fastream stream-fetch gap documented)  
-3. B1 + B3 — delete reference only when all platforms bundle Rust  
-4. B2 — librqbit on mobile (optional; libtorrent preserves feature until then)
+1. B1 + B3 — delete reference when release Rust proven on all platforms  
+2. B6 — RFC Step 9 sign-off (lulustream/fastream gap documented)  
+3. B2 — librqbit on mobile (optional; libtorrent preserves feature until then)
 
 ---
 
@@ -85,15 +81,16 @@ B5 webstreamr goldens — done
 
 ### B7 — Mobile Rust FFI packaging
 
-**Progress:** in progress — iOS arm64 builds; Android NDK script added
+**Progress:** done (parser engine) — librqbit mobile tracked under B2
 
 | Done | Todo |
 |------|------|
-| [x] `forja-ffi` feature flags (`torrent-engine`, `local-proxy`) | [ ] librqbit on mobile (today libtorrent = same user feature) |
+| [x] `forja-ffi` feature flags (`torrent-engine`, `local-proxy`) | [ ] librqbit on mobile (B2; libtorrent = same user feature) |
 | [x] `scripts/build_rust_mobile.sh` + NDK discovery | [x] Android/iOS quickstart in `crates/README.md` + `apps/forja/README.md` |
 | [x] Android CI (`android-ffi` job) + iOS CI (`ios-ffi` job) | |
-| [x] Release build commands documented (progress doc) | |
-| [x] Gradle `forjaBuildRust` / `FORJA_BUILD_RUST_ANDROID` | |
+| [x] `forjaBuildRust=true` — release APK bundles `.so` via `preReleaseBuild` | |
+| [x] iOS `build_rust_ios.sh` — compiles on Release/Profile Xcode builds | |
+| [x] Gradle `FORJA_BUILD_RUST_ANDROID=1` for debug APK with Rust | |
 | [x] iOS Xcode copy phase + Android jniLibs path | |
 | [x] Boot tries Rust on all platforms | |
 

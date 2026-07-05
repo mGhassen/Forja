@@ -12,7 +12,7 @@
 
 **Goal:** same Forja experience on every platform. Rust is the engine everywhere Flutter runs natively; Dart reference code stays as an internal fallback until parity is proven — never a user-facing “off” switch.
 
-**Where we are:** Steps 0–7 done. Mobile Rust build pipeline started (iOS/Android parsers). Step 9 cleanup in progress.
+**Where we are:** Steps 0–8 done. Mobile release builds bundle Rust parsers (B7). Step 9 cleanup blocked on B1 (delete `reference/`).
 
 ### Three columns — read every table this way
 
@@ -72,20 +72,19 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 | macOS / Linux / Windows | `libforja_ffi` full features | librqbit (Rust) · libtorrent fallback | `./scripts/build_rust.sh` |
 | iOS / Android | `libforja_ffi` parsers (no librqbit in FFI yet) | `libtorrent_flutter` | `./scripts/build_rust_mobile.sh` |
 
-**Mobile release builds (Rust parsers bundled):**
+**Mobile release builds (Rust parsers bundled by default):**
 
 ```bash
-# Android
-./scripts/build_rust_mobile.sh android
-FORJA_BUILD_RUST_ANDROID=1 flutter build apk
-# or forjaBuildRust=true in apps/forja/android/gradle.properties
+# Android — forjaBuildRust=true in gradle.properties (release APK only)
+flutter build apk
+# Debug with Rust: FORJA_BUILD_RUST_ANDROID=1 flutter run -d android
 
-# iOS (macOS + Xcode)
-./scripts/build_rust_mobile.sh ios
+# iOS — Release/Profile Xcode phase runs build_rust_mobile.sh
 flutter build ios --no-codesign
+# Debug with Rust: ./scripts/build_rust_mobile.sh ios first, or FORJA_BUILD_RUST_IOS=0 to skip release build
 ```
 
-CI builds mobile FFI artifacts (`android-ffi` · `ios-ffi` in `rust.yml`); release APK/IPA still needs the flags above locally.
+CI builds mobile FFI artifacts (`android-ffi` · `ios-ffi` in `rust.yml`).
 
 Boot always calls `ForjaEngine.init()` — no disable toggle. If the native library is missing, Dart reference + libtorrent keep features working.
 
@@ -478,7 +477,8 @@ Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `
 |------|:----:|---------|
 | Delete `reference/*.dart` (10 files) | ❌ | B1 · B3 · B6 — need Rust on all platforms + parity |
 | Drop `libtorrent_flutter` from pubspecs | ❌ | B2 · B4 — mobile torrent today; desktop fallback |
-| librqbit in mobile Rust FFI | ❌ | B2 · B7 |
+| Mobile Rust in release APK/IPA | ✅ | B7 — `forjaBuildRust=true` · iOS Release phase |
+| librqbit in mobile Rust FFI | ❌ | B2 |
 | Golden fixture per webstreamr extractor | ✅ | B5 — 23/23 Rust · 21/23 Dart (lulustream/fastream Rust-only) |
 | App `integration_test/` smoke | ✅ | B4 — 11 tests in CI |
 
@@ -505,7 +505,7 @@ All under `packages/forja_rust/lib/src/reference/` — **kept for internal fallb
 - Scrapers search HTTP
 - HLS `/hls-proxy` (shelf rewrite)
 - WebView extractors (`stream_extractor_view.dart`)
-- `libtorrent_flutter` on mobile until B2/B7 close
+- `libtorrent_flutter` on mobile until B2 (librqbit mobile FFI)
 
 ```bash
 # Parity gates before deleting any reference file

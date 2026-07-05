@@ -17,7 +17,7 @@ if (forjaBuildRust) {
         workingDir = forjaRepoRoot
         commandLine("bash", "scripts/build_rust_mobile.sh", "android")
     }
-    tasks.named("preBuild").configure {
+    tasks.matching { it.name == "preReleaseBuild" }.configureEach {
         dependsOn("buildForjaRustAndroid")
     }
 }

@@ -1,7 +1,7 @@
 # RFC-009: Rust core FFI
 
 **Version:** v1.0 engine phase (web/WASM deferred to v3.0)  
-**Status:** **In progress** — Steps 0–8 wired; Step 9 cleanup in progress
+**Status:** **In progress** — Steps 0–8 done; Step 9 cleanup blocked on reference deletion (B1)
 
 ## Summary
 
@@ -102,10 +102,14 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 - [x] Stremio URL helpers wired (`buildResourceUrl`, split, normalize)
 - [x] Scrapers HTML parse + dedup wired
 - [x] Full M3U golden parity (4 fixtures)
+- [x] Episode matcher golden parity (18 match + 3 pick cases)
 - [x] Webstreamr Rust golden suite (23 extractors · 21 sources)
 - [x] Webstreamr Dart FFI parity (21/23 extractors · 22/22 sources)
-- [ ] lulustream · fastream Dart parity (MFP stream fetch needs mock server)
+- [x] App engine smoke tests (`integration_test/` — 11 tests in CI)
+- [x] Mobile release bundles Rust parsers (Android `forjaBuildRust=true` · iOS Release build phase)
+- [ ] lulustream · fastream Dart parity (MFP stream fetch — intentional Rust-only gap)
 - [ ] WASM smoke test (v3.0)
+- [ ] Step 9: delete Dart `reference/` when all platforms proven in release
 
 ## Related
 
