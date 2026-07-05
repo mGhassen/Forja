@@ -9,8 +9,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
-import 'package:forja_api/api/kisskh_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/api/kisskh_service.dart';
+import 'package:storage/storage.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'asian_drama_details_screen.dart';

@@ -1,4 +1,4 @@
-use forja_utils::js_unpacker;
+use utils::js_unpacker;
 use regex::Regex;
 use std::sync::LazyLock;
 

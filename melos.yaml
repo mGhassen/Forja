@@ -12,14 +12,14 @@ command:
 scripts:
   rust:build:
     run: ../../scripts/build_rust.sh
-    description: Build the Rust engine (forja-ffi) for desktop
+    description: Build the Rust engine (ffi) for desktop
   rust:build:mobile:
     run: ../../scripts/build_rust_mobile.sh all
-    description: Build forja-ffi for iOS/Android (no librqbit)
+    description: Build ffi for iOS/Android (no librqbit)
   rust:test:
     run: |
-      cd ../../crates && cargo test --workspace && cargo test -p forja-utils --test golden && cargo test -p forja-iptv-core --test golden_m3u
-      cd ../../packages/forja_rust && flutter test
+      cd ../../crates && cargo test --workspace && cargo test -p utils --test golden && cargo test -p iptv-core --test golden_m3u
+      cd ../../packages/rust && flutter test
     description: Rust unit + golden + Dart parity tests
   rust:integration:
     run: |
@@ -27,7 +27,7 @@ scripts:
     description: App engine smoke integration tests (desktop; run build_rust.sh first)
   rust:release-check:
     run: ../../scripts/check_rust_mobile_artifacts.sh
-    description: Verify Android/iOS libforja_ffi artifacts exist after build_rust_mobile.sh
+    description: Verify Android/iOS libffi artifacts exist after build_rust_mobile.sh
   analyze:
     run: flutter analyze
     exec:

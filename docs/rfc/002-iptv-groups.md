@@ -34,7 +34,7 @@ class PortalMeta {
 | `forja_iptv_groups` | `IptvSettingsRepo` |
 | `forja_iptv_portal_meta` | `IptvSettingsRepo` |
 
-Implementation: `packages/forja_storage/lib/src/iptv_settings_repo.dart`
+Implementation: `packages/storage/lib/src/iptv_settings_repo.dart`
 
 ## UI
 

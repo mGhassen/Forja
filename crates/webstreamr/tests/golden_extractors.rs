@@ -1,7 +1,7 @@
-use forja_webstreamr::extract_embed_html;
-use forja_webstreamr::extract_hubcloud_links;
-use forja_webstreamr::extract_mfp_embed_html;
-use forja_webstreamr::types::StreamFormat;
+use webstreamr::extract_embed_html;
+use webstreamr::extract_hubcloud_links;
+use webstreamr::extract_mfp_embed_html;
+use webstreamr::types::StreamFormat;
 use std::fs;
 use std::path::PathBuf;
 
@@ -110,7 +110,7 @@ fn youtube_golden() {
 
 #[test]
 fn vidsrc_chain_golden() {
-    use forja_webstreamr::extract_vidsrc_chain_json;
+    use webstreamr::extract_vidsrc_chain_json;
     let outer = fs::read_to_string(fixture("vidsrc_outer.html")).unwrap();
     let rcp = fs::read_to_string(fixture("vidsrc_rcp.html")).unwrap();
     let prorcp = fs::read_to_string(fixture("vidsrc_prorcp.html")).unwrap();

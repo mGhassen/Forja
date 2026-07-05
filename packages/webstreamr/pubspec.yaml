@@ -1,0 +1,28 @@
+name: webstreamr
+description: WebStreamr extractors and sources for Forja
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.6.0
+  html: ^0.15.4
+  crypto: ^3.0.5
+  pointycastle: ^3.9.1
+  logging: ^1.2.0
+  core:
+    path: ../core
+  rust:
+    path: ../rust
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

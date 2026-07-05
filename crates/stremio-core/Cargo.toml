@@ -1,5 +1,5 @@
 [package]
-name = "forja-stremio-core"
+name = "stremio-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -2,6 +2,16 @@
 
 Design docs for Forja. Topic RFCs (001–010) define **what**; version RFCs (011–014) define **when**.
 
+## Migration
+
+| Phase | Doc | Status |
+|-------|-----|--------|
+| Index | [docs/migration/README.md](../migration/README.md) | — |
+| 1 | [01-rust-engine.md](../migration/01-rust-engine.md) | **Complete** |
+| 2 | [02-kotlin-compose.md](../migration/02-kotlin-compose.md) | Next |
+| 3 | [03-delete-flutter.md](../migration/03-delete-flutter.md) | Future |
+| 4 | [04-web-client.md](../migration/04-web-client.md) | Parallel |
+
 ## Version roadmap
 
 | Version | Release RFC | Ship target | Summary |
@@ -24,7 +34,7 @@ Design docs for Forja. Topic RFCs (001–010) define **what**; version RFCs (011
 | [006](006-supabase-sync.md) | Settings sync | v1.2 | Stub only |
 | [007](007-lan-companion.md) | LAN remote API | v1.2 | Not started |
 | [008](008-watch-party.md) | Watch party sync | v1.2+ | Placeholder button |
-| [009](009-rust-ffi.md) | Rust core FFI | v1.0 engine / v3.0 WASM | **In progress** |
+| [009](009-rust-ffi.md) | Rust core FFI | v1.0 engine / v3.0 WASM | **Phase 1 complete** |
 | [010](010-web-client.md) | Web client | v3.0 | Not started |
 | [015](015-in-app-updates.md) | In-app update system | v1.0 partial / v1.1 | **Partial** |
 | [016](016-lazy-tab-mounting.md) | Lazy tab mounting | v1.0.1 | Not started |

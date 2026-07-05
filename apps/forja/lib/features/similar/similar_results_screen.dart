@@ -16,10 +16,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
-import 'package:forja_api/api/bestsimilar_scraper.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_core/models/movie.dart';
+import 'package:api/api/bestsimilar_scraper.dart';
+import 'package:storage/storage.dart';
+import 'package:api/api/tmdb_api.dart';
+import 'package:core/models/movie.dart';
 import 'package:forja/shell/app_router.dart';
 
 class SimilarResultsScreen extends StatefulWidget {

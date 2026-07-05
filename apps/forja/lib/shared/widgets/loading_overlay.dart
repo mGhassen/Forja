@@ -1,9 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:core/models/movie.dart';
+import 'package:api/api/tmdb_api.dart';
+import 'package:storage/storage.dart';
 
 class LoadingOverlay extends StatefulWidget {
   final Movie movie;

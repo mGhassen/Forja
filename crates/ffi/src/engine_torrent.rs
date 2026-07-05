@@ -1,4 +1,4 @@
-use forja_torrent::TorrentEngine;
+use torrent::TorrentEngine;
 use std::sync::{LazyLock, Mutex};
 
 static TORRENT: LazyLock<Mutex<TorrentEngine>> = LazyLock::new(|| Mutex::new(TorrentEngine::new()));

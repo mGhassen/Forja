@@ -4,12 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:forja_api/api/paper2audio_service.dart';
-import 'package:forja_api/api/audiobook_service.dart';
-import 'package:forja_api/api/music_player_service.dart';
-import 'package:forja_api/api/epub_splitter.dart';
-import 'package:forja_api/api/epub_cover.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/api/paper2audio_service.dart';
+import 'package:api/api/audiobook_service.dart';
+import 'package:api/api/music_player_service.dart';
+import 'package:api/api/epub_splitter.dart';
+import 'package:api/api/epub_cover.dart';
+import 'package:storage/storage.dart';
 import 'audiobook_player_screen.dart';
 
 /// Top-level worker for `compute` so the EPUB parsing/splitting runs off the UI thread.

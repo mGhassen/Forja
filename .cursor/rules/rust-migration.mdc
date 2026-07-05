@@ -1,6 +1,6 @@
 ---
 description: Rust engine migration — update docs and tests with every step
-globs: crates/**,packages/forja_rust/**,docs/migration/**,docs/rfc/009-rust-ffi.md
+globs: crates/**,packages/rust/**,docs/migration/**,docs/rfc/009-rust-ffi.md
 alwaysApply: false
 ---
 
@@ -10,35 +10,36 @@ When working on the Rust engine migration:
 
 ## Before coding
 
-1. Read `docs/migration/rust-engine-progress.md` — find current step and status.
-2. Read `docs/migration/rust-engine-blockers.md` — check open blockers before deleting Dart code.
-3. Do not edit `.cursor/plans/*.plan.md` unless the user asks.
+1. Read [docs/migration/README.md](../../docs/migration/README.md) — find current phase.
+2. Phase 1 is **complete** — see [01-rust-engine.md](../../docs/migration/01-rust-engine.md). Active work is [Phase 2](../../docs/migration/02-kotlin-compose.md).
+3. B2 (mobile librqbit) is tracked in Phase 2 P2-21, not Phase 1.
+4. Do not edit `.cursor/plans/*.plan.md` unless the user asks.
 
-## After completing work on a step
+## After completing engine work
 
-1. Update `docs/migration/rust-engine-progress.md` — step status, wire-up checkboxes.
-2. Update `docs/migration/rust-engine-blockers.md` — overview metrics + Done/Todo only (separate file; never copy tables into progress doc).
-3. Update `docs/rfc/009-rust-ffi.md` acceptance checkboxes if applicable.
+1. Update [01-rust-engine.md](../../docs/migration/01-rust-engine.md) only for factual corrections — do not reopen Phase 1 as in progress.
+2. Update [02-kotlin-compose.md](../../docs/migration/02-kotlin-compose.md) when doing Compose/Kotlin work.
+3. Update [docs/rfc/009-rust-ffi.md](../../docs/rfc/009-rust-ffi.md) acceptance checkboxes if applicable.
 4. Add or extend tests:
    - Rust: unit test in crate + golden fixture if I/O-free logic
-   - Dart: parity test in `packages/forja_rust/test/parity/` comparing Rust FFI vs Dart reference
+   - Dart: parity test in `packages/rust/test/parity/` comparing Rust FFI vs Dart reference
 5. Run gates:
    ```bash
    ./scripts/build_rust.sh
    cd crates && cargo test --workspace
-   cd packages/forja_rust && flutter test
+   cd packages/rust && flutter test
    ```
 
 ## Parity test rules
 
 - Compare `ForjaRust.instance.*` directly — do not go through `ForjaEngine` delegates.
 - Keep `EpisodeMatcherBackend.matches` null in tests (do not call `ForjaEngine.init`).
-- Shared fixtures live in `crates/*/tests/fixtures/`; Dart copies in `packages/forja_rust/test/fixtures/` when needed.
+- Shared fixtures live in `crates/*/tests/fixtures/`; Dart copies in `packages/rust/test/fixtures/` when needed.
 - Gate: parity must pass before wiring a new call site.
 
 ## Wire-up pattern
 
-- Add optional backend hook in app or `forja_core` (not in `forja_rust` importing app code).
+- Add optional backend hook in app or `core` (not in `rust` importing app code).
 - `ForjaEngine._installDelegates()` sets hooks at init when native library loads.
 - Call site uses `*Backend` hook wired by `installRustAppDelegates()` when Rust loads.
 - Without dylib: parsers throw / boot warns (`FORJA_RUST_STRICT=1` on desktop debug).
@@ -52,4 +53,4 @@ When working on the Rust engine migration:
 
 ## Ask user to continue
 
-After documenting + testing a step, stop and ask which step to tackle next from the progress doc.
+After documenting + testing work, stop and ask which phase/task to tackle next from the migration docs.

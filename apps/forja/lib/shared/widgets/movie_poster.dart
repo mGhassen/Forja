@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:forja_api/services/my_list_service.dart';
+import 'package:api/services/my_list_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_api/api/tmdb_api.dart';
+import 'package:core/models/movie.dart';
+import 'package:storage/storage.dart';
+import 'package:api/api/tmdb_api.dart';
 import 'package:forja/shell/app_router.dart';
 
 class MoviePoster extends StatefulWidget {

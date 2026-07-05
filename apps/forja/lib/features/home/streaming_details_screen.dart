@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_api/api/stream_extractor.dart';
-import 'package:forja_api/api/stremio_service.dart';
-import 'package:forja_streaming/forja_streaming.dart';
-import 'package:forja_core/models/stream_source.dart';
-import 'package:forja_api/api/site111477_service.dart';
-import 'package:forja_streaming/src/site111477_proxy.dart' as site111477_proxy;
-import 'package:forja_storage/forja_storage.dart';
+import 'package:core/models/movie.dart';
+import 'package:api/api/tmdb_api.dart';
+import 'package:api/api/stream_extractor.dart';
+import 'package:api/api/stremio_service.dart';
+import 'package:streaming/streaming.dart';
+import 'package:core/models/stream_source.dart';
+import 'package:api/api/site111477_service.dart';
+import 'package:streaming/src/site111477_proxy.dart' as site111477_proxy;
+import 'package:storage/storage.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
-import 'package:forja_api/services/episode_watched_service.dart';
+import 'package:api/services/episode_watched_service.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/player/player_screen.dart';
 

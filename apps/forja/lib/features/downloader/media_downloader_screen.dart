@@ -11,9 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:forja_api/api/site111477_service.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_core/models/movie.dart';
+import 'package:api/api/site111477_service.dart';
+import 'package:api/api/tmdb_api.dart';
+import 'package:core/models/movie.dart';
 
 class MediaDownloaderScreen extends StatefulWidget {
   const MediaDownloaderScreen({super.key});

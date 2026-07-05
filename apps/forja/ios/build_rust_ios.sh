@@ -1,5 +1,5 @@
 #!/bin/sh
-# Cross-compile libforja_ffi for iOS before embedding (release/profile only).
+# Cross-compile libffi for iOS before embedding (release/profile only).
 set -e
 
 if [ "${FORJA_BUILD_RUST_IOS:-1}" = "0" ]; then

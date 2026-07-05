@@ -52,20 +52,20 @@ dependencies:
     git:
       url: https://github.com/AimesSoft/media-kit.git
       path: libs/macos/media_kit_libs_macos_video
-  forja_core:
-    path: ../../packages/forja_core
-  forja_storage:
-    path: ../../packages/forja_storage
-  forja_api:
-    path: ../../packages/forja_api
-  forja_scrapers:
-    path: ../../packages/forja_scrapers
-  forja_webstreamr:
-    path: ../../packages/forja_webstreamr
-  forja_streaming:
-    path: ../../packages/forja_streaming
-  forja_rust:
-    path: ../../packages/forja_rust
+  core:
+    path: ../../packages/core
+  storage:
+    path: ../../packages/storage
+  api:
+    path: ../../packages/api
+  scrapers:
+    path: ../../packages/scrapers
+  webstreamr:
+    path: ../../packages/webstreamr
+  streaming:
+    path: ../../packages/streaming
+  rust:
+    path: ../../packages/rust
 
 dev_dependencies:
   flutter_test:

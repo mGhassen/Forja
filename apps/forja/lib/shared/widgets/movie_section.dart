@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:core/models/movie.dart';
+import 'package:storage/storage.dart';
 import 'movie_poster.dart';
 
 class MovieSection extends StatefulWidget {

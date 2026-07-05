@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja_streaming/forja_streaming.dart';
-import 'package:forja_api/api/webstreamr_settings.dart';
+import 'package:streaming/streaming.dart';
+import 'package:api/api/webstreamr_settings.dart';
 
 /// Settings UI for the local WebStreamr port — country toggles, MFP,
 /// FlareSolverr, per-extractor disable, resolution exclusion, TMDB token.

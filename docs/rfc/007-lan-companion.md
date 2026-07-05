@@ -9,7 +9,7 @@ Extend the local HTTP server so a paired phone/browser can remote-control playba
 
 ## Base
 
-`packages/forja_streaming/lib/src/local_server_service.dart` — already serves HLS proxy for playback.
+`packages/streaming/lib/src/local_server_service.dart` — already serves HLS proxy for playback.
 
 ## Extensions
 

@@ -17,6 +17,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
+  api:
+    dependency: "direct main"
+    description:
+      path: "../../packages/api"
+      relative: true
+    source: path
+    version: "1.0.0"
   archive:
     dependency: "direct main"
     description:
@@ -185,6 +192,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
+  core:
+    dependency: "direct main"
+    description:
+      path: "../../packages/core"
+      relative: true
+    source: path
+    version: "1.0.0"
   cross_file:
     dependency: transitive
     description:
@@ -453,55 +467,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  forja_api:
-    dependency: "direct main"
-    description:
-      path: "../../packages/forja_api"
-      relative: true
-    source: path
-    version: "1.0.0"
-  forja_core:
-    dependency: "direct main"
-    description:
-      path: "../../packages/forja_core"
-      relative: true
-    source: path
-    version: "1.0.0"
-  forja_rust:
-    dependency: "direct main"
-    description:
-      path: "../../packages/forja_rust"
-      relative: true
-    source: path
-    version: "0.1.0"
-  forja_scrapers:
-    dependency: "direct main"
-    description:
-      path: "../../packages/forja_scrapers"
-      relative: true
-    source: path
-    version: "1.0.0"
-  forja_storage:
-    dependency: "direct main"
-    description:
-      path: "../../packages/forja_storage"
-      relative: true
-    source: path
-    version: "1.0.0"
-  forja_streaming:
-    dependency: "direct main"
-    description:
-      path: "../../packages/forja_streaming"
-      relative: true
-    source: path
-    version: "1.0.0"
-  forja_webstreamr:
-    dependency: "direct main"
-    description:
-      path: "../../packages/forja_webstreamr"
-      relative: true
-    source: path
-    version: "1.0.0"
   freezed_annotation:
     dependency: transitive
     description:
@@ -992,6 +957,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.0"
+  rust:
+    dependency: "direct main"
+    description:
+      path: "../../packages/rust"
+      relative: true
+    source: path
+    version: "0.1.0"
   rxdart:
     dependency: transitive
     description:
@@ -1008,6 +980,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.4"
+  scrapers:
+    dependency: "direct main"
+    description:
+      path: "../../packages/scrapers"
+      relative: true
+    source: path
+    version: "1.0.0"
   screen_brightness:
     dependency: "direct main"
     description:
@@ -1269,6 +1248,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.12.1"
+  storage:
+    dependency: "direct main"
+    description:
+      path: "../../packages/storage"
+      relative: true
+    source: path
+    version: "1.0.0"
   stream_channel:
     dependency: transitive
     description:
@@ -1277,6 +1263,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.4"
+  streaming:
+    dependency: "direct main"
+    description:
+      path: "../../packages/streaming"
+      relative: true
+    source: path
+    version: "1.0.0"
   string_scanner:
     dependency: transitive
     description:
@@ -1525,6 +1518,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.0"
+  webstreamr:
+    dependency: "direct main"
+    description:
+      path: "../../packages/webstreamr"
+      relative: true
+    source: path
+    version: "1.0.0"
   win32:
     dependency: transitive
     description:

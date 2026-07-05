@@ -1,11 +1,11 @@
 [package]
-name = "forja-webstreamr"
+name = "webstreamr"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
-forja-utils = { path = "../forja-utils" }
+utils = { path = "../utils" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 regex = { workspace = true }

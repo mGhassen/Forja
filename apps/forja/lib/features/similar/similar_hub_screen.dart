@@ -16,9 +16,9 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import 'package:forja_api/api/bestsimilar_scraper.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_core/models/movie.dart';
+import 'package:api/api/bestsimilar_scraper.dart';
+import 'package:api/api/tmdb_api.dart';
+import 'package:core/models/movie.dart';
 import 'similar_results_screen.dart';
 
 enum _MediaFilter { all, movies, tv }

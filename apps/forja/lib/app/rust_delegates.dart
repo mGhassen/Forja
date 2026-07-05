@@ -1,15 +1,15 @@
 import 'dart:convert';
 
-import 'package:forja_api/api/stremio_service.dart';
-import 'package:forja_api/api/torrent_filter.dart';
-import 'package:forja_api/api/kisskh_subtitle_decryptor.dart';
+import 'package:api/api/stremio_service.dart';
+import 'package:api/api/torrent_filter.dart';
+import 'package:api/api/kisskh_subtitle_decryptor.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/pastesh_decryptor.dart';
-import 'package:forja_rust/forja_rust.dart';
-import 'package:forja_scrapers/scrapers/scraper_parse.dart';
-import 'package:forja_streaming/forja_streaming.dart';
-import 'package:forja_webstreamr/webstreamr/webstreamr_parse.dart';
-import 'package:forja_webstreamr/webstreamr/utils/unpacker.dart';
+import 'package:rust/rust.dart';
+import 'package:scrapers/scrapers/scraper_parse.dart';
+import 'package:streaming/streaming.dart';
+import 'package:webstreamr/webstreamr/webstreamr_parse.dart';
+import 'package:webstreamr/webstreamr/utils/unpacker.dart';
 
 /// App-layer delegates that cannot live in [ForjaEngine] (avoids forja_rust → forja_api cycle).
 void installRustAppDelegates() {

@@ -32,7 +32,7 @@ Forja checks GitHub Releases for a newer version, shows an in-app dialog with re
 └───────────────────────────┬─────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────┐
-│  packages/forja_api/services/app_updater_service.dart    │
+│  packages/api/services/app_updater_service.dart    │
 │    GET GitHub Releases API → semver compare → UpdateInfo │
 └───────────────────────────┬─────────────────────────────┘
                             │
@@ -44,7 +44,7 @@ Forja checks GitHub Releases for a newer version, shows an in-app dialog with re
 
 | Piece | Path |
 |-------|------|
-| Update checker | `packages/forja_api/lib/services/app_updater_service.dart` |
+| Update checker | `packages/api/lib/services/app_updater_service.dart` |
 | Update UI | `apps/forja/lib/shared/widgets/update_dialog.dart` |
 | Startup check | `apps/forja/lib/shell/main_screen.dart` → `_checkForUpdates()` |
 | Manual check | `apps/forja/lib/features/settings/settings_screen.dart` |
@@ -102,7 +102,7 @@ Settings → About → **Check for updates** → same dialog or "You're up to da
 
 ## Settings keys (v1.1)
 
-Add to `SettingsService` / `forja_storage`:
+Add to `SettingsService` / `storage`:
 
 | Key | Type | Default |
 |-----|------|---------|

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:storage/storage.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// macOS title-bar drag strip height (traffic lights float above the sidebar).

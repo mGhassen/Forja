@@ -5,8 +5,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-all}"
-ANDROID_SO="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a/libforja_ffi.so"
-IOS_DYLIB="$ROOT/apps/forja/ios/Runner/Frameworks/libforja_ffi.dylib"
+ANDROID_SO="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so"
+IOS_DYLIB="$ROOT/apps/forja/ios/Runner/Frameworks/libffi.dylib"
 
 check_android() {
   if [[ -f "$ANDROID_SO" ]]; then

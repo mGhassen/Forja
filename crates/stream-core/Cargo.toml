@@ -1,5 +1,5 @@
 [package]
-name = "forja-stream-core"
+name = "stream-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

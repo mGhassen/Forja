@@ -16,12 +16,13 @@ apps/forja/
   lib/features/      one folder per nav tab (19 + settings)
   lib/shared/        player, widgets, Phase 3 stubs
 packages/
-  forja_core/        models, utils
-  forja_storage/     settings, theme, prefs repos
-  forja_api/         HTTP clients, services (MyListService, BookProgressService)
-  forja_streaming/   torrent, proxy, provider registry
-  forja_webstreamr/  webstreamr pipeline
-  forja_scrapers/    torrent index scrapers
+  core/              models, utils
+  storage/           settings, theme, prefs repos
+  api/               HTTP clients, services (MyListService, BookProgressService)
+  streaming/         torrent, proxy, provider registry
+  webstreamr/        webstreamr pipeline
+  scrapers/          torrent index scrapers
+  rust/              Dart FFI bindings to Rust engine
 ```
 
 ## Dependency rules
@@ -30,11 +31,11 @@ packages/
 apps/forja → packages/* only
 features/* → engines + shared + shell (AppRouter, ShellBus)
 packages/* → never import apps/forja
-forja_api → forja_storage → forja_core
-forja_streaming → forja_webstreamr, forja_scrapers, forja_core, forja_api
+api → storage → core
+streaming → webstreamr, scrapers, core, api
 ```
 
-No circular deps: `forja_storage` must not depend on `forja_api`.
+No circular deps: `storage` must not depend on `api`.
 
 ## Navigation rules
 
@@ -46,7 +47,7 @@ No circular deps: `forja_storage` must not depend on `forja_api`.
 
 - Widgets call services/repos, not raw `http`
 - Settings via `SettingsService`, `ProviderSettingsRepo`, `IptvSettingsRepo`
-- Persistence in `forja_storage`; network in `forja_api`
+- Persistence in `storage`; network in `api`
 
 ## Acceptance (v1.0)
 

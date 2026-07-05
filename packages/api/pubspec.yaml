@@ -1,0 +1,68 @@
+name: api
+description: API clients and app services for Forja
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.6.0
+  html: ^0.15.4
+  xml: ^6.5.0
+  archive: ^4.0.4
+  crypto: ^3.0.5
+  pointycastle: ^3.9.1
+  youtube_explode_dart: ^3.0.5
+  audio_service: ^0.18.17
+  audio_session: ^0.1.25
+  url_launcher: ^6.3.1
+  package_info_plus: ^9.0.0
+  ota_update: ^7.1.0
+  path_provider: ^2.1.5
+  shared_preferences: ^2.5.2
+  flutter_secure_storage: ^9.2.4
+  libtorrent_flutter: 1.8.5
+  permission_handler: ^11.3.1
+  android_intent_plus: ^5.1.0
+  core:
+    path: ../core
+  storage:
+    path: ../storage
+  scrapers:
+    path: ../scrapers
+  webstreamr:
+    path: ../webstreamr
+  streaming:
+    path: ../streaming
+  rust:
+    path: ../rust
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+dependency_overrides:
+  media_kit:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit
+  media_kit_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit_video
+  media_kit_libs_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/universal/media_kit_libs_video
+  media_kit_libs_macos_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/macos/media_kit_libs_macos_video
+

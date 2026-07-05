@@ -1,15 +1,15 @@
 [workspace]
 resolver = "2"
 members = [
-    "forja-ffi",
-    "forja-utils",
-    "forja-stream-core",
-    "forja-iptv-core",
-    "forja-stremio-core",
-    "forja-webstreamr",
-    "forja-scrapers",
-    "forja-torrent",
-    "forja-proxy",
+    "ffi",
+    "utils",
+    "stream-core",
+    "iptv-core",
+    "stremio-core",
+    "webstreamr",
+    "scrapers",
+    "torrent",
+    "proxy",
 ]
 
 [workspace.package]

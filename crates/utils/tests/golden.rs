@@ -1,4 +1,4 @@
-use forja_utils::{episode_matcher, hls_parser, torrent_filter};
+use utils::{episode_matcher, hls_parser, torrent_filter};
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;

@@ -45,7 +45,7 @@ Users who only browse Home or IPTV still wait for torrent engine startup.
 
 ## Design: EngineRegistry
 
-Central lazy initializer in `apps/forja/lib/app/engine_registry.dart` (or `packages/forja_api` if reused):
+Central lazy initializer in `apps/forja/lib/app/engine_registry.dart` (or `packages/api` if reused):
 
 ```dart
 class EngineRegistry {

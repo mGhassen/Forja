@@ -359,12 +359,12 @@
 			files = (
 			);
 			inputPaths = (
-				"${SRCROOT}/Runner/Frameworks/libforja_ffi.dylib",
-				"${SRCROOT}/../../crates/target/release/libforja_ffi.dylib",
+				"${SRCROOT}/Runner/Frameworks/libffi.dylib",
+				"${SRCROOT}/../../crates/target/release/libffi.dylib",
 			);
 			name = "Copy Rust Engine";
 			outputPaths = (
-				"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libforja_ffi.dylib",
+				"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libffi.dylib",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

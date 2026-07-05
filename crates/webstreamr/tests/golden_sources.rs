@@ -1,7 +1,7 @@
-use forja_webstreamr::parse_source_html;
-use forja_webstreamr::resolve_source;
-use forja_webstreamr::types::MediaType;
-use forja_webstreamr::SourceRequest;
+use webstreamr::parse_source_html;
+use webstreamr::resolve_source;
+use webstreamr::types::MediaType;
+use webstreamr::SourceRequest;
 
 #[test]
 fn vidsrc_movie_tmdb_golden() {
@@ -261,7 +261,7 @@ fn vegamovies_nexdrive_golden() {
 
 #[test]
 fn kinoger_show_js_golden() {
-    use forja_webstreamr::extract_kinoger_episode_urls;
+    use webstreamr::extract_kinoger_episode_urls;
     let html = r#"<script>$(".ep").show([["https://cdn.example/ep1.m3u8","x"],["https://cdn.example/s2e1.m3u8"]])</script>"#;
     let urls = extract_kinoger_episode_urls(html, 1, 0);
     assert_eq!(urls, vec!["https://cdn.example/s2e1.m3u8"]);

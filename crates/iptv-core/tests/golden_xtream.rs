@@ -1,4 +1,4 @@
-use forja_iptv_core::xtream;
+use iptv_core::xtream;
 use std::fs;
 use std::path::PathBuf;
 

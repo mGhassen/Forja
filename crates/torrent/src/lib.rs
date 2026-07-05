@@ -6,7 +6,7 @@ use axum::{
     routing::get,
     Router,
 };
-use forja_utils::{episode_matcher, torrent_filter};
+use utils::{episode_matcher, torrent_filter};
 use futures_util::TryStreamExt;
 use librqbit::api::{Api, TorrentDetailsResponseFile, TorrentIdOrHash};
 use librqbit::{AddTorrent, AddTorrentResponse, Session};
@@ -107,7 +107,7 @@ impl TorrentEngine {
     }
 
     fn download_dir() -> PathBuf {
-        std::env::temp_dir().join("forja_torrent")
+        std::env::temp_dir().join("torrent")
     }
 
     pub fn start_engine(&self, preferred_port: u16) -> Result<u16, String> {

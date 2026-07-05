@@ -1,27 +1,27 @@
 [package]
-name = "forja-ffi"
+name = "ffi"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
-name = "forja_ffi"
+name = "ffi"
 
 [features]
 default = ["torrent-engine", "local-proxy"]
-torrent-engine = ["dep:forja-torrent"]
-local-proxy = ["dep:forja-proxy"]
+torrent-engine = ["dep:torrent"]
+local-proxy = ["dep:proxy"]
 
 [dependencies]
-forja-utils = { path = "../forja-utils" }
-forja-stream-core = { path = "../forja-stream-core" }
-forja-iptv-core = { path = "../forja-iptv-core" }
-forja-stremio-core = { path = "../forja-stremio-core" }
-forja-webstreamr = { path = "../forja-webstreamr" }
-forja-scrapers = { path = "../forja-scrapers" }
-forja-torrent = { path = "../forja-torrent", optional = true }
-forja-proxy = { path = "../forja-proxy", optional = true }
+utils = { path = "../utils" }
+stream-core = { path = "../stream-core" }
+iptv-core = { path = "../iptv-core" }
+stremio-core = { path = "../stremio-core" }
+webstreamr = { path = "../webstreamr" }
+scrapers = { path = "../scrapers" }
+torrent = { path = "../torrent", optional = true }
+proxy = { path = "../proxy", optional = true }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

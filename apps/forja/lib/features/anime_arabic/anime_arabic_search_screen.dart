@@ -5,8 +5,8 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import 'package:forja_api/api/anime_arabic_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/api/anime_arabic_service.dart';
+import 'package:storage/storage.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_arabic_details_screen.dart';
 

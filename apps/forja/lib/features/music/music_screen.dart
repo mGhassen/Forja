@@ -5,11 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja_api/api/music_service.dart';
-import 'package:forja_api/api/music_player_service.dart';
-import 'package:forja_api/api/music_storage_service.dart';
-import 'package:forja_api/api/music_downloader_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/api/music_service.dart';
+import 'package:api/api/music_player_service.dart';
+import 'package:api/api/music_storage_service.dart';
+import 'package:api/api/music_downloader_service.dart';
+import 'package:storage/storage.dart';
 import 'music_player_screen.dart';
 
 class MusicScreen extends StatefulWidget {

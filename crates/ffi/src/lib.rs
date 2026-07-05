@@ -4,15 +4,15 @@ mod engine_torrent;
 #[cfg(feature = "local-proxy")]
 mod engine_proxy;
 
-use forja_iptv_core::m3u;
-use forja_iptv_core::pastesh;
-use forja_scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html};
-use forja_stream_core::list_providers;
-use forja_stremio_core::{
+use iptv_core::m3u;
+use iptv_core::pastesh;
+use scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html};
+use stream_core::list_providers;
+use stremio_core::{
     build_resource_url, fetch_get, parse_catalog, parse_manifest, parse_meta, parse_streams,
     parse_subtitles,
 };
-use forja_utils::{
+use utils::{
     episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter,
 };
 use std::sync::LazyLock;
@@ -24,7 +24,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[allow(dead_code)]
 static RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("forja-ffi tokio runtime"));
+    LazyLock::new(|| Runtime::new().expect("ffi tokio runtime"));
 
 fn version() -> String {
     VERSION.to_string()
@@ -62,11 +62,11 @@ fn decrypt_kisskh_body(body: String, source_url: Option<String>) -> String {
 }
 
 fn build_movie_url(provider_id: String, tmdb_id: i64) -> String {
-    forja_stream_core::build_movie_url(&provider_id, tmdb_id).unwrap_or_default()
+    stream_core::build_movie_url(&provider_id, tmdb_id).unwrap_or_default()
 }
 
 fn build_tv_url(provider_id: String, tmdb_id: i64, season: i32, episode: i32) -> String {
-    forja_stream_core::build_tv_url(&provider_id, tmdb_id, season, episode).unwrap_or_default()
+    stream_core::build_tv_url(&provider_id, tmdb_id, season, episode).unwrap_or_default()
 }
 
 fn list_providers_json() -> String {
@@ -85,19 +85,19 @@ fn decrypt_paste_response(url_with_hash: String, raw_response: String) -> String
 }
 
 fn decode_xtream_text(text: String) -> String {
-    forja_iptv_core::xtream::decode_xtream_text(&text)
+    iptv_core::xtream::decode_xtream_text(&text)
 }
 
 fn parse_xtream_categories_json(json: String) -> String {
-    forja_iptv_core::xtream::parse_categories_json(&json)
+    iptv_core::xtream::parse_categories_json(&json)
 }
 
 fn parse_xtream_streams_json(json: String, section: String) -> String {
-    forja_iptv_core::xtream::parse_streams_json(&json, &section)
+    iptv_core::xtream::parse_streams_json(&json, &section)
 }
 
 fn parse_xtream_series_episodes_json(json: String) -> String {
-    forja_iptv_core::xtream::parse_series_episodes_json(&json)
+    iptv_core::xtream::parse_series_episodes_json(&json)
 }
 
 fn parse_stremio_manifest_json(json: String) -> String {
@@ -147,11 +147,11 @@ fn build_stremio_resource_url(addon_url: String, resource_path: String) -> Strin
 }
 
 fn normalize_stremio_manifest_url(url: String) -> String {
-    forja_stremio_core::normalize_manifest_url(&url)
+    stremio_core::normalize_manifest_url(&url)
 }
 
 fn split_stremio_addon_url_json(url: String) -> String {
-    let parts = forja_stremio_core::split_addon_url(&url);
+    let parts = stremio_core::split_addon_url(&url);
     serde_json::to_string(&parts).unwrap_or_else(|_| "{}".into())
 }
 
@@ -168,21 +168,21 @@ fn parse_uindex_html_json(html: String) -> String {
 }
 
 fn dedup_torrents_json(results_json: String) -> String {
-    let parsed: Vec<forja_scrapers::TorrentSearchResult> =
+    let parsed: Vec<scrapers::TorrentSearchResult> =
         serde_json::from_str(&results_json).unwrap_or_default();
     serde_json::to_string(&dedup_by_infohash(parsed)).unwrap_or_else(|_| "[]".into())
 }
 
 fn extract_embed_html_json(extractor_id: String, html: String, page_url: String) -> String {
-    forja_webstreamr::extract_embed_html_json(&extractor_id, &html, &page_url)
+    webstreamr::extract_embed_html_json(&extractor_id, &html, &page_url)
 }
 
 fn extract_vidsrc_chain_json(outer_html: String, rcp_html: String, prorcp_html: String) -> String {
-    forja_webstreamr::extract_vidsrc_chain_json(&outer_html, &rcp_html, &prorcp_html)
+    webstreamr::extract_vidsrc_chain_json(&outer_html, &rcp_html, &prorcp_html)
 }
 
 fn extract_hubcloud_links_json(html: String, page_url: String) -> String {
-    forja_webstreamr::extract_hubcloud_links_json(&html, &page_url)
+    webstreamr::extract_hubcloud_links_json(&html, &page_url)
 }
 
 fn extract_mfp_embed_html_json(
@@ -192,7 +192,7 @@ fn extract_mfp_embed_html_json(
     mfp_config_json: String,
     extra_html: String,
 ) -> String {
-    forja_webstreamr::extract_mfp_embed_html_json(
+    webstreamr::extract_mfp_embed_html_json(
         &extractor_id,
         &html,
         &page_url,
@@ -202,15 +202,15 @@ fn extract_mfp_embed_html_json(
 }
 
 fn resolve_webstreamr_source_json(source_id: String, request_json: String) -> String {
-    forja_webstreamr::resolve_source_json(&source_id, &request_json)
+    webstreamr::resolve_source_json(&source_id, &request_json)
 }
 
 fn extract_kinoger_episode_urls_json(html: String, season_index: i32, episode_index: i32) -> String {
-    forja_webstreamr::extract_kinoger_episode_urls_json(&html, season_index, episode_index)
+    webstreamr::extract_kinoger_episode_urls_json(&html, season_index, episode_index)
 }
 
 fn parse_webstreamr_source_html_json(source_id: String, html: String, opts_json: String) -> String {
-    forja_webstreamr::parse_webstreamr_source_html_json(&source_id, &html, &opts_json)
+    webstreamr::parse_webstreamr_source_html_json(&source_id, &html, &opts_json)
 }
 
 fn torrent_start(magnet: String) -> bool {

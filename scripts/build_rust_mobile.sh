@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Cross-compile forja-ffi for iOS/Android (parsers + webstreamr; no librqbit/proxy).
+# Cross-compile ffi for iOS/Android (parsers + webstreamr; no librqbit/proxy).
 #
 # Desktop torrent/proxy: default features via ./scripts/build_rust.sh
-# Mobile: cargo build -p forja-ffi --no-default-features
+# Mobile: cargo build -p ffi --no-default-features
 #
 # Android: needs NDK (Android Studio, ANDROID_NDK_HOME, or sdk.dir in local.properties)
 # iOS: macOS + Xcode toolchain
@@ -17,12 +17,12 @@ MOBILE_FLAGS=(--no-default-features)
 build_ios() {
   echo "==> iOS arm64"
   rustup target add aarch64-apple-ios >/dev/null 2>&1 || true
-  cargo build -p forja-ffi --target aarch64-apple-ios "--$PROFILE" "${MOBILE_FLAGS[@]}"
-  local out="$ROOT/crates/target/aarch64-apple-ios/$PROFILE/libforja_ffi.dylib"
+  cargo build -p ffi --target aarch64-apple-ios "--$PROFILE" "${MOBILE_FLAGS[@]}"
+  local out="$ROOT/crates/target/aarch64-apple-ios/$PROFILE/libffi.dylib"
   local dest="$ROOT/apps/forja/ios/Runner/Frameworks"
   mkdir -p "$dest"
-  cp -f "$out" "$dest/libforja_ffi.dylib"
-  echo "Copied -> $dest/libforja_ffi.dylib"
+  cp -f "$out" "$dest/libffi.dylib"
+  echo "Copied -> $dest/libffi.dylib"
 }
 
 ndk_host_prebuilt() {
@@ -131,12 +131,12 @@ build_android() {
   export AR="$prebuilt/bin/llvm-ar"
   export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
 
-  cargo build -p forja-ffi --target aarch64-linux-android "--$PROFILE" "${MOBILE_FLAGS[@]}"
-  local out="$ROOT/crates/target/aarch64-linux-android/$PROFILE/libforja_ffi.so"
+  cargo build -p ffi --target aarch64-linux-android "--$PROFILE" "${MOBILE_FLAGS[@]}"
+  local out="$ROOT/crates/target/aarch64-linux-android/$PROFILE/libffi.so"
   local dest="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a"
   mkdir -p "$dest"
-  cp -f "$out" "$dest/libforja_ffi.so"
-  echo "Copied -> $dest/libforja_ffi.so"
+  cp -f "$out" "$dest/libffi.so"
+  echo "Copied -> $dest/libffi.so"
 }
 
 case "${1:-all}" in

@@ -15,9 +15,9 @@ Extract to workspace crates:
 
 | Crate | Responsibility |
 |-------|----------------|
-| `forja-iptv-core` | Xtream protocol, M3U parse, portal crypto |
-| `forja-stremio-core` | Addon manifest, catalog deserialize |
-| `forja-stream-core` | Provider registry, URL templates (no libtorrent) |
+| `iptv-core` | Xtream protocol, M3U parse, portal crypto |
+| `stremio-core` | Addon manifest, catalog deserialize |
+| `stream-core` | Provider registry, URL templates (no libtorrent) |
 
 **Flutter:** `dart:ffi` on desktop/mobile.  
 **Web:** compile to WASM; JS interop via `wasm_bindgen`.
@@ -43,8 +43,8 @@ Shared WASM module from Rust crates for IPTV parse + provider templates.
 
 ### 3. Monorepo impact
 
-- `packages/forja_streaming` — thin Dart wrapper over Rust on native; WASM on web
-- `packages/forja_scrapers` — may stay Dart or move scrape logic to Rust incrementally
+- `packages/streaming` — thin Dart wrapper over Rust on native; WASM on web
+- `packages/scrapers` — may stay Dart or move scrape logic to Rust incrementally
 - Feature folders unchanged; platform gates via `kIsWeb` / `Platform.is*`
 
 ## Acceptance checklist

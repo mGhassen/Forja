@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'comic_details_screen.dart';
 import 'comic_reader_screen.dart';
-import 'package:forja_api/api/comics_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/api/comics_service.dart';
+import 'package:storage/storage.dart';
 
 class ComicsScreen extends StatefulWidget {
   final String? initialSearch;

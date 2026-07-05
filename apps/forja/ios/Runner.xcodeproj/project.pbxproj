@@ -247,7 +247,7 @@
 			);
 			name = "Build Rust dylib";
 			outputPaths = (
-				"${SRCROOT}/Runner/Frameworks/libforja_ffi.dylib",
+				"${SRCROOT}/Runner/Frameworks/libffi.dylib",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -259,12 +259,12 @@
 			files = (
 			);
 			inputPaths = (
-				"${SRCROOT}/Runner/Frameworks/libforja_ffi.dylib",
-				"${SRCROOT}/../../crates/target/aarch64-apple-ios/release/libforja_ffi.dylib",
+				"${SRCROOT}/Runner/Frameworks/libffi.dylib",
+				"${SRCROOT}/../../crates/target/aarch64-apple-ios/release/libffi.dylib",
 			);
 			name = "Copy Rust dylib";
 			outputPaths = (
-				"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libforja_ffi.dylib",
+				"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libffi.dylib",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

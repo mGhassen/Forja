@@ -9,7 +9,7 @@ Pluggable web stream providers with user-configurable order and mid-playback swi
 
 ## Registry
 
-Location: `packages/forja_streaming/lib/src/provider_registry.dart`
+Location: `packages/streaming/lib/src/provider_registry.dart`
 
 ```dart
 enum ProviderKind { template, extractor, api }
@@ -23,7 +23,7 @@ class StreamProviderDef {
 }
 ```
 
-Resolver: `packages/forja_streaming/lib/src/stream_resolver.dart`
+Resolver: `packages/streaming/lib/src/stream_resolver.dart`
 
 - `getActiveProviders()` — respects user order + enabled list
 - `resolve(movie, season, episode)` — tries providers in order
@@ -31,7 +31,7 @@ Resolver: `packages/forja_streaming/lib/src/stream_resolver.dart`
 
 ## Settings
 
-Repo: `packages/forja_storage/lib/src/provider_settings_repo.dart`
+Repo: `packages/storage/lib/src/provider_settings_repo.dart`
 
 | Setting | Key |
 |---------|-----|

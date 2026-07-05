@@ -1,4 +1,4 @@
-use forja_proxy::LocalProxy;
+use proxy::LocalProxy;
 use std::sync::{LazyLock, Mutex};
 use tokio::runtime::Runtime;
 

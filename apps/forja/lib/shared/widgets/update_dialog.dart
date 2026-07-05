@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
-import 'package:forja_api/services/app_updater_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/services/app_updater_service.dart';
+import 'package:storage/storage.dart';
 
 // Conditional import for Android-only package
 import 'package:ota_update/ota_update.dart' if (dart.library.html) 'package:ota_update/ota_update_stub.dart';

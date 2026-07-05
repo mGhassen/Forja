@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'package:forja_api/services/book_progress_service.dart';
+import 'package:api/services/book_progress_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:forja_api/api/books_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/api/books_service.dart';
+import 'package:storage/storage.dart';
 import 'book_reader_screen.dart';
 
 class BooksScreen extends StatefulWidget {

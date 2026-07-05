@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/app/rust_delegates.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
-import 'package:forja_api/api/stremio_service.dart';
-import 'package:forja_core/utils/episode_matcher.dart';
-import 'package:forja_rust/forja_rust.dart';
-import 'package:forja_scrapers/scrapers/scraper_parse.dart';
+import 'package:api/api/stremio_service.dart';
+import 'package:core/utils/episode_matcher.dart';
+import 'package:rust/rust.dart';
+import 'package:scrapers/scrapers/scraper_parse.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {

@@ -12,15 +12,16 @@ apps/forja/
     features/            One folder per nav tab
     shared/              Widgets, design, casting, sync stubs
   macos/ ios/ android/ windows/ linux/
-packages/                Engine room only (6 packages)
-  forja_core/            Models + utilities
-  forja_storage/         Settings + persistence + theme
-  forja_api/             HTTP clients + app services
-  forja_streaming/       Torrent engine, local proxy, extractors
-  forja_webstreamr/      WebStreamr sources + extractors
-  forja_scrapers/        Torrent index scrapers
+packages/                Engine room only (7 packages)
+  core/                  Models + utilities
+  storage/               Settings + persistence + theme
+  api/                   HTTP clients + app services
+  streaming/             Torrent engine, local proxy, extractors
+  webstreamr/            WebStreamr sources + extractors
+  scrapers/              Torrent index scrapers
+  rust/                  Dart FFI bindings to Rust engine
 docs/rfc/               RFC index + v1.0–v3.0 release specs
-docs/migration/         Rust engine migration progress + test matrix
+docs/migration/         Global migration (Phase 1–4); start at README.md
 ```
 
 ## Run (macOS)

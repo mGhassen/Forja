@@ -6,7 +6,7 @@
 //   http://stream.example/path
 
 import 'm3u_models.dart';
-import 'package:forja_rust/forja_rust.dart';
+import 'package:rust/rust.dart';
 
 class M3uParser {
   /// Parse raw playlist text into a list of channels. Throws [FormatException]

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Probe whether forja-ffi can cross-compile with torrent-engine on mobile.
+# Probe whether ffi can cross-compile with torrent-engine on mobile.
 # Expected to fail on iOS today (librqbit-dualstack-sockets bind_device).
 # Usage: try_build_mobile_torrent.sh [ios|android|all]
 set -euo pipefail
@@ -13,7 +13,7 @@ PROFILE="${FORJA_RUST_PROFILE:-release}"
 build_ios() {
   echo "==> iOS arm64 + $FEATURES"
   rustup target add aarch64-apple-ios >/dev/null 2>&1 || true
-  cargo build -p forja-ffi --target aarch64-apple-ios "--$PROFILE" --features "$FEATURES"
+  cargo build -p ffi --target aarch64-apple-ios "--$PROFILE" --features "$FEATURES"
 }
 
 build_android() {
@@ -27,7 +27,7 @@ build_android() {
   export CC="$prebuilt/bin/aarch64-linux-android21-clang"
   export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
   rustup target add aarch64-linux-android >/dev/null 2>&1 || true
-  cargo build -p forja-ffi --target aarch64-linux-android "--$PROFILE" --features "$FEATURES"
+  cargo build -p ffi --target aarch64-linux-android "--$PROFILE" --features "$FEATURES"
 }
 
 failed=0

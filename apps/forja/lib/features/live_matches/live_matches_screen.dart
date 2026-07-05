@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
-import 'package:forja_storage/forja_storage.dart';
+import 'package:storage/storage.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 

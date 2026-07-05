@@ -6,10 +6,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:forja_api/api/anime_service.dart';
-import 'package:forja_api/api/stream_extractor.dart';
-import 'package:forja_core/models/stream_source.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/api/anime_service.dart';
+import 'package:api/api/stream_extractor.dart';
+import 'package:core/models/stream_source.dart';
+import 'package:storage/storage.dart';
 import 'package:forja/shared/player/player_screen.dart';
 
 class AnimePlayerScreen extends StatefulWidget {

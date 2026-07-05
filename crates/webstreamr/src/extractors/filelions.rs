@@ -40,7 +40,7 @@ pub fn extract_from_html(
     if NOT_FOUND.is_match(html) {
         return None;
     }
-    let unpacked = forja_utils::js_unpacker::unpack_eval(html).ok()?;
+    let unpacked = utils::js_unpacker::unpack_eval(html).ok()?;
     let height = HEIGHT_RE
         .captures(&unpacked)
         .and_then(|c| c.get(1))

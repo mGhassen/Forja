@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:forja_api/api/trakt_service.dart';
-import 'package:forja_api/api/mdblist_service.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/api/trakt_service.dart';
+import 'package:api/api/mdblist_service.dart';
+import 'package:api/api/tmdb_api.dart';
+import 'package:core/models/movie.dart';
+import 'package:storage/storage.dart';
 import 'package:forja/shell/app_router.dart';
 
 class ListsScreen extends StatefulWidget {

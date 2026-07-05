@@ -6,9 +6,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:forja_api/api/kisskh_extractor.dart';
-import 'package:forja_api/api/kisskh_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:api/api/kisskh_extractor.dart';
+import 'package:api/api/kisskh_service.dart';
+import 'package:storage/storage.dart';
 import 'package:forja/shared/player/player_screen.dart';
 
 class AsianDramaPlayerScreen extends StatefulWidget {

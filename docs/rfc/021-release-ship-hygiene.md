@@ -70,7 +70,7 @@ Output artifact name per [RFC-015](015-in-app-updates.md): `Forja-{version}-maco
 | Linux | `.AppImage` |
 | Android | split APKs or universal APK |
 
-Attach all to GitHub Release; [`AppUpdaterService`](../../packages/forja_api/lib/services/app_updater_service.dart) matches asset filenames.
+Attach all to GitHub Release; [`AppUpdaterService`](../../packages/api/lib/services/app_updater_service.dart) matches asset filenames.
 
 ## 4. Platform entitlements and fixes
 

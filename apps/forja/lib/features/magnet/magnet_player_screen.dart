@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja_streaming/forja_streaming.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:streaming/streaming.dart';
+import 'package:storage/storage.dart';
 import 'package:forja/shared/player/player_screen.dart';
 
 class MagnetPlayerScreen extends StatefulWidget {

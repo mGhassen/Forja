@@ -10,22 +10,22 @@ import 'package:audio_service/audio_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:forja_api/api/audio_handler.dart';
-import 'package:forja_api/api/audiobook_player_service.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_streaming/forja_streaming.dart';
-import 'package:forja_rust/forja_rust.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_api/api/music_player_service.dart';
-import 'package:forja_streaming/src/site111477_proxy.dart' as site111477_proxy;
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_api/services/player_pool_service.dart';
-import 'package:forja_core/utils/webview_cleanup.dart';
+import 'package:api/api/audio_handler.dart';
+import 'package:api/api/audiobook_player_service.dart';
+import 'package:storage/storage.dart';
+import 'package:streaming/streaming.dart';
+import 'package:rust/rust.dart';
+import 'package:api/api/tmdb_api.dart';
+import 'package:api/api/music_player_service.dart';
+import 'package:streaming/src/site111477_proxy.dart' as site111477_proxy;
+import 'package:core/models/movie.dart';
+import 'package:api/services/player_pool_service.dart';
+import 'package:core/utils/webview_cleanup.dart';
 
 import 'package:forja/shell/main_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
-import 'package:forja/shared/widgets/animated_forja_logo.dart';
+import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/app/rust_delegates.dart';
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
@@ -499,7 +499,7 @@ void _warnIfRustMissingOnDesktop() {
       '[Boot] Rust engine NOT loaded — engine features unavailable. '
       'From repo root run: ./scripts/build_rust.sh (or melos run rust:build). '
       'Mobile: ./scripts/build_rust_mobile.sh. '
-      'Override: FORJA_RUST_LIB=/path/to/libforja_ffi.dylib. '
+      'Override: FORJA_RUST_LIB=/path/to/libffi.dylib. '
       'Strict fail: FORJA_RUST_STRICT=1';
 
   debugPrint(msg);

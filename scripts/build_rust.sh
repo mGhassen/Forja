@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/crates"
 
 PROFILE="${FORJA_RUST_PROFILE:-release}"
-cargo build -p forja-ffi "--$PROFILE"
+cargo build -p ffi "--$PROFILE"
 cargo test --workspace
 
 OUT="$ROOT/crates/target/$PROFILE"
@@ -20,20 +20,20 @@ copy_lib() {
 
 case "$(uname -s)" in
   Darwin)
-  if [[ -f "$OUT/libforja_ffi.dylib" ]]; then
-    copy_lib "$OUT/libforja_ffi.dylib" "$APP/macos/Runner/Frameworks"
+  if [[ -f "$OUT/libffi.dylib" ]]; then
+    copy_lib "$OUT/libffi.dylib" "$APP/macos/Runner/Frameworks"
   fi
   ;;
   Linux)
-  if [[ -f "$OUT/libforja_ffi.so" ]]; then
-    copy_lib "$OUT/libforja_ffi.so" "$APP/linux/lib"
+  if [[ -f "$OUT/libffi.so" ]]; then
+    copy_lib "$OUT/libffi.so" "$APP/linux/lib"
   fi
   ;;
   MINGW*|MSYS*|CYGWIN*)
-  if [[ -f "$OUT/forja_ffi.dll" ]]; then
-    copy_lib "$OUT/forja_ffi.dll" "$APP/windows/runner"
+  if [[ -f "$OUT/ffi.dll" ]]; then
+    copy_lib "$OUT/ffi.dll" "$APP/windows/runner"
   fi
   ;;
 esac
 
-echo "Rust engine built: crates/target/$PROFILE/libforja_ffi.*"
+echo "Rust engine built: crates/target/$PROFILE/libffi.*"
