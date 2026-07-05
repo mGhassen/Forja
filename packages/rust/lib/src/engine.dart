@@ -111,6 +111,16 @@ class ForjaRust {
         return _readString(_native.forja_decrypt_paste_response(urlPtr, rawPtr));
       });
 
+  String opensslAesDecryptJson(String b64, {String passphrase = ''}) =>
+      using((arena) {
+        final b64Ptr = b64.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final passPtr =
+            passphrase.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.forja_openssl_aes_decrypt_json(b64Ptr, passPtr),
+        );
+      });
+
   String decodeXtreamText(String text) => using((arena) {
         final ptr = text.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.forja_decode_xtream_text(ptr));
@@ -517,6 +527,11 @@ final class _ForjaNative {
               'forja_decrypt_paste_response',
             )
             .asFunction(),
+        forja_openssl_aes_decrypt_json = lib
+            .lookup<ffi.NativeFunction<_TwoStringNative>>(
+              'forja_openssl_aes_decrypt_json',
+            )
+            .asFunction(),
         forja_decode_xtream_text = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'forja_decode_xtream_text',
@@ -784,6 +799,10 @@ final class _ForjaNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_decrypt_paste_response;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) forja_openssl_aes_decrypt_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_decode_xtream_text;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

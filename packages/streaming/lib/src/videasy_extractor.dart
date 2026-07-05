@@ -21,13 +21,11 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart' as cryptolib;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
-import 'package:pointycastle/export.dart' as pc;
+import 'package:rust/rust.dart';
 
 import 'package:core/models/stream_source.dart';
 import 'extracted_media.dart';
@@ -160,7 +158,16 @@ class VideasyExtractor {
 
       String json;
       try {
-        json = _opensslAesDecrypt(intermediate, '');
+        final raw =
+            ForjaRust.instance.opensslAesDecryptJson(intermediate, passphrase: '');
+        if (raw.startsWith('{')) {
+          final probe = jsonDecode(raw) as Map<String, dynamic>;
+          if (probe.containsKey('error') && !probe.containsKey('sources')) {
+            onLog('[Videasy] $provider AES decrypt error: ${probe['error']}');
+            continue;
+          }
+        }
+        json = raw;
       } catch (e) {
         onLog('[Videasy] $provider AES decrypt error: $e');
         continue;
@@ -244,47 +251,6 @@ class VideasyExtractor {
     if (t.contains('480')) return 1;
     return 0;
   }
-}
-
-// ─── OpenSSL/CryptoJS-compatible AES decrypt ─────────────────────────────────
-String _opensslAesDecrypt(String b64, String passphrase) {
-  final raw = base64Decode(b64);
-  if (raw.length < 16 ||
-      String.fromCharCodes(raw.sublist(0, 8)) != 'Salted__') {
-    throw const FormatException('not an OpenSSL Salted__ blob');
-  }
-  final salt = raw.sublist(8, 16);
-  final ct = Uint8List.fromList(raw.sublist(16));
-
-  // EVP_BytesToKey(passphrase, salt, MD5, keyLen=32, ivLen=16)
-  final pw = utf8.encode(passphrase);
-  final out = BytesBuilder();
-  Uint8List prev = Uint8List(0);
-  while (out.length < 48) {
-    final input = BytesBuilder()
-      ..add(prev)
-      ..add(pw)
-      ..add(salt);
-    prev = Uint8List.fromList(cryptolib.md5.convert(input.toBytes()).bytes);
-    out.add(prev);
-  }
-  final keyIv = out.toBytes();
-  final key = keyIv.sublist(0, 32);
-  final iv = keyIv.sublist(32, 48);
-
-  final cipher = pc.PaddedBlockCipherImpl(
-    pc.PKCS7Padding(),
-    pc.CBCBlockCipher(pc.AESEngine()),
-  );
-  cipher.init(
-    false,
-    pc.PaddedBlockCipherParameters(
-      pc.ParametersWithIV<pc.KeyParameter>(pc.KeyParameter(key), iv),
-      null,
-    ),
-  );
-  final pt = cipher.process(ct);
-  return utf8.decode(pt);
 }
 
 // ─── WASM runtime hosted in an invisible WebView (about:blank) ───────────────

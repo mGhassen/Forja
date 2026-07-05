@@ -14,6 +14,7 @@ namespace forja {
     string list_providers_json();
     string parse_m3u_json(string content);
     string decrypt_paste_response(string url_with_hash, string raw_response);
+    string openssl_aes_decrypt_json(string b64, string passphrase);
     string decode_xtream_text(string text);
     string parse_xtream_categories_json(string json);
     string parse_xtream_streams_json(string json, string section);

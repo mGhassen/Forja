@@ -112,6 +112,10 @@ fn decrypt_paste_response(url_with_hash: String, raw_response: String) -> String
     pastesh::decrypt_from_paste_response(&url_with_hash, &raw_response).unwrap_or_default()
 }
 
+fn openssl_aes_decrypt_json(b64: String, passphrase: String) -> String {
+    utils::openssl_crypt::decrypt_openssl_salted_b64_json(&b64, &passphrase)
+}
+
 fn decode_xtream_text(text: String) -> String {
     iptv_core::xtream::decode_xtream_text(&text)
 }

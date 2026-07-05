@@ -81,8 +81,8 @@ Rust engine (crates/* + libffi)
 
 | | |
 |--|--|
-| **Progress** | **27 / 36 tasks done (75%)** — `scrapers` + `forja_*` deleted |
-| **Blocks Phase 3** | P2-82/83/87/88/89/90 — Dart engine packages still exist |
+| **Progress** | **28 / 36 tasks done (78%)** — `scrapers` + `webstreamr` + `forja_*` deleted |
+| **Blocks Phase 3** | P2-83/87/88/89/90 — Dart engine packages still exist |
 | **Also open** | B2 mobile smoke · JNI proof · sign-off |
 
 **Legend:** ✅ done · 🔄 partial · ⬜ not started
@@ -103,12 +103,14 @@ Rust engine (crates/* + libffi)
 | **P2-84** | Torrent filter → `filter_torrents_json`; Dart filter logic deleted |
 | **P2-86** | All `*Backend` hooks removed; direct FFI everywhere |
 | **P2-85** | HLS proxy in Rust; Dart HLS rewrite deleted from `local_server_service.dart` |
+| **P2-82** | `packages/webstreamr` **deleted**; full resolve via `forja_webstreamr_get_streams_json` |
 
 #### 🔄 Partial — not done until Dart package deleted
 
 | ID | Rust done | Dart still alive (must delete) |
 |----|-----------|--------------------------------|
-| **P2-88** | `crates/storage` KV + FFI | **`packages/storage` entire package** — repos, `SettingsService`, watch history |
+| **P2-83** | vidsrc 3-hop (`forja_resolve_vidsrc_embed_json`), webstreamr service, videasy OpenSSL AES (`forja_openssl_aes_decrypt_json`), provider URL dedup | **`packages/streaming`** — videasy WASM, nuvio JS runtime, site111477 seekable proxy (~1.5k LOC), `local_server_service` shelf routes |
+| **P2-88** | `crates/storage` KV + FFI; `ForjaEngine` storage facade + legacy prefs migration | **`packages/storage`** — `kv.dart` glue, `app_theme.dart`, repos still thin wrappers |
 | **P2-85** | HLS + proxy forward | Jellyfin/toky/comic shelf routes in Dart |
 
 #### 🔄 In progress — B2 mobile
@@ -123,8 +125,7 @@ Rust engine (crates/* + libffi)
 | ID | Dart package to delete | Rust work |
 |----|------------------------|-----------|
 | P2-80 | — | Document + expand FFI surface |
-| **P2-82** | **`packages/webstreamr`** | Fetch + extract pipeline in `crates/webstreamr` |
-| **P2-83** | **`packages/streaming`** (engine parts) | Resolver, torrent service orchestration |
+| **P2-83** | **`packages/streaming`** (engine parts) | site111477 seekable proxy, nuvio host glue; videasy HTTP loop optional |
 | **P2-88** | **`packages/storage`** | Typed settings/history APIs; delete all Dart storage |
 | **P2-89** | **`packages/api`** | TMDB, Trakt, debrid, jackett, subtitles, … |
 | **P2-90** | **`packages/core`** (engine models) | JSON from Rust; UI uses maps/codegen |
@@ -149,7 +150,7 @@ Rust engine (crates/* + libffi)
 | 6 | `packages/scrapers` deleted | ✅ P2-87 |
 | 7 | Torrent filter via Rust; Dart deleted | ✅ P2-84 |
 | 8 | Magnet → stream mobile | ⬜ P2-14 |
-| 9 | `packages/webstreamr` + `packages/streaming` engine deleted | ⬜ P2-82/83 |
+| 9 | `packages/webstreamr` deleted; `packages/streaming` engine deleted | 🔄 P2-82 ✅ · P2-83 partial |
 | 10 | **`packages/api` + `packages/storage` + `packages/core` deleted** | ⬜ P2-88/89/90 |
 | 11 | No `*Backend` hooks | ✅ P2-86 |
 | 12 | Only `packages/rust` + `packages/kotlin` remain under `packages/` (plus no engine code in `apps/forja/lib`) | ⬜ |

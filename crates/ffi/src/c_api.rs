@@ -111,6 +111,17 @@ pub unsafe extern "C" fn forja_decrypt_paste_response(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_openssl_aes_decrypt_json(
+    b64: *const c_char,
+    passphrase: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::openssl_aes_decrypt_json(
+        from_c_str(b64),
+        from_c_str(passphrase),
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_decode_xtream_text(text: *const c_char) -> *mut c_char {
     to_c_string(crate::decode_xtream_text(from_c_str(text)))
 }
