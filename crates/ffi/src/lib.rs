@@ -410,3 +410,28 @@ fn proxy_register_route(token: String, upstream_url: String) -> bool {
         false
     }
 }
+
+fn storage_open(path: String) -> String {
+    match storage::open(&path) {
+        Ok(()) => r#"{"ok":true}"#.into(),
+        Err(e) => serde_json::json!({ "error": e }).to_string(),
+    }
+}
+
+fn storage_get_json(key: String) -> String {
+    match storage::get(&key) {
+        Some(v) => serde_json::to_string(&v).unwrap_or_else(|_| "null".into()),
+        None => "null".into(),
+    }
+}
+
+fn storage_set_json(key: String, value_json: String) -> String {
+    let value: serde_json::Value = match serde_json::from_str(&value_json) {
+        Ok(v) => v,
+        Err(e) => return serde_json::json!({ "error": e.to_string() }).to_string(),
+    };
+    match storage::set(&key, value) {
+        Ok(()) => r#"{"ok":true}"#.into(),
+        Err(e) => serde_json::json!({ "error": e }).to_string(),
+    }
+}

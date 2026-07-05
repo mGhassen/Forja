@@ -14,59 +14,6 @@ class _Sport {
   const _Sport({required this.id, required this.name});
 }
 
-class _PpvStream {
-  final int id;
-  final String name;
-  final String tag;
-  final String? poster;
-  final String uriName;
-  final int startsAt;
-  final int endsAt;
-  final bool alwaysLive;
-  final String category;
-  final String? iframe;
-  final bool allowPastStreams;
-
-  const _PpvStream({
-    required this.id,
-    required this.name,
-    required this.tag,
-    this.poster,
-    required this.uriName,
-    required this.startsAt,
-    required this.endsAt,
-    required this.alwaysLive,
-    required this.category,
-    this.iframe,
-    required this.allowPastStreams,
-  });
-
-  factory _PpvStream.fromJson(Map<String, dynamic> j) => _PpvStream(
-        id:              (j['id'] as num?)?.toInt() ?? 0,
-        name:            (j['name'] ?? '').toString(),
-        tag:             (j['tag'] ?? '').toString(),
-        poster:          j['poster'] as String?,
-        uriName:         (j['uri_name'] ?? '').toString(),
-        startsAt:        (j['starts_at'] as num?)?.toInt() ?? 0,
-        endsAt:          (j['ends_at'] as num?)?.toInt() ?? 0,
-        alwaysLive:      (j['always_live'] as num?)?.toInt() == 1,
-        category:        (j['category_name'] ?? '').toString(),
-        iframe:          j['iframe'] as String?,
-        allowPastStreams: (j['allowpaststreams'] as num?)?.toInt() == 1,
-      );
-
-  String get timeLabel {
-    if (alwaysLive) return '🔴 Always Live';
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    if (now >= startsAt && now <= endsAt) return '🔴 Live Now';
-    if (startsAt > now) {
-      final dt = DateTime.fromMillisecondsSinceEpoch(startsAt * 1000);
-      return '⏰ ${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}';
-    }
-    return '';
-  }
-}
-
 class _CdnChannel {
   final String name;
   final String code;
@@ -246,22 +193,6 @@ Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
   }
 }
 
-Future<List<_PpvStream>> _fetchPpvStreams() async {
-  final resp = await http.get(Uri.parse('https://old.ppv.to/api/streams'), headers: _ua)
-      .timeout(const Duration(seconds: 12));
-  if (resp.statusCode != 200) return [];
-  final body = jsonDecode(resp.body) as Map<String, dynamic>;
-  final categories = (body['streams'] as List? ?? []);
-  final result = <_PpvStream>[];
-  for (final cat in categories) {
-    final streams = (cat['streams'] as List? ?? []);
-    for (final s in streams) {
-      try { result.add(_PpvStream.fromJson(s as Map<String, dynamic>)); } catch (_) {}
-    }
-  }
-  return result;
-}
-
 Future<List<_CdnChannel>> _fetchCdnChannels() async {
   final resp = await http.get(Uri.parse('https://api.cdn-live.tv/api/v1/channels/?user=cdnlivetv&plan=free'), headers: _ua)
       .timeout(const Duration(seconds: 12));
@@ -314,7 +245,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   TabController? _tabController;
   _DataProvider _provider = _DataProvider.damiTv;
   List<_DamiTvStream> _damiTvStreams = [];
-  List<_PpvStream> _ppvStreams = [];
   List<_CdnChannel> _cdnChannels = [];
   List<_CdnSportEvent> _cdnSports = [];
   bool _cdnShowChannels = true; // true = channels, false = sports
@@ -329,10 +259,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     setState(() { _loading = true; _error = null; _sportFilter = 'all'; });
     if (_provider == _DataProvider.damiTv) {
       await _loadDamiTv();
-      return;
-    }
-    if (_provider == _DataProvider.ppv) {
-      await _loadPpv();
       return;
     }
     if (_provider == _DataProvider.cdnLive) {
@@ -356,40 +282,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         setState(() {
           _tabController = null;
           _damiTvStreams = streams;
-          _sports = cats;
-          _loading = false;
-        });
-        oldCtrl?.dispose();
-        final newCtrl = TabController(length: cats.length + 1, vsync: this);
-        newCtrl.addListener(() {
-          if (!newCtrl.indexIsChanging) {
-            final idx = newCtrl.index;
-            setState(() => _sportFilter = idx == 0 ? 'all' : cats[idx - 1].id);
-          }
-        });
-        if (mounted) setState(() => _tabController = newCtrl);
-      }
-    } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
-    }
-  }
-
-  Future<void> _loadPpv() async {
-    try {
-      final streams = await _fetchPpvStreams();
-      // Build category tabs from unique categories in streams
-      final seenCats = <String>{};
-      final cats = <_Sport>[];
-      for (final s in streams) {
-        if (s.category.isNotEmpty && seenCats.add(s.category)) {
-          cats.add(_Sport(id: s.category, name: s.category));
-        }
-      }
-      if (mounted) {
-        final oldCtrl = _tabController;
-        setState(() {
-          _tabController = null;
-          _ppvStreams = streams;
           _sports = cats;
           _loading = false;
         });
@@ -450,10 +342,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     }
   }
 
-  List<_PpvStream> get _filteredPpv => _sportFilter == 'all'
-      ? _ppvStreams
-      : _ppvStreams.where((s) => s.category == _sportFilter).toList();
-
   List<_DamiTvStream> get _filteredDamiTv => _sportFilter == 'all'
       ? _damiTvStreams
       : _damiTvStreams.where((s) => s.categoryName == _sportFilter).toList();
@@ -476,7 +364,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            _buildProviderBar(),
             if (_tabController != null && _sports.isNotEmpty) _buildSportTabs(),
             const SizedBox(height: 4),
             Expanded(child: _buildBody()),
@@ -508,39 +395,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     );
   }
 
-  Widget _buildProviderBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _ModeChip(
-              label: '📺 Dami TV',
-              active: _provider == _DataProvider.damiTv,
-              onTap: () {
-                if (_provider == _DataProvider.damiTv) return;
-                setState(() { _provider = _DataProvider.damiTv; });
-                _load();
-              },
-            ),
-            const SizedBox(width: 8),
-            _ModeChip(
-              label: '🎬 PPV.to',
-              active: _provider == _DataProvider.ppv,
-              onTap: () {
-                if (_provider == _DataProvider.ppv) return;
-                setState(() { _provider = _DataProvider.ppv; });
-                _load();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
- 
   Widget _buildSportTabs() {
     final tabs = [
       const Tab(text: 'All'),
@@ -582,7 +436,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       );
     }
     if (_provider == _DataProvider.damiTv) return _buildDamiTvBody();
-    if (_provider == _DataProvider.ppv) return _buildPpvBody();
     if (_provider == _DataProvider.cdnLive) return _buildCdnBody();
 
     return const SizedBox.shrink();
@@ -621,40 +474,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     });
   }
 
-  Widget _buildPpvBody() {
-    final streams = _filteredPpv;
-    if (streams.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.sports_rounded, color: Colors.white24, size: 64),
-            SizedBox(height: 16),
-            Text('No streams available', style: TextStyle(color: Colors.white38, fontSize: 16)),
-          ],
-        ),
-      );
-    }
-    return LayoutBuilder(builder: (context, constraints) {
-      final crossCount = (constraints.maxWidth / 300).floor().clamp(1, 6);
-      return GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossCount,
-          mainAxisExtent: 200,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: streams.length,
-        itemBuilder: (context, i) => _PpvMatchCard(
-          stream: streams[i],
-          onTap: () => _openPpvStream(streams[i]),
-        ),
-      );
-    });
-  }
-
-  Widget _buildCdnBody() {
+  void _openDamiTvStream(_DamiTvStream s) {
     if (_cdnShowChannels) {
       final channels = _cdnChannels.where((c) => c.status == 'online').toList();
       if (channels.isEmpty) {
@@ -799,22 +619,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     );
   }
 
-  void _openPpvStream(_PpvStream s) {
-    if (s.iframe == null || s.iframe!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stream not yet available for this event')),
-      );
-      return;
-    }
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => _PpvPlayerScreen(stream: s),
-    ));
-  }
-
-  // End of screen state
-}
-
-enum _DataProvider { damiTv, ppv, cdnLive }
+  void _openDamiTvStream(_DamiTvStream s) {
 
 // ─── Chips ────────────────────────────────────────────────────────────────────
 

@@ -407,6 +407,22 @@ class ForjaRust {
         return _native.forja_proxy_register_route(tokenPtr, urlPtr);
       });
 
+  String storageOpen(String path) => using((arena) {
+        final ptr = path.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_storage_open(ptr));
+      });
+
+  String storageGetJson(String key) => using((arena) {
+        final ptr = key.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_storage_get_json(ptr));
+      });
+
+  String storageSetJson(String key, String valueJson) => using((arena) {
+        final keyPtr = key.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final valPtr = valueJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_storage_set_json(keyPtr, valPtr));
+      });
+
   String _readString(ffi.Pointer<ffi.Char> ptr) {
     if (ptr == ffi.nullptr) return '';
     try {
@@ -679,6 +695,19 @@ final class _ForjaNative {
             .lookup<ffi.NativeFunction<_ProxyRegisterNative>>(
               'forja_proxy_register_route',
             )
+            .asFunction(),
+        forja_storage_open = lib
+            .lookup<ffi.NativeFunction<_StoragePathNative>>('forja_storage_open')
+            .asFunction(),
+        forja_storage_get_json = lib
+            .lookup<ffi.NativeFunction<_StorageKeyNative>>(
+              'forja_storage_get_json',
+            )
+            .asFunction(),
+        forja_storage_set_json = lib
+            .lookup<ffi.NativeFunction<_StorageSetNative>>(
+              'forja_storage_set_json',
+            )
             .asFunction();
 
   final void Function(ffi.Pointer<ffi.Char>) forja_free_string;
@@ -821,6 +850,13 @@ final class _ForjaNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_proxy_register_route;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) forja_storage_open;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_storage_get_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) forja_storage_set_json;
 }
 
 typedef _FreeStringNative = ffi.Void Function(ffi.Pointer<ffi.Char>);
@@ -898,6 +934,16 @@ typedef _TorrentJsonNative = ffi.Pointer<ffi.Char> Function(
 typedef _ProxyStartNative = ffi.Int32 Function(ffi.Uint16);
 typedef _ProxyPortNative = ffi.Uint16 Function();
 typedef _ProxyRegisterNative = ffi.Bool Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Pointer<ffi.Char>,
+);
+typedef _StoragePathNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+);
+typedef _StorageKeyNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+);
+typedef _StorageSetNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
   ffi.Pointer<ffi.Char>,
 );

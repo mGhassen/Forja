@@ -28,6 +28,7 @@ webstreamr = { path = "../webstreamr" }
 scrapers = { path = "../scrapers" }
 torrent = { path = "../torrent", optional = true }
 proxy = { path = "../proxy", optional = true }
+storage = { path = "../storage" }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

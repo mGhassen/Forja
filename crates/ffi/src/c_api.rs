@@ -435,3 +435,24 @@ pub unsafe extern "C" fn forja_proxy_register_route(
 ) -> bool {
     crate::proxy_register_route(from_c_str(token), from_c_str(upstream_url))
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_storage_open(path: *const c_char) -> *mut c_char {
+    to_c_string(crate::storage_open(from_c_str(path)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_storage_get_json(key: *const c_char) -> *mut c_char {
+    to_c_string(crate::storage_get_json(from_c_str(key)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_storage_set_json(
+    key: *const c_char,
+    value_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::storage_set_json(
+        from_c_str(key),
+        from_c_str(value_json),
+    ))
+}

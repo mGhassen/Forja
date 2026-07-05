@@ -58,7 +58,7 @@ Rust engine (crates/* + libffi)
 
 | | |
 |--|--|
-| **Progress** | **23 / 36 tasks done (64%)** |
+| **Progress** | **24 / 36 tasks done (67%)** |
 | **Blocks Phase 3** | P2-80 tail · P2-82/83 pipelines · P2-88/89 (api/storage) |
 | **Also open** | B2 mobile smoke · JNI proof · sign-off |
 
@@ -80,6 +80,7 @@ Rust engine (crates/* + libffi)
 | **P2-87** | Dead Dart scraper files deleted (`packages/scrapers` = aggregator only) |
 | **P2-86** | All `*Backend` hooks removed; direct FFI everywhere |
 | **P2-85** | HLS proxy + `/proxy` forward-only in Rust (`crates/proxy/hls.rs`) |
+| **P2-88** | `crates/storage` + FFI; `ProviderSettingsRepo` on Rust store (partial) |
 
 #### 🔄 In progress — B2 mobile
 
@@ -97,7 +98,7 @@ Rust engine (crates/* + libffi)
 | P2-83 | Stream resolver → Rust |
 | P2-85 | Proxy tail — Jellyfin/toky/comic shelf routes (UI-specific) |
 | P2-87 | Delete gutted Dart engine packages (scrapers ✅; webstreamr/streaming/api remain) |
-| **P2-88** | **`packages/storage` → `crates/storage` + FFI** |
+| **P2-88** | **`packages/storage` → `crates/storage` + FFI** (settings/watch/history remain) |
 | **P2-89** | **`packages/api` → Rust crates (TMDB, Trakt, debrid, …)** |
 | **P2-90** | **`packages/core` models → generated from engine JSON** |
 
@@ -122,7 +123,7 @@ Rust engine (crates/* + libffi)
 | 7 | Torrent filter via `filter_torrents_json` | ✅ P2-84 |
 | 8 | Magnet → stream mobile | ⬜ P2-14 |
 | 9 | All pipelines in Rust (webstreamr, resolver, proxy) | 🔄 P2-85 partial · P2-82/83 |
-| 10 | **`packages/api` + `packages/storage` in Rust** | ⬜ P2-88/89 |
+| 10 | **`packages/api` + `packages/storage` in Rust** | 🔄 P2-88 partial · P2-89 |
 | 11 | No `*Backend` hooks | ✅ P2-86 |
 | 12 | Sign-off | ⬜ P2-70 |
 

@@ -13,6 +13,8 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   path_provider: ^2.1.5
   google_fonts: ^8.0.2
+  rust:
+    path: ../rust
 
 dev_dependencies:
   flutter_test:

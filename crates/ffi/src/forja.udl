@@ -54,4 +54,7 @@ namespace forja {
     void proxy_stop();
     u32 proxy_port();
     boolean proxy_register_route(string token, string upstream_url);
+    string storage_open(string path);
+    string storage_get_json(string key);
+    string storage_set_json(string key, string value_json);
 };

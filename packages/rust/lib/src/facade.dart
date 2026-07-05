@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'engine.dart';
 import 'library_path.dart';
 
@@ -13,7 +15,7 @@ abstract final class ForjaEngine {
   static bool get isReady => _enabled && ForjaRust.isInitialized;
 
   /// Load the native library. Required for engine features.
-  static Future<void> init() async {
+  static Future<void> init({String? storagePath}) async {
     if (_initialized) return;
     _initialized = true;
 
@@ -28,6 +30,8 @@ abstract final class ForjaEngine {
         try {
           await ForjaRust.init(libraryPath: candidate);
           _enabled = true;
+          final storePath = storagePath ?? await _defaultStoragePath();
+          _openStorage(storePath);
           debugPrint(
             '[ForjaEngine] Rust engine v${ForjaRust.instance.version} ($candidate)',
           );
@@ -42,6 +46,20 @@ abstract final class ForjaEngine {
       debugPrint('[ForjaEngine] init failed: $e');
       _enabled = false;
     }
+  }
+
+  static Future<String> _defaultStoragePath() async {
+    final dir = await getApplicationSupportDirectory();
+    return p.join(dir.path, 'forja_engine_store.json');
+  }
+
+  static void _openStorage(String path) {
+    final raw = ForjaRust.instance.storageOpen(path);
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) {
+      throw StateError('storage_open failed: ${parsed['error']}');
+    }
+    debugPrint('[ForjaEngine] storage: $path');
   }
 
   static void _requireReady() {
