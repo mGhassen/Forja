@@ -9,6 +9,7 @@ import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/height.dart';
 import '../utils/unpacker.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class Dropload extends Extractor {
@@ -38,6 +39,8 @@ class Dropload extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
+    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
+    if (rust != null) return rust;
     if (html.contains('File Not Found') || html.contains('Pending in queue')) {
       throw NotFoundError();
     }

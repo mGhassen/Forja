@@ -189,6 +189,19 @@ pub unsafe extern "C" fn forja_extract_embed_html_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_extract_vidsrc_chain_json(
+    outer_html: *const c_char,
+    rcp_html: *const c_char,
+    prorcp_html: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::extract_vidsrc_chain_json(
+        from_c_str(outer_html),
+        from_c_str(rcp_html),
+        from_c_str(prorcp_html),
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_torrent_start(magnet: *const c_char) -> bool {
     crate::torrent_start(from_c_str(magnet))
 }

@@ -176,6 +176,18 @@ class ForjaRust {
         );
       });
 
+  String extractVidsrcChainJson(
+    String outerHtml,
+    String rcpHtml,
+    String prorcpHtml,
+  ) =>
+      using((arena) {
+        final a = outerHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final b = rcpHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final c = prorcpHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_extract_vidsrc_chain_json(a, b, c));
+      });
+
   bool torrentStart(String magnet) => using((arena) {
         final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _native.forja_torrent_start(ptr);
@@ -306,6 +318,11 @@ final class _ForjaNative {
               'forja_extract_embed_html_json',
             )
             .asFunction(),
+        forja_extract_vidsrc_chain_json = lib
+            .lookup<ffi.NativeFunction<_ThreeStringNative>>(
+              'forja_extract_vidsrc_chain_json',
+            )
+            .asFunction(),
         forja_torrent_start = lib
             .lookup<ffi.NativeFunction<_TorrentStartNative>>(
               'forja_torrent_start',
@@ -377,6 +394,11 @@ final class _ForjaNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_extract_embed_html_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) forja_extract_vidsrc_chain_json;
   final bool Function(ffi.Pointer<ffi.Char>) forja_torrent_start;
   final void Function() forja_torrent_stop;
   final bool Function() forja_torrent_is_running;

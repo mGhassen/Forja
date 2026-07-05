@@ -6,6 +6,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/pastesh_decryptor.dart';
 import 'package:forja_rust/forja_rust.dart';
 import 'package:forja_scrapers/scrapers/scraper_parse.dart';
+import 'package:forja_webstreamr/webstreamr/webstreamr_parse.dart';
 
 /// App-layer delegates that cannot live in [ForjaEngine] (avoids forja_rust → forja_api cycle).
 void installRustAppDelegates() {
@@ -61,4 +62,11 @@ void installRustAppDelegates() {
 
   IptvClientBackend.decodeXtreamText =
       (text) => ForjaRust.instance.decodeXtreamText(text);
+
+  WebstreamrParseBackend.extractEmbedHtmlJson = (id, html, pageUrl) =>
+      ForjaRust.instance.extractEmbedHtmlJson(id, html, pageUrl);
+
+  WebstreamrParseBackend.extractVidsrcChainJson =
+      (outer, rcp, prorcp) =>
+          ForjaRust.instance.extractVidsrcChainJson(outer, rcp, prorcp);
 }

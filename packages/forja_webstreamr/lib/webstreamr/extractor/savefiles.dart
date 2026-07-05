@@ -6,6 +6,7 @@ import 'package:html/parser.dart' as html_parser;
 import '../errors.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class SaveFiles extends Extractor {
@@ -34,6 +35,8 @@ class SaveFiles extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
+    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
+    if (rust != null) return rust;
     if (RegExp(r'file was locked|file was deleted', caseSensitive: false)
         .hasMatch(html)) {
       throw NotFoundError();

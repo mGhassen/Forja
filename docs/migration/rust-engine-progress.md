@@ -60,7 +60,7 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 ### Still 100% Dart
 
 - Stremio catalog / meta / stream HTTP
-- All webstreamr extraction in the app
+- Webstreamr HTTP fetch, registry, sources (only 5 embed HTML parsers wired to Rust)
 - Torrent session + local stream proxy
 - Vidzee / Vidrock provider URLs
 - Xtream category + stream JSON parsing
@@ -71,7 +71,7 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 |--------|-------|
 | Rust crates | 9 (8 domain + `forja-ffi`) |
 | Stream providers wired | 3 / 5 |
-| Webstreamr extractors ported | 6 / 49 |
+| Webstreamr extractors ported | 11 / 49 |
 | Dart parity tests | 33 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
@@ -85,10 +85,9 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Wire webstreamr HTML extractors into the app (replace Dart `forja_webstreamr` parse paths)
+1. Port next batch of webstreamr extractors
 2. Real libtorrent in `forja-torrent`
 3. Xtream JSON category/stream parse through FFI
-4. Port next batch of webstreamr extractors
 
 ---
 
@@ -235,16 +234,22 @@ Wire-up: `StremioServiceBackend` in `stremio_service.dart`.
 
 ## Step 5 — `forja-webstreamr`
 
-**Rust:** 6/49 · **App:** ❌ (FFI only; Dart `forja_webstreamr` still runs extraction)
+**Rust:** 11/49 · **App:** partial (10 extractors wired via `WebstreamrParseBackend`)
 
-| Extractor | HTML parse in Rust | FFI |
-|-----------|:------------------:|:---:|
-| vidsrc | ✅ (3-page chain) | ❌ |
-| streamembed | ✅ | ✅ `forja_extract_embed_html_json` |
+| Extractor | Rust | App |
+|-----------|:----:|:---:|
+| vidsrc (3-page chain) | ✅ | ✅ |
+| streamembed | ✅ | ✅ |
 | savefiles | ✅ | ✅ |
 | dropload | ✅ | ✅ |
 | supervideo | ✅ | ✅ |
 | vidora | ✅ | ✅ |
+| fsst | ✅ | ✅ |
+| vixsrc | ✅ | ✅ |
+| kinoger (AES body) | ✅ | ✅ |
+| youtube | ✅ | ✅ |
+
+FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`. HTTP fetch + registry still Dart.
 
 ```bash
 cd crates && cargo test -p forja-webstreamr
@@ -254,9 +259,9 @@ cd packages/forja_rust && flutter test test/parity/webstreamr_test.dart
 
 Fixtures: `crates/forja-webstreamr/tests/fixtures/`
 
-Manual: WebStreamr provider still uses Dart extractors until app wire-up.
+Manual: WebStreamr with Rust on — streams from hosts above use Rust HTML parse.
 
-Wire-up: not started — `forja_extract_embed_html_json` available from `ForjaRust.instance`.
+Wire-up: `WebstreamrParseBackend` · `tryRustExtractFromHtml` / `tryRustVidsrcChain` · `rust_delegates.dart`.
 
 ---
 

@@ -61,6 +61,17 @@ pub fn extract_from_html_chain(
     })
 }
 
+pub fn extract_vidsrc_chain_json(outer_html: &str, rcp_html: &str, prorcp_html: &str) -> String {
+    match extract_from_html_chain(outer_html, rcp_html, prorcp_html) {
+        Some(file) => serde_json::json!({
+            "url": file.url,
+            "format": "hls",
+        })
+        .to_string(),
+        None => serde_json::json!({ "error": "not_found" }).to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

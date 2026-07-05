@@ -121,6 +121,10 @@ fn extract_embed_html_json(extractor_id: String, html: String, page_url: String)
     forja_webstreamr::extract_embed_html_json(&extractor_id, &html, &page_url)
 }
 
+fn extract_vidsrc_chain_json(outer_html: String, rcp_html: String, prorcp_html: String) -> String {
+    forja_webstreamr::extract_vidsrc_chain_json(&outer_html, &rcp_html, &prorcp_html)
+}
+
 fn torrent_start(magnet: String) -> bool {
     TORRENT
         .lock()

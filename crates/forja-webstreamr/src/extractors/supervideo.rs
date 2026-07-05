@@ -44,6 +44,7 @@ pub fn extract_from_html(html: &str, _page_url: &str) -> Option<ExtractResult> {
         format: StreamFormat::Hls,
         title,
         height,
+        yt_id: None,
         request_headers: Some(request_headers),
     })
 }

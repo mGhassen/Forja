@@ -3,7 +3,8 @@ pub mod types;
 pub mod utils;
 
 pub use extractors::{
-    build_embed_url, extract_embed_html, extract_from_html_chain, list_html_extractors,
+    build_embed_url, extract_embed_html, extract_from_html_chain, extract_vidsrc_chain_json,
+    list_html_extractors,
 };
 
 pub fn extract_embed_html_json(extractor_id: &str, html: &str, page_url: &str) -> String {

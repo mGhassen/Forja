@@ -68,3 +68,4 @@ export 'utils/resolution.dart';
 export 'utils/semaphore.dart';
 export 'utils/tmdb.dart';
 export 'utils/unpacker.dart';
+export 'webstreamr_parse.dart';

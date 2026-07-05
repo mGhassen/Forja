@@ -28,6 +28,7 @@ pub struct ExtractResult {
     pub format: StreamFormat,
     pub title: Option<String>,
     pub height: Option<u32>,
+    pub yt_id: Option<String>,
     pub request_headers: Option<HashMap<String, String>>,
 }
 

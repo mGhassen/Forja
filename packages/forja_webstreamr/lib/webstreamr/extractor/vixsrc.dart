@@ -6,6 +6,7 @@ import '../utils/config.dart';
 import '../utils/fetcher.dart';
 import '../utils/height.dart';
 import '../utils/language.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class VixSrc extends Extractor {
@@ -24,8 +25,11 @@ class VixSrc extends Extractor {
   @override
   Future<List<InternalUrlResult>> extractInternal(
       Context ctx, Uri url, Meta meta) async {
-    final headers = {'Referer': url.toString()};
     final html = await fetcher.text(ctx, url);
+    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
+    if (rust != null) return rust;
+
+    final headers = {'Referer': url.toString()};
 
     final tokenMatch =
         RegExp(r'''['"]token['"]\s*[:=]\s*['"]([^'"]+)['"]''').firstMatch(html);

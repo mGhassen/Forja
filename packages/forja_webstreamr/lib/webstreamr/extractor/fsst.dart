@@ -5,6 +5,7 @@ import 'package:html/parser.dart' as html_parser;
 
 import '../types.dart';
 import '../utils/fetcher.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class Fsst extends Extractor {
@@ -26,6 +27,24 @@ class Fsst extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final html = await fetcher.text(ctx, url,
         FetcherRequestConfig(headers: headers, noProxyHeaders: true));
+    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
+    if (rust != null) {
+      final r = rust.first;
+      final finalUrl = await fetcher.getFinalRedirectUrl(
+        ctx,
+        r.url,
+        FetcherRequestConfig(headers: headers, noProxyHeaders: true),
+        1,
+      );
+      return [
+        InternalUrlResult(
+          url: finalUrl,
+          format: r.format,
+          meta: r.meta,
+          requestHeaders: r.requestHeaders,
+        ),
+      ];
+    }
     final doc = html_parser.parse(html);
     final title = doc.querySelector('title')?.text.trim();
 

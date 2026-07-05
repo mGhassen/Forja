@@ -9,6 +9,7 @@ import 'package:pointycastle/export.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/height.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 const _kHosts = {
@@ -90,6 +91,9 @@ class KinoGer extends Extractor {
     };
     final hex = await fetcher.text(ctx, url,
         FetcherRequestConfig(headers: headers));
+    final rust = tryRustExtractFromHtml(id, hex, url.toString(), meta);
+    if (rust != null) return rust;
+
     final encrypted = _hexDecode(hex.substring(0, hex.length - 1));
     final key = _hexDecode('6b69656d7469656e6d75613931316361');
     final iv = _hexDecode('313233343536373839306f6975797472');

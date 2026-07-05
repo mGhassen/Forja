@@ -3,6 +3,7 @@ library;
 
 import '../types.dart';
 import '../utils/fetcher.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class YouTube extends Extractor {
@@ -25,6 +26,8 @@ class YouTube extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
+    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
+    if (rust != null) return rust;
     final m = RegExp(r'"title":\{"runs":\[\{"text":"(.*?)"').firstMatch(html);
     final out = meta.clone();
     out.title = m?.group(1);

@@ -9,6 +9,7 @@ import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/height.dart';
 import '../utils/unpacker.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class SuperVideo extends Extractor {
@@ -37,6 +38,8 @@ class SuperVideo extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
+    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
+    if (rust != null) return rust;
     if (html.contains('This video can be watched as embed only')) {
       return extractInternal(
           ctx,

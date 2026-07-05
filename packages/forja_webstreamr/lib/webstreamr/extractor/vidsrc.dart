@@ -9,6 +9,7 @@ import '../errors.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/height.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class VidSrc extends Extractor {
@@ -86,6 +87,17 @@ class VidSrc extends Extractor {
 
       final playerHtml = await fetcher.text(ctx, playerUrl,
           FetcherRequestConfig(headers: {'Referer': rcpUrl.toString()}));
+      final rust = tryRustVidsrcChain(
+        html,
+        iframeHtml,
+        playerHtml,
+        meta,
+        label: serverName,
+      );
+      if (rust != null) {
+        results.addAll(rust);
+        continue;
+      }
       final fileM =
           RegExp(r'(https:\/\/.*?\{v\d\}.*?) or').firstMatch(playerHtml);
       if (fileM == null) continue;
