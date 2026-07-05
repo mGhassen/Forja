@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../helpers/parity_backends.dart';
 import '../helpers/rust_engine.dart';
 import 'package:forja_rust/forja_rust.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,39 +11,27 @@ void main() {
     await initRustForTests();
   });
 
-  test('basic.m3u golden', () {
-    final content = File(
-      '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/basic.m3u',
-    ).readAsStringSync();
-    final json = ForjaRust.instance.parseM3uJson(content);
-    final list = jsonDecode(json) as List;
+  test('basic.m3u golden — Rust vs Dart', () {
+    final content = _fixture('basic.m3u');
+    expectM3uParity(content, reason: 'basic.m3u');
+    final list = m3uRowsFromRust(content);
     expect(list.length, 1);
     expect(list.first['name'], 'News HD');
-    expect(list.first['group'], 'News');
-    expect(list.first['tvg_id'], 'ch1');
-    expect(list.first['url'], 'http://stream.example/live');
   });
 
-  test('crlf_extgrp.m3u golden', () {
-    final content = File(
-      '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/crlf_extgrp.m3u',
-    ).readAsStringSync();
-    final json = ForjaRust.instance.parseM3uJson(content);
-    final list = jsonDecode(json) as List;
+  test('crlf_extgrp.m3u golden — Rust vs Dart', () {
+    final content = _fixture('crlf_extgrp.m3u');
+    expectM3uParity(content, reason: 'crlf_extgrp.m3u');
+    final list = m3uRowsFromRust(content);
     expect(list.length, 2);
-    expect(list[0]['name'], 'Sports One');
     expect(list[0]['group'], 'Sports');
-    expect(list[1]['name'], 'Sports Two');
     expect(list[1]['group'], 'OverrideGroup');
   });
 
-  test('extgrp_before_extinf.m3u golden', () {
-    final content = File(
-      '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/extgrp_before_extinf.m3u',
-    ).readAsStringSync();
-    final json = ForjaRust.instance.parseM3uJson(content);
-    final list = jsonDecode(json) as List;
-    expect(list.length, 2);
+  test('extgrp_before_extinf.m3u golden — Rust vs Dart', () {
+    final content = _fixture('extgrp_before_extinf.m3u');
+    expectM3uParity(content, reason: 'extgrp_before_extinf.m3u');
+    final list = m3uRowsFromRust(content);
     expect(list[0]['group'], 'FromExtgrp');
     expect(list[1]['group'], '');
   });
@@ -52,7 +41,14 @@ void main() {
     final decoded = jsonDecode(json);
     expect(decoded, isA<Map>());
     expect((decoded as Map)['error'], isNotNull);
+    expect(() => m3uRowsFromDart(''), throwsFormatException);
   });
+}
+
+String _fixture(String name) {
+  return File(
+    '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/$name',
+  ).readAsStringSync();
 }
 
 String _repoRoot() {

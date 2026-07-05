@@ -1,21 +1,14 @@
 import 'dart:convert';
 
-import '../helpers/rust_engine.dart';
+import '../helpers/parity_backends.dart';
 import 'package:forja_api/api/kisskh_subtitle_decryptor.dart';
 import 'package:forja_rust/forja_rust.dart';
-import 'package:forja_rust/src/dart_fallback.dart';
 import 'package:forja_webstreamr/webstreamr/utils/unpacker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   setUpAll(() async {
-    await initRustForTests();
-    JsUnpackBackend.unpack = (source) {
-      final out = ForjaRust.instance.unpackJs(source);
-      return out.isEmpty ? null : out;
-    };
-    KissKhDecryptBackend.decryptBody = (body, sourceUrl) =>
-        KissKhDecryptDart.decryptBody(body, sourceUrl: sourceUrl);
+    await initRustAndWireDartParityBackends();
   });
 
   const packed =

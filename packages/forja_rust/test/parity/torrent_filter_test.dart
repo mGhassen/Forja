@@ -1,17 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../helpers/rust_engine.dart';
+import '../helpers/parity_backends.dart';
 import 'package:forja_api/api/torrent_filter.dart';
 import 'package:forja_rust/forja_rust.dart';
-import 'package:forja_rust/src/dart_fallback.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   setUpAll(() async {
-    await initRustForTests();
-    TorrentFilterBackend.normalizeTitle = TorrentFilterDart.normalizeTitle;
-    TorrentFilterBackend.parseSceneInfo = TorrentFilterDart.parseSceneInfo;
+    await initRustAndWireDartParityBackends();
   });
 
   test('normalizeTitle parity', () {

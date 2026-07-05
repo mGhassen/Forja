@@ -528,6 +528,9 @@ Manual: boot log `Rust engine v0.1.0` on desktop + mobile after `build_rust_mobi
 | Clippy | `cargo clippy --workspace` | required |
 | Dart parity | `cd packages/forja_rust && flutter test` | required |
 | App integration | `melos run rust:integration` | required (macOS CI) |
+| Android FFI | `./scripts/build_rust_mobile.sh android` | required |
+| iOS FFI | `./scripts/build_rust_mobile.sh ios` | required |
+| Mobile artifact check | `melos run rust:release-check` | local / after mobile build |
 
 ---
 

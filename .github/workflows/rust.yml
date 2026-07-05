@@ -7,6 +7,7 @@ on:
       - 'packages/forja_rust/**'
       - 'scripts/build_rust.sh'
       - 'scripts/build_rust_mobile.sh'
+      - 'scripts/check_rust_mobile_artifacts.sh'
       - '.github/workflows/rust.yml'
   pull_request:
     paths:
@@ -14,6 +15,7 @@ on:
       - 'packages/forja_rust/**'
       - 'scripts/build_rust.sh'
       - 'scripts/build_rust_mobile.sh'
+      - 'scripts/check_rust_mobile_artifacts.sh'
       - '.github/workflows/rust.yml'
 
 jobs:
@@ -57,8 +59,8 @@ jobs:
           ndk-version: r26d
       - name: build libforja_ffi.so
         run: ./scripts/build_rust_mobile.sh android
-      - name: verify jniLibs output
-        run: test -f apps/forja/android/app/src/main/jniLibs/arm64-v8a/libforja_ffi.so
+      - name: verify mobile artifact
+        run: ./scripts/check_rust_mobile_artifacts.sh android
       - uses: actions/upload-artifact@v4
         with:
           name: libforja_ffi-android-arm64
@@ -73,8 +75,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
       - name: build libforja_ffi.dylib
         run: ./scripts/build_rust_mobile.sh ios
-      - name: verify Frameworks output
-        run: test -f apps/forja/ios/Runner/Frameworks/libforja_ffi.dylib
+      - name: verify mobile artifact
+        run: ./scripts/check_rust_mobile_artifacts.sh ios
       - uses: actions/upload-artifact@v4
         with:
           name: libforja_ffi-ios-arm64
