@@ -851,7 +851,7 @@ packages:
     source: hosted
     version: "2.1.4"
   streaming:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       path: "../streaming"
       relative: true

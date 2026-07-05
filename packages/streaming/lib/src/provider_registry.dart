@@ -105,7 +105,22 @@ class ProviderRegistry {
       displayName: '111477',
       kind: ProviderKind.api,
     ),
+    StreamProviderDef(
+      id: 'webstreamr',
+      displayName: 'WebStreamr',
+      kind: ProviderKind.api,
+    ),
   ];
+
+  /// Legacy map shape used by player/settings UI (`name`, `movie`, `tv`).
+  static Map<String, dynamic> get catalog => {
+        for (final p in all)
+          p.id: {
+            'name': p.displayName,
+            'movie': p.movieUrl,
+            'tv': p.tvUrl,
+          },
+      };
 
   static StreamProviderDef? byId(String id) {
     for (final p in all) {
