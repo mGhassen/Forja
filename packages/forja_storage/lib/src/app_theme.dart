@@ -36,6 +36,10 @@ class AppTheme {
   static const Color appBackground = Color(0xFF141414);
   static const Color appBackgroundLight = Color(0xFFF7F7F7);
   static const Color appCardLight = Color(0xFFFFFFFF);
+  static const String defaultPresetId = 'emerald';
+
+  static AppThemePreset get defaultPreset =>
+      presets.firstWhere((p) => p.id == defaultPresetId);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Theme Presets
@@ -123,7 +127,7 @@ class AppTheme {
 
   /// Notifier that broadcasts the current theme preset.
   static final ValueNotifier<AppThemePreset> themeNotifier =
-      ValueNotifier<AppThemePreset>(presets.first);
+      ValueNotifier<AppThemePreset>(defaultPreset);
 
   /// Current active preset (shorthand).
   static AppThemePreset get current => themeNotifier.value;

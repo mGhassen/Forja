@@ -112,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLightMode = false;
 
   // Theme preset
-  String _selectedThemeId = 'cinematic';
+  String _selectedThemeId = AppTheme.defaultPresetId;
 
   // Navbar config
   List<String> _navbarVisible = [];
