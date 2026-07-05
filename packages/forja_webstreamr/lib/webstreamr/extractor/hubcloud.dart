@@ -137,7 +137,7 @@ class HubCloud extends Extractor {
               ytId: r.ytId,
               error: r.error,
               label: r.label,
-              meta: r.meta.clone()..countryCodes = ccs,
+              meta: (r.meta ?? meta).clone()..countryCodes = ccs,
               requestHeaders: r.requestHeaders,
             ))
         .toList();
