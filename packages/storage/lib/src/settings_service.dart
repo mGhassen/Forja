@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'engine_storage.dart';
+
 class SettingsService {
   static final SettingsService _instance = SettingsService._internal();
   factory SettingsService() => _instance;
@@ -136,26 +138,42 @@ class SettingsService {
   }
 
   Future<List<Map<String, dynamic>>> getStremioAddons() async {
+    if (EngineStorage.isReady) {
+      return EngineStorage.readMapList(_stremioAddonsKey);
+    }
     final prefs = await SharedPreferences.getInstance();
     final List<String> list = prefs.getStringList(_stremioAddonsKey) ?? [];
     return list.map((s) => json.decode(s) as Map<String, dynamic>).toList();
   }
 
   Future<void> saveStremioAddon(Map<String, dynamic> addon) async {
-    final prefs = await SharedPreferences.getInstance();
     List<Map<String, dynamic>> current = await getStremioAddons();
-    // Prevent duplicates by manifest URL
     current.removeWhere((a) => a['baseUrl'] == addon['baseUrl']);
     current.add(addon);
-    await prefs.setStringList(_stremioAddonsKey, current.map((e) => json.encode(e)).toList().cast<String>());
+    if (EngineStorage.isReady) {
+      EngineStorage.writeMapList(_stremioAddonsKey, current);
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        _stremioAddonsKey,
+        current.map((e) => json.encode(e)).toList().cast<String>(),
+      );
+    }
     addonChangeNotifier.value++;
   }
 
   Future<void> removeStremioAddon(String baseUrl) async {
-    final prefs = await SharedPreferences.getInstance();
     List<Map<String, dynamic>> current = await getStremioAddons();
     current.removeWhere((a) => a['baseUrl'] == baseUrl);
-    await prefs.setStringList(_stremioAddonsKey, current.map((e) => json.encode(e)).toList().cast<String>());
+    if (EngineStorage.isReady) {
+      EngineStorage.writeMapList(_stremioAddonsKey, current);
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        _stremioAddonsKey,
+        current.map((e) => json.encode(e)).toList().cast<String>(),
+      );
+    }
     addonChangeNotifier.value++;
   }
 
@@ -185,15 +203,19 @@ class SettingsService {
   ];
 
   Future<List<String>> getStreamProviderOrder() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getStringList(_streamProviderOrderKey);
-    if (saved == null || saved.isEmpty) {
+    List<String> saved;
+    if (EngineStorage.isReady) {
+      saved = EngineStorage.readStringList(
+        _streamProviderOrderKey,
+        fallback: const [],
+      );
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      saved = prefs.getStringList(_streamProviderOrderKey) ?? const [];
+    }
+    if (saved.isEmpty) {
       return List<String>.from(defaultStreamProviderOrder);
     }
-    // Preserve every saved key (including Nuvio scrapers like
-    // `nuvio:moviesmod` that aren't in the built-in default list), then
-    // append any newly-shipped built-in providers we didn't know about
-    // when the order was first saved.
     final out = <String>[...saved];
     for (final k in defaultStreamProviderOrder) {
       if (!out.contains(k)) out.add(k);
@@ -218,8 +240,12 @@ class SettingsService {
   }
 
   Future<void> setStreamProviderOrder(List<String> order) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_streamProviderOrderKey, order);
+    if (EngineStorage.isReady) {
+      EngineStorage.writeStringList(_streamProviderOrderKey, order);
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_streamProviderOrderKey, order);
+    }
   }
 
   Future<String> getSortPreference() async {
@@ -545,9 +571,28 @@ class SettingsService {
       if (v != null) prefsMap[key] = v;
     }
     // StringList keys
-    for (final key in [_stremioAddonsKey, _navbarConfigKey, _prowlarrTagIdsKey]) {
+    for (final key in [_navbarConfigKey, _prowlarrTagIdsKey]) {
       final v = prefs.getStringList(key);
       if (v != null) prefsMap[key] = v;
+    }
+    if (EngineStorage.isReady) {
+      final stremio = EngineStorage.readMapList(_stremioAddonsKey);
+      if (stremio.isNotEmpty) {
+        prefsMap[_stremioAddonsKey] =
+            stremio.map((e) => jsonEncode(e)).toList();
+      }
+      final streamOrder = EngineStorage.readStringList(
+        _streamProviderOrderKey,
+        fallback: const [],
+      );
+      if (streamOrder.isNotEmpty) {
+        prefsMap[_streamProviderOrderKey] = streamOrder;
+      }
+    } else {
+      for (final key in [_stremioAddonsKey, _streamProviderOrderKey]) {
+        final v = prefs.getStringList(key);
+        if (v != null) prefsMap[key] = v;
+      }
     }
     data['shared_preferences'] = prefsMap;
 
@@ -602,10 +647,28 @@ class SettingsService {
       }
     }
     // StringList keys
-    for (final key in [_stremioAddonsKey, _navbarConfigKey, _prowlarrTagIdsKey]) {
+    for (final key in [_navbarConfigKey, _prowlarrTagIdsKey]) {
       if (prefsMap.containsKey(key)) {
         await prefs.setStringList(
             key, (prefsMap[key] as List).cast<String>());
+      }
+    }
+    if (prefsMap.containsKey(_stremioAddonsKey)) {
+      final encoded = (prefsMap[_stremioAddonsKey] as List).cast<String>();
+      final addons =
+          encoded.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
+      if (EngineStorage.isReady) {
+        EngineStorage.writeMapList(_stremioAddonsKey, addons);
+      } else {
+        await prefs.setStringList(_stremioAddonsKey, encoded);
+      }
+    }
+    if (prefsMap.containsKey(_streamProviderOrderKey)) {
+      final order = (prefsMap[_streamProviderOrderKey] as List).cast<String>();
+      if (EngineStorage.isReady) {
+        EngineStorage.writeStringList(_streamProviderOrderKey, order);
+      } else {
+        await prefs.setStringList(_streamProviderOrderKey, order);
       }
     }
 

@@ -1,41 +1,47 @@
 ---
-description: Rust engine migration — update docs and tests with every step
+description: Rust engine migration — port to crates, delete Dart engine packages
 globs: crates/**,packages/rust/**,docs/migration/**,docs/rfc/009-rust-ffi.md
 alwaysApply: false
 ---
 
 # Rust engine migration workflow
 
-## Architecture (locked — do not forget)
+## Rule (locked — no negotiation)
 
-**Engine works. UI shows.**
+**Move = port logic to `crates/*`, expose FFI, delete the Dart package.**
 
-| Rust engine | NOT engine (UI only) |
-|-------------|----------------------|
-| `packages/api`, `packages/storage`, `packages/core` models | Widgets, nav, player chrome |
-| `packages/scrapers`, `webstreamr`, `streaming` | WebView **host** |
-| HTTP, storage, parse, torrent, proxy | |
+Only these survive under `packages/`:
+- `packages/rust` — Dart FFI loader (until Phase 4)
+- `packages/kotlin` — uniffi bindings (permanent)
 
-All left-column packages **move to `crates/`** in Phase 2. Phase 3 does **not** port them to Kotlin.
+**Delete after port:** `api`, `storage`, `core`, `scrapers`, `webstreamr`, `streaming`.
+
+## Mandatory per-package steps
+
+1. Read Dart engine source.
+2. Implement in matching `crates/<name>/`.
+3. Add FFI in `crates/ffi` / uniffi.
+4. Wire `apps/forja` to `ForjaEngine.*` only.
+5. **Delete the Dart package** — directory, pubspec deps, imports.
+6. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
+7. Run `./scripts/build_rust.sh`, `cargo test --workspace`, `cd packages/rust && flutter test`.
+
+## Never do
+
+- Dart wrapper calling Rust (`EngineStorage`, thin repos) instead of deleting Dart
+- Backend swap (SharedPreferences → Rust KV) while keeping Dart package
+- `*Backend` hooks, `rust_delegates.dart`
+- Engine logic in `compute()` isolates
+- “Partial” migration without deleting Dart files
+- “Facade until Phase 4” for engine packages — Phase 2 deletes them
 
 ## Before coding
 
 1. Read [docs/migration/README.md](../../docs/migration/README.md).
 2. Active: [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
-3. **Do not start Phase 3** until P2-82–89 + P2-86 done.
+3. **Do not start Phase 3** until all engine Dart packages are deleted.
 
-## Wire-up pattern
+## Doc status
 
-- **Target:** UI calls `ForjaEngine.searchTorrents()` / uniffi — one FFI call per user action.
-- **Legacy (delete in P2-86):** `*Backend` hooks, `rust_delegates.dart`.
-- **Never** call engine from `compute()` isolates.
-
-## After engine work
-
-1. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
-2. Run `./scripts/build_rust.sh`, `cargo test --workspace`, `cd packages/rust && flutter test`.
-
-## Doc status rules
-
-- `packages/api` and `packages/storage` are **engine**, not UI-adjacent.
-- Phase 3 = UI swap only.
+- Phase 3 = UI swap only (Compose replaces Flutter).
+- Phase 4 = delete `apps/forja` + `packages/rust`.

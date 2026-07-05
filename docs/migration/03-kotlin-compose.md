@@ -48,17 +48,20 @@
 | P3-62 | Player PiP / casting stubs | `shared/casting/` |
 | P3-70 | RFC-011 feature parity sign-off | manual + automated smoke |
 
-#### ⬜ Dart packages to replace (then delete in Phase 4)
+#### ⬜ Prerequisites (must be done in Phase 2)
 
-| Package | Action |
-|---------|--------|
-| `forja_rust` | → `forja_kotlin` |
-| `forja_core` | models → Kotlin; hooks → direct FFI |
-| `forja_storage` | full port |
-| `forja_api` | HTTP + WebView hosts |
-| `forja_streaming` | UI wiring only (engine in Rust) |
-| `forja_webstreamr` | UI wiring only |
-| `forja_scrapers` | UI wiring only |
+All engine Dart packages **already deleted** before Phase 3 starts:
+
+`packages/api` · `packages/storage` · `packages/core` · `packages/scrapers` · `packages/webstreamr` · `packages/streaming`
+
+Phase 3 ports **UI screens only** from `apps/forja` — no Dart package logic, no Kotlin engine reimplementation.
+
+#### ⬜ Phase 4 deletes
+
+| What | Action |
+|------|--------|
+| `apps/forja/` | Compose replaces Flutter |
+| `packages/rust/` | Kotlin FFI (`packages/kotlin`) replaces Dart FFI |
 
 ### Exit checklist
 
@@ -71,7 +74,7 @@
 
 **0 / 4 exit criteria met.**
 
-**Starts when:** Phase 2 exit checklist #8 + #9 are ✅.
+**Starts when:** Phase 2 exit checklist fully ✅ (all engine Dart packages deleted).
 
 ---
 
@@ -83,7 +86,7 @@ apps/forja_compose/
   androidApp/
   iosApp/
   desktopApp/                # if CMP desktop chosen
-packages/forja_kotlin/       # uniffi/JNI wrapper over libforja_ffi
+packages/kotlin/             # uniffi/JNI bindings over libforja_ffi (only package/ survivor with rust)
 ```
 
 Existing Rust build scripts unchanged: `scripts/build_rust.sh`, `scripts/build_rust_mobile.sh`.
@@ -117,7 +120,7 @@ flowchart LR
 
 | ID | Task | Flutter source | Kotlin target |
 |----|------|----------------|---------------|
-| P3-10 | Storage + theme + prefs | `forja_storage` | KMP DataStore/SQLite |
+| P3-10 | Settings UI + theme | `apps/forja` settings screens | Compose — reads/writes via **Rust FFI** (`crates/storage`) |
 | P3-11 | Shell + nav (19 tabs) | `shell/nav_config.dart`, `main_screen.dart` | Compose navigation |
 | P3-20 | Engine bridge | `packages/rust` (loader only) | `packages/kotlin` uniffi — P2-80 engine API |
 | P3-30 | Unified player | `shared/player/` | Compose + ExoPlayer/AVPlayer |
@@ -125,7 +128,7 @@ flowchart LR
 | P3-32 | IPTV | `features/iptv/` | Compose + Rust parsers |
 | P3-40 | Core browse | home, discover, search, my_list | Compose + **Rust engine** for streams; TMDB HTTP may stay UI-adjacent |
 | P3-50 | Remaining tabs | anime, arabic, manga, music, jellyfin, etc. | Feature modules — engine via FFI |
-| P3-51 | Delete Dart packages | `packages/{scrapers,webstreamr,streaming}` engine code | Already gone in P2-87; port **UI screens only** |
+| P3-51 | Port remaining UI screens | `apps/forja/features/*` | Engine already in Rust; **UI only** |
 | P3-60 | WebView extractors | player embed hosts | `expect/actual` WebView modules |
 | P3-61 | Nuvio JS runtime | `nuvio_runtime.dart` | KMP QuickJS **host** |
 | P3-62 | ~~HLS proxy~~ | — | **Rust** (`crates/proxy`) since P2-85 — Compose uses engine URL |

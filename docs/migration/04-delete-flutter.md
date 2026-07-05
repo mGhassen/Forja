@@ -25,8 +25,8 @@
 | ID | Delete | Verify first |
 |----|--------|--------------|
 | P4-01 | `apps/forja/` | Compose covers 19 tabs + player + settings |
-| P4-02 | `packages/forja_rust/` | `forja_kotlin` covers all FFI |
-| P4-03 | Superseded Dart packages | each ported in Phase 3 |
+| P4-02 | `packages/rust/` | `packages/kotlin` covers all FFI |
+| P4-03 | *(verify only)* engine Dart packages gone since Phase 2 | `api`, `storage`, `core`, `scrapers`, `webstreamr`, `streaming` |
 | P4-04 | Flutter CI jobs | `.github/workflows/forja-macos.yml`, melos flutter scripts |
 | P4-05 | Dart parity tests | migrate to Rust goldens or archive |
 | P4-06 | Update docs | RFC-001, README, melos.yaml |
@@ -38,7 +38,7 @@
 | Magnet → play | Compose + Rust librqbit |
 | IPTV | import + Xtream browse |
 | Webstreamr | one provider end-to-end |
-| Settings | persistence ported from `forja_storage` |
+| Settings | persistence via `crates/storage` FFI |
 
 #### ⬜ CI cleanup
 
@@ -61,7 +61,15 @@
 
 ### Keep forever
 
-`crates/**` · `scripts/build_rust*.sh` · `rust.yml` · `packages/forja_kotlin/`
+`crates/**` · `scripts/build_rust*.sh` · `rust.yml` · **`packages/kotlin/`** (uniffi FFI)
+
+### Must already be gone before Phase 4 (deleted in Phase 2)
+
+These are engine — ported to `crates/*` and **deleted**, not carried to Phase 3/4:
+
+`packages/api` · `packages/storage` · `packages/core` · `packages/scrapers` · `packages/webstreamr` · `packages/streaming`
+
+If any still exist, Phase 2 is not complete.
 
 ---
 
@@ -71,7 +79,7 @@
 |----|------|----------------------|
 | P4-01 | Delete `apps/forja/` | Compose replaces all 19 tabs + player + settings |
 | P4-02 | Delete `packages/rust/` (Dart FFI loader) | `packages/kotlin` covers all FFI |
-| P4-03 | Delete superseded Dart packages | Each ported to Kotlin |
+| P4-03 | Verify engine Dart packages already deleted | Must be gone since Phase 2 — `api`, `storage`, `core`, `scrapers`, `webstreamr`, `streaming` |
 | P4-04 | Remove Flutter CI | `.github/workflows/forja-macos.yml`, melos flutter scripts |
 | P4-05 | Parity tests | Migrate fixtures to Rust-only goldens OR archive `packages/rust/test/parity/dart_baseline/` |
 | P4-06 | Update monorepo docs | RFC-001, root README, melos.yaml |

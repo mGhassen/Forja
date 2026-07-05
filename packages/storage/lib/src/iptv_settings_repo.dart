@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'engine_storage.dart';
 
 class PortalGroup {
   const PortalGroup({
@@ -84,44 +85,51 @@ class IptvSettingsRepo {
   static const _metaKey = 'forja_iptv_portal_meta';
 
   Future<List<PortalGroup>> getGroups() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_groupsKey);
+    final raw = EngineStorage.read(_groupsKey);
     if (raw == null) {
-      return [
-        const PortalGroup(id: 'default', name: 'All Portals'),
-      ];
+      return [const PortalGroup(id: 'default', name: 'All Portals')];
     }
-    final arr = json.decode(raw) as List;
-    return arr
-        .map((e) => PortalGroup.fromJson(e as Map<String, dynamic>))
-        .toList();
+    if (raw is String) {
+      final arr = jsonDecode(raw) as List;
+      return arr
+          .map((e) => PortalGroup.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    if (raw is List) {
+      return raw
+          .whereType<Map>()
+          .map((e) => PortalGroup.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+    return [const PortalGroup(id: 'default', name: 'All Portals')];
   }
 
   Future<void> saveGroups(List<PortalGroup> groups) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    EngineStorage.writeString(
       _groupsKey,
-      json.encode(groups.map((g) => g.toJson()).toList()),
+      jsonEncode(groups.map((g) => g.toJson()).toList()),
     );
   }
 
   Future<Map<String, PortalMeta>> getPortalMeta() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_metaKey);
+    final raw = EngineStorage.read(_metaKey);
     if (raw == null) return {};
-    final map = json.decode(raw) as Map<String, dynamic>;
-    return map.map(
-      (k, v) => MapEntry(k, PortalMeta.fromJson(v as Map<String, dynamic>)),
+    final decoded = raw is String ? jsonDecode(raw) : raw;
+    if (decoded is! Map) return {};
+    return decoded.map(
+      (k, v) => MapEntry(
+        '$k',
+        PortalMeta.fromJson(Map<String, dynamic>.from(v as Map)),
+      ),
     );
   }
 
   Future<void> upsertPortalMeta(PortalMeta meta) async {
     final all = await getPortalMeta();
     all[meta.portalKey] = meta;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    EngineStorage.writeString(
       _metaKey,
-      json.encode(all.map((k, v) => MapEntry(k, v.toJson()))),
+      jsonEncode(all.map((k, v) => MapEntry(k, v.toJson()))),
     );
   }
 }
