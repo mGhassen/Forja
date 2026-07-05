@@ -2,16 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 import 'models.dart';
 import 'pastesh_decryptor.dart';
-
-/// Optional Rust backend hooks. Set from app bootstrap when [ForjaEngine] loads.
-abstract final class IptvClientBackend {
-  static String Function(String text)? decodeXtreamText;
-  static String Function(String json)? parseCategoriesJson;
-  static String Function(String json, String section)? parseStreamsJson;
-  static String Function(String json)? parseSeriesEpisodesJson;
-}
 
 /// Xtream-Codes player_api client. Login + categories + streams + episodes.
 class IptvClient {
@@ -107,7 +100,7 @@ class IptvClient {
 
   static List<Map<String, dynamic>> _parseCategoryRows(String text) {
     try {
-      final decoded = json.decode(IptvClientBackend.parseCategoriesJson!(text));
+      final decoded = json.decode(ForjaRust.instance.parseXtreamCategoriesJson(text));
       if (decoded is List) {
         return decoded.map((e) => e as Map<String, dynamic>).toList();
       }
@@ -151,7 +144,7 @@ class IptvClient {
   static List<Map<String, dynamic>> _parseStreamRows(String text, String section) {
     try {
       final decoded =
-          json.decode(IptvClientBackend.parseStreamsJson!(text, section));
+          json.decode(ForjaRust.instance.parseXtreamStreamsJson(text, section));
       if (decoded is List) {
         return decoded.map((e) => e as Map<String, dynamic>).toList();
       }
@@ -162,7 +155,7 @@ class IptvClient {
   static List<Map<String, dynamic>> _parseSeriesEpisodeRows(String text) {
     try {
       final decoded =
-          json.decode(IptvClientBackend.parseSeriesEpisodesJson!(text));
+          json.decode(ForjaRust.instance.parseXtreamSeriesEpisodesJson(text));
       if (decoded is List) {
         return decoded.map((e) => e as Map<String, dynamic>).toList();
       }
@@ -214,7 +207,7 @@ class IptvClient {
   ///
   /// Xtream encodes `title` and `description` as base64 strings.
   static String _decodeXtreamField(String s) {
-    return IptvClientBackend.decodeXtreamText!(s);
+    return ForjaRust.instance.decodeXtreamText(s);
   }
 
   static Future<List<EpgEntry>> shortEpg(

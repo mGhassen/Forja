@@ -3,9 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/app/rust_delegates.dart';
-import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
-import 'package:api/api/stremio_service.dart';
 import 'package:core/utils/episode_matcher.dart';
 import 'package:rust/rust.dart';
 import 'package:streaming/streaming.dart';
@@ -16,7 +13,6 @@ void main() {
 
   setUpAll(() async {
     await ForjaEngine.init();
-    installRustAppDelegates();
   });
 
   setUp(() {
@@ -59,11 +55,11 @@ http://stream.example/live
     expect(channels.first['group'], 'News');
   });
 
-  test('IPTV Xtream categories delegate wired', () {
-    expect(IptvClientBackend.parseCategoriesJson, isNotNull);
+  test('IPTV Xtream categories via Rust FFI', () {
+    expect(ForjaRust.isInitialized, isTrue);
     const json = '[{"category_id":"1","category_name":"Sports"}]';
     final rows =
-        jsonDecode(IptvClientBackend.parseCategoriesJson!(json)) as List;
+        jsonDecode(ForjaRust.instance.parseXtreamCategoriesJson(json)) as List;
     expect(rows.first['name'], 'Sports');
   });
 
@@ -90,21 +86,20 @@ http://stream.example/live
     expect(ForjaRust.instance.torrentStart('not-a-magnet'), isFalse);
   });
 
-  test('Stremio resource URL delegate wired', () {
-    expect(StremioServiceBackend.buildResourceUrl, isNotNull);
-    final url = StremioServiceBackend.buildResourceUrl!(
+  test('Stremio resource URL via Rust FFI', () {
+    expect(ForjaRust.isInitialized, isTrue);
+    final url = ForjaRust.instance.buildStremioResourceUrl(
       'https://addon.example/api?token=abc',
       '/stream/movie/tt123.json',
     );
     expect(url, 'https://addon.example/api/stream/movie/tt123.json?token=abc');
   });
 
-  test('Stremio manifest JSON delegate wired', () {
-    expect(StremioServiceBackend.parseManifestJson, isNotNull);
+  test('Stremio manifest JSON via Rust FFI', () {
     const body =
         '{"id":"addon.test","name":"Test Addon","logo":"https://x/icon.png"}';
-    final json = StremioServiceBackend.parseManifestJson!(body);
-    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    final parsed = jsonDecode(ForjaRust.instance.parseStremioManifestJson(body))
+        as Map<String, dynamic>;
     expect(parsed['name'], 'Test Addon');
   });
 

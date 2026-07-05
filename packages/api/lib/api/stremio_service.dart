@@ -2,22 +2,89 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 
-/// Optional Rust backend hooks. Set from app bootstrap when [ForjaEngine] loads.
-abstract final class StremioServiceBackend {
-  static ({String baseUrl, String? queryParams}) Function(String url)?
-      splitAddonUrl;
-  static String Function(String addonUrl, String resourcePath)? buildResourceUrl;
-  static String Function(String url)? normalizeManifestUrl;
-  static String Function(String json)? parseManifestJson;
-  static List<dynamic> Function(String json)? parseStreamsJson;
-  static List<Map<String, dynamic>> Function(String json)? parseSubtitlesJson;
-  static List<Map<String, dynamic>> Function(String json)? parseCatalogJson;
-  static Map<String, dynamic>? Function(String json)? parseMetaJson;
-  static Future<({int statusCode, String body})> Function(
-    Uri uri, {
-    required Duration timeout,
-  })? httpGet;
+bool get _stremioRustReady => ForjaRust.isInitialized;
+
+({String baseUrl, String? queryParams}) _splitStremioAddonUrl(String url) {
+  final m = jsonDecode(ForjaRust.instance.splitStremioAddonUrlJson(url))
+      as Map<String, dynamic>;
+  return (
+    baseUrl: m['base_url'] as String,
+    queryParams: m['query_params'] as String?,
+  );
+}
+
+String _buildStremioResourceUrl(String addonUrl, String resourcePath) =>
+    ForjaRust.instance.buildStremioResourceUrl(addonUrl, resourcePath);
+
+String _normalizeStremioManifestUrl(String url) =>
+    ForjaRust.instance.normalizeStremioManifestUrl(url);
+
+Map<String, dynamic> _parseStremioManifest(String body) =>
+    jsonDecode(ForjaRust.instance.parseStremioManifestJson(body))
+        as Map<String, dynamic>;
+
+List<dynamic> _parseStremioStreams(String body) {
+  final parsed =
+      jsonDecode(ForjaRust.instance.parseStremioStreamsJson(body))
+          as Map<String, dynamic>;
+  if (parsed.containsKey('error')) return const [];
+  final streams = parsed['streams'];
+  return streams is List ? streams : const [];
+}
+
+List<Map<String, dynamic>> _parseStremioSubtitles(String body) {
+  final parsed =
+      jsonDecode(ForjaRust.instance.parseStremioSubtitlesJson(body))
+          as Map<String, dynamic>;
+  if (parsed.containsKey('error')) return const [];
+  final subs = parsed['subtitles'];
+  if (subs is! List) return const [];
+  return subs
+      .whereType<Map>()
+      .map((s) => Map<String, dynamic>.from(s))
+      .toList();
+}
+
+List<Map<String, dynamic>> _parseStremioCatalog(String body) {
+  final parsed =
+      jsonDecode(ForjaRust.instance.parseStremioCatalogJson(body))
+          as Map<String, dynamic>;
+  if (parsed.containsKey('error')) return const [];
+  final metas = parsed['metas'];
+  if (metas is! List) return const [];
+  return metas
+      .whereType<Map>()
+      .map((m) => Map<String, dynamic>.from(m))
+      .toList();
+}
+
+Map<String, dynamic>? _parseStremioMeta(String body) {
+  final parsed = jsonDecode(ForjaRust.instance.parseStremioMetaJson(body))
+      as Map<String, dynamic>;
+  if (parsed.containsKey('error')) return null;
+  final meta = parsed['meta'];
+  if (meta is! Map) return null;
+  return Map<String, dynamic>.from(meta);
+}
+
+Future<({int statusCode, String body})> _stremioHttpGet(
+  Uri uri, {
+  required Duration timeout,
+}) async {
+  final raw = ForjaRust.instance.stremioHttpGet(
+    uri.toString(),
+    timeoutSecs: timeout.inSeconds,
+  );
+  final parsed = jsonDecode(raw) as Map<String, dynamic>;
+  if (parsed.containsKey('error')) {
+    throw Exception(parsed['error'] as String? ?? 'HTTP error');
+  }
+  return (
+    statusCode: parsed['status'] as int? ?? 0,
+    body: parsed['body'] as String? ?? '',
+  );
 }
 
 class StremioService {
@@ -34,9 +101,8 @@ class StremioService {
     Object? lastError;
     for (var attempt = 0; attempt <= retries; attempt++) {
       try {
-        final rustHttp = StremioServiceBackend.httpGet;
-        if (rustHttp != null) {
-          final result = await rustHttp(uri, timeout: timeout);
+        if (_stremioRustReady) {
+          final result = await _stremioHttpGet(uri, timeout: timeout);
           final response = http.Response(result.body, result.statusCode);
           if (response.statusCode == 200) return response;
           lastResponse = response;
@@ -61,7 +127,7 @@ class StremioService {
   /// Extracts a clean base URL and optional query parameters from an addon URL.
   /// Handles addons that embed config as query params (e.g. ?apikey=...).
   static ({String baseUrl, String? queryParams}) _splitAddonUrl(String url) {
-    return StremioServiceBackend.splitAddonUrl!(url);
+    return _splitStremioAddonUrl(url);
   }
 
   @visibleForTesting
@@ -70,7 +136,7 @@ class StremioService {
 
   /// Builds a full resource URL, correctly re-appending any addon query params.
   String _buildResourceUrl(String addonBaseUrl, String resourcePath) {
-    return StremioServiceBackend.buildResourceUrl!(addonBaseUrl, resourcePath);
+    return _buildStremioResourceUrl(addonBaseUrl, resourcePath);
   }
 
   /// Fetches and validates an addon manifest from a URL
@@ -78,16 +144,13 @@ class StremioService {
     String manifestUrl = url.trim();
     if (manifestUrl.isEmpty) return null;
 
-    final normalize = StremioServiceBackend.normalizeManifestUrl!;
-    manifestUrl = normalize(manifestUrl);
+    manifestUrl = _normalizeStremioManifestUrl(manifestUrl);
 
     try {
       final response = await http.get(Uri.parse(manifestUrl)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final body = response.body;
-        final parsed =
-            json.decode(StremioServiceBackend.parseManifestJson!(body))
-                as Map<String, dynamic>;
+        final parsed = _parseStremioManifest(body);
         if (parsed.containsKey('error')) return null;
         final manifest = parsed;
         final parts = _splitAddonUrl(manifestUrl);
@@ -121,7 +184,7 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
-        return StremioServiceBackend.parseStreamsJson!(response.body);
+        return _parseStremioStreams(response.body);
       }
     } catch (e) {
       debugPrint('[StremioService] Stream fetch error ($url): $e');
@@ -143,7 +206,7 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
-        for (final s in StremioServiceBackend.parseSubtitlesJson!(response.body)) {
+        for (final s in _parseStremioSubtitles(response.body)) {
           results.add({
             'id': s['id'] ?? s['url'],
             'url': s['url'],
@@ -320,7 +383,7 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
-        return StremioServiceBackend.parseCatalogJson!(response.body);
+        return _parseStremioCatalog(response.body);
       }
     } catch (e) {
       debugPrint('[StremioService] Catalog fetch error ($url): $e');
@@ -346,7 +409,7 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
-        return StremioServiceBackend.parseMetaJson!(response.body);
+        return _parseStremioMeta(response.body);
       }
     } catch (e) {
       debugPrint('[StremioService] Meta fetch error ($url): $e');

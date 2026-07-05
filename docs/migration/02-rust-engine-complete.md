@@ -58,8 +58,8 @@ Rust engine (crates/* + libffi)
 
 | | |
 |--|--|
-| **Progress** | **20 / 36 tasks done (56%)** |
-| **Blocks Phase 3** | P2-80 tail · P2-82/83/85 pipelines · P2-88/89 (api/storage) · P2-86 (kill hooks) |
+| **Progress** | **21 / 36 tasks done (58%)** |
+| **Blocks Phase 3** | P2-80 tail · P2-82/83/85 pipelines · P2-88/89 (api/storage) |
 | **Also open** | B2 mobile smoke · JNI proof · sign-off |
 
 **Legend:** ✅ done · 🔄 partial · ⬜ not started
@@ -78,6 +78,7 @@ Rust engine (crates/* + libffi)
 | **P2-81** | Scraper pipeline → `search_torrents_json` |
 | **P2-84** | Torrent filter → `filter_torrents_json` |
 | **P2-87** | Dead Dart scraper files deleted (`packages/scrapers` = aggregator only) |
+| **P2-86** | `rust_delegates.dart` deleted; Stremio/IPTV/torrent/webstreamr/KissKh/JS → direct FFI |
 
 #### 🔄 In progress — B2 mobile
 
@@ -94,7 +95,7 @@ Rust engine (crates/* + libffi)
 | P2-82 | Webstreamr pipeline → Rust |
 | P2-83 | Stream resolver → Rust |
 | P2-85 | Proxy → Rust only (drop shelf engine routes) |
-| P2-86 | Delete `*Backend` hooks + `rust_delegates.dart` |
+| P2-86 | Delete remaining `*Backend` hooks in `core`/`facade` (EpisodeMatcher, HlsParser) |
 | P2-87 | Delete gutted Dart engine packages (scrapers ✅; webstreamr/streaming/api remain) |
 | **P2-88** | **`packages/storage` → `crates/storage` + FFI** |
 | **P2-89** | **`packages/api` → Rust crates (TMDB, Trakt, debrid, …)** |
@@ -122,7 +123,7 @@ Rust engine (crates/* + libffi)
 | 8 | Magnet → stream mobile | ⬜ P2-14 |
 | 9 | All pipelines in Rust (webstreamr, resolver, proxy) | ⬜ P2-82–85 |
 | 10 | **`packages/api` + `packages/storage` in Rust** | ⬜ P2-88/89 |
-| 11 | No `*Backend` hooks | ⬜ P2-86 |
+| 11 | No app-layer delegate wiring | ✅ `rust_delegates.dart` gone; tail: EpisodeMatcher/Hls in `facade` |
 | 12 | Sign-off | ⬜ P2-70 |
 
 **Phase 3 starts when #9 + #10 + #11 are ✅.**

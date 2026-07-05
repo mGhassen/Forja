@@ -1,23 +1,13 @@
 import 'dart:convert';
 
-import 'package:api/api/kisskh_subtitle_decryptor.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
-import 'package:webstreamr/webstreamr/utils/unpacker.dart';
 
 import 'rust_engine.dart';
 
-/// Wire Rust backends for parity tests that call domain APIs alongside FFI.
+/// Load native library for parity tests that call domain APIs alongside FFI.
 Future<void> initRustAndWireRustBackends() async {
   await initRustForTests();
-
-  JsUnpackBackend.unpack = (source) {
-    final out = ForjaRust.instance.unpackJs(source);
-    return out.isEmpty ? null : out;
-  };
-
-  KissKhDecryptBackend.decryptBody = (body, sourceUrl) =>
-      ForjaRust.instance.decryptKisskhBody(body, sourceUrl: sourceUrl);
 }
 
 List<Map<String, dynamic>> m3uRowsFromRust(String content) {

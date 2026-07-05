@@ -4,29 +4,19 @@
 /// LuluStream/Mixdrop/Streamtape/SuperVideo/Uqload extractors and others.
 library;
 
-/// Optional Rust backend — set from app bootstrap when [ForjaEngine] loads.
-abstract final class JsUnpackBackend {
-  static String? Function(String source)? unpack;
-}
+import 'package:rust/rust.dart';
 
 String _unpack(String source) {
-  final backend = JsUnpackBackend.unpack;
-  if (backend == null) {
-    throw StateError(
-      'JsUnpackBackend.unpack not wired — call ForjaEngine.init()',
-    );
+  if (!ForjaRust.isInitialized) {
+    throw StateError('ForjaEngine not initialized');
   }
-  final out = backend(source);
-  if (out != null && out.isNotEmpty) return out;
+  final out = ForjaRust.instance.unpackJs(source);
+  if (out.isNotEmpty) return out;
   throw FormatException('JS unpack failed');
 }
 
-/// Unpacks the first p,a,c,k,e,d string found in [source]. Returns the
-/// decoded JavaScript text (still JS — caller usually regex-extracts the
-/// real stream URL from it).
 String unpack(String source) => _unpack(source);
 
-/// Public re-export so callers can do `unpackEval`.
 String unpackEval(String html) {
   final m = RegExp(r'eval\(function\(p,a,c,k,e,d\).*?\)\)', dotAll: true)
       .firstMatch(html);
@@ -36,8 +26,6 @@ String unpackEval(String html) {
   return _unpack(m.group(0)!);
 }
 
-/// Walk [linkRegExps] over the unpacked JS and return the first match group(1)
-/// as an absolute https URL. Mirrors webstreamr/src/utils/embed.ts.
 Uri extractUrlFromPacked(String html, List<RegExp> linkRegExps) {
   final unpacked = unpackEval(html);
   for (final rx in linkRegExps) {

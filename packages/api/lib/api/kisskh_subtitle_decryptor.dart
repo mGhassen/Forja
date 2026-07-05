@@ -1,43 +1,15 @@
-// kisskh.co subtitle decryptor.
-//
-// kisskh ships SRT/VTT files where each cue's text body is AES-128-CBC
-// encrypted and base64-encoded. The site decrypts client-side via an
-// obfuscated CryptoJS bundle. Three key/IV pairs are in rotation, picked
-// by the subtitle URL's file extension:
-//
-//   .srt  → plaintext (no encryption)
-//   .txt  → key="8056483646328763"  iv="6852612370185273" (legacy)
-//   .txt1 → key="AmSmZVcH93UQUezi"  iv="ReBKWW8cqdjPEnF6" (Feb 2025+)
-//   other → key="sWODXX04QRTkHdlZ"  iv="8pwhapJeC4hrS9hO" (default)
-//
-// Source: kisskh-dl issue #14 + Prudhvi-pln/udb KissKhClient.py
-//
-// We download the file, decrypt cue-by-cue (lines that aren't valid
-// ciphertext are kept verbatim → graceful fallback for partially-encrypted
-// or future-rotated subs), write the result to the app's temp directory
-// and return a `file://` URI for the player to consume directly.
-
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-
-/// Optional Rust backend — set from app bootstrap when [ForjaEngine] loads.
-abstract final class KissKhDecryptBackend {
-  static String Function(String body, String? sourceUrl)? decryptBody;
-}
+import 'package:rust/rust.dart';
 
 class KissKhSubtitleDecryptor {
-  /// Decrypt every cue text line in a SRT/VTT body. Index lines, timestamp
-  /// lines (`-->`), the `WEBVTT` header and blank separators are kept as-is.
   static String decryptBody(String body, {String? sourceUrl}) {
-    return KissKhDecryptBackend.decryptBody!(body, sourceUrl);
+    return ForjaRust.instance.decryptKisskhBody(body, sourceUrl: sourceUrl);
   }
 
-  /// Download the subtitle at [url] (with kisskh headers), decrypt it, persist
-  /// to the temp directory and return a `file://` URI. Returns null on any
-  /// failure so the caller can keep the original remote URL.
   static Future<String?> fetchAndDecrypt({
     required String url,
     required int episodeId,
