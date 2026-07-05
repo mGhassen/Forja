@@ -2,11 +2,6 @@ name: Build Forja macOS
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main, forja]
-    paths:
-      - 'apps/forja/**'
-      - 'packages/**'
 
 jobs:
   macos:
