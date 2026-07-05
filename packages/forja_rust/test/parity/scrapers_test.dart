@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../helpers/rust_engine.dart';
 import 'package:forja_rust/forja_rust.dart';
-import 'package:forja_rust/src/reference/scrapers_dart_parse.dart';
+import 'package:forja_rust/src/dart_fallback.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

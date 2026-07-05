@@ -35,9 +35,9 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 
 | ID | Blocker | Severity | Progress | Blocks |
 |----|---------|----------|----------|--------|
-| B1 | Dart reference fallbacks still required | **high** | in progress | Delete `reference/*.dart` when all platforms ship Rust |
+| B1 | Dart fallback when Rust dylib missing | **high** | in progress | Delete `dart_fallback/*.dart` when all platforms ship Rust |
 | B2 | `libtorrent_flutter` on mobile (+ desktop fallback) | **medium** | by design | Same magnet feature; librqbit mobile FFI not yet available |
-| B3 | Dart reference layer (`packages/forja_rust/lib/src/reference/`) | **high** | in progress | Delete files (Step 9) |
+| B3 | Dart fallback layer (`packages/forja_rust/lib/src/dart_fallback/`) | **high** | in progress | Delete files (Step 9) |
 | B4 | App `integration_test/` | **medium** | done (core) | Optional UI E2E · magnet→play |
 | B5 | Webstreamr golden fixtures | **medium** | done | Optional filelions/voe stream-path goldens |
 | B6 | RFC-009 parity gaps | **medium** | done | lulustream/fastream stream-fetch (documented) |
@@ -55,13 +55,13 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 B7 mobile Rust bundled in release builds (forjaBuildRust=true · iOS Release phase)
  └── debug mobile still needs manual build or env flags for Rust
 
-B1 Dart reference kept
+B1 dart_fallback kept
  └── delete only after release builds proven on all platforms (Step 9)
 ```
 
 **Unlock order (recommended):**
 
-1. B1 + B3 — delete reference when release Rust proven on all platforms  
+1. B1 + B3 — delete `dart_fallback/` when release Rust proven on all platforms  
 2. B6 — RFC Step 9 sign-off (lulustream/fastream gap documented)  
 3. B2 — librqbit on mobile (optional; libtorrent preserves feature until then)
 
@@ -69,14 +69,14 @@ B1 Dart reference kept
 
 ## Blocker details
 
-### B1 — Dart reference fallbacks
+### B1 — Dart fallback when Rust dylib missing
 
-**Progress:** in progress — consolidated in `reference/`; Rust always attempted at boot
+**Progress:** in progress — consolidated in `dart_fallback/`; Rust always attempted at boot
 
 | Done | Todo |
 |------|------|
-| [x] Rust always loaded at boot (`ForjaEngine.init()`) | [ ] Remove `*Backend` fallbacks only after all platforms bundle Rust |
-| [x] Developer toggle removed | [ ] Delete `reference/*.dart` when CI proves mobile + desktop Rust |
+| [x] Rust always loaded at boot (`ForjaEngine.init()`) | [ ] Remove `installDartFallbackDelegates()` after all platforms bundle Rust |
+| [x] Developer toggle removed | [ ] Delete `dart_fallback/*.dart` when CI proves mobile + desktop Rust |
 | [x] All domain delegates when dylib loads | |
 
 ### B7 — Mobile Rust FFI packaging
@@ -97,7 +97,7 @@ B1 Dart reference kept
 | | |
 |--|--|
 | **What** | Mobile must load the same Rust parser engine as desktop |
-| **Why it blocks** | Platform parity — without bundled `.so`/`.dylib`, mobile falls back to Dart reference |
+| **Why it blocks** | Platform parity — without bundled `.so`/`.dylib`, mobile falls back to Dart `dart_fallback/` |
 | **Files** | `scripts/build_rust_mobile.sh` · `library_path.dart` · `facade.dart` · `android/.../jniLibs/` · `ios/Runner/Frameworks/` |
 | **Manage** | Mobile FFI ships parsers + webstreamr; torrent stays libtorrent until librqbit compiles on iOS/Android |
 | **Unblocks** | Single engine path for IPTV/Stremio/scrapers on all native platforms |
@@ -125,25 +125,26 @@ B1 Dart reference kept
 
 ---
 
-### B3 — Dart reference layer
+### B3 — Dart fallback layer
 
-**Progress:** in progress — consolidated; 0 files deleted
+**Progress:** in progress — renamed from `reference/`; 0 files deleted
 
 | Done | Todo |
 |------|------|
-| [x] 10 modules moved to `reference/` (single location) | [ ] Delete `reference/*.dart` after B1 |
-| [x] Dead dupes removed (`hls_master_parser`, `debrid_api` in streaming) | [ ] Move parity baselines to `test/fixtures/` only |
+| [x] 10 modules in `dart_fallback/` + barrel `dart_fallback.dart` | [ ] Delete `dart_fallback/*.dart` after B1 |
+| [x] Dead dupes removed (`hls_master_parser`, `debrid_api` in streaming) | |
 | [x] Production imports go through `*Backend` hooks only | |
 | [x] `installDartFallbackDelegates()` in app bootstrap | |
-| [x] Parity tests still compare Rust vs reference | |
+| [x] Parity tests import `dart_fallback.dart` barrel | |
+| [x] `melos run rust:release-check` for mobile artifacts | |
 
 | | |
 |--|--|
-| **What** | 10 files under `reference/` — parity baselines + `dart_fallback_delegates.dart` only |
+| **What** | 10 files under `dart_fallback/` — parity baselines + bootstrap fallback only |
 | **Why it blocks** | Step 9 deletes these once release Rust is proven on all platforms |
-| **Files** | `m3u_dart_parser.dart` · `iptv_dart_parse.dart` · `pastesh_decrypt_dart.dart` · `stremio_dart_parse.dart` · `scrapers_dart_parse.dart` · `episode_matcher_dart.dart` · `hls_dart_parse.dart` · `js_unpacker_dart.dart` · `kisskh_decrypt_dart.dart` · `torrent_filter_dart.dart` |
+| **Files** | `lib/src/dart_fallback/*.dart` · `lib/src/dart_fallback.dart` · `apps/forja/lib/app/dart_fallback_delegates.dart` |
 | **Manage** | Keep until B1 resolved; parity tests must keep working against these |
-| **Unblocks** | Step 9 “delete Dart duplicates” — engine code lives only in Rust + test fixtures |
+| **Unblocks** | Step 9 “delete Dart duplicates” — engine code lives only in Rust |
 
 ---
 
@@ -264,9 +265,9 @@ B1 Dart reference kept
 | Drop `libtorrent_flutter` | B1 · B2 · B4 | open |
 | Golden fixtures for every extractor | B5 | done |
 | App `integration_test/` smoke | B4 | done (core) |
-| (implicit) delete `reference/*.dart` | B1 · B3 · B6 | open (consolidation done) |
+| (implicit) delete `dart_fallback/*.dart` | B1 · B3 | open |
 
-Completed Step 9 items (reference consolidation, dead file removal) do **not** remove blockers — they organized fallbacks, not deleted them.
+Completed Step 9 items (dart_fallback consolidation, dead file removal) do **not** remove blockers — they organized fallbacks, not deleted them.
 
 ---
 

@@ -12,7 +12,7 @@
 
 **Goal:** same Forja experience on every platform. Rust is the engine everywhere Flutter runs natively; Dart reference code stays as an internal fallback until parity is proven — never a user-facing “off” switch.
 
-**Where we are:** Steps 0–8 done. Mobile release builds bundle Rust parsers (B7). Step 9 cleanup blocked on B1 (delete `reference/`).
+**Where we are:** Steps 0–8 done. Step 9 in progress — `dart_fallback/` consolidated; delete when release Rust proven (B1).
 
 ### Three columns — read every table this way
 
@@ -445,22 +445,22 @@ Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `
 
 **Rust:** N/A · **App:** N/A · **Dart removed:** partial (9/11 items)
 
-**Goal:** Remove duplicate Dart engine code. Fallbacks live in one place (`reference/`) until every platform bundles Rust — then delete. Blockers → [rust-engine-blockers.md](./rust-engine-blockers.md).
+**Goal:** Remove duplicate Dart engine code. Fallbacks live in `dart_fallback/` until every platform bundles Rust in release — then delete. Blockers → [rust-engine-blockers.md](./rust-engine-blockers.md).
 
 ### Consolidation (done)
 
 | Item | Status | Path |
 |------|:----:|------|
-| M3U parser fallback | ✅ | `packages/forja_rust/lib/src/reference/m3u_dart_parser.dart` |
-| IPTV Xtream + series episodes | ✅ | `reference/iptv_dart_parse.dart` |
-| Paste.sh decrypt | ✅ | `reference/pastesh_decrypt_dart.dart` |
-| Episode matcher | ✅ | `reference/episode_matcher_dart.dart` |
-| HLS master parse | ✅ | `reference/hls_dart_parse.dart` |
-| JS unpacker | ✅ | `reference/js_unpacker_dart.dart` |
-| KissKH subtitle decrypt | ✅ | `reference/kisskh_decrypt_dart.dart` |
-| Torrent filter | ✅ | `reference/torrent_filter_dart.dart` |
-| Stremio JSON + URL helpers | ✅ | `reference/stremio_dart_parse.dart` |
-| Scrapers HTML parse + dedup | ✅ | `reference/scrapers_dart_parse.dart` |
+| M3U parser fallback | ✅ | `lib/src/dart_fallback/m3u_dart_parser.dart` |
+| IPTV Xtream + series episodes | ✅ | `dart_fallback/iptv_dart_parse.dart` |
+| Paste.sh decrypt | ✅ | `dart_fallback/pastesh_decrypt_dart.dart` |
+| Episode matcher | ✅ | `dart_fallback/episode_matcher_dart.dart` |
+| HLS master parse | ✅ | `dart_fallback/hls_dart_parse.dart` |
+| JS unpacker | ✅ | `dart_fallback/js_unpacker_dart.dart` |
+| KissKH subtitle decrypt | ✅ | `dart_fallback/kisskh_decrypt_dart.dart` |
+| Torrent filter | ✅ | `dart_fallback/torrent_filter_dart.dart` |
+| Stremio JSON + URL helpers | ✅ | `dart_fallback/stremio_dart_parse.dart` |
+| Scrapers HTML parse + dedup | ✅ | `dart_fallback/scrapers_dart_parse.dart` |
 | Provider URL templates | ✅ | `packages/forja_streaming/lib/src/provider_fallback_urls.dart` |
 | Magnet player torrent API | ✅ | `TorrentStreamService.listTorrentFiles` (no direct libtorrent in UI) |
 
@@ -475,30 +475,32 @@ Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `
 
 | Item | Status | Blocker |
 |------|:----:|---------|
-| Delete `reference/*.dart` (10 files) | ❌ | B1 · B3 — release Rust proven + parity |
-| Production `reference/` imports | ✅ | routed via `*Backend` + `dart_fallback_delegates.dart` |
+| Delete `dart_fallback/*.dart` (10 files) | ❌ | B1 · B3 — after release Rust proven |
+| Production direct `dart_fallback/` imports | ✅ | `*Backend` + `installDartFallbackDelegates()` only |
 | Drop `libtorrent_flutter` from pubspecs | ❌ | B2 · B4 — mobile torrent today; desktop fallback |
 | Mobile Rust in release APK/IPA | ✅ | B7 — `forjaBuildRust=true` · iOS Release phase |
 | librqbit in mobile Rust FFI | ❌ | B2 |
 | Golden fixture per webstreamr extractor | ✅ | B5 — 23/23 Rust · 21/23 Dart (lulustream/fastream Rust-only) |
 | App `integration_test/` smoke | ✅ | B4 — 11 tests in CI |
 
-### Reference layer inventory
+### Dart fallback inventory
 
-All under `packages/forja_rust/lib/src/reference/` — **kept for internal fallback + parity tests**, not deleted yet.
+All under `packages/forja_rust/lib/src/dart_fallback/` — **runtime fallback + parity baselines** (not deleted until B1).
 
-| File | Step | Imported from (production) |
-|------|------|----------------------------|
-| `m3u_dart_parser.dart` | 3 | `ForjaEngine` facade |
-| `iptv_dart_parse.dart` | 3 | `iptv_network.dart` |
-| `pastesh_decrypt_dart.dart` | 3 | `pastesh_decryptor.dart` |
-| `episode_matcher_dart.dart` | 1 | `ForjaEngine` facade |
-| `hls_dart_parse.dart` | 1 | `ForjaEngine` facade |
-| `js_unpacker_dart.dart` | 1 | `unpacker.dart` via delegate |
-| `kisskh_decrypt_dart.dart` | 1 | `kisskh_subtitle_decryptor.dart` |
-| `torrent_filter_dart.dart` | 1 | `torrent_filter.dart` |
-| `stremio_dart_parse.dart` | 4 | `stremio_service.dart` |
-| `scrapers_dart_parse.dart` | 6 | `knaben` · `tpb` · `uindex` scrapers |
+| File | Step | Used by |
+|------|------|---------|
+| `m3u_dart_parser.dart` | 3 | `ForjaEngine.parseM3uChannels` when Rust off |
+| `iptv_dart_parse.dart` | 3 | `installDartFallbackDelegates()` |
+| `pastesh_decrypt_dart.dart` | 3 | `installDartFallbackDelegates()` |
+| `episode_matcher_dart.dart` | 1 | `installDartFallbackDelegates()` |
+| `hls_dart_parse.dart` | 1 | `installDartFallbackDelegates()` |
+| `js_unpacker_dart.dart` | 1 | `installDartFallbackDelegates()` |
+| `kisskh_decrypt_dart.dart` | 1 | `installDartFallbackDelegates()` |
+| `torrent_filter_dart.dart` | 1 | `installDartFallbackDelegates()` |
+| `stremio_dart_parse.dart` | 4 | `installDartFallbackDelegates()` |
+| `scrapers_dart_parse.dart` | 6 | `installDartFallbackDelegates()` |
+
+Barrel export: `lib/src/dart_fallback.dart`
 
 ### What stays (not Step 9 targets)
 
@@ -509,9 +511,9 @@ All under `packages/forja_rust/lib/src/reference/` — **kept for internal fallb
 - `libtorrent_flutter` on mobile until B2 (librqbit mobile FFI)
 
 ```bash
-# Parity gates before deleting any reference file
-cd packages/forja_rust && flutter test
-cd crates && cargo test -p forja-webstreamr --test golden_extractors
+# Parity gates before deleting any dart_fallback file
+melos run rust:test
+melos run rust:release-check   # after build_rust_mobile.sh
 ```
 
 Manual: boot log `Rust engine v0.1.0` on desktop + mobile after `build_rust_mobile.sh` · IPTV import · magnet play · one VidLink stream.

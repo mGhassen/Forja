@@ -7,19 +7,11 @@ import 'package:forja_api/api/stremio_service.dart';
 import 'package:forja_api/api/torrent_filter.dart';
 import 'package:forja_core/utils/episode_matcher.dart';
 import 'package:forja_core/utils/hls_master_parser.dart';
-import 'package:forja_rust/src/reference/episode_matcher_dart.dart';
-import 'package:forja_rust/src/reference/hls_dart_parse.dart';
-import 'package:forja_rust/src/reference/iptv_dart_parse.dart';
-import 'package:forja_rust/src/reference/js_unpacker_dart.dart';
-import 'package:forja_rust/src/reference/kisskh_decrypt_dart.dart';
-import 'package:forja_rust/src/reference/pastesh_decrypt_dart.dart';
-import 'package:forja_rust/src/reference/scrapers_dart_parse.dart';
-import 'package:forja_rust/src/reference/stremio_dart_parse.dart';
-import 'package:forja_rust/src/reference/torrent_filter_dart.dart';
+import 'package:forja_rust/src/dart_fallback.dart';
 import 'package:forja_scrapers/scrapers/scraper_parse.dart';
 import 'package:forja_webstreamr/webstreamr/utils/unpacker.dart';
 
-/// Wires Dart reference parsers into `*Backend` hooks when Rust delegates are absent.
+/// Wires Dart fallback parsers into `*Backend` hooks when Rust delegates are absent.
 void installDartFallbackDelegates() {
   EpisodeMatcherBackend.matches ??= EpisodeMatcherDart.matches;
   HlsParserBackend.parseMaster ??= HlsDartParse.parseMaster;

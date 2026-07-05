@@ -7,7 +7,7 @@ import 'package:forja_core/utils/hls_master_parser.dart';
 
 import 'engine.dart';
 import 'library_path.dart';
-import 'reference/m3u_dart_parser.dart';
+import 'dart_fallback/m3u_dart_parser.dart';
 
 /// Routes hot-path engine calls to Rust when loaded, else Dart fallbacks.
 abstract final class ForjaEngine {

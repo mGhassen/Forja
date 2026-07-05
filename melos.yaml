@@ -25,6 +25,9 @@ scripts:
     run: |
       cd ../../apps/forja && flutter pub get && flutter test integration_test/
     description: App engine smoke integration tests (desktop; run build_rust.sh first)
+  rust:release-check:
+    run: ../../scripts/check_rust_mobile_artifacts.sh
+    description: Verify Android/iOS libforja_ffi artifacts exist after build_rust_mobile.sh
   analyze:
     run: flutter analyze
     exec:
