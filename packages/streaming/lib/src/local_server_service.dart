@@ -7,7 +7,6 @@ import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
-import 'package:scrapers/scrapers/scraper_aggregator.dart';
 import 'package:api/api/subtitlecat_service.dart';
 
 class LocalServerService {
@@ -48,20 +47,6 @@ class LocalServerService {
   }
 
   void _setupRoutes() {
-    _router.get('/api/ultimate', (Request request) async {
-      final params = request.url.queryParameters;
-      final query = params['query'];
-      if (query == null || query.isEmpty) {
-        return Response(400, body: json.encode({'error': 'Query parameter is required'}), headers: {'content-type': 'application/json'});
-      }
-      try {
-        final results = await ScraperAggregator.searchAll(query);
-        return Response.ok(json.encode({'query': query, 'totalResults': results.length, 'results': results}), headers: {'content-type': 'application/json'});
-      } catch (e) {
-        return Response(500, body: json.encode({'error': e.toString()}), headers: {'content-type': 'application/json'});
-      }
-    });
-
     // --- Tokybook Specialized Proxy ---
     _router.get('/toky-proxy', _handleTokyProxy);
 

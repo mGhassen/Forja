@@ -21,7 +21,7 @@ import 'menus.dart';
 
 import 'package:core/models/movie.dart';
 import 'package:core/models/stream_source.dart';
-import 'package:core/utils/hls_master_parser.dart';
+import 'package:rust/rust.dart';
 import 'package:api/api/subtitle_api.dart';
 import 'package:streaming/streaming.dart';
 import 'package:api/api/stream_extractor.dart';

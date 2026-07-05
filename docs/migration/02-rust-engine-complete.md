@@ -58,7 +58,7 @@ Rust engine (crates/* + libffi)
 
 | | |
 |--|--|
-| **Progress** | **21 / 36 tasks done (58%)** |
+| **Progress** | **22 / 36 tasks done (61%)** |
 | **Blocks Phase 3** | P2-80 tail · P2-82/83/85 pipelines · P2-88/89 (api/storage) |
 | **Also open** | B2 mobile smoke · JNI proof · sign-off |
 
@@ -78,7 +78,7 @@ Rust engine (crates/* + libffi)
 | **P2-81** | Scraper pipeline → `search_torrents_json` |
 | **P2-84** | Torrent filter → `filter_torrents_json` |
 | **P2-87** | Dead Dart scraper files deleted (`packages/scrapers` = aggregator only) |
-| **P2-86** | `rust_delegates.dart` deleted; Stremio/IPTV/torrent/webstreamr/KissKh/JS → direct FFI |
+| **P2-86** | All `*Backend` hooks removed; direct FFI everywhere |
 
 #### 🔄 In progress — B2 mobile
 
@@ -95,7 +95,6 @@ Rust engine (crates/* + libffi)
 | P2-82 | Webstreamr pipeline → Rust |
 | P2-83 | Stream resolver → Rust |
 | P2-85 | Proxy → Rust only (drop shelf engine routes) |
-| P2-86 | Delete remaining `*Backend` hooks in `core`/`facade` (EpisodeMatcher, HlsParser) |
 | P2-87 | Delete gutted Dart engine packages (scrapers ✅; webstreamr/streaming/api remain) |
 | **P2-88** | **`packages/storage` → `crates/storage` + FFI** |
 | **P2-89** | **`packages/api` → Rust crates (TMDB, Trakt, debrid, …)** |
@@ -118,12 +117,12 @@ Rust engine (crates/* + libffi)
 | 3 | Parse/crypto/torrent primitives in Rust | ✅ |
 | 4 | Legacy `packages/forja_*` deleted | ✅ |
 | 5 | Magnet → stream desktop | ✅ |
-| 6 | Scraper search via `search_torrents_json` | ✅ P2-81 |
+| 6 | Scraper search via `search_torrents_json` (no shelf hop) | ✅ P2-81 |
 | 7 | Torrent filter via `filter_torrents_json` | ✅ P2-84 |
 | 8 | Magnet → stream mobile | ⬜ P2-14 |
 | 9 | All pipelines in Rust (webstreamr, resolver, proxy) | ⬜ P2-82–85 |
 | 10 | **`packages/api` + `packages/storage` in Rust** | ⬜ P2-88/89 |
-| 11 | No app-layer delegate wiring | ✅ `rust_delegates.dart` gone; tail: EpisodeMatcher/Hls in `facade` |
+| 11 | No `*Backend` hooks | ✅ P2-86 |
 | 12 | Sign-off | ⬜ P2-70 |
 
 **Phase 3 starts when #9 + #10 + #11 are ✅.**

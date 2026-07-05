@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:core/utils/episode_matcher.dart';
 import 'package:rust/rust.dart';
 import 'package:streaming/streaming.dart';
 import 'package:integration_test/integration_test.dart';
@@ -116,8 +115,8 @@ http://stream.example/live
     expect(rows.first['magnet'], startsWith('magnet:'));
   });
 
-  test('EpisodeMatcher delegate wired', () {
-    expect(EpisodeMatcherBackend.matches, isNotNull);
+  test('EpisodeMatcher via Rust FFI', () {
+    expect(ForjaRust.isInitialized, isTrue);
     expect(EpisodeMatcher.matches('Show.S03E07.1080p.mkv', 3, 7), isTrue);
     expect(EpisodeMatcher.matches('[RARBG] Show.S03E07.1080p.mkv', 3, 7), isTrue);
     expect(EpisodeMatcher.matches('Show.S03E08.mkv', 3, 7), isFalse);

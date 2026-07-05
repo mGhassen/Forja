@@ -2,9 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:core/utils/episode_matcher.dart';
-import 'package:core/utils/hls_master_parser.dart';
-
 import 'engine.dart';
 import 'library_path.dart';
 
@@ -31,7 +28,6 @@ abstract final class ForjaEngine {
         try {
           await ForjaRust.init(libraryPath: candidate);
           _enabled = true;
-          _installUtilityBackends();
           debugPrint(
             '[ForjaEngine] Rust engine v${ForjaRust.instance.version} ($candidate)',
           );
@@ -42,56 +38,10 @@ abstract final class ForjaEngine {
       }
       debugPrint('[ForjaEngine] Rust library not loaded: $lastError');
       _enabled = false;
-      _installUtilityBackends();
     } catch (e) {
       debugPrint('[ForjaEngine] init failed: $e');
       _enabled = false;
-      _installUtilityBackends();
     }
-  }
-
-  static void _installUtilityBackends() {
-    if (_enabled && ForjaRust.isInitialized) {
-      EpisodeMatcherBackend.matches = (file, season, episode) =>
-          ForjaRust.instance.episodeMatches(file, season, episode);
-
-      EpisodeMatcherBackend.pickEpisodeIndex = (files, season, episode) {
-        final idx = ForjaRust.instance.pickEpisodeIndexJson(
-          jsonEncode(files),
-          season,
-          episode,
-        );
-        return idx >= 0 ? idx : null;
-      };
-
-      EpisodeMatcherBackend.pickLargestVideoIndex = (files) {
-        final idx =
-            ForjaRust.instance.pickLargestVideoIndexJson(jsonEncode(files));
-        return idx >= 0 ? idx : null;
-      };
-
-      HlsParserBackend.parseMaster = (masterUrl, body) {
-        final json = ForjaRust.instance.parseHlsMasterJson(masterUrl, body);
-        final list = jsonDecode(json) as List;
-        if (list.isEmpty) return null;
-        return list.map((e) {
-          final m = e as Map<String, dynamic>;
-          return HlsQuality(
-            label: m['label'] as String,
-            url: m['url'] as String,
-            bandwidth: m['bandwidth'] as int?,
-            height: m['height'] as int?,
-            isAuto: m['is_auto'] as bool? ?? false,
-          );
-        }).toList();
-      };
-      return;
-    }
-
-    EpisodeMatcherBackend.matches = null;
-    EpisodeMatcherBackend.pickEpisodeIndex = null;
-    EpisodeMatcherBackend.pickLargestVideoIndex = null;
-    HlsParserBackend.parseMaster = null;
   }
 
   static void _requireReady() {

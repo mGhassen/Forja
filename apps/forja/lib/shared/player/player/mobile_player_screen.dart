@@ -35,7 +35,7 @@ import 'package:api/api/tmdb_service.dart';
 import 'package:api/api/introdb_service.dart';
 import 'package:core/models/movie.dart';
 import 'package:core/models/stream_source.dart';
-import 'package:core/utils/hls_master_parser.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'menus.dart';

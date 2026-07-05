@@ -7,6 +7,7 @@ const splashSlogan = 'THE RAKSHA YOU DESERVE';
 
 const _logoAspectRatio = 370.0 / 160.0;
 const _maxLogoHeight = 320.0;
+const _haloScale = 3.5;
 
 class ForjaLogoColors {
   const ForjaLogoColors({required this.base});
@@ -34,48 +35,46 @@ class SplashLogoWithHalo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = ForjaLogoColors.forTheme(isLight);
-    final haloSize = logoHeight * 15;
+    final logoWidth = logoHeight * _logoAspectRatio;
+    final haloDiameter = logoHeight * _haloScale;
     final logoAsset = isLight
         ? 'assets/icon/logo-light.png'
         : 'assets/icon/logo-dark.png';
 
     return SizedBox(
-      height: logoHeight,
-      child: AspectRatio(
-        aspectRatio: _logoAspectRatio,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: Center(
-                child: SizedBox(
-                  width: haloSize,
-                  height: haloSize,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          colors.base.withValues(alpha: 0.4),
-                          colors.base.withValues(alpha: 0.15),
-                          colors.base.withValues(alpha: 0),
-                        ],
-                        stops: const [0.0, 0.35, 1.0],
-                      ),
-                    ),
-                  ),
+      width: math.max(logoWidth, haloDiameter),
+      height: haloDiameter,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          SizedBox(
+            width: haloDiameter,
+            height: haloDiameter,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    colors.base.withValues(alpha: 0.45),
+                    colors.base.withValues(alpha: 0.18),
+                    colors.base.withValues(alpha: 0),
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
                 ),
               ),
             ),
-            Positioned.fill(
-              child: Image.asset(
-                logoAsset,
-                fit: BoxFit.contain,
-                alignment: Alignment.center,
-              ),
+          ),
+          SizedBox(
+            width: logoWidth,
+            height: logoHeight,
+            child: Image.asset(
+              logoAsset,
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -109,6 +108,7 @@ class SplashOverlayContent extends StatelessWidget {
                 return Center(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
+                    clipBehavior: Clip.none,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

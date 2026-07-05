@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:core/utils/episode_matcher.dart';
+import 'package:rust/rust.dart';
 
 class DebridFile {
   final String filename;
