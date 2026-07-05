@@ -33,6 +33,8 @@ namespace forja {
     string dedup_torrents_json(string results_json);
     string search_torrents_json(string query);
     string filter_torrents_json(string results_json, string show_title, i32 required_season, i32 required_episode);
+    string sort_torrents_json(string results_json, string preference);
+    boolean is_video_file(string file_name);
     string extract_embed_html_json(string extractor_id, string html, string page_url);
     string extract_vidsrc_chain_json(string outer_html, string rcp_html, string prorcp_html);
     string extract_hubcloud_links_json(string html, string page_url);

@@ -253,6 +253,22 @@ class ForjaRust {
         );
       });
 
+  String sortTorrentsJson(String resultsJson, String preference) =>
+      using((arena) {
+        final resultsPtr =
+            resultsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final prefPtr =
+            preference.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.forja_sort_torrents_json(resultsPtr, prefPtr),
+        );
+      });
+
+  bool isVideoFile(String fileName) => using((arena) {
+        final ptr = fileName.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _native.forja_is_video_file(ptr);
+      });
+
   String extractEmbedHtmlJson(
     String extractorId,
     String html,
@@ -599,6 +615,16 @@ final class _ForjaNative {
               'forja_filter_torrents_json',
             )
             .asFunction(),
+        forja_sort_torrents_json = lib
+            .lookup<ffi.NativeFunction<_TwoStringNative>>(
+              'forja_sort_torrents_json',
+            )
+            .asFunction(),
+        forja_is_video_file = lib
+            .lookup<ffi.NativeFunction<_StringBoolNative>>(
+              'forja_is_video_file',
+            )
+            .asFunction(),
         forja_extract_embed_html_json = lib
             .lookup<ffi.NativeFunction<_ThreeStringNative>>(
               'forja_extract_embed_html_json',
@@ -795,6 +821,11 @@ final class _ForjaNative {
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
+  ) forja_sort_torrents_json;
+  final bool Function(ffi.Pointer<ffi.Char>) forja_is_video_file;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_extract_embed_html_json;
   final ffi.Pointer<ffi.Char> Function(
@@ -918,6 +949,7 @@ typedef _KinogerUrlsNative = ffi.Pointer<ffi.Char> Function(
   ffi.Int32,
   ffi.Int32,
 );
+typedef _StringBoolNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStartNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStopNative = ffi.Void Function();
 typedef _TorrentSetPeerLimitNative = ffi.Void Function(ffi.Uint32);

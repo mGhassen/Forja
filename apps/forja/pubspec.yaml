@@ -57,8 +57,6 @@ dependencies:
     path: ../../packages/storage
   api:
     path: ../../packages/api
-  scrapers:
-    path: ../../packages/scrapers
   webstreamr:
     path: ../../packages/webstreamr
   streaming:

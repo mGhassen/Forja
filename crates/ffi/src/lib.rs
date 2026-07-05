@@ -228,6 +228,17 @@ fn filter_torrents_json(
     serde_json::to_string(&filtered).unwrap_or_else(|_| "[]".into())
 }
 
+fn sort_torrents_json(results_json: String, preference: String) -> String {
+    let mut items: Vec<torrent_filter::TorrentRow> =
+        serde_json::from_str(&results_json).unwrap_or_default();
+    torrent_filter::sort_torrents(&mut items, &preference);
+    serde_json::to_string(&items).unwrap_or_else(|_| "[]".into())
+}
+
+fn is_video_file(file_name: String) -> bool {
+    torrent_filter::is_video_file(&file_name)
+}
+
 fn extract_embed_html_json(extractor_id: String, html: String, page_url: String) -> String {
     webstreamr::extract_embed_html_json(&extractor_id, &html, &page_url)
 }

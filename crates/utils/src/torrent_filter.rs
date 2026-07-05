@@ -202,6 +202,87 @@ pub fn filter_torrents(
         .collect()
 }
 
+fn parse_seeds(seeders: &str) -> i64 {
+    seeders
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .parse()
+        .unwrap_or(0)
+}
+
+fn quality_score(name: &str) -> i32 {
+    let n = name.to_lowercase();
+    if n.contains("2160p") || n.contains("4k") || n.contains("uhd") {
+        return 400;
+    }
+    if n.contains("1080p") || n.contains("fhd") {
+        return 300;
+    }
+    if n.contains("720p") || n.contains("hd") {
+        return 200;
+    }
+    if n.contains("480p") || n.contains("sd") {
+        return 100;
+    }
+    0
+}
+
+fn parse_size_bytes(size: &str) -> f64 {
+    let s = size.to_lowercase();
+    let value: f64 = s
+        .chars()
+        .filter(|c| c.is_ascii_digit() || *c == '.')
+        .collect::<String>()
+        .parse()
+        .unwrap_or(0.0);
+    if s.contains("gb") {
+        value * 1024.0 * 1024.0 * 1024.0
+    } else if s.contains("mb") {
+        value * 1024.0 * 1024.0
+    } else if s.contains("kb") {
+        value * 1024.0
+    } else {
+        value
+    }
+}
+
+pub fn sort_torrents(items: &mut [TorrentRow], preference: &str) {
+    match preference {
+        "Seeders (High to Low)" => {
+            items.sort_by(|a, b| parse_seeds(&b.seeders).cmp(&parse_seeds(&a.seeders)));
+        }
+        "Seeders (Low to High)" => {
+            items.sort_by(|a, b| parse_seeds(&a.seeders).cmp(&parse_seeds(&b.seeders)));
+        }
+        "Quality (High to Low)" => items.sort_by(|a, b| {
+            quality_score(&b.name)
+                .cmp(&quality_score(&a.name))
+                .then(parse_seeds(&b.seeders).cmp(&parse_seeds(&a.seeders)))
+        }),
+        "Quality (Low to High)" => items.sort_by(|a, b| {
+            quality_score(&a.name)
+                .cmp(&quality_score(&b.name))
+                .then(parse_seeds(&b.seeders).cmp(&parse_seeds(&a.seeders)))
+        }),
+        "Size (High to Low)" => {
+            items.sort_by(|a, b| {
+                parse_size_bytes(&b.size)
+                    .partial_cmp(&parse_size_bytes(&a.size))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+        "Size (Low to High)" => {
+            items.sort_by(|a, b| {
+                parse_size_bytes(&a.size)
+                    .partial_cmp(&parse_size_bytes(&b.size))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+        _ => {}
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,5 +297,27 @@ mod tests {
     #[test]
     fn normalize_strips_punct() {
         assert_eq!(normalize_title("Foo: Bar!"), "foo bar");
+    }
+
+    #[test]
+    fn sort_by_seeders_desc() {
+        let mut rows = vec![
+            TorrentRow {
+                name: "a".into(),
+                magnet: "m1".into(),
+                seeders: "10".into(),
+                size: "1 GB".into(),
+                source: "x".into(),
+            },
+            TorrentRow {
+                name: "b".into(),
+                magnet: "m2".into(),
+                seeders: "100".into(),
+                size: "2 GB".into(),
+                source: "x".into(),
+            },
+        ];
+        sort_torrents(&mut rows, "Seeders (High to Low)");
+        assert_eq!(rows[0].seeders, "100");
     }
 }

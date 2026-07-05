@@ -156,4 +156,23 @@ abstract final class ForjaEngine {
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
   }
+
+  static List<Map<String, dynamic>> sortTorrents(
+    List<Map<String, dynamic>> results,
+    String preference,
+  ) {
+    _requireReady();
+    final json = ForjaRust.instance.sortTorrentsJson(
+      jsonEncode(results),
+      preference,
+    );
+    return (jsonDecode(json) as List)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
+  static bool isVideoFile(String fileName) {
+    _requireReady();
+    return ForjaRust.instance.isVideoFile(fileName);
+  }
 }

@@ -40,7 +40,7 @@ When a package is moved, its Dart source is **gone**.
 | `packages/api` | `crates/*` (tmdb, debrid, stremio, …) | ⬜ P2-89 |
 | `packages/storage` | `crates/storage` | 🔄 P2-88 — **delete package when done** |
 | `packages/core` | engine JSON / generated types | ⬜ P2-90 |
-| `packages/scrapers` | `crates/scrapers` | 🔄 delete remainder after P2-81 |
+| `packages/scrapers` | `crates/scrapers` | ✅ deleted |
 | `packages/webstreamr` | `crates/webstreamr` | ⬜ P2-82 |
 | `packages/streaming` | `crates/streaming`, `crates/proxy`, … | ⬜ P2-83 |
 

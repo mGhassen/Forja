@@ -81,7 +81,7 @@ Rust engine (crates/* + libffi)
 
 | | |
 |--|--|
-| **Progress** | **24 / 36 tasks done (67%)** |
+| **Progress** | **27 / 36 tasks done (75%)** — `scrapers` + `forja_*` deleted |
 | **Blocks Phase 3** | P2-82/83/87/88/89/90 — Dart engine packages still exist |
 | **Also open** | B2 mobile smoke · JNI proof · sign-off |
 
@@ -95,7 +95,8 @@ Rust engine (crates/* + libffi)
 |-----|------|
 | P2-20 → P2-23 | Drop libtorrent |
 | P2-30 → P2-33 | Strip Dart HTML parse fallbacks |
-| P2-60 → P2-63 | Delete legacy `packages/forja_*` |
+| **P2-87** | `packages/scrapers` **deleted**; search via `ForjaEngine.searchTorrents` only |
+| **P2-60** | Legacy `packages/forja_*` **deleted** (7 orphan packages removed) |
 | P2-12, P2-13, P2-15 | Mobile torrent wiring |
 | P2-50, P2-51 | uniffi UDL + Kotlin bindgen scaffold |
 | **P2-81** | Scraper pipeline → `search_torrents_json`; dead scraper files deleted |
@@ -107,7 +108,6 @@ Rust engine (crates/* + libffi)
 
 | ID | Rust done | Dart still alive (must delete) |
 |----|-----------|--------------------------------|
-| **P2-87** | Aggregator → FFI | `packages/scrapers` directory remains |
 | **P2-88** | `crates/storage` KV + FFI | **`packages/storage` entire package** — repos, `SettingsService`, watch history |
 | **P2-85** | HLS + proxy forward | Jellyfin/toky/comic shelf routes in Dart |
 
@@ -125,7 +125,6 @@ Rust engine (crates/* + libffi)
 | P2-80 | — | Document + expand FFI surface |
 | **P2-82** | **`packages/webstreamr`** | Fetch + extract pipeline in `crates/webstreamr` |
 | **P2-83** | **`packages/streaming`** (engine parts) | Resolver, torrent service orchestration |
-| **P2-87** | **`packages/scrapers`** | Delete package after UI wired to FFI |
 | **P2-88** | **`packages/storage`** | Typed settings/history APIs; delete all Dart storage |
 | **P2-89** | **`packages/api`** | TMDB, Trakt, debrid, jackett, subtitles, … |
 | **P2-90** | **`packages/core`** (engine models) | JSON from Rust; UI uses maps/codegen |
@@ -147,7 +146,7 @@ Rust engine (crates/* + libffi)
 | 3 | Parse/crypto/torrent primitives in Rust | ✅ |
 | 4 | Legacy `packages/forja_*` deleted | ✅ |
 | 5 | Magnet → stream desktop | ✅ |
-| 6 | `packages/scrapers` deleted (search via Rust FFI only) | 🔄 P2-87 |
+| 6 | `packages/scrapers` deleted | ✅ P2-87 |
 | 7 | Torrent filter via Rust; Dart deleted | ✅ P2-84 |
 | 8 | Magnet → stream mobile | ⬜ P2-14 |
 | 9 | `packages/webstreamr` + `packages/streaming` engine deleted | ⬜ P2-82/83 |

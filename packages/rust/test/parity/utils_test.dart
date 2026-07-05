@@ -1,7 +1,6 @@
 import '../helpers/parity_backends.dart';
 import 'package:api/api/kisskh_subtitle_decryptor.dart';
 import 'package:rust/rust.dart';
-import 'package:webstreamr/webstreamr/utils/unpacker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -14,7 +13,6 @@ void main() {
 
   test('js unpack via FFI', () {
     final rust = ForjaRust.instance.unpackJs(packed);
-    expect(rust, unpack(packed));
     expect(rust, 'hello world');
   });
 
@@ -26,9 +24,12 @@ void main() {
     expect(rust, contains('Hello'));
   });
 
-  test('unpackEval uses backend path', () {
+  test('unpackEval extracts packed script', () {
     const html =
         "<script>eval(function(p,a,c,k,e,d){}('0 1',10,2,'hello|world'.split('|'),0,{}))</script>";
-    expect(unpackEval(html), 'hello world');
+    final m = RegExp(r'eval\(function\(p,a,c,k,e,d\).*?\)\)', dotAll: true)
+        .firstMatch(html);
+    expect(m, isNotNull);
+    expect(ForjaRust.instance.unpackJs(m!.group(0)!), 'hello world');
   });
 }

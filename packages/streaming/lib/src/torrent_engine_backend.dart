@@ -1,4 +1,4 @@
-import 'package:api/api/torrent_filter.dart';
+import 'package:rust/rust.dart';
 
 /// A file entry inside a torrent payload.
 class TorrentFileEntry {
@@ -12,5 +12,5 @@ class TorrentFileEntry {
     required this.size,
   });
 
-  bool get isStreamable => TorrentFilter.isVideoFile(name);
+  bool get isStreamable => ForjaEngine.isVideoFile(name);
 }

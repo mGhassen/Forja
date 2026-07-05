@@ -7,10 +7,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:core/models/movie.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:core/models/torrent_result.dart';
-import 'package:api/api/torrent_api.dart';
+import 'package:rust/rust.dart';
 import 'package:streaming/streaming.dart';
-import 'package:api/api/stremio_service.dart';
-import 'package:api/api/torrent_filter.dart';
 import 'package:storage/storage.dart';
 import 'package:api/api/debrid_api.dart';
 import 'package:api/services/jackett_service.dart';
@@ -48,7 +46,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   late Movie _movie;
   bool _isLoading = true;
   final TmdbApi _api = TmdbApi();
-  final TorrentApi _torrentApi = TorrentApi();
   final SettingsService _settings = SettingsService();
   final StremioService _stremio = StremioService();
   final JackettService _jackett = JackettService();
@@ -249,7 +246,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   Future<void> _sortResults() async {
     if (_allTorrentResults.isEmpty) return;
-    final sorted = await TorrentFilter.sortTorrentsAsync(_allTorrentResults, _sortPreference);
+    final sorted = ForjaEngine.sortTorrents(
+      _allTorrentResults.map((e) => e.toJson()).toList(),
+      _sortPreference,
+    ).map(TorrentResult.fromJson).toList();
     if (_lastProgress != null && _lastProgress!['method'] == 'torrent') {
       final historyHash = _getHash(_lastProgress!['sourceId']);
       final index = sorted.indexWhere((r) => _getHash(r.magnet) == historyHash);
@@ -1284,12 +1284,25 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
     try {
       final results = await Future.wait([
-        _torrentApi.searchTorrents(seasonQuery),
-        _torrentApi.searchTorrents(episodeQuery),
+        Future(() => ForjaEngine.searchTorrents(seasonQuery)
+            .map(TorrentResult.fromJson)
+            .toList()),
+        Future(() => ForjaEngine.searchTorrents(episodeQuery)
+            .map(TorrentResult.fromJson)
+            .toList()),
       ]);
       if (mounted) {
-        final filteredSeason = await TorrentFilter.filterTorrentsAsync(results[0], _movie.title, requiredSeason: _selectedSeason);
-        final filteredEpisode = await TorrentFilter.filterTorrentsAsync(results[1], _movie.title, requiredSeason: _selectedSeason, requiredEpisode: _selectedEpisode);
+        final filteredSeason = ForjaEngine.filterTorrents(
+          results[0].map((e) => e.toJson()).toList(),
+          _movie.title,
+          requiredSeason: _selectedSeason,
+        ).map(TorrentResult.fromJson).toList();
+        final filteredEpisode = ForjaEngine.filterTorrents(
+          results[1].map((e) => e.toJson()).toList(),
+          _movie.title,
+          requiredSeason: _selectedSeason,
+          requiredEpisode: _selectedEpisode,
+        ).map(TorrentResult.fromJson).toList();
         final combined = <String, TorrentResult>{};
         for (var r in filteredEpisode) { combined[r.magnet] = r; }
         for (var r in filteredSeason) { combined[r.magnet] = r; }
@@ -1306,9 +1319,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _searchTorrents(String query) async {
     setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
     try {
-      final results = await _torrentApi.searchTorrents(query);
+      final results = ForjaEngine.searchTorrents(query)
+          .map(TorrentResult.fromJson)
+          .toList();
       if (mounted) {
-        final filtered = await TorrentFilter.filterTorrentsAsync(results, _movie.title);
+        final filtered = ForjaEngine.filterTorrents(
+          results.map((e) => e.toJson()).toList(),
+          _movie.title,
+        ).map(TorrentResult.fromJson).toList();
         if (mounted) {
           setState(() { _allTorrentResults = filtered; _isSearching = false; });
           _sortResults();
@@ -1368,7 +1386,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         final query = year.isNotEmpty ? '${_movie.title} $year' : _movie.title;
         final results = await _jackett.search(baseUrl, apiKey, query);
         if (mounted) {
-          final filtered = await TorrentFilter.filterTorrentsAsync(results, _movie.title);
+          final filtered = ForjaEngine.filterTorrents(
+          results.map((e) => e.toJson()).toList(),
+          _movie.title,
+        ).map(TorrentResult.fromJson).toList();
           if (mounted) {
             if (filtered.isEmpty) {
               setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Jackett.'; _isSearching = false; });
@@ -1443,7 +1464,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         final query = year.isNotEmpty ? '${_movie.title} $year' : _movie.title;
         final results = await _prowlarr.search(baseUrl, apiKey, query, indexerIds: allowedIndexerIds);
         if (mounted) {
-          final filtered = await TorrentFilter.filterTorrentsAsync(results, _movie.title);
+          final filtered = ForjaEngine.filterTorrents(
+          results.map((e) => e.toJson()).toList(),
+          _movie.title,
+        ).map(TorrentResult.fromJson).toList();
           if (mounted) {
             if (filtered.isEmpty) {
               setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Prowlarr.'; _isSearching = false; });

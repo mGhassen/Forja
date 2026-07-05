@@ -263,6 +263,22 @@ pub unsafe extern "C" fn forja_filter_torrents_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_sort_torrents_json(
+    results_json: *const c_char,
+    preference: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::sort_torrents_json(
+        from_c_str(results_json),
+        from_c_str(preference),
+    ))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_is_video_file(file_name: *const c_char) -> bool {
+    crate::is_video_file(from_c_str(file_name))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_extract_embed_html_json(
     extractor_id: *const c_char,
     html: *const c_char,

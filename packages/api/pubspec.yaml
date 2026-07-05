@@ -30,8 +30,6 @@ dependencies:
     path: ../core
   storage:
     path: ../storage
-  scrapers:
-    path: ../scrapers
   webstreamr:
     path: ../webstreamr
   streaming:

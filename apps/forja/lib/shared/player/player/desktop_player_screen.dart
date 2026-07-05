@@ -20,7 +20,7 @@ import 'utils.dart';
 import 'menus.dart';
 
 import 'package:core/models/movie.dart';
-import 'package:core/models/stream_source.dart';
+import 'package:core/models/torrent_result.dart';
 import 'package:rust/rust.dart';
 import 'package:api/api/subtitle_api.dart';
 import 'package:streaming/streaming.dart';
@@ -34,8 +34,7 @@ import 'package:api/api/arabic_service.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:api/api/track_auto_select.dart';
 import 'package:api/api/debrid_api.dart';
-import 'package:api/api/torrent_api.dart';
-import 'package:api/api/torrent_filter.dart';
+import 'package:rust/rust.dart';
 import 'package:api/api/tmdb_service.dart';
 import 'package:api/api/introdb_service.dart';
 import 'package:forja/shared/player/player_screen.dart';
@@ -2786,14 +2785,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         final query = '${widget.movie!.title} S${s}E$e';
         debugPrint('[NextEp] Searching torrents: $query');
 
-        final torrentApi = TorrentApi();
-        final results = await torrentApi.searchTorrents(query);
-        final filtered = await TorrentFilter.filterTorrentsAsync(
-          results,
+        final results = ForjaEngine.searchTorrents(query)
+            .map(TorrentResult.fromJson)
+            .toList();
+        final filtered = ForjaEngine.filterTorrents(
+          results.map((e) => e.toJson()).toList(),
           widget.movie!.title,
           requiredSeason: nextSeason,
           requiredEpisode: nextEpisode,
-        );
+        ).map(TorrentResult.fromJson).toList();
 
         if (filtered.isEmpty) throw Exception('No torrents found for S${s}E$e');
 
