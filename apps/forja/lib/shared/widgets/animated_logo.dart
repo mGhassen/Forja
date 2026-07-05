@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:storage/storage.dart';
@@ -7,7 +8,7 @@ const splashSlogan = 'THE RAKSHA YOU DESERVE';
 
 const _logoAspectRatio = 370.0 / 160.0;
 const _maxLogoHeight = 320.0;
-const _haloScale = 3.5;
+const _haloScale = 4.0;
 
 class ForjaLogoColors {
   const ForjaLogoColors({required this.base});
@@ -37,30 +38,40 @@ class SplashLogoWithHalo extends StatelessWidget {
     final colors = ForjaLogoColors.forTheme(isLight);
     final logoWidth = logoHeight * _logoAspectRatio;
     final haloDiameter = logoHeight * _haloScale;
+    final blurSigma = haloDiameter * 0.14;
+    final glowSourceSize = haloDiameter * 0.38;
     final logoAsset = isLight
         ? 'assets/icon/logo-light.png'
         : 'assets/icon/logo-dark.png';
 
     return SizedBox(
-      width: math.max(logoWidth, haloDiameter),
-      height: haloDiameter,
+      width: logoWidth,
+      height: logoHeight,
       child: Stack(
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: [
-          SizedBox(
-            width: haloDiameter,
-            height: haloDiameter,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    colors.base.withValues(alpha: 0.45),
-                    colors.base.withValues(alpha: 0.18),
-                    colors.base.withValues(alpha: 0),
-                  ],
-                  stops: const [0.0, 0.45, 1.0],
+          OverflowBox(
+            maxWidth: haloDiameter + blurSigma * 4,
+            maxHeight: haloDiameter + blurSigma * 4,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(
+                sigmaX: blurSigma,
+                sigmaY: blurSigma,
+              ),
+              child: Container(
+                width: glowSourceSize,
+                height: glowSourceSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      colors.base.withValues(alpha: isLight ? 0.28 : 0.22),
+                      colors.base.withValues(alpha: isLight ? 0.12 : 0.1),
+                      colors.base.withValues(alpha: 0),
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
                 ),
               ),
             ),

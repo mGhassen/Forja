@@ -13,10 +13,13 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+mod hls;
+
 #[derive(Clone)]
 pub struct ProxyState {
     pub client: reqwest::Client,
     pub routes: Arc<RwLock<HashMap<String, String>>>,
+    pub listen_port: Arc<RwLock<u16>>,
 }
 
 impl Default for ProxyState {
@@ -27,6 +30,7 @@ impl Default for ProxyState {
                 .build()
                 .unwrap_or_else(|_| reqwest::Client::new()),
             routes: Arc::new(RwLock::new(HashMap::new())),
+            listen_port: Arc::new(RwLock::new(0)),
         }
     }
 }
@@ -59,6 +63,10 @@ impl LocalProxy {
                 "/proxy",
                 get(query_proxy_handler).head(query_proxy_handler),
             )
+            .route(
+                "/hls-proxy",
+                get(hls::hls_proxy_handler).head(hls::hls_proxy_handler),
+            )
             .route("/proxy/{token}", get(token_proxy_handler))
             .with_state(self.state.clone());
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
@@ -66,6 +74,8 @@ impl LocalProxy {
             .await
             .map_err(|e| e.to_string())?;
         let actual_port = listener.local_addr().map_err(|e| e.to_string())?.port();
+        let mut stored = self.state.listen_port.write().await;
+        *stored = actual_port;
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.shutdown = Some(tx);
         tokio::spawn(async move {
@@ -82,6 +92,9 @@ impl LocalProxy {
     pub fn stop(&mut self) {
         if let Some(tx) = self.shutdown.take() {
             let _ = tx.send(());
+        }
+        if let Ok(mut port) = self.state.listen_port.try_write() {
+            *port = 0;
         }
     }
 }
