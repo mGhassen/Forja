@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
@@ -992,14 +993,6 @@ class _BrowserViewState extends State<_BrowserView> {
   void initState() {
     super.initState();
     _searchCtrl.text = widget.ctrl.browserSearch;
-    // auto-start alive check for live category
-    if (widget.ctrl.activeSection == IptvSection.live &&
-        widget.ctrl.aliveCheckedAt == null &&
-        !widget.ctrl.isVerifyingAlive) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.ctrl.startAliveCheck();
-      });
-    }
   }
 
   @override
@@ -1058,7 +1051,9 @@ class _BrowserViewState extends State<_BrowserView> {
       s = s.where((x) => x.categoryId == cat).toList();
     }
 
-    if (ctrl.activeSection == IptvSection.live && ctrl.liveOnly) {
+    if (ctrl.activeSection == IptvSection.live &&
+        ctrl.liveOnly &&
+        ctrl.aliveStreamIds.isNotEmpty) {
       s = s.where((x) => ctrl.aliveStreamIds.contains(x.streamId)).toList();
     }
     return s;
@@ -1075,27 +1070,36 @@ class _BrowserViewState extends State<_BrowserView> {
             subtitle: ctrl.activePortal?.name,
             onBack: ctrl.back,
             actions: [
-              if (ctrl.activeSection == IptvSection.live)
+              if (ctrl.activeSection == IptvSection.live) ...[
                 IconButton(
-                  tooltip: ctrl.isVerifyingAlive ? 'Stop' : 'Re-check alive',
+                  tooltip: 'Reload channels',
+                  onPressed: ctrl.isLoading
+                      ? null
+                      : () => ctrl.openSection(IptvSection.live),
+                  icon: const Icon(Icons.refresh_rounded,
+                      color: Color(0xFF00E5FF)),
+                ),
+                IconButton(
+                  tooltip: ctrl.isVerifyingAlive
+                      ? 'Stop alive check'
+                      : 'Re-check all streams',
                   onPressed: ctrl.isVerifyingAlive
                       ? ctrl.stopAliveCheck
                       : ctrl.recheckAlive,
                   icon: Icon(
                     ctrl.isVerifyingAlive
                         ? Icons.stop_circle_rounded
-                        : Icons.refresh_rounded,
+                        : Icons.verified_outlined,
                     color: const Color(0xFF00E5FF),
                   ),
                 ),
+              ],
             ],
           ),
           _buildSearch(),
           if (ctrl.activeSection == IptvSection.live && ctrl.isVerifyingAlive)
             _buildAliveProgress(),
-          if (ctrl.activeSection == IptvSection.live &&
-              !ctrl.isVerifyingAlive &&
-              ctrl.aliveCheckedAt != null)
+          if (ctrl.activeSection == IptvSection.live && !ctrl.isVerifyingAlive)
             _buildLiveOnlyToggle(),
           if (ctrl.error != null)
             Padding(
@@ -1182,19 +1186,31 @@ class _BrowserViewState extends State<_BrowserView> {
 
   Widget _buildLiveOnlyToggle() {
     final ctrl = widget.ctrl;
+    final hasCache = ctrl.aliveCheckedAt != null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Switch(
-            value: ctrl.liveOnly,
-            activeThumbColor: const Color(0xFF00E5FF),
-            onChanged: ctrl.setLiveOnly,
+          Row(
+            children: [
+              Switch(
+                value: ctrl.liveOnly,
+                activeThumbColor: const Color(0xFF00E5FF),
+                onChanged: hasCache ? ctrl.setLiveOnly : null,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  hasCache
+                      ? 'Show only alive streams (${ctrl.aliveStreamIds.length})'
+                      : 'Show only alive streams — re-check or scroll to probe',
+                  style: GoogleFonts.poppins(
+                      color: Colors.white70, fontSize: 12),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text('Show only alive streams (${ctrl.aliveStreamIds.length})',
-              style: GoogleFonts.poppins(
-                  color: Colors.white70, fontSize: 12)),
         ],
       ),
     );
@@ -1310,8 +1326,39 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   Widget _buildStreamGrid() {
+    final ctrl = widget.ctrl;
     final list = _filteredStreams;
     if (list.isEmpty) {
+      if (ctrl.browserAllStreams.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                ctrl.error ?? 'Failed to load channels — check connection',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(color: Colors.white60),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: ctrl.activeSection == null
+                    ? null
+                    : () => ctrl.openSection(ctrl.activeSection!),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Reload'),
+              ),
+            ],
+          ),
+        );
+      }
+      if (ctrl.activeSection == IptvSection.live && ctrl.liveOnly) {
+        final msg = ctrl.isVerifyingAlive
+            ? 'Checking streams…'
+            : 'No alive streams found';
+        return Center(
+          child: Text(msg, style: GoogleFonts.poppins(color: Colors.white60)),
+        );
+      }
       return Center(
         child: Text('No streams in this view',
             style: GoogleFonts.poppins(color: Colors.white60)),
@@ -1368,71 +1415,128 @@ class _StreamCard extends StatelessWidget {
     required this.onTap,
   });
 
+  Color _borderColor(bool? health) {
+    if (stream.kind != 'live' || health == null) {
+      return Colors.white.withValues(alpha: 0.08);
+    }
+    if (health) {
+      return const Color(0xFF22C55E).withValues(alpha: 0.55);
+    }
+    return const Color(0xFFEF4444).withValues(alpha: 0.65);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          onLongPress: stream.kind == 'live'
-              ? () => _showEpgSheet(context)
-              : null,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12)),
-                  child: stream.icon.isEmpty
-                      ? const _StreamPlaceholder()
-                      : Image.network(
-                          stream.icon,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              const _StreamPlaceholder(),
-                          loadingBuilder: (_, child, p) =>
-                              p == null ? child : const _StreamPlaceholder(),
+    return ListenableBuilder(
+      listenable: ctrl,
+      builder: (_, _) {
+        final health =
+            stream.kind == 'live' ? ctrl.healthFor(stream.streamId) : null;
+        final card = Material(
+          color: Colors.transparent,
+          child: Ink(
+            decoration: BoxDecoration(
+              color: health == false
+                  ? const Color(0xFFEF4444).withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _borderColor(health)),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: onTap,
+              onLongPress: stream.kind == 'live'
+                  ? () => _showEpgSheet(context)
+                  : null,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12)),
+                          child: stream.icon.isEmpty
+                              ? const _StreamPlaceholder()
+                              : Image.network(
+                                  stream.icon,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) =>
+                                      const _StreamPlaceholder(),
+                                  loadingBuilder: (_, child, p) => p == null
+                                      ? child
+                                      : const _StreamPlaceholder(),
+                                ),
                         ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Tooltip(
-                  message: stream.name,
-                  waitDuration: const Duration(milliseconds: 600),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 220),
-                      child: Text(
-                        stream.name,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        softWrap: true,
-                        style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 12,
-                            height: 1.15,
-                            fontWeight: FontWeight.w500),
+                        if (health != null)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: health
+                                    ? const Color(0xFF22C55E)
+                                    : const Color(0xFFEF4444),
+                                border: Border.all(
+                                    color: Colors.black54, width: 1),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Tooltip(
+                      message: stream.name,
+                      waitDuration: const Duration(milliseconds: 600),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 220),
+                          child: Text(
+                            stream.name,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: true,
+                            style: GoogleFonts.poppins(
+                                color: health == false
+                                    ? Colors.white54
+                                    : Colors.white,
+                                fontSize: 12,
+                                height: 1.15,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  if (stream.kind == 'live')
+                    _EpgNowFooter(stream: stream, ctrl: ctrl),
+                ],
               ),
-              if (stream.kind == 'live') _EpgNowFooter(stream: stream, ctrl: ctrl),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+
+        if (stream.kind != 'live') return card;
+
+        return VisibilityDetector(
+          key: Key('live-${stream.streamId}'),
+          onVisibilityChanged: (info) {
+            if (info.visibleFraction > 0.15) {
+              ctrl.lazyCheckStream(stream);
+            }
+          },
+          child: card,
+        );
+      },
     );
   }
 

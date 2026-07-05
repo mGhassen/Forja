@@ -417,6 +417,9 @@ class IptvAliveChecker {
     if (isCancelled?.call() != true) await onDone();
   }
 
+  /// Lightweight single-stream probe for lazy viewport checks.
+  static Future<bool> checkOne(String url) => _isAlive(url);
+
   static Future<bool> _isAlive(String url) async {
     final client = http.Client();
     try {

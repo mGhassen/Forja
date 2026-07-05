@@ -100,6 +100,12 @@ class IptvController extends ChangeNotifier {
   int? aliveCheckedAt;
   bool _aliveCancel = false;
 
+  /// Per-stream health for live tiles: true=alive, false=dead, absent=unknown.
+  final Map<String, bool> streamHealth = {};
+  final Set<String> _healthInFlight = {};
+  final List<IptvStream> _healthQueue = [];
+  static const _maxLazyHealthChecks = 4;
+
   // ── EPG cache (live section only) ──
   /// Memoised `get_short_epg` results per stream for the current portal+section.
   /// Key = streamId. `null` value means "fetch in flight or finished with no
@@ -679,6 +685,9 @@ class IptvController extends ChangeNotifier {
     browserSearch = '';
     aliveStreamIds = const {};
     aliveCheckedAt = null;
+    streamHealth.clear();
+    _healthInFlight.clear();
+    _healthQueue.clear();
     _epgCache.clear();
     notifyListeners();
     try {
@@ -686,8 +695,11 @@ class IptvController extends ChangeNotifier {
       final streams = await IptvClient.streams(p.portal, section, '');
       categories = [const IptvCategory(id: '', name: 'All'), ...cats];
       browserAllStreams = streams;
-      // Default to first non-"All" category if available, else "All"
-      browserSelectedCategoryId = cats.isNotEmpty ? cats.first.id : '';
+      browserSelectedCategoryId = '';
+
+      if (streams.isEmpty && cats.isEmpty) {
+        error = 'Could not load channels from portal';
+      }
 
       if (section == IptvSection.live) {
         final key = IptvAliveStore.portalKey(p.portal);
@@ -696,6 +708,7 @@ class IptvController extends ChangeNotifier {
         if (snap != null) {
           aliveStreamIds = snap.aliveIds;
           aliveCheckedAt = snap.checkedAt;
+          _seedHealthFromCache();
         }
       } else {
         liveOnly = false;
@@ -707,6 +720,67 @@ class IptvController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void _seedHealthFromCache() {
+    for (final id in aliveStreamIds) {
+      streamHealth[id] = true;
+    }
+  }
+
+  /// Probe a single live stream when its card is visible — capped concurrency.
+  void lazyCheckStream(IptvStream s) {
+    final p = activePortal;
+    if (p == null || activeSection != IptvSection.live) return;
+    if (s.kind != 'live' || s.streamId.isEmpty) return;
+    if (streamHealth.containsKey(s.streamId)) return;
+    if (_healthInFlight.contains(s.streamId)) return;
+    if (_healthInFlight.length >= _maxLazyHealthChecks) {
+      if (!_healthQueue.any((x) => x.streamId == s.streamId)) {
+        _healthQueue.add(s);
+      }
+      return;
+    }
+    unawaited(_runLazyHealthCheck(s));
+  }
+
+  Future<void> _runLazyHealthCheck(IptvStream s) async {
+    final p = activePortal;
+    if (p == null) return;
+    _healthInFlight.add(s.streamId);
+    try {
+      final url = IptvClient.streamUrl(p.portal, s);
+      final ok = await IptvAliveChecker.checkOne(url);
+      streamHealth[s.streamId] = ok;
+      if (ok) {
+        aliveStreamIds = {...aliveStreamIds, s.streamId};
+      }
+      notifyListeners();
+    } catch (_) {
+      streamHealth[s.streamId] = false;
+      notifyListeners();
+    } finally {
+      _healthInFlight.remove(s.streamId);
+      _drainHealthQueue();
+    }
+  }
+
+  void _drainHealthQueue() {
+    while (_healthQueue.isNotEmpty &&
+        _healthInFlight.length < _maxLazyHealthChecks) {
+      final next = _healthQueue.removeAt(0);
+      if (!streamHealth.containsKey(next.streamId)) {
+        unawaited(_runLazyHealthCheck(next));
+      }
+    }
+  }
+
+  void markStreamDead(String streamId) {
+    if (streamId.isEmpty) return;
+    streamHealth[streamId] = false;
+    notifyListeners();
+  }
+
+  bool? healthFor(String streamId) => streamHealth[streamId];
 
   void selectBrowserCategory(String id) {
     browserSelectedCategoryId = id;
@@ -754,6 +828,7 @@ class IptvController extends ChangeNotifier {
       streams: entries,
       onResult: (id, alive) async {
         if (alive) aliveSet.add(id);
+        streamHealth[id] = alive;
       },
       onProgress: (prog) async {
         aliveChecked = prog.checked;
@@ -794,6 +869,9 @@ class IptvController extends ChangeNotifier {
     await IptvAliveStore.clear(IptvAliveStore.portalKey(p.portal));
     aliveStreamIds = const {};
     aliveCheckedAt = null;
+    streamHealth.clear();
+    _healthInFlight.clear();
+    _healthQueue.clear();
     notifyListeners();
     await startAliveCheck(force: true);
   }
