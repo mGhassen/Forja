@@ -1,0 +1,42 @@
+use serde::Serialize;
+use std::time::Duration;
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct HttpResponse {
+    pub status: u16,
+    pub body: String,
+}
+
+pub fn fetch_get(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {
+    let url = url.trim();
+    if url.is_empty() || !url.starts_with("http") {
+        return Err("Invalid URL".into());
+    }
+    let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
+    rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(timeout_secs.max(1)))
+            .redirect(reqwest::redirect::Policy::limited(8))
+            .build()
+            .map_err(|e| e.to_string())?;
+        let resp = client.get(url).send().await.map_err(|e| e.to_string())?;
+        let status = resp.status().as_u16();
+        let body = resp.text().await.map_err(|e| e.to_string())?;
+        Ok(HttpResponse { status, body })
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_empty_url() {
+        assert!(fetch_get("", 5).is_err());
+    }
+
+    #[test]
+    fn rejects_non_http_url() {
+        assert!(fetch_get("ftp://example.com", 5).is_err());
+    }
+}

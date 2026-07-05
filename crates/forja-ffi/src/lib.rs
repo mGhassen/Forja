@@ -5,7 +5,10 @@ use forja_iptv_core::pastesh;
 use forja_proxy::LocalProxy;
 use forja_scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html};
 use forja_stream_core::list_providers;
-use forja_stremio_core::{build_resource_url, parse_manifest, parse_streams, parse_subtitles};
+use forja_stremio_core::{
+    build_resource_url, fetch_get, parse_catalog, parse_manifest, parse_meta, parse_streams,
+    parse_subtitles,
+};
 use forja_torrent::TorrentEngine;
 use forja_utils::{
     episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter,
@@ -114,6 +117,27 @@ fn parse_stremio_subtitles_json(json: String) -> String {
     }
 }
 
+fn parse_stremio_catalog_json(json: String) -> String {
+    match parse_catalog(&json) {
+        Ok(v) => serde_json::to_string(&v).unwrap_or_else(|_| "{}".into()),
+        Err(e) => serde_json::json!({ "error": e.to_string() }).to_string(),
+    }
+}
+
+fn parse_stremio_meta_json(json: String) -> String {
+    match parse_meta(&json) {
+        Ok(v) => serde_json::to_string(&v).unwrap_or_else(|_| "{}".into()),
+        Err(e) => serde_json::json!({ "error": e.to_string() }).to_string(),
+    }
+}
+
+fn stremio_http_get_json(url: String, timeout_secs: u64) -> String {
+    match fetch_get(&url, timeout_secs) {
+        Ok(resp) => serde_json::to_string(&resp).unwrap_or_else(|_| "{}".into()),
+        Err(e) => serde_json::json!({ "error": e.to_string() }).to_string(),
+    }
+}
+
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {
     build_resource_url(&addon_url, &resource_path)
 }
@@ -189,12 +213,12 @@ fn torrent_start(magnet: String) -> bool {
     TORRENT
         .lock()
         .ok()
-        .and_then(|mut e| e.start(&magnet).ok())
+        .and_then(|e| e.start(&magnet).ok())
         .is_some()
 }
 
 fn torrent_stop() {
-    if let Ok(mut e) = TORRENT.lock() {
+    if let Ok(e) = TORRENT.lock() {
         e.stop();
     }
 }
@@ -204,6 +228,13 @@ fn torrent_is_running() -> bool {
         .lock()
         .map(|e| e.is_running())
         .unwrap_or(false)
+}
+
+fn torrent_status_json() -> String {
+    TORRENT
+        .lock()
+        .map(|e| e.status_json())
+        .unwrap_or_else(|_| "null".into())
 }
 
 fn proxy_start(preferred_port: u16) -> i32 {

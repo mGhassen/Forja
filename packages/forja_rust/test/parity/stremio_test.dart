@@ -61,4 +61,26 @@ void main() {
     final streams = parsed['streams'] as List<dynamic>;
     expect(streams.length, 1);
   });
+
+  test('parseStremioCatalogJson via FFI', () {
+    const body = '{"metas":[{"id":"tt123","name":"Fight Club","type":"movie"}]}';
+    final json = ForjaRust.instance.parseStremioCatalogJson(body);
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    final metas = parsed['metas'] as List<dynamic>;
+    expect(metas.length, 1);
+  });
+
+  test('parseStremioMetaJson via FFI', () {
+    const body = '{"meta":{"id":"tt123","name":"Fight Club","type":"movie"}}';
+    final json = ForjaRust.instance.parseStremioMetaJson(body);
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    final meta = parsed['meta'] as Map<String, dynamic>;
+    expect(meta['name'], 'Fight Club');
+  });
+
+  test('stremioHttpGet rejects invalid URL', () {
+    final json = ForjaRust.instance.stremioHttpGet('not-a-url');
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    expect(parsed.containsKey('error'), isTrue);
+  });
 }

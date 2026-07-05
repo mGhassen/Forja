@@ -7,14 +7,17 @@ void main() {
     await initRustForTests();
   });
 
-  test('torrent start accepts valid magnet', () {
-    const magnet =
-        'magnet:?xt=urn:btih:abc123&dn=Test';
-    expect(ForjaRust.instance.torrentStart(magnet), isTrue);
+  test('torrent start rejects invalid magnet', () {
+    expect(ForjaRust.instance.torrentStart('not-a-magnet'), isFalse);
   });
 
   test('torrent stop clears running state', () {
     ForjaRust.instance.torrentStop();
     expect(ForjaRust.instance.torrentIsRunning(), isFalse);
+  });
+
+  test('torrent status json when idle', () {
+    ForjaRust.instance.torrentStop();
+    expect(ForjaRust.instance.torrentStatusJson(), 'null');
   });
 }

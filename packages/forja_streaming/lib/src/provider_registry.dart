@@ -1,6 +1,8 @@
 import 'package:forja_core/forja_core.dart';
 import 'package:forja_rust/forja_rust.dart';
 
+import 'provider_fallback_urls.dart';
+
 enum ProviderKind { template, extractor, api }
 
 class ResolveContext {
@@ -71,10 +73,10 @@ class ProviderRegistry {
       kind: ProviderKind.template,
       movieUrl: (id) =>
           ForjaEngine.buildMovieUrl('vidnest', id) ??
-          'https://vidnest.fun/movie/$id',
+          ProviderFallbackUrls.vidnestMovie(id),
       tvUrl: (id, s, e) =>
           ForjaEngine.buildTvUrl('vidnest', id, s, e) ??
-          'https://vidnest.fun/tv/$id/$s/$e',
+          ProviderFallbackUrls.vidnestTv(id, s, e),
     ),
     StreamProviderDef(
       id: 'vidlink',
@@ -82,10 +84,10 @@ class ProviderRegistry {
       kind: ProviderKind.template,
       movieUrl: (id) =>
           ForjaEngine.buildMovieUrl('vidlink', id) ??
-          'https://vidlink.pro/movie/$id',
+          ProviderFallbackUrls.vidlinkMovie(id),
       tvUrl: (id, s, e) =>
           ForjaEngine.buildTvUrl('vidlink', id, s, e) ??
-          'https://vidlink.pro/tv/$id/$s/$e',
+          ProviderFallbackUrls.vidlinkTv(id, s, e),
     ),
     StreamProviderDef(
       id: 'vixsrc',
@@ -93,10 +95,10 @@ class ProviderRegistry {
       kind: ProviderKind.template,
       movieUrl: (id) =>
           ForjaEngine.buildMovieUrl('vixsrc', id) ??
-          'https://vixsrc.to/movie/$id/',
+          ProviderFallbackUrls.vixsrcMovie(id),
       tvUrl: (id, s, e) =>
           ForjaEngine.buildTvUrl('vixsrc', id, s, e) ??
-          'https://vixsrc.to/tv/$id/$s/$e/',
+          ProviderFallbackUrls.vixsrcTv(id, s, e),
     ),
     StreamProviderDef(
       id: 'vidzee',
@@ -104,10 +106,10 @@ class ProviderRegistry {
       kind: ProviderKind.template,
       movieUrl: (id) =>
           ForjaEngine.buildMovieUrl('vidzee', id) ??
-          'https://vidzee.wtf/movie/$id',
+          ProviderFallbackUrls.vidzeeMovie(id),
       tvUrl: (id, s, e) =>
           ForjaEngine.buildTvUrl('vidzee', id, s, e) ??
-          'https://vidzee.wtf/tv/$id/$s/$e',
+          ProviderFallbackUrls.vidzeeTv(id, s, e),
     ),
     StreamProviderDef(
       id: 'vidrock',
@@ -115,10 +117,10 @@ class ProviderRegistry {
       kind: ProviderKind.template,
       movieUrl: (id) =>
           ForjaEngine.buildMovieUrl('vidrock', id) ??
-          'https://vidrock.net/movie/$id',
+          ProviderFallbackUrls.vidrockMovie(id),
       tvUrl: (id, s, e) =>
           ForjaEngine.buildTvUrl('vidrock', id, s, e) ??
-          'https://vidrock.net/tv/$id/$s/$e',
+          ProviderFallbackUrls.vidrockTv(id, s, e),
     ),
     StreamProviderDef(
       id: 'service111477',

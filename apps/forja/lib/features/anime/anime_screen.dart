@@ -182,9 +182,18 @@ class _AnimeScreenState extends State<AnimeScreen>
     }
   }
 
-  Future<List<AnimeCard>> _loadMood(String id) {
-    final mood = _moods.firstWhere((m) => m.id == id, orElse: () => _moods[0]);
-    return _service.browse(genre: mood.genre, sort: 'TRENDING_DESC', perPage: 20);
+  Future<List<AnimeCard>> _loadMood(String id) async {
+    try {
+      final mood = _moods.firstWhere((m) => m.id == id, orElse: () => _moods[0]);
+      return await _service.browse(
+        genre: mood.genre,
+        sort: 'TRENDING_DESC',
+        perPage: 20,
+      );
+    } catch (e) {
+      debugPrint('[AnimeScreen] mood load failed: $e');
+      return const [];
+    }
   }
 
   void _selectMood(String id) {

@@ -12,6 +12,12 @@ abstract final class StremioServiceBackend {
   static String Function(String json)? parseManifestJson;
   static List<dynamic> Function(String json)? parseStreamsJson;
   static List<Map<String, dynamic>> Function(String json)? parseSubtitlesJson;
+  static List<Map<String, dynamic>> Function(String json)? parseCatalogJson;
+  static Map<String, dynamic>? Function(String json)? parseMetaJson;
+  static Future<({int statusCode, String body})> Function(
+    Uri uri, {
+    required Duration timeout,
+  })? httpGet;
 }
 
 class StremioService {
@@ -28,10 +34,19 @@ class StremioService {
     Object? lastError;
     for (var attempt = 0; attempt <= retries; attempt++) {
       try {
-        final response = await http.get(uri).timeout(timeout);
-        if (response.statusCode == 200) return response;
-        lastResponse = response;
-        if (response.statusCode == 404) break; // Don't retry 404s
+        final rustHttp = StremioServiceBackend.httpGet;
+        if (rustHttp != null) {
+          final result = await rustHttp(uri, timeout: timeout);
+          final response = http.Response(result.body, result.statusCode);
+          if (response.statusCode == 200) return response;
+          lastResponse = response;
+          if (response.statusCode == 404) break;
+        } else {
+          final response = await http.get(uri).timeout(timeout);
+          if (response.statusCode == 200) return response;
+          lastResponse = response;
+          if (response.statusCode == 404) break; // Don't retry 404s
+        }
       } catch (e) {
         lastError = e;
       }
@@ -354,6 +369,10 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
+        final parseBackend = StremioServiceBackend.parseCatalogJson;
+        if (parseBackend != null) {
+          return parseBackend(response.body);
+        }
         final data = json.decode(response.body);
         final metas = data['metas'] as List? ?? [];
         return metas.cast<Map<String, dynamic>>();
@@ -382,6 +401,10 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
+        final parseBackend = StremioServiceBackend.parseMetaJson;
+        if (parseBackend != null) {
+          return parseBackend(response.body);
+        }
         final data = json.decode(response.body);
         final meta = data['meta'] as Map<String, dynamic>?;
         

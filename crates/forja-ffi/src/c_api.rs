@@ -182,6 +182,24 @@ pub unsafe extern "C" fn forja_parse_stremio_subtitles_json(json: *const c_char)
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_parse_stremio_catalog_json(json: *const c_char) -> *mut c_char {
+    to_c_string(crate::parse_stremio_catalog_json(from_c_str(json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_parse_stremio_meta_json(json: *const c_char) -> *mut c_char {
+    to_c_string(crate::parse_stremio_meta_json(from_c_str(json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_stremio_http_get_json(
+    url: *const c_char,
+    timeout_secs: u64,
+) -> *mut c_char {
+    to_c_string(crate::stremio_http_get_json(from_c_str(url), timeout_secs))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_parse_knaben_html_json(html: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_knaben_html_json(from_c_str(html)))
 }
@@ -305,6 +323,11 @@ pub extern "C" fn forja_torrent_stop() {
 #[no_mangle]
 pub extern "C" fn forja_torrent_is_running() -> bool {
     crate::torrent_is_running()
+}
+
+#[no_mangle]
+pub extern "C" fn forja_torrent_status_json() -> *mut c_char {
+    to_c_string(crate::torrent_status_json())
 }
 
 #[no_mangle]

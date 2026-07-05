@@ -7,6 +7,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/pastesh_decryptor.dart';
 import 'package:forja_rust/forja_rust.dart';
 import 'package:forja_scrapers/scrapers/scraper_parse.dart';
+import 'package:forja_streaming/forja_streaming.dart';
 import 'package:forja_webstreamr/webstreamr/webstreamr_parse.dart';
 import 'package:forja_webstreamr/webstreamr/utils/unpacker.dart';
 
@@ -67,6 +68,43 @@ void installRustAppDelegates() {
         .whereType<Map>()
         .map((s) => Map<String, dynamic>.from(s))
         .toList();
+  };
+
+  StremioServiceBackend.parseCatalogJson = (json) {
+    final parsed =
+        jsonDecode(ForjaRust.instance.parseStremioCatalogJson(json))
+            as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return const [];
+    final metas = parsed['metas'];
+    if (metas is! List) return const [];
+    return metas
+        .whereType<Map>()
+        .map((m) => Map<String, dynamic>.from(m))
+        .toList();
+  };
+
+  StremioServiceBackend.parseMetaJson = (json) {
+    final parsed = jsonDecode(ForjaRust.instance.parseStremioMetaJson(json))
+        as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return null;
+    final meta = parsed['meta'];
+    if (meta is! Map) return null;
+    return Map<String, dynamic>.from(meta);
+  };
+
+  StremioServiceBackend.httpGet = (uri, {required timeout}) async {
+    final raw = ForjaRust.instance.stremioHttpGet(
+      uri.toString(),
+      timeoutSecs: timeout.inSeconds,
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) {
+      throw Exception(parsed['error'] as String? ?? 'HTTP error');
+    }
+    return (
+      statusCode: parsed['status'] as int? ?? 0,
+      body: parsed['body'] as String? ?? '',
+    );
   };
 
   ScraperParseBackend.parseKnaben = (html) =>
@@ -140,4 +178,10 @@ void installRustAppDelegates() {
 
   KissKhDecryptBackend.decryptBody = (body, sourceUrl) =>
       ForjaRust.instance.decryptKisskhBody(body, sourceUrl: sourceUrl);
+
+  TorrentEngineBackend.start =
+      (magnet) => ForjaRust.instance.torrentStart(magnet);
+  TorrentEngineBackend.stop = ForjaRust.instance.torrentStop;
+  TorrentEngineBackend.isRunning = ForjaRust.instance.torrentIsRunning;
+  TorrentEngineBackend.statusJson = ForjaRust.instance.torrentStatusJson;
 }

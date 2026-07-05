@@ -1,4 +1,8 @@
+mod http;
+
 use serde::{Deserialize, Serialize};
+
+pub use http::{fetch_get, HttpResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct StremioManifest {
@@ -23,6 +27,16 @@ pub struct StremioSubtitleResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StremioCatalogResponse {
+    pub metas: Option<Vec<serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StremioMetaResponse {
+    pub meta: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ParsedAddonUrl {
     pub base_url: String,
     pub query_params: Option<String>,
@@ -37,6 +51,14 @@ pub fn parse_streams(json: &str) -> Result<StremioStreamResponse, serde_json::Er
 }
 
 pub fn parse_subtitles(json: &str) -> Result<StremioSubtitleResponse, serde_json::Error> {
+    serde_json::from_str(json)
+}
+
+pub fn parse_catalog(json: &str) -> Result<StremioCatalogResponse, serde_json::Error> {
+    serde_json::from_str(json)
+}
+
+pub fn parse_meta(json: &str) -> Result<StremioMetaResponse, serde_json::Error> {
     serde_json::from_str(json)
 }
 

@@ -165,6 +165,23 @@ class ForjaRust {
         return _readString(_native.forja_parse_stremio_subtitles_json(ptr));
       });
 
+  String parseStremioCatalogJson(String json) => using((arena) {
+        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_parse_stremio_catalog_json(ptr));
+      });
+
+  String parseStremioMetaJson(String json) => using((arena) {
+        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_parse_stremio_meta_json(ptr));
+      });
+
+  String stremioHttpGet(String url, {int timeoutSecs = 15}) => using((arena) {
+        final ptr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.forja_stremio_http_get_json(ptr, timeoutSecs),
+        );
+      });
+
   String parseKnabenHtmlJson(String html) => using((arena) {
         final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.forja_parse_knaben_html_json(ptr));
@@ -290,6 +307,9 @@ class ForjaRust {
   void torrentStop() => _native.forja_torrent_stop();
 
   bool torrentIsRunning() => _native.forja_torrent_is_running();
+
+  String torrentStatusJson() =>
+      _readString(_native.forja_torrent_status_json());
 
   int proxyStart(int preferredPort) => _native.forja_proxy_start(preferredPort);
 
@@ -419,6 +439,21 @@ final class _ForjaNative {
               'forja_parse_stremio_subtitles_json',
             )
             .asFunction(),
+        forja_parse_stremio_catalog_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'forja_parse_stremio_catalog_json',
+            )
+            .asFunction(),
+        forja_parse_stremio_meta_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'forja_parse_stremio_meta_json',
+            )
+            .asFunction(),
+        forja_stremio_http_get_json = lib
+            .lookup<ffi.NativeFunction<_StremioHttpGetNative>>(
+              'forja_stremio_http_get_json',
+            )
+            .asFunction(),
         forja_parse_knaben_html_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'forja_parse_knaben_html_json',
@@ -485,6 +520,11 @@ final class _ForjaNative {
         forja_torrent_is_running = lib
             .lookup<ffi.NativeFunction<_TorrentIsRunningNative>>(
               'forja_torrent_is_running',
+            )
+            .asFunction(),
+        forja_torrent_status_json = lib
+            .lookup<ffi.NativeFunction<_VersionNative>>(
+              'forja_torrent_status_json',
             )
             .asFunction(),
         forja_proxy_start = lib
@@ -557,6 +597,12 @@ final class _ForjaNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_parse_stremio_subtitles_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_parse_stremio_catalog_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_parse_stremio_meta_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
+      forja_stremio_http_get_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_parse_knaben_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_parse_tpb_html_json;
@@ -602,6 +648,7 @@ final class _ForjaNative {
   final bool Function(ffi.Pointer<ffi.Char>) forja_torrent_start;
   final void Function() forja_torrent_stop;
   final bool Function() forja_torrent_is_running;
+  final ffi.Pointer<ffi.Char> Function() forja_torrent_status_json;
   final int Function(int) forja_proxy_start;
   final void Function() forja_proxy_stop;
   final int Function() forja_proxy_port;
@@ -621,6 +668,10 @@ typedef _EpisodeMatchesNative = ffi.Bool Function(
 );
 typedef _StringInOutNative =
     ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>);
+typedef _StremioHttpGetNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Uint64,
+);
 typedef _BuildMovieUrlNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
   ffi.Int64,
