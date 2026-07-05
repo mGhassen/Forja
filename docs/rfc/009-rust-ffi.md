@@ -1,7 +1,7 @@
 # RFC-009: Rust core FFI
 
 **Version:** v1.0 engine phase (web/WASM deferred to v3.0)  
-**Status:** **Phase 1 complete** — B2 (mobile librqbit) deferred to [Phase 2](../migration/02-kotlin-compose.md)
+**Status:** **Phase 1 complete** — B2 (mobile librqbit) → [Phase 2](../migration/02-rust-engine-complete.md)
 
 ## Summary
 
@@ -68,7 +68,7 @@ Copies dylib to `apps/forja/macos/Runner/Frameworks/` on macOS.
 | 6 | scrapers | done |
 | 7 | torrent + proxy | done (desktop librqbit; mobile libtorrent) |
 | 8 | integration | done |
-| 9 | cleanup | done (B2 deferred to Phase 2) |
+| 9 | cleanup | Phase 2 (B2 + drop libtorrent) |
 
 ## Tests
 
@@ -83,8 +83,8 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 
 ## Non-goals (Phase 1 — complete)
 
-- KMP / Compose UI → [Phase 2](../migration/02-kotlin-compose.md)
-- WASM build → [Phase 4](../migration/04-web-client.md)
+- KMP / Compose UI → [Phase 3](../migration/03-kotlin-compose.md)
+- WASM build → [Phase 5](../migration/05-web-client.md)
 - Replacing WebView extractors with Rust
 - Full libtorrent in Rust (mobile uses libtorrent until B2)
 
@@ -109,7 +109,7 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 - [x] Full parity suite (core paths; lulustream/fastream stream-fetch documented gap)
 - [ ] WASM smoke test (v3.0)
 - [x] Step 9: runtime Dart engine removed from `lib/` (parity baselines in `test/` only)
-- [ ] Drop `libtorrent_flutter` (B2) — [Phase 2 P2-21](../migration/02-kotlin-compose.md#p2-21--mobile-torrent-b2)
+- [ ] Drop `libtorrent_flutter` (B2) — [Phase 2 P2-20](../migration/02-rust-engine-complete.md#drop-libtorrent--rust-only-torrent)
 
 ## Related
 

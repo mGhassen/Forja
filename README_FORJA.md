@@ -21,7 +21,7 @@ packages/                Engine room only (7 packages)
   scrapers/              Torrent index scrapers
   rust/                  Dart FFI bindings to Rust engine
 docs/rfc/               RFC index + v1.0–v3.0 release specs
-docs/migration/         Global migration (Phase 1–4); start at README.md
+docs/migration/         Global migration (Phases 1–5); start at README.md
 ```
 
 ## Run (macOS)

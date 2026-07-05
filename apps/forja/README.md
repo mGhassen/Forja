@@ -1,6 +1,6 @@
 # Forja App
 
-Main Flutter product — **transitional UI** until [Phase 2 Compose](../../docs/migration/02-kotlin-compose.md) ships. See [README_FORJA.md](../../README_FORJA.md) for monorepo layout.
+Main Flutter product — **transitional UI only**. Engine completion: [Phase 2](../../docs/migration/02-rust-engine-complete.md). Compose UI: [Phase 3](../../docs/migration/03-kotlin-compose.md).
 
 ## Run (desktop)
 

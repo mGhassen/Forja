@@ -8,9 +8,10 @@ Design docs for Forja. Topic RFCs (001–010) define **what**; version RFCs (011
 |-------|-----|--------|
 | Index | [docs/migration/README.md](../migration/README.md) | — |
 | 1 | [01-rust-engine.md](../migration/01-rust-engine.md) | **Complete** |
-| 2 | [02-kotlin-compose.md](../migration/02-kotlin-compose.md) | Next |
-| 3 | [03-delete-flutter.md](../migration/03-delete-flutter.md) | Future |
-| 4 | [04-web-client.md](../migration/04-web-client.md) | Parallel |
+| 2 | [02-rust-engine-complete.md](../migration/02-rust-engine-complete.md) | **Next** |
+| 3 | [03-kotlin-compose.md](../migration/03-kotlin-compose.md) | Future |
+| 4 | [04-delete-flutter.md](../migration/04-delete-flutter.md) | Future |
+| 5 | [05-web-client.md](../migration/05-web-client.md) | Parallel |
 
 ## Version roadmap
 

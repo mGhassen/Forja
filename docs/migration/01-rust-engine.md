@@ -2,7 +2,7 @@
 
 **Status:** Complete (2026-07-05)
 **Spec:** [RFC-009](../rfc/009-rust-ffi.md)
-**Next phase:** [Phase 2 — Kotlin Compose](./02-kotlin-compose.md)
+**Next phase:** [Phase 2 — Rust engine complete](./02-rust-engine-complete.md)
 **Migration index:** [README.md](./README.md)
 
 ---
@@ -12,7 +12,7 @@
 
 **Goal:** same Forja experience on every platform. Rust is the engine everywhere Flutter runs natively; no runtime Dart parser fallback in production.
 
-**Phase 1 complete.** Steps 0–9 done except B2 tail (deferred to [Phase 2 P2-21](./02-kotlin-compose.md#p2-21--mobile-torrent-b2)).
+**Phase 1 complete.** Steps 0–9 done except B2 tail (deferred to [Phase 2](./02-rust-engine-complete.md) (B2 · P2-10)).
 
 ### Three columns — read every table this way
 
@@ -119,20 +119,20 @@ cd apps/forja && flutter test integration_test/   # or: melos run rust:integrati
 
 ### Next work
 
-Phase 2 — [Kotlin Compose](./02-kotlin-compose.md)
+Phase 2 — [Rust engine complete](./02-rust-engine-complete.md)
 
 ---
 
 
 ## Blockers
 
-**Retrospective.** Phase 1 complete; B2 deferred to Phase 2.
+**Retrospective.** Phase 1 complete; B2 + libtorrent drop → Phase 2.
 
 ## Overview
 
 | Status | Count | IDs |
 |--------|------:|-----|
-| Deferred to Phase 2 | 1 | B2 |
+| Phase 2 (engine complete) | 1 | B2 |
 | Done / by design | 8 | B1 · B3 · B4 · B5 · B6 · B7 · B8 · B9 |
 
 **Step 9 unlock:** 2 / 3 items done (see [Step 9 map](#step-9--open-work-mapped-to-blockers)).
@@ -179,7 +179,7 @@ Release builds bundle Rust parsers (B7 done)
  └── debug without build_rust_mobile.sh → engine unavailable (expected)
 ```
 
-**B2 unlock:** [Phase 2 P2-21](./02-kotlin-compose.md#p2-21--mobile-torrent-b2) — mobile magnet via Rust FFI before Flutter delete.
+**B2 unlock:** [Phase 2 P2-10](./02-rust-engine-complete.md#b2--mobile-librqbit-critical-path) — mobile magnet via Rust FFI before Flutter delete.
 
 ---
 
@@ -326,7 +326,7 @@ Do **not** track these as migration blockers:
 | Webstreamr fetcher / registry / page HTTP | Orchestration stays Dart (same as scraper HTTP) |
 | HLS `/hls-proxy` | Out of Rust scope; shelf rewrite in Dart |
 | WASM / web client | RFC-014 v3.0 |
-| KMP / Compose | [Phase 2](./02-kotlin-compose.md) |
+| KMP / Compose | [Phase 3](./03-kotlin-compose.md) |
 | Parity baselines in `test/parity/dart_baseline/` | Test-only; not shipped |
 
 **Known intentional gaps (not bugs):**
@@ -745,8 +745,8 @@ Manual: boot log `Rust engine v0.1.0` on desktop + mobile after `build_rust_mobi
 ## Related
 
 - [Migration index](./README.md)
-- [Phase 2 — Kotlin Compose](./02-kotlin-compose.md)
+- [Phase 2 — Rust engine complete](./02-rust-engine-complete.md)
 - [RFC-009](../rfc/009-rust-ffi.md)
 - [crates/README.md](../../crates/README.md)
 
-Phase 1 is frozen except factual corrections. Update [02-kotlin-compose.md](./02-kotlin-compose.md) for active work.
+Phase 1 is frozen except factual corrections. Update [02-rust-engine-complete.md](./02-rust-engine-complete.md) for active work.
