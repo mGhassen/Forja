@@ -40,6 +40,12 @@ When working on the Rust engine migration:
 - `ForjaEngine._installDelegates()` sets hooks at init.
 - Call site checks `ForjaEngine.isReady` or uses `??` Dart fallback.
 
+## Doc status rules
+
+- Feature matrix **Rust** / **App** must match the step detail tables — no stale `partial`.
+- **✅** when every module row in that step is ✅/✅.
+- HTTP fetch, page fetch, and registry staying in Dart is expected; does not block ✅ (see Step 5 / Step 6).
+
 ## Ask user to continue
 
 After documenting + testing a step, stop and ask which step to tackle next from the progress doc.

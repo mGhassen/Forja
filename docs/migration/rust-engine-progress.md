@@ -11,7 +11,7 @@
 
 **Goal:** move heavy logic from Dart → Rust. Flutter stays the UI. Old Dart code stays as fallback until each piece is proven, then deleted (Step 9).
 
-**Where we are:** Rust infrastructure is mostly built. About half of user-facing features call Rust at runtime. Nothing has been deleted from Dart yet.
+**Where we are:** Steps 0–7 done (Rust + app wire-up). Step 9 cleanup in progress. Dart fallbacks kept until Rust-off mode is dropped.
 
 ### Three columns — read every table this way
 
@@ -23,14 +23,16 @@
 
 Rust can be **yes** while App is **no** — code exists but the app still uses Dart.
 
+**Done = ✅** when every module row in the step detail table is ✅/✅. HTTP fetch, page fetch, and registry staying in Dart is normal — same as scrapers — and does **not** block ✅.
+
 ### Migration phases
 
 | Phase | What | Status |
 |-------|------|--------|
-| **A** | Rust crates in `crates/` | mostly done |
-| **B** | Dart FFI bridge `packages/forja_rust/` + parity tests | partial |
-| **C** | Flutter call sites wired in the app | partial |
-| **D** | Delete Dart duplicates | partial |
+| **A** | Rust crates in `crates/` | done |
+| **B** | Dart FFI bridge `packages/forja_rust/` + parity tests | done |
+| **C** | Flutter call sites wired in the app | done |
+| **D** | Delete Dart duplicates | in progress |
 
 ### Feature matrix
 
@@ -40,12 +42,12 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **1 — Utils** (episode match, HLS, torrent filter) | ✅ | ✅ | all 5 modules wired |
 | **2 — Stream URLs** | ✅ | ✅ | all 5 template providers wired |
 | **3 — IPTV** | ✅ | ✅ | M3U, paste.sh, EPG decode, Xtream JSON parse |
-| **4 — Stremio** | partial | partial | URL helpers + JSON parse + HTTP fetch wired |
-| **5 — Webstreamr** | 23/23 extractors · 21/21 sources | partial | all parse logic in Rust; fetch/registry Dart |
+| **4 — Stremio** | ✅ | ✅ | URL helpers + JSON parse + HTTP fetch wired |
+| **5 — Webstreamr** | ✅ | ✅ | 23/23 extractors · 21/21 sources wired; fetch/registry stays Dart |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
 | **7 — Torrent + proxy** | ✅ librqbit | ✅ | Rust torrent playback when engine on · libtorrent fallback |
 | **8 — Flutter integration** | N/A | N/A | `ForjaEngine.init()`, delegates, dylib bundling |
-| **9 — Cleanup** | — | partial | reference fallbacks incl. scrapers, magnet player |
+| **9 — Cleanup** | — | partial | reference fallbacks incl. IPTV/pastesh, scrapers, magnet player |
 
 ### What runs in Rust today
 
@@ -56,13 +58,14 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 - Utils: episode file matching, HLS master parse, torrent title filter, JS unpack, KissKH subtitle decrypt
 - Stremio: URL building + manifest/stream/catalog/meta HTTP + JSON parse
 - Scrapers: Knaben / TPB / Uindex HTML parse + dedup
-- Webstreamr: 23 extractors + 21 sources (all parse helpers wired; HTTP fetch + registry still Dart)
+- Webstreamr: 23 extractors + 21 sources (parse/extract via Rust when engine on)
 - Local proxy: `/proxy?url=` + Range streaming (Rust backend; shelf forwards when engine on)
 - Torrent playback: magnet → HTTP stream via librqbit (Rust when engine on)
 
-### Still 100% Dart
+### Stays Dart (by design)
 
-- Webstreamr: fetcher, registry, search/redirect HTTP orchestration
+- Webstreamr: fetcher, registry, search/redirect orchestration (page HTTP)
+- Scrapers: search HTTP fetch
 - HLS proxy (`/hls-proxy`: m3u8 rewrite + PNG strip)
 - Torrent playback when Rust engine off (`libtorrent_flutter`)
 
@@ -88,7 +91,6 @@ cd packages/forja_rust && flutter test
 ### Next work (priority order)
 
 1. Step 9 Dart fallback cleanup
-2. Stremio HTTP fetch in Rust (remaining duplicates)
 
 ---
 
@@ -205,14 +207,14 @@ Manual: M3U import · CRLF playlist · paste.sh URL · Xtream EPG titles · Xtre
 Wire-up:
 
 - `m3u_parser.dart` → `ForjaEngine.parseM3uChannels`
-- `pastesh_decryptor.dart` → `PasteShDecryptorBackend`
-- `iptv_network.dart` → `IptvClientBackend` (decodeXtreamText, parseCategoriesJson, parseStreamsJson)
+- `pastesh_decryptor.dart` → `PasteShDecryptorBackend` · fallback `pastesh_decrypt_dart.dart`
+- `iptv_network.dart` → `IptvClientBackend` · fallback `iptv_dart_parse.dart`
 
 ---
 
 ## Step 4 — `forja-stremio-core`
 
-**Rust:** partial · **App:** partial (URL helpers + HTTP + JSON parse)
+**Rust:** ✅ · **App:** ✅
 
 | Module | Rust | App |
 |--------|:----:|:---:|
@@ -239,7 +241,7 @@ Wire-up: `StremioServiceBackend` in `stremio_service.dart`.
 
 ## Step 5 — `forja-webstreamr`
 
-**Rust:** 23/23 · **App:** partial (23 extractors wired via `WebstreamrParseBackend`)
+**Rust:** ✅ · **App:** ✅ (23/23 extractors · 21/21 sources; fetch/registry stays Dart)
 
 | Extractor | Rust | App |
 |-----------|:----:|:---:|
@@ -412,6 +414,7 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 - [x] M3U Dart parser moved to `packages/forja_rust/lib/src/reference/m3u_dart_parser.dart`
 - [x] Provider URL fallbacks centralized in `provider_fallback_urls.dart`
 - [x] Unpacker, KissKH, Stremio, torrent filter, scrapers moved to `packages/forja_rust/lib/src/reference/`
+- [x] IPTV Xtream parse + paste.sh decrypt moved to `iptv_dart_parse.dart`, `pastesh_decrypt_dart.dart`
 - [x] Magnet player uses `TorrentStreamService.listTorrentFiles` (no direct libtorrent)
 - [ ] Drop `libtorrent_flutter` once Rust torrent path is stable in production
 - [ ] Golden fixtures for every extractor
@@ -433,9 +436,9 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 
 After completing work:
 
-1. Update the **feature matrix** at the top (Rust / App columns).
+1. Update the **feature matrix** — must match step detail tables (see doc status rules in `.cursor/rules/rust-migration.mdc`).
 2. Update the step detail section.
-3. Update [RFC-009](../rfc/009-rust-ffi.md) acceptance checkboxes.
+3. Update [RFC-009](../rfc/009-rust-ffi.md) acceptance checkboxes if applicable.
 4. Run health check commands; note pass/fail in PR.
 
 See `.cursor/rules/rust-migration.mdc` for agent instructions.

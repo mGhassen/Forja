@@ -3,56 +3,53 @@ import 'dart:io';
 
 import '../helpers/rust_engine.dart';
 import 'package:forja_rust/forja_rust.dart';
+import 'package:forja_rust/src/reference/iptv_dart_parse.dart';
+import 'package:forja_rust/src/reference/pastesh_decrypt_dart.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-String _dartDecodeXtream(String s) {
-  if (s.isEmpty) return '';
-  try {
-    return utf8.decode(base64.decode(s), allowMalformed: true).trim();
-  } catch (_) {
-    return s;
-  }
-}
 
 void main() {
   setUpAll(() async {
     await initRustForTests();
   });
 
-  test('decodeXtreamText matches Dart base64 decode', () {
+  test('decodeXtreamText matches Dart reference', () {
     const plain = 'News at Ten';
     final b64 = base64.encode(utf8.encode(plain));
-    expect(ForjaRust.instance.decodeXtreamText(b64), _dartDecodeXtream(b64));
+    expect(ForjaRust.instance.decodeXtreamText(b64), IptvDartParse.decodeXtreamText(b64));
     expect(ForjaRust.instance.decodeXtreamText(b64), plain);
   });
 
   test('decodeXtreamText passes through plain text', () {
     const plain = 'Already plain';
-    expect(ForjaRust.instance.decodeXtreamText(plain), _dartDecodeXtream(plain));
+    expect(ForjaRust.instance.decodeXtreamText(plain), IptvDartParse.decodeXtreamText(plain));
   });
 
-  test('decryptPasteResponse returns empty for invalid input', () {
-    expect(ForjaRust.instance.decryptPasteResponse('bad', ''), '');
-    expect(ForjaRust.instance.decryptPasteResponse('https://paste.sh/x#k', ''), '');
+  test('decryptPasteResponse matches Dart reference for invalid input', () {
+    expect(ForjaRust.instance.decryptPasteResponse('bad', ''), PasteShDecryptDart.decryptRaw('bad', ''));
+    expect(ForjaRust.instance.decryptPasteResponse('https://paste.sh/x#k', ''), PasteShDecryptDart.decryptRaw('https://paste.sh/x#k', ''));
   });
 
   test('parseXtreamCategoriesJson golden', () {
     final json = File(
       '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/xtream_categories.json',
     ).readAsStringSync();
-    final out = jsonDecode(ForjaRust.instance.parseXtreamCategoriesJson(json)) as List;
-    expect(out.length, 2);
-    expect(out.first['name'], 'Sports');
+    final rustOut = jsonDecode(ForjaRust.instance.parseXtreamCategoriesJson(json)) as List;
+    final dartOut = IptvDartParse.parseCategoriesRows(json);
+    expect(rustOut.length, dartOut.length);
+    expect(rustOut.first['name'], dartOut.first['name']);
+    expect(rustOut.first['name'], 'Sports');
   });
 
   test('parseXtreamStreamsJson live golden', () {
     final json = File(
       '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/xtream_live_streams.json',
     ).readAsStringSync();
-    final out =
+    final rustOut =
         jsonDecode(ForjaRust.instance.parseXtreamStreamsJson(json, 'live')) as List;
-    expect(out.first['stream_id'], '42');
-    expect(out.first['container_ext'], 'ts');
+    final dartOut = IptvDartParse.parseStreamsRows(json, 'live');
+    expect(rustOut.length, dartOut.length);
+    expect(rustOut.first['stream_id'], dartOut.first['stream_id']);
+    expect(rustOut.first['container_ext'], 'ts');
   });
 }
 

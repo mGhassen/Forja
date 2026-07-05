@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:forja_rust/src/reference/iptv_dart_parse.dart';
 import 'package:http/http.dart' as http;
 import 'models.dart';
 import 'pastesh_decryptor.dart';
@@ -93,39 +94,29 @@ class IptvClient {
         '&password=${_enc(p.password)}&action=$action';
     final text = await _httpGet(url, timeout: const Duration(seconds: 8));
     if (text == null) return [];
-    final categoriesBackend = IptvClientBackend.parseCategoriesJson;
-    if (categoriesBackend != null) {
+    final rows = _parseCategoryRows(text);
+    return rows
+        .map(
+          (o) => IptvCategory(
+            id: o['id']?.toString() ?? '',
+            name: o['name']?.toString() ?? '',
+          ),
+        )
+        .toList();
+  }
+
+  static List<Map<String, dynamic>> _parseCategoryRows(String text) {
+    final backend = IptvClientBackend.parseCategoriesJson;
+    if (backend != null) {
       try {
-        final decoded = json.decode(categoriesBackend(text));
+        final decoded = json.decode(backend(text));
         if (decoded is List) {
-          return decoded
-              .map((e) {
-                final o = e as Map<String, dynamic>;
-                return IptvCategory(
-                  id: o['id']?.toString() ?? '',
-                  name: o['name']?.toString() ?? '',
-                );
-              })
-              .toList();
+          return decoded.map((e) => e as Map<String, dynamic>).toList();
         }
-      } catch (_) {
-        return [];
-      }
+      } catch (_) {}
+      return const [];
     }
-    try {
-      final arr = json.decode(text) as List;
-      return arr
-          .map((e) {
-            final o = e as Map<String, dynamic>;
-            return IptvCategory(
-              id: o['category_id']?.toString() ?? '',
-              name: o['category_name']?.toString() ?? '',
-            );
-          })
-          .toList();
-    } catch (_) {
-      return [];
-    }
+    return IptvDartParse.parseCategoriesRows(text);
   }
 
   static Future<List<IptvStream>> streams(
@@ -145,73 +136,34 @@ class IptvClient {
       IptvSection.vod => 'vod',
       IptvSection.series => 'series',
     };
-    final streamsBackend = IptvClientBackend.parseStreamsJson;
-    if (streamsBackend != null) {
+    final rows = _parseStreamRows(text, sectionName);
+    return rows
+        .map(
+          (o) => IptvStream(
+            streamId: o['stream_id']?.toString() ?? '',
+            name: o['name']?.toString() ?? '',
+            icon: o['icon']?.toString() ?? '',
+            categoryId: o['category_id']?.toString() ?? '',
+            containerExt: o['container_ext']?.toString() ?? '',
+            epgChannelId: o['epg_channel_id']?.toString() ?? '',
+            kind: o['kind']?.toString() ?? sectionName,
+          ),
+        )
+        .toList();
+  }
+
+  static List<Map<String, dynamic>> _parseStreamRows(String text, String section) {
+    final backend = IptvClientBackend.parseStreamsJson;
+    if (backend != null) {
       try {
-        final decoded = json.decode(streamsBackend(text, sectionName));
+        final decoded = json.decode(backend(text, section));
         if (decoded is List) {
-          return decoded.map((e) {
-            final o = e as Map<String, dynamic>;
-            return IptvStream(
-              streamId: o['stream_id']?.toString() ?? '',
-              name: o['name']?.toString() ?? '',
-              icon: o['icon']?.toString() ?? '',
-              categoryId: o['category_id']?.toString() ?? '',
-              containerExt: o['container_ext']?.toString() ?? '',
-              epgChannelId: o['epg_channel_id']?.toString() ?? '',
-              kind: o['kind']?.toString() ?? sectionName,
-            );
-          }).toList();
+          return decoded.map((e) => e as Map<String, dynamic>).toList();
         }
-      } catch (_) {
-        return [];
-      }
+      } catch (_) {}
+      return const [];
     }
-    try {
-      final arr = json.decode(text) as List;
-      return arr.map((e) {
-        final o = e as Map<String, dynamic>;
-        final ext = switch (kind) {
-          IptvSection.live => 'ts',
-          IptvSection.vod => () {
-              final v = o['container_extension']?.toString() ?? '';
-              return v.isEmpty ? 'mp4' : v;
-            }(),
-          IptvSection.series => '',
-        };
-        final id = switch (kind) {
-          IptvSection.series => () {
-              final v = o['series_id']?.toString() ?? '';
-              return v.isEmpty ? (o['id']?.toString() ?? '') : v;
-            }(),
-          _ => () {
-              final v = o['stream_id']?.toString() ?? '';
-              return v.isEmpty ? (o['id']?.toString() ?? '') : v;
-            }(),
-        };
-        return IptvStream(
-          streamId: id,
-          name: () {
-            final n = o['name']?.toString() ?? '';
-            return n.isEmpty ? (o['title']?.toString() ?? '') : n;
-          }(),
-          icon: () {
-            final i = o['stream_icon']?.toString() ?? '';
-            return i.isEmpty ? (o['cover']?.toString() ?? '') : i;
-          }(),
-          categoryId: o['category_id']?.toString() ?? '',
-          containerExt: ext,
-          epgChannelId: o['epg_channel_id']?.toString() ?? '',
-          kind: switch (kind) {
-            IptvSection.live => 'live',
-            IptvSection.vod => 'vod',
-            IptvSection.series => 'series',
-          },
-        );
-      }).toList();
-    } catch (_) {
-      return [];
-    }
+    return IptvDartParse.parseStreamsRows(text, section);
   }
 
   static Future<List<IptvEpisode>> seriesEpisodes(
@@ -281,14 +233,9 @@ class IptvClient {
   ///
   /// Xtream encodes `title` and `description` as base64 strings.
   static String _decodeXtreamField(String s) {
-    if (s.isEmpty) return '';
     final backend = IptvClientBackend.decodeXtreamText;
     if (backend != null) return backend(s);
-    try {
-      return utf8.decode(base64.decode(s), allowMalformed: true).trim();
-    } catch (_) {
-      return s;
-    }
+    return IptvDartParse.decodeXtreamText(s);
   }
 
   static Future<List<EpgEntry>> shortEpg(
