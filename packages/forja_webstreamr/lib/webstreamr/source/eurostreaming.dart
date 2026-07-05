@@ -7,6 +7,7 @@ import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class EurostreamingSource extends Source {
@@ -35,8 +36,18 @@ class EurostreamingSource extends Source {
     if (seriesPageUrl == null) return const [];
 
     final html = await fetcher.text(ctx, seriesPageUrl);
-    final doc = html_parser.parse(html);
     final title = '$name ${tmdbId.formatSeasonAndEpisode()}';
+    final rust = tryRustParseSourceHtml(
+      this.id,
+      html,
+      referer: seriesPageUrl.toString(),
+      title: title,
+      season: tmdbId.season,
+      episode: tmdbId.episode,
+    );
+    if (rust != null) return rust;
+
+    final doc = html_parser.parse(html);
 
     final out = <SourceResult>[];
     final num = '${tmdbId.season}x${tmdbId.episode}';

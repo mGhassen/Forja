@@ -64,4 +64,29 @@ void main() {
     expect(rows[0]['country_codes'], ['mx']);
     expect(rows[0]['title'], 'Film (2020)');
   });
+
+  test('mostraguarda HTML parse via FFI', () {
+    const html = '<div data-link="https://embed.example/it"></div>';
+    final json = ForjaRust.instance.parseWebstreamrSourceHtmlJson(
+      'mostraguarda',
+      html,
+      '{"referer":"https://mostraguarda.stream"}',
+    );
+    final rows = jsonDecode(json) as List<dynamic>;
+    expect(rows[0]['url'], 'https://embed.example/it');
+    expect(rows[0]['country_codes'], ['it']);
+  });
+
+  test('streamkiste HTML parse via FFI', () {
+    const html =
+        '<meta property="og:title" content="Serie"><div><span data-num="1x2"></span><div class="mirrors"><a data-link="https://embed.example/de"></a></div></div>';
+    final json = ForjaRust.instance.parseWebstreamrSourceHtmlJson(
+      'streamkiste',
+      html,
+      '{"referer":"https://streamkiste.taxi/p","season":1,"episode":2}',
+    );
+    final rows = jsonDecode(json) as List<dynamic>;
+    expect(rows[0]['url'], 'https://embed.example/de');
+    expect(rows[0]['title'], 'Serie S01E02');
+  });
 }

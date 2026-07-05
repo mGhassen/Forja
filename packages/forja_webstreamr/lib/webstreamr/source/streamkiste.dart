@@ -6,6 +6,7 @@ import 'package:html/parser.dart' as html_parser;
 import '../types.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class StreamKisteSource extends Source {
@@ -30,6 +31,15 @@ class StreamKisteSource extends Source {
     if (seriesPageUrl == null) return const [];
 
     final html = await fetcher.text(ctx, seriesPageUrl);
+    final rust = tryRustParseSourceHtml(
+      this.id,
+      html,
+      referer: seriesPageUrl.toString(),
+      season: tmdbId.season,
+      episode: tmdbId.episode,
+    );
+    if (rust != null) return rust;
+
     final doc = html_parser.parse(html);
 
     final ogTitle = doc

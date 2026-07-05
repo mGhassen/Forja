@@ -46,6 +46,26 @@ pub fn resolve_source(source_id: &str, req: &SourceRequest) -> Vec<SourceEmbed> 
 pub struct ParseHtmlOpts {
     pub referer: String,
     pub title: Option<String>,
+    pub season: Option<i32>,
+    pub episode: Option<i32>,
+}
+
+fn parse_episode_html(
+    html: &str,
+    referer: &str,
+    opts: &ParseHtmlOpts,
+    parse: fn(&str, &str, i32, i32, Option<&str>) -> Vec<SourceEmbed>,
+) -> Vec<SourceEmbed> {
+    let (Some(season), Some(episode)) = (opts.season, opts.episode) else {
+        return Vec::new();
+    };
+    parse(
+        html,
+        referer,
+        season,
+        episode,
+        opts.title.as_deref(),
+    )
 }
 
 pub fn parse_source_html(source_id: &str, html: &str, opts_json: &str) -> Vec<SourceEmbed> {
@@ -58,15 +78,24 @@ pub fn parse_source_html(source_id: &str, html: &str, opts_json: &str) -> Vec<So
         "verhdlink" => verhdlink::parse_html(html, &opts.referer),
         "megakino" => megakino::parse_html(html, &opts.referer),
         "homecine" => homecine::parse_html(html, &opts.referer, opts.title.as_deref()),
+        "mostraguarda" => mostraguarda::parse_html(html, &opts.referer),
+        "eurostreaming" => parse_episode_html(html, &opts.referer, &opts, eurostreaming::parse_html),
+        "cinehdplus" => parse_episode_html(html, &opts.referer, &opts, cinehdplus::parse_html),
+        "streamkiste" => parse_episode_html(html, &opts.referer, &opts, streamkiste::parse_html),
         _ => Vec::new(),
     }
 }
 
+mod cinehdplus;
+mod eurostreaming;
 mod homecine;
 mod kinoger;
 mod megakino;
 mod meinecloud;
+mod mirrors;
+mod mostraguarda;
 mod rgshows;
+mod streamkiste;
 mod verhdlink;
 mod vidsrc;
 mod vixsrc;
@@ -76,7 +105,16 @@ pub fn list_url_sources() -> &'static [&'static str] {
 }
 
 pub fn list_html_sources() -> &'static [&'static str] {
-    &["meinecloud", "verhdlink", "megakino", "homecine"]
+    &[
+        "meinecloud",
+        "verhdlink",
+        "megakino",
+        "homecine",
+        "mostraguarda",
+        "eurostreaming",
+        "cinehdplus",
+        "streamkiste",
+    ]
 }
 
 pub fn parse_source_html_json(source_id: &str, html: &str, opts_json: &str) -> String {

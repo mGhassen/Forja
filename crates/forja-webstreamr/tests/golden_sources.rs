@@ -104,3 +104,56 @@ fn homecine_html_golden() {
     assert_eq!(rows[0].country_codes, vec!["mx"]);
     assert_eq!(rows[0].title.as_deref(), Some("Film (2020)"));
 }
+
+#[test]
+fn mostraguarda_html_golden() {
+    let html = r#"<div data-link="https://embed.example/a"></div>"#;
+    let rows = parse_source_html("mostraguarda", html, r#"{"referer":"https://mostraguarda.stream"}"#);
+    assert_eq!(rows[0].url, "https://embed.example/a");
+    assert_eq!(rows[0].country_codes, vec!["it"]);
+}
+
+#[test]
+fn eurostreaming_html_golden() {
+    let html = r#"<div><span data-num="2x3"></span><div class="mirrors"><a data-link="https://embed.example/it"></a></div></div>"#;
+    let rows = parse_source_html(
+        "eurostreaming",
+        html,
+        r#"{"referer":"https://eurostreaming.luxe/p","title":"Show S02E03","season":2,"episode":3}"#,
+    );
+    assert_eq!(rows[0].url, "https://embed.example/it");
+    assert_eq!(rows[0].country_codes, vec!["it"]);
+}
+
+#[test]
+fn cinehdplus_html_golden() {
+    let html = r#"
+<meta property="og:title" content="Show">
+<div class="details__langs">Latino</div>
+<div><span data-num="1x1"></span><div class="mirrors"><a data-link="//embed.example/lat"></a></div></div>
+"#;
+    let rows = parse_source_html(
+        "cinehdplus",
+        html,
+        r#"{"referer":"https://cinehdplus.gratis/p","season":1,"episode":1}"#,
+    );
+    assert_eq!(rows[0].url, "https://embed.example/lat");
+    assert_eq!(rows[0].country_codes, vec!["mx"]);
+    assert_eq!(rows[0].title.as_deref(), Some("Show S01E01"));
+}
+
+#[test]
+fn streamkiste_html_golden() {
+    let html = r#"
+<meta property="og:title" content="Serie">
+<div><span data-num="3x4"></span><div class="mirrors"><a data-link="//embed.example/de"></a></div></div>
+"#;
+    let rows = parse_source_html(
+        "streamkiste",
+        html,
+        r#"{"referer":"https://streamkiste.taxi/p","season":3,"episode":4}"#,
+    );
+    assert_eq!(rows[0].url, "https://embed.example/de");
+    assert_eq!(rows[0].country_codes, vec!["de"]);
+    assert_eq!(rows[0].title.as_deref(), Some("Serie S03E04"));
+}

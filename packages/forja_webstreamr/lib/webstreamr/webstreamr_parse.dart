@@ -100,6 +100,8 @@ List<SourceResult>? tryRustParseSourceHtml(
   String html, {
   required String referer,
   String? title,
+  int? season,
+  int? episode,
 }) {
   final backend = WebstreamrParseBackend.parseSourceHtmlJson;
   if (backend == null) return null;
@@ -109,6 +111,8 @@ List<SourceResult>? tryRustParseSourceHtml(
     jsonEncode({
       'referer': referer,
       if (title != null && title.isNotEmpty) 'title': title,
+      if (season != null) 'season': season,
+      if (episode != null) 'episode': episode,
     }),
   );
   if (raw == null) return null;
