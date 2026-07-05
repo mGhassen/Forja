@@ -63,10 +63,19 @@ void installRustAppDelegates() {
   IptvClientBackend.decodeXtreamText =
       (text) => ForjaRust.instance.decodeXtreamText(text);
 
+  IptvClientBackend.parseCategoriesJson =
+      (json) => ForjaRust.instance.parseXtreamCategoriesJson(json);
+
+  IptvClientBackend.parseStreamsJson = (json, section) =>
+      ForjaRust.instance.parseXtreamStreamsJson(json, section);
+
   WebstreamrParseBackend.extractEmbedHtmlJson = (id, html, pageUrl) =>
       ForjaRust.instance.extractEmbedHtmlJson(id, html, pageUrl);
 
   WebstreamrParseBackend.extractVidsrcChainJson =
       (outer, rcp, prorcp) =>
           ForjaRust.instance.extractVidsrcChainJson(outer, rcp, prorcp);
+
+  WebstreamrParseBackend.extractHubcloudLinksJson = (html, pageUrl) =>
+      ForjaRust.instance.extractHubcloudLinksJson(html, pageUrl);
 }

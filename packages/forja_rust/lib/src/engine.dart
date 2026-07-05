@@ -96,6 +96,20 @@ class ForjaRust {
         return _readString(_native.forja_decode_xtream_text(ptr));
       });
 
+  String parseXtreamCategoriesJson(String json) => using((arena) {
+        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_parse_xtream_categories_json(ptr));
+      });
+
+  String parseXtreamStreamsJson(String json, String section) => using((arena) {
+        final jsonPtr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final sectionPtr =
+            section.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.forja_parse_xtream_streams_json(jsonPtr, sectionPtr),
+        );
+      });
+
   String parseSceneInfoJson(String title) => using((arena) {
         final ptr = title.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.forja_parse_scene_info_json(ptr));
@@ -188,6 +202,12 @@ class ForjaRust {
         return _readString(_native.forja_extract_vidsrc_chain_json(a, b, c));
       });
 
+  String extractHubcloudLinksJson(String html, String pageUrl) => using((arena) {
+        final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_extract_hubcloud_links_json(htmlPtr, urlPtr));
+      });
+
   bool torrentStart(String magnet) => using((arena) {
         final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _native.forja_torrent_start(ptr);
@@ -258,6 +278,16 @@ final class _ForjaNative {
               'forja_decode_xtream_text',
             )
             .asFunction(),
+        forja_parse_xtream_categories_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'forja_parse_xtream_categories_json',
+            )
+            .asFunction(),
+        forja_parse_xtream_streams_json = lib
+            .lookup<ffi.NativeFunction<_TwoStringNative>>(
+              'forja_parse_xtream_streams_json',
+            )
+            .asFunction(),
         forja_parse_scene_info_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'forja_parse_scene_info_json',
@@ -323,6 +353,11 @@ final class _ForjaNative {
               'forja_extract_vidsrc_chain_json',
             )
             .asFunction(),
+        forja_extract_hubcloud_links_json = lib
+            .lookup<ffi.NativeFunction<_TwoStringNative>>(
+              'forja_extract_hubcloud_links_json',
+            )
+            .asFunction(),
         forja_torrent_start = lib
             .lookup<ffi.NativeFunction<_TorrentStartNative>>(
               'forja_torrent_start',
@@ -362,6 +397,12 @@ final class _ForjaNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_decode_xtream_text;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_parse_xtream_categories_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) forja_parse_xtream_streams_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_parse_scene_info_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
@@ -399,6 +440,10 @@ final class _ForjaNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_extract_vidsrc_chain_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) forja_extract_hubcloud_links_json;
   final bool Function(ffi.Pointer<ffi.Char>) forja_torrent_start;
   final void Function() forja_torrent_stop;
   final bool Function() forja_torrent_is_running;

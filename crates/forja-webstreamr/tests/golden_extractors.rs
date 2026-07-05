@@ -1,4 +1,5 @@
 use forja_webstreamr::extract_embed_html;
+use forja_webstreamr::extract_hubcloud_links;
 use forja_webstreamr::types::StreamFormat;
 use std::fs;
 use std::path::PathBuf;
@@ -111,4 +112,67 @@ fn vidsrc_chain_golden() {
     let prorcp = fs::read_to_string(fixture("vidsrc_prorcp.html")).unwrap();
     let json = extract_vidsrc_chain_json(&outer, &rcp, &prorcp);
     assert!(json.contains("cloudnestra.com/hls/movie.m3u8"));
+}
+
+#[test]
+fn filemoon_iframe_golden() {
+    let html = fs::read_to_string(fixture("filemoon_iframe.html")).unwrap();
+    let r = extract_embed_html("filemoon", &html, "https://filemoon.example/d/1").unwrap();
+    assert_eq!(
+        r.next_url.as_deref(),
+        Some("https://cdn.filemoon.example/embed/real")
+    );
+}
+
+#[test]
+fn hubdrive_golden() {
+    let html = fs::read_to_string(fixture("hubdrive.html")).unwrap();
+    let r = extract_embed_html("hubdrive", &html, "https://hubdrive.example/x").unwrap();
+    assert_eq!(
+        r.next_url.as_deref(),
+        Some("https://hubcloud.example/links/1")
+    );
+}
+
+#[test]
+fn rgshows_golden() {
+    let body = fs::read_to_string(fixture("rgshows.json")).unwrap();
+    let r = extract_embed_html("rgshows", &body, "https://rgshows.example/api").unwrap();
+    assert_eq!(r.url, "https://cdn.rgshows.example/master.m3u8");
+    assert_eq!(r.format, StreamFormat::Hls);
+}
+
+#[test]
+fn hubcloud_redirect_golden() {
+    let html = fs::read_to_string(fixture("hubcloud_redirect.html")).unwrap();
+    let r = extract_embed_html("hubcloud", &html, "https://hubcloud.example/x").unwrap();
+    assert_eq!(
+        r.next_url.as_deref(),
+        Some("https://hubcloud.example/links/abc123")
+    );
+}
+
+#[test]
+fn hubcloud_links_golden() {
+    let html = fs::read_to_string(fixture("hubcloud_links.html")).unwrap();
+    let rows = extract_hubcloud_links(&html, "https://hubcloud.example/origin");
+    assert_eq!(rows.len(), 3);
+    assert_eq!(rows[0].url, "https://fsl.example/stream/1");
+    assert_eq!(rows[0].label.as_deref(), Some("HubCloud (FSL)"));
+    assert_eq!(rows[0].meta_extractor_id.as_deref(), Some("hubcloud_fsl"));
+    assert_eq!(rows[0].height, Some(1080));
+    assert_eq!(rows[0].bytes, Some(2_684_354_560));
+    assert_eq!(rows[1].url, "https://fslv2.example/stream/2");
+    assert_eq!(rows[2].url, "https://pixel.example/api/file/abc?download=");
+    assert_eq!(
+        rows[2].request_headers.as_ref().and_then(|h| h.get("Referer")).map(String::as_str),
+        Some("https://pixel.example/u/abc")
+    );
+}
+
+#[test]
+fn external_golden() {
+    let r = extract_embed_html("external", "", "https://example.com/page").unwrap();
+    assert_eq!(r.url, "https://example.com/page");
+    assert!(r.is_external);
 }

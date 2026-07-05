@@ -39,9 +39,9 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **0 — Scaffold** (build, FFI, CI) | ✅ | ✅ | `ForjaEngine.init()`, dylib bundling |
 | **1 — Utils** (episode match, HLS, torrent filter) | ✅ | ✅ | JS unpacker + KissKH decrypt: Rust only, not wired |
 | **2 — Stream URLs** | 3/5 | 3/5 | ✅ vidlink, vixsrc, vidnest · ❌ vidzee, vidrock |
-| **3 — IPTV** | 4/4 | 3/4 | ✅ M3U, paste.sh, EPG decode · ❌ Xtream JSON parse |
+| **3 — IPTV** | 4/4 | 4/4 | M3U, paste.sh, EPG decode, Xtream JSON parse |
 | **4 — Stremio** | partial | partial | ✅ URL helpers · ❌ HTTP, manifest parse, catalogs |
-| **5 — Webstreamr** | 1/49 | ❌ | vidsrc in Rust; app still uses Dart package |
+| **5 — Webstreamr** | 16/49 | partial | 15 extractors wired; HTTP/registry still Dart |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
 | **7 — Torrent + proxy** | stubs | ❌ | still `libtorrent_flutter` + Dart shelf |
 | **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
@@ -51,19 +51,19 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 
 When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 
-- IPTV: M3U parse, paste.sh decrypt, Xtream EPG base64 decode
+- IPTV: M3U parse, paste.sh decrypt, Xtream EPG decode, Xtream categories/streams JSON
 - Streaming: embed URLs for VidLink, VixSrc, Vidnest
 - Utils: episode file matching, HLS master parse, torrent title filter
 - Stremio: URL building only (not catalog browsing)
 - Scrapers: Knaben / TPB / Uindex HTML parse + dedup
+- Webstreamr: 15 embed extractors (HTML parse via Rust when engine on)
 
 ### Still 100% Dart
 
 - Stremio catalog / meta / stream HTTP
-- Webstreamr HTTP fetch, registry, sources (only 5 embed HTML parsers wired to Rust)
+- Webstreamr: MFP extractors (streamtape, mixdrop, doodstream, filemoon leaf, etc.), sources, fetcher
 - Torrent session + local stream proxy
 - Vidzee / Vidrock provider URLs
-- Xtream category + stream JSON parsing
 
 ### Numbers
 
@@ -71,8 +71,8 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 |--------|-------|
 | Rust crates | 9 (8 domain + `forja-ffi`) |
 | Stream providers wired | 3 / 5 |
-| Webstreamr extractors ported | 11 / 49 |
-| Dart parity tests | 33 |
+| Webstreamr extractors ported | 16 / 49 |
+| Dart parity tests | 36 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -85,9 +85,9 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Port next batch of webstreamr extractors
+1. Port next batch of webstreamr extractors (MFP-heavy: streamtape, mixdrop, filemoon leaf)
 2. Real libtorrent in `forja-torrent`
-3. Xtream JSON category/stream parse through FFI
+3. Stremio HTTP / manifest parse through FFI
 
 ---
 
@@ -179,31 +179,32 @@ Wire-up: `packages/forja_streaming/lib/src/provider_registry.dart` → `ForjaEng
 
 ## Step 3 — `forja-iptv-core`
 
-**Rust:** ✅ · **App:** 3/4
+**Rust:** ✅ · **App:** ✅
 
 | Module | Rust | App |
 |--------|:----:|:---:|
 | M3U parser | ✅ | ✅ |
 | Paste.sh crypto | ✅ | ✅ |
 | Xtream EPG base64 | ✅ | ✅ |
-| Xtream JSON (categories/streams) | ✅ | ❌ |
+| Xtream JSON (categories/streams) | ✅ | ✅ |
 
 ```bash
 cd crates && cargo test -p forja-iptv-core
 cd crates && cargo test -p forja-iptv-core --test golden_m3u
+cd crates && cargo test -p forja-iptv-core --test golden_xtream
 cd packages/forja_rust && flutter test test/parity/m3u_test.dart
 cd packages/forja_rust && flutter test test/parity/iptv_test.dart
 ```
 
 Fixtures: `crates/forja-iptv-core/tests/fixtures/`
 
-Manual: M3U import · CRLF playlist · paste.sh URL · Xtream EPG titles.
+Manual: M3U import · CRLF playlist · paste.sh URL · Xtream EPG titles · Xtream portal categories/streams.
 
 Wire-up:
 
 - `m3u_parser.dart` → `ForjaEngine.parseM3uChannels`
 - `pastesh_decryptor.dart` → `PasteShDecryptorBackend`
-- `iptv_network.dart` → `IptvClientBackend.decodeXtreamText`
+- `iptv_network.dart` → `IptvClientBackend` (decodeXtreamText, parseCategoriesJson, parseStreamsJson)
 
 ---
 
@@ -234,7 +235,7 @@ Wire-up: `StremioServiceBackend` in `stremio_service.dart`.
 
 ## Step 5 — `forja-webstreamr`
 
-**Rust:** 11/49 · **App:** partial (10 extractors wired via `WebstreamrParseBackend`)
+**Rust:** 16/49 · **App:** partial (15 extractors wired via `WebstreamrParseBackend`)
 
 | Extractor | Rust | App |
 |-----------|:----:|:---:|
@@ -248,8 +249,13 @@ Wire-up: `StremioServiceBackend` in `stremio_service.dart`.
 | vixsrc | ✅ | ✅ |
 | kinoger (AES body) | ✅ | ✅ |
 | youtube | ✅ | ✅ |
+| filemoon (iframe hop) | ✅ | ✅ |
+| hubdrive (HubCloud link) | ✅ | ✅ |
+| hubcloud (multi-link) | ✅ | ✅ |
+| rgshows (JSON body) | ✅ | ✅ |
+| external (passthrough) | ✅ | ✅ |
 
-FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`. HTTP fetch + registry still Dart.
+FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`, `forja_extract_hubcloud_links_json`. HTTP fetch + registry still Dart.
 
 ```bash
 cd crates && cargo test -p forja-webstreamr

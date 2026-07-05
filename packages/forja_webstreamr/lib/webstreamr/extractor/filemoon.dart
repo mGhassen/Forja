@@ -8,6 +8,7 @@ import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
 import '../utils/unpacker.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 const _kHosts = {
@@ -58,6 +59,16 @@ class FileMoon extends Extractor {
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
     if (RegExp(r'Page not found').hasMatch(html)) throw NotFoundError();
+
+    final next = tryRustNextUrl(id, html, url.toString());
+    if (next != null) {
+      final m = meta.clone();
+      final title = html_parser.parse(html).querySelector('h3')?.text.trim();
+      if (title != null && title.isNotEmpty) m.title = title;
+      return extractInternal(ctx, Uri.parse(next), m, url);
+    }
+    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
+    if (rust != null) return rust;
 
     final doc = html_parser.parse(html);
     final title = doc.querySelector('h3')?.text.trim();

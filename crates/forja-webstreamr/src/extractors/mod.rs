@@ -1,6 +1,11 @@
 mod dropload;
+mod external;
+mod filemoon;
 mod fsst;
+mod hubcloud;
+mod hubdrive;
 mod kinoger;
+mod rgshows;
 mod savefiles;
 mod streamembed;
 mod supervideo;
@@ -12,8 +17,16 @@ mod youtube;
 use crate::types::ExtractResult;
 
 pub use dropload::{extract_from_html as extract_dropload, supports_host as dropload_supports};
+pub use external::{extract_from_html as extract_external, supports_host as external_supports};
+pub use filemoon::{extract_from_html as extract_filemoon, supports_host as filemoon_supports};
 pub use fsst::{extract_from_html as extract_fsst, supports_host as fsst_supports};
+pub use hubcloud::{
+    extract_from_html as extract_hubcloud, extract_links_from_html as extract_hubcloud_links,
+    supports_host as hubcloud_supports,
+};
+pub use hubdrive::{extract_from_html as extract_hubdrive, supports_host as hubdrive_supports};
 pub use kinoger::{extract_from_html as extract_kinoger, supports_host as kinoger_supports};
+pub use rgshows::{extract_from_html as extract_rgshows, supports_host as rgshows_supports};
 pub use savefiles::{extract_from_html as extract_savefiles, supports_host as savefiles_supports};
 pub use streamembed::{extract_from_html as extract_streamembed, supports_host as streamembed_supports};
 pub use supervideo::{extract_from_html as extract_supervideo, supports_host as supervideo_supports};
@@ -33,6 +46,11 @@ pub fn extract_embed_html(extractor_id: &str, html: &str, page_url: &str) -> Opt
         "vixsrc" => vixsrc::extract_from_html(html, page_url),
         "kinoger" => kinoger::extract_from_html(html, page_url),
         "youtube" => youtube::extract_from_html(html, page_url),
+        "filemoon" => filemoon::extract_from_html(html, page_url),
+        "hubdrive" => hubdrive::extract_from_html(html, page_url),
+        "hubcloud" => hubcloud::extract_from_html(html, page_url),
+        "rgshows" => rgshows::extract_from_html(html, page_url),
+        "external" => external::extract_from_html(html, page_url),
         _ => None,
     }
 }
@@ -48,6 +66,11 @@ pub fn list_html_extractors() -> &'static [&'static str] {
         "vixsrc",
         "kinoger",
         "youtube",
+        "filemoon",
+        "hubdrive",
+        "hubcloud",
+        "rgshows",
+        "external",
         "vidsrc",
     ]
 }

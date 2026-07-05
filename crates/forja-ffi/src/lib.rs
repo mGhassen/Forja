@@ -79,6 +79,14 @@ fn decode_xtream_text(text: String) -> String {
     forja_iptv_core::xtream::decode_xtream_text(&text)
 }
 
+fn parse_xtream_categories_json(json: String) -> String {
+    forja_iptv_core::xtream::parse_categories_json(&json)
+}
+
+fn parse_xtream_streams_json(json: String, section: String) -> String {
+    forja_iptv_core::xtream::parse_streams_json(&json, &section)
+}
+
 fn parse_stremio_manifest_json(json: String) -> String {
     match parse_manifest(&json) {
         Ok(m) => serde_json::to_string(&m).unwrap_or_else(|_| "{}".into()),
@@ -123,6 +131,10 @@ fn extract_embed_html_json(extractor_id: String, html: String, page_url: String)
 
 fn extract_vidsrc_chain_json(outer_html: String, rcp_html: String, prorcp_html: String) -> String {
     forja_webstreamr::extract_vidsrc_chain_json(&outer_html, &rcp_html, &prorcp_html)
+}
+
+fn extract_hubcloud_links_json(html: String, page_url: String) -> String {
+    forja_webstreamr::extract_hubcloud_links_json(&html, &page_url)
 }
 
 fn torrent_start(magnet: String) -> bool {

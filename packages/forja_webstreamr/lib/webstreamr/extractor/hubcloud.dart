@@ -8,6 +8,7 @@ import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/language.dart';
 import '../utils/resolution.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class HubCloud extends Extractor {
@@ -32,12 +33,25 @@ class HubCloud extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final redirectHtml =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
+
+    final next = tryRustNextUrl(id, redirectHtml, url.toString());
+    if (next != null) {
+      final linksHeaders = {'Referer': url.toString()};
+      final linksHtml = await fetcher.text(
+          ctx, Uri.parse(next), FetcherRequestConfig(headers: linksHeaders));
+      final rust = tryRustExtractHubcloudLinks(linksHtml, url.toString(), meta);
+      if (rust != null) return _withCountryCodes(rust, linksHtml, meta);
+    }
+
     final m = RegExp(r"var url ?= ?'(.*?)'").firstMatch(redirectHtml);
     if (m == null) return const [];
     final linksUrl = Uri.parse(m.group(1)!);
     final linksHeaders = {'Referer': url.toString()};
     final linksHtml = await fetcher.text(
         ctx, linksUrl, FetcherRequestConfig(headers: linksHeaders));
+
+    final rust = tryRustExtractHubcloudLinks(linksHtml, url.toString(), meta);
+    if (rust != null) return _withCountryCodes(rust, linksHtml, meta);
 
     final doc = html_parser.parse(linksHtml);
     final title = doc.querySelector('title')?.text.trim() ?? '';
@@ -103,5 +117,29 @@ class HubCloud extends Extractor {
       }
     }
     return out;
+  }
+
+  List<InternalUrlResult> _withCountryCodes(
+    List<InternalUrlResult> rows,
+    String linksHtml,
+    Meta meta,
+  ) {
+    final title = html_parser.parse(linksHtml).querySelector('title')?.text.trim() ?? '';
+    final ccs = <CountryCode>{
+      ...?meta.countryCodes,
+      ...findCountryCodes(title),
+    }.toList();
+    return rows
+        .map((r) => InternalUrlResult(
+              url: r.url,
+              format: r.format,
+              isExternal: r.isExternal,
+              ytId: r.ytId,
+              error: r.error,
+              label: r.label,
+              meta: r.meta.clone()..countryCodes = ccs,
+              requestHeaders: r.requestHeaders,
+            ))
+        .toList();
   }
 }

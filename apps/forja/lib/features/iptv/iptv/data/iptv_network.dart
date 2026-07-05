@@ -8,6 +8,8 @@ import 'pastesh_decryptor.dart';
 /// Optional Rust backend hooks. Set from app bootstrap when [ForjaEngine] loads.
 abstract final class IptvClientBackend {
   static String Function(String text)? decodeXtreamText;
+  static String Function(String json)? parseCategoriesJson;
+  static String Function(String json, String section)? parseStreamsJson;
 }
 
 /// Xtream-Codes player_api client. Login + categories + streams + episodes.
@@ -91,6 +93,25 @@ class IptvClient {
         '&password=${_enc(p.password)}&action=$action';
     final text = await _httpGet(url, timeout: const Duration(seconds: 8));
     if (text == null) return [];
+    final categoriesBackend = IptvClientBackend.parseCategoriesJson;
+    if (categoriesBackend != null) {
+      try {
+        final decoded = json.decode(categoriesBackend(text));
+        if (decoded is List) {
+          return decoded
+              .map((e) {
+                final o = e as Map<String, dynamic>;
+                return IptvCategory(
+                  id: o['id']?.toString() ?? '',
+                  name: o['name']?.toString() ?? '',
+                );
+              })
+              .toList();
+        }
+      } catch (_) {
+        return [];
+      }
+    }
     try {
       final arr = json.decode(text) as List;
       return arr
@@ -119,6 +140,33 @@ class IptvClient {
     final url = categoryId.isEmpty ? base : '$base&category_id=${_enc(categoryId)}';
     final text = await _httpGet(url, timeout: const Duration(seconds: 15));
     if (text == null) return [];
+    final sectionName = switch (kind) {
+      IptvSection.live => 'live',
+      IptvSection.vod => 'vod',
+      IptvSection.series => 'series',
+    };
+    final streamsBackend = IptvClientBackend.parseStreamsJson;
+    if (streamsBackend != null) {
+      try {
+        final decoded = json.decode(streamsBackend(text, sectionName));
+        if (decoded is List) {
+          return decoded.map((e) {
+            final o = e as Map<String, dynamic>;
+            return IptvStream(
+              streamId: o['stream_id']?.toString() ?? '',
+              name: o['name']?.toString() ?? '',
+              icon: o['icon']?.toString() ?? '',
+              categoryId: o['category_id']?.toString() ?? '',
+              containerExt: o['container_ext']?.toString() ?? '',
+              epgChannelId: o['epg_channel_id']?.toString() ?? '',
+              kind: o['kind']?.toString() ?? sectionName,
+            );
+          }).toList();
+        }
+      } catch (_) {
+        return [];
+      }
+    }
     try {
       final arr = json.decode(text) as List;
       return arr.map((e) {

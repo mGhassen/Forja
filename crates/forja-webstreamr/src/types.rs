@@ -29,7 +29,15 @@ pub struct ExtractResult {
     pub title: Option<String>,
     pub height: Option<u32>,
     pub yt_id: Option<String>,
+    pub next_url: Option<String>,
+    pub is_external: bool,
     pub request_headers: Option<HashMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta_extractor_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

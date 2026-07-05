@@ -72,4 +72,19 @@ void main() {
     final m = jsonDecode(json) as Map<String, dynamic>;
     expect(m['error'], 'not_found');
   });
+
+  test('hubcloud links golden via FFI', () {
+    final html = _fixture('hubcloud_links.html');
+    final json = ForjaRust.instance.extractHubcloudLinksJson(
+      html,
+      'https://hubcloud.example/origin',
+    );
+    final rows = jsonDecode(json) as List<dynamic>;
+    expect(rows.length, 3);
+    expect(rows[0]['url'], 'https://fsl.example/stream/1');
+    expect(rows[0]['label'], 'HubCloud (FSL)');
+    expect(rows[0]['meta_extractor_id'], 'hubcloud_fsl');
+    expect(rows[0]['height'], 1080);
+    expect(rows[2]['url'], 'https://pixel.example/api/file/abc?download=');
+  });
 }

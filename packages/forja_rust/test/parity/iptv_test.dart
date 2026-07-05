@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import '../helpers/rust_engine.dart';
 import 'package:forja_rust/forja_rust.dart';
@@ -34,4 +35,34 @@ void main() {
     expect(ForjaRust.instance.decryptPasteResponse('bad', ''), '');
     expect(ForjaRust.instance.decryptPasteResponse('https://paste.sh/x#k', ''), '');
   });
+
+  test('parseXtreamCategoriesJson golden', () {
+    final json = File(
+      '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/xtream_categories.json',
+    ).readAsStringSync();
+    final out = jsonDecode(ForjaRust.instance.parseXtreamCategoriesJson(json)) as List;
+    expect(out.length, 2);
+    expect(out.first['name'], 'Sports');
+  });
+
+  test('parseXtreamStreamsJson live golden', () {
+    final json = File(
+      '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/xtream_live_streams.json',
+    ).readAsStringSync();
+    final out =
+        jsonDecode(ForjaRust.instance.parseXtreamStreamsJson(json, 'live')) as List;
+    expect(out.first['stream_id'], '42');
+    expect(out.first['container_ext'], 'ts');
+  });
+}
+
+String _repoRoot() {
+  var dir = Directory.current;
+  for (var i = 0; i < 6; i++) {
+    if (Directory('${dir.path}/crates/forja-ffi').existsSync()) {
+      return dir.path;
+    }
+    dir = dir.parent;
+  }
+  return Directory.current.parent.parent.path;
 }

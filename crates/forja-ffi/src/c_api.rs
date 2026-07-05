@@ -100,6 +100,22 @@ pub unsafe extern "C" fn forja_decode_xtream_text(text: *const c_char) -> *mut c
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_parse_xtream_categories_json(json: *const c_char) -> *mut c_char {
+    to_c_string(crate::parse_xtream_categories_json(from_c_str(json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_parse_xtream_streams_json(
+    json: *const c_char,
+    section: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::parse_xtream_streams_json(
+        from_c_str(json),
+        from_c_str(section),
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_parse_scene_info_json(title: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_scene_info_json(from_c_str(title)))
 }
@@ -198,6 +214,17 @@ pub unsafe extern "C" fn forja_extract_vidsrc_chain_json(
         from_c_str(outer_html),
         from_c_str(rcp_html),
         from_c_str(prorcp_html),
+    ))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_extract_hubcloud_links_json(
+    html: *const c_char,
+    page_url: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::extract_hubcloud_links_json(
+        from_c_str(html),
+        from_c_str(page_url),
     ))
 }
 

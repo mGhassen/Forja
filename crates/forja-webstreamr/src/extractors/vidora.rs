@@ -37,6 +37,11 @@ pub fn extract_from_html(html: &str, page_url: &str) -> Option<ExtractResult> {
         title,
         height: None,
         yt_id: None,
+        next_url: None,
+        is_external: false,
         request_headers: Some(request_headers),
+        label: None,
+        bytes: None,
+        meta_extractor_id: None,
     })
 }
