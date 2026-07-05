@@ -12,6 +12,7 @@ dependencies:
     path: ../forja_core
   flutter:
     sdk: flutter
+  html: ^0.15.4
   pointycastle: ^3.9.1
 
 dev_dependencies:

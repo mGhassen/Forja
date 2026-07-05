@@ -1,5 +1,6 @@
 import 'base_scraper.dart';
 import 'package:flutter/foundation.dart';
+import 'package:forja_rust/src/reference/scrapers_dart_parse.dart';
 import 'knaben_scraper.dart';
 import 'thepiratebay_scraper.dart';
 import 'uindex_scraper.dart';
@@ -50,7 +51,7 @@ class ScraperAggregator {
     final dedupBackend = ScraperParseBackend.dedupTorrents;
     final unique = dedupBackend != null
         ? dedupBackend(aggregated)
-        : _dedupDart(aggregated);
+        : ScrapersDartParse.dedupTorrents(aggregated);
     
     // Sort by seeders (highest to lowest)
     unique.sort((a, b) {
@@ -61,29 +62,6 @@ class ScraperAggregator {
     
     debugPrint('[ScraperAggregator] Unique results after deduplication: ${unique.length}');
     
-    return unique;
-  }
-
-  static List<Map<String, dynamic>> _dedupDart(
-    List<Map<String, dynamic>> aggregated,
-  ) {
-    final seen = <String>{};
-    final unique = <Map<String, dynamic>>[];
-
-    for (final torrent in aggregated) {
-      final magnet = torrent['magnet'] as String?;
-      if (magnet == null || magnet.isEmpty) continue;
-
-      final match =
-          RegExp(r'btih:([a-fA-F0-9]+)', caseSensitive: false).firstMatch(magnet);
-      if (match != null) {
-        final infohash = match.group(1)!.toUpperCase();
-        if (seen.contains(infohash)) continue;
-        seen.add(infohash);
-      }
-
-      unique.add(torrent);
-    }
     return unique;
   }
   

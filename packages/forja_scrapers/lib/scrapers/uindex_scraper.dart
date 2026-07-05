@@ -1,5 +1,5 @@
-import 'package:html/parser.dart' as html_parser;
 import 'package:flutter/foundation.dart';
+import 'package:forja_rust/src/reference/scrapers_dart_parse.dart';
 import 'base_scraper.dart';
 import 'scraper_parse.dart';
 
@@ -20,44 +20,9 @@ class UindexScraper extends BaseScraper {
         return rust(htmlContent).map(normalizeTorrentRow).toList();
       }
 
-      final document = html_parser.parse(htmlContent);
-      
-      final results = <Map<String, dynamic>>[];
-      
-      final rows = document.querySelectorAll('table tr');
-      
-      for (final row in rows) {
-        if (row.querySelectorAll('th').isNotEmpty) continue;
-        
-        final cells = row.querySelectorAll('td');
-        if (cells.length < 5) continue;
-        
-        final titleCell = cells[1];
-        
-        final magnetElem = titleCell.querySelector('a[href^="magnet:"]');
-        final magnetLink = magnetElem?.attributes['href'];
-        
-        final titleElem = titleCell.querySelector('a[href*="/details.php"]');
-        final title = titleElem?.text.trim() ?? '';
-        
-        if (title.isEmpty || magnetLink == null || magnetLink.isEmpty) continue;
-        
-        final size = cells[2].text.trim();
-        
-        final seederSpan = cells[3].querySelector('span.g');
-        final seeders = (seederSpan?.text.trim() ?? cells[3].text.trim())
-            .replaceAll(',', '');
-        
-        results.add({
-          'name': title,
-          'magnet': magnetLink,
-          'seeders': seeders.isNotEmpty ? seeders : 'Unknown',
-          'size': size.isNotEmpty ? size : 'Unknown',
-          'source': name,
-        });
-      }
-      
-      return results;
+      return ScrapersDartParse.parseUindex(htmlContent, source: name)
+          .map(normalizeTorrentRow)
+          .toList();
     } catch (e) {
       debugPrint('$name scraper error: $e');
       return [];

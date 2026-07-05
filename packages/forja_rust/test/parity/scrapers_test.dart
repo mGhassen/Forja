@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../helpers/rust_engine.dart';
 import 'package:forja_rust/forja_rust.dart';
+import 'package:forja_rust/src/reference/scrapers_dart_parse.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -29,6 +30,10 @@ void main() {
     final list = jsonDecode(json) as List;
     expect(list, hasLength(1));
     expect(list.first['magnet'], startsWith('magnet:'));
+
+    final dart = ScrapersDartParse.parseKnaben(knabenHtml);
+    expect(dart, hasLength(1));
+    expect(dart.first['magnet'], list.first['magnet']);
   });
 
   test('parses TPB HTML row', () {
@@ -36,6 +41,9 @@ void main() {
     final list = jsonDecode(json) as List;
     expect(list, hasLength(1));
     expect(list.first['name'], 'Movie 1080p');
+
+    final dart = ScrapersDartParse.parseTpb(tpbHtml, 'ThePirateBay');
+    expect(dart.first['name'], list.first['name']);
   });
 
   test('dedup torrents by infohash', () {
@@ -48,5 +56,6 @@ void main() {
       ForjaRust.instance.dedupTorrentsJson(jsonEncode(rows)),
     ) as List;
     expect(out, hasLength(2));
+    expect(ScrapersDartParse.dedupTorrents(rows), hasLength(2));
   });
 }

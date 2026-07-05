@@ -1,5 +1,5 @@
-import 'package:html/parser.dart' as html_parser;
 import 'package:flutter/foundation.dart';
+import 'package:forja_rust/src/reference/scrapers_dart_parse.dart';
 import 'base_scraper.dart';
 import 'scraper_parse.dart';
 
@@ -21,46 +21,9 @@ class KnabenScraper extends BaseScraper {
         return rust(htmlContent).map(normalizeTorrentRow).toList();
       }
 
-      final document = html_parser.parse(htmlContent);
-      
-      final results = <Map<String, dynamic>>[];
-      
-      final rows = document.querySelectorAll('tbody tr');
-      
-      for (final row in rows) {
-        final titleLink = row.querySelector('td.text-wrap a[href^="magnet:"]');
-        if (titleLink == null) continue;
-        
-        final title = titleLink.attributes['title'] ?? titleLink.text.trim();
-        final magnetLink = titleLink.attributes['href'];
-        
-        if (magnetLink == null || magnetLink.isEmpty) continue;
-        
-        final cells = row.querySelectorAll('td');
-        
-        String size = 'Unknown';
-        final titleCell = row.querySelector('td.text-wrap');
-        if (titleCell != null) {
-          final sizeCell = titleCell.nextElementSibling;
-          if (sizeCell != null) {
-            size = sizeCell.text.trim();
-          }
-        }
-        
-        final seeders = cells.length >= 3 
-            ? cells[cells.length - 3].text.trim() 
-            : 'Unknown';
-        
-        results.add({
-          'name': title,
-          'magnet': magnetLink,
-          'seeders': seeders,
-          'size': size,
-          'source': name,
-        });
-      }
-      
-      return results;
+      return ScrapersDartParse.parseKnaben(htmlContent, source: name)
+          .map(normalizeTorrentRow)
+          .toList();
     } catch (e) {
       debugPrint('$name scraper error: $e');
       return [];

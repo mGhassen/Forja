@@ -13,6 +13,8 @@ dependencies:
   html: ^0.15.4
   forja_core:
     path: ../forja_core
+  forja_rust:
+    path: ../forja_rust
 
 dev_dependencies:
   flutter_test:
