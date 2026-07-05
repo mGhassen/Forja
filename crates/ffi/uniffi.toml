@@ -1,6 +1,6 @@
-[package]
-name = "ffi"
-version = "0.1.0"
+[bindings.kotlin]
+package_name = "dev.forja.ffi"
+cdylib_name = "ffi"
 
 [dependencies]
 uniffi = { version = "0.29", features = ["cli"] }

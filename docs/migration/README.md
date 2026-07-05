@@ -87,6 +87,6 @@ flowchart TB
 
 - Update the **active phase file** when work completes.
 - Phase 1 is frozen except factual corrections.
-- B2: **librqbit locked** — P2-20/21/30/32/33/15 done. Next: P2-14 device smoke, Android NDK verify.
+- B2 tail: P2-14 device E2E · Android NDK. Kotlin FFI POC done (`packages/kotlin/` + `generate_kotlin_ffi.sh`).
 - Do not start Phase 3 until Phase 2 exit criteria are met.
 - Agent workflow: [`.cursor/rules/rust-migration.mdc`](../../.cursor/rules/rust-migration.mdc)

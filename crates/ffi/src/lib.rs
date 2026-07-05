@@ -252,10 +252,10 @@ fn torrent_status_json() -> String {
     }
 }
 
-fn torrent_engine_start(preferred_port: u16) -> i32 {
+fn torrent_engine_start(preferred_port: u32) -> i32 {
     #[cfg(feature = "torrent-engine")]
     {
-        return engine_torrent::torrent_engine_start(preferred_port);
+        return engine_torrent::torrent_engine_start(preferred_port.min(u16::MAX as u32) as u16);
     }
     #[cfg(not(feature = "torrent-engine"))]
     {
@@ -264,10 +264,10 @@ fn torrent_engine_start(preferred_port: u16) -> i32 {
     }
 }
 
-fn torrent_engine_port() -> u16 {
+fn torrent_engine_port() -> u32 {
     #[cfg(feature = "torrent-engine")]
     {
-        return engine_torrent::torrent_engine_port();
+        return engine_torrent::torrent_engine_port() as u32;
     }
     #[cfg(not(feature = "torrent-engine"))]
     {
@@ -313,10 +313,13 @@ fn torrent_list_files_json(magnet: String) -> String {
     }
 }
 
-fn proxy_start(preferred_port: u16) -> i32 {
+fn proxy_start(preferred_port: u32) -> i32 {
     #[cfg(feature = "local-proxy")]
     {
-        return engine_proxy::proxy_start(&RUNTIME, preferred_port);
+        return engine_proxy::proxy_start(
+            &RUNTIME,
+            preferred_port.min(u16::MAX as u32) as u16,
+        );
     }
     #[cfg(not(feature = "local-proxy"))]
     {
@@ -330,10 +333,10 @@ fn proxy_stop() {
     engine_proxy::proxy_stop();
 }
 
-fn proxy_port() -> u16 {
+fn proxy_port() -> u32 {
     #[cfg(feature = "local-proxy")]
     {
-        return engine_proxy::proxy_port();
+        return engine_proxy::proxy_port() as u32;
     }
     #[cfg(not(feature = "local-proxy"))]
     {

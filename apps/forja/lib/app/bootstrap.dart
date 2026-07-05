@@ -121,7 +121,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
 
   await ForjaEngine.init();
   installRustAppDelegates();
-  _warnIfRustMissingOnDesktop();
+  _warnIfRustMissing();
   
   // Hydrate theme preset before first frame
   await AppTheme.initTheme();
@@ -491,19 +491,24 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 }
 
-void _warnIfRustMissingOnDesktop() {
+void _warnIfRustMissing() {
   if (!kDebugMode || ForjaEngine.isReady) return;
-  if (!Platform.isMacOS && !Platform.isLinux && !Platform.isWindows) return;
+
+  final isDesktop =
+      Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+  final buildHint = isDesktop
+      ? './scripts/build_rust.sh (or melos run rust:build)'
+      : './scripts/build_rust_mobile.sh (or melos run rust:build:mobile)';
 
   const msg =
       '[Boot] Rust engine NOT loaded — engine features unavailable. '
-      'From repo root run: ./scripts/build_rust.sh (or melos run rust:build). '
-      'Mobile: ./scripts/build_rust_mobile.sh. '
-      'Override: FORJA_RUST_LIB=/path/to/libffi.dylib. '
+      'From repo root run: ';
+  final full = '$msg$buildHint. '
+      'Override: FORJA_RUST_LIB=/path/to/libffi.dylib|.so. '
       'Strict fail: FORJA_RUST_STRICT=1';
 
-  debugPrint(msg);
+  debugPrint(full);
   if (Platform.environment['FORJA_RUST_STRICT'] == '1') {
-    throw StateError(msg);
+    throw StateError(full);
   }
 }

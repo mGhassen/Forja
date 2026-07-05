@@ -339,12 +339,12 @@ pub extern "C" fn forja_torrent_status_json() -> *mut c_char {
 
 #[no_mangle]
 pub extern "C" fn forja_torrent_engine_start(preferred_port: u16) -> i32 {
-    crate::torrent_engine_start(preferred_port)
+    crate::torrent_engine_start(preferred_port as u32)
 }
 
 #[no_mangle]
 pub extern "C" fn forja_torrent_engine_port() -> u16 {
-    crate::torrent_engine_port()
+    crate::torrent_engine_port().min(u16::MAX as u32) as u16
 }
 
 #[no_mangle]
@@ -379,7 +379,7 @@ pub unsafe extern "C" fn forja_torrent_list_files_json(magnet: *const c_char) ->
 
 #[no_mangle]
 pub extern "C" fn forja_proxy_start(preferred_port: u16) -> i32 {
-    crate::proxy_start(preferred_port)
+    crate::proxy_start(preferred_port as u32)
 }
 
 #[no_mangle]
@@ -389,7 +389,7 @@ pub extern "C" fn forja_proxy_stop() {
 
 #[no_mangle]
 pub extern "C" fn forja_proxy_port() -> u16 {
-    crate::proxy_port()
+    crate::proxy_port().min(u16::MAX as u32) as u16
 }
 
 #[no_mangle]

@@ -32,7 +32,7 @@
 | Drop libtorrent | 4 | 4 | **done** |
 | Strip Dart fallbacks | 4 | 4 | **done** |
 | Optional hardening | 0 | 3 | P2-40 scrapers · P2-41 parity · P2-42 strict mobile |
-| Kotlin FFI prep | 0 | 3 | P2-50 UDL · P2-51 uniffi · P2-52 JNI proof |
+| Kotlin FFI prep | 2 | 3 | P2-50 UDL **done** · P2-51 bindgen **done** · P2-52 JNI proof open |
 | Sign-off | 0 | 3 | P2-70 smoke · P2-71 RFC · P2-72 README gate |
 
 ### Feature matrix
@@ -57,7 +57,7 @@
 | Dart HTML fallbacks removed | ✅ |
 | Orphan engine copies deleted | ✅ |
 | Desktop no libtorrent when dylib loads | ✅ |
-| RFC-009 Step 9 + uniffi POC | open |
+| RFC-009 Step 9 + uniffi POC | partial (UDL + Kotlin gen) |
 
 ### What stays Dart after Phase 2 (not engine)
 
@@ -90,9 +90,9 @@ melos run rust:test && melos run rust:integration
 
 ### Next work
 
-1. **P2-14** — magnet → stream on device (iOS/Android smoke)
+1. **P2-14** — run `FORJA_TORRENT_E2E=1 FORJA_TORRENT_MAGNET='magnet:…' flutter test integration_test/` on device/desktop
 2. **P2-10/11** — Android NDK full-features build in CI
-3. **P2-50** — expand `forja.udl` (parallel, prep Phase 3)
+3. **P2-52** — JNI packaging proof (link `libffi.so` in Gradle)
 
 Blockers → [Torrent engine decision](#torrent-engine-decision-locked) · [Current gaps](#current-gaps-from-phase-1)
 
@@ -138,7 +138,7 @@ Implementation already matches rqbit streaming: `crates/torrent` runs `librqbit:
 | P2-11 | Probe + CI | **iOS done** — `./scripts/try_build_mobile_torrent.sh ios` · Android via NDK/CI |
 | P2-12 | Enable full features in mobile build | **done** — `build_rust_mobile.sh` defaults to full features; `FORJA_RUST_MOBILE_PARSER_ONLY=1` for legacy |
 | P2-13 | Wire `TorrentEngineBackend` on mobile | Same path as desktop — no platform branch |
-| P2-14 | Integration test | Extend `integration_test/engine_smoke_test.dart` — magnet→stream on device when CI allows |
+| P2-14 | Integration test | **partial** — optional `FORJA_TORRENT_E2E=1` + `FORJA_TORRENT_MAGNET` · peer-limit restart test added |
 | P2-15 | Port `applyConnectionsLimit` | **done** — `SessionOptions::peer_limit` via FFI |
 | P2-16 | (optional) Facade patterns | Skim [perpetus/stream-server](https://github.com/perpetus/stream-server) backend trait for range/archive edge cases — ideas only |
 
@@ -169,14 +169,14 @@ Files: `crates/torrent/`, `packages/streaming/lib/src/torrent_stream_service.dar
 |----|------|--------|
 | P2-40 | Port remaining scrapers to Rust | YTS, EZTV, EliteTorrent, etc. — `crates/scrapers/` |
 | P2-41 | lulustream/fastream stream-fetch parity | Expand Dart parity or document as Rust-only |
-| P2-42 | `FORJA_RUST_STRICT=1` on mobile debug | Fail fast when dylib missing on Android/iOS debug |
+| P2-42 | `FORJA_RUST_STRICT=1` on mobile debug | **done** — boot warns/fails on all platforms in debug |
 
 ### Kotlin FFI prep (parallel, low risk)
 
 | ID | Task | Detail |
 |----|------|--------|
-| P2-50 | Expand `forja.udl` | Document C ABI surfaces needed for Kotlin |
-| P2-51 | uniffi Kotlin bindgen | Generate to `packages/forja_kotlin/` scaffold |
+| P2-50 | Expand `forja.udl` | **done** — full engine surface (52 fns) |
+| P2-51 | uniffi Kotlin bindgen | **done** — `./scripts/generate_kotlin_ffi.sh` → `packages/kotlin/` |
 | P2-52 | JNI packaging proof | Reuse mobile `.so` / `.dylib` from B7 scripts |
 
 ### Sign-off
@@ -214,7 +214,7 @@ flowchart LR
 - [x] `./scripts/try_build_mobile_torrent.sh ios` passes (vendored iOS patch)
 - [ ] `./scripts/build_rust_mobile.sh all` with full features (Android needs NDK)
 - [x] Zero `libtorrent_flutter` references in active packages (legacy `forja_*` copies remain until Phase 4)
-- [ ] `melos run rust:test` + `melos run rust:integration` green
+- [ ] `melos run rust:test` + `melos run rust:integration` green (run manually: `flutter test integration_test/` passes)
 - [ ] Release APK/IPA plays magnet via librqbit
 
 ---

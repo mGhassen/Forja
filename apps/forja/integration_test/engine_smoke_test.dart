@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +9,7 @@ import 'package:api/api/stremio_service.dart';
 import 'package:core/utils/episode_matcher.dart';
 import 'package:rust/rust.dart';
 import 'package:scrapers/scrapers/scraper_parse.dart';
+import 'package:streaming/streaming.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {
@@ -60,9 +62,31 @@ http://stream.example/live
   });
 
   test('stream provider movie URL', () {
-    final url = ForjaEngine.buildMovieUrl('vidlink', '550');
+    final url = ForjaEngine.requireMovieUrl('vidlink', '550');
     expect(url, 'https://vidlink.pro/movie/550');
   });
+
+  test('torrent peer limit + engine restart', () async {
+    final svc = TorrentStreamService();
+    expect(await svc.start(), isTrue);
+    await svc.applyConnectionsLimit(75);
+    expect(svc.state, EngineState.ready);
+  });
+
+  test('magnet stream E2E (optional)', () async {
+    final run = Platform.environment['FORJA_TORRENT_E2E'] == '1';
+    final magnet = Platform.environment['FORJA_TORRENT_MAGNET'];
+    if (!run || magnet == null || magnet.isEmpty) {
+      return;
+    }
+    ForjaRust.instance.torrentEngineStart(0);
+    final json = ForjaRust.instance.torrentStreamJson(magnet);
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    expect(parsed['error'], isNull, reason: parsed['error']?.toString());
+    final url = parsed['url'] as String?;
+    expect(url, isNotEmpty);
+    expect(url, startsWith('http://127.0.0.1:'));
+  }, timeout: const Timeout(Duration(minutes: 5)));
 
   test('torrent engine starts on loopback', () {
     final port = ForjaRust.instance.torrentEngineStart(0);
