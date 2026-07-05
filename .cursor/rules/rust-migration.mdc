@@ -11,16 +11,18 @@ When working on the Rust engine migration:
 ## Before coding
 
 1. Read `docs/migration/rust-engine-progress.md` — find current step and status.
-2. Do not edit `.cursor/plans/*.plan.md` unless the user asks.
+2. Read `docs/migration/rust-engine-blockers.md` — check open blockers before deleting Dart code.
+3. Do not edit `.cursor/plans/*.plan.md` unless the user asks.
 
 ## After completing work on a step
 
 1. Update `docs/migration/rust-engine-progress.md` — step status, wire-up checkboxes.
-2. Update `docs/rfc/009-rust-ffi.md` acceptance checkboxes if applicable.
-3. Add or extend tests:
+2. Update `docs/migration/rust-engine-blockers.md` if a blocker was resolved or added.
+3. Update `docs/rfc/009-rust-ffi.md` acceptance checkboxes if applicable.
+4. Add or extend tests:
    - Rust: unit test in crate + golden fixture if I/O-free logic
    - Dart: parity test in `packages/forja_rust/test/parity/` comparing Rust FFI vs Dart reference
-4. Run gates:
+5. Run gates:
    ```bash
    ./scripts/build_rust.sh
    cd crates && cargo test --workspace

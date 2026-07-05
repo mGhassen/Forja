@@ -172,43 +172,20 @@ class IptvClient {
         '&password=${_enc(p.password)}&action=get_series_info&series_id=${_enc(seriesId)}';
     final text = await _httpGet(url, timeout: const Duration(seconds: 15));
     if (text == null) return [];
-    try {
-      final root = json.decode(text) as Map<String, dynamic>;
-      final episodesObj = root['episodes'] as Map<String, dynamic>?;
-      if (episodesObj == null) return [];
-      final out = <IptvEpisode>[];
-      episodesObj.forEach((seasonKey, value) {
-        final arr = value as List?;
-        if (arr == null) return;
-        final seasonNum = int.tryParse(seasonKey) ?? 0;
-        for (final e in arr) {
-          final o = e as Map<String, dynamic>?;
-          if (o == null) continue;
-          final info = o['info'] as Map<String, dynamic>?;
-          out.add(IptvEpisode(
+    final rows = IptvDartParse.parseSeriesEpisodesRows(text);
+    return rows
+        .map(
+          (o) => IptvEpisode(
             id: o['id']?.toString() ?? '',
             title: o['title']?.toString() ?? '',
-            containerExt: () {
-              final c = o['container_extension']?.toString() ?? '';
-              return c.isEmpty ? 'mp4' : c;
-            }(),
-            season: seasonNum,
-            episode: (o['episode_num'] is num)
-                ? (o['episode_num'] as num).toInt()
-                : (int.tryParse(o['episode_num']?.toString() ?? '') ?? 0),
-            plot: info?['plot']?.toString() ?? '',
-            image: info?['movie_image']?.toString() ?? '',
-          ));
-        }
-      });
-      out.sort((a, b) {
-        final s = a.season.compareTo(b.season);
-        return s != 0 ? s : a.episode.compareTo(b.episode);
-      });
-      return out;
-    } catch (_) {
-      return [];
-    }
+            containerExt: o['container_ext']?.toString() ?? '',
+            season: o['season'] as int? ?? 0,
+            episode: o['episode'] as int? ?? 0,
+            plot: o['plot']?.toString() ?? '',
+            image: o['image']?.toString() ?? '',
+          ),
+        )
+        .toList();
   }
 
   static String streamUrl(IptvPortal p, IptvStream s) {

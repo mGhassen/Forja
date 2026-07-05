@@ -51,6 +51,39 @@ void main() {
     expect(rustOut.first['stream_id'], dartOut.first['stream_id']);
     expect(rustOut.first['container_ext'], 'ts');
   });
+
+  test('parseSeriesEpisodesRows normalizes get_series_info', () {
+    const json = '''
+{
+  "episodes": {
+    "1": [
+      {
+        "id": "100",
+        "title": "Pilot",
+        "container_extension": "mkv",
+        "episode_num": 1,
+        "info": {"plot": "First ep", "movie_image": "http://img/a.png"}
+      }
+    ],
+    "2": [
+      {
+        "id": "200",
+        "title": "Return",
+        "episode_num": 3,
+        "info": {"plot": "", "movie_image": ""}
+      }
+    ]
+  }
+}
+''';
+    final rows = IptvDartParse.parseSeriesEpisodesRows(json);
+    expect(rows, hasLength(2));
+    expect(rows.first['season'], 1);
+    expect(rows.first['container_ext'], 'mkv');
+    expect(rows.last['season'], 2);
+    expect(rows.last['container_ext'], 'mp4');
+    expect(rows.last['episode'], 3);
+  });
 }
 
 String _repoRoot() {

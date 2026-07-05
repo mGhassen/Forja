@@ -38,6 +38,47 @@ abstract final class IptvDartParse {
     }
   }
 
+  /// Parses Xtream `get_series_info` response into normalized episode rows.
+  static List<Map<String, dynamic>> parseSeriesEpisodesRows(String json) {
+    try {
+      final root = jsonDecode(json) as Map<String, dynamic>;
+      final episodesObj = root['episodes'] as Map<String, dynamic>?;
+      if (episodesObj == null) return const [];
+
+      final out = <Map<String, dynamic>>[];
+      episodesObj.forEach((seasonKey, value) {
+        final arr = value as List?;
+        if (arr == null) return;
+        final seasonNum = int.tryParse(seasonKey) ?? 0;
+        for (final e in arr) {
+          final o = e as Map<String, dynamic>?;
+          if (o == null) continue;
+          final info = o['info'] as Map<String, dynamic>?;
+          final ext = _fieldString(o, 'container_extension');
+          out.add({
+            'id': _fieldString(o, 'id'),
+            'title': _fieldString(o, 'title'),
+            'container_ext': ext.isEmpty ? 'mp4' : ext,
+            'season': seasonNum,
+            'episode': o['episode_num'] is num
+                ? (o['episode_num'] as num).toInt()
+                : (int.tryParse(_fieldString(o, 'episode_num')) ?? 0),
+            'plot': info?['plot']?.toString() ?? '',
+            'image': info?['movie_image']?.toString() ?? '',
+          });
+        }
+      });
+
+      out.sort((a, b) {
+        final s = (a['season'] as int).compareTo(b['season'] as int);
+        return s != 0 ? s : (a['episode'] as int).compareTo(b['episode'] as int);
+      });
+      return out;
+    } catch (_) {
+      return const [];
+    }
+  }
+
   static Map<String, dynamic>? _parseStreamRow(
     Map<String, dynamic> o,
     String section,

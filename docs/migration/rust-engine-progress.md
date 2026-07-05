@@ -3,6 +3,7 @@
 **Last updated:** 2026-07-05  
 **Branch:** `feat/rust-migratiom` (typo in branch name)  
 **Spec:** [RFC-009](../rfc/009-rust-ffi.md)  
+**Blockers:** [rust-engine-blockers.md](./rust-engine-blockers.md)  
 **Plan:** `.cursor/plans/rust_kotlin_migration_*.plan.md` (local, not versioned)
 
 ---
@@ -77,7 +78,7 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 | Stream providers wired | 5 / 5 |
 | Webstreamr extractors ported | 23 / 23 |
 | Webstreamr URL sources ported | 21 / 21 |
-| Dart parity tests | 61 |
+| Dart parity tests | 64 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -90,7 +91,7 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Step 9 Dart fallback cleanup
+1. Step 9 Dart fallback cleanup — see [blockers](./rust-engine-blockers.md) (B1–B6)
 
 ---
 
@@ -371,7 +372,8 @@ Wire-up: `TorrentEngineBackend` in `rust_delegates.dart` · `TorrentStreamServic
 | Provider URLs → Rust (5 providers) | ✅ |
 | Episode matcher + HLS delegates | ✅ |
 | Dylib bundled in `.app` | ✅ |
-| `forja_adapters/` WebView package | ❌ |
+
+WebView extractors stay in the app (`stream_extractor_view.dart` + `InAppWebView`) — out of scope per RFC-009. No `forja_adapters/` package required for this migration.
 
 ```bash
 ./scripts/build_rust.sh
@@ -417,6 +419,8 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 - [x] IPTV Xtream parse + paste.sh decrypt moved to `iptv_dart_parse.dart`, `pastesh_decrypt_dart.dart`
 - [x] Episode matcher + HLS parse moved to `episode_matcher_dart.dart`, `hls_dart_parse.dart`
 - [x] Dead duplicate `forja_streaming/.../hls_master_parser.dart` removed
+- [x] Dead duplicate `forja_streaming/.../debrid_api.dart` removed (use `forja_api`)
+- [x] IPTV series episodes parse moved to `iptv_dart_parse.dart`
 - [x] Magnet player uses `TorrentStreamService.listTorrentFiles` (no direct libtorrent)
 - [ ] Drop `libtorrent_flutter` once Rust torrent path is stable in production
 - [ ] Golden fixtures for every extractor
