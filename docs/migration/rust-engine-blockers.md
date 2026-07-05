@@ -202,9 +202,9 @@ B4 no integration tests
 |------|------|
 | [x] 14 parity test files in CI | [ ] RFC acceptance: tick “full parity suite” |
 | [x] Episode matcher: 10/10 golden cases | [ ] Audit episode patterns vs real-world debrid filenames |
-| [x] M3U: all 4 golden cases in Dart parity | [ ] Audit episode patterns vs real-world debrid filenames |
+| [x] M3U: all 4 golden cases in Dart parity | |
 | [x] Webstreamr sources: 22/22 Dart FFI parity | |
-| [x] Webstreamr extractors: 21/23 Dart FFI parity | [ ] lulustream · fastream (need MFP mock server; Rust-only goldens) |
+| [x] Webstreamr extractors: 21/23 Dart FFI parity | [ ] lulustream · fastream stream-fetch (Rust golden only) |
 | [x] IPTV Xtream (categories/streams/series) · paste.sh · HLS · scrapers · stremio · proxy | [ ] Document known intentional gaps |
 
 | | |
@@ -215,19 +215,24 @@ B4 no integration tests
 | **Manage** | Audit episode_matcher + m3u parity vs `crates/*/tests/fixtures/`; extend tests |
 | **Unblocks** | RFC-009 acceptance · stronger case for B1 removal |
 
+**Known intentional gaps (not bugs):**
+
+- `lulustream` / `fastream` — MFP **stream URL fetch** (blocking HTTP inside Rust FFI) is covered by Rust goldens + wiremock only; Dart parity tests MFP **redirect** extractors (mixdrop, streamtape, …) instead.
+- Webstreamr page fetch + registry stay in Dart by design (RFC-009).
+
 ---
 
 ### B8 — Dylib load / dev ergonomics
 
-**Progress:** in progress — build path exists; no auto hook on `flutter run`
+**Progress:** in progress — debug warning + README done
 
 | Done | Todo |
 |------|------|
-| [x] `./scripts/build_rust.sh` + copies to app bundle | [ ] `melos run rust:build` before first `flutter run` documented in README |
+| [x] `./scripts/build_rust.sh` + copies to app bundle | [x] `apps/forja/README.md` rust quickstart |
 | [x] `copy_rust_dylib.sh` in macOS Xcode build phase | [ ] CI job that builds Flutter app with bundled dylib |
-| [x] `FORJA_RUST_LIB` env override | [ ] Pre-run hook or fail-fast message in `bootstrap.dart` |
-| [x] `melos run rust:build` · `rust:test` scripts | |
-| [x] Troubleshooting section in progress doc | |
+| [x] `FORJA_RUST_LIB` env override | [x] Debug warning when Rust missing on desktop (`bootstrap.dart`) |
+| [x] `melos run rust:build` · `rust:test` scripts | [x] `apps/forja/README.md` rust quickstart |
+| [x] Troubleshooting section in progress doc | [ ] CI job that builds full Flutter app artifact |
 
 | | |
 |--|--|

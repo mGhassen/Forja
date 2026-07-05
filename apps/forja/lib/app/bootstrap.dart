@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -120,6 +121,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
 
   await ForjaEngine.init();
   installRustAppDelegates();
+  _warnIfRustMissingOnDesktop();
   
   // Hydrate theme preset before first frame
   await AppTheme.initTheme();
@@ -486,5 +488,21 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         ),
       ),
     );
+  }
+}
+
+void _warnIfRustMissingOnDesktop() {
+  if (!kDebugMode || ForjaEngine.isReady) return;
+  if (!Platform.isMacOS && !Platform.isLinux && !Platform.isWindows) return;
+
+  const msg =
+      '[Boot] Rust engine NOT loaded — parse paths use Dart fallback. '
+      'From repo root run: ./scripts/build_rust.sh (or melos run rust:build). '
+      'Override: FORJA_RUST_LIB=/path/to/libforja_ffi.dylib. '
+      'Strict fail: FORJA_RUST_STRICT=1';
+
+  debugPrint(msg);
+  if (Platform.environment['FORJA_RUST_STRICT'] == '1') {
+    throw StateError(msg);
   }
 }

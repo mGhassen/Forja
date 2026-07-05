@@ -430,6 +430,8 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 ./scripts/build_rust.sh && flutter run -d macos
 ```
 
+Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `FORJA_RUST_STRICT=1` to fail fast when the dylib is missing.
+
 ---
 
 ## Step 9 — Cleanup
