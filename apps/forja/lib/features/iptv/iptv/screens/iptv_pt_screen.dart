@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -988,6 +990,7 @@ class _BrowserView extends StatefulWidget {
 
 class _BrowserViewState extends State<_BrowserView> {
   final TextEditingController _searchCtrl = TextEditingController();
+  Timer? _scrollSettleTimer;
 
   @override
   void initState() {
@@ -997,8 +1000,22 @@ class _BrowserViewState extends State<_BrowserView> {
 
   @override
   void dispose() {
+    _scrollSettleTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  bool _onScrollNotification(ScrollNotification n) {
+    if (n is ScrollStartNotification) {
+      _scrollSettleTimer?.cancel();
+      widget.ctrl.cancelAllLazyChecks();
+    } else if (n is ScrollEndNotification) {
+      _scrollSettleTimer?.cancel();
+      _scrollSettleTimer = Timer(const Duration(milliseconds: 300), () {
+        if (mounted) setState(() {});
+      });
+    }
+    return false;
   }
 
   String get _sectionTitle {
@@ -1367,7 +1384,9 @@ class _BrowserViewState extends State<_BrowserView> {
     return LayoutBuilder(
       builder: (_, c) {
         final cross = (c.maxWidth ~/ 180).clamp(2, 8);
-        return GridView.builder(
+        return NotificationListener<ScrollNotification>(
+          onNotification: _onScrollNotification,
+          child: GridView.builder(
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: cross,
@@ -1381,6 +1400,7 @@ class _BrowserViewState extends State<_BrowserView> {
             ctrl: widget.ctrl,
             onTap: () => _onStreamTap(list[i]),
           ),
+        ),
         );
       },
     );
@@ -1530,8 +1550,10 @@ class _StreamCard extends StatelessWidget {
         return VisibilityDetector(
           key: Key('live-${stream.streamId}'),
           onVisibilityChanged: (info) {
-            if (info.visibleFraction > 0.15) {
-              ctrl.lazyCheckStream(stream);
+            if (info.visibleFraction >= 0.4) {
+              ctrl.scheduleLazyCheck(stream);
+            } else if (info.visibleFraction <= 0.05) {
+              ctrl.cancelLazyCheck(stream.streamId);
             }
           },
           child: card,

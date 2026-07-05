@@ -104,7 +104,9 @@ class IptvController extends ChangeNotifier {
   final Map<String, bool> streamHealth = {};
   final Set<String> _healthInFlight = {};
   final List<IptvStream> _healthQueue = [];
-  static const _maxLazyHealthChecks = 4;
+  final Map<String, Timer> _healthDebounce = {};
+  static const _maxLazyHealthChecks = 2;
+  static const _lazyCheckDelay = Duration(milliseconds: 450);
 
   // ── EPG cache (live section only) ──
   /// Memoised `get_short_epg` results per stream for the current portal+section.
@@ -688,6 +690,7 @@ class IptvController extends ChangeNotifier {
     streamHealth.clear();
     _healthInFlight.clear();
     _healthQueue.clear();
+    cancelAllLazyChecks();
     _epgCache.clear();
     notifyListeners();
     try {
@@ -727,7 +730,34 @@ class IptvController extends ChangeNotifier {
     }
   }
 
-  /// Probe a single live stream when its card is visible — capped concurrency.
+  /// Queue a health probe after the card has stayed visible (debounced).
+  void scheduleLazyCheck(IptvStream s) {
+    final p = activePortal;
+    if (p == null || activeSection != IptvSection.live) return;
+    if (s.kind != 'live' || s.streamId.isEmpty) return;
+    if (streamHealth.containsKey(s.streamId)) return;
+    if (_healthInFlight.contains(s.streamId)) return;
+
+    _healthDebounce[s.streamId]?.cancel();
+    _healthDebounce[s.streamId] = Timer(_lazyCheckDelay, () {
+      _healthDebounce.remove(s.streamId);
+      lazyCheckStream(s);
+    });
+  }
+
+  void cancelLazyCheck(String streamId) {
+    _healthDebounce[streamId]?.cancel();
+    _healthDebounce.remove(streamId);
+  }
+
+  void cancelAllLazyChecks() {
+    for (final t in _healthDebounce.values) {
+      t.cancel();
+    }
+    _healthDebounce.clear();
+  }
+
+  /// Probe a single live stream — capped concurrency, called after debounce.
   void lazyCheckStream(IptvStream s) {
     final p = activePortal;
     if (p == null || activeSection != IptvSection.live) return;
@@ -872,8 +902,15 @@ class IptvController extends ChangeNotifier {
     streamHealth.clear();
     _healthInFlight.clear();
     _healthQueue.clear();
+    cancelAllLazyChecks();
     notifyListeners();
     await startAliveCheck(force: true);
+  }
+
+  @override
+  void dispose() {
+    cancelAllLazyChecks();
+    super.dispose();
   }
 
   // ────────────────────────────────────────────────────────────────────────
