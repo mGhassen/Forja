@@ -50,6 +50,16 @@ void main() {
     expect(parsed['logo'], 'https://x/icon.png');
   });
 
+  test('parseStremioManifestJson accepts object resources', () {
+    const body =
+        '{"name":"Torrentio","resources":[{"name":"stream","types":["movie","series"]}]}';
+    final json = ForjaRust.instance.parseStremioManifestJson(body);
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    expect(parsed.containsKey('error'), isFalse);
+    final resources = parsed['resources'] as List<dynamic>;
+    expect((resources.first as Map)['name'], 'stream');
+  });
+
   test('parseStremioStreamsJson via FFI', () {
     const body =
         '{"streams":[{"url":"https://cdn.example/a.m3u8","title":"1080p"}]}';

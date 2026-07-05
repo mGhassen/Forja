@@ -1,6 +1,6 @@
 mod http;
 
-use serde::{Deserialize, Serialize};
+use serde::{de::Error as DeError, Deserialize, Serialize};
 
 pub use http::{fetch_get, HttpResponse};
 
@@ -42,8 +42,15 @@ pub struct ParsedAddonUrl {
     pub query_params: Option<String>,
 }
 
-pub fn parse_manifest(json: &str) -> Result<StremioManifest, serde_json::Error> {
-    serde_json::from_str(json)
+/// Validates manifest JSON and returns the full object unchanged.
+/// Stremio addons use heterogeneous `resources` entries (strings or objects).
+pub fn parse_manifest(json: &str) -> Result<serde_json::Value, serde_json::Error> {
+    let value: serde_json::Value = serde_json::from_str(json)?;
+    if value.is_object() {
+        Ok(value)
+    } else {
+        Err(serde_json::Error::custom("manifest must be a JSON object"))
+    }
 }
 
 pub fn parse_streams(json: &str) -> Result<StremioStreamResponse, serde_json::Error> {
@@ -132,7 +139,18 @@ mod tests {
     #[test]
     fn parses_manifest_json() {
         let m = parse_manifest(r#"{"name":"Addon","logo":"https://x/icon.png"}"#).unwrap();
-        assert_eq!(m.name.as_deref(), Some("Addon"));
+        assert_eq!(m["name"].as_str(), Some("Addon"));
+    }
+
+    #[test]
+    fn parses_manifest_with_object_resources() {
+        let m = parse_manifest(
+            r#"{"name":"Torrentio","resources":[{"name":"stream","types":["movie","series"]}]}"#,
+        )
+        .unwrap();
+        assert_eq!(m["name"].as_str(), Some("Torrentio"));
+        let resources = m["resources"].as_array().unwrap();
+        assert_eq!(resources[0]["name"].as_str(), Some("stream"));
     }
 
     #[test]
@@ -141,3 +159,4 @@ mod tests {
         assert_eq!(s.streams.as_ref().map(|v| v.len()), Some(1));
     }
 }
+
