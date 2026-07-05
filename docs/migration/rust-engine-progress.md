@@ -38,12 +38,12 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 |------|:----:|:---:|-------|
 | **0 — Scaffold** (build, FFI, CI) | ✅ | ✅ | `ForjaEngine.init()`, dylib bundling |
 | **1 — Utils** (episode match, HLS, torrent filter) | ✅ | ✅ | all 5 modules wired |
-| **2 — Stream URLs** | 5/5 | 5/5 | all template providers in Rust |
-| **3 — IPTV** | 4/4 | 4/4 | M3U, paste.sh, EPG decode, Xtream JSON parse |
+| **2 — Stream URLs** | ✅ | ✅ | all 5 template providers wired |
+| **3 — IPTV** | ✅ | ✅ | M3U, paste.sh, EPG decode, Xtream JSON parse |
 | **4 — Stremio** | partial | partial | URL helpers + JSON parse wired · ❌ HTTP fetch |
 | **5 — Webstreamr** | 23/23 extractors · 21/21 sources | partial | all parse logic in Rust; fetch/registry Dart |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
-| **7 — Torrent + proxy** | partial | ❌ | torrent stub · proxy FFI exposed (not app-wired) |
+| **7 — Torrent + proxy** | partial | partial | torrent stub · `/proxy` wired via Rust when engine on · `/hls-proxy` stays Dart |
 | **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
 | **9 — Cleanup** | — | ❌ | delete Dart fallbacks |
 
@@ -57,12 +57,14 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 - Stremio: URL building only (not catalog browsing)
 - Scrapers: Knaben / TPB / Uindex HTML parse + dedup
 - Webstreamr: 23 extractors + 21 sources (all parse helpers wired; HTTP fetch + registry still Dart)
+- Local proxy: `/proxy?url=` + Range streaming (Rust backend; shelf forwards when engine on)
 
 ### Still 100% Dart
 
 - Stremio catalog / meta / stream HTTP
 - Webstreamr: fetcher, registry, search/redirect HTTP orchestration
-- Torrent session + local stream proxy
+- HLS proxy (`/hls-proxy`: m3u8 rewrite + PNG strip)
+- Torrent session (`libtorrent_flutter`)
 
 ### Numbers
 
@@ -85,9 +87,8 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Wire Rust proxy into `LocalServerService` (HLS/range passthrough)
-2. Real libtorrent in `forja-torrent`
-3. Step 9 Dart fallback cleanup
+1. Real libtorrent in `forja-torrent`
+2. Step 9 Dart fallback cleanup
 
 ---
 
@@ -157,7 +158,7 @@ Wire-up: `EpisodeMatcherBackend`, `HlsParserBackend`, `JsUnpackBackend`, `KissKh
 
 ## Step 2 — `forja-stream-core`
 
-**Rust:** 5/5 · **App:** 5/5
+**Rust:** ✅ · **App:** ✅
 
 | Provider | Rust | App |
 |----------|:----:|:---:|
@@ -333,12 +334,14 @@ Wire-up: `ScraperParseBackend` in `forja_scrapers`.
 
 ## Step 7 — `forja-torrent` + `forja-proxy`
 
-**Rust:** partial · **App:** ❌
+**Rust:** partial · **App:** partial (proxy only)
 
 | Component | Rust | App |
 |-----------|:----:|:---:|
 | Torrent session | stub + FFI | `libtorrent_flutter` |
-| Local proxy | axum + FFI | Dart shelf (`LocalServerService`) |
+| `/proxy?url=` + Range | axum streaming | ✅ forwards to Rust when engine on |
+| `/hls-proxy` | — | Dart shelf (m3u8 rewrite + PNG strip) |
+| Token routes `/proxy/{token}` | axum | FFI only (not used by app yet) |
 
 ```bash
 cd crates && cargo test -p forja-torrent
@@ -347,7 +350,7 @@ cd packages/forja_rust && flutter test test/parity/torrent_stub_test.dart
 cd packages/forja_rust && flutter test test/parity/proxy_test.dart
 ```
 
-FFI: `forja_proxy_start`, `forja_proxy_stop`, `forja_proxy_port`, `forja_proxy_register_route`. Token proxy at `/proxy/{token}` — not wired to app yet.
+Wire-up: `LocalServerService.start()` starts Rust proxy on loopback; `_handleProxyRequest` forwards to it when `ForjaEngine.isReady`. Dart fallback if engine off or proxy start fails.
 
 Blocked on libtorrent crate integration for real torrent session.
 

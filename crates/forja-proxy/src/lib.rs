@@ -1,11 +1,14 @@
 use axum::{
     body::Body,
-    extract::{Path, State},
-    http::{header, StatusCode},
+    extract::{Path, Query, State},
+    http::{header, HeaderMap, Method, StatusCode},
     response::Response,
     routing::get,
     Router,
 };
+use futures_util::TryStreamExt;
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -13,14 +16,17 @@ use tokio::sync::RwLock;
 #[derive(Clone)]
 pub struct ProxyState {
     pub client: reqwest::Client,
-    pub routes: Arc<RwLock<std::collections::HashMap<String, String>>>,
+    pub routes: Arc<RwLock<HashMap<String, String>>>,
 }
 
 impl Default for ProxyState {
     fn default() -> Self {
         Self {
-            client: reqwest::Client::new(),
-            routes: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            client: reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::limited(8))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
+            routes: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
@@ -49,7 +55,11 @@ impl LocalProxy {
     pub async fn start(&mut self, port: u16) -> Result<u16, String> {
         let app = Router::new()
             .route("/health", get(health))
-            .route("/proxy/{token}", get(proxy_handler))
+            .route(
+                "/proxy",
+                get(query_proxy_handler).head(query_proxy_handler),
+            )
+            .route("/proxy/{token}", get(token_proxy_handler))
             .with_state(self.state.clone());
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
         let listener = tokio::net::TcpListener::bind(addr)
@@ -76,11 +86,104 @@ impl LocalProxy {
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct ProxyQuery {
+    url: String,
+    headers: Option<String>,
+}
+
 async fn health() -> &'static str {
     "ok"
 }
 
-async fn proxy_handler(
+fn parse_custom_headers(raw: Option<&str>) -> HashMap<String, String> {
+    let Some(raw) = raw.filter(|s| !s.is_empty()) else {
+        return HashMap::new();
+    };
+    serde_json::from_str(raw).unwrap_or_default()
+}
+
+fn build_upstream_request(
+    state: &ProxyState,
+    method: Method,
+    target_url: &str,
+    custom_headers: &HashMap<String, String>,
+    incoming: &HeaderMap,
+) -> Result<reqwest::RequestBuilder, StatusCode> {
+    let mut req = state.client.request(method, target_url);
+    let ua = custom_headers
+        .get("User-Agent")
+        .cloned()
+        .unwrap_or_else(|| {
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".into()
+        });
+    req = req.header(header::USER_AGENT, ua);
+    if let Some(referer) = custom_headers.get("Referer") {
+        req = req.header(header::REFERER, referer);
+    } else {
+        req = req.header(header::REFERER, "https://www.youtube.com/");
+    }
+    if let Some(origin) = custom_headers.get("Origin") {
+        req = req.header(header::ORIGIN, origin);
+    }
+    req = req.header(header::ACCEPT, "*/*");
+    req = req.header(header::ACCEPT_LANGUAGE, "en-US,en;q=0.9");
+    req = req.header(header::ACCEPT_ENCODING, "identity");
+    req = req.header(header::CONNECTION, "keep-alive");
+    if let Some(range) = incoming.get(header::RANGE) {
+        req = req.header(header::RANGE, range);
+    }
+    Ok(req)
+}
+
+fn forward_response(resp: reqwest::Response) -> Result<Response, StatusCode> {
+    let status = StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+    let mut builder = Response::builder()
+        .status(status)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, HEAD, OPTIONS, POST")
+        .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "*")
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONNECTION, "keep-alive");
+
+    for key in [
+        header::CONTENT_TYPE,
+        header::CONTENT_LENGTH,
+        header::CONTENT_RANGE,
+        header::ACCEPT_RANGES,
+        header::CONTENT_DISPOSITION,
+        header::ETAG,
+        header::LAST_MODIFIED,
+    ] {
+        if let Some(v) = resp.headers().get(&key) {
+            builder = builder.header(key, v);
+        }
+    }
+
+    let stream = resp
+        .bytes_stream()
+        .map_err(|e| std::io::Error::other(e));
+    builder
+        .body(Body::from_stream(stream))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn query_proxy_handler(
+    State(state): State<ProxyState>,
+    Query(query): Query<ProxyQuery>,
+    method: Method,
+    headers: HeaderMap,
+) -> Result<Response, StatusCode> {
+    let target_url = urlencoding::decode(&query.url)
+        .map(|s| s.into_owned())
+        .unwrap_or(query.url);
+    let custom = parse_custom_headers(query.headers.as_deref());
+    let req = build_upstream_request(&state, method, &target_url, &custom, &headers)?;
+    let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+    forward_response(resp)
+}
+
+async fn token_proxy_handler(
     State(state): State<ProxyState>,
     Path(token): Path<String>,
 ) -> Result<Response, StatusCode> {
@@ -97,26 +200,22 @@ async fn proxy_handler(
         .send()
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
-    let status = StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
-    let bytes = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
-    Response::builder()
-        .status(status)
-        .header(header::CONTENT_TYPE, "application/octet-stream")
-        .body(Body::from(bytes))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+    forward_response(resp)
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[tokio::test]
     async fn proxy_state_default() {
-        let state = super::ProxyState::default();
+        let state = ProxyState::default();
         assert!(state.routes.try_read().is_ok());
     }
 
     #[tokio::test]
     async fn registers_route() {
-        let proxy = super::LocalProxy::new();
+        let proxy = LocalProxy::new();
         proxy
             .register_route("tok", "https://example.com/stream")
             .await;
@@ -125,5 +224,11 @@ mod tests {
             routes.get("tok").map(String::as_str),
             Some("https://example.com/stream")
         );
+    }
+
+    #[test]
+    fn parses_custom_headers_json() {
+        let map = parse_custom_headers(Some(r#"{"Referer":"https://example.com/"}"#));
+        assert_eq!(map.get("Referer").map(String::as_str), Some("https://example.com/"));
     }
 }

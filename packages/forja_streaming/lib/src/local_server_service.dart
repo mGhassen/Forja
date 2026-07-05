@@ -6,6 +6,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
 import 'package:flutter/foundation.dart';
+import 'package:forja_rust/forja_rust.dart';
 import 'package:forja_scrapers/scrapers/scraper_aggregator.dart';
 import 'package:forja_api/api/subtitlecat_service.dart';
 
@@ -17,6 +18,7 @@ class LocalServerService {
   HttpServer? _server;
   final Router _router = Router();
   int _port = 0;
+  int _rustProxyPort = 0;
 
   // Persistent HTTP client for connection reuse (keep-alive)
   final http.Client _httpClient = http.Client();
@@ -32,6 +34,13 @@ class LocalServerService {
     try {
       _server = await io.serve(_router.call, InternetAddress.loopbackIPv4, 0);
       _port = _server!.port;
+      if (ForjaEngine.isReady) {
+        final rustPort = ForjaRust.instance.proxyStart(0);
+        if (rustPort > 0) {
+          _rustProxyPort = rustPort;
+          debugPrint('[LocalServer] Rust proxy on 127.0.0.1:$rustPort');
+        }
+      }
       debugPrint('[LocalServer] Started on $baseUrl');
     } catch (e) {
       debugPrint('[LocalServer] Error starting server: $e');
@@ -369,6 +378,11 @@ class LocalServerService {
     final params = request.url.queryParameters;
     final targetUrl = params['url'];
     if (targetUrl == null) return Response.notFound('Missing url parameter');
+
+    if (_rustProxyPort > 0) {
+      return _forwardProxyToRust(request, params);
+    }
+
     final decodedUrl = Uri.decodeComponent(targetUrl);
     Map<String, String> customHeaders = {};
     if (params['headers'] != null) {
@@ -425,6 +439,57 @@ class LocalServerService {
       return Response(streamedResponse.statusCode, body: streamedResponse.stream, headers: responseHeaders);
     } catch (e) {
       return Response.internalServerError(body: 'Proxy error: $e');
+    }
+  }
+
+  Future<Response> _forwardProxyToRust(
+    Request request,
+    Map<String, String> params,
+  ) async {
+    try {
+      final rustUri = Uri(
+        scheme: 'http',
+        host: '127.0.0.1',
+        port: _rustProxyPort,
+        path: '/proxy',
+        queryParameters: params,
+      );
+      final req = http.Request(request.method, rustUri);
+      final range = request.headers['range'];
+      if (range != null) req.headers['range'] = range;
+
+      final streamedResponse = await _httpClient.send(req);
+      final responseHeaders = <String, String>{
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS, POST',
+        'Access-Control-Allow-Headers': '*',
+        'Accept-Ranges': 'bytes',
+        'Connection': 'keep-alive',
+      };
+
+      for (final key in [
+        'content-type',
+        'content-length',
+        'content-range',
+        'accept-ranges',
+        'content-disposition',
+        'etag',
+        'last-modified',
+      ]) {
+        final v = streamedResponse.headers[key];
+        if (v != null) responseHeaders[key] = v;
+      }
+      if (!responseHeaders.containsKey('content-type')) {
+        responseHeaders['content-type'] = 'audio/mpeg';
+      }
+
+      return Response(
+        streamedResponse.statusCode,
+        body: streamedResponse.stream,
+        headers: responseHeaders,
+      );
+    } catch (e) {
+      return Response.internalServerError(body: 'Rust proxy error: $e');
     }
   }
 
@@ -603,6 +668,10 @@ class LocalServerService {
   }
 
   Future<void> stop() async {
+    if (_rustProxyPort > 0 && ForjaEngine.isReady) {
+      ForjaRust.instance.proxyStop();
+      _rustProxyPort = 0;
+    }
     await _server?.close(force: true);
     _server = null;
     _port = 0;
