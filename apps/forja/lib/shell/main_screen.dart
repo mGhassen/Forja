@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja_storage/forja_storage.dart';
@@ -258,8 +259,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                               0,
                               24,
                             ),
-                            child: Image.asset(
-                              'assets/icon/logo-f-192.png',
+                            child: SvgPicture.asset(
+                              'assets/icon/logo-f.svg',
                               width: 48,
                               height: 48,
                             ),
