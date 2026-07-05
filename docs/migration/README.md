@@ -62,7 +62,7 @@ flowchart TB
 ## Principles
 
 1. **Rust owns the engine** — parsers, crypto, extractors, templates, proxy, torrent (librqbit).
-2. **Phase 2 before Compose** — no Kotlin UI until Flutter is gone from the engine layer (no libtorrent, no Dart parse fallbacks).
+2. **Phase 2 before Compose** — no Kotlin UI until Flutter is gone from the **engine layer** (no libtorrent, no Dart parse fallbacks, no `forja_*` duplicate packages). Orchestration HTTP/shelf may stay in Dart until Phase 3 ports it.
 3. **Flutter is temporary UI only** — deleted in Phase 4.
 4. **No feature loss** — every capability must have a replacement before deletion.
 5. **Orchestration is not engine** — HTTP fetch, registry, shelf, Nuvio JS host ports to Kotlin in Phase 3.

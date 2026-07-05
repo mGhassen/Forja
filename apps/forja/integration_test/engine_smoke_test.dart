@@ -20,6 +20,13 @@ void main() {
     installRustAppDelegates();
   });
 
+  setUp(() {
+    if (ForjaRust.isInitialized) {
+      ForjaRust.instance.torrentEngineStop();
+      ForjaRust.instance.torrentStop();
+    }
+  });
+
   tearDown(() {
     if (ForjaRust.isInitialized) {
       ForjaRust.instance.torrentEngineStop();
@@ -73,21 +80,6 @@ http://stream.example/live
     expect(svc.state, EngineState.ready);
   });
 
-  test('magnet stream E2E (optional)', () async {
-    final run = Platform.environment['FORJA_TORRENT_E2E'] == '1';
-    final magnet = Platform.environment['FORJA_TORRENT_MAGNET'];
-    if (!run || magnet == null || magnet.isEmpty) {
-      return;
-    }
-    ForjaRust.instance.torrentEngineStart(0);
-    final json = ForjaRust.instance.torrentStreamJson(magnet);
-    final parsed = jsonDecode(json) as Map<String, dynamic>;
-    expect(parsed['error'], isNull, reason: parsed['error']?.toString());
-    final url = parsed['url'] as String?;
-    expect(url, isNotEmpty);
-    expect(url, startsWith('http://127.0.0.1:'));
-  }, timeout: const Timeout(Duration(minutes: 5)));
-
   test('torrent engine starts on loopback', () {
     final port = ForjaRust.instance.torrentEngineStart(0);
     expect(port, greaterThan(0));
@@ -137,4 +129,36 @@ http://stream.example/live
     expect(EpisodeMatcher.matches('Show.S03E08.mkv', 3, 7), isFalse);
     expect(EpisodeMatcher.matches('Show.3.07.1080p.mkv', 3, 7), isFalse);
   });
+
+  test('magnet stream E2E (optional)', () async {
+    final run = Platform.environment['FORJA_TORRENT_E2E'] == '1';
+    final magnet = Platform.environment['FORJA_TORRENT_MAGNET'];
+    if (!run || magnet == null || magnet.isEmpty) {
+      return;
+    }
+    ForjaRust.instance.torrentSetPeerLimit(50);
+    expect(ForjaRust.instance.torrentEngineStart(0), greaterThan(0));
+
+    final listJson = ForjaRust.instance.torrentListFilesJson(magnet);
+    final listParsed = jsonDecode(listJson) as Map<String, dynamic>;
+    expect(listParsed['error'], isNull, reason: '${listParsed['error']}');
+    final files = listParsed['files'] as List?;
+    expect(files, isNotEmpty);
+
+    final json = ForjaRust.instance.torrentStreamJson(magnet);
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    expect(parsed['error'], isNull, reason: '${parsed['error']}');
+    final url = parsed['url'] as String?;
+    expect(url, isNotEmpty);
+    expect(url, startsWith('http://127.0.0.1:'));
+
+    final client = HttpClient();
+    final req = await client.getUrl(Uri.parse(url!));
+    req.headers.set('Range', 'bytes=0-1023');
+    final resp = await req.close();
+    expect(resp.statusCode, anyOf(200, 206));
+    final bytes = await resp.fold<List<int>>([], (a, b) => a..addAll(b));
+    expect(bytes.length, greaterThan(0));
+    client.close();
+  }, timeout: const Timeout(Duration(minutes: 10)));
 }

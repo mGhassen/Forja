@@ -31,7 +31,8 @@
 | B2 — mobile librqbit | 4 | 6 | iOS compile done · device smoke + Android NDK open |
 | Drop libtorrent | 4 | 4 | **done** |
 | Strip Dart fallbacks | 4 | 4 | **done** |
-| Optional hardening | 0 | 3 | P2-40 scrapers · P2-41 parity · P2-42 strict mobile |
+| Legacy engine purge | 0 | 4 | P2-60 delete `forja_*` · P2-61–63 audit |
+| Optional hardening | 1 | 3 | P2-40 scrapers · P2-41 parity · P2-42 **done** |
 | Kotlin FFI prep | 2 | 3 | P2-50 UDL **done** · P2-51 bindgen **done** · P2-52 JNI proof open |
 | Sign-off | 0 | 3 | P2-70 smoke · P2-71 RFC · P2-72 README gate |
 
@@ -39,7 +40,7 @@
 
 | Area | Rust | App | Dart removed | Notes |
 |------|:----:|:---:|:------------:|-------|
-| **B2 — mobile librqbit** | ✅ iOS | partial | N/A | Android NDK verify · P2-14 device smoke |
+| **B2 — mobile librqbit** | ✅ iOS | partial | N/A | desktop E2E **done** · mobile device + Android NDK open |
 | **Drop libtorrent** | ✅ | ✅ | ✅ | P2-20/21 done — no pubspec refs, Rust-only torrent |
 | **Strip fallbacks** | ✅ | ✅ | ✅ | webstreamr · provider registry · scrapers |
 | **Optional scrapers** | — | — | — | YTS, EZTV, EliteTorrent — not blocking |
@@ -52,6 +53,7 @@
 |-----------|--------|
 | Mobile FFI full features (iOS/Android) | open |
 | Magnet → HTTP stream on mobile | open |
+| Magnet → HTTP stream on desktop | ✅ (P2-14 E2E + Range) |
 | `libtorrent_flutter` removed | ✅ |
 | `TorrentStreamService` Rust-only | ✅ |
 | Dart HTML fallbacks removed | ✅ |
@@ -170,6 +172,17 @@ Files: `crates/torrent/`, `packages/streaming/lib/src/torrent_stream_service.dar
 | P2-40 | Port remaining scrapers to Rust | YTS, EZTV, EliteTorrent, etc. — `crates/scrapers/` |
 | P2-41 | lulustream/fastream stream-fetch parity | Expand Dart parity or document as Rust-only |
 | P2-42 | `FORJA_RUST_STRICT=1` on mobile debug | **done** — boot warns/fails on all platforms in debug |
+
+### Legacy engine purge (still Phase 2 — blocks Phase 3)
+
+| ID | Task | Detail |
+|----|------|--------|
+| P2-60 | Delete `packages/forja_*` duplicates | `forja_rust`, `forja_streaming`, `forja_api`, `forja_webstreamr`, `forja_scrapers`, `forja_core`, `forja_storage` — app uses short names only |
+| P2-61 | Remove `dart_fallback/` + `reference/` if any | Active `packages/rust/lib/src/` must stay 3 files only |
+| P2-62 | Drop Dart parity baselines from CI gate | Keep Rust goldens; archive or delete `test/parity/dart_baseline/` when confident |
+| P2-63 | Audit `melos.yaml` / CI for `forja_*` refs | No duplicate package builds |
+
+**Do not add a separate “engine cleanup” phase.** Engine cleanup **is** Phase 2. Phase 3 is Compose UI + porting orchestration. Phase 4 deletes Flutter entirely.
 
 ### Kotlin FFI prep (parallel, low risk)
 

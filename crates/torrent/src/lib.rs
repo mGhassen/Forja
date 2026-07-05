@@ -9,7 +9,7 @@ use axum::{
 use utils::{episode_matcher, torrent_filter};
 use futures_util::TryStreamExt;
 use librqbit::api::{Api, TorrentDetailsResponseFile, TorrentIdOrHash};
-use librqbit::{AddTorrent, AddTorrentResponse, Session, SessionOptions};
+use librqbit::{AddTorrent, AddTorrentOptions, AddTorrentResponse, Session, SessionOptions};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -314,9 +314,13 @@ impl TorrentEngine {
             inner.session.clone().ok_or("Torrent engine not started")?
         };
 
+        let add_opts = AddTorrentOptions {
+            overwrite: true,
+            ..Default::default()
+        };
         let response = tokio::time::timeout(
             Duration::from_secs(8),
-            session.add_torrent(AddTorrent::from_url(magnet), None),
+            session.add_torrent(AddTorrent::from_url(magnet), Some(add_opts)),
         )
         .await
         .map_err(|_| "Timed out adding torrent".to_string())?
