@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1382,11 +1383,9 @@ class _BrowserViewState extends State<_BrowserView> {
       );
     }
     return LayoutBuilder(
-      builder: (_, c) {
+      builder: (ctx, c) {
         final cross = (c.maxWidth ~/ 180).clamp(2, 8);
-        return NotificationListener<ScrollNotification>(
-          onNotification: _onScrollNotification,
-          child: GridView.builder(
+        final grid = GridView.builder(
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: cross,
@@ -1400,7 +1399,11 @@ class _BrowserViewState extends State<_BrowserView> {
             ctrl: widget.ctrl,
             onTap: () => _onStreamTap(list[i]),
           ),
-        ),
+        );
+        if (!_LiveHealthProbe.usesScrollDebounce(ctx)) return grid;
+        return NotificationListener<ScrollNotification>(
+          onNotification: _onScrollNotification,
+          child: grid,
         );
       },
     );
@@ -1547,17 +1550,7 @@ class _StreamCard extends StatelessWidget {
 
         if (stream.kind != 'live') return card;
 
-        return VisibilityDetector(
-          key: Key('live-${stream.streamId}'),
-          onVisibilityChanged: (info) {
-            if (info.visibleFraction >= 0.4) {
-              ctrl.scheduleLazyCheck(stream);
-            } else if (info.visibleFraction <= 0.05) {
-              ctrl.cancelLazyCheck(stream.streamId);
-            }
-          },
-          child: card,
-        );
+        return _LiveHealthProbe(stream: stream, ctrl: ctrl, child: card);
       },
     );
   }
@@ -1570,6 +1563,70 @@ class _StreamCard extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) => _EpgSheet(stream: stream, ctrl: ctrl),
+    );
+  }
+}
+
+/// Platform-specific lazy health probe — desktop hover, TV focus, mobile visibility.
+class _LiveHealthProbe extends StatelessWidget {
+  final IptvStream stream;
+  final IptvController ctrl;
+  final Widget child;
+
+  const _LiveHealthProbe({
+    required this.stream,
+    required this.ctrl,
+    required this.child,
+  });
+
+  static bool isDesktopPlatform() =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+  /// Android TV / leanback: tablet-sized wide landscape (not phone).
+  static bool isTvLayout(BuildContext context) {
+    if (!Platform.isAndroid) return false;
+    final size = MediaQuery.sizeOf(context);
+    if (size.shortestSide < 600) return false;
+    return size.longestSide >= 960 && size.width > size.height;
+  }
+
+  /// Mobile touch scrolling needs visibility + scroll debounce.
+  static bool usesScrollDebounce(BuildContext context) =>
+      !isDesktopPlatform() && !isTvLayout(context);
+
+  @override
+  Widget build(BuildContext context) {
+    if (isDesktopPlatform()) {
+      return MouseRegion(
+        onEnter: (_) => ctrl.scheduleLazyCheck(stream),
+        onExit: (_) => ctrl.cancelLazyCheck(stream.streamId),
+        child: child,
+      );
+    }
+
+    if (isTvLayout(context)) {
+      return Focus(
+        onFocusChange: (focused) {
+          if (focused) {
+            ctrl.scheduleLazyCheck(stream);
+          } else {
+            ctrl.cancelLazyCheck(stream.streamId);
+          }
+        },
+        child: child,
+      );
+    }
+
+    return VisibilityDetector(
+      key: Key('live-${stream.streamId}'),
+      onVisibilityChanged: (info) {
+        if (info.visibleFraction >= 0.4) {
+          ctrl.scheduleLazyCheck(stream);
+        } else if (info.visibleFraction <= 0.05) {
+          ctrl.cancelLazyCheck(stream.streamId);
+        }
+      },
+      child: child,
     );
   }
 }
