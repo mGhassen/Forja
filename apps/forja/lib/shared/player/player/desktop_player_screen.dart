@@ -20,6 +20,7 @@ import 'utils.dart';
 import 'menus.dart';
 
 import 'package:core/models/movie.dart';
+import 'package:core/models/stream_source.dart';
 import 'package:core/models/torrent_result.dart';
 import 'package:rust/rust.dart';
 import 'package:api/api/subtitle_api.dart';

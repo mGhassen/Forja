@@ -293,5 +293,68 @@ abstract final class ForjaEngine {
 
     final iptvMeta = prefs.getString('forja_iptv_portal_meta');
     if (iptvMeta != null) storageWriteString('forja_iptv_portal_meta', iptvMeta);
+
+    void migrateInt(String key) {
+      if (prefs.containsKey(key)) {
+        storageWrite(key, prefs.getInt(key)!);
+      }
+    }
+
+    void migrateDouble(String key) {
+      if (prefs.containsKey(key)) {
+        storageWrite(key, prefs.getDouble(key)!);
+      }
+    }
+
+    const stringKeys = [
+      'sort_preference',
+      'debrid_service',
+      'external_player',
+      'jackett_base_url',
+      'jackett_api_key',
+      'prowlarr_base_url',
+      'prowlarr_api_key',
+      'torrent_cache_type',
+      'theme_preset',
+      'preferred_audio_lang',
+      'sub_font',
+    ];
+    for (final k in stringKeys) {
+      migrateString(k);
+    }
+
+    const boolKeys = [
+      'streaming_mode',
+      'use_debrid_for_streams',
+      'light_mode',
+      'sub_bold',
+      'avoid_unsupported_audio',
+    ];
+    for (final k in boolKeys) {
+      migrateBool(k);
+    }
+
+    migrateInt('torrent_ram_cache_mb');
+    migrateInt('torrent_connections_limit');
+    migrateInt('sub_color');
+    migrateDouble('sub_size');
+    migrateDouble('sub_bg_opacity');
+    migrateDouble('sub_bottom_padding');
+
+    migrateStringList('prowlarr_tag_ids');
+    migrateStringList('navbar_config');
+    migrateStringList('navbar_known_ids');
+
+    void migrateJsonList(String key) {
+      final raw = prefs.getString(key);
+      if (raw == null || raw.isEmpty) return;
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) storageWrite(key, decoded);
+      } catch (_) {}
+    }
+
+    migrateJsonList('watch_history');
+    migrateJsonList('dismissed_history');
   }
 }

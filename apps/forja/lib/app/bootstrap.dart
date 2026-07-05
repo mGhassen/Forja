@@ -116,10 +116,9 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   AudiobookPlayerService().init(audioHandler);
   
   // Hydrate light mode setting before first frame
-  await SettingsService().initLightMode();
-
   await ForjaEngine.init();
   _warnIfRustMissing();
+  await SettingsService().initLightMode();
   
   // Hydrate theme preset before first frame
   await AppTheme.initTheme();

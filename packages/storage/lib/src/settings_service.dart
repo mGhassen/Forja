@@ -1,16 +1,15 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:rust/rust.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'kv.dart';
 
 class SettingsService {
   static final SettingsService _instance = SettingsService._internal();
   factory SettingsService() => _instance;
   SettingsService._internal();
 
-  /// Fires whenever Stremio addons are added or removed.
-  /// Listeners can compare the value to detect changes.
   static final ValueNotifier<int> addonChangeNotifier = ValueNotifier<int>(0);
 
   static const String _streamingModeKey = 'streaming_mode';
@@ -18,178 +17,94 @@ class SettingsService {
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
   static const String _stremioAddonsKey = 'stremio_addons';
-  
-  // External player setting
   static const String _externalPlayerKey = 'external_player';
-
-  // Jackett settings
   static const String _jackettBaseUrlKey = 'jackett_base_url';
   static const String _jackettApiKeyKey = 'jackett_api_key';
-  
-  // Prowlarr settings
   static const String _prowlarrBaseUrlKey = 'prowlarr_base_url';
   static const String _prowlarrApiKeyKey = 'prowlarr_api_key';
   static const String _prowlarrTagIdsKey = 'prowlarr_tag_ids';
-
-  // Light mode (performance)
   static const String _lightModeKey = 'light_mode';
-
-  // Theme preset
   static const String _themePresetKey = 'theme_preset';
-
-  /// Notifier that fires when light mode changes so all widgets can react.
   static final ValueNotifier<bool> lightModeNotifier = ValueNotifier<bool>(false);
-
-  // Torrent cache settings
   static const String _torrentCacheTypeKey = 'torrent_cache_type';
   static const String _torrentRamCacheMbKey = 'torrent_ram_cache_mb';
   static const String _torrentConnectionsLimitKey = 'torrent_connections_limit';
-
-  // Subtitle preferences
   static const String _subSizeKey = 'sub_size';
   static const String _subColorKey = 'sub_color';
   static const String _subBgOpacityKey = 'sub_bg_opacity';
   static const String _subBoldKey = 'sub_bold';
   static const String _subBottomPaddingKey = 'sub_bottom_padding';
   static const String _subFontKey = 'sub_font';
-
-  // Track auto-select preferences
   static const String _preferredAudioLangKey = 'preferred_audio_lang';
   static const String _avoidUnsupportedAudioKey = 'avoid_unsupported_audio';
 
-  // ── Track auto-select getters/setters ─────────────────────────────────────
+  Future<String> getPreferredAudioLanguage() async =>
+      await kvGetString(_preferredAudioLangKey) ?? 'None';
 
-  /// Display name (e.g. "English") of the audio language to auto-switch to
-  /// once a video's audio tracks are known. Returns 'None' to mean
-  /// "don't touch the default audio track".
-  Future<String> getPreferredAudioLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_preferredAudioLangKey) ?? 'None';
-  }
-  Future<void> setPreferredAudioLanguage(String v) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_preferredAudioLangKey, v);
-  }
+  Future<void> setPreferredAudioLanguage(String v) async =>
+      kvSetString(_preferredAudioLangKey, v);
 
-  Future<bool> getAvoidUnsupportedAudio() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_avoidUnsupportedAudioKey) ?? true;
-  }
-  Future<void> setAvoidUnsupportedAudio(bool v) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_avoidUnsupportedAudioKey, v);
-  }
+  Future<bool> getAvoidUnsupportedAudio() async =>
+      kvGetBool(_avoidUnsupportedAudioKey, fallback: true);
 
-  // ── Subtitle getters/setters ──────────────────────────────────────────────
+  Future<void> setAvoidUnsupportedAudio(bool v) async =>
+      kvSetBool(_avoidUnsupportedAudioKey, v);
 
-  Future<double> getSubSize({bool isDesktop = false}) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getDouble(_subSizeKey) ?? (isDesktop ? 44.0 : 24.0);
-  }
-  Future<void> setSubSize(double v) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_subSizeKey, v);
-  }
+  Future<double> getSubSize({bool isDesktop = false}) async =>
+      kvGetDouble(_subSizeKey, fallback: isDesktop ? 44.0 : 24.0);
 
-  Future<int> getSubColor() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_subColorKey) ?? 0xFFFFFFFF; // white
-  }
-  Future<void> setSubColor(int v) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_subColorKey, v);
-  }
+  Future<void> setSubSize(double v) async => kvSetDouble(_subSizeKey, v);
 
-  Future<double> getSubBgOpacity() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getDouble(_subBgOpacityKey) ?? 0.67;
-  }
-  Future<void> setSubBgOpacity(double v) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_subBgOpacityKey, v);
-  }
+  Future<int> getSubColor() async =>
+      kvGetInt(_subColorKey, fallback: 0xFFFFFFFF);
 
-  Future<bool> getSubBold() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_subBoldKey) ?? false;
-  }
-  Future<void> setSubBold(bool v) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_subBoldKey, v);
-  }
+  Future<void> setSubColor(int v) async => kvSetInt(_subColorKey, v);
 
-  Future<double> getSubBottomPadding() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getDouble(_subBottomPaddingKey) ?? 24.0;
-  }
-  Future<void> setSubBottomPadding(double v) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_subBottomPaddingKey, v);
-  }
+  Future<double> getSubBgOpacity() async =>
+      kvGetDouble(_subBgOpacityKey, fallback: 0.67);
 
-  Future<String> getSubFont() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_subFontKey) ?? 'Default';
-  }
-  Future<void> setSubFont(String v) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_subFontKey, v);
-  }
+  Future<void> setSubBgOpacity(double v) async =>
+      kvSetDouble(_subBgOpacityKey, v);
 
-  Future<List<Map<String, dynamic>>> getStremioAddons() async {
-    if (ForjaEngine.isReady) {
-      return ForjaEngine.storageReadMapList(_stremioAddonsKey);
-    }
-    final prefs = await SharedPreferences.getInstance();
-    final List<String> list = prefs.getStringList(_stremioAddonsKey) ?? [];
-    return list.map((s) => json.decode(s) as Map<String, dynamic>).toList();
-  }
+  Future<bool> getSubBold() async => kvGetBool(_subBoldKey, fallback: false);
+
+  Future<void> setSubBold(bool v) async => kvSetBool(_subBoldKey, v);
+
+  Future<double> getSubBottomPadding() async =>
+      kvGetDouble(_subBottomPaddingKey, fallback: 24.0);
+
+  Future<void> setSubBottomPadding(double v) async =>
+      kvSetDouble(_subBottomPaddingKey, v);
+
+  Future<String> getSubFont() async =>
+      await kvGetString(_subFontKey) ?? 'Default';
+
+  Future<void> setSubFont(String v) async => kvSetString(_subFontKey, v);
+
+  Future<List<Map<String, dynamic>>> getStremioAddons() async =>
+      kvGetMapList(_stremioAddonsKey);
 
   Future<void> saveStremioAddon(Map<String, dynamic> addon) async {
-    List<Map<String, dynamic>> current = await getStremioAddons();
+    final current = await getStremioAddons();
     current.removeWhere((a) => a['baseUrl'] == addon['baseUrl']);
     current.add(addon);
-    if (ForjaEngine.isReady) {
-      ForjaEngine.storageWriteMapList(_stremioAddonsKey, current);
-    } else {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(
-        _stremioAddonsKey,
-        current.map((e) => json.encode(e)).toList().cast<String>(),
-      );
-    }
+    await kvSetMapList(_stremioAddonsKey, current);
     addonChangeNotifier.value++;
   }
 
   Future<void> removeStremioAddon(String baseUrl) async {
-    List<Map<String, dynamic>> current = await getStremioAddons();
+    final current = await getStremioAddons();
     current.removeWhere((a) => a['baseUrl'] == baseUrl);
-    if (ForjaEngine.isReady) {
-      ForjaEngine.storageWriteMapList(_stremioAddonsKey, current);
-    } else {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(
-        _stremioAddonsKey,
-        current.map((e) => json.encode(e)).toList().cast<String>(),
-      );
-    }
+    await kvSetMapList(_stremioAddonsKey, current);
     addonChangeNotifier.value++;
   }
 
-  Future<bool> isStreamingModeEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_streamingModeKey) ?? false;
-  }
+  Future<bool> isStreamingModeEnabled() async =>
+      kvGetBool(_streamingModeKey, fallback: false);
 
-  Future<void> setStreamingMode(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_streamingModeKey, enabled);
-  }
+  Future<void> setStreamingMode(bool enabled) async =>
+      kvSetBool(_streamingModeKey, enabled);
 
-  // ── Streaming-mode provider order ─────────────────────────────────────────
-  // Order in which Direct Streaming Mode tries each provider. The first
-  // provider that yields a working stream wins; the rest become fallbacks
-  // inside the player (in the same order). User-editable in Settings.
   static const String _streamProviderOrderKey = 'stream_provider_order';
   static const List<String> defaultStreamProviderOrder = <String>[
     'videasy',
@@ -202,16 +117,8 @@ class SettingsService {
   ];
 
   Future<List<String>> getStreamProviderOrder() async {
-    List<String> saved;
-    if (ForjaEngine.isReady) {
-      saved = ForjaEngine.storageReadStringList(
-        _streamProviderOrderKey,
-        fallback: const [],
-      );
-    } else {
-      final prefs = await SharedPreferences.getInstance();
-      saved = prefs.getStringList(_streamProviderOrderKey) ?? const [];
-    }
+    final saved =
+        await kvGetStringList(_streamProviderOrderKey, fallback: const []);
     if (saved.isEmpty) {
       return List<String>.from(defaultStreamProviderOrder);
     }
@@ -222,11 +129,10 @@ class SettingsService {
     return out;
   }
 
-  /// Merges a saved provider order with the currently-available provider
-  /// keys: keeps user ordering for keys that still exist, then appends any
-  /// new keys at the end. Drops keys whose provider has gone away.
   static List<String> mergeProviderOrder(
-      List<String> saved, Iterable<String> available) {
+    List<String> saved,
+    Iterable<String> available,
+  ) {
     final availSet = available.toSet();
     final out = <String>[];
     for (final k in saved) {
@@ -238,258 +144,172 @@ class SettingsService {
     return out;
   }
 
-  Future<void> setStreamProviderOrder(List<String> order) async {
-    if (ForjaEngine.isReady) {
-      ForjaEngine.storageWriteStringList(_streamProviderOrderKey, order);
-    } else {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_streamProviderOrderKey, order);
-    }
-  }
+  Future<void> setStreamProviderOrder(List<String> order) async =>
+      kvSetStringList(_streamProviderOrderKey, order);
 
-  Future<String> getSortPreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_sortPreferenceKey) ?? 'Seeders (High to Low)';
-  }
+  Future<String> getSortPreference() async =>
+      await kvGetString(_sortPreferenceKey) ?? 'Seeders (High to Low)';
 
-  Future<void> setSortPreference(String preference) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_sortPreferenceKey, preference);
-  }
+  Future<void> setSortPreference(String preference) async =>
+      kvSetString(_sortPreferenceKey, preference);
 
-  Future<bool> useDebridForStreams() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_useDebridKey) ?? false;
-  }
+  Future<bool> useDebridForStreams() async =>
+      kvGetBool(_useDebridKey, fallback: false);
 
-  Future<void> setUseDebridForStreams(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_useDebridKey, enabled);
-  }
+  Future<void> setUseDebridForStreams(bool enabled) async =>
+      kvSetBool(_useDebridKey, enabled);
 
-  Future<String> getDebridService() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_debridServiceKey) ?? 'None';
-  }
+  Future<String> getDebridService() async =>
+      await kvGetString(_debridServiceKey) ?? 'None';
 
-  Future<void> setDebridService(String service) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_debridServiceKey, service);
-  }
+  Future<void> setDebridService(String service) async =>
+      kvSetString(_debridServiceKey, service);
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // External Player
-  // ═══════════════════════════════════════════════════════════════════════════
+  Future<String> getExternalPlayer() async =>
+      await kvGetString(_externalPlayerKey) ?? 'Built-in Player';
 
-  Future<String> getExternalPlayer() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_externalPlayerKey) ?? 'Built-in Player';
-  }
+  Future<void> setExternalPlayer(String player) async =>
+      kvSetString(_externalPlayerKey, player);
 
-  Future<void> setExternalPlayer(String player) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_externalPlayerKey, player);
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Jackett Settings
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Future<String?> getJackettBaseUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_jackettBaseUrlKey);
-  }
+  Future<String?> getJackettBaseUrl() async =>
+      kvGetString(_jackettBaseUrlKey);
 
   Future<void> setJackettBaseUrl(String url) async {
-    final prefs = await SharedPreferences.getInstance();
     final normalized = url.trimRight().replaceAll(RegExp(r'/+$'), '');
-    await prefs.setString(_jackettBaseUrlKey, normalized);
+    await kvSetString(_jackettBaseUrlKey, normalized);
   }
 
-  Future<String?> getJackettApiKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_jackettApiKeyKey);
-  }
+  Future<String?> getJackettApiKey() async => kvGetString(_jackettApiKeyKey);
 
-  Future<void> setJackettApiKey(String apiKey) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_jackettApiKeyKey, apiKey);
-  }
+  Future<void> setJackettApiKey(String apiKey) async =>
+      kvSetString(_jackettApiKeyKey, apiKey);
 
   Future<bool> isJackettConfigured() async {
     final baseUrl = await getJackettBaseUrl();
     final apiKey = await getJackettApiKey();
-    return baseUrl != null && baseUrl.isNotEmpty && 
-           apiKey != null && apiKey.isNotEmpty;
+    return baseUrl != null &&
+        baseUrl.isNotEmpty &&
+        apiKey != null &&
+        apiKey.isNotEmpty;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Prowlarr Settings
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Future<String?> getProwlarrBaseUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_prowlarrBaseUrlKey);
-  }
+  Future<String?> getProwlarrBaseUrl() async =>
+      kvGetString(_prowlarrBaseUrlKey);
 
   Future<void> setProwlarrBaseUrl(String url) async {
-    final prefs = await SharedPreferences.getInstance();
     final normalized = url.trimRight().replaceAll(RegExp(r'/+$'), '');
-    await prefs.setString(_prowlarrBaseUrlKey, normalized);
+    await kvSetString(_prowlarrBaseUrlKey, normalized);
   }
 
-  Future<String?> getProwlarrApiKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_prowlarrApiKeyKey);
-  }
+  Future<String?> getProwlarrApiKey() async =>
+      kvGetString(_prowlarrApiKeyKey);
 
-  Future<void> setProwlarrApiKey(String apiKey) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prowlarrApiKeyKey, apiKey);
-  }
+  Future<void> setProwlarrApiKey(String apiKey) async =>
+      kvSetString(_prowlarrApiKeyKey, apiKey);
 
   Future<bool> isProwlarrConfigured() async {
     final baseUrl = await getProwlarrBaseUrl();
     final apiKey = await getProwlarrApiKey();
-    return baseUrl != null && baseUrl.isNotEmpty && 
-           apiKey != null && apiKey.isNotEmpty;
+    return baseUrl != null &&
+        baseUrl.isNotEmpty &&
+        apiKey != null &&
+        apiKey.isNotEmpty;
   }
 
   Future<List<int>> getProwlarrTagIds() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getStringList(_prowlarrTagIdsKey) ?? [];
+    final stored =
+        await kvGetStringList(_prowlarrTagIdsKey, fallback: const []);
     return stored
         .map((s) => int.tryParse(s) ?? -1)
         .where((id) => id >= 0)
         .toList();
   }
 
-  Future<void> setProwlarrTagIds(List<int> tagIds) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-        _prowlarrTagIdsKey, tagIds.map((id) => id.toString()).toList());
-  }
+  Future<void> setProwlarrTagIds(List<int> tagIds) async =>
+      kvSetStringList(
+        _prowlarrTagIdsKey,
+        tagIds.map((id) => id.toString()).toList(),
+      );
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Torrent Cache Settings
-  // ═══════════════════════════════════════════════════════════════════════════
+  Future<String> getTorrentCacheType() async =>
+      await kvGetString(_torrentCacheTypeKey) ?? 'ram';
 
-  /// Returns 'ram' or 'disk'. Defaults to 'ram'.
-  Future<String> getTorrentCacheType() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_torrentCacheTypeKey) ?? 'ram';
-  }
+  Future<void> setTorrentCacheType(String type) async =>
+      kvSetString(_torrentCacheTypeKey, type);
 
-  Future<void> setTorrentCacheType(String type) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_torrentCacheTypeKey, type);
-  }
+  Future<int> getTorrentRamCacheMb() async =>
+      kvGetInt(_torrentRamCacheMbKey, fallback: 200);
 
-  /// RAM cache size in MB. Defaults to 200.
-  Future<int> getTorrentRamCacheMb() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_torrentRamCacheMbKey) ?? 200;
-  }
+  Future<void> setTorrentRamCacheMb(int mb) async =>
+      kvSetInt(_torrentRamCacheMbKey, mb);
 
-  Future<void> setTorrentRamCacheMb(int mb) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_torrentRamCacheMbKey, mb);
-  }
+  Future<int> getTorrentConnectionsLimit() async =>
+      kvGetInt(_torrentConnectionsLimitKey, fallback: 200);
 
-  /// Per-torrent peer connection limit. Lower (5–25) often streams better
-  /// on high-seed swarms because a few slow peers can't head-of-line-block
-  /// the streaming reader. Default: 200 (Stremio-grade — high parallelism
-  /// for fast first-byte and sustained throughput on healthy swarms).
-  Future<int> getTorrentConnectionsLimit() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_torrentConnectionsLimitKey) ?? 200;
-  }
+  Future<void> setTorrentConnectionsLimit(int limit) async =>
+      kvSetInt(_torrentConnectionsLimitKey, limit);
 
-  Future<void> setTorrentConnectionsLimit(int limit) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_torrentConnectionsLimitKey, limit);
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Light Mode (Performance)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Future<bool> isLightModeEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_lightModeKey) ?? false;
-  }
+  Future<bool> isLightModeEnabled() async =>
+      kvGetBool(_lightModeKey, fallback: false);
 
   Future<void> setLightMode(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_lightModeKey, enabled);
+    await kvSetBool(_lightModeKey, enabled);
     lightModeNotifier.value = enabled;
   }
 
-  /// Call once at app startup to hydrate the notifier from disk.
   Future<void> initLightMode() async {
     lightModeNotifier.value = await isLightModeEnabled();
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Theme Preset
-  // ═══════════════════════════════════════════════════════════════════════════
+  Future<String> getThemePreset() async =>
+      await kvGetString(_themePresetKey) ?? 'emerald';
 
-  Future<String> getThemePreset() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_themePresetKey) ?? 'emerald';
-  }
-
-  Future<void> setThemePreset(String preset) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themePresetKey, preset);
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Navbar Configuration
-  // ═══════════════════════════════════════════════════════════════════════════
+  Future<void> setThemePreset(String preset) async =>
+      kvSetString(_themePresetKey, preset);
 
   static const String _navbarConfigKey = 'navbar_config';
-  /// Tracks every nav ID the user has already been shown in the configurator,
-  /// so we can distinguish "user explicitly hid it" from "new ID we just
-  /// shipped". Without this, hidden items reappear on every load because the
-  /// merge logic treats any missing ID as new.
   static const String _navbarKnownIdsKey = 'navbar_known_ids';
-
-  /// Notifier that fires when navbar config changes so MainScreen rebuilds.
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
-  /// All available nav items in default order. 'settings' is always last and locked.
   static const List<String> allNavIds = [
-    'home', 'discover', 'similar', 'search', 'mylist', 'downloader', 'magnet', 'live_matches',
-    'iptv', 'audiobooks', 'books', 'music', 'comics', 'manga',
-    'jellyfin', 'anime', 'anime_arabic', 'asian_drama', 'arabic',
+    'home',
+    'discover',
+    'similar',
+    'search',
+    'mylist',
+    'downloader',
+    'magnet',
+    'live_matches',
+    'iptv',
+    'audiobooks',
+    'books',
+    'music',
+    'comics',
+    'manga',
+    'jellyfin',
+    'anime',
+    'anime_arabic',
+    'asian_drama',
+    'arabic',
   ];
 
-  /// Returns the ordered list of visible nav item IDs.
-  /// Settings is NOT stored — it's always appended by the consumer.
   Future<List<String>> getNavbarConfig() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_navbarConfigKey);
-    if (raw == null) {
-      // First launch — everything visible, mark all current IDs as known.
-      await prefs.setStringList(_navbarKnownIdsKey, List.from(allNavIds));
+    if (!await kvHasKey(_navbarConfigKey)) {
+      await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
       return List.from(allNavIds);
     }
-    // Drop any stale IDs (removed from `allNavIds` since last save).
+    final raw =
+        await kvGetStringList(_navbarConfigKey, fallback: const []);
     final filtered = raw.where((id) => allNavIds.contains(id)).toList();
-
-    // Only auto-insert IDs the user has never been shown. Anything in the
-    // known-IDs set that's missing from `filtered` was deliberately hidden
-    // and must stay hidden.
-    final known = (prefs.getStringList(_navbarKnownIdsKey) ?? const <String>[])
-        .toSet();
+    final known =
+        (await kvGetStringList(_navbarKnownIdsKey, fallback: const []))
+            .toSet();
     final newlyAdded = <String>[];
     for (var i = 0; i < allNavIds.length; i++) {
       final id = allNavIds[i];
       if (filtered.contains(id)) continue;
-      if (known.contains(id)) continue; // user hid it on purpose
+      if (known.contains(id)) continue;
       newlyAdded.add(id);
-      // Insert near its default neighbour for stable ordering.
       var insertAt = filtered.length;
       for (var j = i - 1; j >= 0; j--) {
         final idx = filtered.indexOf(allNavIds[j]);
@@ -500,27 +320,17 @@ class SettingsService {
       }
       filtered.insert(insertAt, id);
     }
-
-    // Persist updated known-IDs set so we don't keep re-adding these.
     if (newlyAdded.isNotEmpty || known.length != allNavIds.length) {
-      await prefs.setStringList(_navbarKnownIdsKey, List.from(allNavIds));
+      await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
     }
     return filtered;
   }
 
-  /// Save the ordered list of visible nav item IDs (excluding 'settings').
   Future<void> setNavbarConfig(List<String> visibleIds) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_navbarConfigKey, visibleIds);
-    // Mark every current ID as "known" so anything the user hid in this save
-    // stays hidden on the next load.
-    await prefs.setStringList(_navbarKnownIdsKey, List.from(allNavIds));
+    await kvSetStringList(_navbarConfigKey, visibleIds);
+    await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
     navbarChangeNotifier.value++;
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Export / Import All Settings
-  // ═══════════════════════════════════════════════════════════════════════════
 
   static const List<String> _secureKeys = [
     'rd_access_token',
@@ -534,22 +344,13 @@ class SettingsService {
     'trakt_expires_at',
   ];
 
-  /// Collects every setting (SharedPreferences + FlutterSecureStorage) into a
-  /// single JSON-encodable map.
   Future<Map<String, dynamic>> exportAllSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final secure = const FlutterSecureStorage();
-
-    final Map<String, dynamic> data = {};
-
-    // --- SharedPreferences ---
+    const secure = FlutterSecureStorage();
     final prefsMap = <String, dynamic>{};
-    // Bool keys
+
     for (final key in [_streamingModeKey, _useDebridKey, _lightModeKey]) {
-      final v = prefs.getBool(key);
-      if (v != null) prefsMap[key] = v;
+      prefsMap[key] = await kvGetBool(key, fallback: false);
     }
-    // String keys
     for (final key in [
       _sortPreferenceKey,
       _debridServiceKey,
@@ -561,69 +362,52 @@ class SettingsService {
       _torrentCacheTypeKey,
       _themePresetKey,
     ]) {
-      final v = prefs.getString(key);
+      final v = await kvGetString(key);
       if (v != null) prefsMap[key] = v;
     }
-    // Int keys
-    for (final key in [_torrentRamCacheMbKey]) {
-      final v = prefs.getInt(key);
-      if (v != null) prefsMap[key] = v;
+    prefsMap[_torrentRamCacheMbKey] =
+        await kvGetInt(_torrentRamCacheMbKey, fallback: 200);
+    prefsMap[_torrentConnectionsLimitKey] =
+        await kvGetInt(_torrentConnectionsLimitKey, fallback: 200);
+    prefsMap[_navbarConfigKey] =
+        await kvGetStringList(_navbarConfigKey, fallback: const []);
+    prefsMap[_prowlarrTagIdsKey] =
+        await kvGetStringList(_prowlarrTagIdsKey, fallback: const []);
+    final stremio = await getStremioAddons();
+    if (stremio.isNotEmpty) {
+      prefsMap[_stremioAddonsKey] = stremio.map(jsonEncode).toList();
     }
-    // StringList keys
-    for (final key in [_navbarConfigKey, _prowlarrTagIdsKey]) {
-      final v = prefs.getStringList(key);
-      if (v != null) prefsMap[key] = v;
+    final streamOrder = await kvGetStringList(
+      _streamProviderOrderKey,
+      fallback: const [],
+    );
+    if (streamOrder.isNotEmpty) {
+      prefsMap[_streamProviderOrderKey] = streamOrder;
     }
-    if (ForjaEngine.isReady) {
-      final stremio = ForjaEngine.storageReadMapList(_stremioAddonsKey);
-      if (stremio.isNotEmpty) {
-        prefsMap[_stremioAddonsKey] =
-            stremio.map((e) => jsonEncode(e)).toList();
-      }
-      final streamOrder = ForjaEngine.storageReadStringList(
-        _streamProviderOrderKey,
-        fallback: const [],
-      );
-      if (streamOrder.isNotEmpty) {
-        prefsMap[_streamProviderOrderKey] = streamOrder;
-      }
-    } else {
-      for (final key in [_stremioAddonsKey, _streamProviderOrderKey]) {
-        final v = prefs.getStringList(key);
-        if (v != null) prefsMap[key] = v;
-      }
-    }
-    data['shared_preferences'] = prefsMap;
 
-    // --- FlutterSecureStorage ---
     final secureMap = <String, String>{};
     for (final key in _secureKeys) {
       final v = await secure.read(key: key);
       if (v != null) secureMap[key] = v;
     }
-    data['secure_storage'] = secureMap;
 
-    data['export_version'] = 1;
-    data['exported_at'] = DateTime.now().toIso8601String();
-
-    return data;
+    return {
+      'shared_preferences': prefsMap,
+      'secure_storage': secureMap,
+      'export_version': 1,
+      'exported_at': DateTime.now().toIso8601String(),
+    };
   }
 
-  /// Restores every setting from a previously-exported JSON map.
   Future<void> importAllSettings(Map<String, dynamic> data) async {
-    final prefs = await SharedPreferences.getInstance();
-    final secure = const FlutterSecureStorage();
-
-    // --- SharedPreferences ---
+    const secure = FlutterSecureStorage();
     final prefsMap = data['shared_preferences'] as Map<String, dynamic>? ?? {};
 
-    // Bool keys
     for (final key in [_streamingModeKey, _useDebridKey, _lightModeKey]) {
       if (prefsMap.containsKey(key)) {
-        await prefs.setBool(key, prefsMap[key] as bool);
+        await kvSetBool(key, prefsMap[key] as bool);
       }
     }
-    // String keys
     for (final key in [
       _sortPreferenceKey,
       _debridServiceKey,
@@ -636,42 +420,44 @@ class SettingsService {
       _themePresetKey,
     ]) {
       if (prefsMap.containsKey(key)) {
-        await prefs.setString(key, prefsMap[key] as String);
+        await kvSetString(key, prefsMap[key] as String);
       }
     }
-    // Int keys
-    for (final key in [_torrentRamCacheMbKey]) {
-      if (prefsMap.containsKey(key)) {
-        await prefs.setInt(key, prefsMap[key] as int);
-      }
+    if (prefsMap.containsKey(_torrentRamCacheMbKey)) {
+      await kvSetInt(_torrentRamCacheMbKey, prefsMap[_torrentRamCacheMbKey] as int);
     }
-    // StringList keys
-    for (final key in [_navbarConfigKey, _prowlarrTagIdsKey]) {
-      if (prefsMap.containsKey(key)) {
-        await prefs.setStringList(
-            key, (prefsMap[key] as List).cast<String>());
-      }
+    if (prefsMap.containsKey(_torrentConnectionsLimitKey)) {
+      await kvSetInt(
+        _torrentConnectionsLimitKey,
+        prefsMap[_torrentConnectionsLimitKey] as int,
+      );
+    }
+    if (prefsMap.containsKey(_navbarConfigKey)) {
+      await kvSetStringList(
+        _navbarConfigKey,
+        (prefsMap[_navbarConfigKey] as List).cast<String>(),
+      );
+    }
+    if (prefsMap.containsKey(_prowlarrTagIdsKey)) {
+      await kvSetStringList(
+        _prowlarrTagIdsKey,
+        (prefsMap[_prowlarrTagIdsKey] as List).cast<String>(),
+      );
     }
     if (prefsMap.containsKey(_stremioAddonsKey)) {
       final encoded = (prefsMap[_stremioAddonsKey] as List).cast<String>();
-      final addons =
-          encoded.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
-      if (ForjaEngine.isReady) {
-        ForjaEngine.storageWriteMapList(_stremioAddonsKey, addons);
-      } else {
-        await prefs.setStringList(_stremioAddonsKey, encoded);
-      }
+      await kvSetMapList(
+        _stremioAddonsKey,
+        encoded.map((s) => jsonDecode(s) as Map<String, dynamic>).toList(),
+      );
     }
     if (prefsMap.containsKey(_streamProviderOrderKey)) {
-      final order = (prefsMap[_streamProviderOrderKey] as List).cast<String>();
-      if (ForjaEngine.isReady) {
-        ForjaEngine.storageWriteStringList(_streamProviderOrderKey, order);
-      } else {
-        await prefs.setStringList(_streamProviderOrderKey, order);
-      }
+      await kvSetStringList(
+        _streamProviderOrderKey,
+        (prefsMap[_streamProviderOrderKey] as List).cast<String>(),
+      );
     }
 
-    // --- FlutterSecureStorage ---
     final secureMap = data['secure_storage'] as Map<String, dynamic>? ?? {};
     for (final key in _secureKeys) {
       if (secureMap.containsKey(key)) {
@@ -679,7 +465,6 @@ class SettingsService {
       }
     }
 
-    // Notify listeners so UI refreshes
     addonChangeNotifier.value++;
     navbarChangeNotifier.value++;
   }

@@ -91,5 +91,10 @@ void main() {
       {'baseUrl': 'https://x/manifest.json', 'name': 'X'},
     ]);
     expect(ForjaEngine.storageReadMapList('stremio_addons'), hasLength(1));
+    ForjaEngine.storageWrite('watch_history', [
+      {'uniqueId': '550', 'title': 'Fight Club'},
+    ]);
+    final hist = ForjaEngine.storageRead('watch_history') as List;
+    expect(hist, hasLength(1));
   });
 }

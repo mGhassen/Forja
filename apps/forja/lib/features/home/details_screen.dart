@@ -11,6 +11,7 @@ import 'package:rust/rust.dart';
 import 'package:streaming/streaming.dart';
 import 'package:storage/storage.dart';
 import 'package:api/api/debrid_api.dart';
+import 'package:api/api/stremio_service.dart';
 import 'package:api/services/jackett_service.dart';
 import 'package:api/services/prowlarr_service.dart';
 import 'package:api/services/link_resolver.dart';
@@ -1367,8 +1368,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _jackett.search(baseUrl, apiKey, '${_movie.title} S${s}E$e'),
         ]);
         if (mounted) {
-          final filteredSeason = await TorrentFilter.filterTorrentsAsync(results[0], _movie.title, requiredSeason: _selectedSeason);
-          final filteredEpisode = await TorrentFilter.filterTorrentsAsync(results[1], _movie.title, requiredSeason: _selectedSeason, requiredEpisode: _selectedEpisode);
+          final filteredSeason = ForjaEngine.filterTorrents(
+            results[0].map((e) => e.toJson()).toList(),
+            _movie.title,
+            requiredSeason: _selectedSeason,
+          ).map(TorrentResult.fromJson).toList();
+          final filteredEpisode = ForjaEngine.filterTorrents(
+            results[1].map((e) => e.toJson()).toList(),
+            _movie.title,
+            requiredSeason: _selectedSeason,
+            requiredEpisode: _selectedEpisode,
+          ).map(TorrentResult.fromJson).toList();
           final combined = <String, TorrentResult>{};
           for (var r in filteredEpisode) { combined[r.magnet] = r; }
           for (var r in filteredSeason) { combined[r.magnet] = r; }
@@ -1445,8 +1455,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _prowlarr.search(baseUrl, apiKey, '${_movie.title} S${s}E$e', indexerIds: allowedIndexerIds),
         ]);
         if (mounted) {
-          final filteredSeason = await TorrentFilter.filterTorrentsAsync(results[0], _movie.title, requiredSeason: _selectedSeason);
-          final filteredEpisode = await TorrentFilter.filterTorrentsAsync(results[1], _movie.title, requiredSeason: _selectedSeason, requiredEpisode: _selectedEpisode);
+          final filteredSeason = ForjaEngine.filterTorrents(
+            results[0].map((e) => e.toJson()).toList(),
+            _movie.title,
+            requiredSeason: _selectedSeason,
+          ).map(TorrentResult.fromJson).toList();
+          final filteredEpisode = ForjaEngine.filterTorrents(
+            results[1].map((e) => e.toJson()).toList(),
+            _movie.title,
+            requiredSeason: _selectedSeason,
+            requiredEpisode: _selectedEpisode,
+          ).map(TorrentResult.fromJson).toList();
           final combined = <String, TorrentResult>{};
           for (var r in filteredEpisode) { combined[r.magnet] = r; }
           for (var r in filteredSeason) { combined[r.magnet] = r; }
