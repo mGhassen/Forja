@@ -69,9 +69,9 @@ pub fn extract_from_html(html: &str, page_url: &str) -> Option<ExtractResult> {
             next_url: Some(resolve_url(src, page_url)),
             is_external: false,
             request_headers: None,
-        label: None,
-        bytes: None,
-        meta_extractor_id: None,
+            label: None,
+            bytes: None,
+            meta_extractor_id: None,
         });
     }
 
