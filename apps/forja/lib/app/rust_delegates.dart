@@ -184,4 +184,20 @@ void installRustAppDelegates() {
   TorrentEngineBackend.stop = ForjaRust.instance.torrentStop;
   TorrentEngineBackend.isRunning = ForjaRust.instance.torrentIsRunning;
   TorrentEngineBackend.statusJson = ForjaRust.instance.torrentStatusJson;
+  TorrentEngineBackend.engineStart =
+      (port) => ForjaRust.instance.torrentEngineStart(port);
+  TorrentEngineBackend.enginePort = ForjaRust.instance.torrentEnginePort;
+  TorrentEngineBackend.engineStop = ForjaRust.instance.torrentEngineStop;
+  TorrentEngineBackend.streamTorrent = (magnet, {season, episode, fileIdx}) {
+    final json = ForjaRust.instance.torrentStreamJson(
+      magnet,
+      season: season,
+      episode: episode,
+      fileIdx: fileIdx,
+    );
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return null;
+    final url = parsed['url'];
+    return url is String && url.isNotEmpty ? url : null;
+  };
 }

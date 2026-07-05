@@ -331,6 +331,36 @@ pub extern "C" fn forja_torrent_status_json() -> *mut c_char {
 }
 
 #[no_mangle]
+pub extern "C" fn forja_torrent_engine_start(preferred_port: u16) -> i32 {
+    crate::torrent_engine_start(preferred_port)
+}
+
+#[no_mangle]
+pub extern "C" fn forja_torrent_engine_port() -> u16 {
+    crate::torrent_engine_port()
+}
+
+#[no_mangle]
+pub extern "C" fn forja_torrent_engine_stop() {
+    crate::torrent_engine_stop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_torrent_stream_json(
+    magnet: *const c_char,
+    season: i32,
+    episode: i32,
+    file_idx: i32,
+) -> *mut c_char {
+    to_c_string(crate::torrent_stream_json(
+        from_c_str(magnet),
+        season,
+        episode,
+        file_idx,
+    ))
+}
+
+#[no_mangle]
 pub extern "C" fn forja_proxy_start(preferred_port: u16) -> i32 {
     crate::proxy_start(preferred_port)
 }

@@ -237,6 +237,37 @@ fn torrent_status_json() -> String {
         .unwrap_or_else(|_| "null".into())
 }
 
+fn torrent_engine_start(preferred_port: u16) -> i32 {
+    TORRENT
+        .lock()
+        .ok()
+        .and_then(|e| e.start_engine(preferred_port).ok().map(|p| p as i32))
+        .unwrap_or(-1)
+}
+
+fn torrent_engine_port() -> u16 {
+    TORRENT
+        .lock()
+        .map(|e| e.engine_port())
+        .unwrap_or(0)
+}
+
+fn torrent_engine_stop() {
+    if let Ok(e) = TORRENT.lock() {
+        e.stop_engine();
+    }
+}
+
+fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
+    let season = if season < 0 { None } else { Some(season) };
+    let episode = if episode < 0 { None } else { Some(episode) };
+    let file_idx = if file_idx < 0 { None } else { Some(file_idx) };
+    TORRENT
+        .lock()
+        .map(|e| e.stream_magnet_json(&magnet, season, episode, file_idx))
+        .unwrap_or_else(|_| r#"{"error":"Engine lock poisoned"}"#.into())
+}
+
 fn proxy_start(preferred_port: u16) -> i32 {
     RUNTIME
         .block_on(async {

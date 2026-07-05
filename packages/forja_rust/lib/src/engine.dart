@@ -311,6 +311,31 @@ class ForjaRust {
   String torrentStatusJson() =>
       _readString(_native.forja_torrent_status_json());
 
+  int torrentEngineStart(int preferredPort) =>
+      _native.forja_torrent_engine_start(preferredPort);
+
+  int torrentEnginePort() => _native.forja_torrent_engine_port();
+
+  void torrentEngineStop() => _native.forja_torrent_engine_stop();
+
+  String torrentStreamJson(
+    String magnet, {
+    int? season,
+    int? episode,
+    int? fileIdx,
+  }) =>
+      using((arena) {
+        final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.forja_torrent_stream_json(
+            ptr,
+            season ?? -1,
+            episode ?? -1,
+            fileIdx ?? -1,
+          ),
+        );
+      });
+
   int proxyStart(int preferredPort) => _native.forja_proxy_start(preferredPort);
 
   void proxyStop() => _native.forja_proxy_stop();
@@ -527,6 +552,26 @@ final class _ForjaNative {
               'forja_torrent_status_json',
             )
             .asFunction(),
+        forja_torrent_engine_start = lib
+            .lookup<ffi.NativeFunction<_ProxyStartNative>>(
+              'forja_torrent_engine_start',
+            )
+            .asFunction(),
+        forja_torrent_engine_port = lib
+            .lookup<ffi.NativeFunction<_ProxyPortNative>>(
+              'forja_torrent_engine_port',
+            )
+            .asFunction(),
+        forja_torrent_engine_stop = lib
+            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+              'forja_torrent_engine_stop',
+            )
+            .asFunction(),
+        forja_torrent_stream_json = lib
+            .lookup<ffi.NativeFunction<_TorrentStreamJsonNative>>(
+              'forja_torrent_stream_json',
+            )
+            .asFunction(),
         forja_proxy_start = lib
             .lookup<ffi.NativeFunction<_ProxyStartNative>>('forja_proxy_start')
             .asFunction(),
@@ -649,6 +694,15 @@ final class _ForjaNative {
   final void Function() forja_torrent_stop;
   final bool Function() forja_torrent_is_running;
   final ffi.Pointer<ffi.Char> Function() forja_torrent_status_json;
+  final int Function(int) forja_torrent_engine_start;
+  final int Function() forja_torrent_engine_port;
+  final void Function() forja_torrent_engine_stop;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    int,
+    int,
+    int,
+  ) forja_torrent_stream_json;
   final int Function(int) forja_proxy_start;
   final void Function() forja_proxy_stop;
   final int Function() forja_proxy_port;
@@ -706,6 +760,12 @@ typedef _KinogerUrlsNative = ffi.Pointer<ffi.Char> Function(
 typedef _TorrentStartNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStopNative = ffi.Void Function();
 typedef _TorrentIsRunningNative = ffi.Bool Function();
+typedef _TorrentStreamJsonNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Int32,
+  ffi.Int32,
+  ffi.Int32,
+);
 typedef _ProxyStartNative = ffi.Int32 Function(ffi.Uint16);
 typedef _ProxyPortNative = ffi.Uint16 Function();
 typedef _ProxyRegisterNative = ffi.Bool Function(

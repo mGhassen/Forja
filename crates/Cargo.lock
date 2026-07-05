@@ -1006,11 +1006,16 @@ dependencies = [
 name = "forja-torrent"
 version = "0.1.0"
 dependencies = [
+ "axum",
+ "forja-utils",
+ "futures-util",
  "librqbit",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-util",
+ "urlencoding",
 ]
 
 [[package]]

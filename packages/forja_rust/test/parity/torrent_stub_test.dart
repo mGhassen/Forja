@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../helpers/rust_engine.dart';
 import 'package:forja_rust/forja_rust.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUpAll(() async {
     await initRustForTests();
+  });
+
+  tearDown(() {
+    ForjaRust.instance.torrentEngineStop();
+    ForjaRust.instance.torrentStop();
   });
 
   test('torrent start rejects invalid magnet', () {
@@ -19,5 +26,18 @@ void main() {
   test('torrent status json when idle', () {
     ForjaRust.instance.torrentStop();
     expect(ForjaRust.instance.torrentStatusJson(), 'null');
+  });
+
+  test('torrent engine starts on loopback', () {
+    final port = ForjaRust.instance.torrentEngineStart(0);
+    expect(port, greaterThan(0));
+    expect(ForjaRust.instance.torrentEnginePort(), port);
+  });
+
+  test('torrent stream json rejects invalid magnet', () {
+    ForjaRust.instance.torrentEngineStart(0);
+    final json = ForjaRust.instance.torrentStreamJson('not-a-magnet');
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    expect(parsed['error'], isNotNull);
   });
 }

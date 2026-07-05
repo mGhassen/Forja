@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:libtorrent_flutter/libtorrent_flutter.dart';
 import 'package:forja_storage/forja_storage.dart';
 import 'package:forja_api/api/torrent_filter.dart';
+import 'torrent_engine_backend.dart';
 
 /// Rich torrent statistics object.
 class TorrentStats {
@@ -67,6 +69,9 @@ class TorrentStreamService {
 
   StreamSubscription? _torrentUpdatesSub;
 
+  int _rustEnginePort = 0;
+  String? _rustActiveHash;
+
   /// Latest torrent update snapshots keyed by torrent ID.
   final Map<int, TorrentInfo> _latestUpdates = {};
 
@@ -91,6 +96,17 @@ class TorrentStreamService {
 
     _setState(EngineState.starting);
     try {
+      final rustStart = TorrentEngineBackend.engineStart;
+      if (rustStart != null) {
+        final port = rustStart(0);
+        if (port > 0) {
+          _rustEnginePort = port;
+          _setState(EngineState.ready);
+          _log('Engine ready (Rust/librqbit on $port)');
+          return true;
+        }
+      }
+
       await LibtorrentFlutter.init(
         fetchTrackers: true,
         pollInterval: const Duration(milliseconds: 200),
@@ -168,6 +184,25 @@ class TorrentStreamService {
     }
 
     final hash = _extractHash(magnetLink);
+
+    final rustStream = TorrentEngineBackend.streamTorrent;
+    if (_rustEnginePort > 0 && rustStream != null) {
+      try {
+        final url = rustStream(
+          magnetLink,
+          season: season,
+          episode: episode,
+          fileIdx: fileIdx,
+        );
+        if (url != null && url.isNotEmpty) {
+          if (hash != null) _rustActiveHash = hash;
+          _log('Stream started (Rust): $url');
+          return url;
+        }
+      } catch (e) {
+        _log('Rust streamTorrent error: $e');
+      }
+    }
 
     // Dispose previous torrent with same hash if any
     if (hash != null && _activeTorrents.containsKey(hash)) {
@@ -330,6 +365,13 @@ class TorrentStreamService {
     final hash = _extractHash(magnetOrHash);
     final key = hash ?? magnetOrHash;
 
+    if (_rustEnginePort > 0 && hash != null && hash == _rustActiveHash) {
+      TorrentEngineBackend.stop?.call();
+      _rustActiveHash = null;
+      _log('Removed torrent $key (Rust)');
+      return;
+    }
+
     // Stop stream
     if (_activeStreams.containsKey(key)) {
       _safeStopStream(_activeStreams[key]!);
@@ -354,6 +396,14 @@ class TorrentStreamService {
   TorrentStats? getTorrentStats(String magnetOrHash) {
     final hash = _extractHash(magnetOrHash);
     final key = hash ?? magnetOrHash;
+
+    if (_rustEnginePort > 0 &&
+        hash != null &&
+        hash == _rustActiveHash &&
+        TorrentEngineBackend.statusJson != null) {
+      return _rustStatsFromJson(TorrentEngineBackend.statusJson!(), key);
+    }
+
     final torrentId = _activeTorrents[key];
     if (torrentId == null) return null;
 
@@ -404,6 +454,13 @@ class TorrentStreamService {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> stop() async {
+    if (_rustEnginePort > 0) {
+      TorrentEngineBackend.stop?.call();
+      _rustActiveHash = null;
+      _log('All torrents stopped (Rust).');
+      return;
+    }
+
     for (final streamId in _activeStreams.values) {
       _safeStopStream(streamId);
     }
@@ -420,6 +477,13 @@ class TorrentStreamService {
 
   Future<void> cleanup() async {
     await stop();
+    if (_rustEnginePort > 0) {
+      TorrentEngineBackend.engineStop?.call();
+      _rustEnginePort = 0;
+      _setState(EngineState.stopped);
+      _log('Engine cleaned up (Rust).');
+      return;
+    }
     _torrentUpdatesSub?.cancel();
     _torrentUpdatesSub = null;
     _disposedTorrentIds.clear();
@@ -470,5 +534,28 @@ class TorrentStreamService {
   void _log(String message) {
     debugPrint('[TorrentStream] $message');
     onLogLine?.call(message);
+  }
+
+  TorrentStats? _rustStatsFromJson(String json, String hash) {
+    if (json == 'null') return null;
+    try {
+      final m = jsonDecode(json) as Map<String, dynamic>;
+      final downloadRate = (m['download_rate'] as num?)?.toInt() ?? 0;
+      final progress = (m['progress'] as num?)?.toDouble() ?? 0.0;
+      final numPeers = (m['num_peers'] as num?)?.toInt() ?? 0;
+      final speedMbps = downloadRate / 1024 / 1024;
+      return TorrentStats(
+        speedMbps: speedMbps,
+        activePeers: numPeers,
+        totalPeers: numPeers,
+        cachePercent: progress * 100,
+        loadedBytes: 0,
+        totalBytes: 0,
+        hash: hash,
+        isConnected: numPeers > 0,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 }

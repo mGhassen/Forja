@@ -43,7 +43,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **4 — Stremio** | partial | partial | URL helpers + JSON parse + HTTP fetch wired |
 | **5 — Webstreamr** | 23/23 extractors · 21/21 sources | partial | all parse logic in Rust; fetch/registry Dart |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
-| **7 — Torrent + proxy** | ✅ librqbit | partial | `TorrentEngineBackend` wired · playback still `libtorrent_flutter` |
+| **7 — Torrent + proxy** | ✅ librqbit | ✅ | Rust torrent playback when engine on · libtorrent fallback |
 | **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
 | **9 — Cleanup** | — | partial | M3U + provider fallbacks consolidated |
 
@@ -58,12 +58,13 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 - Scrapers: Knaben / TPB / Uindex HTML parse + dedup
 - Webstreamr: 23 extractors + 21 sources (all parse helpers wired; HTTP fetch + registry still Dart)
 - Local proxy: `/proxy?url=` + Range streaming (Rust backend; shelf forwards when engine on)
+- Torrent playback: magnet → HTTP stream via librqbit (Rust when engine on)
 
 ### Still 100% Dart
 
 - Webstreamr: fetcher, registry, search/redirect HTTP orchestration
 - HLS proxy (`/hls-proxy`: m3u8 rewrite + PNG strip)
-- Torrent playback session (`libtorrent_flutter` — Rust engine handles add/pause/status only)
+- Torrent playback when Rust engine off (`libtorrent_flutter`)
 
 ### Numbers
 
@@ -86,8 +87,8 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Switch torrent playback from `libtorrent_flutter` to Rust `TorrentEngineBackend`
-2. Step 9 Dart fallback cleanup (remaining duplicates)
+1. Step 9 Dart fallback cleanup
+2. Stremio HTTP fetch in Rust (remaining duplicates)
 
 ---
 
@@ -334,14 +335,14 @@ Wire-up: `ScraperParseBackend` in `forja_scrapers`.
 
 ## Step 7 — `forja-torrent` + `forja-proxy`
 
-**Rust:** ✅ (librqbit) · **App:** partial (proxy + torrent backend)
+**Rust:** ✅ · **App:** ✅ (with Dart fallbacks)
 
 | Component | Rust | App |
 |-----------|:----:|:---:|
-| Torrent session | ✅ librqbit | `TorrentEngineBackend` wired · playback still `libtorrent_flutter` |
+| Torrent playback | ✅ librqbit + axum stream | ✅ `TorrentStreamService` prefers Rust |
 | `/proxy?url=` + Range | axum streaming | ✅ forwards to Rust when engine on |
 | `/hls-proxy` | — | Dart shelf (m3u8 rewrite + PNG strip) |
-| Token routes `/proxy/{token}` | axum | FFI + backend |
+| libtorrent fallback | — | when Rust engine off or start fails |
 
 ```bash
 cd crates && cargo test -p forja-torrent
@@ -350,7 +351,9 @@ cd packages/forja_rust && flutter test test/parity/torrent_stub_test.dart
 cd packages/forja_rust && flutter test test/parity/proxy_test.dart
 ```
 
-Wire-up: `LocalServerService.start()` starts Rust proxy on loopback; `_handleProxyRequest` forwards to it when `ForjaEngine.isReady`. `TorrentEngineBackend` in `rust_delegates.dart`. Playback still uses `libtorrent_flutter` until stream path migrates.
+FFI: `forja_torrent_engine_start`, `forja_torrent_stream_json`, `forja_torrent_status_json`.
+
+Wire-up: `TorrentEngineBackend` in `rust_delegates.dart` · `TorrentStreamService` · `LocalServerService` proxy forward.
 
 ---
 
@@ -409,7 +412,7 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 - [x] M3U Dart parser moved to `packages/forja_rust/lib/src/reference/m3u_dart_parser.dart`
 - [x] Provider URL fallbacks centralized in `provider_fallback_urls.dart`
 - [ ] Remove remaining Dart parse duplicates (unpacker, kisskh, stremio json.decode paths)
-- [ ] Switch torrent playback to Rust engine
+- [ ] Drop `libtorrent_flutter` once Rust torrent path is stable in production
 - [ ] Golden fixtures for every extractor
 
 ---
