@@ -463,55 +463,109 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   Widget _buildSplashOverlay() {
+    final isLight = AppTheme.isLightMode;
+    const logoGreen = Color(0xFFc0e860);
+    final screenH = MediaQuery.sizeOf(context).height;
+
     return Scaffold(
       body: Container(
         decoration: AppTheme.backgroundDecoration,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                AppTheme.isLightMode
-                    ? 'assets/icon/logo-light.png'
-                    : 'assets/icon/logo-dark.png',
-                height: 110,
-                fit: BoxFit.contain,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned(
+              top: screenH * 0.14,
+              left: -24,
+              child: Transform.rotate(
+                angle: -0.35,
+                child: _splashBrush(
+                  'assets/images/splash-1.png',
+                  width: 260,
+                  isLight: isLight,
+                  tint: logoGreen,
+                  opacity: isLight ? 0.32 : 0.22,
+                ),
               ),
-              const SizedBox(height: 32),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'YOUR CINEMA UNIVERSE',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 10,
-                      color: AppTheme.primaryColor.withValues(alpha: 0.6),
-                      fontFamily: 'Poppins',
+            ),
+            Positioned(
+              bottom: screenH * 0.18,
+              right: -72,
+              child: Transform.rotate(
+                angle: 0.12,
+                child: _splashBrush(
+                  'assets/images/splash-2.png',
+                  width: 320,
+                  isLight: isLight,
+                  tint: logoGreen,
+                  opacity: isLight ? 0.28 : 0.18,
+                ),
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    isLight
+                        ? 'assets/icon/logo-light.png'
+                        : 'assets/icon/logo-dark.png',
+                    height: 110,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 32),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'YOUR CINEMA UNIVERSE',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 10,
+                          color: AppTheme.primaryColor.withValues(alpha: 0.6),
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 100),
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: const Text(
-                  'INITIALIZING ENGINE...',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 4,
-                    color: Colors.white38,
-                    fontFamily: 'Poppins',
+                  const SizedBox(height: 100),
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Text(
+                      'INITIALIZING ENGINE...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 4,
+                        color: isLight ? Colors.black38 : Colors.white38,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _splashBrush(
+    String asset, {
+    required double width,
+    required bool isLight,
+    required Color tint,
+    required double opacity,
+  }) {
+    Widget image = Image.asset(asset, width: width, fit: BoxFit.contain);
+    if (!isLight) {
+      image = ColorFiltered(
+        colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
+        child: image,
+      );
+    }
+    return Opacity(opacity: opacity, child: image);
   }
 }

@@ -94,6 +94,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/
+    - assets/images/
     - assets/fonts/
     - assets/videasy/
     - assets/nuvio/
