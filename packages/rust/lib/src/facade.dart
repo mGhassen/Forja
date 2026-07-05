@@ -94,6 +94,15 @@ abstract final class ForjaEngine {
     return url.isEmpty ? null : url;
   }
 
+  static String requireMovieUrl(String providerId, String tmdbId) {
+    final url = buildMovieUrl(providerId, tmdbId);
+    if (url == null) {
+      _requireReady();
+      throw StateError('No movie URL for provider $providerId');
+    }
+    return url;
+  }
+
   static String? buildTvUrl(
     String providerId,
     String tmdbId,
@@ -106,6 +115,20 @@ abstract final class ForjaEngine {
     final url =
         ForjaRust.instance.buildTvUrl(providerId, id, season, episode);
     return url.isEmpty ? null : url;
+  }
+
+  static String requireTvUrl(
+    String providerId,
+    String tmdbId,
+    int season,
+    int episode,
+  ) {
+    final url = buildTvUrl(providerId, tmdbId, season, episode);
+    if (url == null) {
+      _requireReady();
+      throw StateError('No TV URL for provider $providerId');
+    }
+    return url;
   }
 
   static List<Map<String, dynamic>> parseM3uChannels(String content) {

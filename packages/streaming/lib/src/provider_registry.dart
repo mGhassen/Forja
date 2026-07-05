@@ -1,8 +1,6 @@
 import 'package:core/core.dart';
 import 'package:rust/rust.dart';
 
-import 'provider_fallback_urls.dart';
-
 enum ProviderKind { template, extractor, api }
 
 class ResolveContext {
@@ -71,56 +69,36 @@ class ProviderRegistry {
       id: 'vidnest',
       displayName: 'Vidnest',
       kind: ProviderKind.template,
-      movieUrl: (id) =>
-          ForjaEngine.buildMovieUrl('vidnest', id) ??
-          ProviderFallbackUrls.vidnestMovie(id),
-      tvUrl: (id, s, e) =>
-          ForjaEngine.buildTvUrl('vidnest', id, s, e) ??
-          ProviderFallbackUrls.vidnestTv(id, s, e),
+      movieUrl: (id) => ForjaEngine.requireMovieUrl('vidnest', id),
+      tvUrl: (id, s, e) => ForjaEngine.requireTvUrl('vidnest', id, s, e),
     ),
     StreamProviderDef(
       id: 'vidlink',
       displayName: 'VidLink',
       kind: ProviderKind.template,
-      movieUrl: (id) =>
-          ForjaEngine.buildMovieUrl('vidlink', id) ??
-          ProviderFallbackUrls.vidlinkMovie(id),
-      tvUrl: (id, s, e) =>
-          ForjaEngine.buildTvUrl('vidlink', id, s, e) ??
-          ProviderFallbackUrls.vidlinkTv(id, s, e),
+      movieUrl: (id) => ForjaEngine.requireMovieUrl('vidlink', id),
+      tvUrl: (id, s, e) => ForjaEngine.requireTvUrl('vidlink', id, s, e),
     ),
     StreamProviderDef(
       id: 'vixsrc',
       displayName: 'VixSrc',
       kind: ProviderKind.template,
-      movieUrl: (id) =>
-          ForjaEngine.buildMovieUrl('vixsrc', id) ??
-          ProviderFallbackUrls.vixsrcMovie(id),
-      tvUrl: (id, s, e) =>
-          ForjaEngine.buildTvUrl('vixsrc', id, s, e) ??
-          ProviderFallbackUrls.vixsrcTv(id, s, e),
+      movieUrl: (id) => ForjaEngine.requireMovieUrl('vixsrc', id),
+      tvUrl: (id, s, e) => ForjaEngine.requireTvUrl('vixsrc', id, s, e),
     ),
     StreamProviderDef(
       id: 'vidzee',
       displayName: 'Vidzee',
       kind: ProviderKind.template,
-      movieUrl: (id) =>
-          ForjaEngine.buildMovieUrl('vidzee', id) ??
-          ProviderFallbackUrls.vidzeeMovie(id),
-      tvUrl: (id, s, e) =>
-          ForjaEngine.buildTvUrl('vidzee', id, s, e) ??
-          ProviderFallbackUrls.vidzeeTv(id, s, e),
+      movieUrl: (id) => ForjaEngine.requireMovieUrl('vidzee', id),
+      tvUrl: (id, s, e) => ForjaEngine.requireTvUrl('vidzee', id, s, e),
     ),
     StreamProviderDef(
       id: 'vidrock',
       displayName: 'VidRock',
       kind: ProviderKind.template,
-      movieUrl: (id) =>
-          ForjaEngine.buildMovieUrl('vidrock', id) ??
-          ProviderFallbackUrls.vidrockMovie(id),
-      tvUrl: (id, s, e) =>
-          ForjaEngine.buildTvUrl('vidrock', id, s, e) ??
-          ProviderFallbackUrls.vidrockTv(id, s, e),
+      movieUrl: (id) => ForjaEngine.requireMovieUrl('vidrock', id),
+      tvUrl: (id, s, e) => ForjaEngine.requireTvUrl('vidrock', id, s, e),
     ),
     StreamProviderDef(
       id: 'service111477',

@@ -76,6 +76,8 @@ class TorrentStreamService {
         _setState(EngineState.error);
         return false;
       }
+      final connLimit = (await _settings.getTorrentConnectionsLimit()).clamp(5, 200);
+      TorrentEngineBackend.setPeerLimit?.call(connLimit);
       final port = rustStart(0);
       if (port <= 0) {
         _log('Rust torrent engine failed to start');
@@ -96,8 +98,15 @@ class TorrentStreamService {
   Future<void> applyConnectionsLimit(int limit) async {
     final clamped = limit.clamp(5, 200);
     await _settings.setTorrentConnectionsLimit(clamped);
-    if (_state != EngineState.ready || !_rustReady) return;
-    _log('Connections limit saved ($clamped); librqbit session config not wired yet');
+    TorrentEngineBackend.setPeerLimit?.call(clamped);
+    if (_state == EngineState.ready && _rustReady) {
+      TorrentEngineBackend.engineStop?.call();
+      _rustEnginePort = 0;
+      _rustActiveHash = null;
+      _setState(EngineState.stopped);
+      await start();
+    }
+    _log('Connections limit set to $clamped');
   }
 
   Future<List<TorrentFileEntry>?> listTorrentFiles(String magnetLink) async {

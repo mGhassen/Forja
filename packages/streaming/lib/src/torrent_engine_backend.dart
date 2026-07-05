@@ -25,6 +25,8 @@ abstract final class TorrentEngineBackend {
   /// Starts the librqbit HTTP stream server. Returns bound port or 0 on failure.
   static int Function(int preferredPort)? engineStart;
 
+  static void Function(int limit)? setPeerLimit;
+
   static int Function()? enginePort;
 
   static void Function()? engineStop;

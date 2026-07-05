@@ -280,6 +280,15 @@ fn torrent_engine_stop() {
     engine_torrent::torrent_engine_stop();
 }
 
+fn torrent_set_peer_limit(limit: u32) {
+    #[cfg(feature = "torrent-engine")]
+    engine_torrent::torrent_set_peer_limit(limit);
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        let _ = limit;
+    }
+}
+
 fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
     #[cfg(feature = "torrent-engine")]
     {

@@ -1,23 +1,90 @@
 # Phase 3 — Kotlin Compose UI
 
-**Status:** Future  
+**Status:** Future (blocked on Phase 2)  
 **Depends on:** [Phase 2 complete](./02-rust-engine-complete.md) — engine 100% Rust, no libtorrent  
-**Next phase:** [Phase 4 — Delete Flutter](./04-delete-flutter.md)
+**Next phase:** [Phase 4 — Delete Flutter](./04-delete-flutter.md)  
+**Migration index:** [README.md](./README.md)  
+**Spec:** [RFC-011](../rfc/011-v1.0-mvp.md)
 
 ---
 
-## Goal
+## Status at a glance
 
-Replace the Flutter UI with Kotlin Compose Multiplatform. Engine is already complete in Rust (Phase 2). Compose calls `forja_kotlin` → `libforja_ffi`. Orchestration (HTTP fetch, registry, shelf) ports from Dart packages to Kotlin.
+**Goal:** replace Flutter UI with Kotlin Compose Multiplatform. Engine is frozen in Rust (Phase 2). Compose → `forja_kotlin` → `libforja_ffi`. Orchestration ports from Dart to Kotlin.
 
----
+**Phase 3 not started.** Exit criteria **0 / 4** · gate: Phase 2 P2-20 + P2-21 + P2-30 done (✅).
 
-## Exit criteria
+### Three columns — read every table this way
 
-- [ ] Feature parity with Flutter ([RFC-011](../rfc/011-v1.0-mvp.md): 19 nav tabs + player + settings)
-- [ ] `forja_kotlin` covers all FFI surfaces in [`rust_delegates.dart`](../../apps/forja/lib/app/rust_delegates.dart)
-- [ ] Magnet playback on mobile via Rust librqbit (already done in Phase 2)
-- [ ] Automated smoke tests for engine bridge + core flows
+| Column | Question |
+|--------|----------|
+| **Compose** | UI + ViewModel exists in `apps/forja_compose/`? |
+| **FFI bound** | `forja_kotlin` calls Rust for this surface? |
+| **Dart replaced** | Flutter package / screen no longer needed for this flow? |
+
+**Done = ✅** when every row in a port group is ✅/✅/✅. Engine parse logic never re-ports to Kotlin — always FFI.
+
+### Workstreams
+
+| Workstream | Done | Target | Status |
+|------------|-----:|-------:|--------|
+| Scaffold (P3-0x) | 0 | 4 | app skeleton · FFI package · CI · Gradle/Xcode link |
+| Port order (P3-1x–7x) | 0 | 11 | storage → engine → player → browse → tabs → platform |
+| Dart package migration | 0 | 7 | see [migration map](#dart-package-migration-map) |
+| Sign-off (P3-70) | 0 | 1 | RFC-011 parity checklist |
+
+### Feature matrix
+
+| Area | Compose | FFI bound | Dart replaced | Notes |
+|------|:-------:|:---------:|:-------------:|-------|
+| **P3-10 Storage + shell** | — | — | — | prefs · theme · 19-tab nav |
+| **P3-20 Engine bridge** | — | — | — | mirror `rust_delegates.dart` |
+| **P3-30 Player + magnet + IPTV** | — | partial | — | torrent FFI done in Phase 2 |
+| **P3-40 Core browse** | — | partial | — | home · discover · search · my_list |
+| **P3-50 Remaining tabs** | — | — | — | 15 feature modules |
+| **P3-60 Platform adapters** | — | — | — | WebView · Nuvio JS · HLS proxy · PiP |
+
+### Exit criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Feature parity with Flutter (RFC-011: 19 tabs + player + settings) | open |
+| `forja_kotlin` covers all FFI surfaces in `rust_delegates.dart` | open |
+| Magnet playback on mobile via Rust librqbit | open (engine ready after Phase 2) |
+| Automated smoke tests for engine bridge + core flows | open |
+
+### Stays platform-specific (not Rust)
+
+| Area | Phase 3 target |
+|------|----------------|
+| HLS `/hls-proxy` | Kotlin HTTP server or platform proxy |
+| WebView/WASM extractors | `expect/actual` WebView modules |
+| Nuvio JS runtime | KMP QuickJS host |
+
+### Numbers
+
+| Metric | Value |
+|--------|-------|
+| Exit criteria met | 0 / 4 |
+| Scaffold tasks | 0 / 4 |
+| Port-order tasks | 0 / 11 |
+| Dart packages to migrate | 0 / 7 |
+| Nav tabs (RFC-011) | 0 / 19 |
+| FFI backends to bind | 0 / 10 |
+
+### Quick health check
+
+_Not applicable until Phase 2 exit criteria met._
+
+```bash
+# After P3-01 scaffold exists:
+# ./gradlew :apps:forja_compose:shared:test
+# uniffi round-trip smoke (P3-03)
+```
+
+### Next work
+
+Blocked until [Phase 2 sign-off](./02-rust-engine-complete.md#sign-off). First tasks when unblocked: **P3-01** app skeleton · **P3-02** expand uniffi POC from P2-50/51.
 
 ---
 
@@ -96,13 +163,7 @@ flowchart LR
 
 ## Orchestration strategy
 
-Port orchestration to Kotlin during Compose. Rust engine is frozen after Phase 2.
-
-**Stays platform-specific (not Rust):**
-
-- HLS `/hls-proxy` (m3u8 rewrite + PNG strip)
-- WebView/WASM extractors (videasy, kisskh, stream_extractor)
-- Nuvio JS runtime → KMP QuickJS
+Port orchestration to Kotlin during Compose. Rust engine is frozen after Phase 2. Platform-specific items → [Status at a glance](#stays-platform-specific-not-rust).
 
 ---
 

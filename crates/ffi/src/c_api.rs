@@ -353,6 +353,11 @@ pub extern "C" fn forja_torrent_engine_stop() {
 }
 
 #[no_mangle]
+pub extern "C" fn forja_torrent_set_peer_limit(limit: u32) {
+    crate::torrent_set_peer_limit(limit);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_torrent_stream_json(
     magnet: *const c_char,
     season: i32,

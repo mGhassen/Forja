@@ -9,7 +9,7 @@ use axum::{
 use utils::{episode_matcher, torrent_filter};
 use futures_util::TryStreamExt;
 use librqbit::api::{Api, TorrentDetailsResponseFile, TorrentIdOrHash};
-use librqbit::{AddTorrent, AddTorrentResponse, Session};
+use librqbit::{AddTorrent, AddTorrentResponse, Session, SessionOptions};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -79,6 +79,7 @@ struct EngineInner {
     http_port: u16,
     http_shutdown: Option<oneshot::Sender<()>>,
     active: Option<ActiveTorrent>,
+    peer_limit: usize,
 }
 
 pub struct TorrentEngine {
@@ -101,6 +102,7 @@ impl TorrentEngine {
                 http_port: 0,
                 http_shutdown: None,
                 active: None,
+                peer_limit: 128,
             }),
             runtime: tokio::runtime::Runtime::new().expect("tokio runtime"),
         }
@@ -110,6 +112,13 @@ impl TorrentEngine {
         std::env::temp_dir().join("torrent")
     }
 
+    pub fn set_peer_limit(&self, limit: u32) {
+        let clamped = limit.clamp(5, 200) as usize;
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.peer_limit = clamped;
+        }
+    }
+
     pub fn start_engine(&self, preferred_port: u16) -> Result<u16, String> {
         self.runtime.block_on(async {
             let mut inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
@@ -117,7 +126,9 @@ impl TorrentEngine {
                 return Ok(inner.http_port);
             }
             std::fs::create_dir_all(Self::download_dir()).map_err(|e| e.to_string())?;
-            let session = Session::new(Self::download_dir())
+            let mut opts = SessionOptions::default();
+            opts.peer_limit = Some(inner.peer_limit);
+            let session = Session::new_with_opts(Self::download_dir(), opts)
                 .await
                 .map_err(|e| e.to_string())?;
             let api = Api::new(session.clone(), None);
@@ -603,6 +614,13 @@ mod tests {
         let engine = TorrentEngine::new();
         assert!(engine.status().is_none());
         assert!(!engine.is_running());
+    }
+
+    #[test]
+    fn set_peer_limit_clamps() {
+        let engine = TorrentEngine::new();
+        engine.set_peer_limit(999);
+        engine.set_peer_limit(1);
     }
 
     #[test]

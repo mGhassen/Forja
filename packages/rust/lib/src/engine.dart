@@ -329,6 +329,9 @@ class ForjaRust {
 
   void torrentEngineStop() => _native.forja_torrent_engine_stop();
 
+  void torrentSetPeerLimit(int limit) =>
+      _native.forja_torrent_set_peer_limit(limit);
+
   String torrentStreamJson(
     String magnet, {
     int? season,
@@ -588,6 +591,11 @@ final class _ForjaNative {
               'forja_torrent_engine_stop',
             )
             .asFunction(),
+        forja_torrent_set_peer_limit = lib
+            .lookup<ffi.NativeFunction<_TorrentSetPeerLimitNative>>(
+              'forja_torrent_set_peer_limit',
+            )
+            .asFunction(),
         forja_torrent_stream_json = lib
             .lookup<ffi.NativeFunction<_TorrentStreamJsonNative>>(
               'forja_torrent_stream_json',
@@ -725,6 +733,7 @@ final class _ForjaNative {
   final int Function(int) forja_torrent_engine_start;
   final int Function() forja_torrent_engine_port;
   final void Function() forja_torrent_engine_stop;
+  final void Function(int) forja_torrent_set_peer_limit;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     int,
@@ -789,6 +798,7 @@ typedef _KinogerUrlsNative = ffi.Pointer<ffi.Char> Function(
 );
 typedef _TorrentStartNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStopNative = ffi.Void Function();
+typedef _TorrentSetPeerLimitNative = ffi.Void Function(ffi.Uint32);
 typedef _TorrentIsRunningNative = ffi.Bool Function();
 typedef _TorrentStreamJsonNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,

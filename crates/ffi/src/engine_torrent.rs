@@ -52,6 +52,12 @@ pub fn torrent_engine_stop() {
     }
 }
 
+pub fn torrent_set_peer_limit(limit: u32) {
+    if let Ok(e) = TORRENT.lock() {
+        e.set_peer_limit(limit);
+    }
+}
+
 pub fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
     let season = if season < 0 { None } else { Some(season) };
     let episode = if episode < 0 { None } else { Some(episode) };

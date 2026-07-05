@@ -29,6 +29,7 @@ void main() {
   });
 
   test('torrent engine starts on loopback', () {
+    ForjaRust.instance.torrentSetPeerLimit(50);
     final port = ForjaRust.instance.torrentEngineStart(0);
     expect(port, greaterThan(0));
     expect(ForjaRust.instance.torrentEnginePort(), port);

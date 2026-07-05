@@ -1,22 +1,98 @@
 # Phase 4 — Delete Flutter
 
-**Status:** Future  
-**Gate:** [Phase 3 exit criteria](./03-kotlin-compose.md#exit-criteria) green on all target platforms
+**Status:** Future (blocked on Phase 3)  
+**Gate:** [Phase 3 exit criteria](./03-kotlin-compose.md#exit-criteria) green on all target platforms  
+**Migration index:** [README.md](./README.md)  
+**Spec:** [RFC-001](../rfc/001-monorepo.md)
 
 ---
 
-## Goal
+## Status at a glance
 
-Remove Flutter from the monorepo entirely. Compose is the only UI; Kotlin calls `libforja_ffi` directly.
+**Goal:** remove Flutter from the monorepo. Compose is the only UI; Kotlin calls `libforja_ffi` directly.
 
----
+**Phase 4 not started.** Deletion checklist **0 / 6** · risk gates **0 / 4**.
 
-## Exit criteria
+### Three columns — read every table this way
 
-- [ ] Compose app ships on all target platforms (Android, iOS, desktop subset per Phase 3 rollout)
-- [ ] No production dependency on `dart:ffi` or Flutter plugins
-- [ ] CI green without Flutter jobs
-- [ ] Monorepo docs updated (RFC-001 layout, README, melos)
+| Column | Question |
+|--------|----------|
+| **Compose ready** | Kotlin app covers this capability on all target platforms? |
+| **Deleted** | Flutter/Dart path removed from repo? |
+| **CI/docs updated** | No broken references in workflows or README? |
+
+**Done = ✅** when every row is ✅/✅/✅. Do not delete until the matching Compose flow is smoke-tested.
+
+### Workstreams
+
+| Workstream | Done | Target | Status |
+|------------|-----:|-------:|--------|
+| Deletion checklist (P4-0x) | 0 | 6 | app · forja_rust · Dart pkgs · CI · parity · docs |
+| Risk gates | 0 | 4 | magnet · IPTV · webstreamr · settings |
+| Melos / CI cleanup | 0 | 3 | flutter scripts · integration · parity in CI |
+
+### Feature matrix
+
+| Area | Compose ready | Deleted | CI/docs | Notes |
+|------|:-------------:|:-------:|:-------:|-------|
+| **P4-01 `apps/forja/`** | — | — | — | 19 tabs + player + settings |
+| **P4-02 `packages/forja_rust/`** | — | — | — | `forja_kotlin` must cover FFI |
+| **P4-03 Dart packages** | — | — | — | each ported in Phase 3 |
+| **P4-04 Flutter CI** | — | — | — | `forja-macos.yml` · melos flutter |
+| **P4-05 Parity tests** | — | — | — | migrate to Rust goldens or archive |
+| **P4-06 Monorepo docs** | — | — | — | RFC-001 · README · melos.yaml |
+
+### Exit criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Compose ships on all target platforms | open |
+| No production `dart:ffi` or Flutter plugins | open |
+| CI green without Flutter jobs | open |
+| Monorepo docs updated | open |
+
+### Risk gates (must pass before any delete)
+
+| Gate | Status |
+|------|--------|
+| Magnet → play on Compose (Rust librqbit) | open |
+| IPTV import + Xtream browse on Compose | open |
+| One webstreamr provider end-to-end on Compose | open |
+| Settings persistence ported (`forja_storage` → Kotlin) | open |
+
+### Keep permanently
+
+| Path | Reason |
+|------|--------|
+| `crates/**` | Rust engine |
+| `scripts/build_rust*.sh` | FFI builds |
+| `.github/workflows/rust.yml` | Rust CI |
+| `packages/forja_kotlin/` | Kotlin FFI bridge |
+
+### Numbers
+
+| Metric | Value |
+|--------|-------|
+| Exit criteria met | 0 / 4 |
+| Deletion tasks done | 0 / 6 |
+| Risk gates passed | 0 / 4 |
+| Flutter apps remaining | 1 (`apps/forja`) |
+| Dart FFI package remaining | 1 (`packages/forja_rust`) |
+
+### Quick health check
+
+_Not applicable until Phase 3 parity sign-off._
+
+```bash
+# Pre-delete verification (when Compose exists):
+# melos run rust:test                    # must stay green
+# no flutter / dart:ffi in production deps
+# gh workflow list | grep -i flutter     # should be empty post-P4-04
+```
+
+### Next work
+
+Blocked until [Phase 3 P3-70 sign-off](./03-kotlin-compose.md#tasks). `libtorrent_flutter` must already be gone (Phase 2 ✅).
 
 ---
 
@@ -35,18 +111,6 @@ Note: `libtorrent_flutter` must already be gone (Phase 2).
 
 ---
 
-## Keep permanently
-
-| Path | Reason |
-|------|--------|
-| `crates/**` | Rust engine |
-| `scripts/build_rust.sh` | Desktop FFI build |
-| `scripts/build_rust_mobile.sh` | Mobile FFI build |
-| `.github/workflows/rust.yml` | Rust CI |
-| `packages/forja_kotlin/` | Kotlin FFI bridge |
-
----
-
 ## Melos / CI impact
 
 Remove or replace:
@@ -59,17 +123,6 @@ Keep:
 
 - `melos run rust:test` (cargo)
 - `melos run rust:build` / `rust:build:mobile` / `rust:release-check`
-
----
-
-## Risk gates
-
-Do **not** delete Flutter until:
-
-1. Magnet → play works on Compose (Rust librqbit from Phase 2)
-2. IPTV import + Xtream browse smoke-tested on Compose
-3. At least one webstreamr provider end-to-end on Compose
-4. Settings persistence ported (`forja_storage` → Kotlin)
 
 ---
 

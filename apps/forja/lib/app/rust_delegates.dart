@@ -189,6 +189,8 @@ void installRustAppDelegates() {
   TorrentEngineBackend.statusJson = ForjaRust.instance.torrentStatusJson;
   TorrentEngineBackend.engineStart =
       (port) => ForjaRust.instance.torrentEngineStart(port);
+  TorrentEngineBackend.setPeerLimit =
+      (limit) => ForjaRust.instance.torrentSetPeerLimit(limit);
   TorrentEngineBackend.enginePort = ForjaRust.instance.torrentEnginePort;
   TorrentEngineBackend.engineStop = ForjaRust.instance.torrentEngineStop;
   TorrentEngineBackend.streamTorrent = (magnet, {season, episode, fileIdx}) {

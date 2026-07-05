@@ -1,21 +1,100 @@
 # Phase 2 — Rust engine complete (Flutter-free engine layer)
 
-**Status:** Next  
+**Status:** Next (in progress)  
 **Depends on:** [Phase 1 complete](./01-rust-engine.md)  
-**Next phase:** [Phase 3 — Kotlin Compose](./03-kotlin-compose.md)
+**Next phase:** [Phase 3 — Kotlin Compose](./03-kotlin-compose.md)  
+**Migration index:** [README.md](./README.md)  
+**Spec:** [RFC-009](../rfc/009-rust-ffi.md)
 
 ---
 
-## Goal
+## Status at a glance
 
-Finish the engine migration in Rust **before** any Compose UI work. Flutter remains the temporary UI shell, but **zero engine logic stays in Dart**:
+**Goal:** finish the engine in Rust before Compose. Flutter stays the UI shell; **zero engine logic in Dart** — librqbit everywhere, no libtorrent, no HTML parse fallbacks, `packages/rust` thin loader only.
 
-- No `libtorrent_flutter` — torrent playback is librqbit via FFI on all platforms
-- No Dart HTML parse fallbacks in engine packages
-- No libtorrent desktop fallback when Rust loads
-- `packages/rust` is a **thin FFI loader only** (facade + bindings + library_path)
+**Phase 2 in progress.** Exit criteria **5 / 8** · critical path **B2** (mobile librqbit smoke).
 
-Orchestration (HTTP fetch, registry routing, shelf `/hls-proxy`) may still live in Dart packages — that is UI glue, not engine. It ports to Kotlin in Phase 3.
+### Three columns — read every table this way
+
+| Column | Question |
+|--------|----------|
+| **Rust** | Code exists in `crates/` + exposed via FFI? |
+| **App** | Running app calls Rust when native library loads? |
+| **Dart removed** | Old duplicate / fallback deleted? |
+
+**Done = ✅** when every row in a workstream is ✅/✅. Orchestration (HTTP fetch, registry, `/hls-proxy`) staying in Dart is normal — ports in Phase 3.
+
+### Workstreams
+
+| Workstream | Done | Target | Status |
+|------------|-----:|-------:|--------|
+| B2 — mobile librqbit | 4 | 6 | iOS compile done · device smoke + Android NDK open |
+| Drop libtorrent | 4 | 4 | **done** |
+| Strip Dart fallbacks | 4 | 4 | **done** |
+| Optional hardening | 0 | 3 | P2-40 scrapers · P2-41 parity · P2-42 strict mobile |
+| Kotlin FFI prep | 0 | 3 | P2-50 UDL · P2-51 uniffi · P2-52 JNI proof |
+| Sign-off | 0 | 3 | P2-70 smoke · P2-71 RFC · P2-72 README gate |
+
+### Feature matrix
+
+| Area | Rust | App | Dart removed | Notes |
+|------|:----:|:---:|:------------:|-------|
+| **B2 — mobile librqbit** | ✅ iOS | partial | N/A | Android NDK verify · P2-14 device smoke |
+| **Drop libtorrent** | ✅ | ✅ | ✅ | P2-20/21 done — no pubspec refs, Rust-only torrent |
+| **Strip fallbacks** | ✅ | ✅ | ✅ | webstreamr · provider registry · scrapers |
+| **Optional scrapers** | — | — | — | YTS, EZTV, EliteTorrent — not blocking |
+| **Kotlin FFI prep** | — | — | — | parallel · low risk |
+| **Sign-off** | — | — | — | blocked on B2 tail |
+
+### Exit criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Mobile FFI full features (iOS/Android) | open |
+| Magnet → HTTP stream on mobile | open |
+| `libtorrent_flutter` removed | ✅ |
+| `TorrentStreamService` Rust-only | ✅ |
+| Dart HTML fallbacks removed | ✅ |
+| Orphan engine copies deleted | ✅ |
+| Desktop no libtorrent when dylib loads | ✅ |
+| RFC-009 Step 9 + uniffi POC | open |
+
+### What stays Dart after Phase 2 (not engine)
+
+| Area | Package | Why |
+|------|---------|-----|
+| Webstreamr fetch + registry | `packages/webstreamr` | HTTP orchestration |
+| Scraper search HTTP | `packages/scrapers` | HTTP orchestration |
+| HLS `/hls-proxy` | `local_server_service.dart` | shelf rewrite |
+| Nuvio JS + WebView extractors | app + `forja_api` | UI-layer |
+| Flutter UI + player | `apps/forja` | Phase 3/4 |
+
+### Numbers
+
+| Metric | Value |
+|--------|-------|
+| Exit criteria met | 5 / 8 |
+| Core workstreams done | 2 / 3 (libtorrent · fallbacks) |
+| B2 tasks done | 4 / 6 (excl. optional P2-16) |
+| Acceptance checklist | 3 / 5 |
+| `libtorrent_flutter` pubspec refs | 0 |
+
+### Quick health check
+
+```bash
+./scripts/try_build_mobile_torrent.sh ios
+./scripts/build_rust_mobile.sh all          # Android needs NDK
+cd crates && cargo test --workspace
+melos run rust:test && melos run rust:integration
+```
+
+### Next work
+
+1. **P2-14** — magnet → stream on device (iOS/Android smoke)
+2. **P2-10/11** — Android NDK full-features build in CI
+3. **P2-50** — expand `forja.udl` (parallel, prep Phase 3)
+
+Blockers → [Torrent engine decision](#torrent-engine-decision-locked) · [Current gaps](#current-gaps-from-phase-1)
 
 ---
 
@@ -34,20 +113,6 @@ Orchestration (HTTP fetch, registry routing, shelf `/hls-proxy`) may still live 
 **B2 is not a dead end.** The iOS blocker was `librqbit-dualstack-sockets` using Linux `bind_device` on iOS. Fix: vendored patch in `crates/third_party/librqbit-dualstack-sockets` (Apple cfg → `bind_device_by_index_v4/v6`). iOS compile verified; runtime smoke on device still required before P2-20.
 
 Implementation already matches rqbit streaming: `crates/torrent` runs `librqbit::Session` + local axum HTTP with **Range** seek (`stream_file_handler`).
-
----
-
-## Exit criteria
-
-- [ ] Mobile FFI builds with `torrent-engine` + `local-proxy` (full features on iOS/Android)
-- [ ] Magnet → HTTP stream works on iOS + Android via librqbit (B2 resolved)
-- [x] `libtorrent_flutter` removed from all pubspecs (`apps/forja`, `streaming`, `api`)
-- [x] `TorrentStreamService` is Rust-only — no libtorrent code path
-- [x] Dart HTML fallbacks removed from webstreamr sources/extractors (Rust required)
-- [ ] Orphan engine copies deleted from `packages/rust/lib/src/` (if any remain)
-- [ ] Desktop boot never falls back to libtorrent when dylib loads
-- [ ] RFC-009 Step 9 acceptance fully checked
-- [ ] `forja.udl` expanded + uniffi Kotlin bindgen POC (prep for Phase 3)
 
 ---
 
@@ -74,7 +139,7 @@ Implementation already matches rqbit streaming: `crates/torrent` runs `librqbit:
 | P2-12 | Enable full features in mobile build | **done** — `build_rust_mobile.sh` defaults to full features; `FORJA_RUST_MOBILE_PARSER_ONLY=1` for legacy |
 | P2-13 | Wire `TorrentEngineBackend` on mobile | Same path as desktop — no platform branch |
 | P2-14 | Integration test | Extend `integration_test/engine_smoke_test.dart` — magnet→stream on device when CI allows |
-| P2-15 | Port `applyConnectionsLimit` | librqbit session config (was libtorrent-only) |
+| P2-15 | Port `applyConnectionsLimit` | **done** — `SessionOptions::peer_limit` via FFI |
 | P2-16 | (optional) Facade patterns | Skim [perpetus/stream-server](https://github.com/perpetus/stream-server) backend trait for range/archive edge cases — ideas only |
 
 Probe: `./scripts/try_build_mobile_torrent.sh ios`  
@@ -95,8 +160,8 @@ Files: `crates/torrent/`, `packages/streaming/lib/src/torrent_stream_service.dar
 |----|------|-------|
 | P2-30 | Webstreamr: remove Dart HTML parse fallbacks | 44 files in `packages/webstreamr/` — keep `tryRust*` only, fail if backend null |
 | P2-31 | Delete orphan engine copies | `packages/rust/lib/src/dart_fallback/`, `lib/src/reference/` if present |
-| P2-32 | Provider registry: remove static Dart URL fallbacks | `provider_fallback_urls.dart` — Rust required or explicit error |
-| P2-33 | Scrapers: remove Dart parse for knaben/tpb/uindex | Already Rust-wired; delete dead Dart parse branches |
+| P2-32 | Provider registry: remove static Dart URL fallbacks | **done** — `ForjaEngine.requireMovieUrl` / `requireTvUrl` |
+| P2-33 | Scrapers: remove Dart parse for knaben/tpb/uindex | **done** — already Rust-only via `ScraperParseBackend!` |
 
 ### Optional engine hardening
 
@@ -121,21 +186,6 @@ Files: `crates/torrent/`, `packages/streaming/lib/src/torrent_stream_service.dar
 | P2-70 | Manual smoke | Boot · IPTV import · magnet play (mobile + desktop) · one VidLink stream |
 | P2-71 | Update RFC-009 | Mark Step 9 + B2 complete |
 | P2-72 | Mark Phase 2 complete in README | Gate Phase 3 Compose start |
-
----
-
-## What stays Dart after Phase 2 (not engine)
-
-These are **orchestration / UI glue** — OK until Phase 3 ports them to Kotlin:
-
-| Area | Package / path | Why not Rust |
-|------|----------------|--------------|
-| Webstreamr page fetch + registry | `packages/webstreamr` fetcher, registry | HTTP orchestration |
-| Scraper search HTTP | `packages/scrapers` base_scraper, aggregator | HTTP orchestration |
-| HLS `/hls-proxy` | `local_server_service.dart` | shelf rewrite — out of Rust scope |
-| Nuvio JS runtime | `nuvio_runtime.dart` (`flutter_js`) | UI-layer scraper host |
-| WebView extractors | `stream_extractor.dart`, kisskh, videasy, etc. | Platform WebView (~1,900 LOC) |
-| Flutter UI + player | `apps/forja/lib/features/**`, `shared/player/` | Phase 3/4 scope |
 
 ---
 
