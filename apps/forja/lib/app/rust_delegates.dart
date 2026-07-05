@@ -5,9 +5,7 @@ import 'package:api/api/kisskh_subtitle_decryptor.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/pastesh_decryptor.dart';
 import 'package:rust/rust.dart';
-import 'package:scrapers/scrapers/scraper_parse.dart';
 import 'package:streaming/streaming.dart';
-import 'package:webstreamr/webstreamr/webstreamr_parse.dart';
 import 'package:webstreamr/webstreamr/utils/unpacker.dart';
 
 /// App-layer delegates that cannot live in [ForjaEngine] (avoids rust → api import cycle).
@@ -90,20 +88,6 @@ void installRustAppDelegates() {
     );
   };
 
-  ScraperParseBackend.parseKnaben = (html) =>
-      torrentRowsFromJson(ForjaRust.instance.parseKnabenHtmlJson(html));
-
-  ScraperParseBackend.parseTpb = (html, source) => torrentRowsFromJson(
-        ForjaRust.instance.parseTpbHtmlJson(html),
-      ).map((row) => {...row, 'source': source}).toList();
-
-  ScraperParseBackend.parseUindex = (html) =>
-      torrentRowsFromJson(ForjaRust.instance.parseUindexHtmlJson(html));
-
-  ScraperParseBackend.dedupTorrents = (results) => torrentRowsFromJson(
-        ForjaRust.instance.dedupTorrentsJson(jsonEncode(results)),
-      );
-
   PasteShDecryptorBackend.decryptRaw = (url, raw) =>
       ForjaRust.instance.decryptPasteResponse(url, raw);
 
@@ -118,44 +102,6 @@ void installRustAppDelegates() {
 
   IptvClientBackend.parseSeriesEpisodesJson =
       (json) => ForjaRust.instance.parseXtreamSeriesEpisodesJson(json);
-
-  WebstreamrParseBackend.extractEmbedHtmlJson = (id, html, pageUrl) =>
-      ForjaRust.instance.extractEmbedHtmlJson(id, html, pageUrl);
-
-  WebstreamrParseBackend.extractVidsrcChainJson =
-      (outer, rcp, prorcp) =>
-          ForjaRust.instance.extractVidsrcChainJson(outer, rcp, prorcp);
-
-  WebstreamrParseBackend.extractHubcloudLinksJson = (html, pageUrl) =>
-      ForjaRust.instance.extractHubcloudLinksJson(html, pageUrl);
-
-  WebstreamrParseBackend.extractMfpEmbedHtmlJson =
-      (id, html, pageUrl, mfpConfigJson, extraHtml) =>
-          ForjaRust.instance.extractMfpEmbedHtmlJson(
-            id,
-            html,
-            pageUrl,
-            mfpConfigJson,
-            extraHtml: extraHtml,
-          );
-
-  WebstreamrParseBackend.resolveSourceJson = (sourceId, requestJson) =>
-      ForjaRust.instance.resolveWebstreamrSourceJson(sourceId, requestJson);
-
-  WebstreamrParseBackend.extractKinogerEpisodeUrlsJson =
-      (html, seasonIndex, episodeIndex) =>
-          ForjaRust.instance.extractKinogerEpisodeUrlsJson(
-            html,
-            seasonIndex,
-            episodeIndex,
-          );
-
-  WebstreamrParseBackend.parseSourceHtmlJson = (sourceId, html, optsJson) =>
-      ForjaRust.instance.parseWebstreamrSourceHtmlJson(
-        sourceId,
-        html,
-        optsJson,
-      );
 
   JsUnpackBackend.unpack = (source) {
     final out = ForjaRust.instance.unpackJs(source);

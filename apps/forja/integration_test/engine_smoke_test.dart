@@ -8,7 +8,6 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:core/utils/episode_matcher.dart';
 import 'package:rust/rust.dart';
-import 'package:scrapers/scrapers/scraper_parse.dart';
 import 'package:streaming/streaming.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -109,15 +108,15 @@ http://stream.example/live
     expect(parsed['name'], 'Test Addon');
   });
 
-  test('Knaben scraper delegate wired', () {
-    expect(ScraperParseBackend.parseKnaben, isNotNull);
+  test('Knaben HTML parse via Rust FFI', () {
+    expect(ForjaRust.isInitialized, isTrue);
     const html = '''
 <table><tbody><tr>
 <td class="text-wrap"><a href="magnet:?xt=urn:btih:abc" title="Show S01E01">Show</a></td>
 <td>1.2 GB</td><td></td><td>100</td>
 </tr></tbody></table>
 ''';
-    final rows = ScraperParseBackend.parseKnaben!(html);
+    final rows = jsonDecode(ForjaRust.instance.parseKnabenHtmlJson(html)) as List;
     expect(rows, hasLength(1));
     expect(rows.first['magnet'], startsWith('magnet:'));
   });

@@ -1,35 +1,17 @@
 import 'dart:convert';
 
+import 'package:rust/rust.dart';
+
 import 'errors.dart';
 import 'types.dart';
 import 'utils/id.dart';
 
-/// Optional Rust HTML extractor hooks. Set from app bootstrap when [ForjaEngine] loads.
-abstract final class WebstreamrParseBackend {
-  static String? Function(String extractorId, String html, String pageUrl)?
-      extractEmbedHtmlJson;
-  static String? Function(String outerHtml, String rcpHtml, String prorcpHtml)?
-      extractVidsrcChainJson;
-  static String? Function(String linksHtml, String pageUrl)?
-      extractHubcloudLinksJson;
-  static String? Function(
-    String extractorId,
-    String html,
-    String pageUrl,
-    String mfpConfigJson,
-    String extraHtml,
-  )? extractMfpEmbedHtmlJson;
-  static String? Function(String sourceId, String requestJson)? resolveSourceJson;
-  static String? Function(String html, int seasonIndex, int episodeIndex)?
-      extractKinogerEpisodeUrlsJson;
-  static String? Function(String sourceId, String html, String optsJson)?
-      parseSourceHtmlJson;
-}
+bool get _rustReady => ForjaRust.isInitialized;
 
 Map<String, dynamic>? _decodeRust(String raw) {
   final decoded = jsonDecode(raw);
   if (decoded is! Map<String, dynamic>) {
-    throw StateError('WebstreamrParseBackend: invalid JSON');
+    throw StateError('Webstreamr parse: invalid JSON');
   }
   return decoded;
 }
@@ -89,11 +71,12 @@ List<SourceResult>? tryRustResolveSource(
   String? title,
   int? year,
 }) {
-  final backend = WebstreamrParseBackend.resolveSourceJson;
-  if (backend == null) return null;
+  if (!_rustReady) return null;
 
-  final raw = backend(sourceId, jsonEncode(_sourceRequestJson(type, id, title: title, year: year)));
-  if (raw == null) return null;
+  final raw = ForjaRust.instance.resolveWebstreamrSourceJson(
+    sourceId,
+    jsonEncode(_sourceRequestJson(type, id, title: title, year: year)),
+  );
   return _sourceResultsFromJson(jsonDecode(raw));
 }
 
@@ -110,9 +93,8 @@ List<SourceResult>? tryRustParseSourceHtml(
   String? baseUrl,
   String? bodyKind,
 }) {
-  final backend = WebstreamrParseBackend.parseSourceHtmlJson;
-  if (backend == null) return null;
-  final raw = backend(
+  if (!_rustReady) return null;
+  final raw = ForjaRust.instance.parseWebstreamrSourceHtmlJson(
     sourceId,
     html,
     jsonEncode({
@@ -128,7 +110,6 @@ List<SourceResult>? tryRustParseSourceHtml(
       if (bodyKind != null && bodyKind.isNotEmpty) 'body_kind': bodyKind,
     }),
   );
-  if (raw == null) return null;
   return _sourceResultsFromJson(jsonDecode(raw));
 }
 
@@ -137,10 +118,12 @@ List<Uri>? tryRustKinogerEpisodeUrls(
   int seasonIndex,
   int episodeIndex,
 ) {
-  final backend = WebstreamrParseBackend.extractKinogerEpisodeUrlsJson;
-  if (backend == null) return null;
-  final raw = backend(html, seasonIndex, episodeIndex);
-  if (raw == null) return null;
+  if (!_rustReady) return null;
+  final raw = ForjaRust.instance.extractKinogerEpisodeUrlsJson(
+    html,
+    seasonIndex,
+    episodeIndex,
+  );
   final decoded = jsonDecode(raw);
   if (decoded is! List || decoded.isEmpty) return null;
   return decoded
@@ -150,12 +133,10 @@ List<Uri>? tryRustKinogerEpisodeUrls(
       .toList();
 }
 
-/// Returns a follow-up embed URL when Rust found an iframe/redirect hop.
 String? tryRustNextUrl(String extractorId, String html, String pageUrl) {
-  final backend = WebstreamrParseBackend.extractEmbedHtmlJson;
-  if (backend == null) return null;
-  final raw = backend(extractorId, html, pageUrl);
-  if (raw == null) return null;
+  if (!_rustReady) return null;
+  final raw =
+      ForjaRust.instance.extractEmbedHtmlJson(extractorId, html, pageUrl);
   final decoded = _decodeRust(raw);
   if (decoded == null) return null;
   return decoded['next_url'] as String?;
@@ -215,11 +196,9 @@ List<InternalUrlResult>? tryRustExtractHubcloudLinks(
   String pageUrl,
   Meta meta,
 ) {
-  final backend = WebstreamrParseBackend.extractHubcloudLinksJson;
-  if (backend == null) return null;
+  if (!_rustReady) return null;
 
-  final raw = backend(linksHtml, pageUrl);
-  if (raw == null) return null;
+  final raw = ForjaRust.instance.extractHubcloudLinksJson(linksHtml, pageUrl);
   final decoded = jsonDecode(raw);
   if (decoded is! List) return null;
 
@@ -232,7 +211,6 @@ List<InternalUrlResult>? tryRustExtractHubcloudLinks(
   return out.isEmpty ? null : out;
 }
 
-/// MFP redirect extractors need proxy config from [Context].
 List<InternalUrlResult>? tryRustExtractMfpFromHtml(
   String extractorId,
   String html,
@@ -241,30 +219,30 @@ List<InternalUrlResult>? tryRustExtractMfpFromHtml(
   String mfpConfigJson, {
   String extraHtml = '',
 }) {
-  final backend = WebstreamrParseBackend.extractMfpEmbedHtmlJson;
-  if (backend == null) return null;
+  if (!_rustReady) return null;
 
-  final raw = backend(extractorId, html, pageUrl, mfpConfigJson, extraHtml);
-  if (raw == null) return null;
+  final raw = ForjaRust.instance.extractMfpEmbedHtmlJson(
+    extractorId,
+    html,
+    pageUrl,
+    mfpConfigJson,
+    extraHtml: extraHtml,
+  );
   final decoded = _decodeRust(raw);
   if (decoded == null) return null;
   if (decoded['next_url'] != null) return null;
   return _mapDecoded(decoded, meta);
 }
 
-/// Returns parsed stream rows when the Rust backend is installed; otherwise `null`
-/// so callers fall back to the Dart extractor body.
 List<InternalUrlResult>? tryRustExtractFromHtml(
   String extractorId,
   String html,
   String pageUrl,
   Meta meta,
 ) {
-  final backend = WebstreamrParseBackend.extractEmbedHtmlJson;
-  if (backend == null) return null;
+  if (!_rustReady) return null;
 
-  final raw = backend(extractorId, html, pageUrl);
-  if (raw == null) return null;
+  final raw = ForjaRust.instance.extractEmbedHtmlJson(extractorId, html, pageUrl);
   final decoded = _decodeRust(raw);
   if (decoded == null) return null;
   if (decoded['next_url'] != null) return null;
@@ -278,11 +256,13 @@ List<InternalUrlResult>? tryRustVidsrcChain(
   Meta meta, {
   String? label,
 }) {
-  final backend = WebstreamrParseBackend.extractVidsrcChainJson;
-  if (backend == null) return null;
+  if (!_rustReady) return null;
 
-  final raw = backend(outerHtml, rcpHtml, prorcpHtml);
-  if (raw == null) return null;
+  final raw = ForjaRust.instance.extractVidsrcChainJson(
+    outerHtml,
+    rcpHtml,
+    prorcpHtml,
+  );
   final decoded = _decodeRust(raw);
   if (decoded == null) return null;
   final rows = _mapDecoded(decoded, meta);
@@ -301,8 +281,8 @@ List<InternalUrlResult>? tryRustVidsrcChain(
       .toList();
 }
 
-Never _rustParseRequired(String label) =>
-    throw StateError('$label — wire WebstreamrParseBackend via ForjaEngine.init()');
+Never _rustRequired(String label) =>
+    throw StateError('$label — ForjaEngine not initialized');
 
 List<InternalUrlResult> requireRustExtractFromHtml(
   String extractorId,
@@ -311,7 +291,10 @@ List<InternalUrlResult> requireRustExtractFromHtml(
   Meta meta,
 ) {
   final rows = tryRustExtractFromHtml(extractorId, html, pageUrl, meta);
-  if (rows == null) throw NotFoundError();
+  if (rows == null) {
+    if (!_rustReady) _rustRequired('extractEmbedHtmlJson');
+    throw NotFoundError();
+  }
   return rows;
 }
 
@@ -360,9 +343,7 @@ List<SourceResult> requireRustResolveSource(
     year: year,
   );
   if (rows == null) {
-    if (WebstreamrParseBackend.resolveSourceJson == null) {
-      _rustParseRequired('resolveSourceJson');
-    }
+    if (!_rustReady) _rustRequired('resolveSourceJson');
     throw NotFoundError();
   }
   return rows;
@@ -401,9 +382,7 @@ List<InternalUrlResult> requireRustExtractMfpFromHtml(
     extraHtml: extraHtml,
   );
   if (rows == null) {
-    if (WebstreamrParseBackend.extractMfpEmbedHtmlJson == null) {
-      _rustParseRequired('extractMfpEmbedHtmlJson');
-    }
+    if (!_rustReady) _rustRequired('extractMfpEmbedHtmlJson');
     throw NotFoundError();
   }
   return rows;

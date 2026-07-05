@@ -58,8 +58,8 @@ Rust engine (crates/* + libffi)
 
 | | |
 |--|--|
-| **Progress** | **19 / 36 tasks done (53%)** |
-| **Blocks Phase 3** | P2-80 tail · P2-88/89 (api/storage) · P2-86 (kill hooks) |
+| **Progress** | **20 / 36 tasks done (56%)** |
+| **Blocks Phase 3** | P2-80 tail · P2-82/83/85 pipelines · P2-88/89 (api/storage) · P2-86 (kill hooks) |
 | **Also open** | B2 mobile smoke · JNI proof · sign-off |
 
 **Legend:** ✅ done · 🔄 partial · ⬜ not started
@@ -77,6 +77,7 @@ Rust engine (crates/* + libffi)
 | P2-50, P2-51 | uniffi UDL + Kotlin bindgen scaffold |
 | **P2-81** | Scraper pipeline → `search_torrents_json` |
 | **P2-84** | Torrent filter → `filter_torrents_json` |
+| **P2-87** | Dead Dart scraper files deleted (`packages/scrapers` = aggregator only) |
 
 #### 🔄 In progress — B2 mobile
 
@@ -94,7 +95,7 @@ Rust engine (crates/* + libffi)
 | P2-83 | Stream resolver → Rust |
 | P2-85 | Proxy → Rust only (drop shelf engine routes) |
 | P2-86 | Delete `*Backend` hooks + `rust_delegates.dart` |
-| P2-87 | Delete gutted Dart engine packages |
+| P2-87 | Delete gutted Dart engine packages (scrapers ✅; webstreamr/streaming/api remain) |
 | **P2-88** | **`packages/storage` → `crates/storage` + FFI** |
 | **P2-89** | **`packages/api` → Rust crates (TMDB, Trakt, debrid, …)** |
 | **P2-90** | **`packages/core` models → generated from engine JSON** |
