@@ -1,6 +1,6 @@
 ---
 description: Rust engine migration — update docs and tests with every step
-globs: crates/**,packages/forja_rust/**,docs/migration/**,docs/rfc/009-rust-ffi.md
+globs: crates/**,packages/rust/**,docs/migration/**,docs/rfc/009-rust-ffi.md
 alwaysApply: false
 ---
 
@@ -24,27 +24,27 @@ When working on the Rust engine migration:
 4. Update [docs/rfc/009-rust-ffi.md](../../docs/rfc/009-rust-ffi.md) acceptance checkboxes if applicable.
 5. Add or extend tests:
    - Rust: unit test in crate + golden fixture if I/O-free logic
-   - Dart: parity test in `packages/forja_rust/test/parity/` comparing Rust FFI vs Dart reference
+   - Dart: parity test in `packages/rust/test/parity/` comparing Rust FFI vs Dart reference
 6. Run gates:
    ```bash
    ./scripts/build_rust.sh
    cd crates && cargo test --workspace
-   cd packages/forja_rust && flutter test
+   cd packages/rust && flutter test
    ```
 
 ## Parity test rules
 
 - Compare `ForjaRust.instance.*` directly — do not go through `ForjaEngine` delegates.
 - Keep `EpisodeMatcherBackend.matches` null in tests (do not call `ForjaEngine.init`).
-- Shared fixtures live in `crates/*/tests/fixtures/`; Dart copies in `packages/forja_rust/test/fixtures/` when needed.
+- Shared fixtures live in `crates/*/tests/fixtures/`; Dart copies in `packages/rust/test/parity/dart_baseline/` when needed.
 - Gate: parity must pass before wiring a new call site.
 
 ## Wire-up pattern
 
-- Add optional backend hook in app or `forja_core` (not in `forja_rust` importing app code).
+- Add optional backend hook in app or `packages/core` (not in `packages/rust` importing app code).
 - `ForjaEngine._installDelegates()` sets hooks at init when native library loads.
 - Call site uses `*Backend` hook wired by `installRustAppDelegates()` when Rust loads.
-- Without dylib: parsers throw / boot warns (`FORJA_RUST_STRICT=1` on desktop debug).
+- Without dylib: parsers throw / boot warns (`FORJA_RUST_STRICT=1` in debug).
 - No user-facing Rust toggle — engine always attempts native load at boot.
 
 ## Doc status rules

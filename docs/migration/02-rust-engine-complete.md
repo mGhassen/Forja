@@ -31,7 +31,7 @@
 | B2 — mobile librqbit | 4 | 6 | iOS compile done · device smoke + Android NDK open |
 | Drop libtorrent | 4 | 4 | **done** |
 | Strip Dart fallbacks | 4 | 4 | **done** |
-| Legacy engine purge | 0 | 4 | P2-60 delete `forja_*` · P2-61–63 audit |
+| Legacy engine purge | 4 | 4 | **done** — P2-60 deleted `forja_*` duplicates |
 | Optional hardening | 1 | 3 | P2-40 scrapers · P2-41 parity · P2-42 **done** |
 | Kotlin FFI prep | 2 | 3 | P2-50 UDL **done** · P2-51 bindgen **done** · P2-52 JNI proof open |
 | Sign-off | 0 | 3 | P2-70 smoke · P2-71 RFC · P2-72 README gate |
@@ -58,6 +58,7 @@
 | `TorrentStreamService` Rust-only | ✅ |
 | Dart HTML fallbacks removed | ✅ |
 | Orphan engine copies deleted | ✅ |
+| Legacy `packages/forja_*` duplicates deleted | ✅ |
 | Desktop no libtorrent when dylib loads | ✅ |
 | RFC-009 Step 9 + uniffi POC | partial (UDL + Kotlin gen) |
 
@@ -92,9 +93,9 @@ melos run rust:test && melos run rust:integration
 
 ### Next work
 
-1. **P2-14** — run `FORJA_TORRENT_E2E=1 FORJA_TORRENT_MAGNET='magnet:…' flutter test integration_test/` on device/desktop
-2. **P2-10/11** — Android NDK full-features build in CI
-3. **P2-52** — JNI packaging proof (link `libffi.so` in Gradle)
+1. **P2-14** — magnet E2E on iOS/Android device
+2. **P2-11** — Android NDK full-features build in CI
+3. **P2-70** — manual sign-off smoke
 
 Blockers → [Torrent engine decision](#torrent-engine-decision-locked) · [Current gaps](#current-gaps-from-phase-1)
 
@@ -172,15 +173,15 @@ Files: `crates/torrent/`, `packages/streaming/lib/src/torrent_stream_service.dar
 | P2-40 | Port remaining scrapers to Rust | YTS, EZTV, EliteTorrent, etc. — `crates/scrapers/` |
 | P2-41 | lulustream/fastream stream-fetch parity | Expand Dart parity or document as Rust-only |
 | P2-42 | `FORJA_RUST_STRICT=1` on mobile debug | **done** — boot warns/fails on all platforms in debug |
+| P2-62 | Drop Dart parity baselines from CI gate | open — optional; keep until Rust goldens fully replace |
 
 ### Legacy engine purge (still Phase 2 — blocks Phase 3)
 
 | ID | Task | Detail |
 |----|------|--------|
-| P2-60 | Delete `packages/forja_*` duplicates | `forja_rust`, `forja_streaming`, `forja_api`, `forja_webstreamr`, `forja_scrapers`, `forja_core`, `forja_storage` — app uses short names only |
-| P2-61 | Remove `dart_fallback/` + `reference/` if any | Active `packages/rust/lib/src/` must stay 3 files only |
-| P2-62 | Drop Dart parity baselines from CI gate | Keep Rust goldens; archive or delete `test/parity/dart_baseline/` when confident |
-| P2-63 | Audit `melos.yaml` / CI for `forja_*` refs | No duplicate package builds |
+| P2-60 | Delete `packages/forja_*` duplicates | **done** — removed 7 packages; app uses `packages/{rust,api,core,...}` only |
+| P2-61 | Remove `dart_fallback/` + `reference/` if any | **done** — `packages/rust/lib/src/` is 3 files |
+| P2-63 | Audit `melos.yaml` / CI for `forja_*` refs | **done** — no CI refs; cursor rule updated |
 
 **Do not add a separate “engine cleanup” phase.** Engine cleanup **is** Phase 2. Phase 3 is Compose UI + porting orchestration. Phase 4 deletes Flutter entirely.
 
@@ -226,7 +227,8 @@ flowchart LR
 
 - [x] `./scripts/try_build_mobile_torrent.sh ios` passes (vendored iOS patch)
 - [ ] `./scripts/build_rust_mobile.sh all` with full features (Android needs NDK)
-- [x] Zero `libtorrent_flutter` references in active packages (legacy `forja_*` copies remain until Phase 4)
+- [x] Zero `libtorrent_flutter` references in active packages
+- [x] Zero `packages/forja_*` duplicate packages
 - [ ] `melos run rust:test` + `melos run rust:integration` green (run manually: `flutter test integration_test/` passes)
 - [ ] Release APK/IPA plays magnet via librqbit
 

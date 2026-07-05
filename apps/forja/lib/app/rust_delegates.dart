@@ -11,7 +11,7 @@ import 'package:streaming/streaming.dart';
 import 'package:webstreamr/webstreamr/webstreamr_parse.dart';
 import 'package:webstreamr/webstreamr/utils/unpacker.dart';
 
-/// App-layer delegates that cannot live in [ForjaEngine] (avoids forja_rust → forja_api cycle).
+/// App-layer delegates that cannot live in [ForjaEngine] (avoids rust → api import cycle).
 void installRustAppDelegates() {
   if (!ForjaEngine.isReady) return;
 

@@ -13,10 +13,10 @@ Forja is migrating from a Flutter monolith to a **Rust engine** with a **Kotlin 
 
 | # | Doc | Status | Summary |
 |---|-----|--------|---------|
-| 1 | [01-rust-engine.md](./01-rust-engine.md) | **Complete** | Rust crates + FFI wired via `forja_rust`; parsers in production |
+| 1 | [01-rust-engine.md](./01-rust-engine.md) | **Complete** | Rust crates + FFI wired via `packages/rust`; parsers in production |
 | 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | **Next** | Finish engine on Rust: B2 librqbit, drop libtorrent, strip Dart fallbacks — Flutter UI only |
 | 3 | [03-kotlin-compose.md](./03-kotlin-compose.md) | Future | KMP Compose UI + `forja_kotlin`; port orchestration from Dart |
-| 4 | [04-delete-flutter.md](./04-delete-flutter.md) | Future | Remove `apps/forja`, `forja_rust`, melos Flutter CI |
+| 4 | [04-delete-flutter.md](./04-delete-flutter.md) | Future | Remove `apps/forja`, Dart packages, melos Flutter CI |
 | 5 | [05-web-client.md](./05-web-client.md) | Parallel | WASM engine + browser client ([RFC-014](../rfc/014-v3-web-rust.md)) |
 
 ---
@@ -36,13 +36,13 @@ flowchart TB
   end
 
   subgraph phase2 [Phase2_Engine_complete]
-    FFI["libforja_ffi full features"]
-    ThinDart["forja_rust thin loader only"]
+    FFI["libffi full features"]
+    ThinDart["packages/rust thin loader only"]
   end
 
   subgraph phase4 [Phase4_Delete]
     FlutterApp["apps/forja"]
-    DartFFI["packages/forja_rust"]
+    DartPkgs["packages/* Dart orchestration"]
   end
 
   ComposeApp --> KotlinOrch
@@ -54,7 +54,7 @@ flowchart TB
   FlutterApp -.->|Phase2 UI only| ThinDart
   ThinDart --> FFI
   FlutterApp -.->|deleted Phase4| ComposeApp
-  DartFFI -.->|deleted Phase4| KotlinOrch
+  DartPkgs -.->|deleted Phase4| KotlinOrch
 ```
 
 ---
@@ -87,6 +87,6 @@ flowchart TB
 
 - Update the **active phase file** when work completes.
 - Phase 1 is frozen except factual corrections.
-- B2 tail: P2-14 device E2E · Android NDK. Kotlin FFI POC done (`packages/kotlin/` + `generate_kotlin_ffi.sh`).
+- B2 tail: P2-14 mobile E2E · Android NDK. P2-60 legacy purge done.
 - Do not start Phase 3 until Phase 2 exit criteria are met.
 - Agent workflow: [`.cursor/rules/rust-migration.mdc`](../../.cursor/rules/rust-migration.mdc)

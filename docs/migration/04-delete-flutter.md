@@ -36,7 +36,7 @@
 | Area | Compose ready | Deleted | CI/docs | Notes |
 |------|:-------------:|:-------:|:-------:|-------|
 | **P4-01 `apps/forja/`** | — | — | — | 19 tabs + player + settings |
-| **P4-02 `packages/forja_rust/`** | — | — | — | `forja_kotlin` must cover FFI |
+| **P4-02 `packages/rust/`** | — | — | — | `packages/kotlin` must cover FFI |
 | **P4-03 Dart packages** | — | — | — | each ported in Phase 3 |
 | **P4-04 Flutter CI** | — | — | — | `forja-macos.yml` · melos flutter |
 | **P4-05 Parity tests** | — | — | — | migrate to Rust goldens or archive |
@@ -77,7 +77,7 @@
 | Deletion tasks done | 0 / 6 |
 | Risk gates passed | 0 / 4 |
 | Flutter apps remaining | 1 (`apps/forja`) |
-| Dart FFI package remaining | 1 (`packages/forja_rust`) |
+| Dart FFI package remaining | 1 (`packages/rust`) |
 
 ### Quick health check
 
@@ -101,10 +101,10 @@ Blocked until [Phase 3 P3-70 sign-off](./03-kotlin-compose.md#tasks). `libtorren
 | ID | Task | Verify before delete |
 |----|------|----------------------|
 | P4-01 | Delete `apps/forja/` | Compose replaces all 19 tabs + player + settings |
-| P4-02 | Delete `packages/forja_rust/` | `forja_kotlin` covers all FFI |
+| P4-02 | Delete `packages/rust/` (Dart FFI loader) | `packages/kotlin` covers all FFI |
 | P4-03 | Delete superseded Dart packages | Each ported to Kotlin |
 | P4-04 | Remove Flutter CI | `.github/workflows/forja-macos.yml`, melos flutter scripts |
-| P4-05 | Parity tests | Migrate fixtures to Rust-only goldens OR archive `packages/forja_rust/test/` |
+| P4-05 | Parity tests | Migrate fixtures to Rust-only goldens OR archive `packages/rust/test/parity/dart_baseline/` |
 | P4-06 | Update monorepo docs | RFC-001, root README, melos.yaml |
 
 Note: `libtorrent_flutter` must already be gone (Phase 2).

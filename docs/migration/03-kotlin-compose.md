@@ -132,7 +132,7 @@ flowchart LR
 |----|------|----------------|---------------|
 | P3-10 | Storage + theme + prefs | `forja_storage` | KMP DataStore/SQLite |
 | P3-11 | Shell + nav (19 tabs) | `shell/nav_config.dart`, `main_screen.dart` | Compose navigation |
-| P3-20 | Engine bridge | `packages/forja_rust`, `rust_delegates.dart` | `forja_kotlin` |
+| P3-20 | Engine bridge | `packages/rust`, `rust_delegates.dart` | `packages/kotlin` |
 | P3-30 | Unified player | `shared/player/` | Compose + ExoPlayer/AVPlayer |
 | P3-31 | Magnet tab | `features/magnet/` | Compose + Rust torrent FFI |
 | P3-32 | IPTV | `features/iptv/` | Compose + Rust parsers |
