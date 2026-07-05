@@ -149,6 +149,14 @@ void main() {
     expect(json, contains('cloudnestra.com/hls/movie.m3u8'));
   });
 
+  test('resolve_vidsrc_embed_json returns error for bad id', () {
+    final raw = ForjaRust.instance.resolveVidsrcEmbedJson(
+      jsonEncode({'tmdb_id': 0, 'is_movie': true}),
+    );
+    final m = jsonDecode(raw) as Map<String, dynamic>;
+    expect(m['error'], isNotNull);
+  });
+
   test('filemoon iframe redirect via FFI', () {
     final m = _embed(
       'filemoon',

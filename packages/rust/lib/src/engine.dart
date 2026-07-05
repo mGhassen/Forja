@@ -296,6 +296,12 @@ class ForjaRust {
         return _readString(_native.forja_extract_vidsrc_chain_json(a, b, c));
       });
 
+  String resolveVidsrcEmbedJson(String requestJson) => using((arena) {
+        final reqPtr =
+            requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_resolve_vidsrc_embed_json(reqPtr));
+      });
+
   String extractHubcloudLinksJson(String html, String pageUrl) => using((arena) {
         final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
@@ -641,6 +647,11 @@ final class _ForjaNative {
               'forja_extract_vidsrc_chain_json',
             )
             .asFunction(),
+        forja_resolve_vidsrc_embed_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'forja_resolve_vidsrc_embed_json',
+            )
+            .asFunction(),
         forja_extract_hubcloud_links_json = lib
             .lookup<ffi.NativeFunction<_TwoStringNative>>(
               'forja_extract_hubcloud_links_json',
@@ -844,6 +855,8 @@ final class _ForjaNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_extract_vidsrc_chain_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_resolve_vidsrc_embed_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,

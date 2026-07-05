@@ -247,6 +247,10 @@ fn extract_vidsrc_chain_json(outer_html: String, rcp_html: String, prorcp_html: 
     webstreamr::extract_vidsrc_chain_json(&outer_html, &rcp_html, &prorcp_html)
 }
 
+fn resolve_vidsrc_embed_json(request_json: String) -> String {
+    webstreamr::resolve_vidsrc_embed_json(&request_json)
+}
+
 fn extract_hubcloud_links_json(html: String, page_url: String) -> String {
     webstreamr::extract_hubcloud_links_json(&html, &page_url)
 }

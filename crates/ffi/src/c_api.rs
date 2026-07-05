@@ -305,6 +305,13 @@ pub unsafe extern "C" fn forja_extract_vidsrc_chain_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_resolve_vidsrc_embed_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::resolve_vidsrc_embed_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_extract_hubcloud_links_json(
     html: *const c_char,
     page_url: *const c_char,

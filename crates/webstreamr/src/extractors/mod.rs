@@ -41,7 +41,10 @@ pub use rgshows::{extract_from_html as extract_rgshows, supports_host as rgshows
 pub use savefiles::{extract_from_html as extract_savefiles, supports_host as savefiles_supports};
 pub use streamembed::{extract_from_html as extract_streamembed, supports_host as streamembed_supports};
 pub use supervideo::{extract_from_html as extract_supervideo, supports_host as supervideo_supports};
-pub use vidsrc::{build_embed_url, extract_from_html_chain, extract_vidsrc_chain_json};
+pub use vidsrc::{
+    build_embed_url, extract_from_html_chain, extract_vidsrc_chain_json,
+    resolve_vidsrc_embed_json,
+};
 pub use vidora::{extract_from_html as extract_vidora, supports_host as vidora_supports};
 pub use vixsrc::{extract_from_html as extract_vixsrc, supports_host as vixsrc_supports};
 pub use youtube::{extract_from_html as extract_youtube, supports_host as youtube_supports};

@@ -37,6 +37,7 @@ namespace forja {
     boolean is_video_file(string file_name);
     string extract_embed_html_json(string extractor_id, string html, string page_url);
     string extract_vidsrc_chain_json(string outer_html, string rcp_html, string prorcp_html);
+    string resolve_vidsrc_embed_json(string request_json);
     string extract_hubcloud_links_json(string html, string page_url);
     string extract_mfp_embed_html_json(string extractor_id, string html, string page_url, string mfp_config_json, string extra_html);
     string resolve_webstreamr_source_json(string source_id, string request_json);

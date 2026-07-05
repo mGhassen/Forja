@@ -11,6 +11,7 @@ pub mod utils;
 pub use extractors::{
     build_embed_url, extract_embed_html, extract_from_html_chain, extract_hubcloud_links,
     extract_mfp_embed_html, extract_vidsrc_chain_json, list_html_extractors, list_mfp_extractors,
+    resolve_vidsrc_embed_json,
 };
 pub use config::{default_config, APP_NAME, Config};
 pub use resolver::get_streams_json;
