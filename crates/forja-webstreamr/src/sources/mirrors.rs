@@ -55,8 +55,8 @@ pub fn parse_episode_mirrors(
                 country_codes: country_codes.clone(),
                 referer: Some(referer.to_string()),
                 priority: None,
-            height: None,
-            bytes: None,
+                height: None,
+                bytes: None,
             });
         }
     }
