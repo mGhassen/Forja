@@ -3,6 +3,7 @@ library;
 
 import 'package:html/parser.dart' as html_parser;
 
+import '../webstreamr_parse.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/hd_hub_helper.dart';
@@ -121,6 +122,14 @@ class HDHub4uSource extends Source {
   }
 
   List<SourceResult> _extractHubDriveUrlResults(String html, Meta meta) {
+    final rust = tryRustParseSourceHtml(
+      this.id,
+      html,
+      referer: meta.referer ?? baseUrl,
+      countryCodes: meta.countryCodes,
+    );
+    if (rust != null) return rust;
+
     final doc = html_parser.parse(html);
     final out = <SourceResult>[];
     for (final a in doc.querySelectorAll('a[href*="hubdrive"]')) {

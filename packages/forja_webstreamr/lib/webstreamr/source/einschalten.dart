@@ -1,6 +1,9 @@
 /// Port of webstreamr/src/source/Einschalten.ts
 library;
 
+import 'dart:convert';
+
+import '../webstreamr_parse.dart';
 import '../types.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
@@ -27,6 +30,14 @@ class EinschaltenSource extends Source {
     final data = await fetcher.json(
             ctx, Uri.parse('$baseUrl/api/movies/${tmdbId.id}/watch'))
         as Map<String, dynamic>;
+
+    final rust = tryRustParseSourceHtml(
+      this.id,
+      jsonEncode(data),
+      referer: '$baseUrl/movies/${tmdbId.id}',
+    );
+    if (rust != null) return rust;
+
     final title = data['releaseName'] as String;
     final streamUrl = Uri.parse(data['streamUrl'] as String);
     return [

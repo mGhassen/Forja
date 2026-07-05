@@ -48,6 +48,9 @@ pub struct ParseHtmlOpts {
     pub title: Option<String>,
     pub season: Option<i32>,
     pub episode: Option<i32>,
+    pub country_codes: Option<Vec<String>>,
+    pub is_series: Option<bool>,
+    pub year: Option<i32>,
 }
 
 fn parse_episode_html(
@@ -82,17 +85,40 @@ pub fn parse_source_html(source_id: &str, html: &str, opts_json: &str) -> Vec<So
         "eurostreaming" => parse_episode_html(html, &opts.referer, &opts, eurostreaming::parse_html),
         "cinehdplus" => parse_episode_html(html, &opts.referer, &opts, cinehdplus::parse_html),
         "streamkiste" => parse_episode_html(html, &opts.referer, &opts, streamkiste::parse_html),
+        "frenchcloud" => frenchcloud::parse_html(html, &opts.referer),
+        "cuevana" => cuevana::parse_html(html, &opts.referer, opts.title.as_deref()),
+        "hdhub4u" => hdhub4u::parse_html(
+            html,
+            &opts.referer,
+            opts.country_codes.as_deref().unwrap_or(&[]),
+        ),
+        "einschalten" => einschalten::parse_json(html, &opts.referer),
+        "movix" => movix::parse_json(
+            html,
+            &movix::MovixParseOpts {
+                referer: opts.referer.clone(),
+                is_series: opts.is_series.unwrap_or(false),
+                year: opts.year,
+                season: opts.season,
+                episode: opts.episode,
+            },
+        ),
         _ => Vec::new(),
     }
 }
 
 mod cinehdplus;
+mod cuevana;
+mod einschalten;
 mod eurostreaming;
+mod frenchcloud;
+mod hdhub4u;
 mod homecine;
 mod kinoger;
 mod megakino;
 mod meinecloud;
 mod mirrors;
+mod movix;
 mod mostraguarda;
 mod rgshows;
 mod streamkiste;
@@ -114,6 +140,11 @@ pub fn list_html_sources() -> &'static [&'static str] {
         "eurostreaming",
         "cinehdplus",
         "streamkiste",
+        "frenchcloud",
+        "cuevana",
+        "hdhub4u",
+        "einschalten",
+        "movix",
     ]
 }
 

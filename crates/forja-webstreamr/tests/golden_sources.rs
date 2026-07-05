@@ -157,3 +157,58 @@ fn streamkiste_html_golden() {
     assert_eq!(rows[0].country_codes, vec!["de"]);
     assert_eq!(rows[0].title.as_deref(), Some("Serie S03E04"));
 }
+
+#[test]
+fn frenchcloud_html_golden() {
+    let html = r#"<div data-link="//embed.example/fr"></div>"#;
+    let rows = parse_source_html("frenchcloud", html, r#"{"referer":"https://frenchcloud.cam"}"#);
+    assert_eq!(rows[0].url, "https://embed.example/fr");
+    assert_eq!(rows[0].country_codes, vec!["fr"]);
+}
+
+#[test]
+fn cuevana_html_golden() {
+    let html = r#"<div class="open_submenu">Español Latino<a data-tr="https://embed.example/lat"></a></div>"#;
+    let rows = parse_source_html(
+        "cuevana",
+        html,
+        r#"{"referer":"https://cuevana.example/p","title":"Film S01E01"}"#,
+    );
+    assert_eq!(rows[0].url, "https://embed.example/lat");
+    assert_eq!(rows[0].country_codes, vec!["mx"]);
+}
+
+#[test]
+fn hdhub4u_html_golden() {
+    let html = r#"<a href="https://hubdrive.example/dl">Download</a>"#;
+    let rows = parse_source_html(
+        "hdhub4u",
+        html,
+        r#"{"referer":"https://hdhub4u.example/p","country_codes":["hi","multi"]}"#,
+    );
+    assert_eq!(rows[0].url, "https://hubdrive.example/dl");
+}
+
+#[test]
+fn einschalten_json_golden() {
+    let body = r#"{"streamUrl":"https://cdn.example/movie.m3u8","releaseName":"Film"}"#;
+    let rows = parse_source_html(
+        "einschalten",
+        body,
+        r#"{"referer":"https://einschalten.in/movies/123"}"#,
+    );
+    assert_eq!(rows[0].url, "https://cdn.example/movie.m3u8");
+    assert_eq!(rows[0].country_codes, vec!["de"]);
+}
+
+#[test]
+fn movix_json_golden() {
+    let body = r#"{"player_links":[{"decoded_url":"https://embed.example/a"}],"tmdb_details":{"title":"Film"}}"#;
+    let rows = parse_source_html(
+        "movix",
+        body,
+        r#"{"referer":"https://api.movix.site","is_series":false,"year":2020}"#,
+    );
+    assert_eq!(rows[0].url, "https://embed.example/a");
+    assert_eq!(rows[0].title.as_deref(), Some("Film (2020)"));
+}

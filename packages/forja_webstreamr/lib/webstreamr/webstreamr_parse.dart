@@ -102,6 +102,9 @@ List<SourceResult>? tryRustParseSourceHtml(
   String? title,
   int? season,
   int? episode,
+  List<CountryCode>? countryCodes,
+  bool? isSeries,
+  int? year,
 }) {
   final backend = WebstreamrParseBackend.parseSourceHtmlJson;
   if (backend == null) return null;
@@ -113,6 +116,10 @@ List<SourceResult>? tryRustParseSourceHtml(
       if (title != null && title.isNotEmpty) 'title': title,
       if (season != null) 'season': season,
       if (episode != null) 'episode': episode,
+      if (countryCodes != null && countryCodes.isNotEmpty)
+        'country_codes': countryCodes.map((c) => c.name).toList(),
+      if (isSeries != null) 'is_series': isSeries,
+      if (year != null) 'year': year,
     }),
   );
   if (raw == null) return null;

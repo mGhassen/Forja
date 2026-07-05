@@ -3,6 +3,7 @@ library;
 
 import 'package:html/parser.dart' as html_parser;
 
+import '../webstreamr_parse.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/id.dart';
@@ -45,8 +46,31 @@ class CuevanaSource extends Source {
     }
 
     final html = await fetcher.text(ctx, pageUrl);
-    final doc = html_parser.parse(html);
     final origin = '${pageUrl.scheme}://${pageUrl.host}';
+
+    final rust = tryRustParseSourceHtml(
+      this.id,
+      html,
+      referer: pageUrl.toString(),
+      title: title,
+    );
+    if (rust != null) {
+      final out = <SourceResult>[];
+      for (final r in rust) {
+        if (!r.url.host.contains('cuevana3')) {
+          out.add(r);
+          continue;
+        }
+        final h = await fetcher.text(ctx, r.url,
+            FetcherRequestConfig(headers: {'Referer': origin}));
+        final m = RegExp(r"url ?= ?'(.*)'").firstMatch(h);
+        if (m == null) continue;
+        out.add(SourceResult(url: Uri.parse(m.group(1)!), meta: r.meta));
+      }
+      if (out.isNotEmpty) return out;
+    }
+
+    final doc = html_parser.parse(html);
 
     final initial = <SourceResult>[];
     for (final sub in doc.querySelectorAll('.open_submenu')) {

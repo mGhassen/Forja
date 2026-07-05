@@ -89,4 +89,30 @@ void main() {
     expect(rows[0]['url'], 'https://embed.example/de');
     expect(rows[0]['title'], 'Serie S01E02');
   });
+
+  test('einschalten JSON parse via FFI', () {
+    const body =
+        '{"streamUrl":"https://cdn.example/movie.m3u8","releaseName":"Film"}';
+    final json = ForjaRust.instance.parseWebstreamrSourceHtmlJson(
+      'einschalten',
+      body,
+      '{"referer":"https://einschalten.in/movies/123"}',
+    );
+    final rows = jsonDecode(json) as List<dynamic>;
+    expect(rows[0]['url'], 'https://cdn.example/movie.m3u8');
+    expect(rows[0]['country_codes'], ['de']);
+  });
+
+  test('movix JSON parse via FFI', () {
+    const body =
+        '{"player_links":[{"decoded_url":"https://embed.example/a"}],"tmdb_details":{"title":"Film"}}';
+    final json = ForjaRust.instance.parseWebstreamrSourceHtmlJson(
+      'movix',
+      body,
+      '{"referer":"https://api.movix.site","is_series":false,"year":2020}',
+    );
+    final rows = jsonDecode(json) as List<dynamic>;
+    expect(rows[0]['url'], 'https://embed.example/a');
+    expect(rows[0]['title'], 'Film (2020)');
+  });
 }

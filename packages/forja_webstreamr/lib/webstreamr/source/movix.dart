@@ -1,6 +1,9 @@
 /// Port of webstreamr/src/source/Movix.ts
 library;
 
+import 'dart:convert';
+
+import '../webstreamr_parse.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/id.dart';
@@ -45,6 +48,18 @@ class MovixSource extends Source {
       // JSON (anti-bot). Skip cleanly rather than crash the whole source.
       return const [];
     }
+
+    final rust = tryRustParseSourceHtml(
+      this.id,
+      jsonEncode(json),
+      referer: iframeSrcFromJson(json, tmdbId),
+      isSeries: tmdbId.season != null,
+      season: tmdbId.season,
+      episode: tmdbId.episode,
+      year: year,
+    );
+    if (rust != null) return rust;
+
     final data = (tmdbId.season != null
             ? json['current_episode']
             : json) as Map<String, dynamic>?;
@@ -72,5 +87,12 @@ class MovixSource extends Source {
               ),
             ))
         .toList();
+  }
+
+  String iframeSrcFromJson(Map<String, dynamic> json, TmdbId tmdbId) {
+    final data = (tmdbId.season != null
+            ? json['current_episode']
+            : json) as Map<String, dynamic>?;
+    return data?['iframe_src']?.toString() ?? baseUrl;
   }
 }
