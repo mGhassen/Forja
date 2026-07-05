@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../helpers/rust_engine.dart';
-import 'package:forja_core/utils/episode_matcher.dart';
 import 'package:forja_rust/forja_rust.dart';
+import 'package:forja_rust/src/reference/episode_matcher_dart.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -31,13 +31,13 @@ void main() {
         reason: 'rust: $file S${season}E$episode',
       );
       expect(
-        EpisodeMatcher.matches(file, season, episode),
+        EpisodeMatcherDart.matches(file, season, episode),
         expected,
         reason: 'dart: $file S${season}E$episode',
       );
       expect(
         ForjaRust.instance.episodeMatches(file, season, episode),
-        EpisodeMatcher.matches(file, season, episode),
+        EpisodeMatcherDart.matches(file, season, episode),
         reason: 'parity: $file',
       );
     }

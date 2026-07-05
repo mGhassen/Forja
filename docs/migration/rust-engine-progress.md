@@ -154,7 +154,7 @@ Fixtures: `crates/forja-utils/tests/fixtures/`
 
 Manual: debrid TV episode pick · HLS quality menu.
 
-Wire-up: `EpisodeMatcherBackend`, `HlsParserBackend`, `JsUnpackBackend`, `KissKhDecryptBackend`, torrent filter delegate in `rust_delegates.dart`.
+Wire-up: `EpisodeMatcherBackend`, `HlsParserBackend` wired in `ForjaEngine.init()` (Rust or Dart reference); `JsUnpackBackend`, `KissKhDecryptBackend`, torrent filter delegate in `rust_delegates.dart`.
 
 ---
 
@@ -415,6 +415,8 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 - [x] Provider URL fallbacks centralized in `provider_fallback_urls.dart`
 - [x] Unpacker, KissKH, Stremio, torrent filter, scrapers moved to `packages/forja_rust/lib/src/reference/`
 - [x] IPTV Xtream parse + paste.sh decrypt moved to `iptv_dart_parse.dart`, `pastesh_decrypt_dart.dart`
+- [x] Episode matcher + HLS parse moved to `episode_matcher_dart.dart`, `hls_dart_parse.dart`
+- [x] Dead duplicate `forja_streaming/.../hls_master_parser.dart` removed
 - [x] Magnet player uses `TorrentStreamService.listTorrentFiles` (no direct libtorrent)
 - [ ] Drop `libtorrent_flutter` once Rust torrent path is stable in production
 - [ ] Golden fixtures for every extractor

@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../helpers/rust_engine.dart';
-import 'package:forja_core/utils/hls_master_parser.dart';
 import 'package:forja_rust/forja_rust.dart';
+import 'package:forja_rust/src/reference/hls_dart_parse.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -17,7 +17,7 @@ void main() {
       '${_repoRoot()}/crates/forja-utils/tests/fixtures/hls_master.m3u8',
     ).readAsStringSync();
 
-    final dart = parseHlsMaster(masterUrl, body)!;
+    final dart = HlsDartParse.parseMaster(masterUrl, body)!;
     final rustJson = ForjaRust.instance.parseHlsMasterJson(masterUrl, body);
     final rustList = (jsonDecode(rustJson) as List)
         .cast<Map<String, dynamic>>();
