@@ -1,3 +1,3 @@
-import 'package:forja_shell/forja_shell.dart';
+import 'package:forja/app/bootstrap.dart';
 
 Future<void> main() => bootstrapForja(title: 'Forja');

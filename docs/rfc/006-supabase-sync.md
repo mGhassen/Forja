@@ -7,4 +7,4 @@
 - RLS on `auth.uid()`
 - Client encrypts IPTV credentials before upload
 
-Stub: `packages/forja_sync/lib/src/sync_service.dart`
+Stub: `apps/forja/lib/shared/sync/src/sync_service.dart`

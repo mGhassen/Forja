@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=PlayTorrio
-Comment=Stream movies, TV shows, music and more
-Exec=PlayTorrio
-Icon=PlayTorrio
-Categories=AudioVideo;Video;Player;
-StartupWMClass=PlayTorrio
-Terminal=false

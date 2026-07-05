@@ -25,6 +25,8 @@ dependencies:
     path: ../forja_storage
   forja_webstreamr:
     path: ../forja_webstreamr
+  forja_api:
+    path: ../forja_api
 
 dev_dependencies:
   flutter_test:

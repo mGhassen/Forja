@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja_api/services/my_list_service.dart';
 import 'package:forja_api/services/episode_watched_service.dart';
 
 /// Full Trakt.tv integration — OAuth device-code auth, watchlist sync,

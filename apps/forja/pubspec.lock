@@ -10,7 +10,7 @@ packages:
     source: hosted
     version: "5.3.1"
   archive:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: archive
       sha256: a96e8b390886ee8abb49b7bd3ac8df6f451c621619f52a26e815fdcf568959ff
@@ -34,7 +34,7 @@ packages:
     source: hosted
     version: "2.13.1"
   audio_service:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: audio_service
       sha256: "95f3267f3449eb5cf71c8fcf1d556f57af1e898e2dc5815fb168d1843653edb7"
@@ -74,7 +74,7 @@ packages:
     source: hosted
     version: "2.1.2"
   cached_network_image:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: cached_network_image
       sha256: "7c1183e361e5c8b0a0f21a28401eecdbde252441106a9816400dd4c2b2424916"
@@ -98,7 +98,7 @@ packages:
     source: hosted
     version: "1.3.1"
   carousel_slider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: carousel_slider
       sha256: febf4b0163e0242adc13d7a863b04965351f59e7dfea56675c7c2caa7bcd7476
@@ -138,7 +138,7 @@ packages:
     source: hosted
     version: "1.19.1"
   connectivity_plus:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: connectivity_plus
       sha256: "33bae12a398f841c6cda09d1064212957265869104c478e5ad51e2fb26c3973c"
@@ -170,7 +170,7 @@ packages:
     source: hosted
     version: "0.3.5+4"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
@@ -218,7 +218,7 @@ packages:
     source: hosted
     version: "7.0.1"
   file_picker:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: file_picker
       sha256: ab13ae8ef5580a411c458d6207b6774a6c237d77ac37011b13994879f68a8810
@@ -234,7 +234,7 @@ packages:
     source: hosted
     version: "1.1.1"
   floating:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: floating
       sha256: d6e7046bfec4c1ab9e09ef9d88fee104b1eb41171d6e083099bf310535d26b79
@@ -255,7 +255,7 @@ packages:
     source: hosted
     version: "3.4.1"
   flutter_inappwebview:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: flutter_inappwebview
       sha256: "80092d13d3e29b6227e25b67973c67c7210bd5e35c4b747ca908e31eb71a46d5"
@@ -401,70 +401,42 @@ packages:
     source: sdk
     version: "0.0.0"
   forja_api:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../../packages/forja_api"
       relative: true
     source: path
     version: "1.0.0"
   forja_core:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../../packages/forja_core"
       relative: true
     source: path
     version: "1.0.0"
-  forja_iptv:
-    dependency: transitive
-    description:
-      path: "../../packages/forja_iptv"
-      relative: true
-    source: path
-    version: "1.0.0"
-  forja_player:
-    dependency: transitive
-    description:
-      path: "../../packages/forja_player"
-      relative: true
-    source: path
-    version: "1.0.0"
   forja_scrapers:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../../packages/forja_scrapers"
       relative: true
     source: path
     version: "1.0.0"
-  forja_shell:
-    dependency: "direct main"
-    description:
-      path: "../../packages/forja_shell"
-      relative: true
-    source: path
-    version: "1.0.0"
   forja_storage:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../../packages/forja_storage"
       relative: true
     source: path
     version: "1.0.0"
   forja_streaming:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../../packages/forja_streaming"
       relative: true
     source: path
     version: "1.0.0"
-  forja_ui:
-    dependency: "direct main"
-    description:
-      path: "../../packages/forja_ui"
-      relative: true
-    source: path
-    version: "1.0.0"
   forja_webstreamr:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../../packages/forja_webstreamr"
       relative: true
@@ -479,7 +451,7 @@ packages:
     source: hosted
     version: "3.1.0"
   google_fonts:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: google_fonts
       sha256: "4e9391085e524954a51e3625b7c9c7e9851dc3f376603208bb45c24b9a66255d"
@@ -503,7 +475,7 @@ packages:
     source: hosted
     version: "0.15.6"
   http:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: http
       sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
@@ -591,7 +563,7 @@ packages:
     source: hosted
     version: "3.0.2"
   libtorrent_flutter:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: libtorrent_flutter
       sha256: "48605ded68779749246deac803bce4ecea75eb2aac2394fdb8b85961014a3d36"
@@ -607,7 +579,7 @@ packages:
     source: hosted
     version: "6.1.0"
   logging:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: logging
       sha256: c8245ada5f1717ed44271ed1c26b8ce85ca3228fd2ffdb75468ab01979309d61
@@ -631,7 +603,7 @@ packages:
     source: hosted
     version: "0.13.0"
   media_kit:
-    dependency: "direct overridden"
+    dependency: "direct main"
     description:
       path: media_kit
       ref: HEAD
@@ -694,7 +666,7 @@ packages:
     source: git
     version: "1.0.12"
   media_kit_video:
-    dependency: "direct overridden"
+    dependency: "direct main"
     description:
       path: media_kit_video
       ref: HEAD
@@ -735,7 +707,7 @@ packages:
     source: hosted
     version: "2.1.0"
   ota_update:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: ota_update
       sha256: "1f4c7c3c4f306729a6c00b84435096ce2d8b28439013f7237173acc699b2abc8"
@@ -767,7 +739,7 @@ packages:
     source: hosted
     version: "3.2.1"
   palette_generator:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: palette_generator
       sha256: "4420f7ccc3f0a4a906144e73f8b6267cd940b64f57a7262e95cb8cec3a8ae0ed"
@@ -775,7 +747,7 @@ packages:
     source: hosted
     version: "0.3.3+7"
   path:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path
       sha256: "75cca69d1490965be98c73ceaea117e8a04dd21217b37b292c9ddbec0d955bc5"
@@ -783,7 +755,7 @@ packages:
     source: hosted
     version: "1.9.1"
   path_provider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path_provider
       sha256: a7f4874f987173da295a61c181b8ee71dab59b332a486b391babf26a1b884825
@@ -903,7 +875,7 @@ packages:
     source: hosted
     version: "2.1.8"
   pointycastle:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: pointycastle
       sha256: "4be0097fcf3fd3e8449e53730c631200ebc7b88016acecab2b0da2f0149222fe"
@@ -951,7 +923,7 @@ packages:
     source: hosted
     version: "2.0.4"
   screen_brightness:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: screen_brightness
       sha256: e0edf92c08889e8f493cde291e7c687db2b4a1471f2371c074070b75d7c7d79b
@@ -1047,7 +1019,7 @@ packages:
     source: hosted
     version: "0.2.2"
   shared_preferences:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: shared_preferences
       sha256: c3025c5534b01739267eb7d76959bbc25a6d10f6988e1c2a3036940133dd10bf
@@ -1127,7 +1099,7 @@ packages:
     source: hosted
     version: "1.1.4"
   shimmer:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: shimmer
       sha256: "5f88c883a22e9f9f299e5ba0e4f7e6054857224976a5d9f839d4ebdc94a14ac9"
@@ -1148,7 +1120,7 @@ packages:
     source: sdk
     version: "0.0.0"
   smooth_page_indicator:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: smooth_page_indicator
       sha256: "4b497e9898d095de40d246db943371183fa7482492a88391cfa8415ef94d57ba"
@@ -1260,7 +1232,7 @@ packages:
     source: hosted
     version: "0.7.11"
   transparent_image:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: transparent_image
       sha256: e8991d955a2094e197ca24c645efec2faf4285772a4746126ca12875e54ca02f
@@ -1300,7 +1272,7 @@ packages:
     source: hosted
     version: "3.0.2"
   url_launcher:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: url_launcher
       sha256: f6a7e5c4835bb4e3026a04793a4199ca2d14c739ec378fdfe23fc8075d0439f8
@@ -1380,7 +1352,7 @@ packages:
     source: hosted
     version: "2.2.0"
   visibility_detector:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: visibility_detector
       sha256: dd5cc11e13494f432d15939c3aa8ae76844c42b723398643ce9addb88a5ed420
@@ -1396,7 +1368,7 @@ packages:
     source: hosted
     version: "15.2.0"
   volume_controller:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: volume_controller
       sha256: "851b43150972f96fa04a16af1080be9cabcd740c1b7e91dc3f5be9461ff45010"
@@ -1404,7 +1376,7 @@ packages:
     source: hosted
     version: "3.6.0"
   wakelock_plus:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: wakelock_plus
       sha256: ddf3db70eaa10c37558ff817519b85d527dbd21034fd5d8e1c2e85f31588f1c1
@@ -1436,7 +1408,7 @@ packages:
     source: hosted
     version: "5.15.0"
   window_manager:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: window_manager
       sha256: "05c231fd7b23d2380f14c5cc10b7b93d60d4fa4a2fb4e0f032de27e44b5560e9"
@@ -1452,7 +1424,7 @@ packages:
     source: hosted
     version: "1.1.0"
   xml:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: xml
       sha256: "971043b3a0d3da28727e40ed3e0b5d18b742fa5a68665cca88e74b7876d5e025"

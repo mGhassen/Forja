@@ -7,4 +7,4 @@
 - VOD: cast resolved URL; use HLS proxy when Referer required
 - IPTV live: best-effort via local proxy
 
-Stub: `packages/forja_casting/lib/src/casting_service.dart`
+Stub: `apps/forja/lib/shared/casting/src/casting_service.dart`

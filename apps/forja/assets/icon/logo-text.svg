@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 160">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600&amp;display=swap');
+      text { font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; }
+    </style>
+  </defs>
+  <text x="2" y="124" fill="#1CE783" font-size="120" letter-spacing="-4" textLength="348" lengthAdjust="spacingAndGlyphs">Forja</text>
+</svg>

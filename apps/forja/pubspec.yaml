@@ -1,5 +1,5 @@
 name: forja
-description: Forja — your cinema universe for macOS and beyond
+description: Forja — your cinema universe
 publish_to: none
 version: 1.0.0+1
 
@@ -9,14 +9,59 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  forja_shell:
-    path: ../../packages/forja_shell
-  forja_ui:
-    path: ../../packages/forja_ui
+  http: ^1.6.0
+  cached_network_image: ^3.4.1
+  carousel_slider: ^5.1.2
+  google_fonts: ^8.0.2
+  shimmer: ^3.0.0
+  visibility_detector: ^0.4.0+2
+  smooth_page_indicator: ^2.0.1
+  transparent_image: ^2.0.1
+  palette_generator: ^0.3.3+4
+  file_picker: ^8.0.0+1
+  url_launcher: ^6.3.1
+  flutter_inappwebview: ^6.1.5
+  libtorrent_flutter: 1.8.5
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  archive: ^4.0.4
+  xml: ^6.5.0
+  crypto: ^3.0.5
+  pointycastle: ^3.9.1
+  ota_update: ^7.1.0
+  screen_brightness: ^2.1.7
+  volume_controller: ^3.4.1
+  wakelock_plus: ^1.4.0
+  floating: ^5.0.0
+  shared_preferences: ^2.5.2
+  window_manager: ^0.5.1
+  logging: ^1.2.0
+  audio_service: ^0.18.17
+  connectivity_plus: 7.0.0
+  media_kit:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit
+  media_kit_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit_video
   media_kit_libs_macos_video:
     git:
       url: https://github.com/AimesSoft/media-kit.git
       path: libs/macos/media_kit_libs_macos_video
+  forja_core:
+    path: ../../packages/forja_core
+  forja_storage:
+    path: ../../packages/forja_storage
+  forja_api:
+    path: ../../packages/forja_api
+  forja_scrapers:
+    path: ../../packages/forja_scrapers
+  forja_webstreamr:
+    path: ../../packages/forja_webstreamr
+  forja_streaming:
+    path: ../../packages/forja_streaming
 
 dev_dependencies:
   flutter_test:

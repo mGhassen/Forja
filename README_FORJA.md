@@ -1,25 +1,24 @@
 # Forja
 
-Full-feature cinema app for macOS and beyond. Modular monorepo.
+Full-feature cinema app for macOS and beyond. Feature-first monorepo.
 
 ## Structure
 
 ```
-apps/forja/              Main Flutter app
-packages/
-  forja_shell/           Bootstrap + app lifecycle
-  forja_ui/              All feature screens + MainScreen nav (19 tabs)
-  forja_api/             API clients + app services
+apps/forja/
+  lib/
+    app/                 Bootstrap + lifecycle
+    shell/               MainScreen nav (19 tabs)
+    features/            One folder per nav tab
+    shared/              Widgets, design, casting, sync stubs
+  macos/ ios/ android/ windows/ linux/
+packages/                Engine room only (6 packages)
   forja_core/            Models + utilities
   forja_storage/         Settings + persistence + theme
-  forja_iptv/            Xtream + M3U IPTV
-  forja_streaming/       Torrent engine, local proxy, stream extractors
+  forja_api/             HTTP clients + app services
+  forja_streaming/       Torrent engine, local proxy, extractors
   forja_webstreamr/      WebStreamr sources + extractors
   forja_scrapers/        Torrent index scrapers
-  forja_player/          Video player screens
-  forja_design/          Design system (Phase 3)
-  forja_casting/         AirPlay / Chromecast stubs (Phase 3)
-  forja_sync/            Supabase sync stubs (Phase 3)
 docs/rfc/
 ```
 
