@@ -3,6 +3,7 @@ library;
 
 import '../types.dart';
 import '../utils/id.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class VidSrcSource extends Source {
@@ -24,6 +25,9 @@ class VidSrcSource extends Source {
   @override
   Future<List<SourceResult>> handleInternal(
       Context ctx, String type, Id id) async {
+    final rust = tryRustResolveSource('vidsrc', type, id);
+    if (rust != null) return rust;
+
     final url = id.season != null
         ? Uri.parse('$baseUrl/embed/tv/${id is ImdbId ? id.id : (id as TmdbId).id}/${id.season}-${id.episode}')
         : Uri.parse(

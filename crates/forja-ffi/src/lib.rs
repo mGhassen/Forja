@@ -153,6 +153,14 @@ fn extract_mfp_embed_html_json(
     )
 }
 
+fn resolve_webstreamr_source_json(source_id: String, request_json: String) -> String {
+    forja_webstreamr::resolve_source_json(&source_id, &request_json)
+}
+
+fn extract_kinoger_episode_urls_json(html: String, season_index: i32, episode_index: i32) -> String {
+    forja_webstreamr::extract_kinoger_episode_urls_json(&html, season_index, episode_index)
+}
+
 fn torrent_start(magnet: String) -> bool {
     TORRENT
         .lock()

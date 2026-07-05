@@ -1,10 +1,14 @@
 pub mod extractors;
+pub mod sources;
 pub mod types;
 pub mod utils;
 
 pub use extractors::{
     build_embed_url, extract_embed_html, extract_from_html_chain, extract_hubcloud_links,
     extract_mfp_embed_html, extract_vidsrc_chain_json, list_html_extractors, list_mfp_extractors,
+};
+pub use sources::{
+    extract_kinoger_episode_urls, list_url_sources, resolve_source, SourceEmbed, SourceRequest,
 };
 
 pub fn extract_embed_html_json(extractor_id: &str, html: &str, page_url: &str) -> String {
@@ -36,4 +40,16 @@ pub fn extract_mfp_embed_html_json(
         Some(result) => serde_json::to_string(&result).unwrap_or_else(|_| "{}".into()),
         None => serde_json::json!({ "error": "not_found" }).to_string(),
     }
+}
+
+pub fn resolve_source_json(source_id: &str, request_json: &str) -> String {
+    sources::resolve_source_json(source_id, request_json)
+}
+
+pub fn extract_kinoger_episode_urls_json(
+    html: &str,
+    season_index: i32,
+    episode_index: i32,
+) -> String {
+    sources::extract_kinoger_episode_urls_json(html, season_index, episode_index)
 }

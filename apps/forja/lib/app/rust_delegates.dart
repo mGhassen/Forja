@@ -88,4 +88,15 @@ void installRustAppDelegates() {
             mfpConfigJson,
             extraHtml: extraHtml,
           );
+
+  WebstreamrParseBackend.resolveSourceJson = (sourceId, requestJson) =>
+      ForjaRust.instance.resolveWebstreamrSourceJson(sourceId, requestJson);
+
+  WebstreamrParseBackend.extractKinogerEpisodeUrlsJson =
+      (html, seasonIndex, episodeIndex) =>
+          ForjaRust.instance.extractKinogerEpisodeUrlsJson(
+            html,
+            seasonIndex,
+            episodeIndex,
+          );
 }

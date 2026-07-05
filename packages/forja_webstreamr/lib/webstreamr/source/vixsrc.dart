@@ -4,6 +4,7 @@ library;
 import '../types.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class VixSrcSource extends Source {
@@ -30,6 +31,15 @@ class VixSrcSource extends Source {
     final ny = await getTmdbNameAndYear(ctx, fetcher, tmdbId);
     final name = ny[0] as String;
     final year = ny[1] as int;
+
+    final rust = tryRustResolveSource(
+      'vixsrc',
+      type,
+      tmdbId,
+      title: name,
+      year: year,
+    );
+    if (rust != null) return rust;
 
     var title = name;
     if (tmdbId.season != null) {

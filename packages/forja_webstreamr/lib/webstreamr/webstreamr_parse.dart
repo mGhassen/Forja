@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'errors.dart';
 import 'types.dart';
+import 'utils/id.dart';
 
 /// Optional Rust HTML extractor hooks. Set from app bootstrap when [ForjaEngine] loads.
 abstract final class WebstreamrParseBackend {
@@ -18,6 +19,9 @@ abstract final class WebstreamrParseBackend {
     String mfpConfigJson,
     String extraHtml,
   )? extractMfpEmbedHtmlJson;
+  static String? Function(String sourceId, String requestJson)? resolveSourceJson;
+  static String? Function(String html, int seasonIndex, int episodeIndex)?
+      extractKinogerEpisodeUrlsJson;
 }
 
 Map<String, dynamic>? _decodeRust(String raw) {
@@ -26,6 +30,83 @@ Map<String, dynamic>? _decodeRust(String raw) {
     throw StateError('WebstreamrParseBackend: invalid JSON');
   }
   return decoded;
+}
+
+Map<String, dynamic> _sourceRequestJson(
+  String type,
+  Id id, {
+  String? title,
+  int? year,
+}) {
+  final isMovie = type == 'movie';
+  return {
+    'media_type': isMovie ? 'movie' : 'series',
+    if (id is ImdbId) 'imdb_id': id.id,
+    if (id is TmdbId) 'tmdb_id': id.id,
+    if (id.season != null) 'season': id.season,
+    if (id.episode != null) 'episode': id.episode,
+    if (title != null && title.isNotEmpty) 'title': title,
+    if (year != null) 'year': year,
+  };
+}
+
+List<SourceResult>? tryRustResolveSource(
+  String sourceId,
+  String type,
+  Id id, {
+  String? title,
+  int? year,
+}) {
+  final backend = WebstreamrParseBackend.resolveSourceJson;
+  if (backend == null) return null;
+
+  final raw = backend(sourceId, jsonEncode(_sourceRequestJson(type, id, title: title, year: year)));
+  if (raw == null) return null;
+  final decoded = jsonDecode(raw);
+  if (decoded is! List || decoded.isEmpty) return null;
+
+  final out = <SourceResult>[];
+  for (final item in decoded) {
+    if (item is! Map<String, dynamic>) continue;
+    final url = item['url'] as String?;
+    if (url == null || url.isEmpty) continue;
+    final ccs = <CountryCode>[];
+    final rawCcs = item['country_codes'];
+    if (rawCcs is List) {
+      for (final cc in rawCcs) {
+        final parsed = countryCodeFromString('$cc');
+        if (parsed != null) ccs.add(parsed);
+      }
+    }
+    out.add(SourceResult(
+      url: Uri.parse(url),
+      meta: Meta(
+        title: item['title'] as String?,
+        referer: item['referer'] as String?,
+        countryCodes: ccs.isEmpty ? null : ccs,
+        priority: item['priority'] as int?,
+      ),
+    ));
+  }
+  return out.isEmpty ? null : out;
+}
+
+List<Uri>? tryRustKinogerEpisodeUrls(
+  String html,
+  int seasonIndex,
+  int episodeIndex,
+) {
+  final backend = WebstreamrParseBackend.extractKinogerEpisodeUrlsJson;
+  if (backend == null) return null;
+  final raw = backend(html, seasonIndex, episodeIndex);
+  if (raw == null) return null;
+  final decoded = jsonDecode(raw);
+  if (decoded is! List || decoded.isEmpty) return null;
+  return decoded
+      .whereType<String>()
+      .where((u) => u.isNotEmpty)
+      .map(Uri.parse)
+      .toList();
 }
 
 /// Returns a follow-up embed URL when Rust found an iframe/redirect hop.

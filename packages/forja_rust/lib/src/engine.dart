@@ -232,6 +232,30 @@ class ForjaRust {
         ));
       });
 
+  String resolveWebstreamrSourceJson(String sourceId, String requestJson) =>
+      using((arena) {
+        final idPtr = sourceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final reqPtr =
+            requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.forja_resolve_webstreamr_source_json(idPtr, reqPtr),
+        );
+      });
+
+  String extractKinogerEpisodeUrlsJson(
+    String html,
+    int seasonIndex,
+    int episodeIndex,
+  ) =>
+      using((arena) {
+        final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_extract_kinoger_episode_urls_json(
+          htmlPtr,
+          seasonIndex,
+          episodeIndex,
+        ));
+      });
+
   bool torrentStart(String magnet) => using((arena) {
         final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _native.forja_torrent_start(ptr);
@@ -387,6 +411,16 @@ final class _ForjaNative {
               'forja_extract_mfp_embed_html_json',
             )
             .asFunction(),
+        forja_resolve_webstreamr_source_json = lib
+            .lookup<ffi.NativeFunction<_TwoStringNative>>(
+              'forja_resolve_webstreamr_source_json',
+            )
+            .asFunction(),
+        forja_extract_kinoger_episode_urls_json = lib
+            .lookup<ffi.NativeFunction<_KinogerUrlsNative>>(
+              'forja_extract_kinoger_episode_urls_json',
+            )
+            .asFunction(),
         forja_torrent_start = lib
             .lookup<ffi.NativeFunction<_TorrentStartNative>>(
               'forja_torrent_start',
@@ -480,6 +514,15 @@ final class _ForjaNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_extract_mfp_embed_html_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) forja_resolve_webstreamr_source_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    int,
+    int,
+  ) forja_extract_kinoger_episode_urls_json;
   final bool Function(ffi.Pointer<ffi.Char>) forja_torrent_start;
   final void Function() forja_torrent_stop;
   final bool Function() forja_torrent_is_running;
@@ -520,6 +563,11 @@ typedef _FiveStringNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
   ffi.Pointer<ffi.Char>,
   ffi.Pointer<ffi.Char>,
+);
+typedef _KinogerUrlsNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Int32,
+  ffi.Int32,
 );
 typedef _TorrentStartNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStopNative = ffi.Void Function();

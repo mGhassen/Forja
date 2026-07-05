@@ -246,6 +246,30 @@ pub unsafe extern "C" fn forja_extract_mfp_embed_html_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_resolve_webstreamr_source_json(
+    source_id: *const c_char,
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::resolve_webstreamr_source_json(
+        from_c_str(source_id),
+        from_c_str(request_json),
+    ))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_extract_kinoger_episode_urls_json(
+    html: *const c_char,
+    season_index: i32,
+    episode_index: i32,
+) -> *mut c_char {
+    to_c_string(crate::extract_kinoger_episode_urls_json(
+        from_c_str(html),
+        season_index,
+        episode_index,
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_torrent_start(magnet: *const c_char) -> bool {
     crate::torrent_start(from_c_str(magnet))
 }

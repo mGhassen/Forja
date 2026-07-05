@@ -6,6 +6,7 @@ import 'package:html/parser.dart' as html_parser;
 import '../types.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class KinoGerSource extends Source {
@@ -40,6 +41,21 @@ class KinoGerSource extends Source {
     final episodeIndex = (tmdbId.episode ?? 1) - 1;
 
     final html = await fetcher.text(ctx, pageUrl);
+    final rustUrls =
+        tryRustKinogerEpisodeUrls(html, seasonIndex, episodeIndex);
+    if (rustUrls != null && rustUrls.isNotEmpty) {
+      return rustUrls
+          .map((url) => SourceResult(
+                url: url,
+                meta: Meta(
+                  countryCodes: const [CountryCode.de],
+                  referer: pageUrl.toString(),
+                  title: title,
+                ),
+              ))
+          .toList();
+    }
+
     final out = <SourceResult>[];
     for (final m in RegExp(r'\.show\(.*').allMatches(html)) {
       final url = _findEpisodeUrlInShowJs(m.group(0)!, seasonIndex, episodeIndex);

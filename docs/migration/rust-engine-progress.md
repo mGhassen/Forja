@@ -41,7 +41,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **2 — Stream URLs** | 3/5 | 3/5 | ✅ vidlink, vixsrc, vidnest · ❌ vidzee, vidrock |
 | **3 — IPTV** | 4/4 | 4/4 | M3U, paste.sh, EPG decode, Xtream JSON parse |
 | **4 — Stremio** | partial | partial | ✅ URL helpers · ❌ HTTP, manifest parse, catalogs |
-| **5 — Webstreamr** | 24/49 | partial | 23 extractors wired; sources/registry still Dart |
+| **5 — Webstreamr** | 24/49 extractors · 4/22 sources | partial | extractors + URL sources wired |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
 | **7 — Torrent + proxy** | stubs | ❌ | still `libtorrent_flutter` + Dart shelf |
 | **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
@@ -56,12 +56,12 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 - Utils: episode file matching, HLS master parse, torrent title filter
 - Stremio: URL building only (not catalog browsing)
 - Scrapers: Knaben / TPB / Uindex HTML parse + dedup
-- Webstreamr: 23 embed extractors (HTML parse + MFP via Rust when engine on)
+- Webstreamr: 23 extractors + 4 URL sources (vidsrc/vixsrc/rgshows embed URLs, kinoger show.js parse)
 
 ### Still 100% Dart
 
 - Stremio catalog / meta / stream HTTP
-- Webstreamr: sources, fetcher, registry
+- Webstreamr: HTML-scrape sources (homecine, megakino, movix, etc.), fetcher, registry
 - Torrent session + local stream proxy
 - Vidzee / Vidrock provider URLs
 
@@ -72,7 +72,8 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 | Rust crates | 9 (8 domain + `forja-ffi`) |
 | Stream providers wired | 3 / 5 |
 | Webstreamr extractors ported | 24 / 49 |
-| Dart parity tests | 37 |
+| Webstreamr URL sources ported | 4 / 22 |
+| Dart parity tests | 39 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -85,7 +86,7 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Port webstreamr sources (site scrapers)
+1. Port HTML-scrape webstreamr sources (homecine, megakino, movix, frembed, …)
 2. Real libtorrent in `forja-torrent`
 3. Stremio HTTP / manifest parse through FFI
 
@@ -263,19 +264,30 @@ Wire-up: `StremioServiceBackend` in `stremio_service.dart`.
 | fastream (MFP stream) | ✅ | ✅ |
 | voe (MFP stream + redirect) | ✅ | ✅ |
 
-FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`, `forja_extract_hubcloud_links_json`, `forja_extract_mfp_embed_html_json`. MFP stream fetch runs in Rust (blocking HTTP). Page fetch + registry still Dart.
+FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`, `forja_extract_hubcloud_links_json`, `forja_extract_mfp_embed_html_json`, `forja_resolve_webstreamr_source_json`, `forja_extract_kinoger_episode_urls_json`. MFP stream fetch runs in Rust (blocking HTTP). Page fetch + registry still Dart.
+
+**Sources (URL-only / parse helpers):**
+
+| Source | Rust | App |
+|--------|:----:|:---:|
+| vidsrc (embed URL) | ✅ | ✅ |
+| vixsrc (embed URL) | ✅ | ✅ |
+| rgshows (API URL) | ✅ | ✅ |
+| kinoger (show.js episode URLs) | ✅ | ✅ |
 
 ```bash
 cd crates && cargo test -p forja-webstreamr
 cd crates && cargo test -p forja-webstreamr --test golden_extractors
+cd crates && cargo test -p forja-webstreamr --test golden_sources
 cd packages/forja_rust && flutter test test/parity/webstreamr_test.dart
+cd packages/forja_rust && flutter test test/parity/webstreamr_sources_test.dart
 ```
 
 Fixtures: `crates/forja-webstreamr/tests/fixtures/`
 
 Manual: WebStreamr with Rust on — streams from hosts above use Rust HTML parse.
 
-Wire-up: `WebstreamrParseBackend` · `tryRustExtractFromHtml` / `tryRustVidsrcChain` · `rust_delegates.dart`.
+Wire-up: `WebstreamrParseBackend` · `tryRustExtractFromHtml` / `tryRustVidsrcChain` / `tryRustResolveSource` / `tryRustKinogerEpisodeUrls` · `rust_delegates.dart`.
 
 ---
 
