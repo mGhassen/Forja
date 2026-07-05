@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/app/rust_delegates.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
+import 'package:forja_api/api/stremio_service.dart';
+import 'package:forja_core/utils/episode_matcher.dart';
 import 'package:forja_rust/forja_rust.dart';
+import 'package:forja_scrapers/scrapers/scraper_parse.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {
@@ -70,5 +73,44 @@ http://stream.example/live
   test('invalid magnet rejected', () {
     ForjaRust.instance.torrentEngineStart(0);
     expect(ForjaRust.instance.torrentStart('not-a-magnet'), isFalse);
+  });
+
+  test('Stremio resource URL delegate wired', () {
+    expect(StremioServiceBackend.buildResourceUrl, isNotNull);
+    final url = StremioServiceBackend.buildResourceUrl!(
+      'https://addon.example/api?token=abc',
+      '/stream/movie/tt123.json',
+    );
+    expect(url, 'https://addon.example/api/stream/movie/tt123.json?token=abc');
+  });
+
+  test('Stremio manifest JSON delegate wired', () {
+    expect(StremioServiceBackend.parseManifestJson, isNotNull);
+    const body =
+        '{"id":"addon.test","name":"Test Addon","logo":"https://x/icon.png"}';
+    final json = StremioServiceBackend.parseManifestJson!(body);
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    expect(parsed['name'], 'Test Addon');
+  });
+
+  test('Knaben scraper delegate wired', () {
+    expect(ScraperParseBackend.parseKnaben, isNotNull);
+    const html = '''
+<table><tbody><tr>
+<td class="text-wrap"><a href="magnet:?xt=urn:btih:abc" title="Show S01E01">Show</a></td>
+<td>1.2 GB</td><td></td><td>100</td>
+</tr></tbody></table>
+''';
+    final rows = ScraperParseBackend.parseKnaben!(html);
+    expect(rows, hasLength(1));
+    expect(rows.first['magnet'], startsWith('magnet:'));
+  });
+
+  test('EpisodeMatcher delegate wired', () {
+    expect(EpisodeMatcherBackend.matches, isNotNull);
+    expect(EpisodeMatcher.matches('Show.S03E07.1080p.mkv', 3, 7), isTrue);
+    expect(EpisodeMatcher.matches('[RARBG] Show.S03E07.1080p.mkv', 3, 7), isTrue);
+    expect(EpisodeMatcher.matches('Show.S03E08.mkv', 3, 7), isFalse);
+    expect(EpisodeMatcher.matches('Show.3.07.1080p.mkv', 3, 7), isFalse);
   });
 }

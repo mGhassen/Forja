@@ -72,12 +72,20 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 | macOS / Linux / Windows | `libforja_ffi` full features | librqbit (Rust) · libtorrent fallback | `./scripts/build_rust.sh` |
 | iOS / Android | `libforja_ffi` parsers (no librqbit in FFI yet) | `libtorrent_flutter` | `./scripts/build_rust_mobile.sh` |
 
-**Android release build with Rust bundled:**
+**Mobile release builds (Rust parsers bundled):**
+
 ```bash
+# Android
 ./scripts/build_rust_mobile.sh android
-# or: FORJA_BUILD_RUST_ANDROID=1 flutter build apk
-# or: set forjaBuildRust=true in apps/forja/android/gradle.properties
+FORJA_BUILD_RUST_ANDROID=1 flutter build apk
+# or forjaBuildRust=true in apps/forja/android/gradle.properties
+
+# iOS (macOS + Xcode)
+./scripts/build_rust_mobile.sh ios
+flutter build ios --no-codesign
 ```
+
+CI builds mobile FFI artifacts (`android-ffi` · `ios-ffi` in `rust.yml`); release APK/IPA still needs the flags above locally.
 
 Boot always calls `ForjaEngine.init()` — no disable toggle. If the native library is missing, Dart reference + libtorrent keep features working.
 
@@ -107,7 +115,7 @@ Boot always calls `ForjaEngine.init()` — no disable toggle. If the native libr
 ./scripts/build_rust_mobile.sh all   # iOS + Android before flutter run
 cd crates && cargo test --workspace
 cd packages/forja_rust && flutter test
-cd apps/forja && flutter test integration_test/
+cd apps/forja && flutter test integration_test/   # or: melos run rust:integration
 ```
 
 ### Next work (priority order)
@@ -404,7 +412,7 @@ cd packages/forja_rust && flutter test
 | Test file | Covers |
 |-----------|--------|
 | `scaffold_test.dart` | FFI add, version |
-| `episode_matcher_test.dart` | 10 golden cases Rust↔Dart |
+| `episode_matcher_test.dart` | 18 golden debrid filename cases Rust↔Dart |
 | `stream_providers_test.dart` | vidlink, vixsrc, vidnest URLs |
 | `m3u_test.dart` | M3U golden fixtures (4/4) |
 | `iptv_test.dart` | Xtream decode, categories/streams/series, paste.sh |
@@ -472,7 +480,7 @@ Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `
 | Drop `libtorrent_flutter` from pubspecs | ❌ | B2 · B4 — mobile torrent today; desktop fallback |
 | librqbit in mobile Rust FFI | ❌ | B2 · B7 |
 | Golden fixture per webstreamr extractor | ✅ | B5 — 23/23 Rust · 21/23 Dart (lulustream/fastream Rust-only) |
-| App `integration_test/` smoke | ✅ | B4 — 7 tests in CI |
+| App `integration_test/` smoke | ✅ | B4 — 11 tests in CI |
 
 ### Reference layer inventory
 
@@ -516,7 +524,7 @@ Manual: boot log `Rust engine v0.1.0` on desktop + mobile after `build_rust_mobi
 | Rust unit | `cargo test --workspace` | required |
 | Clippy | `cargo clippy --workspace` | required |
 | Dart parity | `cd packages/forja_rust && flutter test` | required |
-| App integration | `cd apps/forja && flutter test integration_test/` | required (macOS CI) |
+| App integration | `melos run rust:integration` | required (macOS CI) |
 
 ---
 

@@ -17,6 +17,14 @@ struct EpisodeCase {
     expected: bool,
 }
 
+#[derive(Deserialize)]
+struct EpisodePickCase {
+    files: Vec<String>,
+    season: i32,
+    episode: i32,
+    expected_index: usize,
+}
+
 #[test]
 fn episode_matcher_golden() {
     let raw = fs::read_to_string(fixture("episode_matcher.json")).unwrap();
@@ -28,6 +36,24 @@ fn episode_matcher_golden() {
             case.expected,
             "file={} s{}e{}",
             case.file,
+            case.season,
+            case.episode
+        );
+    }
+}
+
+#[test]
+fn episode_matcher_pick_golden() {
+    let raw = fs::read_to_string(fixture("episode_matcher_pick.json")).unwrap();
+    let cases: Vec<EpisodePickCase> = serde_json::from_str(&raw).unwrap();
+    for case in cases {
+        let idx = episode_matcher::pick_episode_index(&case.files, case.season, case.episode)
+            .expect("pick index");
+        assert_eq!(
+            idx,
+            case.expected_index,
+            "files={:?} s{}e{}",
+            case.files,
             case.season,
             case.episode
         );

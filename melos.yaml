@@ -21,6 +21,10 @@ scripts:
       cd ../../crates && cargo test --workspace && cargo test -p forja-utils --test golden && cargo test -p forja-iptv-core --test golden_m3u
       cd ../../packages/forja_rust && flutter test
     description: Rust unit + golden + Dart parity tests
+  rust:integration:
+    run: |
+      cd ../../apps/forja && flutter pub get && flutter test integration_test/
+    description: App engine smoke integration tests (desktop; run build_rust.sh first)
   analyze:
     run: flutter analyze
     exec:

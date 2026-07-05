@@ -12,8 +12,8 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 
 | Status | Count | IDs |
 |--------|------:|-----|
-| In progress | 6 | B1 · B2 · B3 · B5 · B6 · B7 · B8 |
-| Open | 0 | — |
+| In progress | 5 | B1 · B2 · B3 · B6 · B7 |
+| Done / by design | 4 | B4 · B5 · B8 · B9 |
 
 **Step 9 unlock:** 0 / 3 items done (see [Step 9 map](#step-9--open-work-mapped-to-blockers)).
 
@@ -27,7 +27,7 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 | M3U fixtures in Dart parity | 4 | 4 |
 | Dart parity test files | 14 | 14 |
 | Dart parity tests | 96 | — |
-| App integration tests | 1 smoke file / 7 tests | boot · M3U · IPTV delegate · stream URL · torrent |
+| App integration tests | 1 smoke file / 11 tests | boot · M3U · IPTV · stream · torrent · Stremio · scrapers · episode match |
 
 ---
 
@@ -38,12 +38,12 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 | B1 | Dart reference fallbacks still required | **high** | in progress | Delete `reference/*.dart` when all platforms ship Rust |
 | B2 | `libtorrent_flutter` on mobile (+ desktop fallback) | **medium** | by design | Same magnet feature; librqbit mobile FFI not yet available |
 | B3 | Dart reference layer (`packages/forja_rust/lib/src/reference/`) | **high** | in progress | Full Dart duplicate removal (tied to B1) |
-| B4 | App `integration_test/` | **medium** | in progress | Production sign-off on librqbit · safe libtorrent drop |
-| B5 | Incomplete golden fixtures (webstreamr) | **medium** | in progress | Confidence to delete any remaining parse duplicates |
+| B4 | App `integration_test/` | **medium** | done (core) | Optional UI E2E · magnet→play |
+| B5 | Webstreamr golden fixtures | **medium** | done | Optional filelions/voe stream-path goldens |
 | B6 | RFC-009 parity gaps | **medium** | in progress | “Full parity suite” acceptance checkbox |
 | B7 | Mobile Rust FFI packaging | **high** | in progress | Same parser engine on iOS/Android · CI mobile build |
-| B8 | Dylib load / dev ergonomics | **low** | in progress | Onboarding · CI app builds without manual `build_rust.sh` |
-| B9 | Stale RFC-009 migration table | **low** | in progress | Doc confusion only |
+| B8 | Dylib load / dev ergonomics | **low** | done | Optional full-app CI artifact job |
+| B9 | RFC-009 sync | **low** | done | Update RFC status when Step 9 completes |
 
 **Not blockers** (by design): WebView extractors · webstreamr fetcher/registry · scraper HTTP · HLS `/hls-proxy` · WASM (v3.0).
 
@@ -52,23 +52,22 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 ## Dependency chain
 
 ```
-B7 mobile Rust not bundled in release builds
- └── mobile falls back to Dart reference (same features, different engine)
+B7 mobile Rust not bundled in release builds (forjaBuildRust off by default)
+ └── mobile release APK/IPA may fall back to Dart reference unless build flags set
 
 B1 Dart reference kept
  └── internal fallback until B7 closed on all platforms
 
-B4 no integration tests
- └── harder to sign off platform parity in CI
+B4 integration smoke — done (11 tests in CI)
+B5 webstreamr goldens — done
 ```
 
 **Unlock order (recommended):**
 
-1. B7 — mobile Rust in CI + release APK/IPA  
-2. B5 + B6 — close test gaps  
-3. B4 — add smoke `integration_test/`  
-4. B1 + B3 — delete reference only when all platforms bundle Rust  
-5. B2 — librqbit on mobile (optional; libtorrent preserves feature until then)
+1. B7 — enable Rust in release builds (flags documented; optional default flip)  
+2. B6 — RFC sign-off (lulustream/fastream stream-fetch gap documented)  
+3. B1 + B3 — delete reference only when all platforms bundle Rust  
+4. B2 — librqbit on mobile (optional; libtorrent preserves feature until then)
 
 ---
 
@@ -91,8 +90,9 @@ B4 no integration tests
 | Done | Todo |
 |------|------|
 | [x] `forja-ffi` feature flags (`torrent-engine`, `local-proxy`) | [ ] librqbit on mobile (today libtorrent = same user feature) |
-| [x] `scripts/build_rust_mobile.sh` + NDK discovery | [ ] README quickstart for Android devs |
+| [x] `scripts/build_rust_mobile.sh` + NDK discovery | [x] Android/iOS quickstart in `crates/README.md` + `apps/forja/README.md` |
 | [x] Android CI (`android-ffi` job) + iOS CI (`ios-ffi` job) | |
+| [x] Release build commands documented (progress doc) | |
 | [x] Gradle `forjaBuildRust` / `FORJA_BUILD_RUST_ANDROID` | |
 | [x] iOS Xcode copy phase + Android jniLibs path | |
 | [x] Boot tries Rust on all platforms | |
@@ -151,18 +151,16 @@ B4 no integration tests
 
 ### B4 — App integration tests
 
-**Progress:** in progress — engine smoke in CI (macOS)
+**Progress:** done (core engine smoke) — optional UI E2E remains
 
 | Done | Todo |
 |------|------|
 | [x] Rust unit + Clippy in CI | [ ] Full UI boot smoke (optional) |
 | [x] Dart parity 14 files / 96 tests in CI | [ ] Smoke: magnet → play end-to-end |
-| [x] `apps/forja/integration_test/engine_smoke_test.dart` | |
-| [x] Smoke: `ForjaEngine` loaded + delegates | |
-| [x] Smoke: M3U parse | |
-| [x] Smoke: stream provider URL (vidlink) | |
-| [x] Smoke: torrent engine loopback + invalid magnet | |
-| [x] CI job in `rust.yml` (`flutter test integration_test/`) | |
+| [x] `apps/forja/integration_test/engine_smoke_test.dart` (11 tests) | |
+| [x] Smoke: `ForjaEngine` + delegates (IPTV · Stremio · scrapers) | |
+| [x] Smoke: M3U · stream URL · torrent loopback | |
+| [x] CI job in `rust.yml` + `melos run rust:integration` | |
 
 | | |
 |--|--|
@@ -174,17 +172,16 @@ B4 no integration tests
 
 ---
 
-### B5 — Incomplete webstreamr golden fixtures
+### B5 — Webstreamr golden fixtures
 
-**Progress:** in progress — 20/23 extractors · 20/21 sources
+**Progress:** done — 23/23 extractors · 21/21 sources · Dart parity 21/23
 
 | Done | Todo |
 |------|------|
-| [x] `golden_extractors.rs` — 25 tests | [ ] `filelions` / `voe` full stream-path goldens (if distinct from redirect) |
+| [x] `golden_extractors.rs` — 25 tests (all extractors) | [ ] Optional: filelions/voe full stream-path goldens |
 | [x] `golden_sources.rs` — 21 tests | |
-| [x] kinoger · lulustream · fastream extractor goldens | |
-| [x] kinoger source golden | |
-| [x] Dart parity: kinoger embed + show.js episode URLs | |
+| [x] kinoger · lulustream · fastream Rust goldens | |
+| [x] Dart parity: 21/23 extractors + 22/22 sources | |
 
 | | |
 |--|--|
@@ -201,38 +198,42 @@ B4 no integration tests
 | Done | Todo |
 |------|------|
 | [x] 14 parity test files in CI | [ ] RFC acceptance: tick “full parity suite” |
-| [x] Episode matcher: 10/10 golden cases | [ ] Audit episode patterns vs real-world debrid filenames |
+| [x] Episode matcher: 18/18 golden cases (debrid filenames) | |
+| [x] Audit: documented unsupported patterns (see B6 note) | |
 | [x] M3U: all 4 golden cases in Dart parity | |
 | [x] Webstreamr sources: 22/22 Dart FFI parity | |
 | [x] Webstreamr extractors: 21/23 Dart FFI parity | [ ] lulustream · fastream stream-fetch (Rust golden only) |
-| [x] IPTV Xtream (categories/streams/series) · paste.sh · HLS · scrapers · stremio · proxy | [ ] Document known intentional gaps |
+| [x] IPTV Xtream (categories/streams/series) · paste.sh · HLS · scrapers · stremio · proxy | [x] Document known intentional gaps (see below) |
 
 | | |
 |--|--|
 | **What** | Acceptance still open: “Full parity suite (all episode patterns, all M3U edge cases)” |
 | **Why it blocks** | Formal migration sign-off per RFC |
 | **Files** | `docs/rfc/009-rust-ffi.md` · `packages/forja_rust/test/parity/` |
-| **Manage** | Audit episode_matcher + m3u parity vs `crates/*/tests/fixtures/`; extend tests |
+| **Manage** | RFC sign-off tick; optional lulustream/fastream Dart stream-fetch if harness gains native HTTP mock |
 | **Unblocks** | RFC-009 acceptance · stronger case for B1 removal |
 
 **Known intentional gaps (not bugs):**
 
 - `lulustream` / `fastream` — MFP **stream URL fetch** (blocking HTTP inside Rust FFI) is covered by Rust goldens + wiremock only; Dart parity tests MFP **redirect** extractors (mixdrop, streamtape, …) instead.
-- Webstreamr page fetch + registry stay in Dart by design (RFC-009).
+- `Show.3.07` dot-separated season.episode (no `S` / `x`) — use torrent title filter or manual pick
+- Anime packs with episode-only names (`Show - 07`) — `pickEpisode` episode-only fallback when pack has no `SxxExx` markers
+- `Sample` in filename — excluded in `pickEpisode` / `is_video`, not in `matches()`
 
 ---
 
 ### B8 — Dylib load / dev ergonomics
 
-**Progress:** in progress — debug warning + README done
+**Progress:** done
 
 | Done | Todo |
 |------|------|
-| [x] `./scripts/build_rust.sh` + copies to app bundle | [x] `apps/forja/README.md` rust quickstart |
-| [x] `copy_rust_dylib.sh` in macOS Xcode build phase | [ ] CI job that builds Flutter app with bundled dylib |
-| [x] `FORJA_RUST_LIB` env override | [x] Debug warning when Rust missing on desktop (`bootstrap.dart`) |
-| [x] `melos run rust:build` · `rust:test` scripts | [x] `apps/forja/README.md` rust quickstart |
-| [x] Troubleshooting section in progress doc | [ ] CI job that builds full Flutter app artifact |
+| [x] `./scripts/build_rust.sh` + copies to app bundle | [ ] Optional: CI job that builds full Flutter app artifact |
+| [x] `apps/forja/README.md` + `crates/README.md` quickstart | |
+| [x] Debug warning when Rust missing on desktop (`bootstrap.dart`) | |
+| [x] `FORJA_RUST_LIB` env · `FORJA_RUST_STRICT=1` | |
+| [x] `melos run rust:build` · `rust:test` · `rust:integration` | |
+| [x] Troubleshooting in progress doc | |
 
 | | |
 |--|--|
@@ -244,16 +245,15 @@ B4 no integration tests
 
 ---
 
-### B9 — Stale RFC-009 doc
+### B9 — RFC-009 sync
 
-**Progress:** in progress — migration table synced 2026-07-05
+**Progress:** done (living doc — update status line when Step 9 completes)
 
 | Done | Todo |
 |------|------|
-| [x] Progress tracker accurate (`rust-engine-progress.md`) | [ ] Update RFC status when Step 9 completes |
-| [x] Blockers doc (this file) | |
-| [x] Sync RFC-009 migration order table | |
-| [x] Sync RFC-009 acceptance checkboxes (partial) | |
+| [x] Progress tracker accurate | [ ] RFC status line → “done” when Step 9 completes |
+| [x] Migration order table synced | |
+| [x] Acceptance checkboxes synced (partial) | |
 
 | | |
 |--|--|
@@ -269,7 +269,8 @@ B4 no integration tests
 | Step 9 item | Blocker(s) | Progress |
 |-------------|------------|----------|
 | Drop `libtorrent_flutter` | B1 · B2 · B4 | open |
-| Golden fixtures for every extractor | B5 | in progress (20/23) |
+| Golden fixtures for every extractor | B5 | done |
+| App `integration_test/` smoke | B4 | done (core) |
 | (implicit) delete `reference/*.dart` | B1 · B3 · B6 | open (consolidation done) |
 
 Completed Step 9 items (reference consolidation, dead file removal) do **not** remove blockers — they organized fallbacks, not deleted them.

@@ -8,32 +8,62 @@ Workspace crates consumed by Flutter via `packages/forja_rust` (FFI).
 ## Build
 
 ```bash
-./scripts/build_rust.sh              # desktop (full: torrent + proxy)
-./scripts/build_rust_mobile.sh ios   # iOS parsers only
-./scripts/build_rust_mobile.sh android  # Android arm64 parsers (needs NDK)
+./scripts/build_rust.sh                    # desktop (torrent + proxy + parsers)
+./scripts/build_rust_mobile.sh ios         # iOS arm64 parsers
+./scripts/build_rust_mobile.sh android     # Android arm64-v8a parsers
+./scripts/build_rust_mobile.sh all         # both mobile targets
 ```
 
-Mobile builds use `forja-ffi` with `--no-default-features` (no librqbit/proxy). Magnet playback on mobile stays `libtorrent_flutter`.
+Mobile builds use `forja-ffi --no-default-features` (parsers + webstreamr only; no librqbit/proxy). Magnet playback on mobile stays `libtorrent_flutter` until librqbit compiles on iOS/Android.
+
+### Android NDK
+
+Requires NDK r26+ (Android Studio → SDK Manager → NDK, or `sdkmanager ndk`).
+
+Set one of:
+
+- `ANDROID_NDK_HOME` / `ANDROID_NDK_ROOT`
+- `sdk.dir` in `apps/forja/android/local.properties` (Gradle discovers `ndk/` under the SDK)
+
+Output: `apps/forja/android/app/src/main/jniLibs/arm64-v8a/libforja_ffi.so`
+
+Release build with Rust bundled:
+
+```bash
+./scripts/build_rust_mobile.sh android
+FORJA_BUILD_RUST_ANDROID=1 flutter build apk
+# or forjaBuildRust=true in apps/forja/android/gradle.properties
+```
+
+### iOS
+
+Requires macOS + Xcode. Output: `apps/forja/ios/Runner/Frameworks/libforja_ffi.dylib` (Xcode copy phase).
 
 ## Test
 
 ```bash
+melos run rust:test           # cargo + Dart parity
+melos run rust:integration    # app engine smoke (desktop)
+```
+
+Or manually:
+
+```bash
 cd crates && cargo test --workspace
-cd crates && cargo test -p forja-utils --test golden
-cd crates && cargo test -p forja-iptv-core --test golden_m3u
 cd packages/forja_rust && flutter test
+cd apps/forja && flutter test integration_test/
 ```
 
 ## Crates
 
 | Crate | Role |
 |-------|------|
-| `forja-ffi` | uniffi + C ABI entry point |
+| `forja-ffi` | C ABI entry point |
 | `forja-utils` | episode matcher, torrent filter, unpacker, HLS, kisskh |
-| `forja-stream-core` | provider URL templates |
-| `forja-iptv-core` | M3U, Xtream, paste.sh crypto |
-| `forja-stremio-core` | Stremio manifest/URL helpers |
-| `forja-webstreamr` | vidsrc extractor + types |
+| `forja-stream-core` | provider URL templates (5 providers) |
+| `forja-iptv-core` | M3U, Xtream JSON, paste.sh crypto |
+| `forja-stremio-core` | Stremio manifest/URL/HTTP helpers |
+| `forja-webstreamr` | 23 extractors + 21 sources |
 | `forja-scrapers` | Knaben/TPB/Uindex HTML parsers |
-| `forja-torrent` | torrent session (stub; libtorrent later) |
+| `forja-torrent` | librqbit session (desktop FFI) |
 | `forja-proxy` | local HTTP proxy (axum) |

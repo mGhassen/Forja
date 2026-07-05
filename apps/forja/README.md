@@ -27,6 +27,17 @@ cd apps/forja && flutter run
 
 Mobile FFI ships parsers only (no librqbit); torrent playback uses `libtorrent_flutter`.
 
+### Android (NDK)
+
+```bash
+# NDK r26+ via Android Studio or ANDROID_NDK_HOME
+./scripts/build_rust_mobile.sh android
+FORJA_BUILD_RUST_ANDROID=1 flutter run -d android
+# or: forjaBuildRust=true in android/gradle.properties
+```
+
+See [crates/README.md](../../crates/README.md) for NDK discovery details.
+
 ## Tests
 
 ```bash

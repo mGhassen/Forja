@@ -1,0 +1,20 @@
+[
+  {
+    "files": ["sample.mkv", "Show.S03E07.720p.mkv", "Show.S03E07.1080p.mkv"],
+    "season": 3,
+    "episode": 7,
+    "expected_index": 1
+  },
+  {
+    "files": ["Show.E07.720p.mkv", "Show.E07.1080p.mkv"],
+    "season": 1,
+    "episode": 7,
+    "expected_index": 0
+  },
+  {
+    "files": ["Show.S02E01.mkv", "Show.S02E02.mkv"],
+    "season": 3,
+    "episode": 7,
+    "expected_index": 0
+  }
+]
