@@ -119,7 +119,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   await SettingsService().initLightMode();
 
   await ForjaEngine.init();
-  await ProviderSettingsRepo.migrateLegacyPrefsIfNeeded();
   _warnIfRustMissing();
   
   // Hydrate theme preset before first frame

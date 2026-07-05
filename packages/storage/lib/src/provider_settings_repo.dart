@@ -1,4 +1,4 @@
-import 'engine_storage.dart';
+import 'package:rust/rust.dart';
 
 class ProviderSettingsRepo {
   static const _orderKey = 'forja_provider_order';
@@ -18,31 +18,34 @@ class ProviderSettingsRepo {
 
   static const defaultEnabled = defaultOrder;
 
-  static Future<void> migrateLegacyPrefsIfNeeded() =>
-      EngineStorage.migrateLegacyPrefsIfNeeded();
-
   Future<List<String>> getOrder() async {
-    return EngineStorage.readStringList(_orderKey, fallback: defaultOrder);
+    if (!ForjaEngine.isReady) return List.from(defaultOrder);
+    return ForjaEngine.storageReadStringList(_orderKey, fallback: defaultOrder);
   }
 
   Future<void> setOrder(List<String> order) async {
-    EngineStorage.writeStringList(_orderKey, order);
+    if (!ForjaEngine.isReady) return;
+    ForjaEngine.storageWriteStringList(_orderKey, order);
   }
 
   Future<List<String>> getEnabled() async {
-    return EngineStorage.readStringList(_enabledKey, fallback: defaultEnabled);
+    if (!ForjaEngine.isReady) return List.from(defaultEnabled);
+    return ForjaEngine.storageReadStringList(_enabledKey, fallback: defaultEnabled);
   }
 
   Future<void> setEnabled(List<String> ids) async {
-    EngineStorage.writeStringList(_enabledKey, ids);
+    if (!ForjaEngine.isReady) return;
+    ForjaEngine.storageWriteStringList(_enabledKey, ids);
   }
 
   Future<String?> getLastUsed() async {
-    final v = EngineStorage.read(_lastUsedKey);
+    if (!ForjaEngine.isReady) return null;
+    final v = ForjaEngine.storageRead(_lastUsedKey);
     return v is String ? v : null;
   }
 
   Future<void> setLastUsed(String id) async {
-    EngineStorage.writeString(_lastUsedKey, id);
+    if (!ForjaEngine.isReady) return;
+    ForjaEngine.storageWriteString(_lastUsedKey, id);
   }
 }

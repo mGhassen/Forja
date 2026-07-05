@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'engine_storage.dart';
 
 class SettingsService {
   static final SettingsService _instance = SettingsService._internal();
@@ -138,8 +137,8 @@ class SettingsService {
   }
 
   Future<List<Map<String, dynamic>>> getStremioAddons() async {
-    if (EngineStorage.isReady) {
-      return EngineStorage.readMapList(_stremioAddonsKey);
+    if (ForjaEngine.isReady) {
+      return ForjaEngine.storageReadMapList(_stremioAddonsKey);
     }
     final prefs = await SharedPreferences.getInstance();
     final List<String> list = prefs.getStringList(_stremioAddonsKey) ?? [];
@@ -150,8 +149,8 @@ class SettingsService {
     List<Map<String, dynamic>> current = await getStremioAddons();
     current.removeWhere((a) => a['baseUrl'] == addon['baseUrl']);
     current.add(addon);
-    if (EngineStorage.isReady) {
-      EngineStorage.writeMapList(_stremioAddonsKey, current);
+    if (ForjaEngine.isReady) {
+      ForjaEngine.storageWriteMapList(_stremioAddonsKey, current);
     } else {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
@@ -165,8 +164,8 @@ class SettingsService {
   Future<void> removeStremioAddon(String baseUrl) async {
     List<Map<String, dynamic>> current = await getStremioAddons();
     current.removeWhere((a) => a['baseUrl'] == baseUrl);
-    if (EngineStorage.isReady) {
-      EngineStorage.writeMapList(_stremioAddonsKey, current);
+    if (ForjaEngine.isReady) {
+      ForjaEngine.storageWriteMapList(_stremioAddonsKey, current);
     } else {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
@@ -204,8 +203,8 @@ class SettingsService {
 
   Future<List<String>> getStreamProviderOrder() async {
     List<String> saved;
-    if (EngineStorage.isReady) {
-      saved = EngineStorage.readStringList(
+    if (ForjaEngine.isReady) {
+      saved = ForjaEngine.storageReadStringList(
         _streamProviderOrderKey,
         fallback: const [],
       );
@@ -240,8 +239,8 @@ class SettingsService {
   }
 
   Future<void> setStreamProviderOrder(List<String> order) async {
-    if (EngineStorage.isReady) {
-      EngineStorage.writeStringList(_streamProviderOrderKey, order);
+    if (ForjaEngine.isReady) {
+      ForjaEngine.storageWriteStringList(_streamProviderOrderKey, order);
     } else {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_streamProviderOrderKey, order);
@@ -575,13 +574,13 @@ class SettingsService {
       final v = prefs.getStringList(key);
       if (v != null) prefsMap[key] = v;
     }
-    if (EngineStorage.isReady) {
-      final stremio = EngineStorage.readMapList(_stremioAddonsKey);
+    if (ForjaEngine.isReady) {
+      final stremio = ForjaEngine.storageReadMapList(_stremioAddonsKey);
       if (stremio.isNotEmpty) {
         prefsMap[_stremioAddonsKey] =
             stremio.map((e) => jsonEncode(e)).toList();
       }
-      final streamOrder = EngineStorage.readStringList(
+      final streamOrder = ForjaEngine.storageReadStringList(
         _streamProviderOrderKey,
         fallback: const [],
       );
@@ -657,16 +656,16 @@ class SettingsService {
       final encoded = (prefsMap[_stremioAddonsKey] as List).cast<String>();
       final addons =
           encoded.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
-      if (EngineStorage.isReady) {
-        EngineStorage.writeMapList(_stremioAddonsKey, addons);
+      if (ForjaEngine.isReady) {
+        ForjaEngine.storageWriteMapList(_stremioAddonsKey, addons);
       } else {
         await prefs.setStringList(_stremioAddonsKey, encoded);
       }
     }
     if (prefsMap.containsKey(_streamProviderOrderKey)) {
       final order = (prefsMap[_streamProviderOrderKey] as List).cast<String>();
-      if (EngineStorage.isReady) {
-        EngineStorage.writeStringList(_streamProviderOrderKey, order);
+      if (ForjaEngine.isReady) {
+        ForjaEngine.storageWriteStringList(_streamProviderOrderKey, order);
       } else {
         await prefs.setStringList(_streamProviderOrderKey, order);
       }

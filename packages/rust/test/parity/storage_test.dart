@@ -9,6 +9,7 @@ void main() {
   late Directory tmp;
 
   setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     await initRustForTests();
     tmp = await Directory.systemTemp.createTemp('forja_storage_test_');
   });
@@ -72,5 +73,23 @@ void main() {
       ForjaRust.instance.storageGetJson('stream_provider_order'),
     ) as List;
     expect(got, ['videasy', 'vidsrc', 'webstreamr']);
+  });
+
+  test('ForjaEngine storage facade helpers', () async {
+    final path = '${tmp.path}/facade_store.json';
+    await ForjaEngine.init(storagePath: path);
+    expect(ForjaEngine.isReady, isTrue);
+    ForjaEngine.storageWriteStringList('forja_provider_order', ['vidsrc']);
+    expect(
+      ForjaEngine.storageReadStringList(
+        'forja_provider_order',
+        fallback: const [],
+      ),
+      ['vidsrc'],
+    );
+    ForjaEngine.storageWriteMapList('stremio_addons', [
+      {'baseUrl': 'https://x/manifest.json', 'name': 'X'},
+    ]);
+    expect(ForjaEngine.storageReadMapList('stremio_addons'), hasLength(1));
   });
 }
