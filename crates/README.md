@@ -14,7 +14,7 @@ Workspace crates consumed by Flutter via `packages/forja_rust` (FFI).
 ./scripts/build_rust_mobile.sh all         # both mobile targets
 ```
 
-Mobile builds use `forja-ffi --no-default-features` (parsers + webstreamr only; no librqbit/proxy). Magnet playback on mobile stays `libtorrent_flutter` until librqbit compiles on iOS/Android.
+Mobile builds use `forja-ffi --no-default-features` (parsers + webstreamr only; no librqbit/proxy). Magnet playback on mobile uses `libtorrent_flutter` until librqbit compiles on iOS/Android (blocked: `librqbit-dualstack-sockets` → `bind_device` on iOS). Probe: `./scripts/try_build_mobile_torrent.sh ios`.
 
 ### Android NDK
 

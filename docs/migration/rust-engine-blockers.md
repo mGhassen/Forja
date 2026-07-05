@@ -36,7 +36,7 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before shippi
 | ID | Blocker | Severity | Progress | Blocks |
 |----|---------|----------|----------|--------|
 | B1 | Runtime Dart engine fallback | **high** | done | — |
-| B2 | `libtorrent_flutter` on mobile (+ desktop fallback) | **medium** | by design | Drop libtorrent from pubspecs |
+| B2 | `libtorrent_flutter` on mobile (+ desktop fallback) | **medium** | blocked (upstream) | Drop libtorrent from pubspecs |
 | B3 | Dart engine layer in `lib/` | **high** | done | — |
 | B4 | App `integration_test/` | **medium** | done (core) | Optional UI E2E · magnet→play |
 | B5 | Webstreamr golden fixtures | **medium** | done | Optional filelions/voe stream-path goldens |
@@ -106,22 +106,26 @@ Release builds bundle Rust parsers (B7 done)
 
 ### B2 — `libtorrent_flutter` dependency
 
-**Progress:** by design on mobile; desktop uses librqbit when Rust loads
+**Progress:** blocked on upstream — iOS compile fails; libtorrent preserved on mobile
 
 | Done | Todo |
 |------|------|
-| [x] Desktop: `TorrentStreamService` prefers Rust/librqbit | [ ] librqbit in mobile Rust FFI (same magnet feature) |
-| [x] Mobile: libtorrent = torrent engine (feature preserved) | [ ] Port `applyConnectionsLimit` when Rust torrent on mobile |
-| [x] Magnet player via `TorrentStreamService` | |
+| [x] Desktop: `TorrentStreamService` prefers Rust/librqbit | [ ] librqbit in mobile Rust FFI |
+| [x] Mobile: libtorrent = torrent engine (feature preserved) | [ ] Upstream: `librqbit-dualstack-sockets` iOS `bind_device` |
+| [x] Magnet player via `TorrentStreamService` | [ ] Port `applyConnectionsLimit` to librqbit session |
 | [x] FFI torrent stubs on mobile build (`--no-default-features`) | |
+| [x] CI probe: `mobile-torrent-probe` + `android-torrent-probe` (informational) | |
+| [x] `scripts/try_build_mobile_torrent.sh` | |
 
 | | |
 |--|--|
 | **What** | Native torrent engine still linked in `apps/forja`, `forja_streaming`, `forja_api` |
-| **Why it blocks** | `TorrentStreamService.start()` falls back to libtorrent when Rust port is 0 or `TorrentEngineBackend` unset; `applyConnectionsLimit` only touches libtorrent session |
-| **Files** | `packages/forja_streaming/lib/src/torrent_stream_service.dart` · `apps/forja/pubspec.yaml` |
-| **Manage** | Dogfood librqbit on desktop; log fallback rate; port connection-limit config to Rust or drop feature |
-| **Unblocks** | Step 9 checkbox “Drop libtorrent_flutter”; RFC-010/014 web builds without native torrent |
+| **Why it blocks** | Mobile `--features torrent-engine` fails to compile (see below); desktop falls back to libtorrent when Rust port is 0 |
+| **iOS compile error** | `librqbit-dualstack-sockets 0.7.0` → `Socket::bind_device` not available on iOS |
+| **Probe** | `./scripts/try_build_mobile_torrent.sh ios` |
+| **Files** | `packages/forja_streaming/lib/src/torrent_stream_service.dart` · `crates/forja-torrent/` |
+| **Manage** | Keep libtorrent on mobile; re-run probe when bumping librqbit; optional fork/patch of dualstack-sockets |
+| **Unblocks** | Step 9 “Drop libtorrent_flutter”; single torrent engine on all platforms |
 
 ---
 

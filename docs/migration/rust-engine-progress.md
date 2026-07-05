@@ -517,6 +517,7 @@ Manual: boot log `Rust engine v0.1.0` on desktop + mobile after `build_rust_mobi
 | Android FFI | `./scripts/build_rust_mobile.sh android` | required |
 | iOS FFI | `./scripts/build_rust_mobile.sh ios` | required |
 | Mobile artifact check | `melos run rust:release-check` | local / after mobile build |
+| Mobile torrent probe | `./scripts/try_build_mobile_torrent.sh ios` | informational (CI, continue-on-error) |
 
 ---
 

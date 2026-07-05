@@ -8,6 +8,7 @@ on:
       - 'scripts/build_rust.sh'
       - 'scripts/build_rust_mobile.sh'
       - 'scripts/check_rust_mobile_artifacts.sh'
+      - 'scripts/try_build_mobile_torrent.sh'
       - '.github/workflows/rust.yml'
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - 'scripts/build_rust.sh'
       - 'scripts/build_rust_mobile.sh'
       - 'scripts/check_rust_mobile_artifacts.sh'
+      - 'scripts/try_build_mobile_torrent.sh'
       - '.github/workflows/rust.yml'
 
 jobs:
@@ -82,3 +84,26 @@ jobs:
           name: libforja_ffi-ios-arm64
           path: apps/forja/ios/Runner/Frameworks/libforja_ffi.dylib
           if-no-files-found: error
+
+  mobile-torrent-probe:
+    name: Mobile torrent FFI probe (informational)
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - name: iOS librqbit compile probe
+        run: ./scripts/try_build_mobile_torrent.sh ios
+
+  android-torrent-probe:
+    name: Android torrent FFI probe (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+      - name: Android librqbit compile probe
+        run: ./scripts/try_build_mobile_torrent.sh android

@@ -146,6 +146,10 @@ class TorrentStreamService {
     final clamped = limit.clamp(5, 200);
     await _settings.setTorrentConnectionsLimit(clamped);
     if (_state != EngineState.ready) return;
+    if (_rustEnginePort > 0) {
+      _log('Connections limit saved ($clamped); librqbit session config not wired yet');
+      return;
+    }
     try {
       final engine = LibtorrentFlutter.instance;
       engine.configureSession(engine.getDefaultConfig().copyWith(
