@@ -24,6 +24,11 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/export.dart';
 
+/// Optional Rust backend — set from app bootstrap when [ForjaEngine] loads.
+abstract final class KissKhDecryptBackend {
+  static String Function(String body, String? sourceUrl)? decryptBody;
+}
+
 class _KeyIv {
   final Uint8List key;
   final Uint8List iv;
@@ -106,6 +111,11 @@ class KissKhSubtitleDecryptor {
   /// Decrypt every cue text line in a SRT/VTT body. Index lines, timestamp
   /// lines (`-->`), the `WEBVTT` header and blank separators are kept as-is.
   static String decryptBody(String body, {String? sourceUrl}) {
+    final backend = KissKhDecryptBackend.decryptBody;
+    if (backend != null) {
+      return backend(body, sourceUrl);
+    }
+
     final preferred = sourceUrl != null ? _preferredFor(sourceUrl) : null;
     final lines = body.split(RegExp(r'\r?\n'));
     final out = StringBuffer();

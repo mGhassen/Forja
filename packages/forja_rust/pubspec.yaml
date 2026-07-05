@@ -19,6 +19,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   forja_api:
     path: ../forja_api
+  forja_webstreamr:
+    path: ../forja_webstreamr
 
 flutter:
   uses-material-design: true

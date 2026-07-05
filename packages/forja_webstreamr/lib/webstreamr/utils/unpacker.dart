@@ -4,11 +4,21 @@
 /// LuluStream/Mixdrop/Streamtape/SuperVideo/Uqload extractors and others.
 library;
 
+/// Optional Rust backend — set from app bootstrap when [ForjaEngine] loads.
+abstract final class JsUnpackBackend {
+  static String? Function(String source)? unpack;
+}
 
 /// Unpacks the first p,a,c,k,e,d string found in [source]. Returns the
 /// decoded JavaScript text (still JS — caller usually regex-extracts the
 /// real stream URL from it).
 String unpack(String source) {
+  final backend = JsUnpackBackend.unpack;
+  if (backend != null) {
+    final rust = backend(source);
+    if (rust != null && rust.isNotEmpty) return rust;
+  }
+
   final m = RegExp(
           r"\}\s*\(\s*'([^']+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split\('\|'\)\s*,\s*\d+\s*,\s*(?:\{\}|null)\s*\)\s*\)")
       .firstMatch(source);
@@ -64,6 +74,11 @@ String unpackEval(String html) {
       .firstMatch(html);
   if (m == null) {
     throw FormatException('No p,a,c,k,e,d string found');
+  }
+  final backend = JsUnpackBackend.unpack;
+  if (backend != null) {
+    final rust = backend(m.group(0)!);
+    if (rust != null && rust.isNotEmpty) return rust;
   }
   return unpack(m.group(0)!);
 }

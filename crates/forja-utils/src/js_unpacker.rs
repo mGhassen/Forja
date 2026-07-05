@@ -84,4 +84,11 @@ mod tests {
     fn rejects_missing_packed() {
         assert!(unpack("no packed js here").is_err());
     }
+
+    #[test]
+    fn unpacks_simple_payload() {
+        let packed = "eval(function(p,a,c,k,e,d){}('0 1',10,2,'hello|world'.split('|'),0,{}))";
+        let out = unpack(packed).unwrap();
+        assert_eq!(out, "hello world");
+    }
 }

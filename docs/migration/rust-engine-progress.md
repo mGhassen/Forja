@@ -37,7 +37,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | Area | Rust | App | Notes |
 |------|:----:|:---:|-------|
 | **0 — Scaffold** (build, FFI, CI) | ✅ | ✅ | `ForjaEngine.init()`, dylib bundling |
-| **1 — Utils** (episode match, HLS, torrent filter) | ✅ | ✅ | JS unpacker + KissKH decrypt: Rust only, not wired |
+| **1 — Utils** (episode match, HLS, torrent filter) | ✅ | ✅ | all 5 modules wired |
 | **2 — Stream URLs** | 5/5 | 5/5 | all template providers in Rust |
 | **3 — IPTV** | 4/4 | 4/4 | M3U, paste.sh, EPG decode, Xtream JSON parse |
 | **4 — Stremio** | partial | partial | URL helpers + JSON parse wired · ❌ HTTP fetch |
@@ -53,7 +53,7 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 
 - IPTV: M3U parse, paste.sh decrypt, Xtream EPG decode, Xtream categories/streams JSON
 - Streaming: embed URLs for VidLink, VixSrc, Vidnest
-- Utils: episode file matching, HLS master parse, torrent title filter
+- Utils: episode file matching, HLS master parse, torrent title filter, JS unpack, KissKH subtitle decrypt
 - Stremio: URL building only (not catalog browsing)
 - Scrapers: Knaben / TPB / Uindex HTML parse + dedup
 - Webstreamr: 23 extractors + 21 sources (all parse helpers wired; HTTP fetch + registry still Dart)
@@ -63,7 +63,6 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 - Stremio catalog / meta / stream HTTP
 - Webstreamr: fetcher, registry, search/redirect HTTP orchestration
 - Torrent session + local stream proxy
-- Vidzee / Vidrock provider URLs
 
 ### Numbers
 
@@ -73,7 +72,7 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 | Stream providers wired | 5 / 5 |
 | Webstreamr extractors ported | 23 / 23 |
 | Webstreamr URL sources ported | 21 / 21 |
-| Dart parity tests | 52 |
+| Dart parity tests | 55 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -121,15 +120,15 @@ Wire-up: `ForjaEngine.init()` in `apps/forja/lib/app/bootstrap.dart`.
 
 ## Step 1 — `forja-utils`
 
-**Rust:** ✅ · **App:** partial (3/5 modules wired)
+**Rust:** ✅ · **App:** ✅ (5/5 modules wired)
 
 | Module | Rust | App |
 |--------|:----:|:---:|
 | Episode matcher | ✅ | ✅ |
 | Torrent filter | ✅ | ✅ |
 | HLS master parse | ✅ | ✅ |
-| JS unpacker | ✅ | ❌ |
-| KissKH subtitle decrypt | ✅ | ❌ |
+| JS unpacker | ✅ | ✅ |
+| KissKH subtitle decrypt | ✅ | ✅ |
 
 | Dart source | Rust module | FFI |
 |-------------|-------------|-----|
@@ -145,13 +144,14 @@ cd crates && cargo test -p forja-utils --test golden
 cd packages/forja_rust && flutter test test/parity/episode_matcher_test.dart
 cd packages/forja_rust && flutter test test/parity/torrent_filter_test.dart
 cd packages/forja_rust && flutter test test/parity/hls_test.dart
+cd packages/forja_rust && flutter test test/parity/utils_test.dart
 ```
 
 Fixtures: `crates/forja-utils/tests/fixtures/`
 
 Manual: debrid TV episode pick · HLS quality menu.
 
-Wire-up: `EpisodeMatcherBackend`, `HlsParserBackend`, torrent filter delegate in `rust_delegates.dart`.
+Wire-up: `EpisodeMatcherBackend`, `HlsParserBackend`, `JsUnpackBackend`, `KissKhDecryptBackend`, torrent filter delegate in `rust_delegates.dart`.
 
 ---
 

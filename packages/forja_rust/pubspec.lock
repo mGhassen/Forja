@@ -348,7 +348,7 @@ packages:
     source: path
     version: "1.0.0"
   forja_webstreamr:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       path: "../forja_webstreamr"
       relative: true
