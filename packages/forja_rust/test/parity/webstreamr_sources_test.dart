@@ -38,4 +38,16 @@ void main() {
     final rows = jsonDecode(json) as List<dynamic>;
     expect(rows[0]['url'], 'https://vidsrc-embed.ru/embed/tv/tt0944947/1-1');
   });
+
+  test('meinecloud HTML parse via FFI', () {
+    const html = '<div data-link="https://embed.example/stream"></div>';
+    final json = ForjaRust.instance.parseWebstreamrSourceHtmlJson(
+      'meinecloud',
+      html,
+      '{"referer":"https://meinecloud.click"}',
+    );
+    final rows = jsonDecode(json) as List<dynamic>;
+    expect(rows[0]['url'], 'https://embed.example/stream');
+    expect(rows[0]['country_codes'], ['de']);
+  });
 }

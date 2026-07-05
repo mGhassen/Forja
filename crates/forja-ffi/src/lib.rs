@@ -161,6 +161,10 @@ fn extract_kinoger_episode_urls_json(html: String, season_index: i32, episode_in
     forja_webstreamr::extract_kinoger_episode_urls_json(&html, season_index, episode_index)
 }
 
+fn parse_webstreamr_source_html_json(source_id: String, html: String, opts_json: String) -> String {
+    forja_webstreamr::parse_webstreamr_source_html_json(&source_id, &html, &opts_json)
+}
+
 fn torrent_start(magnet: String) -> bool {
     TORRENT
         .lock()

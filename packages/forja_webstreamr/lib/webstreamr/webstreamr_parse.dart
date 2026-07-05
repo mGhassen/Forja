@@ -22,6 +22,8 @@ abstract final class WebstreamrParseBackend {
   static String? Function(String sourceId, String requestJson)? resolveSourceJson;
   static String? Function(String html, int seasonIndex, int episodeIndex)?
       extractKinogerEpisodeUrlsJson;
+  static String? Function(String sourceId, String html, String optsJson)?
+      parseSourceHtmlJson;
 }
 
 Map<String, dynamic>? _decodeRust(String raw) {
@@ -50,21 +52,8 @@ Map<String, dynamic> _sourceRequestJson(
   };
 }
 
-List<SourceResult>? tryRustResolveSource(
-  String sourceId,
-  String type,
-  Id id, {
-  String? title,
-  int? year,
-}) {
-  final backend = WebstreamrParseBackend.resolveSourceJson;
-  if (backend == null) return null;
-
-  final raw = backend(sourceId, jsonEncode(_sourceRequestJson(type, id, title: title, year: year)));
-  if (raw == null) return null;
-  final decoded = jsonDecode(raw);
+List<SourceResult>? _sourceResultsFromJson(dynamic decoded) {
   if (decoded is! List || decoded.isEmpty) return null;
-
   final out = <SourceResult>[];
   for (final item in decoded) {
     if (item is! Map<String, dynamic>) continue;
@@ -89,6 +78,33 @@ List<SourceResult>? tryRustResolveSource(
     ));
   }
   return out.isEmpty ? null : out;
+}
+
+List<SourceResult>? tryRustResolveSource(
+  String sourceId,
+  String type,
+  Id id, {
+  String? title,
+  int? year,
+}) {
+  final backend = WebstreamrParseBackend.resolveSourceJson;
+  if (backend == null) return null;
+
+  final raw = backend(sourceId, jsonEncode(_sourceRequestJson(type, id, title: title, year: year)));
+  if (raw == null) return null;
+  return _sourceResultsFromJson(jsonDecode(raw));
+}
+
+List<SourceResult>? tryRustParseSourceHtml(
+  String sourceId,
+  String html, {
+  required String referer,
+}) {
+  final backend = WebstreamrParseBackend.parseSourceHtmlJson;
+  if (backend == null) return null;
+  final raw = backend(sourceId, html, jsonEncode({'referer': referer}));
+  if (raw == null) return null;
+  return _sourceResultsFromJson(jsonDecode(raw));
 }
 
 List<Uri>? tryRustKinogerEpisodeUrls(

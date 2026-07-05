@@ -9,6 +9,7 @@ import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class MegaKinoSource extends Source {
@@ -52,6 +53,9 @@ class MegaKinoSource extends Source {
     if (pageUrl == null) return const [];
 
     final html = await fetcher.text(ctx, pageUrl);
+    final rust = tryRustParseSourceHtml(this.id, html, referer: pageUrl.toString());
+    if (rust != null) return rust;
+
     final doc = html_parser.parse(html);
     final title = doc
         .querySelector('meta[property="og:title"]')

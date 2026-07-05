@@ -6,6 +6,7 @@ import 'package:html/parser.dart' as html_parser;
 import '../types.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class VerHdLinkSource extends Source {
@@ -29,6 +30,9 @@ class VerHdLinkSource extends Source {
     final imdbId = await getImdbId(ctx, fetcher, id);
     final pageUrl = Uri.parse('$baseUrl/movie/${imdbId.id}');
     final html = await fetcher.text(ctx, pageUrl);
+    final rust = tryRustParseSourceHtml(this.id, html, referer: baseUrl);
+    if (rust != null) return rust;
+
     final doc = html_parser.parse(html);
 
     final out = <SourceResult>[];

@@ -42,13 +42,43 @@ pub fn resolve_source(source_id: &str, req: &SourceRequest) -> Vec<SourceEmbed> 
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct ParseHtmlOpts {
+    pub referer: String,
+}
+
+pub fn parse_source_html(source_id: &str, html: &str, opts_json: &str) -> Vec<SourceEmbed> {
+    let opts: ParseHtmlOpts = match serde_json::from_str(opts_json) {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    match source_id {
+        "meinecloud" => meinecloud::parse_html(html, &opts.referer),
+        "verhdlink" => verhdlink::parse_html(html, &opts.referer),
+        "megakino" => megakino::parse_html(html, &opts.referer),
+        _ => Vec::new(),
+    }
+}
+
 mod kinoger;
+mod megakino;
+mod meinecloud;
 mod rgshows;
+mod verhdlink;
 mod vidsrc;
 mod vixsrc;
 
 pub fn list_url_sources() -> &'static [&'static str] {
     &["vidsrc", "vixsrc", "rgshows"]
+}
+
+pub fn list_html_sources() -> &'static [&'static str] {
+    &["meinecloud", "verhdlink", "megakino"]
+}
+
+pub fn parse_source_html_json(source_id: &str, html: &str, opts_json: &str) -> String {
+    serde_json::to_string(&parse_source_html(source_id, html, opts_json))
+        .unwrap_or_else(|_| "[]".into())
 }
 
 pub fn extract_kinoger_episode_urls(

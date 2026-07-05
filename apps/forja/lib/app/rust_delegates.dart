@@ -99,4 +99,11 @@ void installRustAppDelegates() {
             seasonIndex,
             episodeIndex,
           );
+
+  WebstreamrParseBackend.parseSourceHtmlJson = (sourceId, html, optsJson) =>
+      ForjaRust.instance.parseWebstreamrSourceHtmlJson(
+        sourceId,
+        html,
+        optsJson,
+      );
 }

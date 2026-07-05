@@ -270,6 +270,19 @@ pub unsafe extern "C" fn forja_extract_kinoger_episode_urls_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_parse_webstreamr_source_html_json(
+    source_id: *const c_char,
+    html: *const c_char,
+    opts_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::parse_webstreamr_source_html_json(
+        from_c_str(source_id),
+        from_c_str(html),
+        from_c_str(opts_json),
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_torrent_start(magnet: *const c_char) -> bool {
     crate::torrent_start(from_c_str(magnet))
 }

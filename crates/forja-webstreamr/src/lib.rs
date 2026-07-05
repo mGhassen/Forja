@@ -8,7 +8,8 @@ pub use extractors::{
     extract_mfp_embed_html, extract_vidsrc_chain_json, list_html_extractors, list_mfp_extractors,
 };
 pub use sources::{
-    extract_kinoger_episode_urls, list_url_sources, resolve_source, SourceEmbed, SourceRequest,
+    extract_kinoger_episode_urls, list_url_sources, parse_source_html, resolve_source,
+    SourceEmbed, SourceRequest,
 };
 
 pub fn extract_embed_html_json(extractor_id: &str, html: &str, page_url: &str) -> String {
@@ -52,4 +53,12 @@ pub fn extract_kinoger_episode_urls_json(
     episode_index: i32,
 ) -> String {
     sources::extract_kinoger_episode_urls_json(html, season_index, episode_index)
+}
+
+pub fn parse_webstreamr_source_html_json(
+    source_id: &str,
+    html: &str,
+    opts_json: &str,
+) -> String {
+    sources::parse_source_html_json(source_id, html, opts_json)
 }
