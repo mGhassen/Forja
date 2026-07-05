@@ -16,5 +16,23 @@ class MainFlutterWindow: NSWindow {
     styleMask.insert(.fullSizeContentView)
 
     super.awakeFromNib()
+    repositionTrafficLights()
+  }
+
+  /// Match native title-bar spacing: inset from top-left, compact cluster.
+  private func repositionTrafficLights() {
+    guard
+      let close = standardWindowButton(.closeButton),
+      let mini = standardWindowButton(.miniaturizeButton),
+      let zoom = standardWindowButton(.zoomButton)
+    else { return }
+
+    let left: CGFloat = 40
+    let y = close.frame.origin.y - 8
+    let spacing: CGFloat = 20
+
+    close.setFrameOrigin(NSPoint(x: left, y: y))
+    mini.setFrameOrigin(NSPoint(x: left + spacing, y: y))
+    zoom.setFrameOrigin(NSPoint(x: left + spacing * 2, y: y))
   }
 }

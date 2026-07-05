@@ -4,11 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:forja_storage/forja_storage.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// macOS traffic-light inset + drag strip height.
-const double kMacTitleBarHeight = 28;
-
-/// Left gutter so content doesn't sit under the traffic lights.
-const double kMacTrafficLightInset = 72;
+/// macOS title-bar drag strip height (traffic lights float above the sidebar).
+const double kMacTitleBarHeight = 34;
 
 class DesktopWindowChrome {
   DesktopWindowChrome._();

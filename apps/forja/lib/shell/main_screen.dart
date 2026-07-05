@@ -253,7 +253,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                           ),
                           leading: Padding(
                             padding: EdgeInsets.fromLTRB(
-                              isDesktop && Platform.isMacOS ? 4 : 0,
+                              0,
                               isDesktop && Platform.isMacOS ? 8 : 24,
                               0,
                               24,
