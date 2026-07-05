@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:forja_storage/forja_storage.dart';
+import 'package:forja_rust/src/reference/stremio_dart_parse.dart';
 
 /// Optional Rust backend hooks. Set from app bootstrap when [ForjaEngine] loads.
 abstract final class StremioServiceBackend {
@@ -63,29 +64,18 @@ class StremioService {
   static ({String baseUrl, String? queryParams}) _splitAddonUrl(String url) {
     final backend = StremioServiceBackend.splitAddonUrl;
     if (backend != null) return backend(url);
-
-    final qIdx = url.indexOf('?');
-    String path = qIdx >= 0 ? url.substring(0, qIdx) : url;
-    final query = qIdx >= 0 ? url.substring(qIdx + 1) : null;
-    path = path.replaceAll(RegExp(r'/manifest\.json$'), '').replaceAll(RegExp(r'/$'), '');
-    if (!path.startsWith('http')) path = 'https://$path';
-    return (baseUrl: path, queryParams: query);
+    return StremioDartParse.splitAddonUrl(url);
   }
 
   @visibleForTesting
   static ({String baseUrl, String? queryParams}) debugSplitAddonUrl(String url) =>
-      _splitAddonUrl(url);
+      StremioDartParse.splitAddonUrl(url);
 
   /// Builds a full resource URL, correctly re-appending any addon query params.
   String _buildResourceUrl(String addonBaseUrl, String resourcePath) {
     final backend = StremioServiceBackend.buildResourceUrl;
     if (backend != null) return backend(addonBaseUrl, resourcePath);
-
-    final parts = _splitAddonUrl(addonBaseUrl);
-    final qp = parts.queryParams;
-    return qp != null
-        ? '${parts.baseUrl}$resourcePath?$qp'
-        : '${parts.baseUrl}$resourcePath';
+    return StremioDartParse.buildResourceUrl(addonBaseUrl, resourcePath);
   }
 
   /// Fetches and validates an addon manifest from a URL
@@ -97,14 +87,7 @@ class StremioService {
     if (normalize != null) {
       manifestUrl = normalize(manifestUrl);
     } else {
-      if (manifestUrl.startsWith('stremio://')) {
-        manifestUrl = manifestUrl.replaceFirst('stremio://', 'https://');
-      }
-      if (!manifestUrl.endsWith('/manifest.json')) {
-        manifestUrl = manifestUrl.endsWith('/')
-            ? '${manifestUrl}manifest.json'
-            : '$manifestUrl/manifest.json';
-      }
+      manifestUrl = StremioDartParse.normalizeManifestUrl(manifestUrl);
     }
 
     try {
@@ -118,7 +101,7 @@ class StremioService {
           if (parsed.containsKey('error')) return null;
           manifest = parsed;
         } else {
-          manifest = json.decode(body) as Map<String, dynamic>;
+          manifest = StremioDartParse.parseManifestJson(body)!;
         }
         final parts = _splitAddonUrl(manifestUrl);
         final baseUrl = parts.queryParams != null
@@ -155,8 +138,7 @@ class StremioService {
         if (parseBackend != null) {
           return parseBackend(response.body);
         }
-        final data = json.decode(response.body);
-        return data['streams'] ?? [];
+        return StremioDartParse.parseStreamsJson(response.body);
       }
     } catch (e) {
       debugPrint('[StremioService] Stream fetch error ($url): $e');
@@ -192,9 +174,7 @@ class StremioService {
           }
           return results;
         }
-        final data = json.decode(response.body);
-        final List subs = data['subtitles'] ?? [];
-        for (var s in subs) {
+        for (final s in StremioDartParse.parseSubtitlesJson(response.body)) {
           results.add({
             'id': s['id'] ?? s['url'],
             'url': s['url'],
@@ -373,9 +353,7 @@ class StremioService {
         if (parseBackend != null) {
           return parseBackend(response.body);
         }
-        final data = json.decode(response.body);
-        final metas = data['metas'] as List? ?? [];
-        return metas.cast<Map<String, dynamic>>();
+        return StremioDartParse.parseCatalogJson(response.body);
       }
     } catch (e) {
       debugPrint('[StremioService] Catalog fetch error ($url): $e');
@@ -405,15 +383,7 @@ class StremioService {
         if (parseBackend != null) {
           return parseBackend(response.body);
         }
-        final data = json.decode(response.body);
-        final meta = data['meta'] as Map<String, dynamic>?;
-        
-        // For collections, convert videos array to a format similar to TV episodes
-        if (meta != null && meta['type'] == 'collections' && meta['videos'] is List) {
-          meta['_isCollection'] = true;
-        }
-        
-        return meta;
+        return StremioDartParse.parseMetaJson(response.body);
       }
     } catch (e) {
       debugPrint('[StremioService] Meta fetch error ($url): $e');

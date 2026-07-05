@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../helpers/rust_engine.dart';
-import 'package:forja_api/api/stremio_service.dart';
+import 'package:forja_rust/src/reference/stremio_dart_parse.dart';
 import 'package:forja_rust/forja_rust.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -23,7 +23,7 @@ void main() {
   test('splitAddonUrl parity', () {
     const url = 'https://addon.example/api/manifest.json?token=abc';
     final rust = ForjaRust.instance.splitStremioAddonUrlJson(url);
-    final dart = StremioService.debugSplitAddonUrl(url);
+    final dart = StremioDartParse.splitAddonUrl(url);
     expect(rust, contains('"base_url":"https://addon.example/api"'));
     expect(dart.baseUrl, 'https://addon.example/api');
     expect(dart.queryParams, 'token=abc');
@@ -39,7 +39,7 @@ void main() {
     const base = 'https://addon.example/api?token=abc';
     const path = '/catalog/movie/top.json';
     final rust = ForjaRust.instance.buildStremioResourceUrl(base, path);
-    final parts = StremioService.debugSplitAddonUrl(base);
+    final parts = StremioDartParse.splitAddonUrl(base);
     final dart = parts.queryParams != null
         ? '${parts.baseUrl}$path?${parts.queryParams}'
         : '${parts.baseUrl}$path';

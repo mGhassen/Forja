@@ -21,93 +21,15 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja_rust/src/reference/kisskh_decrypt_dart.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:pointycastle/export.dart';
 
 /// Optional Rust backend — set from app bootstrap when [ForjaEngine] loads.
 abstract final class KissKhDecryptBackend {
   static String Function(String body, String? sourceUrl)? decryptBody;
 }
 
-class _KeyIv {
-  final Uint8List key;
-  final Uint8List iv;
-  const _KeyIv(this.key, this.iv);
-}
-
 class KissKhSubtitleDecryptor {
-  static Uint8List _u8(String s) => Uint8List.fromList(utf8.encode(s));
-
-  // Ordered list of candidate key/IV pairs, tried until one yields valid
-  // PKCS7 padding & UTF-8. Order: most-recent first, then legacy, then
-  // default fallback.
-  static final List<_KeyIv> _keyVariants = [
-    _KeyIv(_u8('AmSmZVcH93UQUezi'), _u8('ReBKWW8cqdjPEnF6')), // .txt1
-    _KeyIv(_u8('8056483646328763'), _u8('6852612370185273')), // .txt legacy
-    _KeyIv(_u8('sWODXX04QRTkHdlZ'), _u8('8pwhapJeC4hrS9hO')), // default
-  ];
-
-  /// Pick a preferred key/IV by URL file extension. Returns null for `.srt`
-  /// (already plaintext).
-  static _KeyIv? _preferredFor(String url) {
-    final ext = url.split('?').first.split('.').last.toLowerCase();
-    switch (ext) {
-      case 'srt':
-        return null;
-      case 'txt':
-        return _keyVariants[1];
-      case 'txt1':
-        return _keyVariants[0];
-      default:
-        return _keyVariants[2];
-    }
-  }
-
-  static String? _tryDecrypt(Uint8List ct, _KeyIv kiv) {
-    try {
-      final cipher = CBCBlockCipher(AESEngine())
-        ..init(false, ParametersWithIV(KeyParameter(kiv.key), kiv.iv));
-      final out = Uint8List(ct.length);
-      for (var off = 0; off < ct.length; off += 16) {
-        cipher.processBlock(ct, off, out, off);
-      }
-      final pad = out.last;
-      if (pad < 1 || pad > 16) return null;
-      for (var i = out.length - pad; i < out.length; i++) {
-        if (out[i] != pad) return null;
-      }
-      return utf8.decode(out.sublist(0, out.length - pad), allowMalformed: false);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Try to decrypt a single base64-encoded ciphertext line. If [preferred]
-  /// is given, that key/IV is tried first. Returns null on any failure so
-  /// the caller can fall back to the original text.
-  static String? decryptCue(String b64, {Object? preferred}) {
-    final trimmed = b64.trim();
-    if (trimmed.isEmpty) return null;
-    if (!RegExp(r'^[A-Za-z0-9+/=\s]+$').hasMatch(trimmed)) return null;
-    Uint8List ct;
-    try {
-      ct = base64.decode(trimmed);
-    } catch (_) {
-      return null;
-    }
-    if (ct.isEmpty || ct.length % 16 != 0) return null;
-    if (preferred != null) {
-      final r = _tryDecrypt(ct, preferred as _KeyIv);
-      if (r != null) return r;
-    }
-    for (final kiv in _keyVariants) {
-      if (identical(kiv, preferred)) continue;
-      final r = _tryDecrypt(ct, kiv);
-      if (r != null) return r;
-    }
-    return null;
-  }
-
   /// Decrypt every cue text line in a SRT/VTT body. Index lines, timestamp
   /// lines (`-->`), the `WEBVTT` header and blank separators are kept as-is.
   static String decryptBody(String body, {String? sourceUrl}) {
@@ -115,24 +37,7 @@ class KissKhSubtitleDecryptor {
     if (backend != null) {
       return backend(body, sourceUrl);
     }
-
-    final preferred = sourceUrl != null ? _preferredFor(sourceUrl) : null;
-    final lines = body.split(RegExp(r'\r?\n'));
-    final out = StringBuffer();
-    for (final line in lines) {
-      final t = line.trim();
-      if (t.isEmpty ||
-          t == 'WEBVTT' ||
-          t.startsWith('NOTE') ||
-          RegExp(r'^\d+$').hasMatch(t) ||
-          line.contains('-->')) {
-        out.writeln(line);
-        continue;
-      }
-      final decoded = decryptCue(line, preferred: preferred);
-      out.writeln(decoded ?? line);
-    }
-    return out.toString();
+    return KissKhDecryptDart.decryptBody(body, sourceUrl: sourceUrl);
   }
 
   /// Download the subtitle at [url] (with kisskh headers), decrypt it, persist

@@ -4,6 +4,8 @@
 /// LuluStream/Mixdrop/Streamtape/SuperVideo/Uqload extractors and others.
 library;
 
+import 'package:forja_rust/src/reference/js_unpacker_dart.dart';
+
 /// Optional Rust backend — set from app bootstrap when [ForjaEngine] loads.
 abstract final class JsUnpackBackend {
   static String? Function(String source)? unpack;
@@ -18,54 +20,7 @@ String unpack(String source) {
     final rust = backend(source);
     if (rust != null && rust.isNotEmpty) return rust;
   }
-
-  final m = RegExp(
-          r"\}\s*\(\s*'([^']+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split\('\|'\)\s*,\s*\d+\s*,\s*(?:\{\}|null)\s*\)\s*\)")
-      .firstMatch(source);
-  if (m == null) {
-    throw FormatException('No p,a,c,k,e,d string found');
-  }
-  final payload = _unescape(m.group(1)!);
-  final radix = int.parse(m.group(2)!);
-  final count = int.parse(m.group(3)!);
-  final symtab = m.group(4)!.split('|');
-  if (symtab.length != count) {
-    throw FormatException('Symtab length mismatch ($count vs ${symtab.length})');
-  }
-  String unbase(String word) {
-    if (radix <= 10) return int.parse(word, radix: radix).toString();
-    var n = 0;
-    for (var i = 0; i < word.length; i++) {
-      final c = word.codeUnitAt(i);
-      int d;
-      if (c >= 48 && c <= 57) {
-        d = c - 48; // 0-9
-      } else if (c >= 97 && c <= 122) {
-        d = c - 97 + 10; // a-z
-      } else if (c >= 65 && c <= 90) {
-        d = c - 65 + 36; // A-Z
-      } else {
-        d = 0;
-      }
-      n = n * radix + d;
-    }
-    return n.toString();
-  }
-
-  return payload.replaceAllMapped(RegExp(r'\b\w+\b'), (mm) {
-    final word = mm.group(0)!;
-    final idx = int.tryParse(unbase(word));
-    if (idx == null || idx < 0 || idx >= count) return word;
-    final repl = symtab[idx];
-    return repl.isEmpty ? word : repl;
-  });
-}
-
-String _unescape(String s) {
-  return s
-      .replaceAll(r"\\", '\\')
-      .replaceAll(r"\'", "'")
-      .replaceAll(r'\"', '"');
+  return JsUnpackerDart.unpack(source);
 }
 
 /// Public re-export so callers can do `unpackEval`.
@@ -80,7 +35,7 @@ String unpackEval(String html) {
     final rust = backend(m.group(0)!);
     if (rust != null && rust.isNotEmpty) return rust;
   }
-  return unpack(m.group(0)!);
+  return JsUnpackerDart.unpack(m.group(0)!);
 }
 
 /// Walk [linkRegExps] over the unpacked JS and return the first match group(1)
@@ -96,4 +51,3 @@ Uri extractUrlFromPacked(String html, List<RegExp> linkRegExps) {
   }
   throw StateError('Could not find a stream link in embed');
 }
-

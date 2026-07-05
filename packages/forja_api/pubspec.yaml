@@ -37,6 +37,8 @@ dependencies:
     path: ../forja_webstreamr
   forja_streaming:
     path: ../forja_streaming
+  forja_rust:
+    path: ../forja_rust
 
 dev_dependencies:
   flutter_test:
