@@ -50,4 +50,18 @@ void main() {
     expect(rows[0]['url'], 'https://embed.example/stream');
     expect(rows[0]['country_codes'], ['de']);
   });
+
+  test('homecine HTML parse via FFI', () {
+    const html =
+        '<div class="les-content"><a>Latino<iframe src="https://embed.example/lat"></iframe></a></div>';
+    final json = ForjaRust.instance.parseWebstreamrSourceHtmlJson(
+      'homecine',
+      html,
+      '{"referer":"https://homecine.example/p","title":"Film (2020)"}',
+    );
+    final rows = jsonDecode(json) as List<dynamic>;
+    expect(rows[0]['url'], 'https://embed.example/lat');
+    expect(rows[0]['country_codes'], ['mx']);
+    expect(rows[0]['title'], 'Film (2020)');
+  });
 }

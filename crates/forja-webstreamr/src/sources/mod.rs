@@ -45,6 +45,7 @@ pub fn resolve_source(source_id: &str, req: &SourceRequest) -> Vec<SourceEmbed> 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ParseHtmlOpts {
     pub referer: String,
+    pub title: Option<String>,
 }
 
 pub fn parse_source_html(source_id: &str, html: &str, opts_json: &str) -> Vec<SourceEmbed> {
@@ -56,10 +57,12 @@ pub fn parse_source_html(source_id: &str, html: &str, opts_json: &str) -> Vec<So
         "meinecloud" => meinecloud::parse_html(html, &opts.referer),
         "verhdlink" => verhdlink::parse_html(html, &opts.referer),
         "megakino" => megakino::parse_html(html, &opts.referer),
+        "homecine" => homecine::parse_html(html, &opts.referer, opts.title.as_deref()),
         _ => Vec::new(),
     }
 }
 
+mod homecine;
 mod kinoger;
 mod megakino;
 mod meinecloud;
@@ -73,7 +76,7 @@ pub fn list_url_sources() -> &'static [&'static str] {
 }
 
 pub fn list_html_sources() -> &'static [&'static str] {
-    &["meinecloud", "verhdlink", "megakino"]
+    &["meinecloud", "verhdlink", "megakino", "homecine"]
 }
 
 pub fn parse_source_html_json(source_id: &str, html: &str, opts_json: &str) -> String {

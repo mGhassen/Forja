@@ -99,10 +99,18 @@ List<SourceResult>? tryRustParseSourceHtml(
   String sourceId,
   String html, {
   required String referer,
+  String? title,
 }) {
   final backend = WebstreamrParseBackend.parseSourceHtmlJson;
   if (backend == null) return null;
-  final raw = backend(sourceId, html, jsonEncode({'referer': referer}));
+  final raw = backend(
+    sourceId,
+    html,
+    jsonEncode({
+      'referer': referer,
+      if (title != null && title.isNotEmpty) 'title': title,
+    }),
+  );
   if (raw == null) return null;
   return _sourceResultsFromJson(jsonDecode(raw));
 }

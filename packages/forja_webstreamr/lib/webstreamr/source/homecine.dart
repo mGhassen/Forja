@@ -6,6 +6,7 @@ import 'package:html/parser.dart' as html_parser;
 import '../types.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 int _lev(String a, String b) {
@@ -69,6 +70,14 @@ class HomeCineSource extends Source {
     final title = tmdbId.season != null
         ? '$name ${tmdbId.formatSeasonAndEpisode()}'
         : '$name ($year)';
+
+    final rust = tryRustParseSourceHtml(
+      this.id,
+      pageHtml,
+      referer: pageUrl.toString(),
+      title: title,
+    );
+    if (rust != null) return rust;
 
     final doc = html_parser.parse(pageHtml);
     final out = <SourceResult>[];

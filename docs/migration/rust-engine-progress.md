@@ -41,7 +41,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **2 — Stream URLs** | 3/5 | 3/5 | ✅ vidlink, vixsrc, vidnest · ❌ vidzee, vidrock |
 | **3 — IPTV** | 4/4 | 4/4 | M3U, paste.sh, EPG decode, Xtream JSON parse |
 | **4 — Stremio** | partial | partial | ✅ URL helpers · ❌ HTTP, manifest parse, catalogs |
-| **5 — Webstreamr** | 24/49 extractors · 7/22 sources | partial | extractors + URL/HTML sources wired |
+| **5 — Webstreamr** | 24/49 extractors · 8/22 sources | partial | extractors + URL/HTML sources wired |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
 | **7 — Torrent + proxy** | stubs | ❌ | still `libtorrent_flutter` + Dart shelf |
 | **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
@@ -56,7 +56,7 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 - Utils: episode file matching, HLS master parse, torrent title filter
 - Stremio: URL building only (not catalog browsing)
 - Scrapers: Knaben / TPB / Uindex HTML parse + dedup
-- Webstreamr: 23 extractors + 7 sources (vidsrc/vixsrc/rgshows embed URLs, kinoger show.js, meinecloud/verhdlink/megakino HTML parse)
+- Webstreamr: 23 extractors + 8 sources (vidsrc/vixsrc/rgshows embed URLs, kinoger show.js, meinecloud/verhdlink/megakino/homecine HTML parse)
 
 ### Still 100% Dart
 
@@ -72,8 +72,8 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 | Rust crates | 9 (8 domain + `forja-ffi`) |
 | Stream providers wired | 3 / 5 |
 | Webstreamr extractors ported | 24 / 49 |
-| Webstreamr URL sources ported | 7 / 22 |
-| Dart parity tests | 40 |
+| Webstreamr URL sources ported | 8 / 22 |
+| Dart parity tests | 41 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -277,6 +277,7 @@ FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`, `forja_
 | meinecloud (HTML `[data-link]`) | ✅ | ✅ |
 | verhdlink (HTML `._player-mirrors`) | ✅ | ✅ |
 | megakino (HTML `.video-inside iframe`) | ✅ | ✅ |
+| homecine (HTML `.les-content a` iframe) | ✅ | ✅ |
 
 ```bash
 cd crates && cargo test -p forja-webstreamr

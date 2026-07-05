@@ -91,3 +91,16 @@ fn megakino_html_golden() {
     assert_eq!(rows[0].url, "https://embed.example/x");
     assert_eq!(rows[0].title.as_deref(), Some("Film"));
 }
+
+#[test]
+fn homecine_html_golden() {
+    let html = r#"<div class="les-content"><a>Latino<iframe src="https://embed.example/lat"></iframe></a></div>"#;
+    let rows = parse_source_html(
+        "homecine",
+        html,
+        r#"{"referer":"https://homecine.example/p","title":"Film (2020)"}"#,
+    );
+    assert_eq!(rows[0].url, "https://embed.example/lat");
+    assert_eq!(rows[0].country_codes, vec!["mx"]);
+    assert_eq!(rows[0].title.as_deref(), Some("Film (2020)"));
+}
