@@ -11,6 +11,13 @@ abstract final class WebstreamrParseBackend {
       extractVidsrcChainJson;
   static String? Function(String linksHtml, String pageUrl)?
       extractHubcloudLinksJson;
+  static String? Function(
+    String extractorId,
+    String html,
+    String pageUrl,
+    String mfpConfigJson,
+    String extraHtml,
+  )? extractMfpEmbedHtmlJson;
 }
 
 Map<String, dynamic>? _decodeRust(String raw) {
@@ -101,6 +108,26 @@ List<InternalUrlResult>? tryRustExtractHubcloudLinks(
     if (rows != null) out.addAll(rows);
   }
   return out.isEmpty ? null : out;
+}
+
+/// MFP redirect extractors need proxy config from [Context].
+List<InternalUrlResult>? tryRustExtractMfpFromHtml(
+  String extractorId,
+  String html,
+  String pageUrl,
+  Meta meta,
+  String mfpConfigJson, {
+  String extraHtml = '',
+}) {
+  final backend = WebstreamrParseBackend.extractMfpEmbedHtmlJson;
+  if (backend == null) return null;
+
+  final raw = backend(extractorId, html, pageUrl, mfpConfigJson, extraHtml);
+  if (raw == null) return null;
+  final decoded = _decodeRust(raw);
+  if (decoded == null) return null;
+  if (decoded['next_url'] != null) return null;
+  return _mapDecoded(decoded, meta);
 }
 
 /// Returns parsed stream rows when the Rust backend is installed; otherwise `null`

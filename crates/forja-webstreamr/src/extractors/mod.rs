@@ -1,20 +1,25 @@
 mod dropload;
+mod doodstream;
 mod external;
 mod filemoon;
 mod fsst;
 mod hubcloud;
 mod hubdrive;
 mod kinoger;
+mod mixdrop;
 mod rgshows;
 mod savefiles;
 mod streamembed;
+mod streamtape;
 mod supervideo;
+mod uqload;
 mod vidsrc;
 mod vidora;
 mod vixsrc;
 mod youtube;
 
 use crate::types::ExtractResult;
+use crate::utils::MfpConfig;
 
 pub use dropload::{extract_from_html as extract_dropload, supports_host as dropload_supports};
 pub use external::{extract_from_html as extract_external, supports_host as external_supports};
@@ -53,6 +58,27 @@ pub fn extract_embed_html(extractor_id: &str, html: &str, page_url: &str) -> Opt
         "external" => external::extract_from_html(html, page_url),
         _ => None,
     }
+}
+
+pub fn extract_mfp_embed_html(
+    extractor_id: &str,
+    html: &str,
+    page_url: &str,
+    mfp_config_json: &str,
+    extra_html: &str,
+) -> Option<ExtractResult> {
+    let mfp: MfpConfig = serde_json::from_str(mfp_config_json).ok()?;
+    match extractor_id {
+        "mixdrop" => mixdrop::extract_from_html(html, page_url, &mfp),
+        "streamtape" => streamtape::extract_from_html(html, page_url, &mfp),
+        "uqload" => uqload::extract_from_html(html, page_url, &mfp),
+        "doodstream" => doodstream::extract_from_html(html, page_url, &mfp, extra_html),
+        _ => None,
+    }
+}
+
+pub fn list_mfp_extractors() -> &'static [&'static str] {
+    &["mixdrop", "streamtape", "uqload", "doodstream"]
 }
 
 pub fn list_html_extractors() -> &'static [&'static str] {

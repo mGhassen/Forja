@@ -208,6 +208,30 @@ class ForjaRust {
         return _readString(_native.forja_extract_hubcloud_links_json(htmlPtr, urlPtr));
       });
 
+  String extractMfpEmbedHtmlJson(
+    String extractorId,
+    String html,
+    String pageUrl,
+    String mfpConfigJson, {
+    String extraHtml = '',
+  }) =>
+      using((arena) {
+        final idPtr =
+            extractorId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final mfpPtr =
+            mfpConfigJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final extraPtr = extraHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_extract_mfp_embed_html_json(
+          idPtr,
+          htmlPtr,
+          urlPtr,
+          mfpPtr,
+          extraPtr,
+        ));
+      });
+
   bool torrentStart(String magnet) => using((arena) {
         final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _native.forja_torrent_start(ptr);
@@ -358,6 +382,11 @@ final class _ForjaNative {
               'forja_extract_hubcloud_links_json',
             )
             .asFunction(),
+        forja_extract_mfp_embed_html_json = lib
+            .lookup<ffi.NativeFunction<_FiveStringNative>>(
+              'forja_extract_mfp_embed_html_json',
+            )
+            .asFunction(),
         forja_torrent_start = lib
             .lookup<ffi.NativeFunction<_TorrentStartNative>>(
               'forja_torrent_start',
@@ -444,6 +473,13 @@ final class _ForjaNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_extract_hubcloud_links_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) forja_extract_mfp_embed_html_json;
   final bool Function(ffi.Pointer<ffi.Char>) forja_torrent_start;
   final void Function() forja_torrent_stop;
   final bool Function() forja_torrent_is_running;
@@ -474,6 +510,13 @@ typedef _TwoStringNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
 );
 typedef _ThreeStringNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Pointer<ffi.Char>,
+  ffi.Pointer<ffi.Char>,
+);
+typedef _FiveStringNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Pointer<ffi.Char>,
   ffi.Pointer<ffi.Char>,
   ffi.Pointer<ffi.Char>,
   ffi.Pointer<ffi.Char>,

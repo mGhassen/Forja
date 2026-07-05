@@ -7,6 +7,7 @@ import '../types.dart';
 import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 const _kHosts = {
@@ -63,6 +64,19 @@ class Streamtape extends Extractor {
 
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
+
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
+    if (mfpJson != null) {
+      final rust = tryRustExtractMfpFromHtml(
+        id,
+        html,
+        url.toString(),
+        meta,
+        mfpJson,
+      );
+      if (rust != null) return rust;
+    }
+
     final sM = RegExp(r'([\d.]+ ?[GM]B)').firstMatch(html);
     final doc = html_parser.parse(html);
     final title =

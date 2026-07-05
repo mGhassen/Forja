@@ -7,6 +7,7 @@ import '../errors.dart';
 import '../types.dart';
 import '../utils/bytes.dart';
 import '../utils/media_flow_proxy.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class Mixdrop extends Extractor {
@@ -36,6 +37,19 @@ class Mixdrop extends Extractor {
     if (RegExp(r"can't find the (file|video)").hasMatch(html)) {
       throw NotFoundError();
     }
+
+    final mfpJson = mediaFlowProxyConfigJson(ctx, const {});
+    if (mfpJson != null) {
+      final rust = tryRustExtractMfpFromHtml(
+        id,
+        html,
+        url.toString(),
+        meta,
+        mfpJson,
+      );
+      if (rust != null) return rust;
+    }
+
     final sM = RegExp(r'([\d.,]+ ?[GM]B)').firstMatch(html);
     final doc = html_parser.parse(html);
     final title = doc.querySelector('.title b')?.text.trim();

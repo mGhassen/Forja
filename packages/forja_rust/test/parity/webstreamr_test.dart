@@ -87,4 +87,19 @@ void main() {
     expect(rows[0]['height'], 1080);
     expect(rows[2]['url'], 'https://pixel.example/api/file/abc?download=');
   });
+
+  test('mixdrop MFP golden via FFI', () {
+    final html = _fixture('mixdrop.html');
+    const mfp = '{"base_url":"mfp.example","password":"pw","headers":{}}';
+    final json = ForjaRust.instance.extractMfpEmbedHtmlJson(
+      'mixdrop',
+      html,
+      'https://mixdrop.example/e/abc',
+      mfp,
+    );
+    final m = jsonDecode(json) as Map<String, dynamic>;
+    expect(m['url'], contains('host=Mixdrop'));
+    expect(m['title'], 'Mixdrop Title');
+    expect(m['format'], 'mp4');
+  });
 }

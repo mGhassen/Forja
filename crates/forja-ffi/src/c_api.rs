@@ -229,6 +229,23 @@ pub unsafe extern "C" fn forja_extract_hubcloud_links_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_extract_mfp_embed_html_json(
+    extractor_id: *const c_char,
+    html: *const c_char,
+    page_url: *const c_char,
+    mfp_config_json: *const c_char,
+    extra_html: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::extract_mfp_embed_html_json(
+        from_c_str(extractor_id),
+        from_c_str(html),
+        from_c_str(page_url),
+        from_c_str(mfp_config_json),
+        from_c_str(extra_html),
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_torrent_start(magnet: *const c_char) -> bool {
     crate::torrent_start(from_c_str(magnet))
 }

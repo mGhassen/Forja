@@ -78,4 +78,14 @@ void installRustAppDelegates() {
 
   WebstreamrParseBackend.extractHubcloudLinksJson = (html, pageUrl) =>
       ForjaRust.instance.extractHubcloudLinksJson(html, pageUrl);
+
+  WebstreamrParseBackend.extractMfpEmbedHtmlJson =
+      (id, html, pageUrl, mfpConfigJson, extraHtml) =>
+          ForjaRust.instance.extractMfpEmbedHtmlJson(
+            id,
+            html,
+            pageUrl,
+            mfpConfigJson,
+            extraHtml: extraHtml,
+          );
 }

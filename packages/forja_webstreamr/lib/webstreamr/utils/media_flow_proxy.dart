@@ -1,11 +1,26 @@
 /// Port of webstreamr/src/utils/media-flow-proxy.ts
 library;
 
+import 'dart:convert';
+
 import '../types.dart';
 import 'fetcher.dart';
 
 bool supportsMediaFlowProxy(Context ctx) =>
     (ctx.config['mediaFlowProxyUrl'] ?? '').isNotEmpty;
+
+String? mediaFlowProxyConfigJson(
+  Context ctx,
+  Map<String, String> headers,
+) {
+  final base = ctx.config['mediaFlowProxyUrl'];
+  if (base == null || '$base'.isEmpty) return null;
+  return jsonEncode({
+    'base_url': base,
+    'password': ctx.config['mediaFlowProxyPassword'] ?? '',
+    'headers': headers,
+  });
+}
 
 Uri _buildMfpExtractorUrl(
     Context ctx, String host, Uri url, Map<String, String> headers) {

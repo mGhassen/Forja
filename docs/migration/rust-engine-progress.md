@@ -41,7 +41,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **2 — Stream URLs** | 3/5 | 3/5 | ✅ vidlink, vixsrc, vidnest · ❌ vidzee, vidrock |
 | **3 — IPTV** | 4/4 | 4/4 | M3U, paste.sh, EPG decode, Xtream JSON parse |
 | **4 — Stremio** | partial | partial | ✅ URL helpers · ❌ HTTP, manifest parse, catalogs |
-| **5 — Webstreamr** | 16/49 | partial | 15 extractors wired; HTTP/registry still Dart |
+| **5 — Webstreamr** | 20/49 | partial | 19 extractors wired; MFP stream fetch still Dart |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
 | **7 — Torrent + proxy** | stubs | ❌ | still `libtorrent_flutter` + Dart shelf |
 | **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
@@ -56,12 +56,12 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 - Utils: episode file matching, HLS master parse, torrent title filter
 - Stremio: URL building only (not catalog browsing)
 - Scrapers: Knaben / TPB / Uindex HTML parse + dedup
-- Webstreamr: 15 embed extractors (HTML parse via Rust when engine on)
+- Webstreamr: 19 embed extractors (HTML parse via Rust when engine on)
 
 ### Still 100% Dart
 
 - Stremio catalog / meta / stream HTTP
-- Webstreamr: MFP extractors (streamtape, mixdrop, doodstream, filemoon leaf, etc.), sources, fetcher
+- Webstreamr: MFP stream-URL fetch (filelions, voe, lulustream, fastream, filemoon leaf)
 - Torrent session + local stream proxy
 - Vidzee / Vidrock provider URLs
 
@@ -71,8 +71,8 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 |--------|-------|
 | Rust crates | 9 (8 domain + `forja-ffi`) |
 | Stream providers wired | 3 / 5 |
-| Webstreamr extractors ported | 16 / 49 |
-| Dart parity tests | 36 |
+| Webstreamr extractors ported | 20 / 49 |
+| Dart parity tests | 37 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -85,7 +85,7 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Port next batch of webstreamr extractors (MFP-heavy: streamtape, mixdrop, filemoon leaf)
+1. Port MFP stream-URL extractors (filelions, voe, lulustream, fastream)
 2. Real libtorrent in `forja-torrent`
 3. Stremio HTTP / manifest parse through FFI
 
@@ -235,7 +235,7 @@ Wire-up: `StremioServiceBackend` in `stremio_service.dart`.
 
 ## Step 5 — `forja-webstreamr`
 
-**Rust:** 16/49 · **App:** partial (15 extractors wired via `WebstreamrParseBackend`)
+**Rust:** 20/49 · **App:** partial (19 extractors wired via `WebstreamrParseBackend`)
 
 | Extractor | Rust | App |
 |-----------|:----:|:---:|
@@ -254,8 +254,12 @@ Wire-up: `StremioServiceBackend` in `stremio_service.dart`.
 | hubcloud (multi-link) | ✅ | ✅ |
 | rgshows (JSON body) | ✅ | ✅ |
 | external (passthrough) | ✅ | ✅ |
+| mixdrop (MFP redirect) | ✅ | ✅ |
+| streamtape (MFP redirect) | ✅ | ✅ |
+| uqload (MFP redirect) | ✅ | ✅ |
+| doodstream (MFP redirect) | ✅ | ✅ |
 
-FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`, `forja_extract_hubcloud_links_json`. HTTP fetch + registry still Dart.
+FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`, `forja_extract_hubcloud_links_json`, `forja_extract_mfp_embed_html_json`. HTTP fetch + registry still Dart.
 
 ```bash
 cd crates && cargo test -p forja-webstreamr

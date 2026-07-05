@@ -137,6 +137,22 @@ fn extract_hubcloud_links_json(html: String, page_url: String) -> String {
     forja_webstreamr::extract_hubcloud_links_json(&html, &page_url)
 }
 
+fn extract_mfp_embed_html_json(
+    extractor_id: String,
+    html: String,
+    page_url: String,
+    mfp_config_json: String,
+    extra_html: String,
+) -> String {
+    forja_webstreamr::extract_mfp_embed_html_json(
+        &extractor_id,
+        &html,
+        &page_url,
+        &mfp_config_json,
+        &extra_html,
+    )
+}
+
 fn torrent_start(magnet: String) -> bool {
     TORRENT
         .lock()

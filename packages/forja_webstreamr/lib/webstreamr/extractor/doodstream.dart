@@ -8,6 +8,7 @@ import '../types.dart';
 import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class DoodStream extends Extractor {
@@ -43,12 +44,25 @@ class DoodStream extends Extractor {
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
     if (RegExp(r'Video not found').hasMatch(html)) throw NotFoundError();
 
+    final downloadHtml = await fetcher
+        .text(ctx, Uri.parse(url.toString().replaceFirst('/e/', '/d/')));
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
+    if (mfpJson != null) {
+      final rust = tryRustExtractMfpFromHtml(
+        id,
+        html,
+        url.toString(),
+        meta,
+        mfpJson,
+        extraHtml: downloadHtml,
+      );
+      if (rust != null) return rust;
+    }
+
     final doc = html_parser.parse(html);
     final title = doc.querySelector('title')?.text.trim().replaceFirst(
         RegExp(r' - DoodStream$'), '').trim();
 
-    final downloadHtml = await fetcher
-        .text(ctx, Uri.parse(url.toString().replaceFirst('/e/', '/d/')));
     final sM = RegExp(r'([\d.]+ ?[GM]B)').firstMatch(downloadHtml);
 
     final out = meta.clone();

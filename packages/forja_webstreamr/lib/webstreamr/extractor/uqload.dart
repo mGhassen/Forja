@@ -6,6 +6,7 @@ import 'package:html/parser.dart' as html_parser;
 import '../errors.dart';
 import '../types.dart';
 import '../utils/media_flow_proxy.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class Uqload extends Extractor {
@@ -31,6 +32,18 @@ class Uqload extends Extractor {
       Context ctx, Uri url, Meta meta) async {
     final html = await fetcher.text(ctx, url);
     if (RegExp(r'File Not Found').hasMatch(html)) throw NotFoundError();
+
+    final mfpJson = mediaFlowProxyConfigJson(ctx, const {});
+    if (mfpJson != null) {
+      final rust = tryRustExtractMfpFromHtml(
+        id,
+        html,
+        url.toString(),
+        meta,
+        mfpJson,
+      );
+      if (rust != null) return rust;
+    }
 
     final hM = RegExp(r'\d{3,}x(\d{3,})').firstMatch(html);
     final doc = html_parser.parse(html);

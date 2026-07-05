@@ -1,8 +1,12 @@
 use forja_webstreamr::extract_embed_html;
 use forja_webstreamr::extract_hubcloud_links;
+use forja_webstreamr::extract_mfp_embed_html;
 use forja_webstreamr::types::StreamFormat;
 use std::fs;
 use std::path::PathBuf;
+
+const MFP_CONFIG: &str =
+    r#"{"base_url":"mfp.example","password":"pw","headers":{"Referer":"https://ref.example/"}}"#;
 
 fn fixture(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -168,6 +172,49 @@ fn hubcloud_links_golden() {
         rows[2].request_headers.as_ref().and_then(|h| h.get("Referer")).map(String::as_str),
         Some("https://pixel.example/u/abc")
     );
+}
+
+#[test]
+fn mixdrop_mfp_golden() {
+    let html = fs::read_to_string(fixture("mixdrop.html")).unwrap();
+    let page_url = "https://mixdrop.example/e/abc";
+    let r = extract_mfp_embed_html("mixdrop", &html, page_url, MFP_CONFIG, "").unwrap();
+    assert!(r.url.contains("host=Mixdrop"));
+    assert!(r.url.contains("redirect_stream=true"));
+    assert_eq!(r.title.as_deref(), Some("Mixdrop Title"));
+    assert_eq!(r.bytes, Some(1_610_612_736));
+    assert_eq!(r.format, StreamFormat::Mp4);
+}
+
+#[test]
+fn streamtape_mfp_golden() {
+    let html = fs::read_to_string(fixture("streamtape.html")).unwrap();
+    let page_url = "https://streamtape.example/v/abc";
+    let r = extract_mfp_embed_html("streamtape", &html, page_url, MFP_CONFIG, "").unwrap();
+    assert!(r.url.contains("host=Streamtape"));
+    assert_eq!(r.title.as_deref(), Some("Streamtape Title"));
+    assert_eq!(r.bytes, Some(1_288_490_189));
+}
+
+#[test]
+fn uqload_mfp_golden() {
+    let html = fs::read_to_string(fixture("uqload.html")).unwrap();
+    let page_url = "https://uqload.example/embed-xyz";
+    let r = extract_mfp_embed_html("uqload", &html, page_url, MFP_CONFIG, "").unwrap();
+    assert!(r.url.contains("host=Uqload"));
+    assert_eq!(r.title.as_deref(), Some("Uqload Title"));
+    assert_eq!(r.height, Some(1080));
+}
+
+#[test]
+fn doodstream_mfp_golden() {
+    let embed = fs::read_to_string(fixture("doodstream_embed.html")).unwrap();
+    let download = fs::read_to_string(fixture("doodstream_download.html")).unwrap();
+    let page_url = "http://dood.to/e/abc";
+    let r = extract_mfp_embed_html("doodstream", &embed, page_url, MFP_CONFIG, &download).unwrap();
+    assert!(r.url.contains("host=Doodstream"));
+    assert_eq!(r.title.as_deref(), Some("Movie Name"));
+    assert_eq!(r.bytes, Some(1_932_735_283));
 }
 
 #[test]
