@@ -1,7 +1,7 @@
 # RFC-009: Rust core FFI
 
 **Version:** v1.0 engine phase (web/WASM deferred to v3.0)  
-**Status:** **In progress** — crates + FFI + partial Flutter wire-up
+**Status:** **In progress** — Steps 0–8 wired; Step 9 cleanup in progress
 
 ## Summary
 
@@ -30,10 +30,10 @@ crates/
   forja-stream-core/   provider URL templates (vidlink, vixsrc, vidnest)
   forja-iptv-core/     M3U parser, Xtream JSON, paste.sh crypto
   forja-stremio-core/  manifest parse, resource URL builder
-  forja-webstreamr/    types + vidsrc extractor (1/49)
+  forja-webstreamr/    23 extractors + 21 sources (HTML/JSON parse in Rust)
   forja-scrapers/      Knaben, TPB, Uindex HTML parsers
-  forja-torrent/       session stub (libtorrent later)
-  forja-proxy/         axum local HTTP proxy skeleton
+  forja-torrent/       librqbit session (desktop; mobile stub)
+  forja-proxy/         axum local HTTP proxy
 ```
 
 ## Flutter integration
@@ -42,7 +42,7 @@ crates/
 
 ```dart
 await ForjaEngine.init();
-// EpisodeMatcher, HlsParser, M3uParser route through delegates when isReady
+// Delegates wire episode matcher, HLS, IPTV, webstreamr, scrapers, torrent, proxy when dylib loads
 ```
 
 **Build:**
@@ -60,14 +60,15 @@ Copies dylib to `apps/forja/macos/Runner/Frameworks/` on macOS.
 | Step | Crate | Wire-up status |
 |------|-------|----------------|
 | 0 | scaffold | done |
-| 1 | forja-utils | delegates for episode + HLS; torrent_filter FFI only |
-| 2 | forja-stream-core | 3 providers wired |
-| 3 | forja-iptv-core | M3U wired |
-| 4 | forja-stremio-core | not wired |
-| 5 | forja-webstreamr | not wired (1 extractor in Rust) |
-| 6 | forja-scrapers | not wired |
-| 7 | torrent + proxy | stubs only |
-| 8 | integration | partial |
+| 1 | forja-utils | done |
+| 2 | forja-stream-core | done (5 providers) |
+| 3 | forja-iptv-core | done |
+| 4 | forja-stremio-core | done |
+| 5 | forja-webstreamr | done (fetch/registry in Dart) |
+| 6 | forja-scrapers | done |
+| 7 | torrent + proxy | done (desktop librqbit; mobile libtorrent) |
+| 8 | integration | done |
+| 9 | cleanup | in progress |
 
 ## Tests
 
@@ -100,7 +101,10 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 - [x] Dylib loads on `flutter run -d macos` without env override
 - [x] Stremio URL helpers wired (`buildResourceUrl`, split, normalize)
 - [x] Scrapers HTML parse + dedup wired
-- [ ] Full parity suite (all episode patterns, all M3U edge cases)
+- [x] Full M3U golden parity (4 fixtures)
+- [x] Webstreamr Rust golden suite (23 extractors · 21 sources)
+- [x] Webstreamr Dart FFI parity (21/23 extractors · 22/22 sources)
+- [ ] lulustream · fastream Dart parity (MFP stream fetch needs mock server)
 - [ ] WASM smoke test (v3.0)
 
 ## Related

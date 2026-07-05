@@ -22,15 +22,19 @@ pub struct MfpStreamResponse {
 }
 
 pub fn build_extractor_api_url(config: &MfpConfig, host: &str, embed_url: &str) -> Option<String> {
-    let base = config
-        .base_url
-        .trim()
+    let trimmed = config.base_url.trim().trim_end_matches('/');
+    let base = trimmed
         .trim_start_matches("https://")
         .trim_start_matches("http://");
     if base.is_empty() {
         return None;
     }
-    let mut url = Url::parse(&format!("https://{base}/extractor/video")).ok()?;
+    let scheme = if trimmed.starts_with("http://") {
+        "http"
+    } else {
+        "https"
+    };
+    let mut url = Url::parse(&format!("{scheme}://{base}/extractor/video")).ok()?;
     {
         let mut qp = url.query_pairs_mut();
         qp.append_pair("host", host);
@@ -75,20 +79,22 @@ pub fn finalize_stream_url(result: &MfpStreamResponse) -> Option<String> {
     Some(url.to_string())
 }
 
+async fn fetch_stream_url(api_url: String) -> Option<String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .ok()?;
+    let result: MfpStreamResponse = client.get(api_url).send().await.ok()?.json().await.ok()?;
+    finalize_stream_url(&result)
+}
+
 pub fn build_stream_url(config: &MfpConfig, host: &str, embed_url: &str) -> Option<String> {
     let api_url = build_extractor_api_url(config, host, embed_url)?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .ok()?;
-    rt.block_on(async {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(20))
-            .build()
-            .ok()?;
-        let result: MfpStreamResponse = client.get(api_url).send().await.ok()?.json().await.ok()?;
-        finalize_stream_url(&result)
-    })
+    rt.block_on(fetch_stream_url(api_url))
 }
 
 #[cfg(test)]
@@ -106,6 +112,18 @@ mod tests {
         assert!(url.contains("host=Mixdrop"));
         assert!(url.contains("redirect_stream=true"));
         assert!(url.contains("h_referer="));
+    }
+
+    #[test]
+    fn build_extractor_api_url_supports_http_base() {
+        let config = MfpConfig {
+            base_url: "http://127.0.0.1:8080".into(),
+            password: "secret".into(),
+            headers: HashMap::new(),
+        };
+        let url = build_extractor_api_url(&config, "LuluStream", "https://lulu.example/e/x").unwrap();
+        assert!(url.starts_with("http://127.0.0.1:8080/extractor/video"));
+        assert!(url.contains("host=LuluStream"));
     }
 
     #[test]

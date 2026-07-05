@@ -19,4 +19,5 @@ cbc = { workspace = true }
 hex = "0.4"
 
 [dev-dependencies]
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+wiremock = "0.6"

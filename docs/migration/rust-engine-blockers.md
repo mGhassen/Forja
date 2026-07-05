@@ -13,7 +13,7 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 | Status | Count | IDs |
 |--------|------:|-----|
 | In progress | 7 | B1 · B2 · B3 · B5 · B6 · B7 · B8 |
-| Open | 2 | B4 · B9 |
+| Open | 1 | B4 |
 
 **Step 9 unlock:** 0 / 3 items done (see [Step 9 map](#step-9--open-work-mapped-to-blockers)).
 
@@ -22,10 +22,11 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 | Reference files consolidated | 10 | 10 |
 | Reference files deleted | 0 | 10 (after B1) |
 | `libtorrent_flutter` pubspec deps | 0 | 3 removed |
-| Webstreamr extractor goldens | 20 | 23 |
-| Webstreamr source goldens | 20 | 21 |
-| M3U fixtures in Dart parity | 3 | 4 |
+| Webstreamr extractor goldens | 23 | 23 |
+| Webstreamr source goldens | 21 | 21 |
+| M3U fixtures in Dart parity | 4 | 4 |
 | Dart parity test files | 14 | 14 |
+| Dart parity tests | 96 | — |
 | App integration tests | 0 | ≥1 smoke |
 
 ---
@@ -42,7 +43,7 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 | B6 | RFC-009 parity gaps | **medium** | in progress | “Full parity suite” acceptance checkbox |
 | B7 | Mobile Rust FFI packaging | **high** | in progress | Same parser engine on iOS/Android · CI mobile build |
 | B8 | Dylib load / dev ergonomics | **low** | in progress | Onboarding · CI app builds without manual `build_rust.sh` |
-| B9 | Stale RFC-009 migration table | **low** | open | Doc confusion only |
+| B9 | Stale RFC-009 migration table | **low** | in progress | Doc confusion only |
 
 **Not blockers** (by design): WebView extractors · webstreamr fetcher/registry · scraper HTTP · HLS `/hls-proxy` · WASM (v3.0).
 
@@ -155,7 +156,7 @@ B4 no integration tests
 | Done | Todo |
 |------|------|
 | [x] Rust unit + Clippy in CI | [ ] Add `apps/forja/integration_test/` |
-| [x] Dart parity 14 files / 64 tests in CI | [ ] Smoke: app boot + `ForjaEngine` loaded |
+| [x] Dart parity 14 files / 96 tests in CI | [ ] Smoke: app boot + `ForjaEngine` loaded |
 | [x] Manual checklist in progress doc | [ ] Smoke: M3U import |
 | | [ ] Smoke: magnet → play (librqbit) |
 | | [ ] Smoke: one stream provider URL |
@@ -177,14 +178,11 @@ B4 no integration tests
 
 | Done | Todo |
 |------|------|
-| [x] `golden_extractors.rs` — 20 tests | [ ] `kinoger` extractor golden |
-| [x] `golden_sources.rs` — 20 tests | [ ] `lulustream` extractor golden |
-| [x] Dart parity subset in `webstreamr_test.dart` | [ ] `fastream` extractor golden |
-| [x] Dart parity subset in `webstreamr_sources_test.dart` | [ ] `kinoger` source golden |
-| | [ ] `filelions` / `voe` full stream-path goldens (if distinct from redirect) |
-
-**Missing extractor goldens:** `kinoger` · `lulustream` · `fastream`  
-**Missing source golden:** `kinoger` (show.js episode URLs)
+| [x] `golden_extractors.rs` — 25 tests | [ ] `filelions` / `voe` full stream-path goldens (if distinct from redirect) |
+| [x] `golden_sources.rs` — 21 tests | |
+| [x] kinoger · lulustream · fastream extractor goldens | |
+| [x] kinoger source golden | |
+| [x] Dart parity: kinoger embed + show.js episode URLs | |
 
 | | |
 |--|--|
@@ -202,9 +200,10 @@ B4 no integration tests
 |------|------|
 | [x] 14 parity test files in CI | [ ] RFC acceptance: tick “full parity suite” |
 | [x] Episode matcher: 10/10 golden cases | [ ] Audit episode patterns vs real-world debrid filenames |
-| [x] M3U: `basic` + `crlf_extgrp` + `extgrp_before_extinf` in Dart parity | [ ] Add remaining M3U edge-case fixture to Dart parity |
-| [x] IPTV Xtream (categories/streams/series) · paste.sh · HLS · scrapers · stremio · proxy | [ ] Webstreamr parity: all 23 extractors (subset today) |
-| [x] Utils: js unpack · kisskh · torrent filter | [ ] Document known intentional gaps |
+| [x] M3U: all 4 golden cases in Dart parity | [ ] Audit episode patterns vs real-world debrid filenames |
+| [x] Webstreamr sources: 22/22 Dart FFI parity | |
+| [x] Webstreamr extractors: 21/23 Dart FFI parity | [ ] lulustream · fastream (need MFP mock server; Rust-only goldens) |
+| [x] IPTV Xtream (categories/streams/series) · paste.sh · HLS · scrapers · stremio · proxy | [ ] Document known intentional gaps |
 
 | | |
 |--|--|
@@ -240,13 +239,14 @@ B4 no integration tests
 
 ### B9 — Stale RFC-009 doc
 
-**Progress:** open — migration table not synced since steps 1–7 completed
+**Progress:** in progress — migration table synced 2026-07-05
 
 | Done | Todo |
 |------|------|
-| [x] Progress tracker accurate (`rust-engine-progress.md`) | [ ] Sync RFC-009 migration order table |
-| [x] Blockers doc (this file) | [ ] Sync RFC-009 acceptance checkboxes |
-| | [ ] Update RFC status line (“partial wire-up” → current) |
+| [x] Progress tracker accurate (`rust-engine-progress.md`) | [ ] Update RFC status when Step 9 completes |
+| [x] Blockers doc (this file) | |
+| [x] Sync RFC-009 migration order table | |
+| [x] Sync RFC-009 acceptance checkboxes (partial) | |
 
 | | |
 |--|--|

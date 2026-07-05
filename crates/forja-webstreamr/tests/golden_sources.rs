@@ -258,3 +258,11 @@ fn vegamovies_nexdrive_golden() {
     assert_eq!(rows[0].url, "https://vcloud.example/a.zip");
     assert_eq!(rows[0].height, Some(1080));
 }
+
+#[test]
+fn kinoger_show_js_golden() {
+    use forja_webstreamr::extract_kinoger_episode_urls;
+    let html = r#"<script>$(".ep").show([["https://cdn.example/ep1.m3u8","x"],["https://cdn.example/s2e1.m3u8"]])</script>"#;
+    let urls = extract_kinoger_episode_urls(html, 1, 0);
+    assert_eq!(urls, vec!["https://cdn.example/s2e1.m3u8"]);
+}

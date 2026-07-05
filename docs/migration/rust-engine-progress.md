@@ -50,7 +50,7 @@ Step 9 blockers → [rust-engine-blockers.md](./rust-engine-blockers.md)
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
 | **7 — Torrent + proxy** | ✅ librqbit | ✅ | Rust torrent playback when engine on · libtorrent fallback |
 | **8 — Flutter integration** | N/A | N/A | `ForjaEngine.init()`, delegates, dylib bundling |
-| **9 — Cleanup** | — | partial | reference fallbacks incl. IPTV/pastesh, scrapers, magnet player |
+| **9 — Cleanup** | — | partial | 9/11 done — [details](#step-9--cleanup) · blockers [doc](./rust-engine-blockers.md) |
 
 ### What runs in Rust today
 
@@ -97,7 +97,7 @@ Boot always calls `ForjaEngine.init()` — no disable toggle. If the native libr
 | Stream providers wired | 5 / 5 |
 | Webstreamr extractors ported | 23 / 23 |
 | Webstreamr URL sources ported | 21 / 21 |
-| Dart parity tests | 64 |
+| Dart parity tests | 96 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -405,8 +405,10 @@ cd packages/forja_rust && flutter test
 | `scaffold_test.dart` | FFI add, version |
 | `episode_matcher_test.dart` | 10 golden cases Rust↔Dart |
 | `stream_providers_test.dart` | vidlink, vixsrc, vidnest URLs |
-| `m3u_test.dart` | M3U golden fixtures (3/4) |
+| `m3u_test.dart` | M3U golden fixtures (4/4) |
 | `iptv_test.dart` | Xtream decode, categories/streams/series, paste.sh |
+| `webstreamr_test.dart` | 21/23 extractors via FFI |
+| `webstreamr_sources_test.dart` | 22/22 sources via FFI |
 | `stremio_test.dart` | resource URL builder + HTTP + JSON parse |
 | `hls_test.dart` | master playlist parse |
 | `torrent_filter_test.dart` | normalize + scene info |
@@ -415,7 +417,7 @@ cd packages/forja_rust && flutter test
 
 Manual: boot log shows `Rust engine v0.1.0` · IPTV + debrid + VidLink smoke test.
 
-**Settings → Developer:** live Rust status + toggle (restart required).
+**Settings → Developer:** live Rust engine status (loaded / fallback).
 
 ### Troubleshooting dylib load
 
@@ -431,19 +433,76 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 
 ## Step 9 — Cleanup
 
-**Partial.** Dart fallbacks consolidated where safe; full deletion deferred until Rust-off mode is dropped.
+**Rust:** N/A · **App:** N/A · **Dart removed:** partial (9/11 items)
 
-- [x] M3U Dart parser moved to `packages/forja_rust/lib/src/reference/m3u_dart_parser.dart`
-- [x] Provider URL fallbacks centralized in `provider_fallback_urls.dart`
-- [x] Unpacker, KissKH, Stremio, torrent filter, scrapers moved to `packages/forja_rust/lib/src/reference/`
-- [x] IPTV Xtream parse + paste.sh decrypt moved to `iptv_dart_parse.dart`, `pastesh_decrypt_dart.dart`
-- [x] Episode matcher + HLS parse moved to `episode_matcher_dart.dart`, `hls_dart_parse.dart`
-- [x] Dead duplicate `forja_streaming/.../hls_master_parser.dart` removed
-- [x] Dead duplicate `forja_streaming/.../debrid_api.dart` removed (use `forja_api`)
-- [x] IPTV series episodes parse moved to `iptv_dart_parse.dart` + Rust FFI wired
-- [x] Magnet player uses `TorrentStreamService.listTorrentFiles` (no direct libtorrent)
-- [ ] librqbit in mobile Rust FFI (today: libtorrent on mobile, same user feature)
-- [ ] Golden fixtures for every extractor
+**Goal:** Remove duplicate Dart engine code. Fallbacks live in one place (`reference/`) until every platform bundles Rust — then delete. Blockers → [rust-engine-blockers.md](./rust-engine-blockers.md).
+
+### Consolidation (done)
+
+| Item | Status | Path |
+|------|:----:|------|
+| M3U parser fallback | ✅ | `packages/forja_rust/lib/src/reference/m3u_dart_parser.dart` |
+| IPTV Xtream + series episodes | ✅ | `reference/iptv_dart_parse.dart` |
+| Paste.sh decrypt | ✅ | `reference/pastesh_decrypt_dart.dart` |
+| Episode matcher | ✅ | `reference/episode_matcher_dart.dart` |
+| HLS master parse | ✅ | `reference/hls_dart_parse.dart` |
+| JS unpacker | ✅ | `reference/js_unpacker_dart.dart` |
+| KissKH subtitle decrypt | ✅ | `reference/kisskh_decrypt_dart.dart` |
+| Torrent filter | ✅ | `reference/torrent_filter_dart.dart` |
+| Stremio JSON + URL helpers | ✅ | `reference/stremio_dart_parse.dart` |
+| Scrapers HTML parse + dedup | ✅ | `reference/scrapers_dart_parse.dart` |
+| Provider URL templates | ✅ | `packages/forja_streaming/lib/src/provider_fallback_urls.dart` |
+| Magnet player torrent API | ✅ | `TorrentStreamService.listTorrentFiles` (no direct libtorrent in UI) |
+
+### Dead code removed (done)
+
+| Removed | Was duplicate of |
+|---------|------------------|
+| `forja_streaming/.../hls_master_parser.dart` | `forja_core` / Rust FFI |
+| `forja_streaming/.../debrid_api.dart` | `forja_api` |
+
+### Deletion (open)
+
+| Item | Status | Blocker |
+|------|:----:|---------|
+| Delete `reference/*.dart` (10 files) | ❌ | B1 · B3 · B6 — need Rust on all platforms + parity |
+| Drop `libtorrent_flutter` from pubspecs | ❌ | B2 · B4 — mobile torrent today; desktop fallback |
+| librqbit in mobile Rust FFI | ❌ | B2 · B7 |
+| Golden fixture per webstreamr extractor | ✅ | B5 — 23/23 Rust · 21/23 Dart (lulustream/fastream Rust-only) |
+| App `integration_test/` smoke | ❌ | B4 |
+
+### Reference layer inventory
+
+All under `packages/forja_rust/lib/src/reference/` — **kept for internal fallback + parity tests**, not deleted yet.
+
+| File | Step | Imported from (production) |
+|------|------|----------------------------|
+| `m3u_dart_parser.dart` | 3 | `ForjaEngine` facade |
+| `iptv_dart_parse.dart` | 3 | `iptv_network.dart` |
+| `pastesh_decrypt_dart.dart` | 3 | `pastesh_decryptor.dart` |
+| `episode_matcher_dart.dart` | 1 | `ForjaEngine` facade |
+| `hls_dart_parse.dart` | 1 | `ForjaEngine` facade |
+| `js_unpacker_dart.dart` | 1 | `unpacker.dart` via delegate |
+| `kisskh_decrypt_dart.dart` | 1 | `kisskh_subtitle_decryptor.dart` |
+| `torrent_filter_dart.dart` | 1 | `torrent_filter.dart` |
+| `stremio_dart_parse.dart` | 4 | `stremio_service.dart` |
+| `scrapers_dart_parse.dart` | 6 | `knaben` · `tpb` · `uindex` scrapers |
+
+### What stays (not Step 9 targets)
+
+- Webstreamr fetcher / registry / page HTTP (orchestration)
+- Scrapers search HTTP
+- HLS `/hls-proxy` (shelf rewrite)
+- WebView extractors (`stream_extractor_view.dart`)
+- `libtorrent_flutter` on mobile until B2/B7 close
+
+```bash
+# Parity gates before deleting any reference file
+cd packages/forja_rust && flutter test
+cd crates && cargo test -p forja-webstreamr --test golden_extractors
+```
+
+Manual: boot log `Rust engine v0.1.0` on desktop + mobile after `build_rust_mobile.sh` · IPTV import · magnet play · one VidLink stream.
 
 ---
 

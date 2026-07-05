@@ -243,3 +243,75 @@ fn external_golden() {
     assert_eq!(r.url, "https://example.com/page");
     assert!(r.is_external);
 }
+
+#[test]
+fn kinoger_golden() {
+    let body = fs::read_to_string(fixture("kinoger_encrypted.hex")).unwrap();
+    let page_url = "https://kinoger.re/api/v1/video?id=x";
+    let r = extract_embed_html("kinoger", &body, page_url).unwrap();
+    assert_eq!(r.url, "https://cdn.kinoger.example/stream.m3u8");
+    assert_eq!(r.title.as_deref(), Some("KinoGer Title"));
+    assert_eq!(r.format, StreamFormat::Hls);
+    assert_eq!(
+        r.request_headers.as_ref().and_then(|h| h.get("Origin")).map(String::as_str),
+        Some("https://kinoger.re")
+    );
+}
+
+fn start_mfp_mock_server(
+    destination_url: &str,
+) -> std::net::SocketAddr {
+    use std::sync::mpsc::sync_channel;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let (addr_tx, addr_rx) = sync_channel(1);
+    let destination_url = destination_url.to_string();
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async move {
+            let server = MockServer::start().await;
+            let addr = *server.address();
+            Mock::given(method("GET"))
+                .and(path("/extractor/video"))
+                .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "mediaflow_proxy_url": "https://mfp.example/proxy/hls",
+                    "destination_url": destination_url,
+                    "query_params": {"token": "abc"},
+                })))
+                .mount(&server)
+                .await;
+            addr_tx.send(addr).unwrap();
+            std::future::pending::<()>().await
+        });
+    });
+    addr_rx.recv().unwrap()
+}
+
+#[test]
+fn lulustream_mfp_golden() {
+    let addr = start_mfp_mock_server("https://cdn.lulu.example/master.m3u8");
+    let download = fs::read_to_string(fixture("lulustream_download.html")).unwrap();
+    let page_url = "https://lulustream.example/e/abc123";
+    let mfp_config = format!(r#"{{"base_url":"http://{addr}","password":"pw","headers":{{}}}}"#);
+    let r = extract_mfp_embed_html("lulustream", "", page_url, &mfp_config, &download).unwrap();
+    assert!(r.url.contains("cdn.lulu.example"));
+    assert_eq!(r.title.as_deref(), Some("LuluStream Title"));
+    assert_eq!(r.height, Some(1080));
+    assert_eq!(r.bytes, Some(1_610_612_736));
+    assert_eq!(r.format, StreamFormat::Hls);
+}
+
+#[test]
+fn fastream_mfp_golden() {
+    let addr = start_mfp_mock_server("https://cdn.fastream.example/playlist.m3u8");
+    let download = fs::read_to_string(fixture("fastream_download.html")).unwrap();
+    let page_url = "https://fastream.example/embed-xyz";
+    let mfp_config = format!(r#"{{"base_url":"http://{addr}","password":"pw","headers":{{}}}}"#);
+    let r = extract_mfp_embed_html("fastream", "", page_url, &mfp_config, &download).unwrap();
+    assert!(r.url.contains("cdn.fastream.example"));
+    assert_eq!(r.title.as_deref(), Some("Fastream Movie"));
+    assert_eq!(r.height, Some(720));
+    assert_eq!(r.bytes, Some(838_860_800));
+    assert_eq!(r.format, StreamFormat::Hls);
+}

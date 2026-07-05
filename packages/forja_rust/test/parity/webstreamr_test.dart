@@ -5,6 +5,9 @@ import '../helpers/rust_engine.dart';
 import 'package:forja_rust/forja_rust.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const _mfp =
+    '{"base_url":"mfp.example","password":"pw","headers":{"Referer":"https://ref.example/"}}';
+
 String _fixture(String name) =>
     File('${_repoRoot()}/crates/forja-webstreamr/tests/fixtures/$name')
         .readAsStringSync();
@@ -20,19 +23,38 @@ String _repoRoot() {
   return Directory.current.parent.parent.path;
 }
 
+Map<String, dynamic> _embed(String id, String html, String pageUrl) {
+  final json = ForjaRust.instance.extractEmbedHtmlJson(id, html, pageUrl);
+  return jsonDecode(json) as Map<String, dynamic>;
+}
+
+Map<String, dynamic> _mfpEmbed(
+  String id,
+  String html,
+  String pageUrl, {
+  String extraHtml = '',
+}) {
+  final json = ForjaRust.instance.extractMfpEmbedHtmlJson(
+    id,
+    html,
+    pageUrl,
+    _mfp,
+    extraHtml: extraHtml,
+  );
+  return jsonDecode(json) as Map<String, dynamic>;
+}
+
 void main() {
   setUpAll(() async {
     await initRustForTests();
   });
 
   test('streamembed golden via FFI', () {
-    final html = _fixture('streamembed.html');
-    final json = ForjaRust.instance.extractEmbedHtmlJson(
+    final m = _embed(
       'streamembed',
-      html,
+      _fixture('streamembed.html'),
       'https://bullstream.example/embed/xyz',
     );
-    final m = jsonDecode(json) as Map<String, dynamic>;
     expect(m['url'], contains('/m3u8/abc123/deadbeef/master.txt'));
     expect(m['format'], 'hls');
     expect(m['title'], 'Test Movie');
@@ -40,43 +62,173 @@ void main() {
   });
 
   test('savefiles golden via FFI', () {
-    final html = _fixture('savefiles.html');
-    final json = ForjaRust.instance.extractEmbedHtmlJson(
+    final m = _embed(
       'savefiles',
-      html,
+      _fixture('savefiles.html'),
       'https://savefiles.example/v/1',
     );
-    final m = jsonDecode(json) as Map<String, dynamic>;
     expect(m['url'], 'https://cdn.savefiles.example/playlist.m3u8');
+    expect(m['title'], 'SaveFiles Title');
     expect(m['height'], 1080);
   });
 
   test('dropload golden via FFI', () {
-    final html = _fixture('dropload.html');
-    final json = ForjaRust.instance.extractEmbedHtmlJson(
+    final m = _embed(
       'dropload',
-      html,
+      _fixture('dropload.html'),
       'https://dropload.example/x',
     );
-    final m = jsonDecode(json) as Map<String, dynamic>;
     expect(m['url'], 'https://cdn.dropload.example/master.m3u8');
+    expect(m['title'], 'Dropload Title');
     expect(m['request_headers'], isA<Map>());
   });
 
-  test('unknown extractor returns error object', () {
-    final json = ForjaRust.instance.extractEmbedHtmlJson(
-      'mixdrop',
-      '<html></html>',
-      'https://x',
+  test('supervideo golden via FFI', () {
+    final m = _embed(
+      'supervideo',
+      _fixture('supervideo.html'),
+      'https://supervideo.cc/e/1',
     );
-    final m = jsonDecode(json) as Map<String, dynamic>;
+    expect(m['url'], 'https://cdn.supervideo.example/master.m3u8');
+    expect(m['title'], 'SuperVideo Title');
+    expect(m['height'], 1080);
+  });
+
+  test('vidora golden via FFI', () {
+    final m = _embed(
+      'vidora',
+      _fixture('vidora.html'),
+      'https://vidora.example/embed/1',
+    );
+    expect(m['url'], 'https://cdn.vidora.example/stream.m3u8');
+    expect(m['title'], 'Vidora Title');
+    expect((m['request_headers'] as Map)['Origin'], 'https://vidora.example');
+  });
+
+  test('fsst golden via FFI', () {
+    final m = _embed(
+      'fsst',
+      _fixture('fsst.html'),
+      'https://fsst.example/v/1',
+    );
+    expect(m['url'], 'https://cdn.fsst.example/video.mp4');
+    expect(m['format'], 'mp4');
+    expect(m['title'], 'Fsst Movie');
+    expect(m['height'], 1080);
+  });
+
+  test('vixsrc embed golden via FFI', () {
+    final m = _embed(
+      'vixsrc',
+      _fixture('vixsrc.html'),
+      'https://vixsrc.example/embed/1',
+    );
+    expect(m['url'], contains('stream.vixsrc.example'));
+    expect(m['url'], contains('.m3u8'));
+    expect(m['url'], contains('token=abc123'));
+    expect(m['format'], 'hls');
+  });
+
+  test('youtube golden via FFI', () {
+    final m = _embed(
+      'youtube',
+      _fixture('youtube.html'),
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    );
+    expect(m['yt_id'], 'dQw4w9WgXcQ');
+    expect(m['title'], 'YouTube Title');
+    expect(m['format'], 'unknown');
+  });
+
+  test('vidsrc chain golden via FFI', () {
+    final json = ForjaRust.instance.extractVidsrcChainJson(
+      _fixture('vidsrc_outer.html'),
+      _fixture('vidsrc_rcp.html'),
+      _fixture('vidsrc_prorcp.html'),
+    );
+    expect(json, contains('cloudnestra.com/hls/movie.m3u8'));
+  });
+
+  test('filemoon iframe redirect via FFI', () {
+    final m = _embed(
+      'filemoon',
+      _fixture('filemoon_iframe.html'),
+      'https://filemoon.example/d/1',
+    );
+    expect(m['next_url'], 'https://cdn.filemoon.example/embed/real');
+  });
+
+  test('hubdrive redirect via FFI', () {
+    final m = _embed(
+      'hubdrive',
+      _fixture('hubdrive.html'),
+      'https://hubdrive.example/x',
+    );
+    expect(m['next_url'], 'https://hubcloud.example/links/1');
+  });
+
+  test('rgshows JSON via FFI', () {
+    final m = _embed(
+      'rgshows',
+      _fixture('rgshows.json'),
+      'https://rgshows.example/api',
+    );
+    expect(m['url'], 'https://cdn.rgshows.example/master.m3u8');
+    expect(m['format'], 'hls');
+  });
+
+  test('hubcloud redirect via FFI', () {
+    final m = _embed(
+      'hubcloud',
+      _fixture('hubcloud_redirect.html'),
+      'https://hubcloud.example/x',
+    );
+    expect(m['next_url'], 'https://hubcloud.example/links/abc123');
+  });
+
+  test('filelions embed redirect via FFI', () {
+    final m = _embed(
+      'filelions',
+      _fixture('filelions_embed_only.html'),
+      'https://filelions.example/f/abc',
+    );
+    expect(m['next_url'], 'https://filelions.example/v/abc');
+  });
+
+  test('voe redirect via FFI', () {
+    final m = _embed(
+      'voe',
+      _fixture('voe_redirect.html'),
+      'https://voe.example/start',
+    );
+    expect(m['next_url'], 'https://voe.example/final-page');
+  });
+
+  test('external golden via FFI', () {
+    final m = _embed('external', '', 'https://example.com/page');
+    expect(m['url'], 'https://example.com/page');
+    expect(m['is_external'], isTrue);
+  });
+
+  test('kinoger golden via FFI', () {
+    final m = _embed(
+      'kinoger',
+      _fixture('kinoger_encrypted.hex'),
+      'https://kinoger.re/api/v1/video?id=x',
+    );
+    expect(m['url'], 'https://cdn.kinoger.example/stream.m3u8');
+    expect(m['title'], 'KinoGer Title');
+    expect(m['format'], 'hls');
+  });
+
+  test('unknown extractor returns error object', () {
+    final m = _embed('mixdrop', '<html></html>', 'https://x');
     expect(m['error'], 'not_found');
   });
 
   test('hubcloud links golden via FFI', () {
-    final html = _fixture('hubcloud_links.html');
     final json = ForjaRust.instance.extractHubcloudLinksJson(
-      html,
+      _fixture('hubcloud_links.html'),
       'https://hubcloud.example/origin',
     );
     final rows = jsonDecode(json) as List<dynamic>;
@@ -89,17 +241,49 @@ void main() {
   });
 
   test('mixdrop MFP golden via FFI', () {
-    final html = _fixture('mixdrop.html');
-    const mfp = '{"base_url":"mfp.example","password":"pw","headers":{}}';
-    final json = ForjaRust.instance.extractMfpEmbedHtmlJson(
+    final m = _mfpEmbed(
       'mixdrop',
-      html,
+      _fixture('mixdrop.html'),
       'https://mixdrop.example/e/abc',
-      mfp,
     );
-    final m = jsonDecode(json) as Map<String, dynamic>;
     expect(m['url'], contains('host=Mixdrop'));
+    expect(m['url'], contains('redirect_stream=true'));
     expect(m['title'], 'Mixdrop Title');
     expect(m['format'], 'mp4');
+    expect(m['bytes'], 1610612736);
+  });
+
+  test('streamtape MFP golden via FFI', () {
+    final m = _mfpEmbed(
+      'streamtape',
+      _fixture('streamtape.html'),
+      'https://streamtape.example/v/abc',
+    );
+    expect(m['url'], contains('host=Streamtape'));
+    expect(m['title'], 'Streamtape Title');
+    expect(m['bytes'], 1288490189);
+  });
+
+  test('uqload MFP golden via FFI', () {
+    final m = _mfpEmbed(
+      'uqload',
+      _fixture('uqload.html'),
+      'https://uqload.example/embed-xyz',
+    );
+    expect(m['url'], contains('host=Uqload'));
+    expect(m['title'], 'Uqload Title');
+    expect(m['height'], 1080);
+  });
+
+  test('doodstream MFP golden via FFI', () {
+    final m = _mfpEmbed(
+      'doodstream',
+      _fixture('doodstream_embed.html'),
+      'http://dood.to/e/abc',
+      extraHtml: _fixture('doodstream_download.html'),
+    );
+    expect(m['url'], contains('host=Doodstream'));
+    expect(m['title'], 'Movie Name');
+    expect(m['bytes'], 1932735283);
   });
 }
