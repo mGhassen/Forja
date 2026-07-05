@@ -40,6 +40,11 @@ jobs:
         run: |
           flutter pub get
           flutter test
+      - name: App engine smoke tests
+        working-directory: apps/forja
+        run: |
+          flutter pub get
+          flutter test integration_test/
 
   android-ffi:
     name: Android arm64 FFI

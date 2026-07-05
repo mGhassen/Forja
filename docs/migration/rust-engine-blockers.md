@@ -12,8 +12,8 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 
 | Status | Count | IDs |
 |--------|------:|-----|
-| In progress | 7 | B1 · B2 · B3 · B5 · B6 · B7 · B8 |
-| Open | 1 | B4 |
+| In progress | 6 | B1 · B2 · B3 · B5 · B6 · B7 · B8 |
+| Open | 0 | — |
 
 **Step 9 unlock:** 0 / 3 items done (see [Step 9 map](#step-9--open-work-mapped-to-blockers)).
 
@@ -27,7 +27,7 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 | M3U fixtures in Dart parity | 4 | 4 |
 | Dart parity test files | 14 | 14 |
 | Dart parity tests | 96 | — |
-| App integration tests | 0 | ≥1 smoke |
+| App integration tests | 1 smoke file / 7 tests | boot · M3U · IPTV delegate · stream URL · torrent |
 
 ---
 
@@ -38,7 +38,7 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 | B1 | Dart reference fallbacks still required | **high** | in progress | Delete `reference/*.dart` when all platforms ship Rust |
 | B2 | `libtorrent_flutter` on mobile (+ desktop fallback) | **medium** | by design | Same magnet feature; librqbit mobile FFI not yet available |
 | B3 | Dart reference layer (`packages/forja_rust/lib/src/reference/`) | **high** | in progress | Full Dart duplicate removal (tied to B1) |
-| B4 | No app `integration_test/` | **medium** | open | Production sign-off on librqbit · safe libtorrent drop |
+| B4 | App `integration_test/` | **medium** | in progress | Production sign-off on librqbit · safe libtorrent drop |
 | B5 | Incomplete golden fixtures (webstreamr) | **medium** | in progress | Confidence to delete any remaining parse duplicates |
 | B6 | RFC-009 parity gaps | **medium** | in progress | “Full parity suite” acceptance checkbox |
 | B7 | Mobile Rust FFI packaging | **high** | in progress | Same parser engine on iOS/Android · CI mobile build |
@@ -149,18 +149,20 @@ B4 no integration tests
 
 ---
 
-### B4 — No integration tests
+### B4 — App integration tests
 
-**Progress:** open — 0 tests
+**Progress:** in progress — engine smoke in CI (macOS)
 
 | Done | Todo |
 |------|------|
-| [x] Rust unit + Clippy in CI | [ ] Add `apps/forja/integration_test/` |
-| [x] Dart parity 14 files / 96 tests in CI | [ ] Smoke: app boot + `ForjaEngine` loaded |
-| [x] Manual checklist in progress doc | [ ] Smoke: M3U import |
-| | [ ] Smoke: magnet → play (librqbit) |
-| | [ ] Smoke: one stream provider URL |
-| | [ ] Wire optional CI job |
+| [x] Rust unit + Clippy in CI | [ ] Full UI boot smoke (optional) |
+| [x] Dart parity 14 files / 96 tests in CI | [ ] Smoke: magnet → play end-to-end |
+| [x] `apps/forja/integration_test/engine_smoke_test.dart` | |
+| [x] Smoke: `ForjaEngine` loaded + delegates | |
+| [x] Smoke: M3U parse | |
+| [x] Smoke: stream provider URL (vidlink) | |
+| [x] Smoke: torrent engine loopback + invalid magnet | |
+| [x] CI job in `rust.yml` (`flutter test integration_test/`) | |
 
 | | |
 |--|--|

@@ -107,6 +107,7 @@ Boot always calls `ForjaEngine.init()` — no disable toggle. If the native libr
 ./scripts/build_rust_mobile.sh all   # iOS + Android before flutter run
 cd crates && cargo test --workspace
 cd packages/forja_rust && flutter test
+cd apps/forja && flutter test integration_test/
 ```
 
 ### Next work (priority order)
@@ -469,7 +470,7 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 | Drop `libtorrent_flutter` from pubspecs | ❌ | B2 · B4 — mobile torrent today; desktop fallback |
 | librqbit in mobile Rust FFI | ❌ | B2 · B7 |
 | Golden fixture per webstreamr extractor | ✅ | B5 — 23/23 Rust · 21/23 Dart (lulustream/fastream Rust-only) |
-| App `integration_test/` smoke | ❌ | B4 |
+| App `integration_test/` smoke | ✅ | B4 — 7 tests in CI |
 
 ### Reference layer inventory
 
@@ -513,7 +514,7 @@ Manual: boot log `Rust engine v0.1.0` on desktop + mobile after `build_rust_mobi
 | Rust unit | `cargo test --workspace` | required |
 | Clippy | `cargo clippy --workspace` | required |
 | Dart parity | `cd packages/forja_rust && flutter test` | required |
-| App integration | manual / future `integration_test/` | optional |
+| App integration | `cd apps/forja && flutter test integration_test/` | required (macOS CI) |
 
 ---
 
