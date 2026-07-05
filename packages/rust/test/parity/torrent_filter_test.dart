@@ -70,6 +70,66 @@ void main() {
     expect(out, hasLength(1));
     expect(out.first['name'], contains('Scary Movie'));
   });
+
+  test('sortTorrentsJson seeders high to low', () {
+    const rows = [
+      {
+        'name': 'a',
+        'magnet': 'm1',
+        'seeders': '10',
+        'size': '1 GB',
+        'source': 'x',
+      },
+      {
+        'name': 'b',
+        'magnet': 'm2',
+        'seeders': '100',
+        'size': '2 GB',
+        'source': 'x',
+      },
+    ];
+    final out = jsonDecode(
+      ForjaRust.instance.sortTorrentsJson(
+        jsonEncode(rows),
+        'Seeders (High to Low)',
+      ),
+    ) as List;
+    expect(out.first['seeders'], '100');
+    expect(out.last['seeders'], '10');
+  });
+
+  test('sortTorrentsJson size low to high', () {
+    const rows = [
+      {
+        'name': 'big',
+        'magnet': 'm1',
+        'seeders': '1',
+        'size': '10 GB',
+        'source': 'x',
+      },
+      {
+        'name': 'small',
+        'magnet': 'm2',
+        'seeders': '1',
+        'size': '500 MB',
+        'source': 'x',
+      },
+    ];
+    final out = jsonDecode(
+      ForjaRust.instance.sortTorrentsJson(
+        jsonEncode(rows),
+        'Size (Low to High)',
+      ),
+    ) as List;
+    expect(out.first['name'], 'small');
+    expect(out.last['name'], 'big');
+  });
+
+  test('isVideoFile via FFI', () {
+    expect(ForjaRust.instance.isVideoFile('movie.mkv'), isTrue);
+    expect(ForjaRust.instance.isVideoFile('readme.txt'), isFalse);
+    expect(ForjaRust.instance.isVideoFile('clip.MP4'), isTrue);
+  });
 }
 
 String _repoRoot() {

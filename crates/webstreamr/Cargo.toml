@@ -9,7 +9,7 @@ utils = { path = "../utils" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 regex = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["blocking"] }
 scraper = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true }

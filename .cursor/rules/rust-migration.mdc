@@ -23,8 +23,9 @@ Only these survive under `packages/`:
 3. Add FFI in `crates/ffi` / uniffi.
 4. Wire `apps/forja` to `ForjaEngine.*` only.
 5. **Delete the Dart package** — directory, pubspec deps, imports.
-6. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
-7. Run `./scripts/build_rust.sh`, `cargo test --workspace`, `cd packages/rust && flutter test`.
+6. **Tests (required)** — Rust unit/golden in `crates/` + Dart parity in `packages/rust/test/parity/` for every new FFI export.
+7. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
+8. Run `./scripts/build_rust.sh`, `cargo test --workspace`, `cd packages/rust && flutter test`.
 
 ## Never do
 

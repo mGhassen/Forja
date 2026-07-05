@@ -320,4 +320,11 @@ mod tests {
         sort_torrents(&mut rows, "Seeders (High to Low)");
         assert_eq!(rows[0].seeders, "100");
     }
+
+    #[test]
+    fn is_video_file_ext() {
+        assert!(is_video_file("clip.mkv"));
+        assert!(is_video_file("CLIP.MP4"));
+        assert!(!is_video_file("readme.txt"));
+    }
 }

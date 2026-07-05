@@ -1,4 +1,5 @@
 pub mod extractors;
+pub mod fetcher;
 pub mod sources;
 pub mod types;
 pub mod utils;
