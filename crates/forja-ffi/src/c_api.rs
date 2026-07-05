@@ -172,6 +172,16 @@ pub unsafe extern "C" fn forja_parse_stremio_manifest_json(json: *const c_char) 
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_parse_stremio_streams_json(json: *const c_char) -> *mut c_char {
+    to_c_string(crate::parse_stremio_streams_json(from_c_str(json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_parse_stremio_subtitles_json(json: *const c_char) -> *mut c_char {
+    to_c_string(crate::parse_stremio_subtitles_json(from_c_str(json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_parse_knaben_html_json(html: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_knaben_html_json(from_c_str(html)))
 }

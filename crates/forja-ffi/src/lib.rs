@@ -4,7 +4,7 @@ use forja_iptv_core::m3u;
 use forja_iptv_core::pastesh;
 use forja_scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html};
 use forja_stream_core::list_providers;
-use forja_stremio_core::{build_resource_url, parse_manifest};
+use forja_stremio_core::{build_resource_url, parse_manifest, parse_streams, parse_subtitles};
 use forja_torrent::TorrentEngine;
 use forja_utils::{
     episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter,
@@ -90,6 +90,20 @@ fn parse_xtream_streams_json(json: String, section: String) -> String {
 fn parse_stremio_manifest_json(json: String) -> String {
     match parse_manifest(&json) {
         Ok(m) => serde_json::to_string(&m).unwrap_or_else(|_| "{}".into()),
+        Err(e) => serde_json::json!({ "error": e.to_string() }).to_string(),
+    }
+}
+
+fn parse_stremio_streams_json(json: String) -> String {
+    match parse_streams(&json) {
+        Ok(v) => serde_json::to_string(&v).unwrap_or_else(|_| "{}".into()),
+        Err(e) => serde_json::json!({ "error": e.to_string() }).to_string(),
+    }
+}
+
+fn parse_stremio_subtitles_json(json: String) -> String {
+    match parse_subtitles(&json) {
+        Ok(v) => serde_json::to_string(&v).unwrap_or_else(|_| "{}".into()),
         Err(e) => serde_json::json!({ "error": e.to_string() }).to_string(),
     }
 }

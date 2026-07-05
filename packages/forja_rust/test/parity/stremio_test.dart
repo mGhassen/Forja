@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../helpers/rust_engine.dart';
 import 'package:forja_api/api/stremio_service.dart';
 import 'package:forja_rust/forja_rust.dart';
@@ -42,5 +44,21 @@ void main() {
         ? '${parts.baseUrl}$path?${parts.queryParams}'
         : '${parts.baseUrl}$path';
     expect(rust, dart);
+  });
+
+  test('parseStremioManifestJson via FFI', () {
+    const body = '{"id":"addon.test","name":"Test Addon","logo":"https://x/icon.png"}';
+    final json = ForjaRust.instance.parseStremioManifestJson(body);
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    expect(parsed['name'], 'Test Addon');
+    expect(parsed['logo'], 'https://x/icon.png');
+  });
+
+  test('parseStremioStreamsJson via FFI', () {
+    const body = '{"streams":[{"url":"https://cdn.example/a.m3u8","title":"1080p"}]}';
+    final json = ForjaRust.instance.parseStremioStreamsJson(body);
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    final streams = parsed['streams'] as List<dynamic>;
+    expect(streams.length, 1);
   });
 }

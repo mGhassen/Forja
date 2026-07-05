@@ -43,6 +43,30 @@ void installRustAppDelegates() {
   StremioServiceBackend.normalizeManifestUrl =
       (url) => ForjaRust.instance.normalizeStremioManifestUrl(url);
 
+  StremioServiceBackend.parseManifestJson =
+      (json) => ForjaRust.instance.parseStremioManifestJson(json);
+
+  StremioServiceBackend.parseStreamsJson = (json) {
+    final parsed = jsonDecode(ForjaRust.instance.parseStremioStreamsJson(json))
+        as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return const [];
+    final streams = parsed['streams'];
+    return streams is List ? streams : const [];
+  };
+
+  StremioServiceBackend.parseSubtitlesJson = (json) {
+    final parsed =
+        jsonDecode(ForjaRust.instance.parseStremioSubtitlesJson(json))
+            as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return const [];
+    final subs = parsed['subtitles'];
+    if (subs is! List) return const [];
+    return subs
+        .whereType<Map>()
+        .map((s) => Map<String, dynamic>.from(s))
+        .toList();
+  };
+
   ScraperParseBackend.parseKnaben = (html) =>
       torrentRowsFromJson(ForjaRust.instance.parseKnabenHtmlJson(html));
 

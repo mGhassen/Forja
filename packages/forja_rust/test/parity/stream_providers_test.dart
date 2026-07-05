@@ -25,6 +25,14 @@ void main() {
       movie: 'https://vidnest.fun/movie/$tmdbId',
       tv: 'https://vidnest.fun/tv/$tvId/$season/$episode',
     ),
+    'vidzee': (
+      movie: 'https://vidzee.wtf/movie/$tmdbId',
+      tv: 'https://vidzee.wtf/tv/$tvId/$season/$episode',
+    ),
+    'vidrock': (
+      movie: 'https://vidrock.net/movie/$tmdbId',
+      tv: 'https://vidrock.net/tv/$tvId/$season/$episode',
+    ),
   };
 
   for (final entry in providers.entries) {
@@ -44,7 +52,7 @@ void main() {
   }
 
   test('unknown provider returns empty string', () {
-    expect(ForjaRust.instance.buildMovieUrl('vidzee', 1), '');
+    expect(ForjaRust.instance.buildMovieUrl('unknown', 1), '');
   });
 
   test('listProvidersJson includes vidlink', () {

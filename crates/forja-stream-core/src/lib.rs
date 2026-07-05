@@ -41,6 +41,18 @@ pub fn list_providers() -> Vec<ProviderDef> {
             has_tv_template: true,
         },
         ProviderDef {
+            id: "vidzee".into(),
+            name: "Vidzee".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
+            id: "vidrock".into(),
+            name: "VidRock".into(),
+            has_movie_template: true,
+            has_tv_template: true,
+        },
+        ProviderDef {
             id: "videasy".into(),
             name: "Videasy".into(),
             has_movie_template: false,
@@ -60,6 +72,8 @@ pub fn build_movie_url(provider_id: &str, tmdb_id: i64) -> Option<String> {
         "vidlink" => Some(format!("https://vidlink.pro/movie/{tmdb_id}")),
         "vixsrc" => Some(format!("https://vixsrc.to/movie/{tmdb_id}/")),
         "vidnest" => Some(format!("https://vidnest.fun/movie/{tmdb_id}")),
+        "vidzee" => Some(format!("https://vidzee.wtf/movie/{tmdb_id}")),
+        "vidrock" => Some(format!("https://vidrock.net/movie/{tmdb_id}")),
         _ => None,
     }
 }
@@ -74,6 +88,12 @@ pub fn build_tv_url(provider_id: &str, tmdb_id: i64, season: i32, episode: i32) 
         )),
         "vidnest" => Some(format!(
             "https://vidnest.fun/tv/{tmdb_id}/{season}/{episode}"
+        )),
+        "vidzee" => Some(format!(
+            "https://vidzee.wtf/tv/{tmdb_id}/{season}/{episode}"
+        )),
+        "vidrock" => Some(format!(
+            "https://vidrock.net/tv/{tmdb_id}/{season}/{episode}"
         )),
         _ => None,
     }
@@ -109,6 +129,18 @@ mod tests {
 
     #[test]
     fn unknown_provider_returns_none() {
-        assert_eq!(build_movie_url("vidzee", 1), None);
+        assert_eq!(build_movie_url("unknown", 1), None);
+    }
+
+    #[test]
+    fn vidzee_urls() {
+        assert_eq!(
+            build_movie_url("vidzee", 550),
+            Some("https://vidzee.wtf/movie/550".into())
+        );
+        assert_eq!(
+            build_tv_url("vidzee", 1399, 2, 5),
+            Some("https://vidzee.wtf/tv/1399/2/5".into())
+        );
     }
 }

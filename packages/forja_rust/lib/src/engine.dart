@@ -155,6 +155,16 @@ class ForjaRust {
         return _readString(_native.forja_parse_stremio_manifest_json(ptr));
       });
 
+  String parseStremioStreamsJson(String json) => using((arena) {
+        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_parse_stremio_streams_json(ptr));
+      });
+
+  String parseStremioSubtitlesJson(String json) => using((arena) {
+        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_parse_stremio_subtitles_json(ptr));
+      });
+
   String parseKnabenHtmlJson(String html) => using((arena) {
         final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.forja_parse_knaben_html_json(ptr));
@@ -387,6 +397,16 @@ final class _ForjaNative {
               'forja_parse_stremio_manifest_json',
             )
             .asFunction(),
+        forja_parse_stremio_streams_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'forja_parse_stremio_streams_json',
+            )
+            .asFunction(),
+        forja_parse_stremio_subtitles_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'forja_parse_stremio_subtitles_json',
+            )
+            .asFunction(),
         forja_parse_knaben_html_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'forja_parse_knaben_html_json',
@@ -506,6 +526,10 @@ final class _ForjaNative {
       forja_split_stremio_addon_url_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_parse_stremio_manifest_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_parse_stremio_streams_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_parse_stremio_subtitles_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_parse_knaben_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

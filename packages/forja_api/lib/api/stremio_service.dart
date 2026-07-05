@@ -9,6 +9,9 @@ abstract final class StremioServiceBackend {
       splitAddonUrl;
   static String Function(String addonUrl, String resourcePath)? buildResourceUrl;
   static String Function(String url)? normalizeManifestUrl;
+  static String Function(String json)? parseManifestJson;
+  static List<dynamic> Function(String json)? parseStreamsJson;
+  static List<Map<String, dynamic>> Function(String json)? parseSubtitlesJson;
 }
 
 class StremioService {
@@ -92,7 +95,16 @@ class StremioService {
     try {
       final response = await http.get(Uri.parse(manifestUrl)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
-        final manifest = json.decode(response.body);
+        final body = response.body;
+        final manifestBackend = StremioServiceBackend.parseManifestJson;
+        Map<String, dynamic> manifest;
+        if (manifestBackend != null) {
+          final parsed = json.decode(manifestBackend(body)) as Map<String, dynamic>;
+          if (parsed.containsKey('error')) return null;
+          manifest = parsed;
+        } else {
+          manifest = json.decode(body) as Map<String, dynamic>;
+        }
         final parts = _splitAddonUrl(manifestUrl);
         final baseUrl = parts.queryParams != null
             ? '${parts.baseUrl}?${parts.queryParams}'
@@ -124,6 +136,10 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
+        final parseBackend = StremioServiceBackend.parseStreamsJson;
+        if (parseBackend != null) {
+          return parseBackend(response.body);
+        }
         final data = json.decode(response.body);
         return data['streams'] ?? [];
       }
@@ -147,6 +163,20 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
+        final parseBackend = StremioServiceBackend.parseSubtitlesJson;
+        if (parseBackend != null) {
+          for (final s in parseBackend(response.body)) {
+            results.add({
+              'id': s['id'] ?? s['url'],
+              'url': s['url'],
+              'language': s['lang'] ?? 'Unknown',
+              'display':
+                  '${(s['lang'] as String?)?.toUpperCase() ?? '??'} - ${addonName ?? 'Addon'}',
+              'sourceName': addonName ?? 'Stremio Addon',
+            });
+          }
+          return results;
+        }
         final data = json.decode(response.body);
         final List subs = data['subtitles'] ?? [];
         for (var s in subs) {

@@ -102,15 +102,23 @@ class ProviderRegistry {
       id: 'vidzee',
       displayName: 'Vidzee',
       kind: ProviderKind.template,
-      movieUrl: (id) => 'https://vidzee.wtf/movie/$id',
-      tvUrl: (id, s, e) => 'https://vidzee.wtf/tv/$id/$s/$e',
+      movieUrl: (id) =>
+          ForjaEngine.buildMovieUrl('vidzee', id) ??
+          'https://vidzee.wtf/movie/$id',
+      tvUrl: (id, s, e) =>
+          ForjaEngine.buildTvUrl('vidzee', id, s, e) ??
+          'https://vidzee.wtf/tv/$id/$s/$e',
     ),
     StreamProviderDef(
       id: 'vidrock',
       displayName: 'VidRock',
       kind: ProviderKind.template,
-      movieUrl: (id) => 'https://vidrock.net/movie/$id',
-      tvUrl: (id, s, e) => 'https://vidrock.net/tv/$id/$s/$e',
+      movieUrl: (id) =>
+          ForjaEngine.buildMovieUrl('vidrock', id) ??
+          'https://vidrock.net/movie/$id',
+      tvUrl: (id, s, e) =>
+          ForjaEngine.buildTvUrl('vidrock', id, s, e) ??
+          'https://vidrock.net/tv/$id/$s/$e',
     ),
     StreamProviderDef(
       id: 'service111477',

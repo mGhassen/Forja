@@ -106,4 +106,16 @@ mod tests {
             "https://addon.example/api/stream/movie/tt123.json?token=abc"
         );
     }
+
+    #[test]
+    fn parses_manifest_json() {
+        let m = parse_manifest(r#"{"name":"Addon","logo":"https://x/icon.png"}"#).unwrap();
+        assert_eq!(m.name.as_deref(), Some("Addon"));
+    }
+
+    #[test]
+    fn parses_streams_json() {
+        let s = parse_streams(r#"{"streams":[{"url":"https://cdn.example/a.m3u8"}]}"#).unwrap();
+        assert_eq!(s.streams.as_ref().map(|v| v.len()), Some(1));
+    }
 }

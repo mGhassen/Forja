@@ -38,10 +38,10 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 |------|:----:|:---:|-------|
 | **0 — Scaffold** (build, FFI, CI) | ✅ | ✅ | `ForjaEngine.init()`, dylib bundling |
 | **1 — Utils** (episode match, HLS, torrent filter) | ✅ | ✅ | JS unpacker + KissKH decrypt: Rust only, not wired |
-| **2 — Stream URLs** | 3/5 | 3/5 | ✅ vidlink, vixsrc, vidnest · ❌ vidzee, vidrock |
+| **2 — Stream URLs** | 5/5 | 5/5 | all template providers in Rust |
 | **3 — IPTV** | 4/4 | 4/4 | M3U, paste.sh, EPG decode, Xtream JSON parse |
-| **4 — Stremio** | partial | partial | ✅ URL helpers · ❌ HTTP, manifest parse, catalogs |
-| **5 — Webstreamr** | 24/49 extractors · 21/21 sources | partial | all sources wired (fetch/registry still Dart) |
+| **4 — Stremio** | partial | partial | URL helpers + JSON parse wired · ❌ HTTP fetch |
+| **5 — Webstreamr** | 23/23 extractors · 21/21 sources | partial | all parse logic in Rust; fetch/registry Dart |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
 | **7 — Torrent + proxy** | stubs | ❌ | still `libtorrent_flutter` + Dart shelf |
 | **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
@@ -70,10 +70,10 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 | Metric | Value |
 |--------|-------|
 | Rust crates | 9 (8 domain + `forja-ffi`) |
-| Stream providers wired | 3 / 5 |
-| Webstreamr extractors ported | 24 / 49 |
+| Stream providers wired | 5 / 5 |
+| Webstreamr extractors ported | 23 / 23 |
 | Webstreamr URL sources ported | 21 / 21 |
-| Dart parity tests | 46 |
+| Dart parity tests | 52 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -86,9 +86,9 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Port more webstreamr extractors (25 remaining)
-2. Real libtorrent in `forja-torrent`
-3. Stremio HTTP / manifest parse through FFI
+1. Real libtorrent in `forja-torrent`
+2. Stremio catalog/meta HTTP through FFI (optional)
+3. Step 9 Dart fallback cleanup
 
 ---
 
@@ -157,15 +157,15 @@ Wire-up: `EpisodeMatcherBackend`, `HlsParserBackend`, torrent filter delegate in
 
 ## Step 2 — `forja-stream-core`
 
-**Rust:** 3/5 · **App:** 3/5
+**Rust:** 5/5 · **App:** 5/5
 
 | Provider | Rust | App |
 |----------|:----:|:---:|
 | vidlink | ✅ | ✅ |
 | vixsrc | ✅ | ✅ |
 | vidnest | ✅ | ✅ |
-| vidzee | ❌ | Dart |
-| vidrock | ❌ | Dart |
+| vidzee | ✅ | ✅ |
+| vidrock | ✅ | ✅ |
 
 ```bash
 cd crates && cargo test -p forja-stream-core
@@ -218,7 +218,8 @@ Wire-up:
 | Resource URL builder | ✅ | ✅ |
 | Addon URL split | ✅ | ✅ |
 | Manifest URL normalize | ✅ | ✅ |
-| Manifest JSON parse | ✅ | ❌ |
+| Manifest JSON parse | ✅ | ✅ |
+| Streams/subtitles JSON parse | ✅ | ✅ |
 | Catalog / meta / stream fetch | ❌ | Dart HTTP |
 
 ```bash
