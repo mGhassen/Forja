@@ -10,111 +10,94 @@
 
 ## Status at a glance
 
-**Goal:** Rust owns the **entire engine** — fetch, route, parse, crypto, torrent, filter, resolve. Flutter is **UI only**: call engine, render results. No engine work in Dart.
+**Goal:** Rust owns the **entire engine** (fetch, route, parse, torrent). Flutter is **UI only** — call engine, render JSON.
 
-**Phase 2 in progress.** Parse/crypto/torrent primitives are in Rust; **pipelines still leak into Dart** (see [Current gaps](#current-gaps)). Do not start Phase 3 until P2-80 workstream is done.
+| | |
+|--|--|
+| **Progress** | **17 / 32 tasks done (53%)** |
+| **Blocks Phase 3** | **P2-80 → P2-87** (0 / 8 done) — move pipelines into Rust, kill `*Backend` hooks |
+| **Also open** | B2 mobile smoke (2 tasks) · JNI proof (1) · sign-off (3) |
 
-### Architecture (locked)
+**Legend:** ✅ done · 🔄 started, not finished · ⬜ not started
 
-```
-┌─────────────────────────────────────┐
-│  UI (Phase 2: Flutter · Phase 3: Compose)   │
-│  widgets · nav · player surface only        │
-└─────────────────┬───────────────────┘
-                  │ FFI (JSON in/out)
-┌─────────────────▼───────────────────┐
-│  Rust engine (crates/* + libffi)    │
-│  HTTP · routing · parse · torrent   │
-└─────────────────────────────────────┘
-```
+### Task tracker
 
-| Layer | Owns | Does NOT own |
-|-------|------|--------------|
-| **Rust** | Every user-facing engine operation end-to-end | Widgets, platform WebView host, ExoPlayer/AVPlayer |
-| **UI (Dart/Kotlin)** | Display engine responses, navigation, player chrome | HTTP fetch for scrapers/webstreamr, provider loops, `*Backend` hooks, shelf proxy logic |
+#### ✅ Finished — no action needed
 
-**Anti-patterns (delete in Phase 2, not Phase 3):**
-- `ScraperParseBackend`, `WebstreamrParseBackend`, `TorrentFilterBackend`, … — engine split across two languages
-- `rust_delegates.dart` wiring 15+ static hooks — replace with direct FFI / uniffi calls from UI layer
-- `compute()` / isolates calling engine hooks — engine calls stay on main thread or inside Rust
+| IDs | What |
+|-----|------|
+| P2-20 → P2-23 | Drop `libtorrent_flutter` — pubspecs, torrent service, call sites, cleanup |
+| P2-30 → P2-33 | Strip Dart HTML parse fallbacks (webstreamr, registry, scrapers) |
+| P2-60 → P2-63 | Delete legacy `packages/forja_*` copies |
+| P2-12 | Mobile build script defaults to full Rust features |
+| P2-13 | Torrent wired on mobile (same path as desktop) |
+| P2-15 | `applyConnectionsLimit` → librqbit `peer_limit` |
+| P2-50 | `forja.udl` expanded |
+| P2-51 | uniffi Kotlin bindgen scaffold |
 
-### Three columns — read every table this way
+#### 🔄 In progress — B2 mobile librqbit
 
-| Column | Question |
-|--------|----------|
-| **Rust** | Full pipeline in `crates/` + exposed via FFI? |
-| **App** | UI calls engine API and renders JSON — no Dart/Kotlin engine logic? |
-| **Dart removed** | Old fetch/route/filter/hook code deleted? |
+| ID | What | Done | Left |
+|----|------|------|------|
+| P2-10 | librqbit builds on mobile | iOS compiles (vendored patch) | Android NDK verify |
+| P2-14 | Magnet → HTTP stream E2E | Desktop | iOS + Android device |
 
-**Done = ✅** when Rust implements the pipeline **and** UI only displays the result.
+#### ⬜ Todo — B2 tail
 
-### Workstreams
+| ID | What |
+|----|------|
+| P2-11 | Android NDK full-features build in CI |
 
-| Workstream | Done | Target | Status |
-|------------|-----:|-------:|--------|
-| B2 — mobile librqbit | 4 | 6 | iOS compile done · device smoke + Android NDK open |
-| Drop libtorrent | 4 | 4 | **done** |
-| Strip Dart parse fallbacks | 4 | 4 | **done** |
-| Legacy engine purge | 4 | 4 | **done** |
-| **P2-80 engine pipelines** | 0 | 8 | **open — blocks Phase 3** |
-| Kotlin FFI prep | 2 | 3 | P2-50/51 **done** · P2-52 JNI proof open |
-| Sign-off | 0 | 3 | P2-70 · P2-71 · P2-72 |
+#### ⬜ Todo — **blocks Phase 3** (P2-80 engine pipelines)
 
-### Feature matrix
+| ID | What | Replaces today |
+|----|------|----------------|
+| P2-80 | Design high-level FFI (one call per user action) | scattered `*Backend` hooks |
+| P2-81 | Scraper pipeline → Rust (HTTP + parse + dedup) | `ScraperAggregator` in Dart |
+| P2-82 | Webstreamr pipeline → Rust (fetch + source loop) | `WebStreamrService` in Dart |
+| P2-83 | Stream resolver → Rust (provider loop) | `stream_resolver.dart` |
+| P2-84 | Torrent filter → Rust (pre-filtered JSON to UI) | `torrent_filter.dart` hooks |
+| P2-85 | HLS/proxy → Rust only | `local_server_service.dart` engine routes |
+| P2-86 | Delete `*Backend` hooks + `rust_delegates.dart` | 15+ static hooks |
+| P2-87 | Gut/delete `packages/scrapers`, `webstreamr`, engine bits of `streaming`/`api` | thin Dart engine packages |
 
-| Area | Rust pipeline | UI only | Dart engine removed | Notes |
-|------|:-------------:|:-------:|:-------------------:|-------|
-| Parse/crypto/torrent primitives | ✅ | ✅ | ✅ | FFI fns exist; hooks wire them |
-| B2 — mobile librqbit | ✅ iOS | partial | N/A | mobile device + Android NDK open |
-| Drop libtorrent | ✅ | ✅ | ✅ | |
-| Dart HTML parse fallbacks | ✅ | ✅ | ✅ | |
-| **Scraper search pipeline** | partial | ❌ | partial | Rust parses HTML; **Dart still HTTP + aggregator** |
-| **Webstreamr resolve pipeline** | partial | ❌ | partial | Rust extracts; **Dart still fetch + registry loop** |
-| **Stream provider resolver** | partial | ❌ | partial | Rust templates; **Dart still provider loop** |
-| **Torrent filter pipeline** | partial | ❌ | partial | Rust parseSceneInfo; **Dart still filter orchestration** |
-| **Local HLS/proxy** | partial | ❌ | partial | Rust proxy exists; **Dart shelf still routes** |
-| Kill `*Backend` hooks | — | — | ❌ | P2-86 open |
+#### ⬜ Todo — after P2-80
 
-### Exit criteria
+| ID | What |
+|----|------|
+| P2-52 | JNI packaging proof (reuse mobile `.so` / `.dylib`) |
+| P2-70 | Manual smoke — every user flow = one FFI call |
+| P2-71 | RFC-009 Step 9 checked off |
+| P2-72 | Mark Phase 2 complete in README → unlock Phase 3 |
 
-| Criterion | Status |
-|-----------|--------|
-| Mobile FFI full features (iOS/Android) | open |
-| Magnet → HTTP stream on mobile | open |
-| Magnet → HTTP stream on desktop | ✅ |
-| `libtorrent_flutter` removed | ✅ |
-| Dart HTML parse fallbacks removed | ✅ |
-| Parse/crypto/torrent in Rust only (no Dart fallbacks) | ✅ |
-| **Engine pipelines in Rust (fetch + route + filter + resolve)** | **open (P2-80)** |
-| **UI calls engine only — no `*Backend` hooks** | **open (P2-86)** |
-| **`packages/{scrapers,webstreamr,streaming}` engine code deleted** | **open (P2-87)** |
-| Legacy `packages/forja_*` deleted | ✅ |
-| RFC-009 Step 9 + uniffi POC | partial |
+### Exit checklist
 
-### What UI may do (Flutter now, Compose in Phase 3)
+| # | Criterion | |
+|---|-----------|---|
+| 1 | `libtorrent_flutter` removed | ✅ |
+| 2 | Dart HTML parse fallbacks removed | ✅ |
+| 3 | Parse/crypto/torrent primitives in Rust only | ✅ |
+| 4 | Legacy `packages/forja_*` deleted | ✅ |
+| 5 | Magnet → stream on **desktop** | ✅ |
+| 6 | Magnet → stream on **mobile** (iOS + Android) | ⬜ P2-14 |
+| 7 | Mobile FFI full features build (iOS + Android) | 🔄 P2-10/11 |
+| 8 | **Engine pipelines in Rust** (fetch + route + filter + resolve) | ⬜ P2-80 → P2-87 |
+| 9 | **UI calls engine only** — no `*Backend` hooks | ⬜ P2-86 |
+| 10 | uniffi POC + JNI proof | 🔄 P2-50/51 ✅ · P2-52 ⬜ |
+| 11 | Sign-off smoke + RFC + README gate | ⬜ P2-70 → P2-72 |
 
-| Allowed | Examples |
-|---------|----------|
-| Call `ForjaEngine` / uniffi generated API | `engine.searchTorrents(title)` → render list |
-| Bind JSON to widgets | torrent rows, stream URLs, errors |
-| Platform surfaces | WebView container, media_kit player, PiP |
-| App prefs / theme / nav | `storage`, settings screens |
+**6 / 11 exit criteria met.** Phase 3 starts when **#8 + #9** are ✅.
 
-| Forbidden in UI layer | Where it wrongly lives today |
-|-----------------------|------------------------------|
-| HTTP fetch for engine ops | `packages/scrapers`, `packages/webstreamr` |
-| Provider / source routing loops | `stream_resolver.dart`, `WebStreamrService` |
-| Torrent title filter logic | `torrent_filter.dart` (beyond display sort) |
-| Static `*Backend` hook wiring | `rust_delegates.dart`, `*_parse.dart` |
-| Shelf proxy engine routes | `local_server_service.dart` |
+### What's left in Dart (must become ⬜ after P2-80)
 
-### Numbers
-
-| Metric | Value |
-|--------|-------|
-| Exit criteria met | 6 / 11 |
-| P2-80 pipeline tasks | 0 / 8 |
-| B2 tasks done | 4 / 6 |
+| Today (wrong) | Fix |
+|---------------|-----|
+| Scraper HTTP fetch + aggregator | P2-81 |
+| Webstreamr fetch + registry loop | P2-82 |
+| Stream provider loop | P2-83 |
+| Torrent title filter orchestration | P2-84 |
+| Shelf HLS/proxy routes | P2-85 |
+| `rust_delegates.dart` hook wiring | P2-86 |
 
 ### Quick health check
 
@@ -124,12 +107,6 @@
 cd crates && cargo test --workspace
 melos run rust:test && melos run rust:integration
 ```
-
-### Next work
-
-1. **P2-80** — move engine pipelines into Rust (blocks Phase 3)
-2. **P2-14** — magnet E2E on iOS/Android device
-3. **P2-11** — Android NDK full-features build
 
 ---
 

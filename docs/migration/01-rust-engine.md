@@ -10,116 +10,60 @@
 
 ## Status at a glance
 
-**Goal:** same Forja experience on every platform. Rust is the engine everywhere Flutter runs natively; no runtime Dart parser fallback in production.
+**Goal:** Rust parsers + FFI in production on every native platform. No runtime Dart engine fallback.
 
-**Phase 1 complete.** Steps 0–9 done except B2 tail (deferred to [Phase 2](./02-rust-engine-complete.md) (B2 · P2-10)).
+| | |
+|--|--|
+| **Progress** | **100% — Phase complete** |
+| **Deferred to Phase 2** | B2 mobile librqbit · drop libtorrent on mobile |
 
-### Three columns — read every table this way
+**Legend:** ✅ done · 🔄 started · ⬜ todo
 
-| Column | Question |
-|--------|----------|
-| **Rust** | Code exists in `crates/` + exposed via FFI? |
-| **App** | Running app calls Rust when native library loads? |
-| **Dart removed** | Old duplicate deleted? |
+### Task tracker
 
-Rust can be **yes** while App is **no** — code exists but the app still uses Dart.
+#### ✅ Steps 0 → 9 — all done
 
-**Done = ✅** when every module row in the step detail table is ✅/✅. HTTP fetch, page fetch, and registry staying in Dart is normal — same as scrapers — and does **not** block ✅.
+| Step | What | |
+|------|------|---|
+| 0 | Scaffold — build scripts, FFI, CI | ✅ |
+| 1 | Utils — episode match, HLS, torrent filter, JS unpack, KissKH | ✅ |
+| 2 | Stream URLs — 5 template providers | ✅ |
+| 3 | IPTV — M3U, paste.sh, Xtream parse | ✅ |
+| 4 | Stremio — URL + JSON + HTTP | ✅ |
+| 5 | Webstreamr — 23 extractors, 21 sources (parse in Rust) | ✅ |
+| 6 | Scrapers — knaben/tpb/uindex parse + dedup | ✅ |
+| 7 | Torrent + proxy — librqbit desktop, local proxy | ✅ |
+| 8 | Flutter integration — `ForjaEngine.init()`, delegates, dylib | ✅ |
+| 9 | Cleanup — runtime Dart engine removed | ✅ |
 
-### Migration phases
+#### Handed off to Phase 2
 
-| Phase | What | Status |
-|-------|------|--------|
-| **A** | Rust crates in `crates/` | done |
-| **B** | Dart FFI bridge `packages/forja_rust/` + parity tests | done |
-| **C** | Flutter call sites wired in the app | done |
-| **D** | Delete Dart duplicates | done |
+| What | Phase 2 task |
+|------|--------------|
+| Mobile librqbit compile + magnet play | P2-10 → P2-14 |
+| Remove `libtorrent_flutter` | P2-20 → P2-23 |
+| Move fetch/route pipelines into Rust | P2-80 → P2-87 |
 
-Blockers → [Blockers](#blockers) below
+### Delivered (counts)
 
-### Feature matrix
-
-| Area | Rust | App | Notes |
-|------|:----:|:---:|-------|
-| **0 — Scaffold** (build, FFI, CI) | ✅ | ✅ | desktop + mobile build scripts |
-| **1 — Utils** (episode match, HLS, torrent filter) | ✅ | ✅ | all 5 modules wired |
-| **2 — Stream URLs** | ✅ | ✅ | all 5 template providers wired |
-| **3 — IPTV** | ✅ | ✅ | M3U, paste.sh, EPG decode, Xtream JSON parse |
-| **4 — Stremio** | ✅ | ✅ | URL helpers + JSON parse + HTTP fetch wired |
-| **5 — Webstreamr** | ✅ | ✅ | 23/23 extractors · 21/21 sources wired; fetch/registry stays Dart |
-| **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
-| **7 — Torrent + proxy** | ✅ librqbit | ✅ | Rust torrent playback when engine on · libtorrent fallback |
-| **8 — Flutter integration** | N/A | N/A | `ForjaEngine.init()`, delegates, dylib bundling |
-| **9 — Cleanup** | ✅ | ✅ | runtime Dart engine removed; B2 deferred to Phase 2 — [details](#step-9--cleanup) |
-
-### What runs in Rust today
-
-When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
-
-- IPTV: M3U parse, paste.sh decrypt, Xtream EPG decode, Xtream categories/streams/series episodes JSON
-- Streaming: embed URLs for all 5 template providers (VidLink, VixSrc, Vidnest, Vidzee, VidRock)
-- Utils: episode file matching, HLS master parse, torrent title filter, JS unpack, KissKH subtitle decrypt
-- Stremio: URL building + manifest/stream/catalog/meta HTTP + JSON parse
-- Scrapers: Knaben / TPB / Uindex HTML parse + dedup
-- Webstreamr: 23 extractors + 21 sources (parse/extract via Rust when engine on)
-- Local proxy: `/proxy?url=` + Range streaming (Rust backend; shelf forwards when engine on)
-- Torrent playback: magnet → HTTP stream via librqbit (Rust when engine on)
-
-### Platform parity
-
-| Platform | Rust library | Torrent playback | Notes |
-|----------|--------------|------------------|-------|
-| macOS / Linux / Windows | `libforja_ffi` full features | librqbit (Rust) · libtorrent fallback | `./scripts/build_rust.sh` |
-| iOS / Android | `libforja_ffi` parsers (no librqbit in FFI yet) | `libtorrent_flutter` | `./scripts/build_rust_mobile.sh` |
-
-**Mobile release builds (Rust parsers bundled by default):**
-
-```bash
-# Android — forjaBuildRust=true in gradle.properties (release APK only)
-flutter build apk
-# Debug with Rust: FORJA_BUILD_RUST_ANDROID=1 flutter run -d android
-
-# iOS — Release/Profile Xcode phase runs build_rust_mobile.sh
-flutter build ios --no-codesign
-# Debug with Rust: ./scripts/build_rust_mobile.sh ios first, or FORJA_BUILD_RUST_IOS=0 to skip release build
-```
-
-CI builds mobile FFI artifacts (`android-ffi` · `ios-ffi` in `rust.yml`).
-
-Boot always calls `ForjaEngine.init()` — no disable toggle. Without the native library, engine parsers fail (`FORJA_RUST_STRICT=1` in debug throws at boot on desktop).
-
-### Stays Dart (by design)
-
-- Webstreamr: fetcher, registry, search/redirect orchestration (page HTTP)
-- Scrapers: search HTTP fetch
-- HLS proxy (`/hls-proxy`: m3u8 rewrite + PNG strip)
-- Torrent playback on mobile (`libtorrent_flutter`; Rust torrent FFI desktop-only until librqbit mobile)
-- Torrent playback when Rust dylib missing on desktop (`libtorrent_flutter` fallback)
-
-### Numbers
-
-| Metric | Value |
-|--------|-------|
-| Rust crates | 9 (8 domain + `forja-ffi`) |
+| Item | Count |
+|------|------:|
+| Rust crates | 9 |
 | Stream providers wired | 5 / 5 |
-| Webstreamr extractors ported | 23 / 23 |
-| Webstreamr URL sources ported | 21 / 21 |
+| Webstreamr extractors | 23 / 23 |
+| Webstreamr sources | 21 / 21 |
 | Dart parity tests | 96 |
-| CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
 
 ```bash
 ./scripts/build_rust.sh
-./scripts/build_rust_mobile.sh all   # iOS + Android before flutter run
+./scripts/build_rust_mobile.sh all
 cd crates && cargo test --workspace
 cd packages/forja_rust && flutter test
-cd apps/forja && flutter test integration_test/   # or: melos run rust:integration
 ```
 
-### Next work
-
-Phase 2 — [Rust engine complete](./02-rust-engine-complete.md)
+**Next:** [Phase 2 — Rust engine complete](./02-rust-engine-complete.md)
 
 ---
 

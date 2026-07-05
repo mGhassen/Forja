@@ -9,90 +9,59 @@
 
 ## Status at a glance
 
-**Goal:** remove Flutter from the monorepo. Compose is the only UI; Kotlin calls `libforja_ffi` directly.
+**Goal:** delete Flutter from the monorepo. Compose is the only UI.
 
-**Phase 4 not started.** Deletion checklist **0 / 6** · risk gates **0 / 4**.
+| | |
+|--|--|
+| **Progress** | **0 / 6 deletion tasks (0%)** |
+| **Blocked by** | Phase 3 complete (RFC-011 parity on all target platforms) |
 
-### Three columns — read every table this way
+**Legend:** ✅ done · ⬜ not started
 
-| Column | Question |
-|--------|----------|
-| **Compose ready** | Kotlin app covers this capability on all target platforms? |
-| **Deleted** | Flutter/Dart path removed from repo? |
-| **CI/docs updated** | No broken references in workflows or README? |
+### Task tracker
 
-**Done = ✅** when every row is ✅/✅/✅. Do not delete until the matching Compose flow is smoke-tested.
+#### ⬜ Deletion checklist (P4-01 → P4-06)
 
-### Workstreams
+| ID | Delete | Verify first |
+|----|--------|--------------|
+| P4-01 | `apps/forja/` | Compose covers 19 tabs + player + settings |
+| P4-02 | `packages/forja_rust/` | `forja_kotlin` covers all FFI |
+| P4-03 | Superseded Dart packages | each ported in Phase 3 |
+| P4-04 | Flutter CI jobs | `.github/workflows/forja-macos.yml`, melos flutter scripts |
+| P4-05 | Dart parity tests | migrate to Rust goldens or archive |
+| P4-06 | Update docs | RFC-001, README, melos.yaml |
 
-| Workstream | Done | Target | Status |
-|------------|-----:|-------:|--------|
-| Deletion checklist (P4-0x) | 0 | 6 | app · forja_rust · Dart pkgs · CI · parity · docs |
-| Risk gates | 0 | 4 | magnet · IPTV · webstreamr · settings |
-| Melos / CI cleanup | 0 | 3 | flutter scripts · integration · parity in CI |
+#### ⬜ Risk gates — must pass before **any** delete
 
-### Feature matrix
+| Gate | Smoke test |
+|------|------------|
+| Magnet → play | Compose + Rust librqbit |
+| IPTV | import + Xtream browse |
+| Webstreamr | one provider end-to-end |
+| Settings | persistence ported from `forja_storage` |
 
-| Area | Compose ready | Deleted | CI/docs | Notes |
-|------|:-------------:|:-------:|:-------:|-------|
-| **P4-01 `apps/forja/`** | — | — | — | 19 tabs + player + settings |
-| **P4-02 `packages/rust/`** | — | — | — | `packages/kotlin` must cover FFI |
-| **P4-03 Dart packages** | — | — | — | each ported in Phase 3 |
-| **P4-04 Flutter CI** | — | — | — | `forja-macos.yml` · melos flutter |
-| **P4-05 Parity tests** | — | — | — | migrate to Rust goldens or archive |
-| **P4-06 Monorepo docs** | — | — | — | RFC-001 · README · melos.yaml |
+#### ⬜ CI cleanup
 
-### Exit criteria
-
-| Criterion | Status |
-|-----------|--------|
-| Compose ships on all target platforms | open |
-| No production `dart:ffi` or Flutter plugins | open |
-| CI green without Flutter jobs | open |
-| Monorepo docs updated | open |
-
-### Risk gates (must pass before any delete)
-
-| Gate | Status |
+| What | Action |
 |------|--------|
-| Magnet → play on Compose (Rust librqbit) | open |
-| IPTV import + Xtream browse on Compose | open |
-| One webstreamr provider end-to-end on Compose | open |
-| Settings persistence ported (`forja_storage` → Kotlin) | open |
+| `melos run rust:integration` (Flutter) | → Compose smoke tests |
+| Dart parity in CI | → Rust-only goldens |
+| Keep | `melos run rust:test`, `rust:build`, `rust:build:mobile` |
 
-### Keep permanently
+### Exit checklist
 
-| Path | Reason |
-|------|--------|
-| `crates/**` | Rust engine |
-| `scripts/build_rust*.sh` | FFI builds |
-| `.github/workflows/rust.yml` | Rust CI |
-| `packages/forja_kotlin/` | Kotlin FFI bridge |
+| # | Criterion | |
+|---|-----------|---|
+| 1 | Compose ships Android + iOS + desktop subset | ⬜ |
+| 2 | Zero production `dart:ffi` / Flutter plugins | ⬜ |
+| 3 | CI green without Flutter jobs | ⬜ |
+| 4 | Monorepo docs updated | ⬜ |
 
-### Numbers
+**0 / 4 exit criteria met.**
 
-| Metric | Value |
-|--------|-------|
-| Exit criteria met | 0 / 4 |
-| Deletion tasks done | 0 / 6 |
-| Risk gates passed | 0 / 4 |
-| Flutter apps remaining | 1 (`apps/forja`) |
-| Dart FFI package remaining | 1 (`packages/rust`) |
+### Keep forever
 
-### Quick health check
-
-_Not applicable until Phase 3 parity sign-off._
-
-```bash
-# Pre-delete verification (when Compose exists):
-# melos run rust:test                    # must stay green
-# no flutter / dart:ffi in production deps
-# gh workflow list | grep -i flutter     # should be empty post-P4-04
-```
-
-### Next work
-
-Blocked until [Phase 3 P3-70 sign-off](./03-kotlin-compose.md#tasks). `libtorrent_flutter` must already be gone (Phase 2 ✅).
+`crates/**` · `scripts/build_rust*.sh` · `rust.yml` · `packages/forja_kotlin/`
 
 ---
 

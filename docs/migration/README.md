@@ -11,13 +11,13 @@ Forja is migrating from a Flutter monolith to a **Rust engine** with a **Kotlin 
 
 ## Phases
 
-| # | Doc | Status | Summary |
-|---|-----|--------|---------|
-| 1 | [01-rust-engine.md](./01-rust-engine.md) | **Complete** | Rust crates + FFI; parse primitives in production |
-| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | **Active** | **Engine 100% Rust** — pipelines, fetch, route. Flutter **UI only** |
-| 3 | [03-kotlin-compose.md](./03-kotlin-compose.md) | Blocked | Compose UI replaces Flutter — **same Rust engine**, no logic port |
-| 4 | [04-delete-flutter.md](./04-delete-flutter.md) | Future | Remove `apps/forja`, Dart packages, melos Flutter CI |
-| 5 | [05-web-client.md](./05-web-client.md) | Parallel | WASM engine + browser client ([RFC-014](../rfc/014-v3-web-rust.md)) |
+| # | Doc | Progress | Summary |
+|---|-----|----------|---------|
+| 1 | [01-rust-engine.md](./01-rust-engine.md) | **100%** ✅ | Rust crates + FFI; parse primitives shipped |
+| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | **53%** 🔄 | **17/32 tasks** — P2-80 pipelines block Phase 3 |
+| 3 | [03-kotlin-compose.md](./03-kotlin-compose.md) | **0%** ⬜ | Compose UI — blocked on Phase 2 P2-80 |
+| 4 | [04-delete-flutter.md](./04-delete-flutter.md) | **0%** ⬜ | Delete Flutter — blocked on Phase 3 |
+| 5 | [05-web-client.md](./05-web-client.md) | **0%** ⬜ | WASM + browser — parallel, optional |
 
 ---
 

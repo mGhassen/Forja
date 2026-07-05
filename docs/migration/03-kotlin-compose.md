@@ -10,83 +10,68 @@
 
 ## Status at a glance
 
-**Goal:** replace Flutter **UI** with Kotlin Compose Multiplatform. **Rust engine is frozen** after Phase 2 — Compose calls the same FFI/uniffi surface. **No orchestration port to Kotlin.**
+**Goal:** replace Flutter **UI** with Compose. **Same Rust engine** — no logic port to Kotlin.
 
-**Phase 3 not started.** Blocked on Phase 2 **P2-80** (engine pipelines) + **P2-86** (kill `*Backend` hooks).
+| | |
+|--|--|
+| **Progress** | **0 / 17 tasks (0%)** |
+| **Blocked by** | Phase 2 **P2-80 → P2-87** (engine pipelines) + **P2-86** (kill hooks) |
 
-### Three columns — read every table this way
+**Legend:** ✅ done · 🔄 started · ⬜ not started
 
-| Column | Question |
-|--------|----------|
-| **Compose** | UI + ViewModel exists in `apps/forja_compose/`? |
-| **FFI bound** | `forja_kotlin` calls Rust for this surface? |
-| **Dart replaced** | Flutter package / screen no longer needed for this flow? |
+### Task tracker
 
-**Done = ✅** when every row in a port group is ✅/✅/✅. All engine logic stays in Rust — Compose never re-implements fetch/parse/route.
+#### ⬜ Scaffold (P3-01 → P3-04)
 
-### Workstreams
+| ID | What |
+|----|------|
+| P3-01 | KMP app skeleton — `apps/forja_compose/` |
+| P3-02 | Finish `packages/forja_kotlin/` (expand P2-50/51 uniffi) |
+| P3-03 | CI: Kotlin smoke test — full delegate round-trip |
+| P3-04 | Gradle/Xcode link `libforja_ffi` |
 
-| Workstream | Done | Target | Status |
-|------------|-----:|-------:|--------|
-| Scaffold (P3-0x) | 0 | 4 | app skeleton · FFI package · CI · Gradle/Xcode link |
-| Port order (P3-1x–7x) | 0 | 11 | storage → engine → player → browse → tabs → platform |
-| Dart package migration | 0 | 7 | see [migration map](#dart-package-migration-map) |
-| Sign-off (P3-70) | 0 | 1 | RFC-011 parity checklist |
+#### ⬜ Port order (P3-10 → P3-70)
 
-### Feature matrix
+| ID | What | Flutter source |
+|----|------|----------------|
+| P3-10 | Storage + theme + prefs | `forja_storage` |
+| P3-11 | Shell + 19-tab nav | `shell/nav_config.dart` |
+| P3-20 | Engine bridge — `forja_kotlin` → uniffi | not `rust_delegates.dart` hooks |
+| P3-30 | Unified player | `shared/player/` |
+| P3-31 | Magnet tab | `features/magnet/` |
+| P3-32 | IPTV | `features/iptv/` |
+| P3-40 | Core browse (home, discover, search, my_list) | feature modules |
+| P3-50 | Remaining 15 tabs | anime, manga, jellyfin, … |
+| P3-51 | Dart package ports (orchestration already in Rust post-P2-80) | `forja_api`, `streaming`, … |
+| P3-60 | WebView extractors — **host only** | kisskh, videasy, … |
+| P3-61 | Nuvio JS — **host only** | `nuvio_runtime.dart` |
+| P3-62 | Player PiP / casting stubs | `shared/casting/` |
+| P3-70 | RFC-011 feature parity sign-off | manual + automated smoke |
 
-| Area | Compose | FFI bound | Dart replaced | Notes |
-|------|:-------:|:---------:|:-------------:|-------|
-| **P3-10 Storage + shell** | — | — | — | prefs · theme · 19-tab nav |
-| **P3-20 Engine bridge** | — | — | — | `forja_kotlin` → uniffi; **not** a port of `rust_delegates.dart` hooks |
-| **P3-30 Player + magnet + IPTV** | — | partial | — | torrent FFI done in Phase 2 |
-| **P3-40 Core browse** | — | partial | — | home · discover · search · my_list |
-| **P3-50 Remaining tabs** | — | — | — | 15 feature modules |
-| **P3-60 Platform adapters** | — | — | — | WebView · Nuvio JS · HLS proxy · PiP |
+#### ⬜ Dart packages to replace (then delete in Phase 4)
 
-### Exit criteria
+| Package | Action |
+|---------|--------|
+| `forja_rust` | → `forja_kotlin` |
+| `forja_core` | models → Kotlin; hooks → direct FFI |
+| `forja_storage` | full port |
+| `forja_api` | HTTP + WebView hosts |
+| `forja_streaming` | UI wiring only (engine in Rust) |
+| `forja_webstreamr` | UI wiring only |
+| `forja_scrapers` | UI wiring only |
 
-| Criterion | Status |
-|-----------|--------|
-| Feature parity with Flutter (RFC-011: 19 tabs + player + settings) | open |
-| `forja_kotlin` covers Phase 2 high-level engine FFI (post P2-80) | open |
-| Magnet playback on mobile via Rust librqbit | open |
-| Automated smoke: UI renders engine JSON | open |
+### Exit checklist
 
-### Stays in UI layer (not Rust)
+| # | Criterion | |
+|---|-----------|---|
+| 1 | 19 nav tabs + player + settings (RFC-011) | ⬜ |
+| 2 | `forja_kotlin` covers Phase 2 high-level FFI | ⬜ |
+| 3 | Magnet on mobile via Rust librqbit | ⬜ |
+| 4 | Smoke: UI renders engine JSON | ⬜ |
 
-| Area | Phase 3 target |
-|------|----------------|
-| WebView/WASM extractors | `expect/actual` WebView modules — **host only**; extract logic stays Rust |
-| Nuvio JS runtime | KMP QuickJS host — **host only** |
-| Player chrome | ExoPlayer/AVPlayer wiring |
+**0 / 4 exit criteria met.**
 
-HLS proxy, scraper HTTP, webstreamr resolve, torrent filter — **already in Rust after P2-80**. Compose does not re-implement them.
-
-### Numbers
-
-| Metric | Value |
-|--------|-------|
-| Exit criteria met | 0 / 4 |
-| Scaffold tasks | 0 / 4 |
-| Port-order tasks | 0 / 11 |
-| Dart packages to migrate | 0 / 7 |
-| Nav tabs (RFC-011) | 0 / 19 |
-| FFI backends to bind | 0 / 10 |
-
-### Quick health check
-
-_Not applicable until Phase 2 exit criteria met._
-
-```bash
-# After P3-01 scaffold exists:
-# ./gradlew :apps:forja_compose:shared:test
-# uniffi round-trip smoke (P3-03)
-```
-
-### Next work
-
-Blocked until [Phase 2 sign-off](./02-rust-engine-complete.md#sign-off). First tasks when unblocked: **P3-01** app skeleton · **P3-02** expand uniffi POC from P2-50/51.
+**Starts when:** Phase 2 exit checklist #8 + #9 are ✅.
 
 ---
 
