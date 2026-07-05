@@ -554,10 +554,10 @@ class _BookReaderScreenState extends State<BookReaderScreen>
       _isDarkMode ? Colors.white38 : Colors.black38;
 
   Color get _barBg =>
-      _isDarkMode ? const Color(0xFF0B0B12) : Colors.white;
+      _isDarkMode ? const Color(0xFF141414) : Colors.white;
 
   Color get _scaffoldBg =>
-      _isDarkMode ? const Color(0xFF0B0B12) : Colors.white;
+      _isDarkMode ? const Color(0xFF141414) : Colors.white;
 
   // ── Build ──────────────────────────────────────────────────────────────────
 
@@ -609,7 +609,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
 
   Widget _buildLoading() {
     return Container(
-      color: const Color(0xFF0B0B12),
+      color: const Color(0xFF141414),
       child: const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -47,7 +47,7 @@ class _IptvPtScreenState extends State<IptvPtScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: const Color(0xFF141414),
       body: PopScope(
         canPop: _ctrl.view == IptvView.portalList,
         onPopInvokedWithResult: (didPop, _) {
@@ -58,7 +58,7 @@ class _IptvPtScreenState extends State<IptvPtScreen> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF0A0A0F), Color(0xFF0E1428), Color(0xFF06070C)],
+              colors: [Color(0xFF141414), Color(0xFF141414), Color(0xFF141414)],
             ),
           ),
           child: AnimatedBuilder(
@@ -695,7 +695,7 @@ class _PortalCard extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF14213A), Color(0xFF0E1428)],
+            colors: [Color(0xFF141414), Color(0xFF141414)],
           ),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
@@ -1439,7 +1439,7 @@ class _StreamCard extends StatelessWidget {
   void _showEpgSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF11151C),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),

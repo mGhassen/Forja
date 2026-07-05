@@ -77,7 +77,7 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
         _handleExit();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F0418),
+        backgroundColor: const Color(0xFF141414),
         body: Stack(
           children: [
             // Subtle background blur

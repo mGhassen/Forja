@@ -495,7 +495,7 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
       top: false,
       child: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFF0E0F14),
+          color: Color(0xFF141414),
           border: Border(
             top: BorderSide(color: Color(0x14FFFFFF), width: 1),
           ),

@@ -129,7 +129,7 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
             imageUrl: widget.imageUrl,
             fit: BoxFit.cover,
             alignment: Alignment.topCenter,
-            errorWidget: (c, u, e) => Container(color: const Color(0xFF0A0A1A)),
+            errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
           ),
         ),
 
@@ -146,7 +146,7 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color.lerp(const Color(0xFF050510), colors?.dominant ?? const Color(0xFF050510), 0.35)!.withValues(alpha: 0.75),
+                Color.lerp(const Color(0xFF141414), colors?.dominant ?? const Color(0xFF141414), 0.35)!.withValues(alpha: 0.75),
                 Color.lerp(const Color(0xFF000000), colors?.muted ?? const Color(0xFF000000), 0.15)!.withValues(alpha: 0.88),
               ],
             ),

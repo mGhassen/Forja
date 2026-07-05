@@ -512,7 +512,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0A0A0A),
+        backgroundColor: const Color(0xFF141414),
         body: const Center(child: CircularProgressIndicator(color: Color(0xFF1565C0))),
       );
     }
@@ -521,7 +521,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     final isTablet = screenWidth >= 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: const Color(0xFF141414),
       body: Stack(
         children: [
           // Fixed background
@@ -575,7 +575,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     final url = _movie.backdropPath.isNotEmpty
         ? TmdbApi.getBackdropUrl(_movie.backdropPath)
         : (_movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(_movie.posterPath) : '');
-    if (url.isEmpty) return Container(color: const Color(0xFF0A0A0A));
+    if (url.isEmpty) return Container(color: const Color(0xFF141414));
     // Strip the Positioned.fill from buildAtmosphereBackdrop — we're already inside one
     return Stack(
       fit: StackFit.expand,

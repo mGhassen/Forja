@@ -381,7 +381,7 @@ class _ArabicScreenState extends State<ArabicScreen> {
           width: 220,
           constraints: const BoxConstraints(maxHeight: 400),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E),
+            color: const Color(0xFF141414),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white12),
             boxShadow: [

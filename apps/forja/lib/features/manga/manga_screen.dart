@@ -425,7 +425,7 @@ class _MangaScreenState extends State<MangaScreen> with WidgetsBindingObserver {
       width: 250,
       constraints: const BoxConstraints(maxHeight: 400),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
+        color: const Color(0xFF141414),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
         boxShadow: [

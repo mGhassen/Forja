@@ -234,7 +234,7 @@ class _ExternalPlayerWaitScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: const Color(0xFF141414),
       body: SafeArea(
         child: Center(
           child: Padding(

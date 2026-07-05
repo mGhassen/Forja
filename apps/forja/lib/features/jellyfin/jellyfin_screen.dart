@@ -10,7 +10,7 @@ import 'jellyfin_details_screen.dart';
 const _jfBlue = Color(0xFF00A4DC);
 const _jfBlueDark = Color(0xFF0077B6);
 const _jfSurface = Color(0xFF13131E);
-const _jfSurfaceLight = Color(0xFF1A1A2E);
+const _jfSurfaceLight = Color(0xFF141414);
 
 // ─── Hover / Press Card ─────────────────────────────────────────────────────
 class _HoverCard extends StatefulWidget {

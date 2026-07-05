@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ForjaTheme {
-  static const bgDark = Color(0xFF0A0A0F);
-  static const bgCard = Color(0xFF15151E);
+  static const bgDark = Color(0xFF141414);
+  static const bgCard = Color(0xFF1C1C1C);
   static const primary = Color(0xFF3B82F6);
   static const primaryDim = Color(0xFF2563EB);
   static const accent = Color(0xFF00E5FF);
@@ -45,10 +45,6 @@ class ForjaTheme {
   }
 
   static BoxDecoration cinemaBackground = const BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [Color(0xFF0A0A0F), Color(0xFF0E1428), Color(0xFF06070C)],
-    ),
+    color: Color(0xFF141414),
   );
 }

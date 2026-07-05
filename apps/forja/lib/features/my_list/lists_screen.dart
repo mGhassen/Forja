@@ -91,7 +91,7 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
+          backgroundColor: const Color(0xFF141414),
           title: const Text('Create Trakt List', style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -123,7 +123,7 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: privacy,
-                dropdownColor: const Color(0xFF1A1A2E),
+                dropdownColor: const Color(0xFF141414),
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   filled: true,

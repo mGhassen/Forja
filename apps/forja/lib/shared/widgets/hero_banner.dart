@@ -61,8 +61,8 @@ class _HeroBannerState extends State<HeroBanner> {
                       imageUrl: imageUrl,
                       fit: BoxFit.cover,
                       alignment: Alignment.topCenter,
-                      placeholder: (context, url) => Container(color: const Color(0xFF0F0418)),
-                      errorWidget: (context, url, error) => Container(color: const Color(0xFF0F0418)),
+                      placeholder: (context, url) => Container(color: const Color(0xFF141414)),
+                      errorWidget: (context, url, error) => Container(color: const Color(0xFF141414)),
                     ),
                     
                     // 2. Cinematic Gradient Overlay
@@ -73,9 +73,9 @@ class _HeroBannerState extends State<HeroBanner> {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            const Color(0xFF0F0418).withValues(alpha: 0.2),
-                            const Color(0xFF0F0418).withValues(alpha: 0.8),
-                            const Color(0xFF0F0418),
+                            const Color(0xFF141414).withValues(alpha: 0.2),
+                            const Color(0xFF141414).withValues(alpha: 0.8),
+                            const Color(0xFF141414),
                           ],
                           stops: const [0.0, 0.4, 0.8, 1.0],
                         ),
@@ -90,7 +90,7 @@ class _HeroBannerState extends State<HeroBanner> {
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
                             colors: [
-                              const Color(0xFF0F0418).withValues(alpha: 0.8),
+                              const Color(0xFF141414).withValues(alpha: 0.8),
                               Colors.transparent,
                             ],
                             stops: const [0.0, 0.5],

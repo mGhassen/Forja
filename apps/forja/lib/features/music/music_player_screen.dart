@@ -90,7 +90,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> with WidgetsBindi
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: const Color(0xFF080812),
+      backgroundColor: const Color(0xFF141414),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -196,8 +196,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> with WidgetsBindi
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.black.withValues(alpha: 0.5),
-                          const Color(0xFF080812).withValues(alpha: 0.85),
-                          const Color(0xFF080812),
+                          const Color(0xFF141414).withValues(alpha: 0.85),
+                          const Color(0xFF141414),
                         ],
                         stops: const [0.0, 0.6, 1.0],
                       ),

@@ -287,7 +287,7 @@ class _StremioCatalogScreenState extends State<StremioCatalogScreen> {
             gradient: const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF1A1A2E), Color(0xFF0D0D16)],
+              colors: [Color(0xFF141414), Color(0xFF141414)],
             ),
             border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.06))),
           ),

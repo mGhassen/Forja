@@ -1809,7 +1809,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     String searchQuery = '';
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       isScrollControlled: true,
@@ -2172,7 +2172,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         final dialogW = (screenW * 0.9).clamp(280.0, 420.0);
         return StatefulBuilder(builder: (context, setDialog) {
           return Dialog(
-            backgroundColor: const Color(0xFF121212),
+            backgroundColor: const Color(0xFF141414),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: dialogW, maxHeight: MediaQuery.of(context).size.height * 0.8),
@@ -2400,7 +2400,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _player.state.tracks.audio.where((t) => t.id != 'no').toList();
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SafeArea(
@@ -2476,7 +2476,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SafeArea(
@@ -2572,7 +2572,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SafeArea(
@@ -2757,7 +2757,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SafeArea(

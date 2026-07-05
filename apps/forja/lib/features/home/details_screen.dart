@@ -451,7 +451,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
+          backgroundColor: const Color(0xFF141414),
           title: const Text('Rate on Simkl', style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -566,7 +566,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       final shouldCancel = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
+          backgroundColor: const Color(0xFF141414),
           title: const Text('Check-in Failed', style: TextStyle(color: Colors.white)),
           content: const Text(
             'You may already have an active check-in.\nCancel existing and retry?',
@@ -617,7 +617,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final selected = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: const Color(0xFF141414),
         title: const Text('Add to Trakt List', style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
@@ -664,7 +664,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
+          backgroundColor: const Color(0xFF141414),
           title: const Text('Rate on Trakt', style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2121,7 +2121,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 imageUrl: _imageUrl(_movie.backdropPath.isNotEmpty ? _movie.backdropPath : _movie.posterPath),
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
-                errorWidget: (c, u, e) => Container(color: const Color(0xFF0A0A1A)),
+                errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
               ),
             ),
           ),

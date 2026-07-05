@@ -53,7 +53,7 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
             Text(_currentUrl ?? '', style: const TextStyle(fontSize: 10, color: Colors.white70), overflow: TextOverflow.ellipsis),
           ],
         ),
-        backgroundColor: const Color(0xFF0F0418),
+        backgroundColor: const Color(0xFF141414),
         actions: [
           if (_isLoading)
             const Padding(

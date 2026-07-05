@@ -236,21 +236,21 @@ class _ForjaAppState extends State<ForjaApp> with WidgetsBindingObserver, Window
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, preset, _) {
-        Widget app = MaterialApp(
-          title: widget.title,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.themeData,
-          home: const SplashScreen(),
+        return ValueListenableBuilder<bool>(
+          valueListenable: SettingsService.lightModeNotifier,
+          builder: (context, _, __) {
+            Widget app = MaterialApp(
+              title: widget.title,
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.themeData,
+              home: const SplashScreen(),
+            );
+            if (_isDesktop) {
+              app = ExcludeSemantics(child: app);
+            }
+            return app;
+          },
         );
-        // On desktop, disable the semantics / accessibility tree entirely.
-        // Flutter's Windows accessibility bridge has a known bug where the
-        // ui::AXTree gets out of sync, spamming errors and eventually
-        // crashing the app. Since Forja doesn't target screen-reader
-        // users on desktop, this is a safe and effective workaround.
-        if (_isDesktop) {
-          app = ExcludeSemantics(child: app);
-        }
-        return app;
       },
     );
   }
@@ -470,15 +470,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Image.asset(
-                  Theme.of(context).brightness == Brightness.dark
-                      ? 'assets/icon/logo-dark.png'
-                      : 'assets/icon/logo-light.png',
-                  width: MediaQuery.sizeOf(context).width * 0.85,
-                  fit: BoxFit.contain,
-                ),
+              Image.asset(
+                AppTheme.isLightMode
+                    ? 'assets/icon/logo-light.png'
+                    : 'assets/icon/logo-dark.png',
+                height: 110,
+                fit: BoxFit.contain,
               ),
               const SizedBox(height: 32),
               Padding(

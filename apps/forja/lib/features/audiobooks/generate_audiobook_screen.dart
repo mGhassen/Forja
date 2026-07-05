@@ -231,7 +231,7 @@ class _GenerateAudiobookScreenState extends State<GenerateAudiobookScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: const Color(0xFF141414),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

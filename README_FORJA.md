@@ -19,7 +19,7 @@ packages/                Engine room only (6 packages)
   forja_streaming/       Torrent engine, local proxy, extractors
   forja_webstreamr/      WebStreamr sources + extractors
   forja_scrapers/        Torrent index scrapers
-docs/rfc/
+docs/rfc/               RFC index + v1.0–v3.0 release specs
 ```
 
 ## Run (macOS)

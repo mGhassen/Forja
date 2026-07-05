@@ -267,7 +267,7 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
   Widget build(BuildContext context) {
     final showLinks = _selected != null;
     return Scaffold(
-      backgroundColor: const Color(0xFF06080F),
+      backgroundColor: const Color(0xFF141414),
       body: Stack(
         children: [
           Positioned.fill(
@@ -286,7 +286,7 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
                     radius: 1.1,
                     colors: [
                       Colors.transparent,
-                      const Color(0xFF06080F).withValues(alpha: 0.85),
+                      const Color(0xFF141414).withValues(alpha: 0.85),
                     ],
                   ),
                 ),
@@ -1493,8 +1493,8 @@ class _ArrowBtn extends StatelessWidget {
           begin: alignLeft ? Alignment.centerLeft : Alignment.centerRight,
           end: alignLeft ? Alignment.centerRight : Alignment.centerLeft,
           colors: [
-            const Color(0xFF06080F).withValues(alpha: 0.85),
-            const Color(0xFF06080F).withValues(alpha: 0.0),
+            const Color(0xFF141414).withValues(alpha: 0.85),
+            const Color(0xFF141414).withValues(alpha: 0.0),
           ],
         ),
       ),

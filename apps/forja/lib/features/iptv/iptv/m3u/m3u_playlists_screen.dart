@@ -308,7 +308,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0A0A0F), Color(0xFF0E1428), Color(0xFF06070C)],
+            colors: [Color(0xFF141414), Color(0xFF141414), Color(0xFF141414)],
           ),
         ),
         child: SafeArea(
@@ -538,7 +538,7 @@ class _PlaylistCard extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF14213A), Color(0xFF0E1428)],
+            colors: [Color(0xFF141414), Color(0xFF141414)],
           ),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
@@ -762,7 +762,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0A0A0F), Color(0xFF0E1428), Color(0xFF06070C)],
+            colors: [Color(0xFF141414), Color(0xFF141414), Color(0xFF141414)],
           ),
         ),
         child: SafeArea(
@@ -1004,8 +1004,8 @@ class _ScrollArrow extends StatelessWidget {
                   alignLeft ? Alignment.centerLeft : Alignment.centerRight,
               end: alignLeft ? Alignment.centerRight : Alignment.centerLeft,
               colors: [
-                const Color(0xFF06070C),
-                const Color(0xFF06070C).withValues(alpha: 0.0),
+                const Color(0xFF141414),
+                const Color(0xFF141414).withValues(alpha: 0.0),
               ],
             ),
           ),

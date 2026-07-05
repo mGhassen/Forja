@@ -1571,7 +1571,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   void _showSubtitlesMenu() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       isScrollControlled: true,
@@ -1939,7 +1939,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       context: context,
       builder: (context) => StatefulBuilder(builder: (context, setDialog) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF121212),
+          backgroundColor: const Color(0xFF141414),
           title: const Text('Subtitle Settings',
               style: TextStyle(color: Colors.white, fontSize: 16)),
           content: SingleChildScrollView(
@@ -2130,7 +2130,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         _player.state.tracks.audio.where((t) => t.id != 'no').toList();
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SafeArea(
@@ -2203,7 +2203,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SafeArea(
@@ -2299,7 +2299,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SafeArea(
@@ -2967,7 +2967,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SafeArea(

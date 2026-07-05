@@ -240,7 +240,7 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF06080F),
+      backgroundColor: const Color(0xFF141414),
       body: Stack(
         children: [
           // Ambient gradient driven by palette of seed backdrop.
@@ -254,7 +254,7 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
                   colors: [
                     _ambient,
                     Color.lerp(_ambient, Colors.black, 0.65)!,
-                    const Color(0xFF06080F),
+                    const Color(0xFF141414),
                   ],
                   stops: const [0, 0.45, 1],
                 ),
@@ -295,8 +295,8 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            const Color(0xFF06080F).withValues(alpha: 0.85),
-                            const Color(0xFF06080F),
+                            const Color(0xFF141414).withValues(alpha: 0.85),
+                            const Color(0xFF141414),
                           ],
                           stops: const [0, 0.7, 1],
                         ),

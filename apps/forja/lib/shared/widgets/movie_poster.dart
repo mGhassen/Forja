@@ -94,8 +94,8 @@ class _MoviePosterState extends State<MoviePoster> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          const Color(0xFF0F0418).withValues(alpha: 0.8),
-                          const Color(0xFF0F0418),
+                          const Color(0xFF141414).withValues(alpha: 0.8),
+                          const Color(0xFF141414),
                         ],
                       ),
                     ),

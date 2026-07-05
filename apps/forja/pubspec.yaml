@@ -38,7 +38,6 @@ dependencies:
   logging: ^1.2.0
   audio_service: ^0.18.17
   connectivity_plus: 7.0.0
-  flutter_svg: ^2.2.0
   media_kit:
     git:
       url: https://github.com/AimesSoft/media-kit.git
@@ -77,18 +76,18 @@ flutter_launcher_icons:
   macos:
     generate: true
   image_path: assets/icon/logo-icon-1024.png
-  adaptive_icon_background: "#000000"
+  adaptive_icon_background: "#141414"
   adaptive_icon_foreground: assets/icon/logo-icon-1024.png
 
 flutter_native_splash:
-  color: "#FFFFFF"
+  color: "#f7f7f7"
   image: assets/icon/logo-light.png
-  color_dark: "#000000"
+  color_dark: "#141414"
   image_dark: assets/icon/logo-dark.png
   android_12:
-    color: "#FFFFFF"
+    color: "#f7f7f7"
     image: assets/icon/logo-light.png
-    color_dark: "#000000"
+    color_dark: "#141414"
     image_dark: assets/icon/logo-dark.png
 
 flutter:

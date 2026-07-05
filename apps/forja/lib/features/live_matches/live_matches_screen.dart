@@ -786,7 +786,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     // Show channel selection
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _CdnChannelSheet(
