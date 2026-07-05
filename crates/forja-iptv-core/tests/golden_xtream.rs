@@ -25,3 +25,18 @@ fn xtream_live_streams_golden() {
     assert_eq!(rows[0].name, "News HD");
     assert_eq!(rows[0].container_ext, "ts");
 }
+
+#[test]
+fn xtream_series_episodes_golden() {
+    let json = fs::read_to_string(fixture("xtream_series_info.json")).unwrap();
+    let rows = xtream::parse_series_episodes_rows(&json).unwrap();
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].id, "100");
+    assert_eq!(rows[0].season, 1);
+    assert_eq!(rows[0].container_ext, "mkv");
+    assert_eq!(rows[0].plot, "First ep");
+    assert_eq!(rows[1].id, "200");
+    assert_eq!(rows[1].season, 2);
+    assert_eq!(rows[1].container_ext, "mp4");
+    assert_eq!(rows[1].episode, 3);
+}

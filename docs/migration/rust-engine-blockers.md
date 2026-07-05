@@ -1,7 +1,7 @@
 # Rust engine migration — blockers
 
 **Last updated:** 2026-07-05  
-**Overview:** [rust-engine-progress.md](./rust-engine-progress.md#blockers) (synced summary)  
+**Migration progress:** [rust-engine-progress.md](./rust-engine-progress.md)  
 **Spec:** [RFC-009](../rfc/009-rust-ffi.md)
 
 Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleting Dart engine code or shipping Rust-only.
@@ -24,7 +24,7 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 | `libtorrent_flutter` pubspec deps | 0 | 3 removed |
 | Webstreamr extractor goldens | 20 | 23 |
 | Webstreamr source goldens | 20 | 21 |
-| M3U fixtures in Dart parity | 2 | 4 |
+| M3U fixtures in Dart parity | 3 | 4 |
 | Dart parity test files | 14 | 14 |
 | App integration tests | 0 | ≥1 smoke |
 
@@ -202,8 +202,8 @@ B4 no integration tests
 |------|------|
 | [x] 14 parity test files in CI | [ ] RFC acceptance: tick “full parity suite” |
 | [x] Episode matcher: 10/10 golden cases | [ ] Audit episode patterns vs real-world debrid filenames |
-| [x] M3U: `basic` + `crlf_extgrp` in Dart parity | [ ] Add `extgrp_before_extinf.m3u` to Dart parity |
-| [x] IPTV Xtream · paste.sh · HLS · scrapers · stremio · proxy | [ ] Webstreamr parity: all 23 extractors (subset today) |
+| [x] M3U: `basic` + `crlf_extgrp` + `extgrp_before_extinf` in Dart parity | [ ] Add remaining M3U edge-case fixture to Dart parity |
+| [x] IPTV Xtream (categories/streams/series) · paste.sh · HLS · scrapers · stremio · proxy | [ ] Webstreamr parity: all 23 extractors (subset today) |
 | [x] Utils: js unpack · kisskh · torrent filter | [ ] Document known intentional gaps |
 
 | | |
@@ -287,9 +287,8 @@ Do **not** track these as migration blockers:
 
 When a blocker is resolved or a new one appears:
 
-1. Update **overview** here and the [Blockers section](./rust-engine-progress.md#blockers) in the progress doc.
-2. Update blocker **Progress** status and Done/Todo checkboxes.
-3. Update [rust-engine-progress.md](./rust-engine-progress.md) Step 9 checkboxes.
-4. Update [RFC-009](../rfc/009-rust-ffi.md) if acceptance affected.
+1. Update **overview** in this file only (counts, metrics, Done/Todo).
+2. Update [rust-engine-progress.md](./rust-engine-progress.md) Step 9 checkboxes only — do not duplicate blocker tables there.
+3. Update [RFC-009](../rfc/009-rust-ffi.md) if acceptance affected.
 
 See `.cursor/rules/rust-migration.mdc`.

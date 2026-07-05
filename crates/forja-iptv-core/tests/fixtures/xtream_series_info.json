@@ -1,0 +1,27 @@
+{
+  "episodes": {
+    "1": [
+      {
+        "id": "100",
+        "title": "Pilot",
+        "container_extension": "mkv",
+        "episode_num": 1,
+        "info": {
+          "plot": "First ep",
+          "movie_image": "http://img/a.png"
+        }
+      }
+    ],
+    "2": [
+      {
+        "id": "200",
+        "title": "Return",
+        "episode_num": 3,
+        "info": {
+          "plot": "",
+          "movie_image": ""
+        }
+      }
+    ]
+  }
+}

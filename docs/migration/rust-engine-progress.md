@@ -35,34 +35,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **C** | Flutter call sites wired in the app | done |
 | **D** | Delete Dart duplicates | in progress |
 
-### Blockers
-
-**Detail:** [rust-engine-blockers.md](./rust-engine-blockers.md)
-
-| Status | Count | IDs |
-|--------|------:|-----|
-| In progress | 7 | B1 · B2 · B3 · B5 · B6 · B7 · B8 |
-| Open | 2 | B4 · B9 |
-
-**Step 9 unlock:** 0 / 3
-
-| ID | Blocker | Progress |
-|----|---------|----------|
-| B7 | Mobile Rust FFI packaging | in progress |
-| B1 | Dart reference fallbacks | in progress |
-| B3 | `reference/` layer (10 files) | in progress — 0 deleted |
-| B5 | Webstreamr goldens | in progress — 20/23 extractors · 20/21 sources |
-| B6 | RFC parity gaps | in progress — M3U 2/4 fixtures |
-| B8 | Dylib dev ergonomics | in progress |
-| B2 | `libtorrent_flutter` | by design (mobile torrent; desktop fallback) |
-| B4 | App `integration_test/` | open — 0 tests |
-| B9 | Stale RFC-009 | open |
-
-| Metric | Done | Target |
-|--------|-----:|-------:|
-| Reference consolidated | 10 | 10 |
-| Reference deleted | 0 | 10 |
-| Integration tests | 0 | ≥1 |
+Step 9 blockers → [rust-engine-blockers.md](./rust-engine-blockers.md)
 
 ### Feature matrix
 
@@ -83,7 +56,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 
 When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 
-- IPTV: M3U parse, paste.sh decrypt, Xtream EPG decode, Xtream categories/streams JSON
+- IPTV: M3U parse, paste.sh decrypt, Xtream EPG decode, Xtream categories/streams/series episodes JSON
 - Streaming: embed URLs for all 5 template providers (VidLink, VixSrc, Vidnest, Vidzee, VidRock)
 - Utils: episode file matching, HLS master parse, torrent title filter, JS unpack, KissKH subtitle decrypt
 - Stremio: URL building + manifest/stream/catalog/meta HTTP + JSON parse
@@ -138,7 +111,7 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Step 9 — blocked by B7 (mobile Rust) then B5/B6/B4 — [blockers](./rust-engine-blockers.md)
+1. Step 9 — Dart fallback cleanup ([blockers](./rust-engine-blockers.md))
 
 ---
 
@@ -238,7 +211,7 @@ Wire-up: `packages/forja_streaming/lib/src/provider_registry.dart` → `ForjaEng
 | M3U parser | ✅ | ✅ |
 | Paste.sh crypto | ✅ | ✅ |
 | Xtream EPG base64 | ✅ | ✅ |
-| Xtream JSON (categories/streams) | ✅ | ✅ |
+| Xtream JSON (categories/streams/series) | ✅ | ✅ |
 
 ```bash
 cd crates && cargo test -p forja-iptv-core
@@ -250,7 +223,7 @@ cd packages/forja_rust && flutter test test/parity/iptv_test.dart
 
 Fixtures: `crates/forja-iptv-core/tests/fixtures/`
 
-Manual: M3U import · CRLF playlist · paste.sh URL · Xtream EPG titles · Xtream portal categories/streams.
+Manual: M3U import · CRLF playlist · paste.sh URL · Xtream EPG titles · Xtream portal categories/streams/series episodes.
 
 Wire-up:
 
@@ -415,7 +388,7 @@ Wire-up: `TorrentEngineBackend` in `rust_delegates.dart` · `TorrentStreamServic
 |------|--------|
 | `ForjaEngine.init()` in bootstrap | ✅ |
 | Rust engine status (Developer, all platforms) | ✅ |
-| M3U / paste.sh / Xtream EPG → Rust | ✅ |
+| M3U / paste.sh / Xtream (EPG + JSON) → Rust | ✅ |
 | Provider URLs → Rust (5 providers) | ✅ |
 | Episode matcher + HLS delegates | ✅ |
 | Dylib bundled in `.app` | ✅ |
@@ -432,15 +405,15 @@ cd packages/forja_rust && flutter test
 | `scaffold_test.dart` | FFI add, version |
 | `episode_matcher_test.dart` | 10 golden cases Rust↔Dart |
 | `stream_providers_test.dart` | vidlink, vixsrc, vidnest URLs |
-| `m3u_test.dart` | M3U golden fixtures |
-| `iptv_test.dart` | Xtream decode + paste.sh |
+| `m3u_test.dart` | M3U golden fixtures (3/4) |
+| `iptv_test.dart` | Xtream decode, categories/streams/series, paste.sh |
 | `stremio_test.dart` | resource URL builder + HTTP + JSON parse |
 | `hls_test.dart` | master playlist parse |
 | `torrent_filter_test.dart` | normalize + scene info |
 | `scrapers_test.dart` | Knaben HTML |
 | `torrent_stub_test.dart` | librqbit session + status JSON |
 
-Manual: boot log shows `Rust engine v0.1.0` · toggle off → Dart fallback works · IPTV + debrid + VidLink smoke test.
+Manual: boot log shows `Rust engine v0.1.0` · IPTV + debrid + VidLink smoke test.
 
 **Settings → Developer:** live Rust status + toggle (restart required).
 
@@ -467,7 +440,7 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 - [x] Episode matcher + HLS parse moved to `episode_matcher_dart.dart`, `hls_dart_parse.dart`
 - [x] Dead duplicate `forja_streaming/.../hls_master_parser.dart` removed
 - [x] Dead duplicate `forja_streaming/.../debrid_api.dart` removed (use `forja_api`)
-- [x] IPTV series episodes parse moved to `iptv_dart_parse.dart`
+- [x] IPTV series episodes parse moved to `iptv_dart_parse.dart` + Rust FFI wired
 - [x] Magnet player uses `TorrentStreamService.listTorrentFiles` (no direct libtorrent)
 - [ ] librqbit in mobile Rust FFI (today: libtorrent on mobile, same user feature)
 - [ ] Golden fixtures for every extractor

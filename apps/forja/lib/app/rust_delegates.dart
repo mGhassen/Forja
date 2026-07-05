@@ -133,6 +133,9 @@ void installRustAppDelegates() {
   IptvClientBackend.parseStreamsJson = (json, section) =>
       ForjaRust.instance.parseXtreamStreamsJson(json, section);
 
+  IptvClientBackend.parseSeriesEpisodesJson =
+      (json) => ForjaRust.instance.parseXtreamSeriesEpisodesJson(json);
+
   WebstreamrParseBackend.extractEmbedHtmlJson = (id, html, pageUrl) =>
       ForjaRust.instance.extractEmbedHtmlJson(id, html, pageUrl);
 

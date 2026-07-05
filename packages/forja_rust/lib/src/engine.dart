@@ -116,6 +116,11 @@ class ForjaRust {
         );
       });
 
+  String parseXtreamSeriesEpisodesJson(String json) => using((arena) {
+        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_parse_xtream_series_episodes_json(ptr));
+      });
+
   String parseSceneInfoJson(String title) => using((arena) {
         final ptr = title.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.forja_parse_scene_info_json(ptr));
@@ -430,6 +435,11 @@ final class _ForjaNative {
               'forja_parse_xtream_streams_json',
             )
             .asFunction(),
+        forja_parse_xtream_series_episodes_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'forja_parse_xtream_series_episodes_json',
+            )
+            .asFunction(),
         forja_parse_scene_info_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'forja_parse_scene_info_json',
@@ -633,6 +643,8 @@ final class _ForjaNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_parse_xtream_streams_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_parse_xtream_series_episodes_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_parse_scene_info_json;
   final ffi.Pointer<ffi.Char> Function(

@@ -169,6 +169,74 @@ pub fn parse_streams_json(json: &str, section: &str) -> String {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ParsedSeriesEpisode {
+    pub id: String,
+    pub title: String,
+    pub container_ext: String,
+    pub season: i32,
+    pub episode: i32,
+    pub plot: String,
+    pub image: String,
+}
+
+pub fn parse_series_episodes_rows(json: &str) -> Result<Vec<ParsedSeriesEpisode>, serde_json::Error> {
+    let root: Value = serde_json::from_str(json)?;
+    let Some(episodes_obj) = root.get("episodes").and_then(|v| v.as_object()) else {
+        return Ok(vec![]);
+    };
+
+    let mut out = Vec::new();
+    for (season_key, value) in episodes_obj {
+        let season_num: i32 = season_key.parse().unwrap_or(0);
+        let Some(arr) = value.as_array() else {
+            continue;
+        };
+        for entry in arr {
+            let Some(o) = entry.as_object() else {
+                continue;
+            };
+            let info = o.get("info").and_then(|v| v.as_object());
+            let ext = field_string(o, "container_extension");
+            let episode_num = o
+                .get("episode_num")
+                .and_then(|v| {
+                    v.as_i64()
+                        .map(|n| n as i32)
+                        .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                })
+                .unwrap_or(0);
+            out.push(ParsedSeriesEpisode {
+                id: field_string(o, "id"),
+                title: field_string(o, "title"),
+                container_ext: if ext.is_empty() { "mp4".into() } else { ext },
+                season: season_num,
+                episode: episode_num,
+                plot: info
+                    .map(|i| field_string(i, "plot"))
+                    .unwrap_or_default(),
+                image: info
+                    .map(|i| field_string(i, "movie_image"))
+                    .unwrap_or_default(),
+            });
+        }
+    }
+
+    out.sort_by(|a, b| {
+        a.season
+            .cmp(&b.season)
+            .then_with(|| a.episode.cmp(&b.episode))
+    });
+    Ok(out)
+}
+
+pub fn parse_series_episodes_json(json: &str) -> String {
+    match parse_series_episodes_rows(json) {
+        Ok(rows) => serde_json::to_string(&rows).unwrap_or_else(|_| "[]".into()),
+        Err(e) => json!({ "error": e.to_string() }).to_string(),
+    }
+}
+
 /// Xtream encodes title/description as base64 strings in some responses.
 pub fn decode_xtream_text(s: &str) -> String {
     if s.is_empty() {

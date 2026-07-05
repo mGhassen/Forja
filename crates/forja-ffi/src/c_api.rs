@@ -116,6 +116,13 @@ pub unsafe extern "C" fn forja_parse_xtream_streams_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_parse_xtream_series_episodes_json(
+    json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::parse_xtream_series_episodes_json(from_c_str(json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_parse_scene_info_json(title: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_scene_info_json(from_c_str(title)))
 }

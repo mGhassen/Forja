@@ -36,6 +36,17 @@ void main() {
     expect(list[1]['group'], 'OverrideGroup');
   });
 
+  test('extgrp_before_extinf.m3u golden', () {
+    final content = File(
+      '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/extgrp_before_extinf.m3u',
+    ).readAsStringSync();
+    final json = ForjaRust.instance.parseM3uJson(content);
+    final list = jsonDecode(json) as List;
+    expect(list.length, 2);
+    expect(list[0]['group'], 'FromExtgrp');
+    expect(list[1]['group'], '');
+  });
+
   test('empty playlist returns error object', () {
     final json = ForjaRust.instance.parseM3uJson('');
     final decoded = jsonDecode(json);

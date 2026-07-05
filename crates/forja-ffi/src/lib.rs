@@ -96,6 +96,10 @@ fn parse_xtream_streams_json(json: String, section: String) -> String {
     forja_iptv_core::xtream::parse_streams_json(&json, &section)
 }
 
+fn parse_xtream_series_episodes_json(json: String) -> String {
+    forja_iptv_core::xtream::parse_series_episodes_json(&json)
+}
+
 fn parse_stremio_manifest_json(json: String) -> String {
     match parse_manifest(&json) {
         Ok(m) => serde_json::to_string(&m).unwrap_or_else(|_| "{}".into()),

@@ -11,6 +11,7 @@ abstract final class IptvClientBackend {
   static String Function(String text)? decodeXtreamText;
   static String Function(String json)? parseCategoriesJson;
   static String Function(String json, String section)? parseStreamsJson;
+  static String Function(String json)? parseSeriesEpisodesJson;
 }
 
 /// Xtream-Codes player_api client. Login + categories + streams + episodes.
@@ -166,13 +167,27 @@ class IptvClient {
     return IptvDartParse.parseStreamsRows(text, section);
   }
 
+  static List<Map<String, dynamic>> _parseSeriesEpisodeRows(String text) {
+    final backend = IptvClientBackend.parseSeriesEpisodesJson;
+    if (backend != null) {
+      try {
+        final decoded = json.decode(backend(text));
+        if (decoded is List) {
+          return decoded.map((e) => e as Map<String, dynamic>).toList();
+        }
+      } catch (_) {}
+      return const [];
+    }
+    return IptvDartParse.parseSeriesEpisodesRows(text);
+  }
+
   static Future<List<IptvEpisode>> seriesEpisodes(
       IptvPortal p, String seriesId) async {
     final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
         '&password=${_enc(p.password)}&action=get_series_info&series_id=${_enc(seriesId)}';
     final text = await _httpGet(url, timeout: const Duration(seconds: 15));
     if (text == null) return [];
-    final rows = IptvDartParse.parseSeriesEpisodesRows(text);
+    final rows = _parseSeriesEpisodeRows(text);
     return rows
         .map(
           (o) => IptvEpisode(

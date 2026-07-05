@@ -53,29 +53,9 @@ void main() {
   });
 
   test('parseSeriesEpisodesRows normalizes get_series_info', () {
-    const json = '''
-{
-  "episodes": {
-    "1": [
-      {
-        "id": "100",
-        "title": "Pilot",
-        "container_extension": "mkv",
-        "episode_num": 1,
-        "info": {"plot": "First ep", "movie_image": "http://img/a.png"}
-      }
-    ],
-    "2": [
-      {
-        "id": "200",
-        "title": "Return",
-        "episode_num": 3,
-        "info": {"plot": "", "movie_image": ""}
-      }
-    ]
-  }
-}
-''';
+    final json = File(
+      '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/xtream_series_info.json',
+    ).readAsStringSync();
     final rows = IptvDartParse.parseSeriesEpisodesRows(json);
     expect(rows, hasLength(2));
     expect(rows.first['season'], 1);
@@ -83,6 +63,23 @@ void main() {
     expect(rows.last['season'], 2);
     expect(rows.last['container_ext'], 'mp4');
     expect(rows.last['episode'], 3);
+  });
+
+  test('parseXtreamSeriesEpisodesJson golden parity', () {
+    final json = File(
+      '${_repoRoot()}/crates/forja-iptv-core/tests/fixtures/xtream_series_info.json',
+    ).readAsStringSync();
+    final rustOut =
+        jsonDecode(ForjaRust.instance.parseXtreamSeriesEpisodesJson(json)) as List;
+    final dartOut = IptvDartParse.parseSeriesEpisodesRows(json);
+    expect(rustOut.length, dartOut.length);
+    for (var i = 0; i < dartOut.length; i++) {
+      expect(rustOut[i]['id'], dartOut[i]['id']);
+      expect(rustOut[i]['season'], dartOut[i]['season']);
+      expect(rustOut[i]['episode'], dartOut[i]['episode']);
+      expect(rustOut[i]['container_ext'], dartOut[i]['container_ext']);
+      expect(rustOut[i]['plot'], dartOut[i]['plot']);
+    }
   });
 }
 
