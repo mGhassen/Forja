@@ -12,7 +12,10 @@ command:
 scripts:
   rust:build:
     run: ../../scripts/build_rust.sh
-    description: Build the Rust engine (forja-ffi)
+    description: Build the Rust engine (forja-ffi) for desktop
+  rust:build:mobile:
+    run: ../../scripts/build_rust_mobile.sh all
+    description: Build forja-ffi for iOS/Android (no librqbit)
   rust:test:
     run: |
       cd ../../crates && cargo test --workspace && cargo test -p forja-utils --test golden && cargo test -p forja-iptv-core --test golden_m3u

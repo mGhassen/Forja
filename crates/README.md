@@ -8,8 +8,12 @@ Workspace crates consumed by Flutter via `packages/forja_rust` (FFI).
 ## Build
 
 ```bash
-./scripts/build_rust.sh
+./scripts/build_rust.sh              # desktop (full: torrent + proxy)
+./scripts/build_rust_mobile.sh ios   # iOS parsers only
+./scripts/build_rust_mobile.sh android  # Android arm64 parsers (needs NDK)
 ```
+
+Mobile builds use `forja-ffi` with `--no-default-features` (no librqbit/proxy). Magnet playback on mobile stays `libtorrent_flutter`.
 
 ## Test
 

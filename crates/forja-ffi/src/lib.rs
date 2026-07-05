@@ -1,30 +1,30 @@
 mod c_api;
+#[cfg(feature = "torrent-engine")]
+mod engine_torrent;
+#[cfg(feature = "local-proxy")]
+mod engine_proxy;
 
 use forja_iptv_core::m3u;
 use forja_iptv_core::pastesh;
-use forja_proxy::LocalProxy;
 use forja_scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html};
 use forja_stream_core::list_providers;
 use forja_stremio_core::{
     build_resource_url, fetch_get, parse_catalog, parse_manifest, parse_meta, parse_streams,
     parse_subtitles,
 };
-use forja_torrent::TorrentEngine;
 use forja_utils::{
     episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter,
 };
-use std::sync::{LazyLock, Mutex};
+use std::sync::LazyLock;
 use tokio::runtime::Runtime;
 
 uniffi::include_scaffolding!("forja");
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[allow(dead_code)]
 static RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("forja-ffi tokio runtime"));
-static TORRENT: LazyLock<Mutex<TorrentEngine>> = LazyLock::new(|| Mutex::new(TorrentEngine::new()));
-static PROXY: LazyLock<Mutex<LocalProxy>> = LazyLock::new(|| Mutex::new(LocalProxy::new()));
-static PROXY_PORT: LazyLock<Mutex<u16>> = LazyLock::new(|| Mutex::new(0));
 
 fn version() -> String {
     VERSION.to_string()
@@ -210,103 +210,132 @@ fn parse_webstreamr_source_html_json(source_id: String, html: String, opts_json:
 }
 
 fn torrent_start(magnet: String) -> bool {
-    TORRENT
-        .lock()
-        .ok()
-        .and_then(|e| e.start(&magnet).ok())
-        .is_some()
+    #[cfg(feature = "torrent-engine")]
+    {
+        return engine_torrent::torrent_start(magnet);
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        let _ = magnet;
+        false
+    }
 }
 
 fn torrent_stop() {
-    if let Ok(e) = TORRENT.lock() {
-        e.stop();
-    }
+    #[cfg(feature = "torrent-engine")]
+    engine_torrent::torrent_stop();
 }
 
 fn torrent_is_running() -> bool {
-    TORRENT
-        .lock()
-        .map(|e| e.is_running())
-        .unwrap_or(false)
+    #[cfg(feature = "torrent-engine")]
+    {
+        return engine_torrent::torrent_is_running();
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        false
+    }
 }
 
 fn torrent_status_json() -> String {
-    TORRENT
-        .lock()
-        .map(|e| e.status_json())
-        .unwrap_or_else(|_| "null".into())
+    #[cfg(feature = "torrent-engine")]
+    {
+        return engine_torrent::torrent_status_json();
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        "null".into()
+    }
 }
 
 fn torrent_engine_start(preferred_port: u16) -> i32 {
-    TORRENT
-        .lock()
-        .ok()
-        .and_then(|e| e.start_engine(preferred_port).ok().map(|p| p as i32))
-        .unwrap_or(-1)
+    #[cfg(feature = "torrent-engine")]
+    {
+        return engine_torrent::torrent_engine_start(preferred_port);
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        let _ = preferred_port;
+        -1
+    }
 }
 
 fn torrent_engine_port() -> u16 {
-    TORRENT
-        .lock()
-        .map(|e| e.engine_port())
-        .unwrap_or(0)
+    #[cfg(feature = "torrent-engine")]
+    {
+        return engine_torrent::torrent_engine_port();
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        0
+    }
 }
 
 fn torrent_engine_stop() {
-    if let Ok(e) = TORRENT.lock() {
-        e.stop_engine();
-    }
+    #[cfg(feature = "torrent-engine")]
+    engine_torrent::torrent_engine_stop();
 }
 
 fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
-    let season = if season < 0 { None } else { Some(season) };
-    let episode = if episode < 0 { None } else { Some(episode) };
-    let file_idx = if file_idx < 0 { None } else { Some(file_idx) };
-    TORRENT
-        .lock()
-        .map(|e| e.stream_magnet_json(&magnet, season, episode, file_idx))
-        .unwrap_or_else(|_| r#"{"error":"Engine lock poisoned"}"#.into())
+    #[cfg(feature = "torrent-engine")]
+    {
+        return engine_torrent::torrent_stream_json(magnet, season, episode, file_idx);
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        let _ = (magnet, season, episode, file_idx);
+        r#"{"error":"torrent_engine_unavailable"}"#.into()
+    }
 }
 
 fn torrent_list_files_json(magnet: String) -> String {
-    TORRENT
-        .lock()
-        .map(|e| e.list_files_json(&magnet))
-        .unwrap_or_else(|_| r#"{"error":"Engine lock poisoned"}"#.into())
+    #[cfg(feature = "torrent-engine")]
+    {
+        return engine_torrent::torrent_list_files_json(magnet);
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        let _ = magnet;
+        r#"{"error":"torrent_engine_unavailable"}"#.into()
+    }
 }
 
 fn proxy_start(preferred_port: u16) -> i32 {
-    RUNTIME
-        .block_on(async {
-            let mut proxy = PROXY.lock().ok()?;
-            let port = proxy.start(preferred_port).await.ok()?;
-            if let Ok(mut stored) = PROXY_PORT.lock() {
-                *stored = port;
-            }
-            Some(port)
-        })
-        .map(|p| p as i32)
-        .unwrap_or(-1)
+    #[cfg(feature = "local-proxy")]
+    {
+        return engine_proxy::proxy_start(&RUNTIME, preferred_port);
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        let _ = preferred_port;
+        -1
+    }
 }
 
 fn proxy_stop() {
-    if let Ok(mut proxy) = PROXY.lock() {
-        proxy.stop();
-    }
-    if let Ok(mut port) = PROXY_PORT.lock() {
-        *port = 0;
-    }
+    #[cfg(feature = "local-proxy")]
+    engine_proxy::proxy_stop();
 }
 
 fn proxy_port() -> u16 {
-    PROXY_PORT.lock().map(|p| *p).unwrap_or(0)
+    #[cfg(feature = "local-proxy")]
+    {
+        return engine_proxy::proxy_port();
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        0
+    }
 }
 
 fn proxy_register_route(token: String, upstream_url: String) -> bool {
-    RUNTIME.block_on(async {
-        let proxy = PROXY.lock().ok()?;
-        proxy.register_route(&token, &upstream_url).await;
-        Some(())
-    })
-    .is_some()
+    #[cfg(feature = "local-proxy")]
+    {
+        return engine_proxy::proxy_register_route(&RUNTIME, token, upstream_url);
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        let _ = (token, upstream_url);
+        false
+    }
 }

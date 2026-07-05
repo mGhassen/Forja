@@ -6,12 +6,14 @@ on:
       - 'crates/**'
       - 'packages/forja_rust/**'
       - 'scripts/build_rust.sh'
+      - 'scripts/build_rust_mobile.sh'
       - '.github/workflows/rust.yml'
   pull_request:
     paths:
       - 'crates/**'
       - 'packages/forja_rust/**'
       - 'scripts/build_rust.sh'
+      - 'scripts/build_rust_mobile.sh'
       - '.github/workflows/rust.yml'
 
 jobs:
@@ -38,3 +40,38 @@ jobs:
         run: |
           flutter pub get
           flutter test
+
+  android-ffi:
+    name: Android arm64 FFI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+      - name: build libforja_ffi.so
+        run: ./scripts/build_rust_mobile.sh android
+      - name: verify jniLibs output
+        run: test -f apps/forja/android/app/src/main/jniLibs/arm64-v8a/libforja_ffi.so
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libforja_ffi-android-arm64
+          path: apps/forja/android/app/src/main/jniLibs/arm64-v8a/libforja_ffi.so
+          if-no-files-found: error
+
+  ios-ffi:
+    name: iOS arm64 FFI
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - name: build libforja_ffi.dylib
+        run: ./scripts/build_rust_mobile.sh ios
+      - name: verify Frameworks output
+        run: test -f apps/forja/ios/Runner/Frameworks/libforja_ffi.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libforja_ffi-ios-arm64
+          path: apps/forja/ios/Runner/Frameworks/libforja_ffi.dylib
+          if-no-files-found: error

@@ -30,6 +30,12 @@ class ForjaRust {
 
   static String _defaultLibraryPath() {
     const name = 'forja_ffi';
+    if (Platform.isAndroid) {
+      return 'lib$name.so';
+    }
+    if (Platform.isIOS) {
+      return 'lib$name.dylib';
+    }
     if (Platform.isMacOS) {
       return 'crates/target/release/lib$name.dylib';
     }

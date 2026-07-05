@@ -118,8 +118,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Hydrate light mode setting before first frame
   await SettingsService().initLightMode();
 
-  final useRustEngine = await SettingsService().getUseRustEngine();
-  await ForjaEngine.init(enabled: useRustEngine);
+  await ForjaEngine.init();
   installRustAppDelegates();
   
   // Hydrate theme preset before first frame

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-/// Resolves `libforja_ffi` for dev (`flutter run`) and packaged desktop builds.
+/// Resolves `libforja_ffi` for dev (`flutter run`) and packaged app builds.
 List<String> rustLibraryCandidates() {
   const name = 'forja_ffi';
   final candidates = <String>[];
@@ -15,7 +15,15 @@ List<String> rustLibraryCandidates() {
     candidates.insert(0, env);
   }
 
-  if (Platform.isMacOS) {
+  if (Platform.isAndroid) {
+    candidates.add('lib$name.so');
+  } else if (Platform.isIOS) {
+    candidates.add('lib$name.dylib');
+    final exe = Platform.resolvedExecutable;
+    final frameworks = File(exe).parent.path;
+    candidates.add('$frameworks/lib$name.dylib');
+    candidates.add('$frameworks/Frameworks/lib$name.dylib');
+  } else if (Platform.isMacOS) {
     candidates.add('lib$name.dylib');
     final exe = Platform.resolvedExecutable;
     final macosDir = File(exe).parent;
@@ -52,15 +60,25 @@ List<String> rustLibraryCandidates() {
       'crates/target/release/forja_ffi.dll',
       '../../crates/target/release/forja_ffi.dll',
     ]);
+  } else if (Platform.isAndroid) {
+    candidates.addAll(const [
+      'crates/target/aarch64-linux-android/release/libforja_ffi.so',
+      '../../crates/target/aarch64-linux-android/release/libforja_ffi.so',
+    ]);
+  } else if (Platform.isIOS) {
+    candidates.addAll(const [
+      'crates/target/aarch64-apple-ios/release/libforja_ffi.dylib',
+      '../../crates/target/aarch64-apple-ios/release/libforja_ffi.dylib',
+    ]);
   }
 
   return candidates;
 }
 
 String? _discoverRepoDylib() {
-  final lib = Platform.isMacOS
+  final lib = Platform.isMacOS || Platform.isIOS
       ? 'libforja_ffi.dylib'
-      : Platform.isLinux
+      : Platform.isLinux || Platform.isAndroid
           ? 'libforja_ffi.so'
           : Platform.isWindows
               ? 'forja_ffi.dll'

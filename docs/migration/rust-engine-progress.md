@@ -10,16 +10,16 @@
 
 ## Status at a glance
 
-**Goal:** move heavy logic from Dart → Rust. Flutter stays the UI. Old Dart code stays as fallback until each piece is proven, then deleted (Step 9).
+**Goal:** same Forja experience on every platform. Rust is the engine everywhere Flutter runs natively; Dart reference code stays as an internal fallback until parity is proven — never a user-facing “off” switch.
 
-**Where we are:** Steps 0–7 done (Rust + app wire-up). Step 9 cleanup in progress. Dart fallbacks kept until Rust-off mode is dropped.
+**Where we are:** Steps 0–7 done. Mobile Rust build pipeline started (iOS/Android parsers). Step 9 cleanup in progress.
 
 ### Three columns — read every table this way
 
 | Column | Question |
 |--------|----------|
 | **Rust** | Code exists in `crates/` + exposed via FFI? |
-| **App** | Running app calls Rust when `use_rust_engine` is on? |
+| **App** | Running app calls Rust when native library loads? |
 | **Dart removed** | Old duplicate deleted? (always **no** until Step 9) |
 
 Rust can be **yes** while App is **no** — code exists but the app still uses Dart.
@@ -35,11 +35,40 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **C** | Flutter call sites wired in the app | done |
 | **D** | Delete Dart duplicates | in progress |
 
+### Blockers
+
+**Detail:** [rust-engine-blockers.md](./rust-engine-blockers.md)
+
+| Status | Count | IDs |
+|--------|------:|-----|
+| In progress | 7 | B1 · B2 · B3 · B5 · B6 · B7 · B8 |
+| Open | 2 | B4 · B9 |
+
+**Step 9 unlock:** 0 / 3
+
+| ID | Blocker | Progress |
+|----|---------|----------|
+| B7 | Mobile Rust FFI packaging | in progress |
+| B1 | Dart reference fallbacks | in progress |
+| B3 | `reference/` layer (10 files) | in progress — 0 deleted |
+| B5 | Webstreamr goldens | in progress — 20/23 extractors · 20/21 sources |
+| B6 | RFC parity gaps | in progress — M3U 2/4 fixtures |
+| B8 | Dylib dev ergonomics | in progress |
+| B2 | `libtorrent_flutter` | by design (mobile torrent; desktop fallback) |
+| B4 | App `integration_test/` | open — 0 tests |
+| B9 | Stale RFC-009 | open |
+
+| Metric | Done | Target |
+|--------|-----:|-------:|
+| Reference consolidated | 10 | 10 |
+| Reference deleted | 0 | 10 |
+| Integration tests | 0 | ≥1 |
+
 ### Feature matrix
 
 | Area | Rust | App | Notes |
 |------|:----:|:---:|-------|
-| **0 — Scaffold** (build, FFI, CI) | ✅ | ✅ | `ForjaEngine.init()`, dylib bundling |
+| **0 — Scaffold** (build, FFI, CI) | ✅ | ✅ | desktop + mobile build scripts |
 | **1 — Utils** (episode match, HLS, torrent filter) | ✅ | ✅ | all 5 modules wired |
 | **2 — Stream URLs** | ✅ | ✅ | all 5 template providers wired |
 | **3 — IPTV** | ✅ | ✅ | M3U, paste.sh, EPG decode, Xtream JSON parse |
@@ -63,12 +92,29 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 - Local proxy: `/proxy?url=` + Range streaming (Rust backend; shelf forwards when engine on)
 - Torrent playback: magnet → HTTP stream via librqbit (Rust when engine on)
 
+### Platform parity
+
+| Platform | Rust library | Torrent playback | Notes |
+|----------|--------------|------------------|-------|
+| macOS / Linux / Windows | `libforja_ffi` full features | librqbit (Rust) · libtorrent fallback | `./scripts/build_rust.sh` |
+| iOS / Android | `libforja_ffi` parsers (no librqbit in FFI yet) | `libtorrent_flutter` | `./scripts/build_rust_mobile.sh` |
+
+**Android release build with Rust bundled:**
+```bash
+./scripts/build_rust_mobile.sh android
+# or: FORJA_BUILD_RUST_ANDROID=1 flutter build apk
+# or: set forjaBuildRust=true in apps/forja/android/gradle.properties
+```
+
+Boot always calls `ForjaEngine.init()` — no disable toggle. If the native library is missing, Dart reference + libtorrent keep features working.
+
 ### Stays Dart (by design)
 
 - Webstreamr: fetcher, registry, search/redirect orchestration (page HTTP)
 - Scrapers: search HTTP fetch
 - HLS proxy (`/hls-proxy`: m3u8 rewrite + PNG strip)
-- Torrent playback when Rust engine off (`libtorrent_flutter`)
+- Torrent playback on mobile (`libtorrent_flutter`; Rust torrent FFI desktop-only until librqbit mobile)
+- Torrent playback when Rust dylib missing on desktop (`libtorrent_flutter` fallback)
 
 ### Numbers
 
@@ -85,13 +131,14 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 
 ```bash
 ./scripts/build_rust.sh
+./scripts/build_rust_mobile.sh all   # iOS + Android before flutter run
 cd crates && cargo test --workspace
 cd packages/forja_rust && flutter test
 ```
 
 ### Next work (priority order)
 
-1. Step 9 Dart fallback cleanup — see [blockers](./rust-engine-blockers.md) (B1–B6)
+1. Step 9 — blocked by B7 (mobile Rust) then B5/B6/B4 — [blockers](./rust-engine-blockers.md)
 
 ---
 
@@ -367,7 +414,7 @@ Wire-up: `TorrentEngineBackend` in `rust_delegates.dart` · `TorrentStreamServic
 | Task | Status |
 |------|--------|
 | `ForjaEngine.init()` in bootstrap | ✅ |
-| `use_rust_engine` setting + Developer UI toggle | ✅ |
+| Rust engine status (Developer, all platforms) | ✅ |
 | M3U / paste.sh / Xtream EPG → Rust | ✅ |
 | Provider URLs → Rust (5 providers) | ✅ |
 | Episode matcher + HLS delegates | ✅ |
@@ -422,7 +469,7 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 - [x] Dead duplicate `forja_streaming/.../debrid_api.dart` removed (use `forja_api`)
 - [x] IPTV series episodes parse moved to `iptv_dart_parse.dart`
 - [x] Magnet player uses `TorrentStreamService.listTorrentFiles` (no direct libtorrent)
-- [ ] Drop `libtorrent_flutter` once Rust torrent path is stable in production
+- [ ] librqbit in mobile Rust FFI (today: libtorrent on mobile, same user feature)
 - [ ] Golden fixtures for every extractor
 
 ---

@@ -17,7 +17,7 @@ When working on the Rust engine migration:
 ## After completing work on a step
 
 1. Update `docs/migration/rust-engine-progress.md` — step status, wire-up checkboxes.
-2. Update `docs/migration/rust-engine-blockers.md` if a blocker was resolved or added.
+2. Update `docs/migration/rust-engine-blockers.md` — overview metrics + Done/Todo checkboxes (mirror into progress doc **Blockers** section).
 3. Update `docs/rfc/009-rust-ffi.md` acceptance checkboxes if applicable.
 4. Add or extend tests:
    - Rust: unit test in crate + golden fixture if I/O-free logic

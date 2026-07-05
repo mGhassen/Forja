@@ -41,7 +41,7 @@ crates/
 **Package:** `packages/forja_rust/`
 
 ```dart
-await ForjaEngine.init(enabled: await SettingsService().getUseRustEngine());
+await ForjaEngine.init();
 // EpisodeMatcher, HlsParser, M3uParser route through delegates when isReady
 ```
 

@@ -12,3 +12,7 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Rust engine native libs (built by scripts/build_rust_mobile.sh)
+**/jniLibs/**/*.so
+!**/jniLibs/**/.gitkeep

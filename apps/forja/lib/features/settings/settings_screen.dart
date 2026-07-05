@@ -114,10 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Light mode
   bool _isLightMode = false;
 
-  // Rust engine (desktop)
-  bool _useRustEngine = true;
-
-  // Theme preset
+  // Rust engine status (read-only; always enabled at boot)
   String _selectedThemeId = AppTheme.defaultPresetId;
 
   // Navbar config
@@ -198,7 +195,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Load light mode
     final lightMode = await _settings.isLightModeEnabled();
-    final useRustEngine = await _settings.getUseRustEngine();
 
     // Load theme preset
     final themePreset = await _settings.getThemePreset();
@@ -253,7 +249,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _torrentRamCacheMb = ramCacheMb;
         _torrentConnectionsLimit = connLimit;
         _isLightMode = lightMode;
-        _useRustEngine = useRustEngine;
         _selectedThemeId = themePreset;
         _navbarVisible = navVisible;
         _navbarOrder = navOrder;
@@ -712,17 +707,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [_buildNavbarConfig()],
                     ),
 
-                    // ── Developer (desktop: Rust engine always visible) ──
-                    if (Platform.isMacOS ||
-                        Platform.isWindows ||
-                        Platform.isLinux)
-                      _buildExpandableSection(
-                        id: 'developer',
-                        icon: Icons.developer_mode_rounded,
-                        title: 'Developer',
-                        children: [
-                          _buildRustEngineSection(),
-                          if (kDebugMode)
+                    // ── Developer (Rust engine status) ──
+                    _buildExpandableSection(
+                      id: 'developer',
+                      icon: Icons.developer_mode_rounded,
+                      title: 'Developer',
+                      children: [
+                        _buildRustEngineSection(),
+                        if (kDebugMode && (Platform.isMacOS ||
+                            Platform.isWindows ||
+                            Platform.isLinux))
                             Card(
                               child: ListTile(
                                 leading: const Icon(Icons.play_circle_outline),
@@ -776,6 +770,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ? ForjaRust.instance.version
         : 'not loaded (Dart fallback)';
     final statusColor = loaded ? Colors.greenAccent : Colors.orangeAccent;
+    final platformNote = loaded
+        ? ''
+        : Platform.isAndroid || Platform.isIOS
+            ? ' — run ./scripts/build_rust_mobile.sh and rebuild'
+            : ' — run ./scripts/build_rust.sh';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -788,28 +787,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  loaded ? 'Rust engine active — v$version' : 'Rust engine inactive — $version',
+                  loaded
+                      ? 'Rust engine active — v$version'
+                      : 'Rust engine inactive — $version$platformNote',
                   style: TextStyle(color: statusColor, fontSize: 12),
                 ),
               ),
             ],
           ),
-        ),
-        _buildFocusableToggle(
-          'Use Rust Engine',
-          'Parsers, torrent filter, scrapers, Stremio URLs. Restart after changing.',
-          _useRustEngine,
-          (val) async {
-            await _settings.setUseRustEngine(val);
-            if (!mounted) return;
-            setState(() => _useRustEngine = val);
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Restart Forja to apply the Rust engine setting.'),
-              ),
-            );
-          },
         ),
         const SizedBox(height: 8),
       ],

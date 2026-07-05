@@ -18,22 +18,9 @@ abstract final class ForjaEngine {
   static bool get isReady => _enabled && ForjaRust.isInitialized;
 
   /// Load the native library. Non-fatal on failure — Dart fallbacks stay active.
-  static Future<void> init({bool? enabled}) async {
+  static Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
-
-    final wantRust = enabled ?? true;
-    if (!wantRust) {
-      _enabled = false;
-      _installUtilityBackends();
-      return;
-    }
-
-    if (!(Platform.isMacOS || Platform.isLinux || Platform.isWindows)) {
-      _enabled = false;
-      _installUtilityBackends();
-      return;
-    }
 
     try {
       Object? lastError;
