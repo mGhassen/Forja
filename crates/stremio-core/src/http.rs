@@ -39,4 +39,12 @@ mod tests {
     fn rejects_non_http_url() {
         assert!(fetch_get("ftp://example.com", 5).is_err());
     }
+
+    #[test]
+    fn fetches_torrentio_streams() {
+        let resp =
+            fetch_get("https://torrentio.strem.fun/stream/movie/tt0114709.json", 15).unwrap();
+        assert_eq!(resp.status, 200);
+        assert!(resp.body.contains("\"streams\""));
+    }
 }

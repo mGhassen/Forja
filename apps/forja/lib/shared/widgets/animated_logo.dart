@@ -34,7 +34,7 @@ class SplashLogoWithHalo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = ForjaLogoColors.forTheme(isLight);
-    final haloSize = logoHeight * 5;
+    final haloSize = logoHeight * 15;
     final logoAsset = isLight
         ? 'assets/icon/logo-light.png'
         : 'assets/icon/logo-dark.png';

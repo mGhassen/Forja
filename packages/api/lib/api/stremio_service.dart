@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:storage/storage.dart';
 import 'package:rust/rust.dart';
 
-bool get _stremioRustReady => ForjaRust.isInitialized;
-
 ({String baseUrl, String? queryParams}) _splitStremioAddonUrl(String url) {
   final m = jsonDecode(ForjaRust.instance.splitStremioAddonUrlJson(url))
       as Map<String, dynamic>;
@@ -69,24 +67,6 @@ Map<String, dynamic>? _parseStremioMeta(String body) {
   return Map<String, dynamic>.from(meta);
 }
 
-Future<({int statusCode, String body})> _stremioHttpGet(
-  Uri uri, {
-  required Duration timeout,
-}) async {
-  final raw = ForjaRust.instance.stremioHttpGet(
-    uri.toString(),
-    timeoutSecs: timeout.inSeconds,
-  );
-  final parsed = jsonDecode(raw) as Map<String, dynamic>;
-  if (parsed.containsKey('error')) {
-    throw Exception(parsed['error'] as String? ?? 'HTTP error');
-  }
-  return (
-    statusCode: parsed['status'] as int? ?? 0,
-    body: parsed['body'] as String? ?? '',
-  );
-}
-
 class StremioService {
   static final StremioService _instance = StremioService._internal();
   factory StremioService() => _instance;
@@ -101,18 +81,10 @@ class StremioService {
     Object? lastError;
     for (var attempt = 0; attempt <= retries; attempt++) {
       try {
-        if (_stremioRustReady) {
-          final result = await _stremioHttpGet(uri, timeout: timeout);
-          final response = http.Response(result.body, result.statusCode);
-          if (response.statusCode == 200) return response;
-          lastResponse = response;
-          if (response.statusCode == 404) break;
-        } else {
-          final response = await http.get(uri).timeout(timeout);
-          if (response.statusCode == 200) return response;
-          lastResponse = response;
-          if (response.statusCode == 404) break; // Don't retry 404s
-        }
+        final response = await http.get(uri).timeout(timeout);
+        if (response.statusCode == 200) return response;
+        lastResponse = response;
+        if (response.statusCode == 404) break;
       } catch (e) {
         lastError = e;
       }
@@ -186,6 +158,7 @@ class StremioService {
       if (response.statusCode == 200) {
         return _parseStremioStreams(response.body);
       }
+      debugPrint('[StremioService] Stream fetch HTTP ${response.statusCode} ($url)');
     } catch (e) {
       debugPrint('[StremioService] Stream fetch error ($url): $e');
     }
