@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,6 +22,7 @@ import 'package:forja_api/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
 import 'webstreamr_settings_screen.dart';
+import 'splash_preview_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -705,6 +707,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
 
                     // ── App Updates ──
+                    if (kDebugMode)
+                      _buildExpandableSection(
+                        id: 'developer',
+                        icon: Icons.developer_mode_rounded,
+                        title: 'Developer',
+                        children: [
+                          Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.play_circle_outline),
+                              title: const Text('Preview Splash Screen'),
+                              subtitle: const Text(
+                                'Show the boot splash overlay without restarting',
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SplashPreviewScreen(),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     _buildExpandableSection(
                       id: 'updates',
                       icon: Icons.system_update_rounded,

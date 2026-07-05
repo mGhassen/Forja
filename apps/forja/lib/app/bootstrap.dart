@@ -23,6 +23,7 @@ import 'package:forja_core/utils/webview_cleanup.dart';
 import 'package:forja/shell/main_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
+import 'package:forja/shared/widgets/animated_forja_logo.dart';
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -264,8 +265,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
 
@@ -274,7 +273,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   /// HomeScreen build, layout, paint and prefetch in the background. That
   /// way, when the overlay slides away, the first frames of the real UI are
   /// already warm and scrolling is smooth instead of janky.
-  static const Duration _minSplashDuration = Duration(seconds: 4);
+  static const Duration _minSplashDuration = Duration(seconds: 10);
 
   /// Built once and kept alive in the widget tree behind the splash overlay
   /// so its element (and all child State objects) survive the transition
@@ -287,15 +286,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _fadeAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -449,7 +439,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   @override
   void dispose() {
-    _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
   }
@@ -483,55 +472,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   Widget _buildSplashOverlay() {
-    final isLight = AppTheme.isLightMode;
-
     return Scaffold(
-      body: Container(
-        decoration: AppTheme.backgroundDecoration,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                isLight
-                    ? 'assets/icon/logo-light.png'
-                    : 'assets/icon/logo-dark.png',
-                height: 110,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 32),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'YOUR CINEMA UNIVERSE',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 10,
-                      color: AppTheme.primaryColor.withValues(alpha: 0.6),
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 100),
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: Text(
-                  'INITIALIZING ENGINE...',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 4,
-                    color: isLight ? Colors.black38 : Colors.white38,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-              ),
-            ],
-          ),
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _skipSplash,
+        child: SplashOverlayContent(
+          isLight: AppTheme.isLightMode,
         ),
       ),
     );
