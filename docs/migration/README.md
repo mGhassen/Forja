@@ -3,9 +3,9 @@
 **Last updated:** 2026-07-05  
 **Current phase:** [Phase 2 — Rust engine complete](./02-rust-engine-complete.md)
 
-Forja is migrating from a Flutter monolith to a **Rust engine** with a **Kotlin Compose** UI. Flutter is temporary; it will be deleted once Compose reaches feature parity.
+Forja is migrating from a Flutter monolith to a **Rust engine** with a **Kotlin Compose** UI. Flutter is temporary shell; it will be deleted once Compose reaches feature parity.
 
-**Order matters:** finish the engine in Rust and remove Flutter from the engine layer (Phase 2) **before** starting Compose (Phase 3).
+**Order matters:** Rust must own the **full engine** (fetch, route, parse, torrent) in Phase 2 **before** Compose UI in Phase 3.
 
 ---
 
@@ -13,9 +13,9 @@ Forja is migrating from a Flutter monolith to a **Rust engine** with a **Kotlin 
 
 | # | Doc | Status | Summary |
 |---|-----|--------|---------|
-| 1 | [01-rust-engine.md](./01-rust-engine.md) | **Complete** | Rust crates + FFI wired via `packages/rust`; parsers in production |
-| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | **Next** | Finish engine on Rust: B2 librqbit, drop libtorrent, strip Dart fallbacks — Flutter UI only |
-| 3 | [03-kotlin-compose.md](./03-kotlin-compose.md) | Future | KMP Compose UI + `forja_kotlin`; port orchestration from Dart |
+| 1 | [01-rust-engine.md](./01-rust-engine.md) | **Complete** | Rust crates + FFI; parse primitives in production |
+| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | **Active** | **Engine 100% Rust** — pipelines, fetch, route. Flutter **UI only** |
+| 3 | [03-kotlin-compose.md](./03-kotlin-compose.md) | Blocked | Compose UI replaces Flutter — **same Rust engine**, no logic port |
 | 4 | [04-delete-flutter.md](./04-delete-flutter.md) | Future | Remove `apps/forja`, Dart packages, melos Flutter CI |
 | 5 | [05-web-client.md](./05-web-client.md) | Parallel | WASM engine + browser client ([RFC-014](../rfc/014-v3-web-rust.md)) |
 
@@ -25,48 +25,37 @@ Forja is migrating from a Flutter monolith to a **Rust engine** with a **Kotlin 
 
 ```mermaid
 flowchart TB
-  subgraph phase3 [Phase3_Compose]
+  subgraph ui [UI_layer]
     ComposeApp["apps/forja_compose"]
-    KotlinOrch["Kotlin orchestration"]
-    PlatformUI["WebView player PiP"]
+    FlutterApp["apps/forja Phase2 only"]
+    PlatformUI["WebView · player chrome"]
   end
 
-  subgraph phase1 [Phase1_Rust_crates_DONE]
+  subgraph engine [Rust_engine crates]
     Crates["crates/*"]
+    FFI["libffi"]
   end
 
-  subgraph phase2 [Phase2_Engine_complete]
-    FFI["libffi full features"]
-    ThinDart["packages/rust thin loader only"]
-  end
-
-  subgraph phase4 [Phase4_Delete]
-    FlutterApp["apps/forja"]
-    DartPkgs["packages/* Dart orchestration"]
-  end
-
-  ComposeApp --> KotlinOrch
-  ComposeApp --> PlatformUI
-  KotlinOrch --> FFI
+  ComposeApp --> FFI
+  FlutterApp --> FFI
   PlatformUI --> FFI
   FFI --> Crates
 
-  FlutterApp -.->|Phase2 UI only| ThinDart
-  ThinDart --> FFI
-  FlutterApp -.->|deleted Phase4| ComposeApp
-  DartPkgs -.->|deleted Phase4| KotlinOrch
+  FlutterApp -.->|Phase4 delete| ComposeApp
 ```
+
+**No Kotlin orchestration layer.** Compose calls Rust the same way Flutter does today (via uniffi/JNI). UI shows; engine works.
 
 ---
 
 ## Principles
 
-1. **Rust owns the engine** — parsers, crypto, extractors, templates, proxy, torrent (librqbit).
-2. **Phase 2 before Compose** — no Kotlin UI until Flutter is gone from the **engine layer** (no libtorrent, no Dart parse fallbacks, no `forja_*` duplicate packages). Orchestration HTTP/shelf may stay in Dart until Phase 3 ports it.
-3. **Flutter is temporary UI only** — deleted in Phase 4.
-4. **No feature loss** — every capability must have a replacement before deletion.
-5. **Orchestration is not engine** — HTTP fetch, registry, shelf, Nuvio JS host ports to Kotlin in Phase 3.
-6. **Platform-specific stays platform-specific** — WebView extractors, player, PiP are UI adapters.
+1. **Rust owns the engine** — fetch, HTTP, routing, parse, crypto, extractors, templates, proxy, torrent (librqbit). Everything that is not pixels.
+2. **UI shows only** — Flutter (Phase 2) and Compose (Phase 3) call engine APIs and render JSON. No `*Backend` hooks, no Dart/Kotlin fetch for engine ops.
+3. **Phase 2 before Compose** — P2-80 pipelines must land before Phase 3 starts.
+4. **Phase 3 = UI swap** — port screens to Compose; engine unchanged.
+5. **Phase 4 = delete Flutter** — not a logic migration.
+6. **Platform-specific stays in UI** — WebView host, ExoPlayer/AVPlayer, PiP are presentation adapters, not engine.
 
 ---
 
@@ -87,6 +76,5 @@ flowchart TB
 
 - Update the **active phase file** when work completes.
 - Phase 1 is frozen except factual corrections.
-- B2 tail: P2-14 mobile E2E · Android NDK. P2-60 legacy purge done.
-- Do not start Phase 3 until Phase 2 exit criteria are met.
+- **Do not start Phase 3** until Phase 2 P2-80 + P2-86 exit criteria are met.
 - Agent workflow: [`.cursor/rules/rust-migration.mdc`](../../.cursor/rules/rust-migration.mdc)
