@@ -40,7 +40,8 @@ When working on the Rust engine migration:
 
 - Add optional backend hook in app or `forja_core` (not in `forja_rust` importing app code).
 - `ForjaEngine._installDelegates()` sets hooks at init when native library loads.
-- Call site uses `*Backend` hook; `installDartFallbackDelegates()` wires Dart parsers when Rust dylib missing.
+- Call site uses `*Backend` hook wired by `installRustAppDelegates()` when Rust loads.
+- Without dylib: parsers throw / boot warns (`FORJA_RUST_STRICT=1` on desktop debug).
 - No user-facing Rust toggle — engine always attempts native load at boot.
 
 ## Doc status rules

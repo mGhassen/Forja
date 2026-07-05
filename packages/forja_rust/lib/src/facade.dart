@@ -7,16 +7,15 @@ import 'package:forja_core/utils/hls_master_parser.dart';
 
 import 'engine.dart';
 import 'library_path.dart';
-import 'dart_fallback/m3u_dart_parser.dart';
 
-/// Routes hot-path engine calls to Rust when loaded, else Dart fallbacks.
+/// Rust engine facade — native library required for parser/torrent features.
 abstract final class ForjaEngine {
   static bool _enabled = false;
   static bool _initialized = false;
 
   static bool get isReady => _enabled && ForjaRust.isInitialized;
 
-  /// Load the native library. Non-fatal on failure — Dart fallbacks stay active.
+  /// Load the native library. Required for engine features.
   static Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
@@ -41,11 +40,11 @@ abstract final class ForjaEngine {
           lastError = e;
         }
       }
-      debugPrint('[ForjaEngine] Rust library not loaded — Dart fallback: $lastError');
+      debugPrint('[ForjaEngine] Rust library not loaded: $lastError');
       _enabled = false;
       _installUtilityBackends();
     } catch (e) {
-      debugPrint('[ForjaEngine] init failed (Dart fallback): $e');
+      debugPrint('[ForjaEngine] init failed: $e');
       _enabled = false;
       _installUtilityBackends();
     }
@@ -78,6 +77,15 @@ abstract final class ForjaEngine {
     HlsParserBackend.parseMaster = null;
   }
 
+  static void _requireReady() {
+    if (!isReady) {
+      throw StateError(
+        'Rust engine not loaded — run ./scripts/build_rust.sh (desktop) '
+        'or ./scripts/build_rust_mobile.sh (mobile)',
+      );
+    }
+  }
+
   static String? buildMovieUrl(String providerId, String tmdbId) {
     if (!isReady) return null;
     final id = int.tryParse(tmdbId);
@@ -101,17 +109,13 @@ abstract final class ForjaEngine {
   }
 
   static List<Map<String, dynamic>> parseM3uChannels(String content) {
-    if (isReady) {
-      final json = ForjaRust.instance.parseM3uJson(content);
-      final decoded = jsonDecode(json);
-      if (decoded is Map && decoded['error'] != null) {
-        throw FormatException(decoded['error'] as String);
-      }
-      return (decoded as List).cast<Map<String, dynamic>>();
+    _requireReady();
+    final json = ForjaRust.instance.parseM3uJson(content);
+    final decoded = jsonDecode(json);
+    if (decoded is Map && decoded['error'] != null) {
+      throw FormatException(decoded['error'] as String);
     }
-    return M3uDartParser.parse(content)
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList();
+    return (decoded as List).cast<Map<String, dynamic>>();
   }
 
   static String normalizeTorrentTitle(String title) {

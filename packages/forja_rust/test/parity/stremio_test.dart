@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../helpers/rust_engine.dart';
-import 'package:forja_rust/src/dart_fallback.dart';
+import 'dart_baseline/dart_baseline.dart';
 import 'package:forja_rust/forja_rust.dart';
 import 'package:flutter_test/flutter_test.dart';
 

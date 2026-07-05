@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/app/dart_fallback_delegates.dart';
 import 'package:forja/app/rust_delegates.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja_api/api/stremio_service.dart';
@@ -17,7 +16,6 @@ void main() {
   setUpAll(() async {
     await ForjaEngine.init();
     installRustAppDelegates();
-    installDartFallbackDelegates();
   });
 
   tearDown(() {

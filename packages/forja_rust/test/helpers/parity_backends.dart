@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_api/api/kisskh_subtitle_decryptor.dart';
 import 'package:forja_api/api/torrent_filter.dart';
 import 'package:forja_rust/forja_rust.dart';
-import 'package:forja_rust/src/dart_fallback.dart';
+import '../parity/dart_baseline/dart_baseline.dart';
 import 'package:forja_webstreamr/webstreamr/utils/unpacker.dart';
 
 import 'rust_engine.dart';

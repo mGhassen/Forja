@@ -1,7 +1,7 @@
 # RFC-009: Rust core FFI
 
 **Version:** v1.0 engine phase (web/WASM deferred to v3.0)  
-**Status:** **In progress** — Steps 0–8 done; Step 9 cleanup (delete `dart_fallback/` when B1 closes)
+**Status:** **In progress** — Steps 0–8 done; Step 9 parser cleanup done; B2 (libtorrent) remains
 
 ## Summary
 
@@ -109,7 +109,8 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 - [x] Mobile release bundles Rust parsers (Android `forjaBuildRust=true` · iOS Release build phase)
 - [x] Full parity suite (core paths; lulustream/fastream stream-fetch documented gap)
 - [ ] WASM smoke test (v3.0)
-- [ ] Step 9: delete `dart_fallback/` when all platforms proven in release
+- [x] Step 9: runtime Dart engine removed from `lib/` (parity baselines in `test/` only)
+- [ ] Step 9: drop `libtorrent_flutter` (B2)
 
 ## Related
 
