@@ -7,7 +7,8 @@ Design docs for Forja. Topic RFCs (001–010) define **what**; version RFCs (011
 | Version | Release RFC | Ship target | Summary |
 |---------|-------------|-------------|---------|
 | **v1.0** | [RFC-011](011-v1.0-mvp.md) | macOS (+ mobile parity) | Feature-first app, 19 nav tabs, engines, unified player, IPTV, Stremio, provider registry |
-| **v1.1** | [RFC-012](012-v1.1-casting-providers.md) | + iOS/Android casting | AirPlay, Chromecast, expanded providers, player overlay wired |
+| **v1.0.1** | [RFC-016](016-lazy-tab-mounting.md)–[018](018-startup-splash-home.md) | Performance patch | Lazy tabs, deferred engine boot, splash/Home stagger |
+| **v1.1** | [RFC-012](012-v1.1-casting-providers.md) | + iOS/Android casting | AirPlay, Chromecast, expanded providers, player overlay wired, god-file splits, media routing |
 | **v1.2** | [RFC-013](013-v1.2-sync-lan-party.md) | + cloud optional | Supabase settings sync, LAN companion, watch party |
 | **v3.0** | [RFC-014](014-v3-web-rust.md) | Browser | Web client (HLS-only), Rust/WASM core |
 
@@ -26,16 +27,23 @@ Design docs for Forja. Topic RFCs (001–010) define **what**; version RFCs (011
 | [009](009-rust-ffi.md) | Rust core FFI | v3.0 | Not started |
 | [010](010-web-client.md) | Web client | v3.0 | Not started |
 | [015](015-in-app-updates.md) | In-app update system | v1.0 partial / v1.1 | **Partial** |
+| [016](016-lazy-tab-mounting.md) | Lazy tab mounting | v1.0.1 | Not started |
+| [017](017-deferred-engine-boot.md) | Deferred engine boot | v1.0.1 | Not started |
+| [018](018-startup-splash-home.md) | Splash + Home perf | v1.0.1 | Not started |
+| [019](019-god-file-decomposition.md) | God file splits | v1.1 | Not started |
+| [020](020-media-details-routing.md) | Media details routing | v1.1 | Not started |
+| [021](021-release-ship-hygiene.md) | Release ship hygiene | v1.0 | Not started |
 
 ## Dependency graph
 
 ```
-v1.0 (011) ──► v1.1 (012) ──► v1.2 (013) ──► v3.0 (014)
-     │              │              │
-  RFC-001       RFC-003        RFC-006
-  RFC-002       RFC-004        RFC-007
-  RFC-004       RFC-005        RFC-008
-  RFC-015 (updates)
+v1.0 (011) ──► v1.0.1 (016–018) ──► v1.1 (012 + 019–020) ──► v1.2 (013) ──► v3.0 (014)
+     │                    │                    │                    │
+  RFC-001             RFC-016              RFC-003              RFC-006
+  RFC-002             RFC-017              RFC-004              RFC-007
+  RFC-004             RFC-018              RFC-005              RFC-008
+  RFC-015             RFC-021 (ship anytime)
+  RFC-021
 ```
 
 ## Conventions
