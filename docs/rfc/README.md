@@ -25,6 +25,7 @@ Design docs for Forja. Topic RFCs (001–010) define **what**; version RFCs (011
 | [008](008-watch-party.md) | Watch party sync | v1.2+ | Placeholder button |
 | [009](009-rust-ffi.md) | Rust core FFI | v3.0 | Not started |
 | [010](010-web-client.md) | Web client | v3.0 | Not started |
+| [015](015-in-app-updates.md) | In-app update system | v1.0 partial / v1.1 | **Partial** |
 
 ## Dependency graph
 
@@ -34,6 +35,7 @@ v1.0 (011) ──► v1.1 (012) ──► v1.2 (013) ──► v3.0 (014)
   RFC-001       RFC-003        RFC-006
   RFC-002       RFC-004        RFC-007
   RFC-004       RFC-005        RFC-008
+  RFC-015 (updates)
 ```
 
 ## Conventions
