@@ -26,7 +26,7 @@ impl Default for ProxyState {
 }
 
 pub struct LocalProxy {
-    state: ProxyState,
+    pub state: ProxyState,
     shutdown: Option<tokio::sync::oneshot::Sender<()>>,
 }
 
@@ -112,5 +112,18 @@ mod tests {
     async fn proxy_state_default() {
         let state = super::ProxyState::default();
         assert!(state.routes.try_read().is_ok());
+    }
+
+    #[tokio::test]
+    async fn registers_route() {
+        let proxy = super::LocalProxy::new();
+        proxy
+            .register_route("tok", "https://example.com/stream")
+            .await;
+        let routes = proxy.state.routes.read().await;
+        assert_eq!(
+            routes.get("tok").map(String::as_str),
+            Some("https://example.com/stream")
+        );
     }
 }

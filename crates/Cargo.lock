@@ -511,6 +511,7 @@ dependencies = [
  "forja-webstreamr",
  "serde",
  "serde_json",
+ "tokio",
  "uniffi",
 ]
 

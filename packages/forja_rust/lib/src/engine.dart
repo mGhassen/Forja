@@ -291,6 +291,18 @@ class ForjaRust {
 
   bool torrentIsRunning() => _native.forja_torrent_is_running();
 
+  int proxyStart(int preferredPort) => _native.forja_proxy_start(preferredPort);
+
+  void proxyStop() => _native.forja_proxy_stop();
+
+  int proxyPort() => _native.forja_proxy_port();
+
+  bool proxyRegisterRoute(String token, String upstreamUrl) => using((arena) {
+        final tokenPtr = token.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final urlPtr = upstreamUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _native.forja_proxy_register_route(tokenPtr, urlPtr);
+      });
+
   String _readString(ffi.Pointer<ffi.Char> ptr) {
     if (ptr == ffi.nullptr) return '';
     try {
@@ -474,6 +486,20 @@ final class _ForjaNative {
             .lookup<ffi.NativeFunction<_TorrentIsRunningNative>>(
               'forja_torrent_is_running',
             )
+            .asFunction(),
+        forja_proxy_start = lib
+            .lookup<ffi.NativeFunction<_ProxyStartNative>>('forja_proxy_start')
+            .asFunction(),
+        forja_proxy_stop = lib
+            .lookup<ffi.NativeFunction<_TorrentStopNative>>('forja_proxy_stop')
+            .asFunction(),
+        forja_proxy_port = lib
+            .lookup<ffi.NativeFunction<_ProxyPortNative>>('forja_proxy_port')
+            .asFunction(),
+        forja_proxy_register_route = lib
+            .lookup<ffi.NativeFunction<_ProxyRegisterNative>>(
+              'forja_proxy_register_route',
+            )
             .asFunction();
 
   final void Function(ffi.Pointer<ffi.Char>) forja_free_string;
@@ -576,6 +602,13 @@ final class _ForjaNative {
   final bool Function(ffi.Pointer<ffi.Char>) forja_torrent_start;
   final void Function() forja_torrent_stop;
   final bool Function() forja_torrent_is_running;
+  final int Function(int) forja_proxy_start;
+  final void Function() forja_proxy_stop;
+  final int Function() forja_proxy_port;
+  final bool Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) forja_proxy_register_route;
 }
 
 typedef _FreeStringNative = ffi.Void Function(ffi.Pointer<ffi.Char>);
@@ -622,3 +655,9 @@ typedef _KinogerUrlsNative = ffi.Pointer<ffi.Char> Function(
 typedef _TorrentStartNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStopNative = ffi.Void Function();
 typedef _TorrentIsRunningNative = ffi.Bool Function();
+typedef _ProxyStartNative = ffi.Int32 Function(ffi.Uint16);
+typedef _ProxyPortNative = ffi.Uint16 Function();
+typedef _ProxyRegisterNative = ffi.Bool Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Pointer<ffi.Char>,
+);

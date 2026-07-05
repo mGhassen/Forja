@@ -306,3 +306,26 @@ pub extern "C" fn forja_torrent_stop() {
 pub extern "C" fn forja_torrent_is_running() -> bool {
     crate::torrent_is_running()
 }
+
+#[no_mangle]
+pub extern "C" fn forja_proxy_start(preferred_port: u16) -> i32 {
+    crate::proxy_start(preferred_port)
+}
+
+#[no_mangle]
+pub extern "C" fn forja_proxy_stop() {
+    crate::proxy_stop();
+}
+
+#[no_mangle]
+pub extern "C" fn forja_proxy_port() -> u16 {
+    crate::proxy_port()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_proxy_register_route(
+    token: *const c_char,
+    upstream_url: *const c_char,
+) -> bool {
+    crate::proxy_register_route(from_c_str(token), from_c_str(upstream_url))
+}

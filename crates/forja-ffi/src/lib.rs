@@ -2,6 +2,7 @@ mod c_api;
 
 use forja_iptv_core::m3u;
 use forja_iptv_core::pastesh;
+use forja_proxy::LocalProxy;
 use forja_scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html};
 use forja_stream_core::list_providers;
 use forja_stremio_core::{build_resource_url, parse_manifest, parse_streams, parse_subtitles};
@@ -10,12 +11,17 @@ use forja_utils::{
     episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter,
 };
 use std::sync::{LazyLock, Mutex};
+use tokio::runtime::Runtime;
 
 uniffi::include_scaffolding!("forja");
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+static RUNTIME: LazyLock<Runtime> =
+    LazyLock::new(|| Runtime::new().expect("forja-ffi tokio runtime"));
 static TORRENT: LazyLock<Mutex<TorrentEngine>> = LazyLock::new(|| Mutex::new(TorrentEngine::new()));
+static PROXY: LazyLock<Mutex<LocalProxy>> = LazyLock::new(|| Mutex::new(LocalProxy::new()));
+static PROXY_PORT: LazyLock<Mutex<u16>> = LazyLock::new(|| Mutex::new(0));
 
 fn version() -> String {
     VERSION.to_string()
@@ -198,4 +204,40 @@ fn torrent_is_running() -> bool {
         .lock()
         .map(|e| e.is_running())
         .unwrap_or(false)
+}
+
+fn proxy_start(preferred_port: u16) -> i32 {
+    RUNTIME
+        .block_on(async {
+            let mut proxy = PROXY.lock().ok()?;
+            let port = proxy.start(preferred_port).await.ok()?;
+            if let Ok(mut stored) = PROXY_PORT.lock() {
+                *stored = port;
+            }
+            Some(port)
+        })
+        .map(|p| p as i32)
+        .unwrap_or(-1)
+}
+
+fn proxy_stop() {
+    if let Ok(mut proxy) = PROXY.lock() {
+        proxy.stop();
+    }
+    if let Ok(mut port) = PROXY_PORT.lock() {
+        *port = 0;
+    }
+}
+
+fn proxy_port() -> u16 {
+    PROXY_PORT.lock().map(|p| *p).unwrap_or(0)
+}
+
+fn proxy_register_route(token: String, upstream_url: String) -> bool {
+    RUNTIME.block_on(async {
+        let proxy = PROXY.lock().ok()?;
+        proxy.register_route(&token, &upstream_url).await;
+        Some(())
+    })
+    .is_some()
 }

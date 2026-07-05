@@ -43,7 +43,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **4 — Stremio** | partial | partial | URL helpers + JSON parse wired · ❌ HTTP fetch |
 | **5 — Webstreamr** | 23/23 extractors · 21/21 sources | partial | all parse logic in Rust; fetch/registry Dart |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
-| **7 — Torrent + proxy** | stubs | ❌ | still `libtorrent_flutter` + Dart shelf |
+| **7 — Torrent + proxy** | partial | ❌ | torrent stub · proxy FFI exposed (not app-wired) |
 | **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
 | **9 — Cleanup** | — | ❌ | delete Dart fallbacks |
 
@@ -72,7 +72,7 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 | Stream providers wired | 5 / 5 |
 | Webstreamr extractors ported | 23 / 23 |
 | Webstreamr URL sources ported | 21 / 21 |
-| Dart parity tests | 55 |
+| Dart parity tests | 57 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -85,8 +85,8 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Real libtorrent in `forja-torrent`
-2. Stremio catalog/meta HTTP through FFI (optional)
+1. Wire Rust proxy into `LocalServerService` (HLS/range passthrough)
+2. Real libtorrent in `forja-torrent`
 3. Step 9 Dart fallback cleanup
 
 ---
@@ -333,20 +333,23 @@ Wire-up: `ScraperParseBackend` in `forja_scrapers`.
 
 ## Step 7 — `forja-torrent` + `forja-proxy`
 
-**Rust:** stubs · **App:** ❌
+**Rust:** partial · **App:** ❌
 
 | Component | Rust | App |
 |-----------|:----:|:---:|
-| Torrent session | stub | `libtorrent_flutter` |
-| Local proxy | axum skeleton | Dart shelf |
+| Torrent session | stub + FFI | `libtorrent_flutter` |
+| Local proxy | axum + FFI | Dart shelf (`LocalServerService`) |
 
 ```bash
 cd crates && cargo test -p forja-torrent
 cd crates && cargo test -p forja-proxy
 cd packages/forja_rust && flutter test test/parity/torrent_stub_test.dart
+cd packages/forja_rust && flutter test test/parity/proxy_test.dart
 ```
 
-Blocked on libtorrent crate integration.
+FFI: `forja_proxy_start`, `forja_proxy_stop`, `forja_proxy_port`, `forja_proxy_register_route`. Token proxy at `/proxy/{token}` — not wired to app yet.
+
+Blocked on libtorrent crate integration for real torrent session.
 
 ---
 
