@@ -1,0 +1,29 @@
+name: Build Forja macOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, forja]
+    paths:
+      - 'apps/forja/**'
+      - 'packages/**'
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/forja
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: |
+          if [ ! -d macos ]; then flutter create --platforms=macos .; fi
+      - run: flutter build macos --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forja-macos
+          path: apps/forja/build/macos/Build/Products/Release/

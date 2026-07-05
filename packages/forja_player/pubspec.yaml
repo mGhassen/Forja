@@ -1,0 +1,59 @@
+name: forja_player
+description: Video player screens for Forja
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  media_kit:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit
+  media_kit_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit_video
+  floating: ^5.0.0
+  window_manager: ^0.5.1
+  screen_brightness: ^2.1.7
+  volume_controller: ^3.4.1
+  wakelock_plus: ^1.4.0
+  forja_core:
+    path: ../forja_core
+  forja_storage:
+    path: ../forja_storage
+  forja_api:
+    path: ../forja_api
+  forja_streaming:
+    path: ../forja_streaming
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+dependency_overrides:
+  media_kit:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit
+  media_kit_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit_video
+  media_kit_libs_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/universal/media_kit_libs_video
+  media_kit_libs_macos_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/macos/media_kit_libs_macos_video
+

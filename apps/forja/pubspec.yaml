@@ -1,0 +1,66 @@
+name: forja
+description: Forja — your cinema universe for macOS and beyond
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  forja_shell:
+    path: ../../packages/forja_shell
+  forja_ui:
+    path: ../../packages/forja_ui
+  media_kit_libs_macos_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/macos/media_kit_libs_macos_video
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/
+    - assets/fonts/
+    - assets/videasy/
+    - assets/nuvio/
+
+dependency_overrides:
+  media_kit:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit
+  media_kit_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: media_kit_video
+  media_kit_libs_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/universal/media_kit_libs_video
+  media_kit_libs_android_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/android/media_kit_libs_android_video
+  media_kit_libs_ios_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/ios/media_kit_libs_ios_video
+  media_kit_libs_macos_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/macos/media_kit_libs_macos_video
+  media_kit_libs_windows_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/windows/media_kit_libs_windows_video
+  media_kit_libs_linux:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/linux/media_kit_libs_linux

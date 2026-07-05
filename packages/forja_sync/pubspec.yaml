@@ -1,0 +1,11 @@
+name: forja_sync
+description: Optional Supabase auth and settings sync for Forja (v1.2)
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter

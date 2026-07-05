@@ -1,0 +1,24 @@
+name: forja
+repository: https://github.com/forja/forja
+
+packages:
+  - apps/**
+  - packages/**
+
+command:
+  bootstrap:
+    runPubGetInParallel: true
+
+scripts:
+  analyze:
+    run: flutter analyze
+    exec:
+      concurrency: 4
+    packageFilters:
+      dirExists: lib
+  test:
+    run: flutter test
+    exec:
+      concurrency: 4
+    packageFilters:
+      dirExists: test

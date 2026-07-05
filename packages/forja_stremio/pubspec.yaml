@@ -1,0 +1,16 @@
+name: forja_stremio
+description: Stremio addon protocol and TMDB for Forja
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.6.0
+  forja_storage:
+    path: ../forja_storage
+  forja_core:
+    path: ../forja_core
