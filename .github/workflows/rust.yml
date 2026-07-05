@@ -1,0 +1,40 @@
+name: Rust engine
+
+on:
+  push:
+    paths:
+      - 'crates/**'
+      - 'packages/forja_rust/**'
+      - 'scripts/build_rust.sh'
+      - '.github/workflows/rust.yml'
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'packages/forja_rust/**'
+      - 'scripts/build_rust.sh'
+      - '.github/workflows/rust.yml'
+
+jobs:
+  test:
+    name: cargo test + Dart parity
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: cargo test
+        run: |
+          cd crates
+          cargo test --workspace
+          cargo test -p forja-utils --test golden
+          cargo test -p forja-iptv-core --test golden_m3u
+          cargo clippy --workspace
+      - name: build release dylib
+        run: ./scripts/build_rust.sh
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Dart parity tests
+        working-directory: packages/forja_rust
+        run: |
+          flutter pub get
+          flutter test

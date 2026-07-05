@@ -11,6 +11,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+/// Optional Rust backend hook. Set by `forja_rust` at startup.
+abstract final class HlsParserBackend {
+  static List<HlsQuality>? Function(String masterUrl, String body)? parseMaster;
+}
+
 class HlsQuality {
   /// Display label, e.g. "1080p", "720p", "Auto".
   final String label;
@@ -64,6 +69,9 @@ Future<List<HlsQuality>?> fetchHlsQualities(
 /// Parse a master playlist body. Returns null if not a master or no
 /// usable variants. Adds an "Auto" entry pointing back at [masterUrl].
 List<HlsQuality>? parseHlsMaster(String masterUrl, String body) {
+  final backend = HlsParserBackend.parseMaster;
+  if (backend != null) return backend(masterUrl, body);
+
   if (!body.contains('#EXT-X-STREAM-INF')) return null;
 
   final base = Uri.tryParse(masterUrl);

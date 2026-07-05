@@ -3,6 +3,14 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:forja_storage/forja_storage.dart';
 
+/// Optional Rust backend hooks. Set from app bootstrap when [ForjaEngine] loads.
+abstract final class StremioServiceBackend {
+  static ({String baseUrl, String? queryParams}) Function(String url)?
+      splitAddonUrl;
+  static String Function(String addonUrl, String resourcePath)? buildResourceUrl;
+  static String Function(String url)? normalizeManifestUrl;
+}
+
 class StremioService {
   static final StremioService _instance = StremioService._internal();
   factory StremioService() => _instance;
@@ -35,6 +43,9 @@ class StremioService {
   /// Extracts a clean base URL and optional query parameters from an addon URL.
   /// Handles addons that embed config as query params (e.g. ?apikey=...).
   static ({String baseUrl, String? queryParams}) _splitAddonUrl(String url) {
+    final backend = StremioServiceBackend.splitAddonUrl;
+    if (backend != null) return backend(url);
+
     final qIdx = url.indexOf('?');
     String path = qIdx >= 0 ? url.substring(0, qIdx) : url;
     final query = qIdx >= 0 ? url.substring(qIdx + 1) : null;
@@ -43,8 +54,15 @@ class StremioService {
     return (baseUrl: path, queryParams: query);
   }
 
+  @visibleForTesting
+  static ({String baseUrl, String? queryParams}) debugSplitAddonUrl(String url) =>
+      _splitAddonUrl(url);
+
   /// Builds a full resource URL, correctly re-appending any addon query params.
   String _buildResourceUrl(String addonBaseUrl, String resourcePath) {
+    final backend = StremioServiceBackend.buildResourceUrl;
+    if (backend != null) return backend(addonBaseUrl, resourcePath);
+
     final parts = _splitAddonUrl(addonBaseUrl);
     final qp = parts.queryParams;
     return qp != null
@@ -57,25 +75,25 @@ class StremioService {
     String manifestUrl = url.trim();
     if (manifestUrl.isEmpty) return null;
 
-    // Handle stremio:// protocol
-    if (manifestUrl.startsWith('stremio://')) {
-      manifestUrl = manifestUrl.replaceFirst('stremio://', 'https://');
-    }
-
-    // Ensure it ends with manifest.json
-    if (!manifestUrl.endsWith('/manifest.json')) {
-      manifestUrl = manifestUrl.endsWith('/') 
-          ? '${manifestUrl}manifest.json' 
-          : '$manifestUrl/manifest.json';
+    final normalize = StremioServiceBackend.normalizeManifestUrl;
+    if (normalize != null) {
+      manifestUrl = normalize(manifestUrl);
+    } else {
+      if (manifestUrl.startsWith('stremio://')) {
+        manifestUrl = manifestUrl.replaceFirst('stremio://', 'https://');
+      }
+      if (!manifestUrl.endsWith('/manifest.json')) {
+        manifestUrl = manifestUrl.endsWith('/')
+            ? '${manifestUrl}manifest.json'
+            : '$manifestUrl/manifest.json';
+      }
     }
 
     try {
       final response = await http.get(Uri.parse(manifestUrl)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final manifest = json.decode(response.body);
-        // Extract clean base URL, separating any query params
         final parts = _splitAddonUrl(manifestUrl);
-        // Store the raw base (with query params) so _buildResourceUrl can re-attach them
         final baseUrl = parts.queryParams != null
             ? '${parts.baseUrl}?${parts.queryParams}'
             : parts.baseUrl;

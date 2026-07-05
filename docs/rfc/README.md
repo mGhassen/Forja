@@ -24,7 +24,7 @@ Design docs for Forja. Topic RFCs (001–010) define **what**; version RFCs (011
 | [006](006-supabase-sync.md) | Settings sync | v1.2 | Stub only |
 | [007](007-lan-companion.md) | LAN remote API | v1.2 | Not started |
 | [008](008-watch-party.md) | Watch party sync | v1.2+ | Placeholder button |
-| [009](009-rust-ffi.md) | Rust core FFI | v3.0 | Not started |
+| [009](009-rust-ffi.md) | Rust core FFI | v1.0 engine / v3.0 WASM | **In progress** |
 | [010](010-web-client.md) | Web client | v3.0 | Not started |
 | [015](015-in-app-updates.md) | In-app update system | v1.0 partial / v1.1 | **Partial** |
 | [016](016-lazy-tab-mounting.md) | Lazy tab mounting | v1.0.1 | Not started |

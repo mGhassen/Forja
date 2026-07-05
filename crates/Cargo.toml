@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+    "forja-ffi",
+    "forja-utils",
+    "forja-stream-core",
+    "forja-iptv-core",
+    "forja-stremio-core",
+    "forja-webstreamr",
+    "forja-scrapers",
+    "forja-torrent",
+    "forja-proxy",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-only"
+repository = "https://github.com/forja/forja"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+thiserror = "2"
+uniffi = { version = "0.29", features = ["cli"] }
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+pbkdf2 = "0.12"
+sha2 = "0.10"
+md-5 = "0.10"
+base64 = "0.22"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "cookies", "json"] }
+scraper = "0.22"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "fs", "io-util"] }
+axum = "0.8"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio", "server-auto", "http1"] }
+http-body-util = "0.1"
+tower = "0.5"
+url = "2"

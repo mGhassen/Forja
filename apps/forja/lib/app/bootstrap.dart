@@ -13,6 +13,7 @@ import 'package:forja_api/api/audio_handler.dart';
 import 'package:forja_api/api/audiobook_player_service.dart';
 import 'package:forja_storage/forja_storage.dart';
 import 'package:forja_streaming/forja_streaming.dart';
+import 'package:forja_rust/forja_rust.dart';
 import 'package:forja_api/api/tmdb_api.dart';
 import 'package:forja_api/api/music_player_service.dart';
 import 'package:forja_streaming/src/site111477_proxy.dart' as site111477_proxy;
@@ -24,6 +25,7 @@ import 'package:forja/shell/main_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
 import 'package:forja/shared/widgets/animated_forja_logo.dart';
+import 'package:forja/app/rust_delegates.dart';
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -115,6 +117,10 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   
   // Hydrate light mode setting before first frame
   await SettingsService().initLightMode();
+
+  final useRustEngine = await SettingsService().getUseRustEngine();
+  await ForjaEngine.init(enabled: useRustEngine);
+  installRustAppDelegates();
   
   // Hydrate theme preset before first frame
   await AppTheme.initTheme();

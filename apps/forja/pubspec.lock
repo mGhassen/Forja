@@ -462,6 +462,13 @@ packages:
       relative: true
     source: path
     version: "1.0.0"
+  forja_rust:
+    dependency: "direct main"
+    description:
+      path: "../../packages/forja_rust"
+      relative: true
+    source: path
+    version: "0.1.0"
   forja_scrapers:
     dependency: "direct main"
     description:

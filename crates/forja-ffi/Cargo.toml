@@ -1,0 +1,25 @@
+[package]
+name = "forja-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib", "staticlib"]
+name = "forja_ffi"
+
+[dependencies]
+forja-utils = { path = "../forja-utils" }
+forja-stream-core = { path = "../forja-stream-core" }
+forja-iptv-core = { path = "../forja-iptv-core" }
+forja-stremio-core = { path = "../forja-stremio-core" }
+forja-webstreamr = { path = "../forja-webstreamr" }
+forja-scrapers = { path = "../forja-scrapers" }
+forja-torrent = { path = "../forja-torrent" }
+forja-proxy = { path = "../forja-proxy" }
+uniffi = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[build-dependencies]
+uniffi = { workspace = true, features = ["build"] }

@@ -1,0 +1,12 @@
+[
+  {"file": "Show.S03E07.1080p.mkv", "season": 3, "episode": 7, "expected": true},
+  {"file": "Show.s3e7.WEB-DL.mkv", "season": 3, "episode": 7, "expected": true},
+  {"file": "Show.S03.E07.mkv", "season": 3, "episode": 7, "expected": true},
+  {"file": "Show.S03 E07.mkv", "season": 3, "episode": 7, "expected": true},
+  {"file": "Show.3x07.HDTV.mkv", "season": 3, "episode": 7, "expected": true},
+  {"file": "Show.Season 3 Episode 7.mkv", "season": 3, "episode": 7, "expected": true},
+  {"file": "/media/Show.S03E07.1080p.mkv", "season": 3, "episode": 7, "expected": true},
+  {"file": "Show.S03E08.mkv", "season": 3, "episode": 7, "expected": false},
+  {"file": "Movie.2024.1080p.mkv", "season": 1, "episode": 1, "expected": false},
+  {"file": "Show.S01E01.mkv", "season": 1, "episode": 1, "expected": true}
+]

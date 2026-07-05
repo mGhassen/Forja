@@ -1,0 +1,5 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="ch2" group-title="Sports",Sports One
+http://stream.example/sports1
+#EXTINF:-1 group-title="OverrideGroup",Sports Two
+https://stream.example/sports2

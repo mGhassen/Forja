@@ -1,8 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja_core/models/torrent_result.dart';
 
+/// Optional Rust backend hooks. Set from app bootstrap when [ForjaEngine] loads.
+abstract final class TorrentFilterBackend {
+  static String Function(String title)? normalizeTitle;
+  static Map<String, dynamic> Function(String title)? parseSceneInfo;
+}
+
 class TorrentFilter {
   static String normalizeTitle(String title) {
+    final backend = TorrentFilterBackend.normalizeTitle;
+    if (backend != null) return backend(title);
+
     if (title.isEmpty) return '';
     return title.toLowerCase()
         .replaceAll(RegExp(r'[",.:!?;_+\-\[\]\(\)]'), ' ')
@@ -11,6 +20,9 @@ class TorrentFilter {
   }
 
   static Map<String, dynamic> parseSceneInfo(String title) {
+    final backend = TorrentFilterBackend.parseSceneInfo;
+    if (backend != null) return backend(title);
+
     final t = title.toLowerCase();
     
     int? season;

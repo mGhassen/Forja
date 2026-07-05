@@ -1,6 +1,7 @@
 import 'package:html/parser.dart' as html_parser;
 import 'package:flutter/foundation.dart';
 import 'base_scraper.dart';
+import 'scraper_parse.dart';
 
 class KnabenScraper extends BaseScraper {
   @override
@@ -15,6 +16,11 @@ class KnabenScraper extends BaseScraper {
       final searchUrl = '$baseUrl/search/$encodedQuery/0/1/seeders';
       
       final htmlContent = await fetchHtml(searchUrl);
+      final rust = ScraperParseBackend.parseKnaben;
+      if (rust != null) {
+        return rust(htmlContent).map(normalizeTorrentRow).toList();
+      }
+
       final document = html_parser.parse(htmlContent);
       
       final results = <Map<String, dynamic>>[];

@@ -14,6 +14,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:pointycastle/export.dart' as pc;
 
+/// Optional Rust backend. Set from app bootstrap when [ForjaEngine] loads.
+abstract final class PasteShDecryptorBackend {
+  static String Function(String urlWithHash, String rawResponse)? decryptRaw;
+}
+
 class PasteShDecryptor {
   static const _ua =
       'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko)';
@@ -24,12 +29,24 @@ class PasteShDecryptor {
     final hashIdx = urlWithHash.indexOf('#');
     if (hashIdx <= 0) return '';
     final baseUrl = urlWithHash.substring(0, hashIdx);
-    final clientKey = urlWithHash.substring(hashIdx + 1);
-    final id = baseUrl.substring(baseUrl.lastIndexOf('/') + 1);
 
     final raw = await _httpGetText('$baseUrl.txt');
     if (raw == null || raw.isEmpty) return '';
-    final lines = raw.split('\n');
+    return decryptRaw(urlWithHash, raw);
+  }
+
+  /// Decrypt paste.sh `.txt` body (no HTTP). Used by Rust delegate path.
+  static String decryptRaw(String urlWithHash, String rawResponse) {
+    final backend = PasteShDecryptorBackend.decryptRaw;
+    if (backend != null) return backend(urlWithHash, rawResponse);
+
+    final hashIdx = urlWithHash.indexOf('#');
+    if (hashIdx <= 0) return '';
+    final baseUrl = urlWithHash.substring(0, hashIdx);
+    final clientKey = urlWithHash.substring(hashIdx + 1);
+    final id = baseUrl.substring(baseUrl.lastIndexOf('/') + 1);
+
+    final lines = rawResponse.split('\n');
     if (lines.isEmpty) return '';
     final serverKey = lines.first.trim();
     final b64 = lines.skip(1).join().trim();
@@ -43,13 +60,11 @@ class PasteShDecryptor {
     }
     if (cipherBytes.length < 17) return '';
 
-    // Layout: "Salted__" (8) + salt (8) + ciphertext
     final salt = cipherBytes.sublist(8, 16);
     final ct = cipherBytes.sublist(16);
     final password = '$id$serverKey$clientKey' 'https://paste.sh';
     final passBytes = utf8.encode(password);
 
-    // 1) PBKDF2-HMAC-SHA512 (modern pastes)
     try {
       final keyIv = _pbkdf2HmacSha512(passBytes, salt, 1, 48);
       final key = keyIv.sublist(0, 32);
@@ -60,7 +75,6 @@ class PasteShDecryptor {
       debugPrint('Decrypt PBKDF2 path failed: $e');
     }
 
-    // 2) OpenSSL EVP_BytesToKey (MD5) fallback (legacy pastes)
     try {
       final pair = _evpBytesToKey(passBytes, salt, 32, 16);
       final out = _aesCbcDecrypt(ct, pair.$1, pair.$2);

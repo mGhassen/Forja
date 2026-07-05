@@ -1,0 +1,19 @@
+[package]
+name = "forja-webstreamr"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+forja-utils = { path = "../forja-utils" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+regex = { workspace = true }
+reqwest = { workspace = true }
+scraper = { workspace = true }
+thiserror = { workspace = true }
+url = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

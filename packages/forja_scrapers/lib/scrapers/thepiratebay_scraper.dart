@@ -1,6 +1,7 @@
 import 'package:html/parser.dart' as html_parser;
 import 'package:flutter/foundation.dart';
 import 'base_scraper.dart';
+import 'scraper_parse.dart';
 
 class ThePirateBayScraper extends BaseScraper {
   @override
@@ -21,6 +22,14 @@ class ThePirateBayScraper extends BaseScraper {
         
         try {
           final htmlContent = await fetchHtml(pageUrl);
+          final rust = ScraperParseBackend.parseTpb;
+          if (rust != null) {
+            final parsed = rust(htmlContent, name);
+            allResults.addAll(parsed.map(normalizeTorrentRow));
+            if (parsed.isEmpty) break;
+            continue;
+          }
+
           final document = html_parser.parse(htmlContent);
           
           int pageResults = 0;

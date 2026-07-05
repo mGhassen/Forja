@@ -10,6 +10,14 @@ command:
     runPubGetInParallel: true
 
 scripts:
+  rust:build:
+    run: ../../scripts/build_rust.sh
+    description: Build the Rust engine (forja-ffi)
+  rust:test:
+    run: |
+      cd ../../crates && cargo test --workspace && cargo test -p forja-utils --test golden && cargo test -p forja-iptv-core --test golden_m3u
+      cd ../../packages/forja_rust && flutter test
+    description: Rust unit + golden + Dart parity tests
   analyze:
     run: flutter analyze
     exec:

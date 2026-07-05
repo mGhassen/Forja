@@ -33,6 +33,9 @@ class SettingsService {
   // Light mode (performance)
   static const String _lightModeKey = 'light_mode';
 
+  // Rust engine (desktop)
+  static const String _useRustEngineKey = 'use_rust_engine';
+
   // Theme preset
   static const String _themePresetKey = 'theme_preset';
 
@@ -403,6 +406,20 @@ class SettingsService {
   /// Call once at app startup to hydrate the notifier from disk.
   Future<void> initLightMode() async {
     lightModeNotifier.value = await isLightModeEnabled();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Rust engine
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<bool> getUseRustEngine() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_useRustEngineKey) ?? true;
+  }
+
+  Future<void> setUseRustEngine(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_useRustEngineKey, enabled);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

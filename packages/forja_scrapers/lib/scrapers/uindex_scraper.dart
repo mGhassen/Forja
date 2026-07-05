@@ -1,6 +1,7 @@
 import 'package:html/parser.dart' as html_parser;
 import 'package:flutter/foundation.dart';
 import 'base_scraper.dart';
+import 'scraper_parse.dart';
 
 class UindexScraper extends BaseScraper {
   @override
@@ -14,6 +15,11 @@ class UindexScraper extends BaseScraper {
       final searchUrl = '$baseUrl/search.php?search=${Uri.encodeComponent(query)}&c=0';
       
       final htmlContent = await fetchHtml(searchUrl);
+      final rust = ScraperParseBackend.parseUindex;
+      if (rust != null) {
+        return rust(htmlContent).map(normalizeTorrentRow).toList();
+      }
+
       final document = html_parser.parse(htmlContent);
       
       final results = <Map<String, dynamic>>[];

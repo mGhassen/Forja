@@ -1,4 +1,5 @@
 import 'package:forja_core/forja_core.dart';
+import 'package:forja_rust/forja_rust.dart';
 
 enum ProviderKind { template, extractor, api }
 
@@ -68,22 +69,34 @@ class ProviderRegistry {
       id: 'vidnest',
       displayName: 'Vidnest',
       kind: ProviderKind.template,
-      movieUrl: (id) => 'https://vidnest.fun/movie/$id',
-      tvUrl: (id, s, e) => 'https://vidnest.fun/tv/$id/$s/$e',
+      movieUrl: (id) =>
+          ForjaEngine.buildMovieUrl('vidnest', id) ??
+          'https://vidnest.fun/movie/$id',
+      tvUrl: (id, s, e) =>
+          ForjaEngine.buildTvUrl('vidnest', id, s, e) ??
+          'https://vidnest.fun/tv/$id/$s/$e',
     ),
     StreamProviderDef(
       id: 'vidlink',
       displayName: 'VidLink',
       kind: ProviderKind.template,
-      movieUrl: (id) => 'https://vidlink.pro/movie/$id',
-      tvUrl: (id, s, e) => 'https://vidlink.pro/tv/$id/$s/$e',
+      movieUrl: (id) =>
+          ForjaEngine.buildMovieUrl('vidlink', id) ??
+          'https://vidlink.pro/movie/$id',
+      tvUrl: (id, s, e) =>
+          ForjaEngine.buildTvUrl('vidlink', id, s, e) ??
+          'https://vidlink.pro/tv/$id/$s/$e',
     ),
     StreamProviderDef(
       id: 'vixsrc',
       displayName: 'VixSrc',
       kind: ProviderKind.template,
-      movieUrl: (id) => 'https://vixsrc.to/movie/$id/',
-      tvUrl: (id, s, e) => 'https://vixsrc.to/tv/$id/$s/$e/',
+      movieUrl: (id) =>
+          ForjaEngine.buildMovieUrl('vixsrc', id) ??
+          'https://vixsrc.to/movie/$id/',
+      tvUrl: (id, s, e) =>
+          ForjaEngine.buildTvUrl('vixsrc', id, s, e) ??
+          'https://vixsrc.to/tv/$id/$s/$e/',
     ),
     StreamProviderDef(
       id: 'vidzee',

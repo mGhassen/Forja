@@ -13,6 +13,11 @@
 /// excludes samples/extras), and `pickLargestVideo` for movies.
 library;
 
+/// Optional Rust backend hook. Set by `forja_rust` at startup.
+abstract final class EpisodeMatcherBackend {
+  static bool Function(String filename, int season, int episode)? matches;
+}
+
 class EpisodeMatcher {
   static const _videoExts = {
     '.mkv', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v',
@@ -43,6 +48,9 @@ class EpisodeMatcher {
   /// True if [filename] (or full path) looks like the file for the given
   /// [season]/[episode]. Casing and zero-padding don't matter.
   static bool matches(String filename, int season, int episode) {
+    final backend = EpisodeMatcherBackend.matches;
+    if (backend != null) return backend(filename, season, episode);
+
     final base = _basename(filename);
     if (base.isEmpty) return false;
 

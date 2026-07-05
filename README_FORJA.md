@@ -20,6 +20,7 @@ packages/                Engine room only (6 packages)
   forja_webstreamr/      WebStreamr sources + extractors
   forja_scrapers/        Torrent index scrapers
 docs/rfc/               RFC index + v1.0–v3.0 release specs
+docs/migration/         Rust engine migration progress + test matrix
 ```
 
 ## Run (macOS)

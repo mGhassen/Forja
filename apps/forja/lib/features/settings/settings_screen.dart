@@ -21,6 +21,7 @@ import 'package:forja_api/services/prowlarr_service.dart';
 import 'package:forja_api/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
+import 'package:forja_rust/forja_rust.dart';
 import 'webstreamr_settings_screen.dart';
 import 'splash_preview_screen.dart';
 
@@ -113,6 +114,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Light mode
   bool _isLightMode = false;
 
+  // Rust engine (desktop)
+  bool _useRustEngine = true;
+
   // Theme preset
   String _selectedThemeId = AppTheme.defaultPresetId;
 
@@ -194,6 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Load light mode
     final lightMode = await _settings.isLightModeEnabled();
+    final useRustEngine = await _settings.getUseRustEngine();
 
     // Load theme preset
     final themePreset = await _settings.getThemePreset();
@@ -248,6 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _torrentRamCacheMb = ramCacheMb;
         _torrentConnectionsLimit = connLimit;
         _isLightMode = lightMode;
+        _useRustEngine = useRustEngine;
         _selectedThemeId = themePreset;
         _navbarVisible = navVisible;
         _navbarOrder = navOrder;
@@ -706,30 +712,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [_buildNavbarConfig()],
                     ),
 
-                    // ── App Updates ──
-                    if (kDebugMode)
+                    // ── Developer (desktop: Rust engine always visible) ──
+                    if (Platform.isMacOS ||
+                        Platform.isWindows ||
+                        Platform.isLinux)
                       _buildExpandableSection(
                         id: 'developer',
                         icon: Icons.developer_mode_rounded,
                         title: 'Developer',
                         children: [
-                          Card(
-                            child: ListTile(
-                              leading: const Icon(Icons.play_circle_outline),
-                              title: const Text('Preview Splash Screen'),
-                              subtitle: const Text(
-                                'Show the boot splash overlay without restarting',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const SplashPreviewScreen(),
+                          _buildRustEngineSection(),
+                          if (kDebugMode)
+                            Card(
+                              child: ListTile(
+                                leading: const Icon(Icons.play_circle_outline),
+                                title: const Text('Preview Splash Screen'),
+                                subtitle: const Text(
+                                  'Show the boot splash overlay without restarting',
+                                ),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const SplashPreviewScreen(),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       ),
+
+                    // ── App Updates ──
                     _buildExpandableSection(
                       id: 'updates',
                       icon: Icons.system_update_rounded,
@@ -757,6 +769,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
   // Expandable Section Tile
   // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildRustEngineSection() {
+    final loaded = ForjaEngine.isReady;
+    final version = loaded
+        ? ForjaRust.instance.version
+        : 'not loaded (Dart fallback)';
+    final statusColor = loaded ? Colors.greenAccent : Colors.orangeAccent;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Row(
+            children: [
+              Icon(Icons.memory_rounded, size: 16, color: statusColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  loaded ? 'Rust engine active — v$version' : 'Rust engine inactive — $version',
+                  style: TextStyle(color: statusColor, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildFocusableToggle(
+          'Use Rust Engine',
+          'Parsers, torrent filter, scrapers, Stremio URLs. Restart after changing.',
+          _useRustEngine,
+          (val) async {
+            await _settings.setUseRustEngine(val);
+            if (!mounted) return;
+            setState(() => _useRustEngine = val);
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Restart Forja to apply the Rust engine setting.'),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
 
   Widget _buildExpandableSection({
     required String id,

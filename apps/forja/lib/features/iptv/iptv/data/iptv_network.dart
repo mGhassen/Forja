@@ -5,6 +5,11 @@ import 'package:http/http.dart' as http;
 import 'models.dart';
 import 'pastesh_decryptor.dart';
 
+/// Optional Rust backend hooks. Set from app bootstrap when [ForjaEngine] loads.
+abstract final class IptvClientBackend {
+  static String Function(String text)? decodeXtreamText;
+}
+
 /// Xtream-Codes player_api client. Login + categories + streams + episodes.
 class IptvClient {
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
@@ -227,6 +232,17 @@ class IptvClient {
   /// timeout, malformed JSON, etc.) so callers can simply hide the row.
   ///
   /// Xtream encodes `title` and `description` as base64 strings.
+  static String _decodeXtreamField(String s) {
+    if (s.isEmpty) return '';
+    final backend = IptvClientBackend.decodeXtreamText;
+    if (backend != null) return backend(s);
+    try {
+      return utf8.decode(base64.decode(s), allowMalformed: true).trim();
+    } catch (_) {
+      return s;
+    }
+  }
+
   static Future<List<EpgEntry>> shortEpg(
     IptvPortal p,
     String streamId, {
@@ -263,13 +279,7 @@ class IptvClient {
 
       String decode64(dynamic v) {
         if (v == null) return '';
-        final s = v.toString();
-        if (s.isEmpty) return '';
-        try {
-          return utf8.decode(base64.decode(s), allowMalformed: true).trim();
-        } catch (_) {
-          return s;
-        }
+        return _decodeXtreamField(v.toString());
       }
 
       final out = <EpgEntry>[];
