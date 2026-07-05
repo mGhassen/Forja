@@ -159,7 +159,7 @@ case "${1:-all}" in
 esac
 
 if [[ "${#MOBILE_FLAGS[@]}" -gt 0 ]]; then
-  echo "Mobile Rust engine built (parsers only — libtorrent for magnet playback)."
+  echo "Mobile Rust engine built (full features — librqbit torrent + proxy)."
 else
   echo "Mobile Rust engine built (full features: parsers + librqbit + proxy)."
 fi

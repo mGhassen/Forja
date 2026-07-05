@@ -122,23 +122,12 @@ class HDHub4uSource extends Source {
   }
 
   List<SourceResult> _extractHubDriveUrlResults(String html, Meta meta) {
-    final rust = tryRustParseSourceHtml(
+    return requireRustParseSourceHtml(
       this.id,
       html,
       referer: meta.referer ?? baseUrl,
       countryCodes: meta.countryCodes,
     );
-    if (rust != null) return rust;
-
-    final doc = html_parser.parse(html);
-    final out = <SourceResult>[];
-    for (final a in doc.querySelectorAll('a[href*="hubdrive"]')) {
-      if (a.text.contains('⚡')) continue;
-      final href = a.attributes['href'];
-      if (href == null) continue;
-      out.add(SourceResult(url: Uri.parse(href), meta: meta.clone()));
-    }
-    return out;
   }
 
   Future<List<Uri>> _fetchPageUrls(Context ctx, ImdbId imdbId) async {

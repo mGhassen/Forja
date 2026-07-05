@@ -46,37 +46,13 @@ class MegaKinoSource extends Source {
     final imdbId = await getImdbId(ctx, fetcher, id);
     final base = await _getBaseUrl(ctx);
 
-    // Trigger the token cookie — Fetcher's CookieJar will store it.
     await fetcher.head(ctx, base.replace(queryParameters: {'yg': 'token'}));
 
     final pageUrl = await _fetchPageUrl(ctx, imdbId, base);
     if (pageUrl == null) return const [];
 
     final html = await fetcher.text(ctx, pageUrl);
-    final rust = tryRustParseSourceHtml(this.id, html, referer: pageUrl.toString());
-    if (rust != null) return rust;
-
-    final doc = html_parser.parse(html);
-    final title = doc
-        .querySelector('meta[property="og:title"]')
-        ?.attributes['content']
-        ?.trim();
-
-    final out = <SourceResult>[];
-    for (final iframe in doc.querySelectorAll('.video-inside iframe')) {
-      final src =
-          iframe.attributes['data-src'] ?? iframe.attributes['src'];
-      if (src == null) continue;
-      out.add(SourceResult(
-        url: Uri.parse(src),
-        meta: Meta(
-          countryCodes: const [CountryCode.de],
-          referer: pageUrl.toString(),
-          title: title,
-        ),
-      ));
-    }
-    return out;
+    return requireRustParseSourceHtml(this.id, html, referer: pageUrl.toString());
   }
 
   Future<Uri?> _fetchPageUrl(Context ctx, ImdbId imdbId, Uri base) async {

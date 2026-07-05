@@ -1,10 +1,7 @@
 /// Port of webstreamr/src/extractor/Streamtape.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../types.dart';
-import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
 import '../webstreamr_parse.dart';
@@ -56,7 +53,6 @@ class Streamtape extends Extractor {
   Future<List<InternalUrlResult>> extractInternal(
       Context ctx, Uri url, Meta meta) async {
     final headers = {'Referer': meta.referer ?? url.toString()};
-    // Touch /e/ to get a 404 for missing files.
     await fetcher.text(
         ctx,
         Uri.parse(url.toString().replaceFirst('/v/', '/e/')),
@@ -65,34 +61,13 @@ class Streamtape extends Extractor {
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
 
-    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
-    if (mfpJson != null) {
-      final rust = tryRustExtractMfpFromHtml(
-        id,
-        html,
-        url.toString(),
-        meta,
-        mfpJson,
-      );
-      if (rust != null) return rust;
-    }
-
-    final sM = RegExp(r'([\d.]+ ?[GM]B)').firstMatch(html);
-    final doc = html_parser.parse(html);
-    final title =
-        doc.querySelector('meta[name="og:title"]')?.attributes['content'];
-
-    final out = meta.clone();
-    if (title != null && title.isNotEmpty) out.title = title;
-    if (sM != null) out.bytes = parseBytes(sM.group(1));
-
-    return [
-      InternalUrlResult(
-        url: buildMediaFlowProxyExtractorRedirectUrl(
-            ctx, 'Streamtape', url, headers),
-        format: Format.mp4,
-        meta: out,
-      ),
-    ];
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers)!;
+    return requireRustExtractMfpFromHtml(
+      id,
+      html,
+      url.toString(),
+      meta,
+      mfpJson,
+    );
   }
 }

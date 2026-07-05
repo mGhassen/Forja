@@ -32,27 +32,12 @@ class VixSrcSource extends Source {
     final name = ny[0] as String;
     final year = ny[1] as int;
 
-    final rust = tryRustResolveSource(
+    return requireRustResolveSource(
       'vixsrc',
       type,
       tmdbId,
       title: name,
       year: year,
     );
-    if (rust != null) return rust;
-
-    var title = name;
-    if (tmdbId.season != null) {
-      title += ' ${tmdbId.formatSeasonAndEpisode()}';
-    } else {
-      title += ' ($year)';
-    }
-
-    final url = tmdbId.season != null
-        ? Uri.parse(
-            '$baseUrl/tv/${tmdbId.id}/${tmdbId.season}/${tmdbId.episode}')
-        : Uri.parse('$baseUrl/movie/${tmdbId.id}');
-
-    return [SourceResult(url: url, meta: Meta(title: title))];
   }
 }

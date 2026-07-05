@@ -25,7 +25,7 @@ Boot log should show `[ForjaEngine] Rust engine v0.1.0`. If you see `Rust engine
 cd apps/forja && flutter run
 ```
 
-Mobile FFI ships parsers only (no librqbit); torrent playback uses `libtorrent_flutter`.
+Mobile FFI ships full engine (parsers + librqbit torrent + proxy). Magnet playback uses Rust/librqbit via FFI.
 
 ### Android (NDK)
 

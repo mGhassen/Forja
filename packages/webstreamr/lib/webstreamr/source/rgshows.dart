@@ -33,32 +33,12 @@ class RgShowsSource extends Source {
     final name = ny[0] as String;
     final year = ny[1] as int;
 
-    final rust = tryRustResolveSource(
+    return requireRustResolveSource(
       'rgshows',
       type,
       tmdbId,
       title: name,
       year: year,
     );
-    if (rust != null) return rust;
-
-    var title = name;
-    if (tmdbId.season != null) {
-      title += ' ${tmdbId.formatSeasonAndEpisode()}';
-    } else {
-      title += ' ($year)';
-    }
-
-    final url = tmdbId.season != null
-        ? Uri.parse(
-            'https://api.rgshows.ru/main/tv/${tmdbId.id}/${tmdbId.season}/${tmdbId.episode}')
-        : Uri.parse('https://api.rgshows.ru/main/movie/${tmdbId.id}');
-
-    return [
-      SourceResult(
-        url: url,
-        meta: Meta(countryCodes: const [CountryCode.multi], title: title),
-      ),
-    ];
   }
 }

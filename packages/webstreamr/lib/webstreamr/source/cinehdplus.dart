@@ -32,49 +32,13 @@ class CineHDPlusSource extends Source {
     if (pageUrl == null) return const [];
 
     final html = await fetcher.text(ctx, pageUrl);
-    final rust = tryRustParseSourceHtml(
+    return requireRustParseSourceHtml(
       this.id,
       html,
       referer: pageUrl.toString(),
       season: tmdbId.season,
       episode: tmdbId.episode,
     );
-    if (rust != null) return rust;
-
-    final doc = html_parser.parse(html);
-
-    final langs = doc.querySelector('.details__langs')?.innerHtml ?? '';
-    final cc = langs.contains('Latino') ? CountryCode.mx : CountryCode.es;
-
-    final ogTitle = doc
-            .querySelector('meta[property="og:title"]')
-            ?.attributes['content']
-            ?.trim() ??
-        '';
-    final title = '$ogTitle ${tmdbId.formatSeasonAndEpisode()}';
-
-    final out = <SourceResult>[];
-    final num = '${tmdbId.season}x${tmdbId.episode}';
-    for (final n in doc.querySelectorAll('[data-num="$num"]')) {
-      final mirrors = n.parent?.querySelector('.mirrors');
-      if (mirrors == null) continue;
-      for (final el in mirrors.querySelectorAll('[data-link]')) {
-        final raw = el.attributes['data-link'];
-        if (raw == null) continue;
-        final fixed = raw.replaceFirst(RegExp(r'^(https:)?//'), 'https://');
-        final url = Uri.parse(fixed);
-        if (url.host.contains('cinehdplus')) continue;
-        out.add(SourceResult(
-          url: url,
-          meta: Meta(
-            countryCodes: [cc],
-            referer: pageUrl.toString(),
-            title: title,
-          ),
-        ));
-      }
-    }
-    return out;
   }
 
   Future<Uri?> _fetchSeriesPageUrl(Context ctx, TmdbId tmdbId) async {

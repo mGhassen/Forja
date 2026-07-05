@@ -1,8 +1,6 @@
 /// Port of webstreamr/src/extractor/HubDrive.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../webstreamr_parse.dart';
@@ -48,20 +46,7 @@ class HubDrive extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
-    final next = tryRustNextUrl(id, html, url.toString());
-    if (next != null) {
-      return _fromHubCloud(ctx, Uri.parse(next), meta);
-    }
-
-    final doc = html_parser.parse(html);
-    final hubCloudA = doc.querySelectorAll('a').firstWhere(
-          (a) => a.text.contains('HubCloud'),
-          orElse: () => html_parser.parseFragment('').nodes.isEmpty
-              ? throw StateError('no anchors')
-              : html_parser.parseFragment('<a></a>').children.first,
-        );
-    final hubCloudHref = hubCloudA.attributes['href'];
-    if (hubCloudHref == null || hubCloudHref.isEmpty) return const [];
-    return _fromHubCloud(ctx, Uri.parse(hubCloudHref), meta);
+    final next = requireRustNextUrl(id, html, url.toString());
+    return _fromHubCloud(ctx, Uri.parse(next), meta);
   }
 }

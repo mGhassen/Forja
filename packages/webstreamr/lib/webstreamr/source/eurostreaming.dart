@@ -37,7 +37,7 @@ class EurostreamingSource extends Source {
 
     final html = await fetcher.text(ctx, seriesPageUrl);
     final title = '$name ${tmdbId.formatSeasonAndEpisode()}';
-    final rust = tryRustParseSourceHtml(
+    return requireRustParseSourceHtml(
       this.id,
       html,
       referer: seriesPageUrl.toString(),
@@ -45,31 +45,6 @@ class EurostreamingSource extends Source {
       season: tmdbId.season,
       episode: tmdbId.episode,
     );
-    if (rust != null) return rust;
-
-    final doc = html_parser.parse(html);
-
-    final out = <SourceResult>[];
-    final num = '${tmdbId.season}x${tmdbId.episode}';
-    for (final n in doc.querySelectorAll('[data-num="$num"]')) {
-      final mirrors = n.parent?.querySelector('.mirrors');
-      if (mirrors == null) continue;
-      for (final el in mirrors.querySelectorAll('[data-link]')) {
-        final raw = el.attributes['data-link'];
-        if (raw == null || raw == '#') continue;
-        final u = Uri.parse(raw);
-        if (u.host.contains('eurostreaming')) continue;
-        out.add(SourceResult(
-          url: u,
-          meta: Meta(
-            countryCodes: const [CountryCode.it],
-            referer: seriesPageUrl.toString(),
-            title: title,
-          ),
-        ));
-      }
-    }
-    return out;
   }
 
   Future<Uri?> _fetchSeriesPageUrl(Context ctx, String keyword) async {

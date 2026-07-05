@@ -3,10 +3,10 @@ library;
 
 import 'dart:convert';
 
-import '../webstreamr_parse.dart';
 import '../types.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class EinschaltenSource extends Source {
@@ -31,24 +31,10 @@ class EinschaltenSource extends Source {
             ctx, Uri.parse('$baseUrl/api/movies/${tmdbId.id}/watch'))
         as Map<String, dynamic>;
 
-    final rust = tryRustParseSourceHtml(
+    return requireRustParseSourceHtml(
       this.id,
       jsonEncode(data),
       referer: '$baseUrl/movies/${tmdbId.id}',
     );
-    if (rust != null) return rust;
-
-    final title = data['releaseName'] as String;
-    final streamUrl = Uri.parse(data['streamUrl'] as String);
-    return [
-      SourceResult(
-        url: streamUrl,
-        meta: Meta(
-          countryCodes: const [CountryCode.de],
-          referer: '$baseUrl/movies/${tmdbId.id}',
-          title: title,
-        ),
-      ),
-    ];
   }
 }

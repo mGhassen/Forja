@@ -1,12 +1,8 @@
 /// Port of webstreamr/src/extractor/Vidora.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../types.dart';
 import '../utils/fetcher.dart';
-import '../utils/height.dart';
-import '../utils/unpacker.dart';
 import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
@@ -31,28 +27,6 @@ class Vidora extends Extractor {
   Future<List<InternalUrlResult>> extractInternal(
       Context ctx, Uri url, Meta meta) async {
     final html = await fetcher.text(ctx, url);
-    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
-    if (rust != null) return rust;
-    final doc = html_parser.parse(html);
-    final title = doc.querySelector('title')?.text.trim().replaceFirst(
-            RegExp(r'^Watch '), '').trim();
-
-    final m3u8 = extractUrlFromPacked(html, [RegExp(r'file: ?"(.*?)"')]);
-    final origin = '${url.scheme}://${url.host}';
-    final headers = {'Origin': origin};
-
-    final out = meta.clone();
-    out.height ??= await guessHeightFromPlaylist(
-        ctx, fetcher, m3u8, FetcherRequestConfig(headers: headers));
-    if (title != null && title.isNotEmpty) out.title = title;
-
-    return [
-      InternalUrlResult(
-        url: m3u8,
-        format: Format.hls,
-        meta: out,
-        requestHeaders: headers,
-      ),
-    ];
+    return requireRustExtractFromHtml(id, html, url.toString(), meta);
   }
 }

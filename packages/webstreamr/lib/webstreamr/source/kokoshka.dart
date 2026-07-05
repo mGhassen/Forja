@@ -3,13 +3,13 @@ library;
 
 import 'dart:convert';
 
-import '../webstreamr_parse.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class KokoshkaSource extends Source {
@@ -45,62 +45,27 @@ class KokoshkaSource extends Source {
     final title =
         doc.querySelector('title')?.text.trim() ?? '';
 
-    final rustApis = tryRustParseSourceHtml(
+    final rustApis = requireRustParseSourceHtml(
       this.id,
       pageHtml,
       referer: pageUrl.toString(),
       baseUrl: baseUrl,
     );
-    if (rustApis != null) {
-      final out = <SourceResult>[];
-      for (final r in rustApis) {
-        try {
-          final resp = await fetcher.json(
-                  ctx,
-                  r.url,
-                  FetcherRequestConfig(
-                      headers: {'Referer': pageUrl.toString()}))
-              as Map<String, dynamic>;
-          final embed = tryRustParseSourceHtml(
-            this.id,
-            jsonEncode(resp),
-            referer: pageUrl.toString(),
-            title: title,
-            bodyKind: 'dooplayer',
-          );
-          if (embed != null) out.addAll(embed);
-        } catch (_) {
-          // skip
-        }
-      }
-      if (out.isNotEmpty) return out;
-    }
-
     final out = <SourceResult>[];
-    for (final el in doc.querySelectorAll('.dooplay_player_option')) {
-      if (el.id == 'player-option-trailer') continue;
-      final post = int.tryParse(el.attributes['data-post'] ?? '');
-      final dtype = el.attributes['data-type'];
-      final nume = int.tryParse(el.attributes['data-nume'] ?? '');
-      if (post == null || dtype == null || nume == null) continue;
-
-      final dooplayerUrl =
-          Uri.parse('$baseUrl/wp-json/dooplayer/v2/$post/$dtype/$nume');
+    for (final r in rustApis) {
       try {
         final resp = await fetcher.json(
-            ctx,
-            dooplayerUrl,
-            FetcherRequestConfig(
-                headers: {'Referer': pageUrl.toString()})) as Map<String, dynamic>;
-        final embed = resp['embed_url'];
-        if (embed is! String) continue;
-        out.add(SourceResult(
-          url: Uri.parse(embed),
-          meta: Meta(
-            countryCodes: const [CountryCode.al],
-            referer: pageUrl.toString(),
-            title: title,
-          ),
+                ctx,
+                r.url,
+                FetcherRequestConfig(
+                    headers: {'Referer': pageUrl.toString()}))
+            as Map<String, dynamic>;
+        out.addAll(requireRustParseSourceHtml(
+          this.id,
+          jsonEncode(resp),
+          referer: pageUrl.toString(),
+          title: title,
+          bodyKind: 'dooplayer',
         ));
       } catch (_) {
         // skip
@@ -123,7 +88,6 @@ class KokoshkaSource extends Source {
 
     final isSeries = tmdbId.season != null;
     for (final item in doc.querySelectorAll('.result-item')) {
-      // require matching kind
       final hasKind = item.querySelector(isSeries ? '.tvshows' : '.movies');
       if (hasKind == null) continue;
 

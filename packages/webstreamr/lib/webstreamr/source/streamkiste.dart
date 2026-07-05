@@ -31,46 +31,13 @@ class StreamKisteSource extends Source {
     if (seriesPageUrl == null) return const [];
 
     final html = await fetcher.text(ctx, seriesPageUrl);
-    final rust = tryRustParseSourceHtml(
+    return requireRustParseSourceHtml(
       this.id,
       html,
       referer: seriesPageUrl.toString(),
       season: tmdbId.season,
       episode: tmdbId.episode,
     );
-    if (rust != null) return rust;
-
-    final doc = html_parser.parse(html);
-
-    final ogTitle = doc
-            .querySelector('meta[property="og:title"]')
-            ?.attributes['content']
-            ?.trim() ??
-        '';
-    final title = '$ogTitle ${tmdbId.formatSeasonAndEpisode()}';
-
-    final out = <SourceResult>[];
-    final num = '${tmdbId.season}x${tmdbId.episode}';
-    for (final n in doc.querySelectorAll('[data-num="$num"]')) {
-      final mirrors = n.parent?.querySelector('.mirrors');
-      if (mirrors == null) continue;
-      for (final el in mirrors.querySelectorAll('[data-link]')) {
-        final raw = el.attributes['data-link'];
-        if (raw == null) continue;
-        final fixed = raw.replaceFirst(RegExp(r'^(https:)?//'), 'https://');
-        final u = Uri.parse(fixed);
-        if (u.host.contains('streamkiste')) continue;
-        out.add(SourceResult(
-          url: u,
-          meta: Meta(
-            countryCodes: const [CountryCode.de],
-            referer: seriesPageUrl.toString(),
-            title: title,
-          ),
-        ));
-      }
-    }
-    return out;
   }
 
   Future<Uri?> _fetchSeriesPageUrl(Context ctx, TmdbId tmdbId) async {

@@ -3,7 +3,6 @@ library;
 
 import '../errors.dart';
 import '../types.dart';
-import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
 import '../webstreamr_parse.dart';
@@ -37,34 +36,14 @@ class Fastream extends Extractor {
         ctx, downloadUrl, FetcherRequestConfig(headers: headers));
     if (RegExp(r'No such file').hasMatch(html)) throw NotFoundError();
 
-    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
-    if (mfpJson != null) {
-      final rust = tryRustExtractMfpFromHtml(
-        id,
-        '',
-        url.toString(),
-        meta,
-        mfpJson,
-        extraHtml: html,
-      );
-      if (rust != null) return rust;
-    }
-
-    final playlistUrl = await buildMediaFlowProxyExtractorStreamUrl(
-        ctx, fetcher, 'Fastream', url, headers);
-
-    final m = RegExp(r'\d{3,}x(\d{3,}), ([\d.]+ ?[GM]B)').firstMatch(html);
-    final t = RegExp(r'>Download (.*?)<').firstMatch(html);
-
-    final out = meta.clone();
-    if (m != null) {
-      out.height = int.tryParse(m.group(1)!);
-      out.bytes = parseBytes(m.group(2));
-    }
-    if (t != null) out.title = t.group(1);
-
-    return [
-      InternalUrlResult(url: playlistUrl, format: Format.hls, meta: out),
-    ];
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers)!;
+    return requireRustExtractMfpFromHtml(
+      id,
+      '',
+      url.toString(),
+      meta,
+      mfpJson,
+      extraHtml: html,
+    );
   }
 }

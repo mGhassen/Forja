@@ -3,11 +3,11 @@ library;
 
 import 'package:html/parser.dart' as html_parser;
 
-import '../webstreamr_parse.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class CuevanaSource extends Source {
@@ -48,51 +48,14 @@ class CuevanaSource extends Source {
     final html = await fetcher.text(ctx, pageUrl);
     final origin = '${pageUrl.scheme}://${pageUrl.host}';
 
-    final rust = tryRustParseSourceHtml(
+    final rust = requireRustParseSourceHtml(
       this.id,
       html,
       referer: pageUrl.toString(),
       title: title,
     );
-    if (rust != null) {
-      final out = <SourceResult>[];
-      for (final r in rust) {
-        if (!r.url.host.contains('cuevana3')) {
-          out.add(r);
-          continue;
-        }
-        final h = await fetcher.text(ctx, r.url,
-            FetcherRequestConfig(headers: {'Referer': origin}));
-        final m = RegExp(r"url ?= ?'(.*)'").firstMatch(h);
-        if (m == null) continue;
-        out.add(SourceResult(url: Uri.parse(m.group(1)!), meta: r.meta));
-      }
-      if (out.isNotEmpty) return out;
-    }
-
-    final doc = html_parser.parse(html);
-
-    final initial = <SourceResult>[];
-    for (final sub in doc.querySelectorAll('.open_submenu')) {
-      final t = sub.text;
-      if (!t.contains('Español')) continue;
-      final cc = t.contains('Latino') ? CountryCode.mx : CountryCode.es;
-      for (final el in sub.querySelectorAll('[data-tr], [data-video]')) {
-        final raw =
-            el.attributes['data-tr'] ?? el.attributes['data-video'];
-        if (raw == null) continue;
-        initial.add(SourceResult(
-          url: Uri.parse(raw),
-          meta: Meta(
-              countryCodes: [cc],
-              referer: pageUrl.toString(),
-              title: title),
-        ));
-      }
-    }
-
     final out = <SourceResult>[];
-    for (final r in initial) {
+    for (final r in rust) {
       if (!r.url.host.contains('cuevana3')) {
         out.add(r);
         continue;

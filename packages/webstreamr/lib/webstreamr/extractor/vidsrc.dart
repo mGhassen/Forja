@@ -8,7 +8,6 @@ import 'package:html/parser.dart' as html_parser;
 import '../errors.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
-import '../utils/height.dart';
 import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
@@ -59,7 +58,6 @@ class VidSrc extends Extractor {
       rethrow;
     }
 
-    // The server-rendered HTML is HTML-commented out; strip the wrapper.
     final doc = html_parser
         .parse(html.replaceFirst('<!--', '').replaceFirst('-->', ''));
     final iframeSrc = doc.querySelector('#player_iframe')?.attributes['src'];
@@ -67,7 +65,6 @@ class VidSrc extends Extractor {
     final iframeUrl =
         Uri.parse(iframeSrc.replaceFirst(RegExp(r'^//'), 'https://'));
     final iframeOrigin = '${iframeUrl.scheme}://${iframeUrl.host}';
-    final title = doc.querySelector('title')?.text.trim();
 
     final results = <InternalUrlResult>[];
     for (final el in doc.querySelectorAll('.server')) {
@@ -87,36 +84,12 @@ class VidSrc extends Extractor {
 
       final playerHtml = await fetcher.text(ctx, playerUrl,
           FetcherRequestConfig(headers: {'Referer': rcpUrl.toString()}));
-      final rust = tryRustVidsrcChain(
+      results.addAll(requireRustVidsrcChain(
         html,
         iframeHtml,
         playerHtml,
         meta,
         label: serverName,
-      );
-      if (rust != null) {
-        results.addAll(rust);
-        continue;
-      }
-      final fileM =
-          RegExp(r'(https:\/\/.*?\{v\d\}.*?) or').firstMatch(playerHtml);
-      if (fileM == null) continue;
-      final m3u8 = Uri.parse(
-          fileM.group(1)!.replaceAll(RegExp(r'\{v\d\}'), iframeUrl.host));
-
-      final out = meta.clone();
-      out.height ??= await guessHeightFromPlaylist(
-          ctx,
-          fetcher,
-          m3u8,
-          FetcherRequestConfig(headers: {'Referer': iframeUrl.toString()}));
-      if (title != null && title.isNotEmpty) out.title = title;
-
-      results.add(InternalUrlResult(
-        url: m3u8,
-        format: Format.hls,
-        label: serverName,
-        meta: out,
       ));
     }
     return results;

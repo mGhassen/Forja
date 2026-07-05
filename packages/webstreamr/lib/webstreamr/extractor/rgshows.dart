@@ -6,7 +6,6 @@ import 'dart:convert';
 import '../errors.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
-import '../utils/height.dart';
 import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
@@ -38,24 +37,7 @@ class RgShows extends Extractor {
     if (streamUrl.host.contains('vidzee')) {
       throw BlockedError(url, BlockedReason.unknown, const {});
     }
-    final rust = tryRustExtractFromHtml(
+    return requireRustExtractFromHtml(
         id, jsonEncode(data), url.toString(), meta);
-    if (rust != null) return rust;
-    final isMp4 = streamUrl.toString().contains('mp4');
-    final isHls = streamUrl.toString().contains('m3u8') ||
-        streamUrl.toString().contains('txt');
-    final out = meta.clone();
-    if (isHls) {
-      out.height ??= await guessHeightFromPlaylist(
-          ctx, fetcher, streamUrl, FetcherRequestConfig(headers: headers));
-    }
-    return [
-      InternalUrlResult(
-        url: streamUrl,
-        format: isMp4 ? Format.mp4 : (isHls ? Format.hls : Format.unknown),
-        meta: out,
-        requestHeaders: headers,
-      ),
-    ];
   }
 }

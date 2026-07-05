@@ -1,8 +1,6 @@
 /// Port of webstreamr/src/extractor/Fsst.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../webstreamr_parse.dart';
@@ -27,45 +25,21 @@ class Fsst extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final html = await fetcher.text(ctx, url,
         FetcherRequestConfig(headers: headers, noProxyHeaders: true));
-    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
-    if (rust != null) {
-      final r = rust.first;
-      final finalUrl = await fetcher.getFinalRedirectUrl(
-        ctx,
-        r.url,
-        FetcherRequestConfig(headers: headers, noProxyHeaders: true),
-        1,
-      );
-      return [
-        InternalUrlResult(
-          url: finalUrl,
-          format: r.format,
-          meta: r.meta,
-          requestHeaders: r.requestHeaders,
-        ),
-      ];
-    }
-    final doc = html_parser.parse(html);
-    final title = doc.querySelector('title')?.text.trim();
-
-    final m = RegExp(r'file:"(.*)"').firstMatch(html);
-    if (m == null) throw StateError('Fsst: file: missing');
-    final last = m.group(1)!.split(',').last;
-    final hu = RegExp(r'\[?([\d]*)p?\]?(.*)').firstMatch(last)!;
-    final fileHref = hu.group(2)!;
-
+    final rust = requireRustExtractFromHtml(id, html, url.toString(), meta);
+    final r = rust.first;
     final finalUrl = await fetcher.getFinalRedirectUrl(
-        ctx,
-        Uri.parse(fileHref),
-        FetcherRequestConfig(headers: headers, noProxyHeaders: true),
-        1);
-
-    final out = meta.clone();
-    out.height = int.tryParse(hu.group(1) ?? '');
-    if (title != null && title.isNotEmpty) out.title = title;
-
+      ctx,
+      r.url,
+      FetcherRequestConfig(headers: headers, noProxyHeaders: true),
+      1,
+    );
     return [
-      InternalUrlResult(url: finalUrl, format: Format.mp4, meta: out),
+      InternalUrlResult(
+        url: finalUrl,
+        format: r.format,
+        meta: r.meta,
+        requestHeaders: r.requestHeaders,
+      ),
     ];
   }
 }

@@ -1,10 +1,9 @@
 /// Port of webstreamr/src/extractor/Uqload.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../errors.dart';
 import '../types.dart';
+import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
 import '../webstreamr_parse.dart';
 import 'extractor.dart';
@@ -33,32 +32,13 @@ class Uqload extends Extractor {
     final html = await fetcher.text(ctx, url);
     if (RegExp(r'File Not Found').hasMatch(html)) throw NotFoundError();
 
-    final mfpJson = mediaFlowProxyConfigJson(ctx, const {});
-    if (mfpJson != null) {
-      final rust = tryRustExtractMfpFromHtml(
-        id,
-        html,
-        url.toString(),
-        meta,
-        mfpJson,
-      );
-      if (rust != null) return rust;
-    }
-
-    final hM = RegExp(r'\d{3,}x(\d{3,})').firstMatch(html);
-    final doc = html_parser.parse(html);
-    final title = doc.querySelector('h1')?.text.trim();
-
-    final out = meta.clone();
-    if (title != null && title.isNotEmpty) out.title = title;
-    if (hM != null) out.height = int.tryParse(hM.group(1)!);
-
-    return [
-      InternalUrlResult(
-        url: buildMediaFlowProxyExtractorRedirectUrl(ctx, 'Uqload', url),
-        format: Format.mp4,
-        meta: out,
-      ),
-    ];
+    final mfpJson = mediaFlowProxyConfigJson(ctx, const {})!;
+    return requireRustExtractMfpFromHtml(
+      id,
+      html,
+      url.toString(),
+      meta,
+      mfpJson,
+    );
   }
 }

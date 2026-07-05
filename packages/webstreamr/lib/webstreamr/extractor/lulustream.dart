@@ -1,11 +1,8 @@
 /// Port of webstreamr/src/extractor/LuluStream.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../errors.dart';
 import '../types.dart';
-import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
 import '../webstreamr_parse.dart';
@@ -52,37 +49,15 @@ class LuluStream extends Extractor {
       throw NotFoundError();
     }
 
-    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
-    if (mfpJson != null) {
-      final rust = tryRustExtractMfpFromHtml(
-        id,
-        '',
-        url.toString(),
-        meta,
-        mfpJson,
-        extraHtml: html,
-      );
-      if (rust != null) return rust;
-    }
-
-    final doc = html_parser.parse(html);
-    final title = doc.querySelector('h1')?.text.trim();
-
-    final m = RegExp(r'\d{3,}x(\d{3,}), ([\d.]+ ?[GM]B)').firstMatch(html);
-
-    final playlistUrl = await buildMediaFlowProxyExtractorStreamUrl(
-        ctx, fetcher, 'LuluStream', url, headers);
-
-    final out = meta.clone();
-    if (title != null && title.isNotEmpty) out.title = title;
-    if (m != null) {
-      out.height = int.tryParse(m.group(1)!);
-      out.bytes = parseBytes(m.group(2));
-    }
-
-    return [
-      InternalUrlResult(url: playlistUrl, format: Format.hls, meta: out),
-    ];
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers)!;
+    return requireRustExtractMfpFromHtml(
+      id,
+      '',
+      url.toString(),
+      meta,
+      mfpJson,
+      extraHtml: html,
+    );
   }
 }
 

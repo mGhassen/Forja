@@ -1,20 +1,15 @@
 /// Port of webstreamr/src/source/FourKHDHub.ts
 library;
 
-import '../webstreamr_parse.dart';
-import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import '../types.dart';
-import '../utils/bytes.dart';
 import '../utils/hd_hub_helper.dart';
 import '../utils/id.dart';
-import '../utils/language.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
-/// Levenshtein distance with case-insensitive comparison (matches
-/// `fast-levenshtein` with `useCollator: true` for ASCII).
 int _levenshtein(String a, String b) {
   final s = a.toLowerCase();
   final t = b.toLowerCase();
@@ -79,7 +74,7 @@ class FourKHDHubSource extends Source {
 
     final html = await fetcher.text(ctx, pageUrl);
 
-    final rust = tryRustParseSourceHtml(
+    final rust = requireRustParseSourceHtml(
       this.id,
       html,
       referer: pageUrl.toString(),
@@ -87,44 +82,10 @@ class FourKHDHubSource extends Source {
       season: tmdbId.season,
       episode: tmdbId.episode,
     );
-    if (rust != null) {
-      final out = <SourceResult>[];
-      for (final r in rust) {
-        final resolved = await resolveRedirectUrl(ctx, fetcher, r.url);
-        out.add(SourceResult(url: resolved, meta: r.meta));
-      }
-      if (out.isNotEmpty) return out;
-    }
-
-    final doc = html_parser.parse(html);
-
     final out = <SourceResult>[];
-    if (tmdbId.season != null) {
-      final s = tmdbId.season.toString().padLeft(2, '0');
-      final e = tmdbId.episode.toString().padLeft(2, '0');
-      for (final ep in doc.querySelectorAll('.episode-item')) {
-        final epTitle = ep.querySelector('.episode-title')?.text ?? '';
-        if (!epTitle.contains('S$s')) continue;
-        for (final dl in ep.querySelectorAll('.episode-download-item')) {
-          if (!dl.text.contains('Episode-$e')) continue;
-          final ccs = <CountryCode>{
-            CountryCode.multi,
-            ...findCountryCodes(ep.innerHtml),
-          }.toList();
-          final r = await _extractSourceResult(ctx, dl, ccs);
-          if (r != null) out.add(r);
-        }
-      }
-      return out;
-    }
-
-    for (final dl in doc.querySelectorAll('.download-item')) {
-      final ccs = <CountryCode>{
-        CountryCode.multi,
-        ...findCountryCodes(dl.innerHtml),
-      }.toList();
-      final r = await _extractSourceResult(ctx, dl, ccs);
-      if (r != null) out.add(r);
+    for (final r in rust) {
+      final resolved = await resolveRedirectUrl(ctx, fetcher, r.url);
+      out.add(SourceResult(url: resolved, meta: r.meta));
     }
     return out;
   }
@@ -162,40 +123,5 @@ class FourKHDHubSource extends Source {
       return Uri.parse(href).hasScheme ? Uri.parse(href) : base.resolve(href);
     }
     return null;
-  }
-
-  Future<SourceResult?> _extractSourceResult(
-      Context ctx, dom.Element el, List<CountryCode> countryCodes) async {
-    final inner = el.innerHtml;
-    final sM = RegExp(r'([\d.]+ ?[GM]B)').firstMatch(inner);
-    final hM = RegExp(r'(\d{3,})p').firstMatch(inner);
-
-    final meta = Meta(
-      countryCodes:
-          <CountryCode>{...countryCodes, ...findCountryCodes(inner)}.toList(),
-      height: hM != null ? int.tryParse(hM.group(1)!) : null,
-      title: el.querySelector('.file-title, .episode-file-title')?.text.trim(),
-      bytes: parseBytes(sM?.group(1)),
-    );
-
-    Uri? hubCloudHref;
-    Uri? hubDriveHref;
-    for (final a in el.querySelectorAll('a')) {
-      final t = a.text;
-      final href = a.attributes['href'];
-      if (href == null) continue;
-      if (t.contains('HubCloud')) {
-        hubCloudHref = Uri.parse(href);
-        break;
-      }
-      if (t.contains('HubDrive')) {
-        hubDriveHref = Uri.parse(href);
-      }
-    }
-
-    final redirect = hubCloudHref ?? hubDriveHref;
-    if (redirect == null) return null;
-    final resolved = await resolveRedirectUrl(ctx, fetcher, redirect);
-    return SourceResult(url: resolved, meta: meta);
   }
 }

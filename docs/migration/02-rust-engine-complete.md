@@ -41,9 +41,9 @@ Implementation already matches rqbit streaming: `crates/torrent` runs `librqbit:
 
 - [ ] Mobile FFI builds with `torrent-engine` + `local-proxy` (full features on iOS/Android)
 - [ ] Magnet → HTTP stream works on iOS + Android via librqbit (B2 resolved)
-- [ ] `libtorrent_flutter` removed from all pubspecs (`apps/forja`, `streaming`, `api`)
-- [ ] `TorrentStreamService` is Rust-only — no libtorrent code path
-- [ ] Dart HTML fallbacks removed from webstreamr sources/extractors (Rust required)
+- [x] `libtorrent_flutter` removed from all pubspecs (`apps/forja`, `streaming`, `api`)
+- [x] `TorrentStreamService` is Rust-only — no libtorrent code path
+- [x] Dart HTML fallbacks removed from webstreamr sources/extractors (Rust required)
 - [ ] Orphan engine copies deleted from `packages/rust/lib/src/` (if any remain)
 - [ ] Desktop boot never falls back to libtorrent when dylib loads
 - [ ] RFC-009 Step 9 acceptance fully checked
@@ -56,9 +56,9 @@ Implementation already matches rqbit streaming: `crates/torrent` runs `librqbit:
 | Gap | Blocker | Phase 2 task |
 |-----|---------|--------------|
 | Mobile librqbit won't compile | B2 — `librqbit-dualstack-sockets` / `bind_device` on iOS | P2-10 (**iOS compile done**) |
-| `libtorrent_flutter` in 3 pubspecs | B2 | P2-20 |
-| Desktop libtorrent fallback in `TorrentStreamService` | B2 | P2-21 |
-| Dart HTML fallbacks in 44 webstreamr files | confidence after B2 | P2-30 |
+| `libtorrent_flutter` in 3 pubspecs | B2 | P2-20 (**done**) |
+| Desktop libtorrent fallback in `TorrentStreamService` | B2 | P2-21 (**done**) |
+| Dart HTML fallbacks in 44 webstreamr files | confidence after B2 | P2-30 (**done**) |
 | Optional scrapers still full Dart (YTS, EZTV, …) | not blocking | P2-40 |
 
 ---
@@ -163,7 +163,7 @@ flowchart LR
 
 - [x] `./scripts/try_build_mobile_torrent.sh ios` passes (vendored iOS patch)
 - [ ] `./scripts/build_rust_mobile.sh all` with full features (Android needs NDK)
-- [ ] Zero `libtorrent_flutter` references in repo
+- [x] Zero `libtorrent_flutter` references in active packages (legacy `forja_*` copies remain until Phase 4)
 - [ ] `melos run rust:test` + `melos run rust:integration` green
 - [ ] Release APK/IPA plays magnet via librqbit
 

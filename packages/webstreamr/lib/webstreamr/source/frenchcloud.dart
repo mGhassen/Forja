@@ -1,12 +1,10 @@
 /// Port of webstreamr/src/source/FrenchCloud.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
-import '../webstreamr_parse.dart';
 import '../types.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class FrenchCloudSource extends Source {
@@ -29,23 +27,6 @@ class FrenchCloudSource extends Source {
     final imdbId = await getImdbId(ctx, fetcher, id);
     final pageUrl = Uri.parse('$baseUrl/movie/${imdbId.id}');
     final html = await fetcher.text(ctx, pageUrl);
-    final rust = tryRustParseSourceHtml(this.id, html, referer: baseUrl);
-    if (rust != null) return rust;
-
-    final doc = html_parser.parse(html);
-
-    final out = <SourceResult>[];
-    for (final el in doc.querySelectorAll('[data-link]')) {
-      final raw = el.attributes['data-link'];
-      if (raw == null || raw.isEmpty) continue;
-      final fixed = raw.replaceFirst(RegExp(r'^(https:)?//'), 'https://');
-      final u = Uri.parse(fixed);
-      if (u.host.contains('frenchcloud')) continue;
-      out.add(SourceResult(
-        url: u,
-        meta: Meta(countryCodes: const [CountryCode.fr], referer: baseUrl),
-      ));
-    }
-    return out;
+    return requireRustParseSourceHtml(this.id, html, referer: baseUrl);
   }
 }

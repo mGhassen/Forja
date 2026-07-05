@@ -1,13 +1,10 @@
 /// Port of webstreamr/src/extractor/FileMoon.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../errors.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
-import '../utils/unpacker.dart';
 import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
@@ -60,41 +57,11 @@ class FileMoon extends Extractor {
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
     if (RegExp(r'Page not found').hasMatch(html)) throw NotFoundError();
 
-    final next = tryRustNextUrl(id, html, url.toString());
-    if (next != null) {
-      final m = meta.clone();
-      final title = html_parser.parse(html).querySelector('h3')?.text.trim();
-      if (title != null && title.isNotEmpty) m.title = title;
-      return extractInternal(ctx, Uri.parse(next), m, url);
+    try {
+      final next = requireRustNextUrl(id, html, url.toString());
+      return extractInternal(ctx, Uri.parse(next), meta.clone(), url);
+    } on NotFoundError {
+      return requireRustExtractFromHtml(id, html, url.toString(), meta);
     }
-    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
-    if (rust != null) return rust;
-
-    final doc = html_parser.parse(html);
-    final title = doc.querySelector('h3')?.text.trim();
-
-    final iframes = RegExp(r'''iframe.*?src=["'](.*?)["']''')
-        .allMatches(html)
-        .toList();
-    if (iframes.isNotEmpty) {
-      // Use the LAST match — earlier ones are decoy/adblock catchers.
-      final next = Uri.parse(iframes.last.group(1)!);
-      final m = meta.clone();
-      if (title != null && title.isNotEmpty) m.title = title;
-      return extractInternal(ctx, next, m, url);
-    }
-
-    final playlistUrl = await buildMediaFlowProxyExtractorStreamUrl(
-        ctx, fetcher, 'FileMoon', originalUrl ?? url, headers);
-
-    final unpacked = unpackEval(html);
-    final hM = RegExp(r'(\d{3,})p').firstMatch(unpacked);
-
-    final out = meta.clone();
-    if (hM != null) out.height = int.tryParse(hM.group(1)!);
-
-    return [
-      InternalUrlResult(url: playlistUrl, format: Format.hls, meta: out),
-    ];
   }
 }

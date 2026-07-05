@@ -42,47 +42,17 @@ class KinoGerSource extends Source {
 
     final html = await fetcher.text(ctx, pageUrl);
     final rustUrls =
-        tryRustKinogerEpisodeUrls(html, seasonIndex, episodeIndex);
-    if (rustUrls != null && rustUrls.isNotEmpty) {
-      return rustUrls
-          .map((url) => SourceResult(
-                url: url,
-                meta: Meta(
-                  countryCodes: const [CountryCode.de],
-                  referer: pageUrl.toString(),
-                  title: title,
-                ),
-              ))
-          .toList();
-    }
-
-    final out = <SourceResult>[];
-    for (final m in RegExp(r'\.show\(.*').allMatches(html)) {
-      final url = _findEpisodeUrlInShowJs(m.group(0)!, seasonIndex, episodeIndex);
-      if (url == null) continue;
-      out.add(SourceResult(
-        url: url,
-        meta: Meta(
-          countryCodes: const [CountryCode.de],
-          referer: pageUrl.toString(),
-          title: title,
-        ),
-      ));
-    }
-    return out;
-  }
-
-  Uri? _findEpisodeUrlInShowJs(
-      String showJs, int seasonIndex, int episodeIndex) {
-    final lists = RegExp(r'\[(.*?)]').allMatches(showJs).toList();
-    if (seasonIndex < 0 || seasonIndex >= lists.length) return null;
-    final inner = lists[seasonIndex].group(1);
-    if (inner == null) return null;
-    final parts = inner.split(',');
-    if (episodeIndex < 0 || episodeIndex >= parts.length) return null;
-    final m = RegExp("https?://[^\\s'\"<>]+").firstMatch(parts[episodeIndex]);
-    if (m == null) return null;
-    return Uri.parse(m.group(0)!);
+        requireRustKinogerEpisodeUrls(html, seasonIndex, episodeIndex);
+    return rustUrls
+        .map((url) => SourceResult(
+              url: url,
+              meta: Meta(
+                countryCodes: const [CountryCode.de],
+                referer: pageUrl.toString(),
+                title: title,
+              ),
+            ))
+        .toList();
   }
 
   Future<Uri?> _fetchPageUrl(

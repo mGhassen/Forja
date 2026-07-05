@@ -1,9 +1,6 @@
 /// Port of webstreamr/src/extractor/StreamEmbed.ts
 library;
 
-import 'dart:convert';
-
-import '../errors.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../webstreamr_parse.dart';
@@ -29,26 +26,6 @@ class StreamEmbed extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
-    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
-    if (rust != null) return rust;
-    if (RegExp(r'Video is not ready').hasMatch(html)) throw NotFoundError();
-
-    final m = RegExp(r'video ?= ?(.*);').firstMatch(html);
-    if (m == null) throw StateError('StreamEmbed: video= missing');
-    final video = jsonDecode(m.group(1)!) as Map<String, dynamic>;
-    final origin = '${url.scheme}://${url.host}';
-    final m3u8 = Uri.parse(
-        '$origin/m3u8/${video['uid']}/${video['md5']}/master.txt'
-        '?s=1&id=${video['id']}&cache=${video['status']}');
-    final qualityList =
-        jsonDecode(video['quality'] as String) as List<dynamic>;
-
-    final out = meta.clone();
-    out.height = int.tryParse('${qualityList.first}');
-    out.title = Uri.decodeComponent(video['title'] as String);
-
-    return [
-      InternalUrlResult(url: m3u8, format: Format.hls, meta: out),
-    ];
+    return requireRustExtractFromHtml(id, html, url.toString(), meta);
   }
 }

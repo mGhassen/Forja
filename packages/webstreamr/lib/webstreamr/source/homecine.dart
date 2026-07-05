@@ -71,38 +71,12 @@ class HomeCineSource extends Source {
         ? '$name ${tmdbId.formatSeasonAndEpisode()}'
         : '$name ($year)';
 
-    final rust = tryRustParseSourceHtml(
+    return requireRustParseSourceHtml(
       this.id,
       pageHtml,
       referer: pageUrl.toString(),
       title: title,
     );
-    if (rust != null) return rust;
-
-    final doc = html_parser.parse(pageHtml);
-    final out = <SourceResult>[];
-    for (final a in doc.querySelectorAll('.les-content a')) {
-      final t = a.text.toLowerCase();
-      List<CountryCode> ccs;
-      if (t.contains('latino')) {
-        ccs = const [CountryCode.mx];
-      } else if (t.contains('castellano')) {
-        ccs = const [CountryCode.es];
-      } else {
-        continue;
-      }
-      // Upstream queries `iframe` inside the anchor.
-      final src = a.querySelector('iframe')?.attributes['src'];
-      if (src == null) continue;
-      out.add(SourceResult(
-        url: Uri.parse(src),
-        meta: Meta(
-            countryCodes: ccs,
-            referer: pageUrl.toString(),
-            title: title),
-      ));
-    }
-    return out;
   }
 
   Future<Uri?> _fetchPageUrl(
@@ -118,7 +92,6 @@ class HomeCineSource extends Source {
             ? u.toString().contains('/series/')
             : !u.toString().contains('/series/');
 
-    // Exact match
     for (final k in keywords) {
       for (final el in doc.querySelectorAll('a[oldtitle="$k"]')) {
         final href = el.attributes['href'];
@@ -127,7 +100,6 @@ class HomeCineSource extends Source {
         if (matchesType(u)) return u;
       }
     }
-    // Similar match
     for (final k in keywords) {
       for (final el in doc.querySelectorAll('a[oldtitle]')) {
         final ot = (el.attributes['oldtitle'] ?? '').trim();

@@ -3,11 +3,11 @@ library;
 
 import 'dart:convert';
 
-import '../webstreamr_parse.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/id.dart';
 import '../utils/tmdb.dart';
+import '../webstreamr_parse.dart';
 import 'source.dart';
 
 class MovixSource extends Source {
@@ -44,12 +44,10 @@ class MovixSource extends Source {
           FetcherRequestConfig(
               headers: {'Accept': 'application/json'})) as Map<String, dynamic>;
     } on FormatException {
-      // Movix sometimes serves an HTML JS-redirect interstitial instead of
-      // JSON (anti-bot). Skip cleanly rather than crash the whole source.
       return const [];
     }
 
-    final rust = tryRustParseSourceHtml(
+    return requireRustParseSourceHtml(
       this.id,
       jsonEncode(json),
       referer: iframeSrcFromJson(json, tmdbId),
@@ -58,35 +56,6 @@ class MovixSource extends Source {
       episode: tmdbId.episode,
       year: year,
     );
-    if (rust != null) return rust;
-
-    final data = (tmdbId.season != null
-            ? json['current_episode']
-            : json) as Map<String, dynamic>?;
-
-    if (data == null || data['player_links'] == null) return const [];
-
-    final playerLinks = data['player_links'] as List<dynamic>;
-    final iframeSrc = data['iframe_src']?.toString() ?? '';
-    final tmdbTitle = (json['tmdb_details']
-            as Map<String, dynamic>?)?['title']?.toString() ??
-        '';
-    final title = tmdbId.season != null
-        ? '$tmdbTitle ${tmdbId.formatSeasonAndEpisode()}'
-        : '$tmdbTitle ($year)';
-
-    return playerLinks
-        .map((p) => Uri.parse(
-            (p as Map<String, dynamic>)['decoded_url'] as String))
-        .map((u) => SourceResult(
-              url: u,
-              meta: Meta(
-                countryCodes: const [CountryCode.fr],
-                referer: iframeSrc,
-                title: title,
-              ),
-            ))
-        .toList();
   }
 
   String iframeSrcFromJson(Map<String, dynamic> json, TmdbId tmdbId) {

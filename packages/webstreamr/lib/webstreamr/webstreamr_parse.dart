@@ -300,3 +300,139 @@ List<InternalUrlResult>? tryRustVidsrcChain(
           ))
       .toList();
 }
+
+Never _rustParseRequired(String label) =>
+    throw StateError('$label — wire WebstreamrParseBackend via ForjaEngine.init()');
+
+List<InternalUrlResult> requireRustExtractFromHtml(
+  String extractorId,
+  String html,
+  String pageUrl,
+  Meta meta,
+) {
+  final rows = tryRustExtractFromHtml(extractorId, html, pageUrl, meta);
+  if (rows == null) throw NotFoundError();
+  return rows;
+}
+
+List<SourceResult> requireRustParseSourceHtml(
+  String sourceId,
+  String html, {
+  required String referer,
+  String? title,
+  int? season,
+  int? episode,
+  List<CountryCode>? countryCodes,
+  bool? isSeries,
+  int? year,
+  String? baseUrl,
+  String? bodyKind,
+}) {
+  final rows = tryRustParseSourceHtml(
+    sourceId,
+    html,
+    referer: referer,
+    title: title,
+    season: season,
+    episode: episode,
+    countryCodes: countryCodes,
+    isSeries: isSeries,
+    year: year,
+    baseUrl: baseUrl,
+    bodyKind: bodyKind,
+  );
+  if (rows == null) throw NotFoundError();
+  return rows;
+}
+
+List<SourceResult> requireRustResolveSource(
+  String sourceId,
+  String type,
+  Id id, {
+  String? title,
+  int? year,
+}) {
+  final rows = tryRustResolveSource(
+    sourceId,
+    type,
+    id,
+    title: title,
+    year: year,
+  );
+  if (rows == null) {
+    if (WebstreamrParseBackend.resolveSourceJson == null) {
+      _rustParseRequired('resolveSourceJson');
+    }
+    throw NotFoundError();
+  }
+  return rows;
+}
+
+String requireRustNextUrl(String extractorId, String html, String pageUrl) {
+  final next = tryRustNextUrl(extractorId, html, pageUrl);
+  if (next == null || next.isEmpty) throw NotFoundError();
+  return next;
+}
+
+List<InternalUrlResult> requireRustExtractHubcloudLinks(
+  String linksHtml,
+  String pageUrl,
+  Meta meta,
+) {
+  final rows = tryRustExtractHubcloudLinks(linksHtml, pageUrl, meta);
+  if (rows == null) throw NotFoundError();
+  return rows;
+}
+
+List<InternalUrlResult> requireRustExtractMfpFromHtml(
+  String extractorId,
+  String html,
+  String pageUrl,
+  Meta meta,
+  String mfpConfigJson, {
+  String extraHtml = '',
+}) {
+  final rows = tryRustExtractMfpFromHtml(
+    extractorId,
+    html,
+    pageUrl,
+    meta,
+    mfpConfigJson,
+    extraHtml: extraHtml,
+  );
+  if (rows == null) {
+    if (WebstreamrParseBackend.extractMfpEmbedHtmlJson == null) {
+      _rustParseRequired('extractMfpEmbedHtmlJson');
+    }
+    throw NotFoundError();
+  }
+  return rows;
+}
+
+List<InternalUrlResult> requireRustVidsrcChain(
+  String outerHtml,
+  String rcpHtml,
+  String prorcpHtml,
+  Meta meta, {
+  String? label,
+}) {
+  final rows = tryRustVidsrcChain(
+    outerHtml,
+    rcpHtml,
+    prorcpHtml,
+    meta,
+    label: label,
+  );
+  if (rows == null) throw NotFoundError();
+  return rows;
+}
+
+List<Uri> requireRustKinogerEpisodeUrls(
+  String html,
+  int seasonIndex,
+  int episodeIndex,
+) {
+  final urls = tryRustKinogerEpisodeUrls(html, seasonIndex, episodeIndex);
+  if (urls == null) throw NotFoundError();
+  return urls;
+}

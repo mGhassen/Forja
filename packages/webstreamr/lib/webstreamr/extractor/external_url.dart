@@ -22,16 +22,6 @@ class ExternalUrl extends Extractor {
   @override
   Future<List<InternalUrlResult>> extractInternal(
       Context ctx, Uri url, Meta meta) async {
-    final rust = tryRustExtractFromHtml(id, '', url.toString(), meta);
-    if (rust != null) return rust;
-    return [
-      InternalUrlResult(
-        url: url,
-        format: Format.unknown,
-        isExternal: true,
-        label: url.host,
-        meta: meta,
-      ),
-    ];
+    return requireRustExtractFromHtml(id, '', url.toString(), meta);
   }
 }

@@ -26,18 +26,6 @@ class YouTube extends Extractor {
     final headers = {'Referer': meta.referer ?? url.toString()};
     final html =
         await fetcher.text(ctx, url, FetcherRequestConfig(headers: headers));
-    final rust = tryRustExtractFromHtml(id, html, url.toString(), meta);
-    if (rust != null) return rust;
-    final m = RegExp(r'"title":\{"runs":\[\{"text":"(.*?)"').firstMatch(html);
-    final out = meta.clone();
-    out.title = m?.group(1);
-    return [
-      InternalUrlResult(
-        url: url,
-        format: Format.unknown,
-        ytId: url.queryParameters['v'],
-        meta: out,
-      ),
-    ];
+    return requireRustExtractFromHtml(id, html, url.toString(), meta);
   }
 }

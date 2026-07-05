@@ -87,6 +87,6 @@ flowchart TB
 
 - Update the **active phase file** when work completes.
 - Phase 1 is frozen except factual corrections.
-- B2: **librqbit locked** — iOS compile patched; next P2-14 device smoke, then P2-20 drop libtorrent.
+- B2: **librqbit locked** — iOS compile patched; P2-20/21/30 done (Rust-only torrent + webstreamr). Next: P2-14 device smoke, P2-32 provider fallbacks.
 - Do not start Phase 3 until Phase 2 exit criteria are met.
 - Agent workflow: [`.cursor/rules/rust-migration.mdc`](../../.cursor/rules/rust-migration.mdc)

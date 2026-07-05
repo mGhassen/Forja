@@ -18,7 +18,6 @@ import 'package:html/parser.dart' as html_parser;
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/id.dart';
-import '../utils/resolution.dart';
 import '../utils/tmdb.dart';
 import 'source.dart';
 
@@ -219,62 +218,16 @@ class VegaMoviesSource extends Source {
     try {
       final html = await fetcher.text(ctx, nexUrl,
           FetcherRequestConfig(headers: {'Referer': refererUrl.toString()}));
-      final rust = tryRustParseSourceHtml(
+      return requireRustParseSourceHtml(
         this.id,
         html,
         referer: nexUrl.toString(),
         title: label.isNotEmpty ? label : null,
         episode: episode,
       );
-      if (rust != null) return rust;
-
-      // If targeting a specific episode, narrow the HTML window to the
-      // matching `-:Episode(s): N:-` section before pulling vcloud links.
-      String scope = html;
-      if (episode != null) {
-        scope = _episodeSlice(html, episode) ?? '';
-        if (scope.isEmpty) return const [];
-      }
-      // Pull all vcloud.zip mirrors. Prefer those — they map to the HubCloud
-      // engine. fastdl/filebee are skipped (no standalone extractors yet).
-      final out = <SourceResult>[];
-      final seen = <String>{};
-      for (final m
-          in RegExp(r'href="(https?://[^"]*vcloud[^"]+)"').allMatches(scope)) {
-        final href = m.group(1)!;
-        if (!seen.add(href)) continue;
-        final m2 = meta.clone();
-        m2.referer = nexUrl.toString();
-        // Tag with quality from header text if available.
-        final h = findHeight(label);
-        if (h != null) m2.height = h;
-        if (label.isNotEmpty) m2.title = label;
-        out.add(SourceResult(url: Uri.parse(href), meta: m2));
-      }
-      return out;
     } catch (_) {
       return const [];
     }
-  }
-
-  /// Extract the HTML between the `-:Episode(s): N:-` header for [episode]
-  /// and the next episode header (or end-of-document). Returns null when no
-  /// such section exists.
-  static String? _episodeSlice(String html, int episode) {
-    // Match "Episode" or "Episodes" followed by the number (with or without
-    // a leading zero) framed by colons / dashes.
-    final headerRe = RegExp(
-        r'(?:-\s*:|:)\s*Episodes?\s*:?\s*0*(\d{1,3})\s*:?\s*-?',
-        caseSensitive: false);
-    final matches = headerRe.allMatches(html).toList();
-    for (var i = 0; i < matches.length; i++) {
-      final n = int.tryParse(matches[i].group(1) ?? '');
-      if (n != episode) continue;
-      final start = matches[i].end;
-      final end = i + 1 < matches.length ? matches[i + 1].start : html.length;
-      return html.substring(start, end);
-    }
-    return null;
   }
 }
 

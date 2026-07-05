@@ -1,14 +1,10 @@
 /// Port of webstreamr/src/extractor/FileLions.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../errors.dart';
 import '../types.dart';
-import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
-import '../utils/unpacker.dart';
 import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
@@ -89,42 +85,20 @@ class FileLions extends Extractor {
       throw NotFoundError();
     }
 
-    final next = tryRustNextUrl(id, html, url.toString());
-    if (next != null) {
+    try {
+      final next = requireRustNextUrl(id, html, url.toString());
       return extractInternal(ctx, Uri.parse(next), meta);
+    } on NotFoundError {
+      // continue to MFP extraction
     }
 
-    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
-    if (mfpJson != null) {
-      final rust = tryRustExtractMfpFromHtml(
-        id,
-        html,
-        url.toString(),
-        meta,
-        mfpJson,
-      );
-      if (rust != null) return rust;
-    }
-
-    final unpacked = unpackEval(html);
-    final hM = RegExp(r'(\d{3,})p').firstMatch(unpacked);
-    final sM = RegExp(r'([\d.]+ ?[GM]B)').firstMatch(html);
-    final doc = html_parser.parse(html);
-    final title =
-        doc.querySelector('meta[name="description"]')?.attributes['content'];
-
-    final out = meta.clone();
-    if (hM != null) out.height = int.tryParse(hM.group(1)!);
-    if (sM != null) out.bytes = parseBytes(sM.group(1));
-    if (title != null && title.isNotEmpty) out.title = title;
-
-    return [
-      InternalUrlResult(
-        url: await buildMediaFlowProxyExtractorStreamUrl(
-            ctx, fetcher, 'FileLions', url, headers),
-        format: Format.hls,
-        meta: out,
-      ),
-    ];
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers)!;
+    return requireRustExtractMfpFromHtml(
+      id,
+      html,
+      url.toString(),
+      meta,
+      mfpJson,
+    );
   }
 }

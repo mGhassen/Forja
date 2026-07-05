@@ -1,14 +1,8 @@
 /// Port of webstreamr/src/extractor/KinoGer.ts. Needs AES-128-CBC + PKCS7.
 library;
 
-import 'dart:convert';
-import 'dart:typed_data';
-
-import 'package:pointycastle/export.dart';
-
 import '../types.dart';
 import '../utils/fetcher.dart';
-import '../utils/height.dart';
 import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
@@ -37,28 +31,6 @@ const _kHosts = {
   'w1tv.xyz',
   'wasuytm.store',
 };
-
-Uint8List _hexDecode(String hex) {
-  final out = Uint8List(hex.length ~/ 2);
-  for (var i = 0; i < out.length; i++) {
-    out[i] = int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16);
-  }
-  return out;
-}
-
-Uint8List _aes128CbcDecrypt(Uint8List key, Uint8List iv, Uint8List data) {
-  final cipher = PaddedBlockCipherImpl(
-    PKCS7Padding(),
-    CBCBlockCipher(AESEngine()),
-  )..init(
-      false,
-      PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
-        ParametersWithIV(KeyParameter(key), iv),
-        null,
-      ),
-    );
-  return cipher.process(data);
-}
 
 class KinoGer extends Extractor {
   KinoGer(super.fetcher);
@@ -91,28 +63,6 @@ class KinoGer extends Extractor {
     };
     final hex = await fetcher.text(ctx, url,
         FetcherRequestConfig(headers: headers));
-    final rust = tryRustExtractFromHtml(id, hex, url.toString(), meta);
-    if (rust != null) return rust;
-
-    final encrypted = _hexDecode(hex.substring(0, hex.length - 1));
-    final key = _hexDecode('6b69656d7469656e6d75613931316361');
-    final iv = _hexDecode('313233343536373839306f6975797472');
-    final decrypted = utf8.decode(_aes128CbcDecrypt(key, iv, encrypted));
-    final json = jsonDecode(decrypted) as Map<String, dynamic>;
-    final m3u8 = Uri.parse(json['source'] as String);
-
-    final out = meta.clone();
-    out.height ??= await guessHeightFromPlaylist(
-        ctx, fetcher, m3u8, FetcherRequestConfig(headers: headers));
-    out.title = json['title'] as String?;
-
-    return [
-      InternalUrlResult(
-        url: m3u8,
-        format: Format.hls,
-        meta: out,
-        requestHeaders: headers,
-      ),
-    ];
+    return requireRustExtractFromHtml(id, hex, url.toString(), meta);
   }
 }

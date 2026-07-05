@@ -178,7 +178,7 @@ class _ForjaAppState extends State<ForjaApp> with WidgetsBindingObserver, Window
     final bool isPreventClose = await windowManager.isPreventClose();
     if (!isPreventClose) return;
 
-    // Graceful shutdown — calling exit(0) while libtorrent / media_kit (mpv)
+    // Graceful shutdown — calling exit(0) while media_kit (mpv)
     // / WebView2 native threads are still running races their teardown and
     // produces the Windows "system error unknown hard error" dialog
     // (STATUS_ASSERTION_FAILURE in ntdll). Dispose the heavy native plugins

@@ -1,11 +1,8 @@
 /// Port of webstreamr/src/extractor/DoodStream.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../errors.dart';
 import '../types.dart';
-import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
 import '../webstreamr_parse.dart';
@@ -46,36 +43,14 @@ class DoodStream extends Extractor {
 
     final downloadHtml = await fetcher
         .text(ctx, Uri.parse(url.toString().replaceFirst('/e/', '/d/')));
-    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
-    if (mfpJson != null) {
-      final rust = tryRustExtractMfpFromHtml(
-        id,
-        html,
-        url.toString(),
-        meta,
-        mfpJson,
-        extraHtml: downloadHtml,
-      );
-      if (rust != null) return rust;
-    }
-
-    final doc = html_parser.parse(html);
-    final title = doc.querySelector('title')?.text.trim().replaceFirst(
-        RegExp(r' - DoodStream$'), '').trim();
-
-    final sM = RegExp(r'([\d.]+ ?[GM]B)').firstMatch(downloadHtml);
-
-    final out = meta.clone();
-    if (title != null && title.isNotEmpty) out.title = title;
-    if (sM != null) out.bytes = parseBytes(sM.group(1));
-
-    return [
-      InternalUrlResult(
-        url: buildMediaFlowProxyExtractorRedirectUrl(
-            ctx, 'Doodstream', url, headers),
-        format: Format.mp4,
-        meta: out,
-      ),
-    ];
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers)!;
+    return requireRustExtractMfpFromHtml(
+      id,
+      html,
+      url.toString(),
+      meta,
+      mfpJson,
+      extraHtml: downloadHtml,
+    );
   }
 }

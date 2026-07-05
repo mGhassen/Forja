@@ -1,11 +1,8 @@
 /// Port of webstreamr/src/extractor/Voe.ts
 library;
 
-import 'package:html/parser.dart' as html_parser;
-
 import '../errors.dart';
 import '../types.dart';
-import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/height.dart';
 import '../utils/media_flow_proxy.dart';
@@ -95,73 +92,41 @@ class Voe extends Extractor {
       rethrow;
     }
 
-    final next = tryRustNextUrl(id, html, url.toString());
-    if (next != null) {
+    try {
+      final next = requireRustNextUrl(id, html, url.toString());
       return extractInternal(ctx, Uri.parse(next), meta);
+    } on NotFoundError {
+      // continue to MFP extraction
     }
+
     if (RegExp(r'An error occurred during encoding').hasMatch(html)) {
       throw NotFoundError();
     }
 
-    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
-    if (mfpJson != null) {
-      final rust = tryRustExtractMfpFromHtml(
-        id,
-        html,
-        url.toString(),
-        meta,
-        mfpJson,
-      );
-      if (rust != null) {
-        if (rust.first.meta?.height != null) return rust;
-        final height = meta.height ??
-            await guessHeightFromPlaylist(
-                ctx, fetcher, rust.first.url, FetcherRequestConfig());
-        if (height == null) return rust;
-        return rust
-            .map((r) => InternalUrlResult(
-                  url: r.url,
-                  format: r.format,
-                  isExternal: r.isExternal,
-                  ytId: r.ytId,
-                  error: r.error,
-                  label: r.label,
-                  meta: (r.meta ?? meta).clone()..height = height,
-                  requestHeaders: r.requestHeaders,
-                ))
-            .toList();
-      }
-    }
-
-    final doc = html_parser.parse(html);
-    final title = doc
-        .querySelector('meta[name="description"]')
-        ?.attributes['content']
-        ?.trim()
-        .replaceFirst(RegExp(r'^Watch '), '')
-        .replaceFirst(RegExp(r' at VOE$'), '')
-        .trim();
-
-    final sizes = RegExp(r'[\d.]+ ?[GM]B').allMatches(html).toList();
-    final size = sizes.isNotEmpty ? parseBytes(sizes.last.group(0)) : null;
-
-    final playlistUrl = await buildMediaFlowProxyExtractorStreamUrl(
-        ctx, fetcher, 'Voe', url, headers);
-
-    final hM = RegExp(r'<b>(\d{3,})p<\/b>').firstMatch(html);
-    final height = hM != null
-        ? int.tryParse(hM.group(1)!)
-        : (meta.height ??
-            await guessHeightFromPlaylist(
-                ctx, fetcher, playlistUrl, FetcherRequestConfig()));
-
-    final out = meta.clone();
-    if (height != null) out.height = height;
-    if (title != null && title.isNotEmpty) out.title = title;
-    if (size != null && size > 16777216) out.bytes = size;
-
-    return [
-      InternalUrlResult(url: playlistUrl, format: Format.hls, meta: out),
-    ];
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers)!;
+    final rust = requireRustExtractMfpFromHtml(
+      id,
+      html,
+      url.toString(),
+      meta,
+      mfpJson,
+    );
+    if (rust.first.meta?.height != null) return rust;
+    final height = meta.height ??
+        await guessHeightFromPlaylist(
+            ctx, fetcher, rust.first.url, FetcherRequestConfig());
+    if (height == null) return rust;
+    return rust
+        .map((r) => InternalUrlResult(
+              url: r.url,
+              format: r.format,
+              isExternal: r.isExternal,
+              ytId: r.ytId,
+              error: r.error,
+              label: r.label,
+              meta: (r.meta ?? meta).clone()..height = height,
+              requestHeaders: r.requestHeaders,
+            ))
+        .toList();
   }
 }
