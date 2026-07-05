@@ -38,12 +38,6 @@ pub fn extract_from_html(html: &str, _page_url: &str) -> Option<ExtractResult> {
         format: StreamFormat::Hls,
         title,
         height,
-        yt_id: None,
-        next_url: None,
-        is_external: false,
-        request_headers: None,
-        label: None,
-        bytes: None,
-        meta_extractor_id: None,
+        ..Default::default()
     })
 }

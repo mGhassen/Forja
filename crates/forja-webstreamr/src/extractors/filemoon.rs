@@ -61,17 +61,10 @@ pub fn extract_from_html(html: &str, page_url: &str) -> Option<ExtractResult> {
             .map(|m| m.as_str().trim().to_string())
             .filter(|s| !s.is_empty());
         return Some(ExtractResult {
-            url: String::new(),
             format: StreamFormat::Unknown,
             title,
-            height: None,
-            yt_id: None,
             next_url: Some(resolve_url(src, page_url)),
-            is_external: false,
-            request_headers: None,
-            label: None,
-            bytes: None,
-            meta_extractor_id: None,
+            ..Default::default()
         });
     }
 
@@ -82,16 +75,8 @@ pub fn extract_from_html(html: &str, page_url: &str) -> Option<ExtractResult> {
         .and_then(|m| m.as_str().parse().ok());
 
     Some(ExtractResult {
-        url: String::new(),
         format: StreamFormat::Hls,
-        title: None,
         height,
-        yt_id: None,
-        next_url: None,
-        is_external: false,
-        request_headers: None,
-        label: None,
-        bytes: None,
-        meta_extractor_id: None,
+        ..Default::default()
     })
 }

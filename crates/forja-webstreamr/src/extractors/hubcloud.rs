@@ -1,4 +1,4 @@
-use crate::types::{ExtractResult, StreamFormat};
+use crate::types::ExtractResult;
 use crate::utils::{find_height, parse_bytes};
 use regex::Regex;
 use scraper::{Html, Selector};
@@ -16,17 +16,8 @@ pub fn supports_host(host: &str) -> bool {
 pub fn extract_from_html(html: &str, _page_url: &str) -> Option<ExtractResult> {
     let links_url = REDIRECT_RE.captures(html)?.get(1)?.as_str();
     Some(ExtractResult {
-        url: String::new(),
-        format: StreamFormat::Unknown,
-        title: None,
-        height: None,
-        yt_id: None,
         next_url: Some(links_url.to_string()),
-        is_external: false,
-        request_headers: None,
-        label: None,
-        bytes: None,
-        meta_extractor_id: None,
+        ..Default::default()
     })
 }
 
@@ -116,19 +107,16 @@ fn link_row(
 ) -> ExtractResult {
     ExtractResult {
         url: href.to_string(),
-        format: StreamFormat::Unknown,
         title: if title.is_empty() {
             None
         } else {
             Some(title.to_string())
         },
         height,
-        yt_id: None,
-        next_url: None,
-        is_external: false,
         request_headers,
         label: Some(label.to_string()),
         bytes,
         meta_extractor_id: Some(meta_extractor_id.to_string()),
+        ..Default::default()
     }
 }

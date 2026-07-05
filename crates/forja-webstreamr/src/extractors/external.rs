@@ -10,14 +10,7 @@ pub fn extract_from_html(_html: &str, page_url: &str) -> Option<ExtractResult> {
     Some(ExtractResult {
         url: page.to_string(),
         format: StreamFormat::Unknown,
-        title: None,
-        height: None,
-        yt_id: None,
-        next_url: None,
         is_external: true,
-        request_headers: None,
-        label: None,
-        bytes: None,
-        meta_extractor_id: None,
+        ..Default::default()
     })
 }

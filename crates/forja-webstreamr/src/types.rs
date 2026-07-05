@@ -7,11 +7,12 @@ pub enum MediaType {
     Series,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum StreamFormat {
     Hls,
     Mp4,
+    #[default]
     Unknown,
 }
 
@@ -22,7 +23,7 @@ pub struct StreamFile {
     pub headers: Option<HashMap<String, String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct ExtractResult {
     pub url: String,
     pub format: StreamFormat,

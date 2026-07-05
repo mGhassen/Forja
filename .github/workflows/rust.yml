@@ -19,8 +19,8 @@ jobs:
     name: cargo test + Dart parity
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
       - name: cargo test
         run: |
           cd crates
@@ -30,7 +30,7 @@ jobs:
           cargo clippy --workspace
       - name: build release dylib
         run: ./scripts/build_rust.sh
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
       - name: Dart parity tests
