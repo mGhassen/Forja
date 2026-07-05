@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_rust/src/reference/stremio_dart_parse.dart';
 
 /// Optional Rust backend hooks. Set from app bootstrap when [ForjaEngine] loads.
 abstract final class StremioServiceBackend {
@@ -62,20 +61,16 @@ class StremioService {
   /// Extracts a clean base URL and optional query parameters from an addon URL.
   /// Handles addons that embed config as query params (e.g. ?apikey=...).
   static ({String baseUrl, String? queryParams}) _splitAddonUrl(String url) {
-    final backend = StremioServiceBackend.splitAddonUrl;
-    if (backend != null) return backend(url);
-    return StremioDartParse.splitAddonUrl(url);
+    return StremioServiceBackend.splitAddonUrl!(url);
   }
 
   @visibleForTesting
   static ({String baseUrl, String? queryParams}) debugSplitAddonUrl(String url) =>
-      StremioDartParse.splitAddonUrl(url);
+      _splitAddonUrl(url);
 
   /// Builds a full resource URL, correctly re-appending any addon query params.
   String _buildResourceUrl(String addonBaseUrl, String resourcePath) {
-    final backend = StremioServiceBackend.buildResourceUrl;
-    if (backend != null) return backend(addonBaseUrl, resourcePath);
-    return StremioDartParse.buildResourceUrl(addonBaseUrl, resourcePath);
+    return StremioServiceBackend.buildResourceUrl!(addonBaseUrl, resourcePath);
   }
 
   /// Fetches and validates an addon manifest from a URL
@@ -83,26 +78,18 @@ class StremioService {
     String manifestUrl = url.trim();
     if (manifestUrl.isEmpty) return null;
 
-    final normalize = StremioServiceBackend.normalizeManifestUrl;
-    if (normalize != null) {
-      manifestUrl = normalize(manifestUrl);
-    } else {
-      manifestUrl = StremioDartParse.normalizeManifestUrl(manifestUrl);
-    }
+    final normalize = StremioServiceBackend.normalizeManifestUrl!;
+    manifestUrl = normalize(manifestUrl);
 
     try {
       final response = await http.get(Uri.parse(manifestUrl)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final body = response.body;
-        final manifestBackend = StremioServiceBackend.parseManifestJson;
-        Map<String, dynamic> manifest;
-        if (manifestBackend != null) {
-          final parsed = json.decode(manifestBackend(body)) as Map<String, dynamic>;
-          if (parsed.containsKey('error')) return null;
-          manifest = parsed;
-        } else {
-          manifest = StremioDartParse.parseManifestJson(body)!;
-        }
+        final parsed =
+            json.decode(StremioServiceBackend.parseManifestJson!(body))
+                as Map<String, dynamic>;
+        if (parsed.containsKey('error')) return null;
+        final manifest = parsed;
         final parts = _splitAddonUrl(manifestUrl);
         final baseUrl = parts.queryParams != null
             ? '${parts.baseUrl}?${parts.queryParams}'
@@ -134,11 +121,7 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
-        final parseBackend = StremioServiceBackend.parseStreamsJson;
-        if (parseBackend != null) {
-          return parseBackend(response.body);
-        }
-        return StremioDartParse.parseStreamsJson(response.body);
+        return StremioServiceBackend.parseStreamsJson!(response.body);
       }
     } catch (e) {
       debugPrint('[StremioService] Stream fetch error ($url): $e');
@@ -160,29 +143,17 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
-        final parseBackend = StremioServiceBackend.parseSubtitlesJson;
-        if (parseBackend != null) {
-          for (final s in parseBackend(response.body)) {
-            results.add({
-              'id': s['id'] ?? s['url'],
-              'url': s['url'],
-              'language': s['lang'] ?? 'Unknown',
-              'display':
-                  '${(s['lang'] as String?)?.toUpperCase() ?? '??'} - ${addonName ?? 'Addon'}',
-              'sourceName': addonName ?? 'Stremio Addon',
-            });
-          }
-          return results;
-        }
-        for (final s in StremioDartParse.parseSubtitlesJson(response.body)) {
+        for (final s in StremioServiceBackend.parseSubtitlesJson!(response.body)) {
           results.add({
             'id': s['id'] ?? s['url'],
             'url': s['url'],
             'language': s['lang'] ?? 'Unknown',
-            'display': '${s['lang']?.toUpperCase() ?? '??'} - ${addonName ?? 'Addon'}',
+            'display':
+                '${(s['lang'] as String?)?.toUpperCase() ?? '??'} - ${addonName ?? 'Addon'}',
             'sourceName': addonName ?? 'Stremio Addon',
           });
         }
+        return results;
       }
     } catch (e) {
       debugPrint('[StremioService] Subtitle fetch error ($url): $e');
@@ -349,11 +320,7 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
-        final parseBackend = StremioServiceBackend.parseCatalogJson;
-        if (parseBackend != null) {
-          return parseBackend(response.body);
-        }
-        return StremioDartParse.parseCatalogJson(response.body);
+        return StremioServiceBackend.parseCatalogJson!(response.body);
       }
     } catch (e) {
       debugPrint('[StremioService] Catalog fetch error ($url): $e');
@@ -379,11 +346,7 @@ class StremioService {
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
-        final parseBackend = StremioServiceBackend.parseMetaJson;
-        if (parseBackend != null) {
-          return parseBackend(response.body);
-        }
-        return StremioDartParse.parseMetaJson(response.body);
+        return StremioServiceBackend.parseMetaJson!(response.body);
       }
     } catch (e) {
       debugPrint('[StremioService] Meta fetch error ($url): $e');

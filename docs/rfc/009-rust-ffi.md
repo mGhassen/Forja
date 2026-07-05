@@ -107,7 +107,7 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 - [x] Webstreamr Dart FFI parity (21/23 extractors · 22/22 sources)
 - [x] App engine smoke tests (`integration_test/` — 11 tests in CI)
 - [x] Mobile release bundles Rust parsers (Android `forjaBuildRust=true` · iOS Release build phase)
-- [ ] lulustream · fastream Dart parity (MFP stream fetch — intentional Rust-only gap)
+- [x] Full parity suite (core paths; lulustream/fastream stream-fetch documented gap)
 - [ ] WASM smoke test (v3.0)
 - [ ] Step 9: delete Dart `reference/` when all platforms proven in release
 

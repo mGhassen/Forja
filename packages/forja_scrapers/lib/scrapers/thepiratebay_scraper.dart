@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja_rust/src/reference/scrapers_dart_parse.dart';
 import 'base_scraper.dart';
 import 'scraper_parse.dart';
 
@@ -22,10 +21,8 @@ class ThePirateBayScraper extends BaseScraper {
         
         try {
           final htmlContent = await fetchHtml(pageUrl);
-          final rust = ScraperParseBackend.parseTpb;
-          final parsed = rust != null
-              ? rust(htmlContent, name)
-              : ScrapersDartParse.parseTpb(htmlContent, name);
+          final parsed =
+              ScraperParseBackend.parseTpb!(htmlContent, name);
           allResults.addAll(parsed.map(normalizeTorrentRow));
           if (parsed.isEmpty) break;
         } catch (e) {

@@ -4,24 +4,27 @@
 /// LuluStream/Mixdrop/Streamtape/SuperVideo/Uqload extractors and others.
 library;
 
-import 'package:forja_rust/src/reference/js_unpacker_dart.dart';
-
 /// Optional Rust backend — set from app bootstrap when [ForjaEngine] loads.
 abstract final class JsUnpackBackend {
   static String? Function(String source)? unpack;
 }
 
+String _unpack(String source) {
+  final backend = JsUnpackBackend.unpack;
+  if (backend == null) {
+    throw StateError(
+      'JsUnpackBackend.unpack not wired — call ForjaEngine.init()',
+    );
+  }
+  final out = backend(source);
+  if (out != null && out.isNotEmpty) return out;
+  throw FormatException('JS unpack failed');
+}
+
 /// Unpacks the first p,a,c,k,e,d string found in [source]. Returns the
 /// decoded JavaScript text (still JS — caller usually regex-extracts the
 /// real stream URL from it).
-String unpack(String source) {
-  final backend = JsUnpackBackend.unpack;
-  if (backend != null) {
-    final rust = backend(source);
-    if (rust != null && rust.isNotEmpty) return rust;
-  }
-  return JsUnpackerDart.unpack(source);
-}
+String unpack(String source) => _unpack(source);
 
 /// Public re-export so callers can do `unpackEval`.
 String unpackEval(String html) {
@@ -30,12 +33,7 @@ String unpackEval(String html) {
   if (m == null) {
     throw FormatException('No p,a,c,k,e,d string found');
   }
-  final backend = JsUnpackBackend.unpack;
-  if (backend != null) {
-    final rust = backend(m.group(0)!);
-    if (rust != null && rust.isNotEmpty) return rust;
-  }
-  return JsUnpackerDart.unpack(m.group(0)!);
+  return _unpack(m.group(0)!);
 }
 
 /// Walk [linkRegExps] over the unpacked JS and return the first match group(1)

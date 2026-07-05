@@ -21,7 +21,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja_rust/src/reference/kisskh_decrypt_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Optional Rust backend — set from app bootstrap when [ForjaEngine] loads.
@@ -33,11 +32,7 @@ class KissKhSubtitleDecryptor {
   /// Decrypt every cue text line in a SRT/VTT body. Index lines, timestamp
   /// lines (`-->`), the `WEBVTT` header and blank separators are kept as-is.
   static String decryptBody(String body, {String? sourceUrl}) {
-    final backend = KissKhDecryptBackend.decryptBody;
-    if (backend != null) {
-      return backend(body, sourceUrl);
-    }
-    return KissKhDecryptDart.decryptBody(body, sourceUrl: sourceUrl);
+    return KissKhDecryptBackend.decryptBody!(body, sourceUrl);
   }
 
   /// Download the subtitle at [url] (with kisskh headers), decrypt it, persist

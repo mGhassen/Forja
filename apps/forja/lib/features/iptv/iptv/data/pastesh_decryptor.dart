@@ -9,7 +9,6 @@
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:forja_rust/src/reference/pastesh_decrypt_dart.dart';
 import 'package:http/http.dart' as http;
 
 /// Optional Rust backend. Set from app bootstrap when [ForjaEngine] loads.
@@ -35,9 +34,7 @@ class PasteShDecryptor {
 
   /// Decrypt paste.sh `.txt` body (no HTTP). Used by Rust delegate path.
   static String decryptRaw(String urlWithHash, String rawResponse) {
-    final backend = PasteShDecryptorBackend.decryptRaw;
-    if (backend != null) return backend(urlWithHash, rawResponse);
-    return PasteShDecryptDart.decryptRaw(urlWithHash, rawResponse);
+    return PasteShDecryptorBackend.decryptRaw!(urlWithHash, rawResponse);
   }
 
   static Future<String?> _httpGetText(String url) async {

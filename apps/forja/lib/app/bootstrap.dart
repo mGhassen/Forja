@@ -26,6 +26,7 @@ import 'package:forja/shell/main_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
 import 'package:forja/shared/widgets/animated_forja_logo.dart';
+import 'package:forja/app/dart_fallback_delegates.dart';
 import 'package:forja/app/rust_delegates.dart';
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
@@ -121,6 +122,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
 
   await ForjaEngine.init();
   installRustAppDelegates();
+  installDartFallbackDelegates();
   _warnIfRustMissingOnDesktop();
   
   // Hydrate theme preset before first frame

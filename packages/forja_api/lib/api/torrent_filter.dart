@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja_core/models/torrent_result.dart';
-import 'package:forja_rust/src/reference/torrent_filter_dart.dart';
 
 /// Optional Rust backend hooks. Set from app bootstrap when [ForjaEngine] loads.
 abstract final class TorrentFilterBackend {
@@ -10,15 +9,11 @@ abstract final class TorrentFilterBackend {
 
 class TorrentFilter {
   static String normalizeTitle(String title) {
-    final backend = TorrentFilterBackend.normalizeTitle;
-    if (backend != null) return backend(title);
-    return TorrentFilterDart.normalizeTitle(title);
+    return TorrentFilterBackend.normalizeTitle!(title);
   }
 
   static Map<String, dynamic> parseSceneInfo(String title) {
-    final backend = TorrentFilterBackend.parseSceneInfo;
-    if (backend != null) return backend(title);
-    return TorrentFilterDart.parseSceneInfo(title);
+    return TorrentFilterBackend.parseSceneInfo!(title);
   }
 
   static bool isVideoFile(String fileName) {

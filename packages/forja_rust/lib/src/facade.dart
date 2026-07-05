@@ -7,8 +7,7 @@ import 'package:forja_core/utils/hls_master_parser.dart';
 
 import 'engine.dart';
 import 'library_path.dart';
-import 'reference/episode_matcher_dart.dart';
-import 'reference/hls_dart_parse.dart';
+import 'reference/m3u_dart_parser.dart';
 
 /// Routes hot-path engine calls to Rust when loaded, else Dart fallbacks.
 abstract final class ForjaEngine {
@@ -75,8 +74,8 @@ abstract final class ForjaEngine {
       return;
     }
 
-    EpisodeMatcherBackend.matches = EpisodeMatcherDart.matches;
-    HlsParserBackend.parseMaster = HlsDartParse.parseMaster;
+    EpisodeMatcherBackend.matches = null;
+    HlsParserBackend.parseMaster = null;
   }
 
   static String? buildMovieUrl(String providerId, String tmdbId) {
@@ -102,12 +101,17 @@ abstract final class ForjaEngine {
   }
 
   static List<Map<String, dynamic>> parseM3uChannels(String content) {
-    final json = ForjaRust.instance.parseM3uJson(content);
-    final decoded = jsonDecode(json);
-    if (decoded is Map && decoded['error'] != null) {
-      throw FormatException(decoded['error'] as String);
+    if (isReady) {
+      final json = ForjaRust.instance.parseM3uJson(content);
+      final decoded = jsonDecode(json);
+      if (decoded is Map && decoded['error'] != null) {
+        throw FormatException(decoded['error'] as String);
+      }
+      return (decoded as List).cast<Map<String, dynamic>>();
     }
-    return (decoded as List).cast<Map<String, dynamic>>();
+    return M3uDartParser.parse(content)
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   static String normalizeTorrentTitle(String title) {

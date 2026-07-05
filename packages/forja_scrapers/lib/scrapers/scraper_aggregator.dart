@@ -1,6 +1,5 @@
 import 'base_scraper.dart';
 import 'package:flutter/foundation.dart';
-import 'package:forja_rust/src/reference/scrapers_dart_parse.dart';
 import 'knaben_scraper.dart';
 import 'thepiratebay_scraper.dart';
 import 'uindex_scraper.dart';
@@ -48,10 +47,7 @@ class ScraperAggregator {
     
     debugPrint('[ScraperAggregator] Total results before deduplication: ${aggregated.length}');
 
-    final dedupBackend = ScraperParseBackend.dedupTorrents;
-    final unique = dedupBackend != null
-        ? dedupBackend(aggregated)
-        : ScrapersDartParse.dedupTorrents(aggregated);
+    final unique = ScraperParseBackend.dedupTorrents!(aggregated);
     
     // Sort by seeders (highest to lowest)
     unique.sort((a, b) {

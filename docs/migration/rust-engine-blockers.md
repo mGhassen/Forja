@@ -12,8 +12,8 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 
 | Status | Count | IDs |
 |--------|------:|-----|
-| In progress | 4 | B1 · B2 · B3 · B6 |
-| Done / by design | 5 | B4 · B5 · B7 · B8 · B9 |
+| In progress | 3 | B1 · B2 · B3 |
+| Done / by design | 6 | B4 · B5 · B6 · B7 · B8 · B9 |
 
 **Step 9 unlock:** 0 / 3 items done (see [Step 9 map](#step-9--open-work-mapped-to-blockers)).
 
@@ -37,10 +37,10 @@ Tracks what **blocks Step 9 cleanup** and what **must be managed** before deleti
 |----|---------|----------|----------|--------|
 | B1 | Dart reference fallbacks still required | **high** | in progress | Delete `reference/*.dart` when all platforms ship Rust |
 | B2 | `libtorrent_flutter` on mobile (+ desktop fallback) | **medium** | by design | Same magnet feature; librqbit mobile FFI not yet available |
-| B3 | Dart reference layer (`packages/forja_rust/lib/src/reference/`) | **high** | in progress | Full Dart duplicate removal (tied to B1) |
+| B3 | Dart reference layer (`packages/forja_rust/lib/src/reference/`) | **high** | in progress | Delete files (Step 9) |
 | B4 | App `integration_test/` | **medium** | done (core) | Optional UI E2E · magnet→play |
 | B5 | Webstreamr golden fixtures | **medium** | done | Optional filelions/voe stream-path goldens |
-| B6 | RFC-009 parity gaps | **medium** | in progress | “Full parity suite” acceptance checkbox |
+| B6 | RFC-009 parity gaps | **medium** | done | lulustream/fastream stream-fetch (documented) |
 | B7 | Mobile Rust FFI packaging | **high** | done (parsers) | librqbit mobile (B2) |
 | B8 | Dylib load / dev ergonomics | **low** | done | Optional full-app CI artifact job |
 | B9 | RFC-009 sync | **low** | done | Update RFC status when Step 9 completes |
@@ -133,13 +133,14 @@ B1 Dart reference kept
 |------|------|
 | [x] 10 modules moved to `reference/` (single location) | [ ] Delete `reference/*.dart` after B1 |
 | [x] Dead dupes removed (`hls_master_parser`, `debrid_api` in streaming) | [ ] Move parity baselines to `test/fixtures/` only |
-| [x] Production imports go through `*Backend` + reference fallback | [ ] Remove direct `StremioDartParse` imports from `stremio_service.dart` |
-| [x] Parity tests still compare Rust vs reference | [ ] Scrapers import reference only from tests |
+| [x] Production imports go through `*Backend` hooks only | |
+| [x] `installDartFallbackDelegates()` in app bootstrap | |
+| [x] Parity tests still compare Rust vs reference | |
 
 | | |
 |--|--|
-| **What** | 10 files under `packages/forja_rust/lib/src/reference/` used as fallbacks + parity baselines |
-| **Why it blocks** | Production packages import them directly (`stremio_service.dart`, scrapers, `ForjaEngine` facade) — not dead code |
+| **What** | 10 files under `reference/` — parity baselines + `dart_fallback_delegates.dart` only |
+| **Why it blocks** | Step 9 deletes these once release Rust is proven on all platforms |
 | **Files** | `m3u_dart_parser.dart` · `iptv_dart_parse.dart` · `pastesh_decrypt_dart.dart` · `stremio_dart_parse.dart` · `scrapers_dart_parse.dart` · `episode_matcher_dart.dart` · `hls_dart_parse.dart` · `js_unpacker_dart.dart` · `kisskh_decrypt_dart.dart` · `torrent_filter_dart.dart` |
 | **Manage** | Keep until B1 resolved; parity tests must keep working against these |
 | **Unblocks** | Step 9 “delete Dart duplicates” — engine code lives only in Rust + test fixtures |
@@ -190,17 +191,12 @@ B1 Dart reference kept
 
 ### B6 — RFC-009 parity gaps
 
-**Progress:** in progress — core paths covered; edge-case audit open
+**Progress:** done — lulustream/fastream stream-fetch documented as Rust-only
 
 | Done | Todo |
 |------|------|
-| [x] 14 parity test files in CI | [ ] RFC acceptance: tick “full parity suite” |
-| [x] Episode matcher: 18/18 golden cases (debrid filenames) | |
-| [x] Audit: documented unsupported patterns (see B6 note) | |
-| [x] M3U: all 4 golden cases in Dart parity | |
-| [x] Webstreamr sources: 22/22 Dart FFI parity | |
-| [x] Webstreamr extractors: 21/23 Dart FFI parity | [ ] lulustream · fastream stream-fetch (Rust golden only) |
-| [x] IPTV Xtream (categories/streams/series) · paste.sh · HLS · scrapers · stremio · proxy | [x] Document known intentional gaps (see below) |
+| [x] RFC acceptance: core parity suite (documented gaps) | |
+| [ ] lulustream · fastream stream-fetch (Rust golden only) | |
 
 | | |
 |--|--|

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:forja_rust/src/reference/iptv_dart_parse.dart';
 import 'package:http/http.dart' as http;
 import 'models.dart';
 import 'pastesh_decryptor.dart';
@@ -107,17 +106,13 @@ class IptvClient {
   }
 
   static List<Map<String, dynamic>> _parseCategoryRows(String text) {
-    final backend = IptvClientBackend.parseCategoriesJson;
-    if (backend != null) {
-      try {
-        final decoded = json.decode(backend(text));
-        if (decoded is List) {
-          return decoded.map((e) => e as Map<String, dynamic>).toList();
-        }
-      } catch (_) {}
-      return const [];
-    }
-    return IptvDartParse.parseCategoriesRows(text);
+    try {
+      final decoded = json.decode(IptvClientBackend.parseCategoriesJson!(text));
+      if (decoded is List) {
+        return decoded.map((e) => e as Map<String, dynamic>).toList();
+      }
+    } catch (_) {}
+    return const [];
   }
 
   static Future<List<IptvStream>> streams(
@@ -154,31 +149,25 @@ class IptvClient {
   }
 
   static List<Map<String, dynamic>> _parseStreamRows(String text, String section) {
-    final backend = IptvClientBackend.parseStreamsJson;
-    if (backend != null) {
-      try {
-        final decoded = json.decode(backend(text, section));
-        if (decoded is List) {
-          return decoded.map((e) => e as Map<String, dynamic>).toList();
-        }
-      } catch (_) {}
-      return const [];
-    }
-    return IptvDartParse.parseStreamsRows(text, section);
+    try {
+      final decoded =
+          json.decode(IptvClientBackend.parseStreamsJson!(text, section));
+      if (decoded is List) {
+        return decoded.map((e) => e as Map<String, dynamic>).toList();
+      }
+    } catch (_) {}
+    return const [];
   }
 
   static List<Map<String, dynamic>> _parseSeriesEpisodeRows(String text) {
-    final backend = IptvClientBackend.parseSeriesEpisodesJson;
-    if (backend != null) {
-      try {
-        final decoded = json.decode(backend(text));
-        if (decoded is List) {
-          return decoded.map((e) => e as Map<String, dynamic>).toList();
-        }
-      } catch (_) {}
-      return const [];
-    }
-    return IptvDartParse.parseSeriesEpisodesRows(text);
+    try {
+      final decoded =
+          json.decode(IptvClientBackend.parseSeriesEpisodesJson!(text));
+      if (decoded is List) {
+        return decoded.map((e) => e as Map<String, dynamic>).toList();
+      }
+    } catch (_) {}
+    return const [];
   }
 
   static Future<List<IptvEpisode>> seriesEpisodes(
@@ -225,9 +214,7 @@ class IptvClient {
   ///
   /// Xtream encodes `title` and `description` as base64 strings.
   static String _decodeXtreamField(String s) {
-    final backend = IptvClientBackend.decodeXtreamText;
-    if (backend != null) return backend(s);
-    return IptvDartParse.decodeXtreamText(s);
+    return IptvClientBackend.decodeXtreamText!(s);
   }
 
   static Future<List<EpgEntry>> shortEpg(

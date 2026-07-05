@@ -183,7 +183,7 @@ Fixtures: `crates/forja-utils/tests/fixtures/`
 
 Manual: debrid TV episode pick · HLS quality menu.
 
-Wire-up: `EpisodeMatcherBackend`, `HlsParserBackend` wired in `ForjaEngine.init()` (Rust or Dart reference); `JsUnpackBackend`, `KissKhDecryptBackend`, torrent filter delegate in `rust_delegates.dart`.
+Wire-up: `EpisodeMatcherBackend`, `HlsParserBackend` wired in `ForjaEngine.init()` (Rust) or `installDartFallbackDelegates()` (Dart); domain delegates in `rust_delegates.dart`.
 
 ---
 
@@ -475,7 +475,8 @@ Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `
 
 | Item | Status | Blocker |
 |------|:----:|---------|
-| Delete `reference/*.dart` (10 files) | ❌ | B1 · B3 · B6 — need Rust on all platforms + parity |
+| Delete `reference/*.dart` (10 files) | ❌ | B1 · B3 — release Rust proven + parity |
+| Production `reference/` imports | ✅ | routed via `*Backend` + `dart_fallback_delegates.dart` |
 | Drop `libtorrent_flutter` from pubspecs | ❌ | B2 · B4 — mobile torrent today; desktop fallback |
 | Mobile Rust in release APK/IPA | ✅ | B7 — `forjaBuildRust=true` · iOS Release phase |
 | librqbit in mobile Rust FFI | ❌ | B2 |
