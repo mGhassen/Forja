@@ -8,6 +8,7 @@ import '../types.dart';
 import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 const _kHosts = {
@@ -50,6 +51,20 @@ class LuluStream extends Extractor {
     if (RegExp(r'No such file|File Not Found').hasMatch(html)) {
       throw NotFoundError();
     }
+
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
+    if (mfpJson != null) {
+      final rust = tryRustExtractMfpFromHtml(
+        id,
+        '',
+        url.toString(),
+        meta,
+        mfpJson,
+        extraHtml: html,
+      );
+      if (rust != null) return rust;
+    }
+
     final doc = html_parser.parse(html);
     final title = doc.querySelector('h1')?.text.trim();
 

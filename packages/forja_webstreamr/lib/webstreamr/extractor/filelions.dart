@@ -9,6 +9,7 @@ import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
 import '../utils/unpacker.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 const _kHosts = {
@@ -86,6 +87,23 @@ class FileLions extends Extractor {
     }
     if (RegExp(r'File Not Found|deleted by administration').hasMatch(html)) {
       throw NotFoundError();
+    }
+
+    final next = tryRustNextUrl(id, html, url.toString());
+    if (next != null) {
+      return extractInternal(ctx, Uri.parse(next), meta);
+    }
+
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
+    if (mfpJson != null) {
+      final rust = tryRustExtractMfpFromHtml(
+        id,
+        html,
+        url.toString(),
+        meta,
+        mfpJson,
+      );
+      if (rust != null) return rust;
     }
 
     final unpacked = unpackEval(html);

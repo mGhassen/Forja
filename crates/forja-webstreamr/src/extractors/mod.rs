@@ -1,11 +1,14 @@
 mod dropload;
 mod doodstream;
 mod external;
+mod fastream;
+mod filelions;
 mod filemoon;
 mod fsst;
 mod hubcloud;
 mod hubdrive;
 mod kinoger;
+mod lulustream;
 mod mixdrop;
 mod rgshows;
 mod savefiles;
@@ -16,6 +19,7 @@ mod uqload;
 mod vidsrc;
 mod vidora;
 mod vixsrc;
+mod voe;
 mod youtube;
 
 use crate::types::ExtractResult;
@@ -56,6 +60,8 @@ pub fn extract_embed_html(extractor_id: &str, html: &str, page_url: &str) -> Opt
         "hubcloud" => hubcloud::extract_from_html(html, page_url),
         "rgshows" => rgshows::extract_from_html(html, page_url),
         "external" => external::extract_from_html(html, page_url),
+        "filelions" => filelions::extract_redirect_from_html(html, page_url),
+        "voe" => voe::extract_redirect_from_html(html, page_url),
         _ => None,
     }
 }
@@ -73,12 +79,25 @@ pub fn extract_mfp_embed_html(
         "streamtape" => streamtape::extract_from_html(html, page_url, &mfp),
         "uqload" => uqload::extract_from_html(html, page_url, &mfp),
         "doodstream" => doodstream::extract_from_html(html, page_url, &mfp, extra_html),
+        "filelions" => filelions::extract_from_html(html, page_url, &mfp),
+        "lulustream" => lulustream::extract_from_html(html, page_url, &mfp, extra_html),
+        "fastream" => fastream::extract_from_html(html, page_url, &mfp, extra_html),
+        "voe" => voe::extract_from_html(html, page_url, &mfp),
         _ => None,
     }
 }
 
 pub fn list_mfp_extractors() -> &'static [&'static str] {
-    &["mixdrop", "streamtape", "uqload", "doodstream"]
+    &[
+        "mixdrop",
+        "streamtape",
+        "uqload",
+        "doodstream",
+        "filelions",
+        "lulustream",
+        "fastream",
+        "voe",
+    ]
 }
 
 pub fn list_html_extractors() -> &'static [&'static str] {

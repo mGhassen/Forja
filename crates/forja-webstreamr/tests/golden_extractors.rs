@@ -218,6 +218,26 @@ fn doodstream_mfp_golden() {
 }
 
 #[test]
+fn filelions_embed_redirect_golden() {
+    let html = fs::read_to_string(fixture("filelions_embed_only.html")).unwrap();
+    let r = extract_embed_html("filelions", &html, "https://filelions.example/f/abc").unwrap();
+    assert_eq!(
+        r.next_url.as_deref(),
+        Some("https://filelions.example/v/abc")
+    );
+}
+
+#[test]
+fn voe_redirect_golden() {
+    let html = fs::read_to_string(fixture("voe_redirect.html")).unwrap();
+    let r = extract_embed_html("voe", &html, "https://voe.example/start").unwrap();
+    assert_eq!(
+        r.next_url.as_deref(),
+        Some("https://voe.example/final-page")
+    );
+}
+
+#[test]
 fn external_golden() {
     let r = extract_embed_html("external", "", "https://example.com/page").unwrap();
     assert_eq!(r.url, "https://example.com/page");

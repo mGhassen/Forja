@@ -9,6 +9,7 @@ import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/height.dart';
 import '../utils/media_flow_proxy.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 const _kHosts = {
@@ -94,13 +95,42 @@ class Voe extends Extractor {
       rethrow;
     }
 
-    final redirectM =
-        RegExp(r"window\.location\.href\s*=\s*'([^']+)").firstMatch(html);
-    if (redirectM != null) {
-      return extractInternal(ctx, Uri.parse(redirectM.group(1)!), meta);
+    final next = tryRustNextUrl(id, html, url.toString());
+    if (next != null) {
+      return extractInternal(ctx, Uri.parse(next), meta);
     }
     if (RegExp(r'An error occurred during encoding').hasMatch(html)) {
       throw NotFoundError();
+    }
+
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
+    if (mfpJson != null) {
+      final rust = tryRustExtractMfpFromHtml(
+        id,
+        html,
+        url.toString(),
+        meta,
+        mfpJson,
+      );
+      if (rust != null) {
+        if (rust.first.meta?.height != null) return rust;
+        final height = meta.height ??
+            await guessHeightFromPlaylist(
+                ctx, fetcher, rust.first.url, FetcherRequestConfig());
+        if (height == null) return rust;
+        return rust
+            .map((r) => InternalUrlResult(
+                  url: r.url,
+                  format: r.format,
+                  isExternal: r.isExternal,
+                  ytId: r.ytId,
+                  error: r.error,
+                  label: r.label,
+                  meta: (r.meta ?? meta).clone()..height = height,
+                  requestHeaders: r.requestHeaders,
+                ))
+            .toList();
+      }
     }
 
     final doc = html_parser.parse(html);

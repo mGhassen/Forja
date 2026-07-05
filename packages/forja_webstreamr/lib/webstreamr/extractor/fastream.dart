@@ -6,6 +6,7 @@ import '../types.dart';
 import '../utils/bytes.dart';
 import '../utils/fetcher.dart';
 import '../utils/media_flow_proxy.dart';
+import '../webstreamr_parse.dart';
 import 'extractor.dart';
 
 class Fastream extends Extractor {
@@ -35,6 +36,19 @@ class Fastream extends Extractor {
     final html = await fetcher.text(
         ctx, downloadUrl, FetcherRequestConfig(headers: headers));
     if (RegExp(r'No such file').hasMatch(html)) throw NotFoundError();
+
+    final mfpJson = mediaFlowProxyConfigJson(ctx, headers);
+    if (mfpJson != null) {
+      final rust = tryRustExtractMfpFromHtml(
+        id,
+        '',
+        url.toString(),
+        meta,
+        mfpJson,
+        extraHtml: html,
+      );
+      if (rust != null) return rust;
+    }
 
     final playlistUrl = await buildMediaFlowProxyExtractorStreamUrl(
         ctx, fetcher, 'Fastream', url, headers);
