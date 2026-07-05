@@ -7,6 +7,7 @@ import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja_storage/forja_storage.dart';
 import 'package:forja_api/services/app_updater_service.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 
 class MainScreen extends StatefulWidget {
@@ -167,7 +168,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     
     final bool useNavRail = isDesktop || isLandscape;
 
-    return Scaffold(
+    final shell = Scaffold(
       body: Stack(
         children: [
           // Base gradient
@@ -251,11 +252,16 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                             color: Colors.white54,
                           ),
                           leading: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 24.0),
-                            child: Icon(
-                              Icons.play_circle_fill,
-                              color: AppTheme.current.primaryColor,
-                              size: 48,
+                            padding: EdgeInsets.fromLTRB(
+                              isDesktop && Platform.isMacOS ? 4 : 0,
+                              isDesktop && Platform.isMacOS ? 8 : 24,
+                              0,
+                              24,
+                            ),
+                            child: Image.asset(
+                              'assets/icon/logo-f-192.png',
+                              width: 48,
+                              height: 48,
                             ),
                           ),
                           destinations: _visibleIds.map((id) {
@@ -285,6 +291,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           ? null
           : _buildScrollableBottomNav(),
     );
+
+    return DesktopWindowChrome.wrapShell(child: shell);
   }
 
   Widget _buildScrollableBottomNav() {

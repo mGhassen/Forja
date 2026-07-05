@@ -2,7 +2,7 @@
 Name=Forja
 Comment=Your cinema universe
 Exec=forja
-Icon=forja
+Icon=/usr/share/icons/hicolor/512x512/apps/forja.png
 Terminal=false
 Type=Application
 Categories=AudioVideo;Video;

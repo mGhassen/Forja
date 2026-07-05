@@ -82,7 +82,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.normal,
+      titleBarStyle: TitleBarStyle.hidden,
+      windowButtonVisibility: Platform.isMacOS,
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
@@ -469,50 +470,11 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.5), width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                      blurRadius: 40,
-                      spreadRadius: 10,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.play_arrow_rounded,
-                  size: 80,
-                  color: AppTheme.primaryColor,
-                ),
+              Image.asset(
+                'assets/icon/logo-dark.png',
+                height: 80,
               ),
               const SizedBox(height: 32),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [Colors.white, Colors.white70, AppTheme.primaryColor],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ).createShader(bounds),
-                    child: const Text(
-                      'FORJA',
-                      style: TextStyle(
-                        fontSize: 64,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -2,
-                        color: Colors.white,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                  ),
-                ),
-              ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32.0),
                 child: FittedBox(

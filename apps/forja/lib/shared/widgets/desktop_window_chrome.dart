@@ -1,0 +1,78 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:forja_storage/forja_storage.dart';
+import 'package:window_manager/window_manager.dart';
+
+/// macOS traffic-light inset + drag strip height.
+const double kMacTitleBarHeight = 28;
+
+/// Left gutter so content doesn't sit under the traffic lights.
+const double kMacTrafficLightInset = 72;
+
+class DesktopWindowChrome {
+  DesktopWindowChrome._();
+
+  static bool get isDesktop =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+  static double topInset(BuildContext context) {
+    if (!isDesktop) return 0;
+    if (Platform.isMacOS) return kMacTitleBarHeight;
+    return kWindowCaptionHeight;
+  }
+
+  /// Wraps the main shell: hidden macOS title bar with drag strip, or a
+  /// custom caption on Windows/Linux.
+  static Widget wrapShell({required Widget child}) {
+    if (!isDesktop) return child;
+
+    return _DesktopShellFrame(child: child);
+  }
+}
+
+class _DesktopShellFrame extends StatelessWidget {
+  const _DesktopShellFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (Platform.isMacOS) {
+      return MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          padding: MediaQuery.of(context).padding.copyWith(
+            top: DesktopWindowChrome.topInset(context),
+          ),
+        ),
+        child: Stack(
+          children: [
+            child,
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: kMacTitleBarHeight,
+              child: DragToMoveArea(
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          height: kWindowCaptionHeight,
+          child: WindowCaption(
+            brightness: Brightness.dark,
+            backgroundColor: AppTheme.current.bgDark,
+          ),
+        ),
+        Expanded(child: child),
+      ],
+    );
+  }
+}
