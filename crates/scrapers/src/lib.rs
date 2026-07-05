@@ -1,3 +1,7 @@
+mod search;
+
+pub use search::search_all;
+
 use regex::Regex;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};

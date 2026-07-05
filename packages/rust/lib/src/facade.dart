@@ -162,4 +162,30 @@ abstract final class ForjaEngine {
     if (!isReady) return title;
     return ForjaRust.instance.normalizeTorrentTitle(title);
   }
+
+  static List<Map<String, dynamic>> searchTorrents(String query) {
+    _requireReady();
+    final json = ForjaRust.instance.searchTorrentsJson(query);
+    return (jsonDecode(json) as List)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
+  static List<Map<String, dynamic>> filterTorrents(
+    List<Map<String, dynamic>> results,
+    String showTitle, {
+    int? requiredSeason,
+    int? requiredEpisode,
+  }) {
+    _requireReady();
+    final json = ForjaRust.instance.filterTorrentsJson(
+      jsonEncode(results),
+      showTitle,
+      requiredSeason: requiredSeason ?? -1,
+      requiredEpisode: requiredEpisode ?? -1,
+    );
+    return (jsonDecode(json) as List)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
 }

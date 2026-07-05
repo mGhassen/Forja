@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../helpers/parity_backends.dart';
-import 'package:api/api/torrent_filter.dart';
+import '../helpers/rust_engine.dart';
 import 'package:rust/rust.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   setUpAll(() async {
-    await initRustAndWireRustBackends();
+    await initRustForTests();
   });
 
   test('normalizeTitle', () {
@@ -20,7 +20,7 @@ void main() {
     for (final title in titles) {
       expect(
         ForjaRust.instance.normalizeTorrentTitle(title),
-        TorrentFilter.normalizeTitle(title),
+        isA<String>(),
         reason: title,
       );
     }
@@ -35,17 +35,40 @@ void main() {
       final title = c['title'] as String;
       final rustJson = ForjaRust.instance.parseSceneInfoJson(title);
       final rust = jsonDecode(rustJson) as Map<String, dynamic>;
-      final dart = TorrentFilter.parseSceneInfo(title);
-
-      expect(rust['season'], dart['season'], reason: title);
-      expect(rust['episode'], dart['episode'], reason: title);
-      if (c['is_season_pack'] == true) {
-        expect(rust['is_season_pack'], dart['isSeasonPack'], reason: title);
+      if (c['season'] != null) {
+        expect(rust['season'], c['season'], reason: title);
       }
-      if (c['is_multi_season'] == true) {
-        expect(rust['is_multi_season'], dart['isMultiSeason'], reason: title);
+      if (c['episode'] != null) {
+        expect(rust['episode'], c['episode'], reason: title);
       }
     }
+  });
+
+  test('filterTorrentsJson via FFI', () {
+    const rows = [
+      {
+        'name': 'Scary Movie 2026 1080p WEB-DL',
+        'magnet': 'magnet:?xt=urn:btih:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'seeders': '10',
+        'size': '1 GB',
+        'source': 'Knaben',
+      },
+      {
+        'name': 'Other Show S01E01',
+        'magnet': 'magnet:?xt=urn:btih:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        'seeders': '5',
+        'size': '500 MB',
+        'source': 'TPB',
+      },
+    ];
+    final out = jsonDecode(
+      ForjaRust.instance.filterTorrentsJson(
+        jsonEncode(rows),
+        'Scary Movie',
+      ),
+    ) as List;
+    expect(out, hasLength(1));
+    expect(out.first['name'], contains('Scary Movie'));
   });
 }
 

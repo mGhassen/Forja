@@ -1,57 +1,16 @@
-import 'base_scraper.dart';
 import 'package:flutter/foundation.dart';
-import 'knaben_scraper.dart';
-import 'thepiratebay_scraper.dart';
-import 'uindex_scraper.dart';
-import 'scraper_parse.dart';
+import 'package:rust/rust.dart';
 
 class ScraperAggregator {
-  static final List<BaseScraper> _scrapers = [
-    KnabenScraper(),
-    ThePirateBayScraper(),
-    UindexScraper(),
-  ];
-  
   static Future<List<Map<String, dynamic>>> searchAll(String query) async {
-    debugPrint('[ScraperAggregator] Starting search for: $query');
-    
-    final results = await Future.wait(
-      _scrapers.map((scraper) async {
-        try {
-          debugPrint('[ScraperAggregator] Running ${scraper.name}...');
-          final scraperResults = await scraper.search(query).timeout(const Duration(seconds: 15));
-          debugPrint('[ScraperAggregator] ${scraper.name} found ${scraperResults.length} results');
-          return scraperResults;
-        } catch (e) {
-          debugPrint('[ScraperAggregator] ${scraper.name} failed or timed out: $e');
-          return <Map<String, dynamic>>[];
-        }
-      }),
-    );
-    
-    final aggregated = <Map<String, dynamic>>[];
-    for (final result in results) {
-      aggregated.addAll(result);
+    debugPrint('[ScraperAggregator] Engine search for: $query');
+    try {
+      final results = ForjaEngine.searchTorrents(query);
+      debugPrint('[ScraperAggregator] ${results.length} results');
+      return results;
+    } catch (e) {
+      debugPrint('[ScraperAggregator] failed: $e');
+      return [];
     }
-    
-    debugPrint('[ScraperAggregator] Total results before deduplication: ${aggregated.length}');
-
-    final unique = ScraperParseBackend.dedupTorrents!(aggregated);
-    
-    unique.sort((a, b) {
-      final seedersA = _parseSeeders(a['seeders'] as String?);
-      final seedersB = _parseSeeders(b['seeders'] as String?);
-      return seedersB.compareTo(seedersA);
-    });
-    
-    debugPrint('[ScraperAggregator] Unique results after deduplication: ${unique.length}');
-    
-    return unique;
-  }
-  
-  static int _parseSeeders(String? seeders) {
-    if (seeders == null || seeders == 'Unknown') return -1;
-    final cleaned = seeders.replaceAll(RegExp(r'[^0-9]'), '');
-    return int.tryParse(cleaned) ?? -1;
   }
 }

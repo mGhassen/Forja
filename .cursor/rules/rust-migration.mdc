@@ -6,53 +6,36 @@ alwaysApply: false
 
 # Rust engine migration workflow
 
-When working on the Rust engine migration:
+## Architecture (locked — do not forget)
 
-## Architecture (locked)
+**Engine works. UI shows.**
 
-- **Rust engine works** — fetch, HTTP, routing, parse, crypto, torrent, filter, resolve.
-- **UI shows** — Flutter (Phase 2) / Compose (Phase 3) calls engine FFI and renders JSON.
-- **No engine logic in Dart or Kotlin** — no `*Backend` hooks, no Dart fetch for scrapers/webstreamr, no provider loops in UI packages.
+| Rust engine | NOT engine (UI only) |
+|-------------|----------------------|
+| `packages/api`, `packages/storage`, `packages/core` models | Widgets, nav, player chrome |
+| `packages/scrapers`, `webstreamr`, `streaming` | WebView **host** |
+| HTTP, storage, parse, torrent, proxy | |
+
+All left-column packages **move to `crates/`** in Phase 2. Phase 3 does **not** port them to Kotlin.
 
 ## Before coding
 
-1. Read [docs/migration/README.md](../../docs/migration/README.md) — find current phase.
-2. Phase 1 is **complete** — [01-rust-engine.md](../../docs/migration/01-rust-engine.md).
-3. **Active work:** [Phase 2 — Rust engine complete](../../docs/migration/02-rust-engine-complete.md) — **P2-80 pipelines** block Phase 3.
-4. B2 (mobile librqbit) is Phase 2 P2-10, not Phase 1 or Phase 3.
-5. Do not start Phase 3 until P2-80 + P2-86 exit criteria are met.
+1. Read [docs/migration/README.md](../../docs/migration/README.md).
+2. Active: [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
+3. **Do not start Phase 3** until P2-82–89 + P2-86 done.
 
-## After completing engine work
+## Wire-up pattern
 
-1. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md) for Phase 2 tasks.
-2. Update [03-kotlin-compose.md](../../docs/migration/03-kotlin-compose.md) only for UI port tasks (Phase 3).
-3. Run gates:
-   ```bash
-   ./scripts/build_rust.sh
-   cd crates && cargo test --workspace
-   cd packages/rust && flutter test
-   ```
+- **Target:** UI calls `ForjaEngine.searchTorrents()` / uniffi — one FFI call per user action.
+- **Legacy (delete in P2-86):** `*Backend` hooks, `rust_delegates.dart`.
+- **Never** call engine from `compute()` isolates.
 
-## Parity test rules
+## After engine work
 
-- Compare `ForjaRust.instance.*` against `crates/*/tests/fixtures/` goldens.
-- No `dart_baseline/` reference implementations.
-- New engine pipeline → Rust integration test + optional Dart FFI smoke.
-
-## Wire-up pattern (transitional — delete in P2-86)
-
-Current `*Backend` hooks are **legacy**; target is high-level FFI from UI:
-
-- **Target:** `ForjaEngine.searchTorrents(query)` → UI renders list.
-- **Today (until P2-86):** hooks in `rust_delegates.dart` — do not add new hooks; add Rust pipeline + FFI instead.
-- Never call engine hooks from `compute()` isolates — statics are main-isolate only.
+1. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
+2. Run `./scripts/build_rust.sh`, `cargo test --workspace`, `cd packages/rust && flutter test`.
 
 ## Doc status rules
 
-- **Phase 2 done** = Rust owns full pipelines (P2-80), no `*Backend` hooks (P2-86).
-- HTTP fetch / provider loops in Dart = **not done**, not "orchestration OK until Phase 3".
-- Phase 3 = UI swap only; engine frozen in Rust.
-
-## Ask user to continue
-
-After documenting + testing work, stop and ask which P2-80 task to tackle next.
+- `packages/api` and `packages/storage` are **engine**, not UI-adjacent.
+- Phase 3 = UI swap only.

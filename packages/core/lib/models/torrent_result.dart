@@ -23,6 +23,14 @@ class TorrentResult {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'magnet': magnet,
+        'seeders': seeders,
+        'size': size,
+        'source': source,
+      };
+
   int get seedersCount => int.tryParse(seeders.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
   double get sizeInBytes {

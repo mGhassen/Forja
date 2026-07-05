@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:api/api/stremio_service.dart';
-import 'package:api/api/torrent_filter.dart';
 import 'package:api/api/kisskh_subtitle_decryptor.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/pastesh_decryptor.dart';
@@ -14,22 +13,6 @@ import 'package:webstreamr/webstreamr/utils/unpacker.dart';
 /// App-layer delegates that cannot live in [ForjaEngine] (avoids rust → api import cycle).
 void installRustAppDelegates() {
   if (!ForjaEngine.isReady) return;
-
-  TorrentFilterBackend.normalizeTitle =
-      (title) => ForjaRust.instance.normalizeTorrentTitle(title);
-
-  TorrentFilterBackend.parseSceneInfo = (title) {
-    final m = jsonDecode(ForjaRust.instance.parseSceneInfoJson(title))
-        as Map<String, dynamic>;
-    return {
-      'season': m['season'],
-      'episode': m['episode'],
-      'isSeasonPack': m['is_season_pack'] ?? false,
-      'isMultiEpisode': m['is_multi_episode'] ?? false,
-      'isMultiSeason': m['is_multi_season'] ?? false,
-      'matchIndex': m['match_index'] ?? -1,
-    };
-  };
 
   StremioServiceBackend.buildResourceUrl = (addonUrl, resourcePath) =>
       ForjaRust.instance.buildStremioResourceUrl(addonUrl, resourcePath);

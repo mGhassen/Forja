@@ -10,6 +10,9 @@ serde_json = { workspace = true }
 scraper = { workspace = true }
 regex = { workspace = true }
 thiserror = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+urlencoding = "2"
 
 [dev-dependencies]
 serde_json = { workspace = true }

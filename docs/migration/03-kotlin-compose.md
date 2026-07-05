@@ -140,13 +140,10 @@ Phase 3 ports **screens**, not engine logic.
 
 | Package | Phase 2 (engine) | Phase 3 (UI) |
 |---------|------------------|--------------|
-| `packages/rust` | Thin FFI loader | Replaced by `packages/kotlin`; delete in Phase 4 |
-| `packages/scrapers` | **Deleted** (P2-87) | N/A |
-| `packages/webstreamr` | **Deleted** (P2-87) | N/A |
-| `packages/streaming` | Engine code **deleted** (P2-87) | UI stream picker only if needed |
-| `packages/api` | Engine services **deleted** | Remaining UI-adjacent HTTP (TMDB keys, etc.) → Kotlin or Rust |
-| `packages/core` | Models only | Shared models → Kotlin |
-| `packages/storage` | — | Port prefs/repos |
+| `packages/rust` | FFI loader | → `packages/kotlin`; delete Phase 4 |
+| `packages/scrapers`, `webstreamr`, `streaming` | **Deleted** (P2-87) | N/A |
+| `packages/api`, `packages/storage` | **→ Rust** (P2-88/89) | Compose uses same FFI |
+| `packages/core` | DTOs from engine JSON | Kotlin data classes from same JSON |
 
 ---
 
@@ -168,20 +165,17 @@ Phase 3 ports **screens**, not engine logic.
 
 ## FFI surfaces to bind (`forja_kotlin`)
 
-Mirror [`rust_delegates.dart`](../../apps/forja/lib/app/rust_delegates.dart):
+Bind Phase 2 high-level engine API (post P2-80), e.g.:
 
-| Backend | Rust FFI domain |
-|---------|-----------------|
-| `TorrentFilterBackend` | normalize + scene parse |
-| `StremioServiceBackend` | URL + JSON + HTTP |
-| `ScraperParseBackend` | knaben/tpb/uindex + dedup |
-| `PasteShDecryptorBackend` | paste.sh |
-| `IptvClientBackend` | Xtream decode/parse |
-| `WebstreamrParseBackend` | all extractors/sources |
-| `JsUnpackBackend` | JS unpack |
-| `KissKhDecryptBackend` | subtitle decrypt |
-| `TorrentEngineBackend` | librqbit start/stream/list |
-| `ForjaEngine` facade | M3U, provider URLs, episode matcher, HLS |
+| Engine call | Purpose |
+|-------------|---------|
+| `search_torrents_json` | Torrent tab |
+| `filter_torrents_json` | Details screen filter |
+| `resolve_stream_json` | Play (when P2-83 lands) |
+| `torrent_stream_json` | Magnet play |
+| Storage FFI (P2-88) | Settings, history |
+
+Do **not** mirror `rust_delegates.dart` — delete hooks in P2-86.
 
 ---
 

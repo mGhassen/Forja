@@ -2954,10 +2954,13 @@ name = "scrapers"
 version = "0.1.0"
 dependencies = [
  "regex",
+ "reqwest",
  "scraper",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+ "tokio",
+ "urlencoding",
 ]
 
 [[package]]

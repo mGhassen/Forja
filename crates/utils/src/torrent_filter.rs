@@ -110,6 +110,98 @@ pub fn is_video_file(file_name: &str) -> bool {
     EXTS.iter().any(|ext| t.ends_with(ext))
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct TorrentRow {
+    pub name: String,
+    pub magnet: String,
+    pub seeders: String,
+    pub size: String,
+    pub source: String,
+}
+
+static RELEASE_PREFIX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\[[^\]]+\]\s*").unwrap());
+static YEAR_ONLY: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}$").unwrap());
+static SEASON_RANGE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)s(\d+)\s*-\s*s?(\d+)").unwrap());
+
+const NOISE_WORDS: &[&str] = &[
+    "complete", "series", "season", "multi", "bluray", "webrip", "web", "dl", "hdtv", "x264",
+    "x265", "h264", "h265", "hevc", "1080p", "720p", "4k", "uhd",
+];
+
+pub fn filter_torrents(
+    items: &[TorrentRow],
+    show_title: &str,
+    required_season: Option<i32>,
+    required_episode: Option<i32>,
+) -> Vec<TorrentRow> {
+    if items.is_empty() || show_title.is_empty() {
+        return items.to_vec();
+    }
+
+    let norm_show = normalize_title(show_title);
+
+    items
+        .iter()
+        .filter(|item| {
+            let clean_title = RELEASE_PREFIX.replace(&item.name, "").to_string();
+            let info = parse_scene_info(&clean_title);
+            let title_part = if info.match_index > 0 {
+                clean_title[..info.match_index as usize].to_string()
+            } else {
+                clean_title.clone()
+            };
+            let norm_title = normalize_title(&title_part);
+
+            if !norm_title.starts_with(&norm_show) {
+                return false;
+            }
+
+            if required_season.is_some() {
+                let mut suffix = norm_title[norm_show.len()..].trim().to_string();
+                for word in NOISE_WORDS {
+                    suffix = suffix.replace(word, "");
+                }
+                suffix = suffix.trim().to_string();
+                if !suffix.is_empty() && !YEAR_ONLY.is_match(&suffix) {
+                    return false;
+                }
+            }
+
+            if let (Some(season), Some(episode)) = (required_season, required_episode) {
+                return info.season == Some(season) && info.episode == Some(episode);
+            }
+
+            if let Some(season) = required_season {
+                if required_episode.is_some() {
+                    // handled above
+                } else if let Some(s) = info.season {
+                    if s != season {
+                        if let Some(caps) = SEASON_RANGE.captures(&clean_title.to_lowercase()) {
+                            let start: i32 =
+                                caps.get(1).and_then(|m| m.as_str().parse().ok()).unwrap_or(0);
+                            let end: i32 =
+                                caps.get(2).and_then(|m| m.as_str().parse().ok()).unwrap_or(0);
+                            if season < start || season > end {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }
+                }
+                return info.is_season_pack
+                    || info.is_multi_season
+                    || (info.season.is_some() && info.episode.is_none());
+            }
+
+            true
+        })
+        .cloned()
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

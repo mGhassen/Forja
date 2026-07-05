@@ -6,7 +6,7 @@ mod engine_proxy;
 
 use iptv_core::m3u;
 use iptv_core::pastesh;
-use scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html};
+use scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html, search_all};
 use stream_core::list_providers;
 use stremio_core::{
     build_resource_url, fetch_get, parse_catalog, parse_manifest, parse_meta, parse_streams,
@@ -199,6 +199,33 @@ fn dedup_torrents_json(results_json: String) -> String {
     let parsed: Vec<scrapers::TorrentSearchResult> =
         serde_json::from_str(&results_json).unwrap_or_default();
     serde_json::to_string(&dedup_by_infohash(parsed)).unwrap_or_else(|_| "[]".into())
+}
+
+fn search_torrents_json(query: String) -> String {
+    let results = RUNTIME.block_on(search_all(&query));
+    serde_json::to_string(&results).unwrap_or_else(|_| "[]".into())
+}
+
+fn filter_torrents_json(
+    results_json: String,
+    show_title: String,
+    required_season: i32,
+    required_episode: i32,
+) -> String {
+    let items: Vec<torrent_filter::TorrentRow> =
+        serde_json::from_str(&results_json).unwrap_or_default();
+    let season = if required_season >= 0 {
+        Some(required_season)
+    } else {
+        None
+    };
+    let episode = if required_episode >= 0 {
+        Some(required_episode)
+    } else {
+        None
+    };
+    let filtered = torrent_filter::filter_torrents(&items, &show_title, season, episode);
+    serde_json::to_string(&filtered).unwrap_or_else(|_| "[]".into())
 }
 
 fn extract_embed_html_json(extractor_id: String, html: String, page_url: String) -> String {

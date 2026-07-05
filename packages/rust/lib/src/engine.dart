@@ -227,6 +227,32 @@ class ForjaRust {
         return _readString(_native.forja_dedup_torrents_json(ptr));
       });
 
+  String searchTorrentsJson(String query) => using((arena) {
+        final ptr = query.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_search_torrents_json(ptr));
+      });
+
+  String filterTorrentsJson(
+    String resultsJson,
+    String showTitle, {
+    int requiredSeason = -1,
+    int requiredEpisode = -1,
+  }) =>
+      using((arena) {
+        final resultsPtr =
+            resultsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final titlePtr =
+            showTitle.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.forja_filter_torrents_json(
+            resultsPtr,
+            titlePtr,
+            requiredSeason,
+            requiredEpisode,
+          ),
+        );
+      });
+
   String extractEmbedHtmlJson(
     String extractorId,
     String html,
@@ -547,6 +573,16 @@ final class _ForjaNative {
               'forja_dedup_torrents_json',
             )
             .asFunction(),
+        forja_search_torrents_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'forja_search_torrents_json',
+            )
+            .asFunction(),
+        forja_filter_torrents_json = lib
+            .lookup<ffi.NativeFunction<_FilterTorrentsNative>>(
+              'forja_filter_torrents_json',
+            )
+            .asFunction(),
         forja_extract_embed_html_json = lib
             .lookup<ffi.NativeFunction<_ThreeStringNative>>(
               'forja_extract_embed_html_json',
@@ -719,6 +755,14 @@ final class _ForjaNative {
       forja_parse_uindex_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_dedup_torrents_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_search_torrents_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+    int,
+    int,
+  ) forja_filter_torrents_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
@@ -794,6 +838,12 @@ typedef _PickEpisodeIndexNative = ffi.Int32 Function(
 );
 typedef _PickLargestVideoIndexNative = ffi.Int32 Function(
   ffi.Pointer<ffi.Char>,
+);
+typedef _FilterTorrentsNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Pointer<ffi.Char>,
+  ffi.Int32,
+  ffi.Int32,
 );
 typedef _StringInOutNative =
     ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>);

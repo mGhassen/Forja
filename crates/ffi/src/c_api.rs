@@ -243,6 +243,26 @@ pub unsafe extern "C" fn forja_dedup_torrents_json(results_json: *const c_char) 
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_search_torrents_json(query: *const c_char) -> *mut c_char {
+    to_c_string(crate::search_torrents_json(from_c_str(query)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_filter_torrents_json(
+    results_json: *const c_char,
+    show_title: *const c_char,
+    required_season: i32,
+    required_episode: i32,
+) -> *mut c_char {
+    to_c_string(crate::filter_torrents_json(
+        from_c_str(results_json),
+        from_c_str(show_title),
+        required_season,
+        required_episode,
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_extract_embed_html_json(
     extractor_id: *const c_char,
     html: *const c_char,
