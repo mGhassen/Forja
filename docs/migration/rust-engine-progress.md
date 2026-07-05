@@ -44,7 +44,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **5 — Webstreamr** | 23/23 extractors · 21/21 sources | partial | all parse logic in Rust; fetch/registry Dart |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
 | **7 — Torrent + proxy** | ✅ librqbit | ✅ | Rust torrent playback when engine on · libtorrent fallback |
-| **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
+| **8 — Flutter integration** | N/A | N/A | toggle in Settings → Developer |
 | **9 — Cleanup** | — | partial | reference fallbacks for M3U, providers, unpacker, kisskh, stremio |
 
 ### What runs in Rust today
@@ -359,7 +359,7 @@ Wire-up: `TorrentEngineBackend` in `rust_delegates.dart` · `TorrentStreamServic
 
 ## Step 8 — Flutter integration
 
-**App:** partial
+**Rust:** N/A · **App:** N/A
 
 | Task | Status |
 |------|--------|
@@ -411,7 +411,8 @@ FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d 
 
 - [x] M3U Dart parser moved to `packages/forja_rust/lib/src/reference/m3u_dart_parser.dart`
 - [x] Provider URL fallbacks centralized in `provider_fallback_urls.dart`
-- [x] Unpacker, KissKH decrypt, Stremio parse moved to `packages/forja_rust/lib/src/reference/`
+- [x] Unpacker, KissKH decrypt, Stremio parse, torrent filter moved to `packages/forja_rust/lib/src/reference/`
+- [x] Magnet player uses `TorrentStreamService.listTorrentFiles` (no direct libtorrent)
 - [ ] Drop `libtorrent_flutter` once Rust torrent path is stable in production
 - [ ] Golden fixtures for every extractor
 

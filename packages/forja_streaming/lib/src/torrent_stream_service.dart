@@ -162,6 +162,43 @@ class TorrentStreamService {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // List torrent files
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<List<TorrentFileEntry>?> listTorrentFiles(String magnetLink) async {
+    if (_state != EngineState.ready) {
+      final started = await start();
+      if (!started) return null;
+    }
+
+    final listFiles = TorrentEngineBackend.listFiles;
+    if (_rustEnginePort > 0 && listFiles != null) {
+      try {
+        return listFiles(magnetLink);
+      } catch (e) {
+        _log('Rust listTorrentFiles error: $e');
+      }
+    }
+
+    try {
+      final torrentId = LibtorrentFlutter.instance.addMagnet(magnetLink, null, true);
+      final hash = _extractHash(magnetLink);
+      if (hash != null) _activeTorrents[hash] = torrentId;
+
+      final files = await _waitForMetadata(torrentId);
+      if (files == null) return null;
+      return files
+          .map(
+            (f) => TorrentFileEntry(index: f.index, name: f.name, size: f.size),
+          )
+          .toList();
+    } catch (e) {
+      _log('listTorrentFiles error: $e');
+      return null;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Stream a torrent — main entry point
   // ─────────────────────────────────────────────────────────────────────────
 

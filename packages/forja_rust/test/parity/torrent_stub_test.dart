@@ -34,9 +34,9 @@ void main() {
     expect(ForjaRust.instance.torrentEnginePort(), port);
   });
 
-  test('torrent stream json rejects invalid magnet', () {
+  test('torrent list files json rejects invalid magnet', () {
     ForjaRust.instance.torrentEngineStart(0);
-    final json = ForjaRust.instance.torrentStreamJson('not-a-magnet');
+    final json = ForjaRust.instance.torrentListFilesJson('not-a-magnet');
     final parsed = jsonDecode(json) as Map<String, dynamic>;
     expect(parsed['error'], isNotNull);
   });

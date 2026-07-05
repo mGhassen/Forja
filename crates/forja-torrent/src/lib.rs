@@ -42,6 +42,26 @@ struct StreamError {
     error: String,
 }
 
+#[derive(Debug, Serialize)]
+struct TorrentFileEntry {
+    index: usize,
+    name: String,
+    size: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct ListFilesResponse {
+    torrent_id: usize,
+    info_hash: String,
+    files: Vec<TorrentFileEntry>,
+}
+
+struct PreparedTorrent {
+    torrent_id: usize,
+    info_hash: String,
+    files: Vec<TorrentDetailsResponseFile>,
+}
+
 #[derive(Clone)]
 struct AppState {
     api: Api,
@@ -150,6 +170,24 @@ impl TorrentEngine {
         });
     }
 
+    pub fn list_files_json(&self, magnet: &str) -> String {
+        if magnet.is_empty() || !magnet.starts_with("magnet:") {
+            return serde_json::to_string(&StreamError {
+                error: "Invalid magnet link".into(),
+            })
+            .unwrap_or_else(|_| r#"{"error":"Invalid magnet link"}"#.into());
+        }
+        match self.runtime.block_on(async { self.list_files(magnet).await }) {
+            Ok(resp) => serde_json::to_string(&resp).unwrap_or_else(|_| "{}".into()),
+            Err(e) => {
+                let msg = e.clone();
+                serde_json::to_string(&StreamError { error: e }).unwrap_or_else(|_| {
+                    format!(r#"{{"error":"{}"}}"#, msg.replace('"', "\\\""))
+                })
+            }
+        }
+    }
+
     pub fn stream_magnet_json(
         &self,
         magnet: &str,
@@ -177,6 +215,25 @@ impl TorrentEngine {
         }
     }
 
+    async fn list_files(&self, magnet: &str) -> Result<ListFilesResponse, String> {
+        let prepared = self.prepare_magnet(magnet).await?;
+        let files = prepared
+            .files
+            .iter()
+            .enumerate()
+            .map(|(index, f)| TorrentFileEntry {
+                index,
+                name: f.name.clone(),
+                size: f.length,
+            })
+            .collect();
+        Ok(ListFilesResponse {
+            torrent_id: prepared.torrent_id,
+            info_hash: prepared.info_hash,
+            files,
+        })
+    }
+
     async fn stream_magnet(
         &self,
         magnet: &str,
@@ -184,12 +241,48 @@ impl TorrentEngine {
         episode: Option<i32>,
         preferred_idx: Option<i32>,
     ) -> Result<StreamResponse, String> {
-        let (port, api) = {
+        let port = {
+            let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
+            if inner.http_port == 0 {
+                return Err("Torrent engine not started".into());
+            }
+            inner.http_port
+        };
+
+        let prepared = self.prepare_magnet(magnet).await?;
+        let file_idx = select_file_index(
+            &prepared.files,
+            season,
+            episode,
+            preferred_idx.map(|v| v as usize),
+        )
+        .ok_or("No suitable video file found")?;
+        let file_name = prepared
+            .files
+            .get(file_idx)
+            .map(|f| f.name.as_str())
+            .unwrap_or("file");
+        let encoded_name = urlencoding::encode(file_name);
+        let url = format!(
+            "http://127.0.0.1:{port}/torrents/{}/stream/{file_idx}/{encoded_name}",
+            prepared.torrent_id
+        );
+
+        Ok(StreamResponse {
+            url,
+            torrent_id: prepared.torrent_id,
+            file_idx,
+            info_hash: prepared.info_hash,
+        })
+    }
+
+    async fn prepare_magnet(&self, magnet: &str) -> Result<PreparedTorrent, String> {
+        let api = {
             let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
             if inner.http_port == 0 || inner.api.is_none() {
                 return Err("Torrent engine not started".into());
             }
-            (inner.http_port, inner.api.clone().unwrap())
+            inner.api.clone().unwrap()
         };
 
         let new_hash = extract_info_hash(magnet);
@@ -236,21 +329,6 @@ impl TorrentEngine {
             .api_torrent_details(TorrentIdOrHash::Id(torrent_id))
             .map_err(|e| e.to_string())?;
         let files = details.files.ok_or("No files in torrent")?;
-        let file_idx = select_file_index(
-            &files,
-            season,
-            episode,
-            preferred_idx.map(|v| v as usize),
-        )
-        .ok_or("No suitable video file found")?;
-        let file_name = files
-            .get(file_idx)
-            .map(|f| f.name.as_str())
-            .unwrap_or("file");
-        let encoded_name = urlencoding::encode(file_name);
-        let url = format!(
-            "http://127.0.0.1:{port}/torrents/{torrent_id}/stream/{file_idx}/{encoded_name}"
-        );
 
         {
             let mut inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
@@ -260,11 +338,10 @@ impl TorrentEngine {
             });
         }
 
-        Ok(StreamResponse {
-            url,
+        Ok(PreparedTorrent {
             torrent_id,
-            file_idx,
             info_hash: details.info_hash,
+            files,
         })
     }
 
@@ -276,9 +353,7 @@ impl TorrentEngine {
             if self.engine_port() == 0 {
                 self.start_engine(0)?;
             }
-            let _ = self
-                .stream_magnet(magnet, None, None, None)
-                .await?;
+            let _ = self.stream_magnet(magnet, None, None, None).await?;
             Ok(())
         })
     }

@@ -361,6 +361,11 @@ pub unsafe extern "C" fn forja_torrent_stream_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_torrent_list_files_json(magnet: *const c_char) -> *mut c_char {
+    to_c_string(crate::torrent_list_files_json(from_c_str(magnet)))
+}
+
+#[no_mangle]
 pub extern "C" fn forja_proxy_start(preferred_port: u16) -> i32 {
     crate::proxy_start(preferred_port)
 }

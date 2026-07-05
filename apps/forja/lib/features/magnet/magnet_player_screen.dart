@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:libtorrent_flutter/libtorrent_flutter.dart';
 import 'package:forja_streaming/forja_streaming.dart';
 import 'package:forja_storage/forja_storage.dart';
 import 'package:forja/shared/player/player_screen.dart';
@@ -20,8 +19,7 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
 
   bool _loading = false;
   String? _error;
-  int? _torrentId;
-  List<FileInfo> _files = [];
+  List<TorrentFileEntry> _files = [];
   int? _streamingIndex;
 
   @override
@@ -42,20 +40,14 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
       _loading = true;
       _error = null;
       _files = [];
-      _torrentId = null;
     });
 
     try {
-      // Ensure engine is running
       if (!await _torrent.start()) {
         throw Exception('Failed to start torrent engine');
       }
 
-      final torrentId = LibtorrentFlutter.instance.addMagnet(magnet, null, true);
-      _torrentId = torrentId;
-
-      // Wait for metadata with timeout
-      final files = await _waitForFiles(torrentId);
+      final files = await _torrent.listTorrentFiles(magnet);
       if (files == null || files.isEmpty) {
         throw Exception('No files found — metadata timeout');
       }
@@ -74,43 +66,7 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
     }
   }
 
-  Future<List<FileInfo>?> _waitForFiles(int torrentId) async {
-    // Try immediate
-    try {
-      final files = LibtorrentFlutter.instance.getFiles(torrentId);
-      if (files.isNotEmpty) return files;
-    } catch (_) {}
-
-    // Poll via updates stream
-    final completer = Completer<List<FileInfo>?>();
-    StreamSubscription? sub;
-
-    final timer = Timer(const Duration(seconds: 45), () {
-      if (!completer.isCompleted) {
-        sub?.cancel();
-        completer.complete(null);
-      }
-    });
-
-    sub = LibtorrentFlutter.instance.torrentUpdates.listen((updates) {
-      if (completer.isCompleted) return;
-      if (updates.containsKey(torrentId)) {
-        final info = updates[torrentId]!;
-        if (info.hasMetadata) {
-          timer.cancel();
-          sub?.cancel();
-          final files = LibtorrentFlutter.instance.getFiles(torrentId);
-          if (!completer.isCompleted) completer.complete(files);
-        }
-      }
-    });
-
-    return completer.future;
-  }
-
-  // ── Play a file ─────────────────────────────────────────────────────────
-  Future<void> _playFile(FileInfo file) async {
-    if (_torrentId == null) return;
+  Future<void> _playFile(TorrentFileEntry file) async {
     setState(() {
       _streamingIndex = file.index;
       _error = null;
@@ -320,7 +276,6 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
                   itemBuilder: (context, index) {
                     final file = _files[index];
                     final isStreaming = _streamingIndex == file.index;
-                    final isVideo = file.isStreamable;
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
@@ -328,7 +283,9 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
-                          onTap: isVideo && !isStreaming ? () => _playFile(file) : null,
+                          onTap: file.isStreamable && !isStreaming
+                              ? () => _playFile(file)
+                              : null,
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -346,7 +303,7 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
                               children: [
                                 Icon(
                                   _fileIcon(file.name),
-                                  color: isVideo
+                                  color: file.isStreamable
                                       ? AppTheme.accentColor
                                       : Colors.white24,
                                   size: 24,
@@ -359,7 +316,9 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
                                       Text(
                                         file.name,
                                         style: TextStyle(
-                                          color: isVideo ? Colors.white : Colors.white38,
+                                          color: file.isStreamable
+                                              ? Colors.white
+                                              : Colors.white38,
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -383,7 +342,7 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
                                     child: CircularProgressIndicator(
                                         strokeWidth: 2, color: AppTheme.primaryColor),
                                   )
-                                else if (isVideo)
+                                else if (file.isStreamable)
                                   const Icon(Icons.play_circle_outlined,
                                       color: AppTheme.primaryColor, size: 28),
                               ],

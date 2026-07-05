@@ -268,6 +268,13 @@ fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32)
         .unwrap_or_else(|_| r#"{"error":"Engine lock poisoned"}"#.into())
 }
 
+fn torrent_list_files_json(magnet: String) -> String {
+    TORRENT
+        .lock()
+        .map(|e| e.list_files_json(&magnet))
+        .unwrap_or_else(|_| r#"{"error":"Engine lock poisoned"}"#.into())
+}
+
 fn proxy_start(preferred_port: u16) -> i32 {
     RUNTIME
         .block_on(async {

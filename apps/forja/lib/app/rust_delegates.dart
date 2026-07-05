@@ -200,4 +200,21 @@ void installRustAppDelegates() {
     final url = parsed['url'];
     return url is String && url.isNotEmpty ? url : null;
   };
+  TorrentEngineBackend.listFiles = (magnet) {
+    final json = ForjaRust.instance.torrentListFilesJson(magnet);
+    final parsed = jsonDecode(json) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return const [];
+    final files = parsed['files'];
+    if (files is! List) return const [];
+    return files
+        .whereType<Map>()
+        .map(
+          (f) => TorrentFileEntry(
+            index: (f['index'] as num?)?.toInt() ?? 0,
+            name: f['name'] as String? ?? '',
+            size: (f['size'] as num?)?.toInt() ?? 0,
+          ),
+        )
+        .toList();
+  };
 }
