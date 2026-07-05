@@ -42,6 +42,7 @@ namespace forja {
     string resolve_webstreamr_source_json(string source_id, string request_json);
     string extract_kinoger_episode_urls_json(string html, i32 season_index, i32 episode_index);
     string parse_webstreamr_source_html_json(string source_id, string html, string opts_json);
+    string webstreamr_get_streams_json(string request_json);
     boolean torrent_start(string magnet);
     void torrent_stop();
     boolean torrent_is_running();

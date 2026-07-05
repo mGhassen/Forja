@@ -9,4 +9,4 @@ pub use media_flow_proxy::{
     MfpConfig, MfpStreamResponse,
 };
 pub use packed::{extract_url_from_packed, extract_url_from_text};
-pub use resolution::find_height;
+pub use resolution::{find_height, get_closest_resolution};

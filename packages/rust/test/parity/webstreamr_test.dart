@@ -286,4 +286,19 @@ void main() {
     expect(m['title'], 'Movie Name');
     expect(m['bytes'], 1932735283);
   });
+
+  test('get_streams_json returns stremio-shaped array', () {
+    final req = jsonEncode({
+      'imdb_id': 'tt0944947',
+      'tmdb_id': 1399,
+      'media_type': 'series',
+      'season': 1,
+      'episode': 1,
+      'enabled_sources': ['vidsrc'],
+      'config': {'multi': 'on'},
+    });
+    final raw = ForjaRust.instance.webstreamrGetStreamsJson(req);
+    final decoded = jsonDecode(raw);
+    expect(decoded, isA<List>());
+  });
 }

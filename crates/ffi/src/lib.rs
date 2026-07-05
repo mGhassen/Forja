@@ -279,6 +279,10 @@ fn parse_webstreamr_source_html_json(source_id: String, html: String, opts_json:
     webstreamr::parse_webstreamr_source_html_json(&source_id, &html, &opts_json)
 }
 
+fn webstreamr_get_streams_json(request_json: String) -> String {
+    webstreamr::get_streams_json(&request_json)
+}
+
 fn torrent_start(magnet: String) -> bool {
     #[cfg(feature = "torrent-engine")]
     {

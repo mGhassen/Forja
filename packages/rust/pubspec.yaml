@@ -24,8 +24,6 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   api:
     path: ../api
-  webstreamr:
-    path: ../webstreamr
 
 flutter:
   uses-material-design: true

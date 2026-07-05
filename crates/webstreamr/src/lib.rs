@@ -1,6 +1,10 @@
+pub mod config;
 pub mod extractors;
 pub mod fetcher;
+pub mod language;
+pub mod resolver;
 pub mod sources;
+pub mod tmdb;
 pub mod types;
 pub mod utils;
 
@@ -8,6 +12,8 @@ pub use extractors::{
     build_embed_url, extract_embed_html, extract_from_html_chain, extract_hubcloud_links,
     extract_mfp_embed_html, extract_vidsrc_chain_json, list_html_extractors, list_mfp_extractors,
 };
+pub use config::{default_config, APP_NAME, Config};
+pub use resolver::get_streams_json;
 pub use sources::{
     extract_kinoger_episode_urls, list_url_sources, parse_source_html, resolve_source,
     SourceEmbed, SourceRequest,
@@ -63,3 +69,4 @@ pub fn parse_webstreamr_source_html_json(
 ) -> String {
     sources::parse_source_html_json(source_id, html, opts_json)
 }
+

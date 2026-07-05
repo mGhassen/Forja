@@ -57,8 +57,6 @@ dependencies:
     path: ../../packages/storage
   api:
     path: ../../packages/api
-  webstreamr:
-    path: ../../packages/webstreamr
   streaming:
     path: ../../packages/streaming
   rust:

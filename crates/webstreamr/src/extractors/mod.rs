@@ -22,6 +22,8 @@ mod vixsrc;
 mod voe;
 mod youtube;
 
+mod registry;
+
 use crate::types::ExtractResult;
 use crate::utils::MfpConfig;
 
@@ -99,6 +101,8 @@ pub fn list_mfp_extractors() -> &'static [&'static str] {
         "voe",
     ]
 }
+
+pub use registry::{find_extractor_for_url, run_extractor, EmbedMeta, UrlResult};
 
 pub fn list_html_extractors() -> &'static [&'static str] {
     &[

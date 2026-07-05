@@ -686,13 +686,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.28.0"
-  scrapers:
-    dependency: transitive
-    description:
-      path: "../scrapers"
-      relative: true
-    source: path
-    version: "1.0.0"
   shared_preferences:
     dependency: transitive
     description:
@@ -1016,13 +1009,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  webstreamr:
-    dependency: "direct dev"
-    description:
-      path: "../webstreamr"
-      relative: true
-    source: path
-    version: "1.0.0"
   win32:
     dependency: transitive
     description:

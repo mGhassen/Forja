@@ -18,12 +18,16 @@ impl Default for FetchConfig {
     }
 }
 
-pub fn fetch_text(url: &str, config: &FetchConfig) -> Result<String, String> {
-    let client = reqwest::blocking::Client::builder()
+fn build_client(config: &FetchConfig) -> Result<reqwest::blocking::Client, String> {
+    reqwest::blocking::Client::builder()
         .timeout(config.timeout)
         .redirect(reqwest::redirect::Policy::limited(5))
         .build()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())
+}
+
+pub fn fetch_text(url: &str, config: &FetchConfig) -> Result<String, String> {
+    let client = build_client(config)?;
     let mut req = client.get(url);
     for (k, v) in &config.headers {
         req = req.header(k.as_str(), v.as_str());
@@ -34,6 +38,39 @@ pub fn fetch_text(url: &str, config: &FetchConfig) -> Result<String, String> {
         .map_err(|e| e.to_string())?
         .text()
         .map_err(|e| e.to_string())
+}
+
+pub fn fetch_text_post(url: &str, body: &str, config: &FetchConfig) -> Result<String, String> {
+    let client = build_client(config)?;
+    let mut req = client.post(url).body(body.to_string());
+    for (k, v) in &config.headers {
+        req = req.header(k.as_str(), v.as_str());
+    }
+    req.send()
+        .map_err(|e| e.to_string())?
+        .error_for_status()
+        .map_err(|e| e.to_string())?
+        .text()
+        .map_err(|e| e.to_string())
+}
+
+pub fn fetch_json(url: &str, config: &FetchConfig) -> Result<serde_json::Value, String> {
+    let text = fetch_text(url, config)?;
+    serde_json::from_str(&text).map_err(|e| e.to_string())
+}
+
+pub fn final_redirect_url(url: &str, config: &FetchConfig) -> Result<String, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(config.timeout)
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut req = client.get(url);
+    for (k, v) in &config.headers {
+        req = req.header(k.as_str(), v.as_str());
+    }
+    let resp = req.send().map_err(|e| e.to_string())?;
+    Ok(resp.url().to_string())
 }
 
 #[cfg(test)]

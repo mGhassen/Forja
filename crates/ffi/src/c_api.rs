@@ -370,6 +370,13 @@ pub unsafe extern "C" fn forja_parse_webstreamr_source_html_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_webstreamr_get_streams_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::webstreamr_get_streams_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_torrent_start(magnet: *const c_char) -> bool {
     crate::torrent_start(from_c_str(magnet))
 }

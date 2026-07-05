@@ -336,6 +336,12 @@ class ForjaRust {
         );
       });
 
+  String webstreamrGetStreamsJson(String requestJson) => using((arena) {
+        final reqPtr =
+            requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.forja_webstreamr_get_streams_json(reqPtr));
+      });
+
   String extractKinogerEpisodeUrlsJson(
     String html,
     int seasonIndex,
@@ -650,6 +656,11 @@ final class _ForjaNative {
               'forja_resolve_webstreamr_source_json',
             )
             .asFunction(),
+        forja_webstreamr_get_streams_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'forja_webstreamr_get_streams_json',
+            )
+            .asFunction(),
         forja_extract_kinoger_episode_urls_json = lib
             .lookup<ffi.NativeFunction<_KinogerUrlsNative>>(
               'forja_extract_kinoger_episode_urls_json',
@@ -848,6 +859,8 @@ final class _ForjaNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) forja_resolve_webstreamr_source_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      forja_webstreamr_get_streams_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     int,

@@ -161,6 +161,10 @@ mod rgshows;
 mod streamkiste;
 mod vegamovies;
 mod verhdlink;
+mod runtime;
+
+pub use runtime::{run_source, source_by_id, ALL_SOURCES, SourceDef};
+
 mod vidsrc;
 mod vixsrc;
 
