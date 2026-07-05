@@ -77,6 +77,8 @@ pub fn parse_json(body: &str, opts: &MovixParseOpts) -> Vec<SourceEmbed> {
             country_codes: vec!["fr".into()],
             referer: Some(referer.clone()),
             priority: None,
+            height: None,
+            bytes: None,
         })
         .collect()
 }

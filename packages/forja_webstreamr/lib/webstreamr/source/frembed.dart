@@ -1,6 +1,9 @@
 /// Port of webstreamr/src/source/Frembed.ts
 library;
 
+import 'dart:convert';
+
+import '../webstreamr_parse.dart';
 import '../types.dart';
 import '../utils/fetcher.dart';
 import '../utils/id.dart';
@@ -53,6 +56,32 @@ class FrembedSource extends Source {
     final json = await fetcher.json(
             ctx, apiUrl, FetcherRequestConfig(headers: {'Referer': origin}))
         as Map<String, dynamic>;
+
+    final rust = tryRustParseSourceHtml(
+      this.id,
+      jsonEncode(json),
+      referer: origin,
+      isSeries: tmdbId.season != null,
+      season: tmdbId.season,
+      episode: tmdbId.episode,
+      year: year,
+    );
+    if (rust != null) {
+      final out = <SourceResult>[];
+      for (final r in rust) {
+        try {
+          final resolved = await fetcher.getFinalRedirectUrl(
+            ctx,
+            r.url,
+            FetcherRequestConfig(headers: {'Referer': '$origin/'}),
+          );
+          out.add(SourceResult(url: resolved, meta: r.meta));
+        } catch (_) {
+          // skip invalid
+        }
+      }
+      if (out.isNotEmpty) return out;
+    }
 
     final urls = <Uri>[];
     for (final entry in json.entries) {

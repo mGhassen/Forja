@@ -23,6 +23,8 @@ pub fn parse_json(body: &str, referer: &str) -> Vec<SourceEmbed> {
         country_codes: vec!["de".into()],
         referer: Some(referer.to_string()),
         priority: None,
+        height: None,
+        bytes: None,
     }]
 }
 

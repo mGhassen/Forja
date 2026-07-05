@@ -12,6 +12,7 @@
 ///      it (vcloud uses the same `gamerxyt.com/hubcloud.php` endpoint).
 library;
 
+import '../webstreamr_parse.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import '../types.dart';
@@ -218,6 +219,15 @@ class VegaMoviesSource extends Source {
     try {
       final html = await fetcher.text(ctx, nexUrl,
           FetcherRequestConfig(headers: {'Referer': refererUrl.toString()}));
+      final rust = tryRustParseSourceHtml(
+        this.id,
+        html,
+        referer: nexUrl.toString(),
+        title: label.isNotEmpty ? label : null,
+        episode: episode,
+      );
+      if (rust != null) return rust;
+
       // If targeting a specific episode, narrow the HTML window to the
       // matching `-:Episode(s): N:-` section before pulling vcloud links.
       String scope = html;

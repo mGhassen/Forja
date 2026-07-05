@@ -1,6 +1,7 @@
 /// Port of webstreamr/src/source/FourKHDHub.ts
 library;
 
+import '../webstreamr_parse.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
@@ -77,6 +78,24 @@ class FourKHDHubSource extends Source {
     if (pageUrl == null) return const [];
 
     final html = await fetcher.text(ctx, pageUrl);
+
+    final rust = tryRustParseSourceHtml(
+      this.id,
+      html,
+      referer: pageUrl.toString(),
+      isSeries: tmdbId.season != null,
+      season: tmdbId.season,
+      episode: tmdbId.episode,
+    );
+    if (rust != null) {
+      final out = <SourceResult>[];
+      for (final r in rust) {
+        final resolved = await resolveRedirectUrl(ctx, fetcher, r.url);
+        out.add(SourceResult(url: resolved, meta: r.meta));
+      }
+      if (out.isNotEmpty) return out;
+    }
+
     final doc = html_parser.parse(html);
 
     final out = <SourceResult>[];

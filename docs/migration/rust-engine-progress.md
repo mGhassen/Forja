@@ -41,7 +41,7 @@ Rust can be **yes** while App is **no** — code exists but the app still uses D
 | **2 — Stream URLs** | 3/5 | 3/5 | ✅ vidlink, vixsrc, vidnest · ❌ vidzee, vidrock |
 | **3 — IPTV** | 4/4 | 4/4 | M3U, paste.sh, EPG decode, Xtream JSON parse |
 | **4 — Stremio** | partial | partial | ✅ URL helpers · ❌ HTTP, manifest parse, catalogs |
-| **5 — Webstreamr** | 24/49 extractors · 17/22 sources | partial | extractors + URL/HTML/JSON sources wired |
+| **5 — Webstreamr** | 24/49 extractors · 21/21 sources | partial | all sources wired (fetch/registry still Dart) |
 | **6 — Scrapers** | ✅ | ✅ | HTML parse + dedup; HTTP fetch stays Dart |
 | **7 — Torrent + proxy** | stubs | ❌ | still `libtorrent_flutter` + Dart shelf |
 | **8 — Flutter integration** | — | partial | toggle in Settings → Developer |
@@ -56,12 +56,12 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 - Utils: episode file matching, HLS master parse, torrent title filter
 - Stremio: URL building only (not catalog browsing)
 - Scrapers: Knaben / TPB / Uindex HTML parse + dedup
-- Webstreamr: 23 extractors + 17 sources (embed URLs, kinoger show.js, HTML parsers, einschalten/movix JSON parse)
+- Webstreamr: 23 extractors + 21 sources (all parse helpers wired; HTTP fetch + registry still Dart)
 
 ### Still 100% Dart
 
 - Stremio catalog / meta / stream HTTP
-- Webstreamr: frembed, kokoshka, fourkhdhub, vegamovies (search + fetch), fetcher, registry
+- Webstreamr: fetcher, registry, search/redirect HTTP orchestration
 - Torrent session + local stream proxy
 - Vidzee / Vidrock provider URLs
 
@@ -72,8 +72,8 @@ When boot log shows `[ForjaEngine] Rust engine v0.1.0`:
 | Rust crates | 9 (8 domain + `forja-ffi`) |
 | Stream providers wired | 3 / 5 |
 | Webstreamr extractors ported | 24 / 49 |
-| Webstreamr URL sources ported | 17 / 22 |
-| Dart parity tests | 45 |
+| Webstreamr URL sources ported | 21 / 21 |
+| Dart parity tests | 46 |
 | CI gates | Rust unit · Clippy · Dart parity |
 
 ### Quick health check
@@ -86,7 +86,7 @@ cd packages/forja_rust && flutter test
 
 ### Next work (priority order)
 
-1. Port remaining webstreamr sources (frembed, kokoshka, fourkhdhub, vegamovies)
+1. Port more webstreamr extractors (25 remaining)
 2. Real libtorrent in `forja-torrent`
 3. Stremio HTTP / manifest parse through FFI
 
@@ -287,6 +287,10 @@ FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`, `forja_
 | hdhub4u (HTML hubdrive links) | ✅ | ✅ |
 | einschalten (JSON watch API) | ✅ | ✅ |
 | movix (JSON player_links) | ✅ | ✅ |
+| frembed (JSON link* keys) | ✅ | ✅ |
+| kokoshka (HTML dooplayer + JSON embed) | ✅ | ✅ |
+| 4khdhub (HTML download items) | ✅ | ✅ |
+| vegamovies (HTML nexdrive vcloud) | ✅ | ✅ |
 
 ```bash
 cd crates && cargo test -p forja-webstreamr

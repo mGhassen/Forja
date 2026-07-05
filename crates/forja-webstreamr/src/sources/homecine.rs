@@ -32,6 +32,8 @@ pub fn parse_html(html: &str, referer: &str, title: Option<&str>) -> Vec<SourceE
             country_codes,
             referer: Some(referer.to_string()),
             priority: None,
+            height: None,
+            bytes: None,
         });
     }
     out

@@ -115,4 +115,15 @@ void main() {
     expect(rows[0]['url'], 'https://embed.example/a');
     expect(rows[0]['title'], 'Film (2020)');
   });
+
+  test('frembed JSON parse via FFI', () {
+    const body = '{"title":"Film","link1":"/embed/a"}';
+    final json = ForjaRust.instance.parseWebstreamrSourceHtmlJson(
+      'frembed',
+      body,
+      '{"referer":"https://frembed.work","is_series":false,"year":2020}',
+    );
+    final rows = jsonDecode(json) as List<dynamic>;
+    expect(rows[0]['url'], 'https://frembed.work/embed/a');
+  });
 }

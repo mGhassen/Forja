@@ -74,6 +74,8 @@ List<SourceResult>? _sourceResultsFromJson(dynamic decoded) {
         referer: item['referer'] as String?,
         countryCodes: ccs.isEmpty ? null : ccs,
         priority: item['priority'] as int?,
+        height: (item['height'] as num?)?.toInt(),
+        bytes: (item['bytes'] as num?)?.toInt(),
       ),
     ));
   }
@@ -105,6 +107,8 @@ List<SourceResult>? tryRustParseSourceHtml(
   List<CountryCode>? countryCodes,
   bool? isSeries,
   int? year,
+  String? baseUrl,
+  String? bodyKind,
 }) {
   final backend = WebstreamrParseBackend.parseSourceHtmlJson;
   if (backend == null) return null;
@@ -120,6 +124,8 @@ List<SourceResult>? tryRustParseSourceHtml(
         'country_codes': countryCodes.map((c) => c.name).toList(),
       if (isSeries != null) 'is_series': isSeries,
       if (year != null) 'year': year,
+      if (baseUrl != null && baseUrl.isNotEmpty) 'base_url': baseUrl,
+      if (bodyKind != null && bodyKind.isNotEmpty) 'body_kind': bodyKind,
     }),
   );
   if (raw == null) return null;

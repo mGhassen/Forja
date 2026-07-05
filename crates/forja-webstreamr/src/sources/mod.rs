@@ -19,6 +19,10 @@ pub struct SourceEmbed {
     pub country_codes: Vec<String>,
     pub referer: Option<String>,
     pub priority: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytes: Option<u64>,
 }
 
 pub fn format_season_episode(season: i32, episode: i32) -> String {
@@ -51,6 +55,8 @@ pub struct ParseHtmlOpts {
     pub country_codes: Option<Vec<String>>,
     pub is_series: Option<bool>,
     pub year: Option<i32>,
+    pub base_url: Option<String>,
+    pub body_kind: Option<String>,
 }
 
 fn parse_episode_html(
@@ -103,6 +109,34 @@ pub fn parse_source_html(source_id: &str, html: &str, opts_json: &str) -> Vec<So
                 episode: opts.episode,
             },
         ),
+        "frembed" => frembed::parse_json(
+            html,
+            &opts.referer,
+            opts.is_series.unwrap_or(false),
+            opts.season,
+            opts.episode,
+            opts.year,
+        ),
+        "kokoshka" if opts.body_kind.as_deref() == Some("dooplayer") => {
+            kokoshka::parse_dooplayer_json(html, &opts.referer, opts.title.as_deref())
+        }
+        "kokoshka" => kokoshka::parse_page_html(
+            html,
+            opts.base_url.as_deref().unwrap_or(&opts.referer),
+        ),
+        "4khdhub" => fourkhdhub::parse_html(
+            html,
+            &opts.referer,
+            opts.is_series.unwrap_or(false),
+            opts.season,
+            opts.episode,
+        ),
+        "vegamovies" => vegamovies::parse_nexdrive_html(
+            html,
+            &opts.referer,
+            opts.episode,
+            opts.title.as_deref(),
+        ),
         _ => Vec::new(),
     }
 }
@@ -111,10 +145,13 @@ mod cinehdplus;
 mod cuevana;
 mod einschalten;
 mod eurostreaming;
+mod fourkhdhub;
 mod frenchcloud;
+mod frembed;
 mod hdhub4u;
 mod homecine;
 mod kinoger;
+mod kokoshka;
 mod megakino;
 mod meinecloud;
 mod mirrors;
@@ -122,6 +159,7 @@ mod movix;
 mod mostraguarda;
 mod rgshows;
 mod streamkiste;
+mod vegamovies;
 mod verhdlink;
 mod vidsrc;
 mod vixsrc;
@@ -145,6 +183,10 @@ pub fn list_html_sources() -> &'static [&'static str] {
         "hdhub4u",
         "einschalten",
         "movix",
+        "frembed",
+        "kokoshka",
+        "4khdhub",
+        "vegamovies",
     ]
 }
 

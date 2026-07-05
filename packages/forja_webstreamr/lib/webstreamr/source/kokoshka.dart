@@ -1,6 +1,9 @@
 /// Port of webstreamr/src/source/Kokoshka.ts
 library;
 
+import 'dart:convert';
+
+import '../webstreamr_parse.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import '../types.dart';
@@ -41,6 +44,37 @@ class KokoshkaSource extends Source {
     final doc = html_parser.parse(pageHtml);
     final title =
         doc.querySelector('title')?.text.trim() ?? '';
+
+    final rustApis = tryRustParseSourceHtml(
+      this.id,
+      pageHtml,
+      referer: pageUrl.toString(),
+      baseUrl: baseUrl,
+    );
+    if (rustApis != null) {
+      final out = <SourceResult>[];
+      for (final r in rustApis) {
+        try {
+          final resp = await fetcher.json(
+                  ctx,
+                  r.url,
+                  FetcherRequestConfig(
+                      headers: {'Referer': pageUrl.toString()}))
+              as Map<String, dynamic>;
+          final embed = tryRustParseSourceHtml(
+            this.id,
+            jsonEncode(resp),
+            referer: pageUrl.toString(),
+            title: title,
+            bodyKind: 'dooplayer',
+          );
+          if (embed != null) out.addAll(embed);
+        } catch (_) {
+          // skip
+        }
+      }
+      if (out.isNotEmpty) return out;
+    }
 
     final out = <SourceResult>[];
     for (final el in doc.querySelectorAll('.dooplay_player_option')) {

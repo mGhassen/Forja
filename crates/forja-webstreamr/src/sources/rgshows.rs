@@ -29,5 +29,7 @@ pub fn resolve(req: &SourceRequest) -> Vec<SourceEmbed> {
         country_codes: vec!["multi".into()],
         referer: None,
         priority: Some(-1),
+        height: None,
+        bytes: None,
     }]
 }

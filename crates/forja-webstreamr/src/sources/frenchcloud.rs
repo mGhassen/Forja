@@ -26,6 +26,8 @@ pub fn parse_html(html: &str, referer: &str) -> Vec<SourceEmbed> {
             country_codes: vec!["fr".into()],
             referer: Some(referer.to_string()),
             priority: None,
+            height: None,
+            bytes: None,
         });
     }
     out

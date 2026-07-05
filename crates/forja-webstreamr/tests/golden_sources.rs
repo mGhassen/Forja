@@ -212,3 +212,49 @@ fn movix_json_golden() {
     assert_eq!(rows[0].url, "https://embed.example/a");
     assert_eq!(rows[0].title.as_deref(), Some("Film (2020)"));
 }
+
+#[test]
+fn frembed_json_golden() {
+    let body = r#"{"title":"Film","link1":"/embed/a"}"#;
+    let rows = parse_source_html(
+        "frembed",
+        body,
+        r#"{"referer":"https://frembed.work","is_series":false,"year":2020}"#,
+    );
+    assert_eq!(rows[0].url, "https://frembed.work/embed/a");
+}
+
+#[test]
+fn kokoshka_page_golden() {
+    let html = r#"<div class="dooplay_player_option" data-post="1" data-type="movie" data-nume="0"></div>"#;
+    let rows = parse_source_html(
+        "kokoshka",
+        html,
+        r#"{"referer":"https://kokoshka.digital/p","base_url":"https://kokoshka.digital"}"#,
+    );
+    assert!(rows[0].url.contains("/wp-json/dooplayer/v2/"));
+}
+
+#[test]
+fn fourkhdhub_html_golden() {
+    let html = r#"<div class="download-item"><span class="file-title">Film</span> Hindi 1080p <a href="https://hubcloud.example/x">HubCloud</a></div>"#;
+    let rows = parse_source_html(
+        "4khdhub",
+        html,
+        r#"{"referer":"https://4khdhub.example/p","is_series":false}"#,
+    );
+    assert_eq!(rows[0].url, "https://hubcloud.example/x");
+    assert_eq!(rows[0].height, Some(1080));
+}
+
+#[test]
+fn vegamovies_nexdrive_golden() {
+    let html = r#"<a href="https://vcloud.example/a.zip">DL</a>"#;
+    let rows = parse_source_html(
+        "vegamovies",
+        html,
+        r#"{"referer":"https://nexdrive.example/p","title":"1080p"}"#,
+    );
+    assert_eq!(rows[0].url, "https://vcloud.example/a.zip");
+    assert_eq!(rows[0].height, Some(1080));
+}
