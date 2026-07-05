@@ -36,7 +36,7 @@ When working on the Rust engine migration:
 
 - Compare `ForjaRust.instance.*` directly — do not go through `ForjaEngine` delegates.
 - Keep `EpisodeMatcherBackend.matches` null in tests (do not call `ForjaEngine.init`).
-- Shared fixtures live in `crates/*/tests/fixtures/`; Dart copies in `packages/rust/test/parity/dart_baseline/` when needed.
+- Shared fixtures live in `crates/*/tests/fixtures/`; Dart parity tests assert against those goldens only (no `dart_baseline/`).
 - Gate: parity must pass before wiring a new call site.
 
 ## Wire-up pattern

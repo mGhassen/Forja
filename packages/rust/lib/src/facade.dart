@@ -55,6 +55,21 @@ abstract final class ForjaEngine {
       EpisodeMatcherBackend.matches = (file, season, episode) =>
           ForjaRust.instance.episodeMatches(file, season, episode);
 
+      EpisodeMatcherBackend.pickEpisodeIndex = (files, season, episode) {
+        final idx = ForjaRust.instance.pickEpisodeIndexJson(
+          jsonEncode(files),
+          season,
+          episode,
+        );
+        return idx >= 0 ? idx : null;
+      };
+
+      EpisodeMatcherBackend.pickLargestVideoIndex = (files) {
+        final idx =
+            ForjaRust.instance.pickLargestVideoIndexJson(jsonEncode(files));
+        return idx >= 0 ? idx : null;
+      };
+
       HlsParserBackend.parseMaster = (masterUrl, body) {
         final json = ForjaRust.instance.parseHlsMasterJson(masterUrl, body);
         final list = jsonDecode(json) as List;
@@ -74,6 +89,8 @@ abstract final class ForjaEngine {
     }
 
     EpisodeMatcherBackend.matches = null;
+    EpisodeMatcherBackend.pickEpisodeIndex = null;
+    EpisodeMatcherBackend.pickLargestVideoIndex = null;
     HlsParserBackend.parseMaster = null;
   }
 

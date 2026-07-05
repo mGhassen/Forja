@@ -22,7 +22,7 @@
 | **App** | Running app calls Rust when native library loads? |
 | **Dart removed** | Old duplicate / fallback deleted? |
 
-**Done = ✅** when every row in a workstream is ✅/✅. Orchestration (HTTP fetch, registry, `/hls-proxy`) staying in Dart is normal — ports in Phase 3.
+**Done = ✅** when every row in a workstream is ✅/✅. Dart may keep HTTP fetch, registry routing, and shelf proxy — **no parse, crypto, torrent logic, or HTML extractors in Dart**.
 
 ### Workstreams
 
@@ -57,20 +57,25 @@
 | `libtorrent_flutter` removed | ✅ |
 | `TorrentStreamService` Rust-only | ✅ |
 | Dart HTML fallbacks removed | ✅ |
+| Zero Dart engine logic in active packages | ✅ |
+| Dart parity baselines removed (`dart_baseline/`) | ✅ |
+| Disabled Dart-only scrapers deleted | ✅ |
 | Orphan engine copies deleted | ✅ |
 | Legacy `packages/forja_*` duplicates deleted | ✅ |
 | Desktop no libtorrent when dylib loads | ✅ |
 | RFC-009 Step 9 + uniffi POC | partial (UDL + Kotlin gen) |
 
-### What stays Dart after Phase 2 (not engine)
+### What stays Dart after Phase 2 (orchestration only — not engine)
 
 | Area | Package | Why |
 |------|---------|-----|
-| Webstreamr fetch + registry | `packages/webstreamr` | HTTP orchestration |
-| Scraper search HTTP | `packages/scrapers` | HTTP orchestration |
+| Webstreamr HTTP fetch + registry | `packages/webstreamr` | fetch pages, call Rust parse via `*Backend` |
+| Scraper search HTTP | `packages/scrapers` | fetch HTML, call Rust parse via `ScraperParseBackend` |
 | HLS `/hls-proxy` | `local_server_service.dart` | shelf rewrite |
-| Nuvio JS + WebView extractors | app + `forja_api` | UI-layer |
+| Nuvio JS + WebView extractors | app + `packages/api` | UI-layer |
 | Flutter UI + player | `apps/forja` | Phase 3/4 |
+
+**Engine boundary:** all parse / crypto / torrent / template / dedup / episode-match / HLS-parse logic lives in `crates/` only. Dart `*Backend` hooks are thin FFI glue — no fallback implementations.
 
 ### Numbers
 
@@ -127,7 +132,7 @@ Implementation already matches rqbit streaming: `crates/torrent` runs `librqbit:
 | `libtorrent_flutter` in 3 pubspecs | B2 | P2-20 (**done**) |
 | Desktop libtorrent fallback in `TorrentStreamService` | B2 | P2-21 (**done**) |
 | Dart HTML fallbacks in 44 webstreamr files | confidence after B2 | P2-30 (**done**) |
-| Optional scrapers still full Dart (YTS, EZTV, …) | not blocking | P2-40 |
+| Optional scrapers still full Dart (YTS, EZTV, …) | not blocking | P2-40 (**deleted** — re-port to Rust when re-enabled) |
 
 ---
 
@@ -170,10 +175,11 @@ Files: `crates/torrent/`, `packages/streaming/lib/src/torrent_stream_service.dar
 
 | ID | Task | Detail |
 |----|------|--------|
-| P2-40 | Port remaining scrapers to Rust | YTS, EZTV, EliteTorrent, etc. — `crates/scrapers/` |
-| P2-41 | lulustream/fastream stream-fetch parity | Expand Dart parity or document as Rust-only |
+| P2-40 | Port remaining scrapers to Rust | **deferred** — disabled Dart scrapers deleted; only knaben/tpb/uindex active |
+| P2-41 | lulustream/fastream stream-fetch parity | Expand Rust goldens or document as Rust-only |
 | P2-42 | `FORJA_RUST_STRICT=1` on mobile debug | **done** — boot warns/fails on all platforms in debug |
-| P2-62 | Drop Dart parity baselines from CI gate | open — optional; keep until Rust goldens fully replace |
+| P2-62 | Drop Dart parity baselines | **done** — `dart_baseline/` removed; tests use `crates/*/tests/fixtures/` |
+| P2-64 | Zero Dart engine in active packages | **done** — `torrent_filter` + `episode_matcher` Rust-only; dead scrapers deleted |
 
 ### Legacy engine purge (still Phase 2 — blocks Phase 3)
 
@@ -228,7 +234,8 @@ flowchart LR
 - [x] `./scripts/try_build_mobile_torrent.sh ios` passes (vendored iOS patch)
 - [ ] `./scripts/build_rust_mobile.sh all` with full features (Android needs NDK)
 - [x] Zero `libtorrent_flutter` references in active packages
-- [x] Zero `packages/forja_*` duplicate packages
+- [x] Zero Dart engine logic in `packages/{api,core,scrapers,webstreamr,streaming,rust}`
+- [x] `packages/rust/test/parity/dart_baseline/` deleted
 - [ ] `melos run rust:test` + `melos run rust:integration` green (run manually: `flutter test integration_test/` passes)
 - [ ] Release APK/IPA plays magnet via librqbit
 

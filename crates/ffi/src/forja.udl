@@ -2,6 +2,8 @@ namespace forja {
     string version();
     i64 add(i64 a, i64 b);
     boolean episode_matches(string filename, i32 season, i32 episode);
+    i32 pick_episode_index_json(string files_json, i32 season, i32 episode);
+    i32 pick_largest_video_index_json(string files_json);
     string normalize_torrent_title(string title);
     string parse_scene_info_json(string title);
     string unpack_js(string source);

@@ -7,24 +7,14 @@ import 'scraper_parse.dart';
 
 class ScraperAggregator {
   static final List<BaseScraper> _scrapers = [
-    // EliteTorrentScraper(),
-    // EztvScraper(),
-    // IlCorsaroNeroScraper(),
     KnabenScraper(),
-    // LimeTorrentsScraper(),
-    // MegapeerScraper(),
-    // OxTorrentScraper(),
     ThePirateBayScraper(),
-    // TheRarbgScraper(),
-    // TorrentGalaxyScraper(),
     UindexScraper(),
-    // YtsScraper(),
   ];
   
   static Future<List<Map<String, dynamic>>> searchAll(String query) async {
     debugPrint('[ScraperAggregator] Starting search for: $query');
     
-    // Run enabled scrapers in parallel with a timeout to prevent hanging
     final results = await Future.wait(
       _scrapers.map((scraper) async {
         try {
@@ -39,7 +29,6 @@ class ScraperAggregator {
       }),
     );
     
-    // Flatten all results
     final aggregated = <Map<String, dynamic>>[];
     for (final result in results) {
       aggregated.addAll(result);
@@ -49,7 +38,6 @@ class ScraperAggregator {
 
     final unique = ScraperParseBackend.dedupTorrents!(aggregated);
     
-    // Sort by seeders (highest to lowest)
     unique.sort((a, b) {
       final seedersA = _parseSeeders(a['seeders'] as String?);
       final seedersB = _parseSeeders(b['seeders'] as String?);

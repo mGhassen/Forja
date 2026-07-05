@@ -8,10 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   setUpAll(() async {
-    await initRustAndWireDartParityBackends();
+    await initRustAndWireRustBackends();
   });
 
-  test('normalizeTitle parity', () {
+  test('normalizeTitle', () {
     const titles = [
       'Show.S03E07.1080p-WEB-DL',
       'The Movie: Part II (2024)',
@@ -26,16 +26,16 @@ void main() {
     }
   });
 
-  test('parseSceneInfo golden parity', () {
+  test('parseSceneInfo golden', () {
     final raw = File(
       '${_repoRoot()}/crates/utils/tests/fixtures/torrent_filter.json',
     ).readAsStringSync();
     final cases = jsonDecode(raw) as List;
     for (final c in cases) {
       final title = c['title'] as String;
-      final dart = TorrentFilter.parseSceneInfo(title);
       final rustJson = ForjaRust.instance.parseSceneInfoJson(title);
       final rust = jsonDecode(rustJson) as Map<String, dynamic>;
+      final dart = TorrentFilter.parseSceneInfo(title);
 
       expect(rust['season'], dart['season'], reason: title);
       expect(rust['episode'], dart['episode'], reason: title);

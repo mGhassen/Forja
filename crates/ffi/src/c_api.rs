@@ -41,6 +41,22 @@ pub unsafe extern "C" fn forja_episode_matches(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn forja_pick_episode_index_json(
+    files_json: *const c_char,
+    season: i32,
+    episode: i32,
+) -> i32 {
+    crate::pick_episode_index_json(from_c_str(files_json), season, episode)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn forja_pick_largest_video_index_json(
+    files_json: *const c_char,
+) -> i32 {
+    crate::pick_largest_video_index_json(from_c_str(files_json))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn forja_normalize_torrent_title(title: *const c_char) -> *mut c_char {
     to_c_string(crate::normalize_torrent_title(from_c_str(title)))
 }

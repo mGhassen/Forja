@@ -59,6 +59,20 @@ class ForjaRust {
     });
   }
 
+  int pickEpisodeIndexJson(String filesJson, int season, int episode) {
+    return using((arena) {
+      final ptr = filesJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+      return _native.forja_pick_episode_index_json(ptr, season, episode);
+    });
+  }
+
+  int pickLargestVideoIndexJson(String filesJson) {
+    return using((arena) {
+      final ptr = filesJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+      return _native.forja_pick_largest_video_index_json(ptr);
+    });
+  }
+
   String normalizeTorrentTitle(String title) => using((arena) {
         final ptr = title.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.forja_normalize_torrent_title(ptr));
@@ -392,6 +406,16 @@ final class _ForjaNative {
               'forja_episode_matches',
             )
             .asFunction(),
+        forja_pick_episode_index_json = lib
+            .lookup<ffi.NativeFunction<_PickEpisodeIndexNative>>(
+              'forja_pick_episode_index_json',
+            )
+            .asFunction(),
+        forja_pick_largest_video_index_json = lib
+            .lookup<ffi.NativeFunction<_PickLargestVideoIndexNative>>(
+              'forja_pick_largest_video_index_json',
+            )
+            .asFunction(),
         forja_normalize_torrent_title = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'forja_normalize_torrent_title',
@@ -625,6 +649,10 @@ final class _ForjaNative {
   final ffi.Pointer<ffi.Char> Function() forja_version;
   final int Function(int, int) forja_add;
   final bool Function(ffi.Pointer<ffi.Char>, int, int) forja_episode_matches;
+  final int Function(ffi.Pointer<ffi.Char>, int, int)
+      forja_pick_episode_index_json;
+  final int Function(ffi.Pointer<ffi.Char>)
+      forja_pick_largest_video_index_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       forja_normalize_torrent_title;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) forja_unpack_js;
@@ -758,6 +786,14 @@ typedef _EpisodeMatchesNative = ffi.Bool Function(
   ffi.Pointer<ffi.Char>,
   ffi.Int32,
   ffi.Int32,
+);
+typedef _PickEpisodeIndexNative = ffi.Int32 Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Int32,
+  ffi.Int32,
+);
+typedef _PickLargestVideoIndexNative = ffi.Int32 Function(
+  ffi.Pointer<ffi.Char>,
 );
 typedef _StringInOutNative =
     ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>);

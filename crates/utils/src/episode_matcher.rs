@@ -91,40 +91,71 @@ pub fn pick_episode_index(
     season: i32,
     episode: i32,
 ) -> Option<usize> {
-    let videos: Vec<(usize, &String)> = files
+    let sized: Vec<(String, u64)> = files
+        .iter()
+        .map(|name| (name.clone(), 0))
+        .collect();
+    pick_episode_index_sized(&sized, season, episode)
+}
+
+pub fn pick_episode_index_sized(
+    files: &[(String, u64)],
+    season: i32,
+    episode: i32,
+) -> Option<usize> {
+    let videos: Vec<(usize, &String, u64)> = files
         .iter()
         .enumerate()
-        .filter(|(_, name)| is_video(name))
+        .filter(|(_, (name, _))| is_video(name))
+        .map(|(idx, (name, size))| (idx, name, *size))
         .collect();
     if videos.is_empty() {
         return None;
     }
 
-    let strong: Vec<(usize, &String)> = videos
+    let mut strong: Vec<(usize, &String, u64)> = videos
         .iter()
         .copied()
-        .filter(|(_, name)| matches(name, season, episode))
+        .filter(|(_, name, _)| matches(name, season, episode))
         .collect();
     if !strong.is_empty() {
+        strong.sort_by(|a, b| b.2.cmp(&a.2));
         return Some(strong[0].0);
     }
 
-    let has_any_strong = videos.iter().any(|(_, name)| {
+    let has_any_strong = videos.iter().any(|(_, name, _)| {
         let base = basename(name);
         SEASON_EPISODE_PATTERNS.iter().any(|p| p.is_match(&base))
     });
 
     if !has_any_strong {
-        let ep_only: Vec<(usize, &String)> = videos
+        let mut ep_only: Vec<(usize, &String, u64)> = videos
             .iter()
             .copied()
-            .filter(|(_, name)| matches_episode_only(name, episode))
+            .filter(|(_, name, _)| matches_episode_only(name, episode))
             .collect();
         if !ep_only.is_empty() {
+            ep_only.sort_by(|a, b| b.2.cmp(&a.2));
             return Some(ep_only[0].0);
         }
     }
 
+    let mut by_size = videos;
+    by_size.sort_by(|a, b| b.2.cmp(&a.2));
+    Some(by_size[0].0)
+}
+
+pub fn pick_largest_video_index_sized(files: &[(String, u64)]) -> Option<usize> {
+    let mut videos: Vec<(usize, u64)> = files
+        .iter()
+        .enumerate()
+        .filter(|(_, (name, _))| is_video(name))
+        .map(|(idx, (_, size))| (idx, *size))
+        .collect();
+    if videos.is_empty() {
+        return None;
+    }
+    videos.sort_by(|a, b| b.1.cmp(&a.1));
     Some(videos[0].0)
 }
 

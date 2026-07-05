@@ -3,7 +3,6 @@ import 'dart:io';
 
 import '../helpers/rust_engine.dart';
 import 'package:rust/rust.dart';
-import 'dart_baseline/dart_baseline.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -17,7 +16,7 @@ void main() {
     cases = jsonDecode(fixture.readAsStringSync()) as List;
   });
 
-  test('matches golden fixtures — Rust vs Dart', () {
+  test('matches golden fixtures', () {
     for (final raw in cases) {
       final c = raw as Map<String, dynamic>;
       final file = c['file'] as String;
@@ -28,19 +27,23 @@ void main() {
       expect(
         ForjaRust.instance.episodeMatches(file, season, episode),
         expected,
-        reason: 'rust: $file S${season}E$episode',
-      );
-      expect(
-        EpisodeMatcherDart.matches(file, season, episode),
-        expected,
-        reason: 'dart: $file S${season}E$episode',
-      );
-      expect(
-        ForjaRust.instance.episodeMatches(file, season, episode),
-        EpisodeMatcherDart.matches(file, season, episode),
-        reason: 'parity: $file',
+        reason: '$file S${season}E$episode',
       );
     }
+  });
+
+  test('pickEpisodeIndexJson prefers largest matching file', () {
+    const files = [
+      {'name': 'sample.mkv', 'size': 100},
+      {'name': 'Show.S03E07.720p.mkv', 'size': 700},
+      {'name': 'Show.S03E07.1080p.mkv', 'size': 1080},
+    ];
+    final idx = ForjaRust.instance.pickEpisodeIndexJson(
+      jsonEncode(files),
+      3,
+      7,
+    );
+    expect(idx, 2);
   });
 }
 

@@ -38,6 +38,34 @@ fn episode_matches(filename: String, season: i32, episode: i32) -> bool {
     episode_matcher::matches(&filename, season, episode)
 }
 
+fn pick_episode_index_json(files_json: String, season: i32, episode: i32) -> i32 {
+    #[derive(serde::Deserialize)]
+    struct Entry {
+        name: String,
+        #[serde(default)]
+        size: u64,
+    }
+    let entries: Vec<Entry> = serde_json::from_str(&files_json).unwrap_or_default();
+    let sized: Vec<(String, u64)> = entries.into_iter().map(|e| (e.name, e.size)).collect();
+    episode_matcher::pick_episode_index_sized(&sized, season, episode)
+        .map(|i| i as i32)
+        .unwrap_or(-1)
+}
+
+fn pick_largest_video_index_json(files_json: String) -> i32 {
+    #[derive(serde::Deserialize)]
+    struct Entry {
+        name: String,
+        #[serde(default)]
+        size: u64,
+    }
+    let entries: Vec<Entry> = serde_json::from_str(&files_json).unwrap_or_default();
+    let sized: Vec<(String, u64)> = entries.into_iter().map(|e| (e.name, e.size)).collect();
+    episode_matcher::pick_largest_video_index_sized(&sized)
+        .map(|i| i as i32)
+        .unwrap_or(-1)
+}
+
 fn normalize_torrent_title(title: String) -> String {
     torrent_filter::normalize_title(&title)
 }
