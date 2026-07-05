@@ -266,13 +266,15 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
 
   /// Minimum time the splash overlay stays visible. Engine starts almost
   /// instantly, so we hold the splash a bit longer to let MainScreen /
   /// HomeScreen build, layout, paint and prefetch in the background. That
-  /// way, when the overlay fades out, the first frames of the real UI are
+  /// way, when the overlay slides away, the first frames of the real UI are
   /// already warm and scrolling is smooth instead of janky.
-  static const Duration _minSplashDuration = Duration(milliseconds: 2800);
+  static const Duration _minSplashDuration = Duration(seconds: 2);
 
   /// Built once and kept alive in the widget tree behind the splash overlay
   /// so its element (and all child State objects) survive the transition
@@ -282,9 +284,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   /// True while the splash overlay should still be drawn on top.
   bool _showOverlay = true;
 
-  /// Drives the fade-out of the splash overlay once the engine is ready.
-  double _overlayOpacity = 1.0;
-
   @override
   void initState() {
     super.initState();
@@ -292,20 +291,41 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _fadeAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
+
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0, -1),
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeInOutCubic,
+    ));
+    _slideController.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        setState(() => _showOverlay = false);
+      }
+    });
 
     _initEngine();
   }
 
   /// Called once the engine is ready AND the minimum splash time has
-  /// elapsed. Triggers the fade-out and then removes the overlay from
-  /// the tree, leaving the already-warm MainScreen in place.
+  /// elapsed. Slides the overlay up and then removes it from the tree,
+  /// leaving the already-warm MainScreen in place.
   void _dismissSplash() {
-    if (!mounted || !_showOverlay) return;
-    setState(() => _overlayOpacity = 0.0);
+    if (!mounted || !_showOverlay || _slideController.isAnimating) return;
+    if (_slideController.isCompleted) {
+      setState(() => _showOverlay = false);
+      return;
+    }
+    _slideController.forward();
   }
 
   Future<void> _initEngine() async {
@@ -425,6 +445,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void dispose() {
     _fadeController.dispose();
+    _slideController.dispose();
     super.dispose();
   }
 
@@ -434,7 +455,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       children: [
         // The real app — built and laid out behind the splash so widgets,
         // images, fonts and HomeScreen network requests are all warm by
-        // the time the overlay fades out.
+        // the time the overlay slides away.
         Positioned.fill(
           child: IgnorePointer(
             ignoring: _showOverlay,
@@ -445,15 +466,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           Positioned.fill(
             child: IgnorePointer(
               ignoring: true,
-              child: AnimatedOpacity(
-                opacity: _overlayOpacity,
-                duration: const Duration(milliseconds: 600),
-                curve: Curves.easeOut,
-                onEnd: () {
-                  if (_overlayOpacity == 0.0 && mounted) {
-                    setState(() => _showOverlay = false);
-                  }
-                },
+              child: SlideTransition(
+                position: _slideAnimation,
                 child: _buildSplashOverlay(),
               ),
             ),
@@ -464,108 +478,56 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   Widget _buildSplashOverlay() {
     final isLight = AppTheme.isLightMode;
-    const logoGreen = Color(0xFFc0e860);
-    final screenH = MediaQuery.sizeOf(context).height;
 
     return Scaffold(
       body: Container(
         decoration: AppTheme.backgroundDecoration,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned(
-              top: screenH * 0.14,
-              left: -24,
-              child: Transform.rotate(
-                angle: -0.35,
-                child: _splashBrush(
-                  'assets/images/splash-1.png',
-                  width: 260,
-                  isLight: isLight,
-                  tint: logoGreen,
-                  opacity: isLight ? 0.32 : 0.22,
-                ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                isLight
+                    ? 'assets/icon/logo-light.png'
+                    : 'assets/icon/logo-dark.png',
+                height: 110,
+                fit: BoxFit.contain,
               ),
-            ),
-            Positioned(
-              bottom: screenH * 0.18,
-              right: -72,
-              child: Transform.rotate(
-                angle: 0.12,
-                child: _splashBrush(
-                  'assets/images/splash-2.png',
-                  width: 320,
-                  isLight: isLight,
-                  tint: logoGreen,
-                  opacity: isLight ? 0.28 : 0.18,
-                ),
-              ),
-            ),
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    isLight
-                        ? 'assets/icon/logo-light.png'
-                        : 'assets/icon/logo-dark.png',
-                    height: 110,
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(height: 32),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'YOUR CINEMA UNIVERSE',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 10,
-                          color: AppTheme.primaryColor.withValues(alpha: 0.6),
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
+              const SizedBox(height: 32),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'YOUR CINEMA UNIVERSE',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 10,
+                      color: AppTheme.primaryColor.withValues(alpha: 0.6),
+                      fontFamily: 'Poppins',
                     ),
                   ),
-                  const SizedBox(height: 100),
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Text(
-                      'INITIALIZING ENGINE...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 4,
-                        color: isLight ? Colors.black38 : Colors.white38,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 100),
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: Text(
+                  'INITIALIZING ENGINE...',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                    color: isLight ? Colors.black38 : Colors.white38,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  Widget _splashBrush(
-    String asset, {
-    required double width,
-    required bool isLight,
-    required Color tint,
-    required double opacity,
-  }) {
-    Widget image = Image.asset(asset, width: width, fit: BoxFit.contain);
-    if (!isLight) {
-      image = ColorFiltered(
-        colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
-        child: image,
-      );
-    }
-    return Opacity(opacity: opacity, child: image);
   }
 }

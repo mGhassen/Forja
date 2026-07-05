@@ -1,9 +1,10 @@
 # Forja — multi-platform CI (builds from apps/forja)
 name: Build Forja
 
+# PAUSED — uncomment push trigger to resume tag builds
 on:
-  push:
-    tags: ['v*']
+  # push:
+  #   tags: ['v*']
   workflow_dispatch:
 
 env:
