@@ -1,6 +1,6 @@
 # Forja Rust engine
 
-Workspace crates consumed by Flutter via `packages/forja_rust` (FFI, transitional).
+Workspace crates consumed by Flutter via `packages/rust` (FFI, transitional).
 
 **Migration:** [docs/migration/README.md](../docs/migration/README.md) · Phase 1: [01-rust-engine.md](../docs/migration/01-rust-engine.md) · **Active:** [02-rust-engine-complete.md](../docs/migration/02-rust-engine-complete.md)
 
@@ -8,12 +8,14 @@ Workspace crates consumed by Flutter via `packages/forja_rust` (FFI, transitiona
 
 ```bash
 ./scripts/build_rust.sh                    # desktop (torrent + proxy + parsers)
-./scripts/build_rust_mobile.sh ios         # iOS arm64 parsers
-./scripts/build_rust_mobile.sh android     # Android arm64-v8a parsers
+./scripts/build_rust_mobile.sh ios         # iOS arm64 full features
+./scripts/build_rust_mobile.sh android     # Android arm64-v8a full features
 ./scripts/build_rust_mobile.sh all         # both mobile targets
 ```
 
-Mobile builds use `ffi --no-default-features` (parsers + webstreamr only; no librqbit/proxy). Magnet playback on mobile uses `libtorrent_flutter` until librqbit compiles on iOS/Android (blocked: `librqbit-dualstack-sockets` → `bind_device` on iOS). Probe: `./scripts/try_build_mobile_torrent.sh ios`.
+Mobile defaults to **full features** (parsers + librqbit + proxy). Legacy parser-only: `FORJA_RUST_MOBILE_PARSER_ONLY=1`.
+
+iOS librqbit uses a vendored patch for `librqbit-dualstack-sockets` (`crates/third_party/` — see README there). Probe: `./scripts/try_build_mobile_torrent.sh ios`.
 
 ### Android NDK
 

@@ -39,3 +39,7 @@ hyper-util = { version = "0.1", features = ["tokio", "server-auto", "http1"] }
 http-body-util = "0.1"
 tower = "0.5"
 url = "2"
+
+# iOS: upstream 0.7.0 uses bind_device on iOS; Apple needs bind_device_by_index_v4/v6.
+[patch.crates-io]
+librqbit-dualstack-sockets = { path = "third_party/librqbit-dualstack-sockets" }

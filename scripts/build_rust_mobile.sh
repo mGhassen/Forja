@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Cross-compile ffi for iOS/Android (parsers + webstreamr; no librqbit/proxy).
+# Cross-compile ffi for iOS/Android.
 #
-# Desktop torrent/proxy: default features via ./scripts/build_rust.sh
-# Mobile: cargo build -p ffi --no-default-features
+# Default: full features (torrent-engine + local-proxy + parsers).
+# Parser-only (legacy): FORJA_RUST_MOBILE_PARSER_ONLY=1
 #
 # Android: needs NDK (Android Studio, ANDROID_NDK_HOME, or sdk.dir in local.properties)
 # iOS: macOS + Xcode toolchain
@@ -12,7 +12,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/crates"
 
 PROFILE="${FORJA_RUST_PROFILE:-release}"
-MOBILE_FLAGS=(--no-default-features)
+MOBILE_FLAGS=()
+if [[ "${FORJA_RUST_MOBILE_PARSER_ONLY:-}" == "1" ]]; then
+  MOBILE_FLAGS=(--no-default-features)
+  echo "Building mobile FFI parsers only (no torrent/proxy)."
+fi
 
 build_ios() {
   echo "==> iOS arm64"
@@ -154,4 +158,8 @@ case "${1:-all}" in
     ;;
 esac
 
-echo "Mobile Rust engine built (torrent/proxy stubs — libtorrent handles magnet playback on mobile)."
+if [[ "${#MOBILE_FLAGS[@]}" -gt 0 ]]; then
+  echo "Mobile Rust engine built (parsers only — libtorrent for magnet playback)."
+else
+  echo "Mobile Rust engine built (full features: parsers + librqbit + proxy)."
+fi

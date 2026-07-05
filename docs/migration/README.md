@@ -87,6 +87,6 @@ flowchart TB
 
 - Update the **active phase file** when work completes.
 - Phase 1 is frozen except factual corrections.
-- B2 (mobile librqbit / drop `libtorrent_flutter`) is **Phase 2**, not Phase 1 or Phase 3.
+- B2: **librqbit locked** — iOS compile patched; next P2-14 device smoke, then P2-20 drop libtorrent.
 - Do not start Phase 3 until Phase 2 exit criteria are met.
 - Agent workflow: [`.cursor/rules/rust-migration.mdc`](../../.cursor/rules/rust-migration.mdc)

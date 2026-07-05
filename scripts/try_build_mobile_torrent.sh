@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Probe whether ffi can cross-compile with torrent-engine on mobile.
-# Expected to fail on iOS today (librqbit-dualstack-sockets bind_device).
 # Usage: try_build_mobile_torrent.sh [ios|android|all]
 set -euo pipefail
 
@@ -10,6 +9,30 @@ TARGET="${1:-ios}"
 FEATURES="torrent-engine,local-proxy"
 PROFILE="${FORJA_RUST_PROFILE:-release}"
 
+resolve_ndk() {
+  if [[ -n "${ANDROID_NDK_HOME:-}" && -d "$ANDROID_NDK_HOME" ]]; then
+    echo "$ANDROID_NDK_HOME"
+    return
+  fi
+  local props="$ROOT/apps/forja/android/local.properties"
+  if [[ -f "$props" ]]; then
+    local sdk line dir ndk
+    line="$(grep -E '^sdk\.dir=' "$props" | head -1 || true)"
+    if [[ -n "$line" ]]; then
+      dir="${line#sdk.dir=}"
+      dir="${dir//\\:/:}"
+      dir="${dir//\\//}"
+      ndk="$(ls -1d "$dir/ndk"/* 2>/dev/null | sort -V | tail -1 || true)"
+      [[ -n "$ndk" && -d "$ndk" ]] && echo "$ndk" && return
+    fi
+  fi
+  if [[ -d "$HOME/Library/Android/sdk/ndk" ]]; then
+    ls -1d "$HOME/Library/Android/sdk/ndk"/* 2>/dev/null | sort -V | tail -1
+    return
+  fi
+  echo ""
+}
+
 build_ios() {
   echo "==> iOS arm64 + $FEATURES"
   rustup target add aarch64-apple-ios >/dev/null 2>&1 || true
@@ -18,12 +41,15 @@ build_ios() {
 
 build_android() {
   echo "==> Android arm64 + $FEATURES"
-  if [[ -z "${ANDROID_NDK_HOME:-}" ]]; then
-    echo "error: set ANDROID_NDK_HOME or run from CI with setup-ndk" >&2
+  local ndk
+  ndk="$(resolve_ndk)"
+  if [[ -z "$ndk" ]]; then
+    echo "error: Android NDK not found" >&2
     return 1
   fi
+  export ANDROID_NDK_HOME="$ndk"
   local prebuilt
-  prebuilt="$(ls -d "$ANDROID_NDK_HOME"/toolchains/llvm/prebuilt/* 2>/dev/null | head -1)"
+  prebuilt="$(ls -d "$ndk/toolchains/llvm/prebuilt/"* 2>/dev/null | head -1)"
   export CC="$prebuilt/bin/aarch64-linux-android21-clang"
   export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
   rustup target add aarch64-linux-android >/dev/null 2>&1 || true
@@ -45,12 +71,7 @@ case "$TARGET" in
 esac
 
 if [[ "$failed" -ne 0 ]]; then
-  cat >&2 <<'EOF'
-
-Mobile torrent FFI build failed.
-Known iOS issue: librqbit-dualstack-sockets 0.7 — Socket::bind_device unsupported on iOS.
-Magnet playback on mobile stays libtorrent_flutter until upstream fixes or we patch deps.
-EOF
+  echo "Mobile torrent FFI build failed ($TARGET)." >&2
   exit 1
 fi
 

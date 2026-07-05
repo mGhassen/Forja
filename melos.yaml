@@ -15,7 +15,7 @@ scripts:
     description: Build the Rust engine (ffi) for desktop
   rust:build:mobile:
     run: ../../scripts/build_rust_mobile.sh all
-    description: Build ffi for iOS/Android (no librqbit)
+    description: Build ffi for iOS/Android (full features; parser-only with FORJA_RUST_MOBILE_PARSER_ONLY=1)
   rust:test:
     run: |
       cd ../../crates && cargo test --workspace && cargo test -p utils --test golden && cargo test -p iptv-core --test golden_m3u
