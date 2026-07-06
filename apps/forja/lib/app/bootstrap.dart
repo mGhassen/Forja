@@ -18,9 +18,9 @@ import 'package:rust/rust.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:api/api/music_player_service.dart';
 import 'package:streaming/src/site111477_proxy.dart' as site111477_proxy;
-import 'package:core/models/movie.dart';
+import 'package:api/models/movie.dart';
 import 'package:api/services/player_pool_service.dart';
-import 'package:core/utils/webview_cleanup.dart';
+import 'package:forja/shared/utils/webview_cleanup.dart';
 
 import 'package:forja/shell/main_screen.dart';
 import 'package:forja/features/search/search_screen.dart';

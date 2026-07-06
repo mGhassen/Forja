@@ -15,8 +15,6 @@ dependencies:
   crypto: ^3.0.5
   html: ^0.15.4
   logging: ^1.2.0
-  core:
-    path: ../core
   api:
     path: ../api
   rust:

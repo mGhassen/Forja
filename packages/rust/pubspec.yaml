@@ -8,8 +8,6 @@ environment:
 
 dependencies:
   ffi: ^2.1.4
-  core:
-    path: ../core
   flutter:
     sdk: flutter
   path: ^1.9.1

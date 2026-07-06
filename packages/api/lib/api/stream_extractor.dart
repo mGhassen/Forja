@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:core/models/stream_source.dart';
+import 'package:api/models/stream_source.dart';
 import 'amri_extractor.dart';
 import 'tmdb_service.dart';
 

@@ -16,7 +16,7 @@ import 'package:api/api/amri_extractor.dart';
 import 'package:api/api/debrid_api.dart';
 import 'package:api/api/trakt_service.dart';
 import 'package:api/api/simkl_service.dart';
-import 'package:core/models/movie.dart';
+import 'package:api/models/movie.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';

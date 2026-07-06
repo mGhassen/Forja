@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:core/models/movie.dart';
-import 'package:core/models/stream_source.dart';
+import 'package:api/models/movie.dart';
+import 'package:api/models/stream_source.dart';
 import 'package:api/services/external_player_service.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';

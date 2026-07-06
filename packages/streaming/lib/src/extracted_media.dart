@@ -1,4 +1,4 @@
-import 'package:core/core.dart';
+import 'package:api/models/stream_source.dart';
 
 class ExtractedMedia {
   const ExtractedMedia({

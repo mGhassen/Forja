@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 import 'package:api/api/anime_service.dart';
 import 'package:api/api/stream_extractor.dart';
-import 'package:core/models/stream_source.dart';
+import 'package:api/models/stream_source.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:api/api/stream_extractor.dart';
-import 'package:core/utils/webview_cleanup.dart';
+import 'package:forja/shared/utils/webview_cleanup.dart';
 
 class StreamExtractorView extends StatefulWidget {
   final String url;

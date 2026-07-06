@@ -29,7 +29,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:core/models/stream_source.dart';
+import 'package:api/models/stream_source.dart';
 import 'package:api/services/mega_proxy.dart';
 import 'anime_arabic_service.dart';
 

@@ -1,5 +1,8 @@
 library api;
 
+export 'models/stream_source.dart';
+export 'models/torrent_result.dart';
+export 'models/movie.dart';
 export 'api/tmdb_api.dart';
 export 'api/stremio_service.dart';
 export 'api/music_player_service.dart';

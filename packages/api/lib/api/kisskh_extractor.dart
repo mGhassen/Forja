@@ -23,7 +23,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:core/models/stream_source.dart';
+import 'package:api/models/stream_source.dart';
 import 'kisskh_service.dart';
 import 'kisskh_subtitle_decryptor.dart';
 

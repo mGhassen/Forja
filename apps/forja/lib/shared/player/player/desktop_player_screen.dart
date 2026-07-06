@@ -14,14 +14,14 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:core/utils/language_display.dart';
+import 'package:forja/shared/utils/language_display.dart';
 
 import 'utils.dart';
 import 'menus.dart';
 
-import 'package:core/models/movie.dart';
-import 'package:core/models/stream_source.dart';
-import 'package:core/models/torrent_result.dart';
+import 'package:api/models/movie.dart';
+import 'package:api/models/stream_source.dart';
+import 'package:api/models/torrent_result.dart';
 import 'package:rust/rust.dart';
 import 'package:api/api/subtitle_api.dart';
 import 'package:streaming/streaming.dart';

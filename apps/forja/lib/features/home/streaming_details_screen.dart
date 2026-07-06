@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:core/models/movie.dart';
+import 'package:api/models/movie.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:api/api/stream_extractor.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:streaming/streaming.dart';
-import 'package:core/models/stream_source.dart';
+import 'package:api/models/stream_source.dart';
 import 'package:api/api/site111477_service.dart';
 import 'package:streaming/src/site111477_proxy.dart' as site111477_proxy;
 import 'package:rust/rust.dart';

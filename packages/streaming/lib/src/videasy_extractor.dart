@@ -27,7 +27,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 
-import 'package:core/models/stream_source.dart';
+import 'package:api/models/stream_source.dart';
 import 'extracted_media.dart';
 
 class VideasyExtractor {

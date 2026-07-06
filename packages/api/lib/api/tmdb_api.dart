@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:core/models/movie.dart';
+import 'package:api/models/movie.dart';
 
 class TmdbApi {
   static const String _apiKey = 'c3515fdc674ea2bd7b514f4bc3616a4a';

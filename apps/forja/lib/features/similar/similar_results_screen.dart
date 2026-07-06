@@ -19,7 +19,7 @@ import 'package:palette_generator/palette_generator.dart';
 import 'package:api/api/bestsimilar_scraper.dart';
 import 'package:rust/rust.dart';
 import 'package:api/api/tmdb_api.dart';
-import 'package:core/models/movie.dart';
+import 'package:api/models/movie.dart';
 import 'package:forja/shell/app_router.dart';
 
 class SimilarResultsScreen extends StatefulWidget {

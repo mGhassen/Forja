@@ -1,4 +1,4 @@
-import 'package:core/core.dart';
+import 'package:api/models/stream_source.dart';
 import 'package:rust/rust.dart';
 
 enum ProviderKind { template, extractor, api }
