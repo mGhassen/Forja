@@ -1,21 +1,22 @@
 # Phase 3 — Kotlin Compose UI
 
-**Status:** Future (blocked on Phase 2)  
-**Depends on:** [Phase 2 complete](./02-rust-engine-complete.md) — engine 100% Rust, no libtorrent  
+**Status:** Future (blocked on Phase 2 tier-1)  
+**Depends on:** [Phase 2 tier-1 exit checklist](./02-rust-engine-complete.md#tier-1-exit-checklist) — **not** full `packages/api` delete  
 **Next phase:** [Phase 4 — Delete Flutter](./04-delete-flutter.md)  
 **Migration index:** [README.md](./README.md)  
+**Boundary:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)  
 **Spec:** [RFC-011](../rfc/011-v1.0-mvp.md)
 
 ---
 
 ## Status at a glance
 
-**Goal:** replace Flutter **UI** with Compose. **Same Rust engine** — no logic port to Kotlin.
+**Goal:** replace Flutter **UI** with Compose. **Same Rust tier-1 engine** — no tier-1 logic port to Kotlin.
 
 | | |
 |--|--|
 | **Progress** | **0 / 17 tasks (0%)** |
-| **Blocked by** | Phase 2 **P2-80 → P2-87** (engine pipelines) + **P2-86** (kill hooks) |
+| **Blocked by** | [Phase 2 tier-1 exit checklist](./02-rust-engine-complete.md#tier-1-exit-checklist) (P2-83, 88, 90, 91, 14, …) |
 
 **Legend:** ✅ done · 🔄 started · ⬜ not started
 
@@ -42,19 +43,23 @@
 | P3-32 | IPTV | `features/iptv/` |
 | P3-40 | Core browse (home, discover, search, my_list) | feature modules |
 | P3-50 | Remaining 15 tabs | anime, manga, jellyfin, … |
-| P3-51 | Dart package ports (orchestration already in Rust post-P2-80) | `ffi_api`, `streaming`, … |
+| P3-51 | Tier-2 catalog screens — port UI; bridge to `packages/api` temporarily **or** port vertical to Rust (P2-89b) | `packages/api` tier-2 verticals |
 | P3-60 | WebView extractors — **host only** | kisskh, videasy, … |
 | P3-61 | Nuvio JS — **host only** | `nuvio_runtime.dart` |
 | P3-62 | Player PiP / casting stubs | `shared/casting/` |
 | P3-70 | RFC-011 feature parity sign-off | manual + automated smoke |
 
-#### ⬜ Prerequisites (must be done in Phase 2)
+#### Prerequisites (tier-1 — must be done in Phase 2)
 
-All engine Dart packages **already deleted** before Phase 3 starts:
+Phase 2 [tier-1 exit checklist](./02-rust-engine-complete.md#tier-1-exit-checklist) must be ✅:
 
-`packages/api` · `packages/storage` · `packages/core` · `packages/scrapers` · `packages/webstreamr` · `packages/streaming`
+- `packages/streaming`, `packages/storage`, `packages/core` **deleted**
+- Tier-1 engine in `crates/*`; WebStreamr non-blocking (P2-91)
+- Mobile magnet E2E (P2-14)
 
-Phase 3 ports **UI screens only** from `apps/forja` — no Dart package logic, no Kotlin engine reimplementation.
+**`packages/api` may remain** during early Phase 3 — tier-2 catalog only. **Freeze:** no new Dart engine logic. Delete in Phase 3/4 as Compose screens port (P2-89b).
+
+Phase 3 ports **UI screens** from `apps/forja` — tier-1 via Kotlin FFI; tier-2 via temporary api bridge or incremental Rust port.
 
 #### ⬜ Phase 4 deletes
 
@@ -74,7 +79,7 @@ Phase 3 ports **UI screens only** from `apps/forja` — no Dart package logic, n
 
 **0 / 4 exit criteria met.**
 
-**Starts when:** Phase 2 exit checklist fully ✅ (all engine Dart packages deleted).
+**Starts when:** [Phase 2 tier-1 exit checklist](./02-rust-engine-complete.md#tier-1-exit-checklist) is fully ✅.
 
 ---
 
@@ -128,7 +133,7 @@ flowchart LR
 | P3-32 | IPTV | `features/iptv/` | Compose + Rust parsers |
 | P3-40 | Core browse | home, discover, search, my_list | Compose + **Rust engine** for streams; TMDB HTTP may stay UI-adjacent |
 | P3-50 | Remaining tabs | anime, arabic, manga, music, jellyfin, etc. | Feature modules — engine via FFI |
-| P3-51 | Port remaining UI screens | `apps/forja/features/*` | Engine already in Rust; **UI only** |
+| P3-51 | Tier-2 catalog screens | anime, manga, jellyfin, … | UI in Compose; **freeze** tier-2 api or port vertical to Rust per P2-89b |
 | P3-60 | WebView extractors | player embed hosts | `expect/actual` WebView modules |
 | P3-61 | Nuvio JS runtime | `nuvio_runtime.dart` | KMP QuickJS **host** |
 | P3-62 | ~~HLS proxy~~ | — | **Rust** (`crates/proxy`) since P2-85 — Compose uses engine URL |
@@ -139,20 +144,22 @@ flowchart LR
 
 ## Dart package migration map
 
-Phase 3 ports **screens**, not engine logic.
+Phase 3 ports **screens**, not tier-1 engine logic.
 
-| Package | Phase 2 (engine) | Phase 3 (UI) |
-|---------|------------------|--------------|
+| Package | Phase 2 | Phase 3 |
+|---------|---------|---------|
 | `packages/rust` | FFI loader | → `packages/kotlin`; delete Phase 4 |
-| `packages/scrapers`, `webstreamr`, `streaming` | **Deleted** (P2-87) | N/A |
-| `packages/api`, `packages/storage` | **→ Rust** (P2-88/89) | Compose uses same FFI |
-| `packages/core` | DTOs from engine JSON | Kotlin data classes from same JSON |
+| `packages/scrapers`, `webstreamr`, `streaming` | **Deleted** | N/A |
+| `packages/storage`, `core` | **Deleted** (tier-1) | N/A |
+| `packages/api` | Tier-1 slices out; tier-2 **frozen** | Delete incrementally (P2-89b) as screens port |
 
 ---
 
 ## Engine strategy
 
-**Frozen in Rust after Phase 2.** Compose binds the same high-level FFI as Flutter. No fetch/route/filter re-port to Kotlin.
+**Tier-1 frozen in Rust after Phase 2.** Compose binds the same tier-1 FFI as Flutter. Provider race UX stays in Compose (host orchestration per [ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) R6).
+
+Tier-2 catalog may use remaining `packages/api` temporarily — no new Dart logic.
 
 ---
 

@@ -8,7 +8,7 @@ Technical guide for building, running, and contributing to Forja.
 
 ## Architecture
 
-Full system architecture: [ARCHITECTURE.md](ARCHITECTURE.md). As-built inventory: [INVENTORY.md](INVENTORY.md). Boundary decisions: [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md).
+Full system architecture: [ARCHITECTURE.md](ARCHITECTURE.md). As-built inventory: [INVENTORY.md](INVENTORY.md). **Host vs engine rules:** [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md).
 
 Forja is a **melos monorepo**:
 
@@ -17,7 +17,7 @@ Forja is a **melos monorepo**:
 | **UI** | `apps/forja` | Flutter app — transitional; deleted in Phase 4 |
 | **FFI loader** | `packages/rust` | Thin Dart bindings to `libffi` |
 | **Engine** | `crates/*` | Rust — parsers, crypto, extractors, torrent (librqbit), proxy |
-| **Orchestration** | `packages/*` | Dart services (HTTP, registry, shelf) — deleted in Phase 2 |
+| **Orchestration** | `packages/*` | Tier-1 ports to Rust; tier-2 frozen; deleted per [ENGINE_BOUNDARY](ENGINE_BOUNDARY.md) |
 
 ```
 apps/forja (Flutter UI)
@@ -176,7 +176,7 @@ Agent rules: [`.cursor/rules/rust-migration.mdc`](../.cursor/rules/rust-migratio
 |-----|---------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, engine, data flows |
 | [INVENTORY.md](INVENTORY.md) | As-built codebase inventory (facts only) |
-| [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary decisions (draft) |
+| [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary (locked) |
 | [apps/forja/README.md](../apps/forja/README.md) | App run/build, layout |
 | [crates/README.md](../crates/README.md) | Rust crates, NDK, iOS patch |
 | [migration/README.md](migration/README.md) | Migration phases 1–5 |

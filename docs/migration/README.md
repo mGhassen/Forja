@@ -1,7 +1,8 @@
 # Forja global migration
 
-**Last updated:** 2026-07-05  
-**Current phase:** [Phase 2 — Rust engine complete](./02-rust-engine-complete.md)
+**Last updated:** 2026-07-06  
+**Current phase:** [Phase 2 — Rust engine complete](./02-rust-engine-complete.md)  
+**Boundary rules:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
 ---
 
@@ -10,67 +11,76 @@
 | # | Doc | Summary |
 |---|-----|---------|
 | 1 | [01-rust-engine.md](./01-rust-engine.md) | ✅ Rust crates + FFI primitives |
-| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | 🔄 **Port every engine package → `crates/*`, delete Dart engine** |
-| 3 | [03-kotlin-compose.md](./03-kotlin-compose.md) | ⬜ Compose UI — **same Rust engine**, no logic port |
-| 4 | [04-delete-flutter.md](./04-delete-flutter.md) | ⬜ Delete Flutter app + `packages/rust` |
+| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | 🔄 **Tier-1 playback path → Rust; delete playback packages** |
+| 3 | [03-kotlin-compose.md](./03-kotlin-compose.md) | ⬜ Compose UI — **same Rust tier-1 engine** |
+| 4 | [04-delete-flutter.md](./04-delete-flutter.md) | ⬜ Delete Flutter app + `packages/rust` + remaining `packages/api` |
 | 5 | [05-web-client.md](./05-web-client.md) | ⬜ WASM parallel |
 
 ---
 
-## Migration rule (locked — no negotiation)
+## Engine tiers
 
-**Move = rewrite in Rust `crates/*`, expose FFI, delete the Dart package completely.**
+| Tier | Definition | When |
+|------|------------|------|
+| **Tier-1** | Playback path — title → playable URL | Must be Rust before Phase 3 |
+| **Tier-2** | Catalog/metadata APIs (TMDB, verticals) | May stay in host packages until ported incrementally |
+| **Host-only** | WebView, player, OAuth, theme, Nuvio, WASM | Never Rust — see [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) R3 |
 
-There is no “Dart wrapper calling Rust”, no “backend swap”, no “facade until Phase 4”.
-When a package is moved, its Dart source is **gone**.
+---
+
+## Migration rules
+
+**Tier-1 move** = port to `crates/*`, expose FFI, delete Dart equivalent, test.
+
+**Tier-2** = no new Dart engine logic; port when touching a vertical (P2-89b in Phase 3).
+
+**Host slice** = move to `apps/forja` (theme, WebView adapters), not Rust.
+
+There is no “Dart wrapper calling Rust” for tier-1 — delete the Dart file when Rust ships.
 
 ### What survives in `packages/`
 
 | Package | Role | When deleted |
 |---------|------|--------------|
-| **`packages/rust`** | Dart FFI loader + parity tests for Flutter UI | Phase 4 (Flutter gone) |
-| **`packages/kotlin`** | Kotlin/uniffi bindings for Compose UI | **Never** — permanent FFI surface |
+| **`packages/rust`** | Dart FFI loader + parity tests | Phase 4 |
+| **`packages/kotlin`** | Kotlin/uniffi bindings for Compose | **Never** |
+| **`packages/api`** | Tier-2 catalog (transitional) | Phase 3/4 when screens ported |
+| **`packages/{storage,core,streaming}`** | Tier-1 remnants | Phase 2 |
 
-**Everything else under `packages/` is engine and must be deleted** once ported to Rust.
+### Package deletion schedule
 
-### Dart packages — must rewrite in Rust, then delete
-
-| Dart package | Rust destination | Status |
-|--------------|------------------|--------|
-| `packages/api` | `crates/*` (tmdb, debrid, stremio, …) | ⬜ P2-89 |
-| `packages/storage` | `crates/storage` | 🔄 P2-88 — **delete package when done** |
-| `packages/core` | engine JSON / generated types | ⬜ P2-90 |
-| `packages/scrapers` | `crates/scrapers` | ✅ deleted |
-| `packages/webstreamr` | `crates/webstreamr` | ⬜ P2-82 |
-| `packages/streaming` | `crates/streaming`, `crates/proxy`, … | ⬜ P2-83 |
+| Package | Phase 2 | Phase 3 / 4 |
+|---------|---------|-------------|
+| `streaming` | Delete after P2-83, 91, 92 | — |
+| `storage` | Delete after P2-88 (+ theme → app, P2-96) | — |
+| `core` | Delete after P2-90 | — |
+| `api` | Shrink — tier-1 slices out; **freeze tier-2** | Delete when Compose screens ported |
+| `webstreamr` | ✅ deleted — logic in `crates/webstreamr` (**no rollback**) | — |
+| `scrapers` | ✅ deleted | — |
 
 Legacy `packages/forja_*` — already deleted (P2-60).
 
-### Per-package workflow (mandatory)
+### Per tier-1 package workflow
 
-For each engine Dart package:
-
-1. **Port** — implement logic in the matching `crates/<name>/` crate (not a Dart shim).
-2. **FFI** — expose via `crates/ffi` / uniffi (`*_json` or typed API).
-3. **Wire UI** — `apps/forja` calls `Engine.*` only (no intermediate Dart package).
-4. **Delete** — remove the Dart package directory, pubspec deps, and all imports.
-5. **Test** — Rust unit/golden + `packages/rust/test/parity/` for every new FFI. **No migration without tests.**
-
-If step 4 is skipped, the migration is **not done**.
+1. **Port** — implement in matching `crates/<name>/`.
+2. **FFI** — expose via `crates/ffi` / uniffi (`*_json` or typed API); fetch+parse in Rust (Pattern B).
+3. **Wire UI** — `apps/forja` calls `ForjaEngine.*` for tier-1 paths.
+4. **Delete** — remove Dart package slice, pubspec deps, imports.
+5. **Test** — Rust unit/golden + `packages/rust/test/parity/` for new FFI.
 
 ---
 
 ## Architecture
 
-**Engine works in Rust. UI shows pixels.**
+**Tier-1 engine works in Rust. Host shows pixels and platform capabilities.**
 
-| Rust (`crates/*`) | UI only |
-|-------------------|---------|
-| HTTP, APIs (TMDB, Trakt, debrid, Stremio, …) | `apps/forja` widgets |
-| Storage, prefs, watch history | Navigation |
-| Scrapers, webstreamr, stream resolver | Player chrome (media_kit) |
-| Torrent (librqbit), proxy (HLS) | WebView **host** |
-| Parse, crypto, extract, models (JSON) | Theme, loading/error states |
+| Rust tier-1 (`crates/*`) | Host |
+|--------------------------|------|
+| Stream resolve, torrent, proxy, scrapers | Widgets, navigation |
+| Storage, prefs, watch history (tier-1) | Player (media_kit) |
+| Parse, crypto, extract (playback path) | WebView, Nuvio, WASM hosts |
+| | OAuth, secure storage |
+| | Tier-2 catalog (`packages/api` transitional) |
 
 ```mermaid
 flowchart TB
@@ -78,25 +88,28 @@ flowchart TB
   Compose["apps/forja_compose (Phase 3)"]
   RustFFI["packages/rust (Dart FFI)"]
   KotlinFFI["packages/kotlin (uniffi)"]
-  Engine["crates/*"]
+  ApiTier2["packages/api tier-2\n(transitional)"]
+  Engine["crates/* tier-1"]
 
   Flutter --> RustFFI --> Engine
+  Flutter -.-> ApiTier2
   Compose --> KotlinFFI --> Engine
+  Compose -.-> ApiTier2
 ```
 
-No Kotlin orchestration layer. Phase 3 swaps UI; Phase 4 deletes Flutter + `packages/rust`.
+No Kotlin orchestration layer. Phase 3 swaps UI; Phase 4 deletes Flutter + `packages/rust` + `packages/api`.
 
 ---
 
 ## Principles
 
-1. **Rust = engine** — all non-pixel logic lives in `crates/*`.
-2. **UI = show** — call FFI, render JSON; zero engine Dart.
-3. **Move = port + delete** — not rewire, not wrap, not “partial”.
-4. **Phase 2 finishes the engine** — every row in the deletion table above is ✅ before Phase 3.
-5. **Phase 3 = UI swap only** — Compose replaces Flutter; same `crates/*`.
-6. **Phase 4 = delete Flutter** — `apps/forja`, `packages/rust`; keep `packages/kotlin` + `crates/*`.
+1. **Rust = tier-1 engine** — playback path, not every REST client.
+2. **Host = pixels + platform** — R3 classes + tier-2 catalog during transition.
+3. **Tier-1 move = port + delete** — not rewire, not wrap.
+4. **Phase 2 finishes tier-1** — not full `api` port.
+5. **Phase 3 starts** when [tier-1 exit checklist](./02-rust-engine-complete.md#tier-1-exit-checklist) is ✅ (includes P2-14 mobile magnet).
+6. **Phase 4** — delete Flutter, `packages/rust`, remaining `packages/api`.
 
-**Do not start Phase 3** until [Phase 2 exit checklist](./02-rust-engine-complete.md#exit-checklist) is fully ✅.
+**Do not start Phase 3** until the [tier-1 exit checklist](./02-rust-engine-complete.md#tier-1-exit-checklist) is fully ✅.
 
 Agent workflow: [`.cursor/rules/rust-migration.mdc`](../../.cursor/rules/rust-migration.mdc)

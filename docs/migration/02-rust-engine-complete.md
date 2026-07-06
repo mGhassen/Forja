@@ -1,89 +1,80 @@
-# Phase 2 — Rust engine complete
+# Phase 2 — Rust engine complete (tier-1)
 
 **Status:** In progress  
 **Depends on:** [Phase 1 complete](./01-rust-engine.md)  
 **Next phase:** [Phase 3 — Kotlin Compose UI](./03-kotlin-compose.md)  
 **Migration index:** [README.md](./README.md)  
+**Boundary:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)  
 **Spec:** [RFC-009](../rfc/009-rust-ffi.md)
 
 ---
 
-## Migration rule (locked — no negotiation)
+## Goal
 
-**Move = rewrite in Rust `crates/*`, expose FFI, delete the Dart package.**
+**Tier-1 playback path** lives in `crates/*`. Delete `packages/{streaming,storage,core}` and tier-1 slices of `packages/api`.
+
+Tier-2 catalog (`packages/api` verticals) is **frozen** — no new Dart logic; full delete in Phase 3/4 (P2-89b).
+
+---
+
+## Migration rule (tier-1)
 
 | Step | Action |
 |------|--------|
-| 1 | Port Dart engine logic → Rust crate |
-| 2 | Add FFI in `crates/ffi` / uniffi |
-| 3 | UI calls `Engine.*` directly |
-| 4 | **Delete the Dart package** — directory, deps, imports |
+| 1 | Port tier-1 logic → Rust crate |
+| 2 | Add FFI in `crates/ffi` / uniffi (fetch+parse, Pattern B) |
+| 3 | UI calls `ForjaEngine.*` for tier-1 paths |
+| 4 | **Delete the Dart equivalent** — directory slice, deps, imports |
 
-### Only these `packages/` survive
+### Only these `packages/` survive after Phase 2
 
 | Package | Purpose |
 |---------|---------|
-| `packages/rust` | Dart FFI loader (deleted Phase 4 with Flutter) |
-| `packages/kotlin` | uniffi bindings for Compose (permanent) |
-
-### These `packages/` must be rewritten in Rust and deleted
-
-| Dart package | Rust crate(s) | Task |
-|--------------|---------------|------|
-| `packages/api` | tmdb, debrid, stremio, … | P2-89 |
-| `packages/storage` | `crates/storage` | P2-88 |
-| `packages/core` | engine JSON / codegen | P2-90 |
-| `packages/scrapers` | `crates/scrapers` | P2-81 / P2-87 |
-| `packages/webstreamr` | `crates/webstreamr` | P2-82 |
-| `packages/streaming` | `crates/streaming`, `crates/proxy`, … | P2-83 |
-
-**A task is not done until the Dart package (or its engine files) is deleted.**
+| `packages/rust` | Dart FFI loader (deleted Phase 4) |
+| `packages/kotlin` | uniffi bindings (permanent) |
+| `packages/api` | **Tier-2 only** — frozen catalog APIs |
 
 ---
 
 ## Architecture
 
 ```
-UI (apps/forja — Flutter Phase 2 · Compose Phase 3)
-  → widgets, navigation, player chrome ONLY
-  → calls Engine / kotlin FFI, renders JSON
+UI (apps/forja — Flutter · Compose Phase 3)
+  → widgets, navigation, player chrome, provider race UX
+  → calls ForjaEngine / kotlin FFI for tier-1; tier-2 api frozen
 
-Rust engine (crates/* + libffi)
-  → EVERYTHING that is not pixels
+Rust tier-1 (crates/* + libffi)
+  → playback path: stream resolve, torrent, proxy, storage, parsers
 ```
 
-| **Rust engine** | **UI only** |
-|-----------------|-------------|
-| HTTP fetch, external APIs | Widgets |
-| Parse, crypto, extract | Navigation |
-| Torrent (librqbit) | Player surface |
-| Storage, prefs, history | Theme |
-| Scraper / webstreamr / resolver | WebView host |
-| Proxy (HLS rewrite) | Error/loading states |
+| **Rust tier-1** | **Host** |
+|-----------------|----------|
+| Stream resolve, torrent, proxy | Player (media_kit) |
+| Storage, prefs, history | WebView, Nuvio, WASM |
+| Parse, crypto, extract (playback) | OAuth, secure storage |
+| | Theme, navigation |
+| | Tier-2 catalog (`packages/api`) |
 
-**Anti-patterns (never do these):**
-- Dart wrapper calling Rust (`EngineStorage`, thin repos) — **delete the Dart file instead**
-- “Backend swap” — SharedPreferences → Rust KV while keeping Dart package alive
-- `*Backend` static hooks — engine split across two languages
-- `rust_delegates.dart` — direct FFI only (P2-86 ✅)
-- Dart `compute()` calling engine — isolates don't see statics
-- “Orchestration OK in Dart until Phase 3” — **wrong**
-- Leaving a Dart package as “facade until Phase 4” — **wrong**; Phase 2 deletes engine Dart
+**Anti-patterns:**
+- Dart wrapper calling Rust instead of deleting Dart (tier-1)
+- Sync FFI on UI thread for long resolve/search — use isolate (P2-91)
+- New Pattern A FFI (`*_html_json`) for tier-1
+- New engine logic in tier-2 `packages/api`
+- `*Backend` hooks (P2-86 ✅ — stay dead)
 
-**Phase 3** = swap Flutter UI for Compose. Same Rust engine. No logic port to Kotlin.  
-**Phase 4** = delete `apps/forja` + `packages/rust`. Keep `packages/kotlin` + `crates/*`.
+**Allowed:**
+- Host orchestration for provider race + loading/cancel UX ([ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) R6)
+- `Isolate.run` for long FFI calls
 
 ---
 
 ## Status at a glance
 
-**Goal:** every engine package lives in `crates/*`; zero engine Dart under `packages/`.
-
 | | |
 |--|--|
-| **Progress** | **28 / 36 tasks done (78%)** — `scrapers` + `webstreamr` + `ffi_*` deleted |
-| **Blocks Phase 3** | P2-83/87/88/89/90 — Dart engine packages still exist |
-| **Also open** | B2 mobile smoke · JNI proof · sign-off |
+| **Goal** | Tier-1 complete; `streaming` + `storage` + `core` deleted |
+| **Blocks Phase 3** | P2-83, 88, 90, 91, 92, 93, 94, 14 |
+| **Deferred Phase 3** | P2-89b (full api tier-2 port) |
 
 **Legend:** ✅ done · 🔄 partial · ⬜ not started
 
@@ -95,68 +86,77 @@ Rust engine (crates/* + libffi)
 |-----|------|
 | P2-20 → P2-23 | Drop libtorrent |
 | P2-30 → P2-33 | Strip Dart HTML parse fallbacks |
-| **P2-87** | `packages/scrapers` **deleted**; search via `Engine.searchTorrents` only |
-| **P2-60** | Legacy `packages/forja_*` **deleted** (7 orphan packages removed) |
+| **P2-87** | `packages/scrapers` **deleted** |
+| **P2-60** | Legacy `packages/forja_*` **deleted** |
 | P2-12, P2-13, P2-15 | Mobile torrent wiring |
 | P2-50, P2-51 | uniffi UDL + Kotlin bindgen scaffold |
-| **P2-81** | Scraper pipeline → `search_torrents_json`; dead scraper files deleted |
-| **P2-84** | Torrent filter → `filter_torrents_json`; Dart filter logic deleted |
-| **P2-86** | All `*Backend` hooks removed; direct FFI everywhere |
-| **P2-85** | HLS proxy in Rust; Dart HLS rewrite deleted from `local_server_service.dart` |
-| **P2-82** | `packages/webstreamr` **deleted**; full resolve via `ffi_webstreamr_get_streams_json` |
+| **P2-81** | Scraper pipeline → `search_torrents_json` |
+| **P2-84** | Torrent filter → `filter_torrents_json` |
+| **P2-86** | All `*Backend` hooks removed |
+| **P2-85** | HLS proxy in Rust |
+| **P2-82** | `packages/webstreamr` **deleted**; `webstreamr_get_streams_json` in Rust (**no rollback**) |
 
-#### 🔄 Partial — not done until Dart package deleted
+#### 🔄 Partial
 
-| ID | Rust done | Dart still alive (must delete) |
-|----|-----------|--------------------------------|
-| **P2-83** | vidsrc 3-hop (`ffi_resolve_vidsrc_embed_json`), webstreamr service, videasy OpenSSL AES (`ffi_openssl_aes_decrypt_json`), provider URL dedup | **`packages/streaming`** — videasy WASM, nuvio JS runtime, site111477 seekable proxy (~1.5k LOC), `local_server_service` shelf routes |
-| **P2-88** | `crates/storage` KV + FFI; `Engine` storage facade + legacy prefs migration | **`packages/storage`** — `kv.dart` glue, `app_theme.dart`, repos still thin wrappers |
-| **P2-85** | HLS + proxy forward | Jellyfin/toky/comic shelf routes in Dart |
+| ID | Rust done | Dart still alive |
+|----|-----------|------------------|
+| **P2-83** | vidsrc, webstreamr service, videasy AES, provider URLs | **`packages/streaming`** — Nuvio (host), 111477 proxy, shelf routes |
+| **P2-88** | `crates/storage` KV + FFI | **`packages/storage`** — kv glue, `app_theme`, thin repos |
+| **P2-89** | Stremio parse via Rust | Stremio **HTTP still Dart** — P2-93 |
 
-#### 🔄 In progress — B2 mobile
-
-| ID | Done | Left |
-|----|------|------|
-| P2-10 | iOS compile | Android NDK |
-| P2-14 | Desktop magnet E2E | iOS + Android device |
-
-#### ⬜ Todo — port to Rust + delete Dart (blocks Phase 3)
-
-| ID | Dart package to delete | Rust work |
-|----|------------------------|-----------|
-| P2-80 | — | Document + expand FFI surface |
-| **P2-83** | **`packages/streaming`** (engine parts) | site111477 seekable proxy, nuvio host glue; videasy HTTP loop optional |
-| **P2-88** | **`packages/storage`** | Typed settings/history APIs; delete all Dart storage |
-| **P2-89** | **`packages/api`** | TMDB, Trakt, debrid, jackett, subtitles, … |
-| **P2-90** | **`packages/core`** (engine models) | JSON from Rust; UI uses maps/codegen |
-
-#### ⬜ Todo — sign-off
+#### ⬜ Tier-1 todo
 
 | ID | What |
 |----|------|
-| P2-11 | Android NDK CI |
-| P2-52 | JNI packaging proof |
+| **P2-91** | WebStreamr: `Isolate.run` for `webstreamrGetStreamsJson`; cancel token — [issue 001](../issues/001-webstreamr-blocks-ui.md) |
+| **P2-92** | Consolidate shelf + 111477 + mega routes into `crates/proxy` |
+| **P2-93** | Stremio: wire `stremio_http_get_json` (kill Dart HTTP split) |
+| **P2-94** | IPTV: move `iptv_network.dart` HTTP to Rust or unified FFI |
+| **P2-95** | Dead code: unused repos, duplicate `stream_extractor`, `StreamResolver` |
+| **P2-96** | Move `app_theme.dart` → `apps/forja` |
+| **P2-83** | Finish streaming engine delete (with 92) |
+| **P2-88** | Finish storage delete (with 96) |
+| **P2-90** | Delete `packages/core` — JSON from Rust / maps in UI |
+
+#### ⬜ Tier-2 deferred (Phase 3 — P2-89b)
+
+| ID | What |
+|----|------|
+| **P2-89b** | `packages/api` tier-2 verticals — port opportunistically per Compose screen; **freeze** until then |
+
+#### ⬜ Mobile + sign-off
+
+| ID | What |
+|----|------|
+| P2-14 | Magnet → stream mobile E2E |
+| P2-11, P2-52 | Android NDK CI, JNI proof |
 | P2-70 → P2-72 | Smoke · RFC · README gate |
 
-### Exit checklist
+---
+
+## Tier-1 exit checklist
+
+**Phase 3 starts when all rows are ✅.**
 
 | # | Criterion | |
 |---|-----------|---|
-| 1 | `libtorrent_flutter` removed | ✅ |
-| 2 | Dart HTML parse fallbacks removed | ✅ |
-| 3 | Parse/crypto/torrent primitives in Rust | ✅ |
-| 4 | Legacy `packages/forja_*` deleted | ✅ |
-| 5 | Magnet → stream desktop | ✅ |
-| 6 | `packages/scrapers` deleted | ✅ P2-87 |
-| 7 | Torrent filter via Rust; Dart deleted | ✅ P2-84 |
-| 8 | Magnet → stream mobile | ⬜ P2-14 |
-| 9 | `packages/webstreamr` deleted; `packages/streaming` engine deleted | 🔄 P2-82 ✅ · P2-83 partial |
-| 10 | **`packages/api` + `packages/storage` + `packages/core` deleted** | ⬜ P2-88/89/90 |
-| 11 | No `*Backend` hooks | ✅ P2-86 |
-| 12 | Only `packages/rust` + `packages/kotlin` remain under `packages/` (plus no engine code in `apps/forja/lib`) | ⬜ |
-| 13 | Sign-off | ⬜ P2-70 |
+| T1 | `packages/streaming` engine deleted (P2-83, 92) | ⬜ |
+| T2 | `packages/storage` deleted; theme in app (P2-88, 96) | ⬜ |
+| T3 | `packages/core` deleted (P2-90) | ⬜ |
+| T4 | WebStreamr non-blocking (P2-91) | ⬜ |
+| T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | ⬜ |
+| T6 | Mobile magnet E2E (P2-14) | ⬜ |
+| T7 | No tier-1 engine logic in `apps/forja/features/*/data/` except host adapters | ⬜ |
+| T8 | Sign-off (P2-70) | ⬜ |
 
-**Phase 3 starts when #6–#12 are ✅.**
+---
+
+## Full engine exit (Phase 4)
+
+| # | Criterion | |
+|---|-----------|---|
+| F1 | `packages/api` deleted (P2-89b) | ⬜ |
+| F2 | Only `packages/rust` + `packages/kotlin` under `packages/` | ⬜ |
 
 ---
 
@@ -174,18 +174,20 @@ melos run rust:test && melos run rust:integration
 
 ```mermaid
 flowchart LR
-  P2_81["P2-81 scrapers → delete"]
-  P2_82["P2-82 webstreamr → delete"]
-  P2_88["P2-88 storage → delete"]
-  P2_89["P2-89 api → delete"]
-  P2_90["P2-90 core → delete"]
-  P3["Phase3 UI only"]
+  P283["P2-83 streaming"]
+  P288["P2-88 storage"]
+  P290["P2-90 core"]
+  P291["P2-91 webstreamr UX"]
+  P214["P2-14 mobile"]
+  P3["Phase3 Compose"]
+  P289b["P2-89b api tier-2\nopportunistic"]
 
-  P2_81 --> P2_82 --> P2_88 --> P2_89 --> P2_90 --> P3
+  P283 --> P288 --> P290 --> P291 --> P214 --> P3
+  P3 -.-> P289b
 ```
 
 ---
 
 ## Related
 
-- [Phase 1](./01-rust-engine.md) · [Phase 3 UI](./03-kotlin-compose.md) · [RFC-009](../rfc/009-rust-ffi.md)
+- [Phase 1](./01-rust-engine.md) · [Phase 3 UI](./03-kotlin-compose.md) · [ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) · [RFC-009](../rfc/009-rust-ffi.md)

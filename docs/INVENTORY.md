@@ -287,7 +287,7 @@ flowchart LR
 
 6. **Migration progress is uneven** — torrent/webstreamr/vidsrc/scrapers are Rust-backed; Stremio splits HTTP (Dart) / parse (Rust) despite FFI for both; IPTV splits across app feature + Rust parsers.
 
-7. **Deleting packages is a packaging goal** — contents would land in `crates/*`, `apps/forja`, or future Compose adapters depending on boundary rules ([ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md)).
+7. **Deleting packages is phased** — tier-1 in Phase 2; tier-2 `api` in Phase 3/4. See [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) tier model (supersedes “packaging goal only” framing).
 
 ---
 

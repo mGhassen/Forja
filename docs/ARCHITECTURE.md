@@ -12,17 +12,17 @@ Technical architecture reference for the Forja engine and monorepo.
 
 Forja is a **GPL-2.0 melos monorepo**: one cross-platform Flutter product (`apps/forja`) backed by a Rust engine (`crates/*`) exposed through FFI. It is a fat-client media hub — movies/TV, IPTV, music, manga, comics, audiobooks, torrents, Stremio addons, Jellyfin, and more.
 
-**Core principle** (locked in [migration/README.md](migration/README.md)):
+**Core principle** ([ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md)):
 
-> **Engine works in Rust. UI shows pixels.**
+> **Tier-1 engine works in Rust. Host shows pixels and platform capabilities.**
 
 | Concern | Owner |
 |---------|-------|
-| HTTP, APIs, parse, crypto, extract, models | `crates/*` |
-| Torrent (librqbit), local proxy (axum) | `crates/*` |
-| Storage, prefs, watch history | `crates/storage` (port in progress) |
-| Widgets, navigation, player chrome | `apps/forja` |
-| WebView host for JS-heavy extractors | UI layer only |
+| Playback path (stream resolve, torrent, proxy) | `crates/*` (tier-1) |
+| Catalog APIs (TMDB, verticals) | Tier-2 — transitional `packages/api` |
+| Storage, prefs, watch history | `crates/storage` |
+| WebView, Nuvio, WASM, player, OAuth | Host |
+| Widgets, navigation, theme | Host |
 
 ### Target end-state
 
@@ -374,16 +374,16 @@ Engine.init(storagePath)
 
 ## 5. Dart transitional layer
 
-These packages still contain engine logic. **Move = port to `crates/*`, expose FFI, delete the Dart package.**
+See [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) for tier-1 vs tier-2.
 
-| Package | Still in Dart | Rust port status |
-|---------|---------------|------------------|
-| `packages/streaming` | Nuvio JS runtime (`flutter_js`), site111477 seekable proxy, shelf routes in `local_server_service` | P2-83 partial |
-| `packages/storage` | `kv.dart` glue, `app_theme.dart`, thin repos | P2-88 partial |
-| `packages/api` | TMDB, Trakt, debrid, Jackett, Jellyfin, vertical scrapers, subtitles | P2-89 todo |
-| `packages/core` | Dart models (`Movie`, `StreamSource`, …) | P2-90 todo |
+| Package | Tier | Still in Dart | Status |
+|---------|------|---------------|--------|
+| `packages/streaming` | 1 | Nuvio (host), 111477 proxy, shelf routes | P2-83, 92 — delete in Phase 2 |
+| `packages/storage` | 1 | `kv.dart`, `app_theme` (→ app P2-96), repos | P2-88 — delete in Phase 2 |
+| `packages/core` | 1 | DTOs | P2-90 — delete in Phase 2 |
+| `packages/api` | 2 | TMDB, Trakt, verticals | **Frozen** — P2-89b, delete Phase 3/4 |
 
-Deleted Dart packages (logic now in Rust): `packages/scrapers`, `packages/webstreamr`, legacy `packages/forja_*`.
+Deleted (tier-1 in Rust): `packages/scrapers`, `packages/webstreamr` (no rollback), legacy `packages/forja_*`.
 
 ### Package dependency graph
 
@@ -477,53 +477,23 @@ Parity rule: Rust output must match Dart reference for the same fixture before s
 
 ## 8. Migration delta (engine lens)
 
-Snapshot from [02-rust-engine-complete.md](migration/02-rust-engine-complete.md). Progress: **28 / 36 tasks (78%)**.
+See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md).
 
-### Done
+### Tier-1 (Phase 2 — blocks Phase 3)
 
-- `packages/scrapers` deleted → `search_torrents_json`
-- `packages/webstreamr` deleted → `ffi_webstreamr_get_streams_json`
-- Legacy `packages/forja_*` deleted (7 orphan packages)
-- Torrent filter → `filter_torrents_json`; Dart filter logic deleted
-- HLS proxy in Rust; Dart HLS rewrite deleted
-- All `*Backend` hooks removed; direct FFI everywhere
-- libtorrent dropped; librqbit on desktop
+| Status | Items |
+|--------|-------|
+| Done | scrapers, webstreamr (Rust, no rollback), forja_*, torrent filter, HLS proxy, *Backend removed |
+| Partial | streaming (P2-83), storage (P2-88) |
+| Open | P2-91 webstreamr isolate, P2-92 server consolidate, P2-93/94 Stremio/IPTV, P2-90 core, P2-14 mobile |
 
-### Partial (Dart package must be deleted to finish)
+### Tier-2 (deferred — P2-89b)
 
-| Task | Rust done | Dart still alive |
-|------|-----------|------------------|
-| P2-83 streaming | vidsrc 3-hop, webstreamr service, videasy OpenSSL AES, provider URL dedup | Nuvio JS runtime, site111477 seekable proxy, shelf routes |
-| P2-88 storage | `crates/storage` KV + FFI; legacy prefs migration | `kv.dart` glue, `app_theme.dart`, thin repos |
+`packages/api` catalog verticals — **frozen**; delete during Phase 3/4 as Compose screens port.
 
-### Blocks Phase 3
+### Phase 3 gate
 
-| Task | Dart package | Rust work |
-|------|--------------|-----------|
-| P2-89 | `packages/api` | TMDB, Trakt, debrid, jackett, subtitles, … |
-| P2-90 | `packages/core` | Engine JSON / generated types |
-| P2-83 | `packages/streaming` | site111477 seekable proxy, nuvio host glue |
-| P2-88 | `packages/storage` | Typed settings/history APIs |
-
-### Exit checklist (condensed)
-
-| # | Criterion | Status |
-|---|-----------|--------|
-| 1 | `libtorrent_flutter` removed | done |
-| 2 | Dart HTML parse fallbacks removed | done |
-| 3 | Parse/crypto/torrent primitives in Rust | done |
-| 4 | Legacy `packages/forja_*` deleted | done |
-| 5 | Magnet → stream desktop | done |
-| 6 | `packages/scrapers` deleted | done |
-| 7 | Torrent filter via Rust; Dart deleted | done |
-| 8 | Magnet → stream mobile | open (P2-14) |
-| 9 | `packages/webstreamr` deleted; `packages/streaming` engine deleted | partial |
-| 10 | `packages/api` + `packages/storage` + `packages/core` deleted | open |
-| 11 | No `*Backend` hooks | done |
-| 12 | Only `packages/rust` + `packages/kotlin` remain under `packages/` | open |
-| 13 | Sign-off | open |
-
-**Phase 3 starts when #6–#12 are done.**
+[tier-1 exit checklist](migration/02-rust-engine-complete.md#tier-1-exit-checklist) — **not** full `packages/api` delete.
 
 ---
 
@@ -531,21 +501,30 @@ Snapshot from [02-rust-engine-complete.md](migration/02-rust-engine-complete.md)
 
 | Decision | Rationale |
 |----------|-----------|
-| **JSON as FFI IPC** | Simplicity over zero-copy; avoids complex struct marshaling across Dart/Rust |
-| **Dual FFI surface** | C ABI for Dart (hand-maintained); UniFFI UDL for Kotlin codegen — must stay in sync manually |
-| **Long-lived localhost axum servers** | Torrent + proxy run inside `libffi`; Dart controls lifecycle via start/stop/port FFI |
-| **WebView extractors stay in UI** | ~1,900 LOC of JS-heavy extractors remain in Dart/Kotlin adapters ([RFC-009](rfc/009-rust-ffi.md) non-goal) |
-| **`RUST_STRICT=1`** | Hard-fail boot when dylib missing (debug aid) |
-| **Move = port + delete** | No Dart wrapper calling Rust; no backend swap while keeping Dart package alive |
-| **Thin FFI, fat domain** | Business logic in pure crates; `ffi` is glue + JSON boundary only |
+| **Tier-1 / tier-2 split** | Rust owns playback path; catalog APIs port incrementally ([ENGINE_BOUNDARY](ENGINE_BOUNDARY.md)) |
+| **JSON as FFI IPC** | Simplicity over zero-copy |
+| **Dual FFI surface** | C ABI for Dart; UniFFI for Kotlin — sync manually |
+| **FFI Pattern B default** | fetch+parse in Rust; Pattern A (`*_html_json`) legacy only |
+| **No sync FFI on UI thread** | Long resolve → `Isolate.run` (P2-91) |
+| **Host orchestration** | Provider race UX in UI; Rust owns pipelines (webstreamr, torrent search) |
+| **WebView / Nuvio / player host-only** | Platform capabilities — never Rust |
+| **Network is not the boundary** | HTTP location is implementation choice |
+| **Long-lived localhost axum** | Torrent + proxy inside `libffi` |
+| **Thin FFI, fat domain** | Logic in pure crates |
 
-### Anti-patterns (never do)
+### Anti-patterns (tier-1)
 
-- Dart wrapper calling Rust instead of deleting the Dart file
-- `*Backend` static hooks splitting engine across two languages
-- `rust_delegates.dart` — direct FFI only
-- Dart `compute()` for engine work — isolates don't see statics
-- Leaving a Dart package as "facade until Phase 4"
+- Dart wrapper calling Rust instead of deleting Dart
+- Sync FFI on UI thread for resolve/search
+- New Pattern A FFI for tier-1
+- New engine logic in tier-2 `packages/api`
+- `*Backend` hooks (removed P2-86)
+
+### Allowed
+
+- Host provider race + loading/cancel UX
+- Tier-2 `packages/api` frozen during Phase 2/3
+- `Isolate.run` for long FFI calls
 
 ---
 
@@ -554,7 +533,7 @@ Snapshot from [02-rust-engine-complete.md](migration/02-rust-engine-complete.md)
 | Doc | Purpose |
 |-----|---------|
 | [INVENTORY.md](INVENTORY.md) | As-built codebase inventory (facts only) |
-| [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary decisions (draft) |
+| [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary (locked) |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Build, run, melos scripts |
 | [crates/README.md](../crates/README.md) | Rust build, NDK, iOS patch |
 | [migration/README.md](migration/README.md) | Migration phases 1–5 |

@@ -1,48 +1,65 @@
 ---
-description: Rust engine migration — port to crates, delete Dart engine packages
-globs: crates/**,packages/rust/**,docs/migration/**,docs/rfc/009-rust-ffi.md
+description: Rust engine migration — tier-1 port to crates, tier-2 freeze
+globs: crates/**,packages/rust/**,docs/migration/**,docs/ENGINE_BOUNDARY.md,docs/rfc/009-rust-ffi.md
 alwaysApply: false
 ---
 
 # Rust engine migration workflow
 
-## Rule (locked — no negotiation)
+## Rule
 
-**Move = port logic to `crates/*`, expose FFI, delete the Dart package.**
+Read [ENGINE_BOUNDARY.md](../../docs/ENGINE_BOUNDARY.md) first.
 
-Only these survive under `packages/`:
+- **Tier-1** = port to `crates/*`, expose FFI, delete Dart equivalent, test.
+- **Tier-2** = freeze `packages/api` — no new Dart engine logic; port opportunistically in Phase 3 (P2-89b).
+- **Host slice** = move to `apps/forja` (theme, WebView), not Rust.
+
+Only these survive under `packages/` long-term:
 - `packages/rust` — Dart FFI loader (until Phase 4)
 - `packages/kotlin` — uniffi bindings (permanent)
 
-**Delete after port:** `api`, `storage`, `core`, `scrapers`, `webstreamr`, `streaming`.
+**Phase 2 deletes:** `streaming`, `storage`, `core` (tier-1).
+**Phase 3/4 deletes:** remaining `packages/api` (tier-2).
 
-## Mandatory per-package steps
+## Phase 3 gate
+
+[tier-1 exit checklist](../../docs/migration/02-rust-engine-complete.md#tier-1-exit-checklist) — **NOT** full `packages/api` delete.
+
+## Mandatory per tier-1 port
 
 1. Read Dart engine source.
 2. Implement in matching `crates/<name>/`.
-3. Add FFI in `crates/ffi` / uniffi.
-4. Wire `apps/forja` to `Engine.*` only.
-5. **Delete the Dart package** — directory, pubspec deps, imports.
-6. **Tests (required)** — Rust unit/golden in `crates/` + Dart parity in `packages/rust/test/parity/` for every new FFI export.
+3. Add FFI in `crates/ffi` / uniffi — **fetch+parse in Rust** (Pattern B).
+4. Wire `apps/forja` to `ForjaEngine.*` for tier-1 paths.
+5. **Delete the Dart slice** — directory, pubspec deps, imports.
+6. **Tests** — Rust unit/golden + Dart parity in `packages/rust/test/parity/`.
 7. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
 8. Run `./scripts/build_rust.sh`, `cargo test --workspace`, `cd packages/rust && flutter test`.
 
 ## Never do
 
-- Dart wrapper calling Rust (`EngineStorage`, thin repos) instead of deleting Dart
-- Backend swap (SharedPreferences → Rust KV) while keeping Dart package
+- Sync FFI on UI thread for resolve/search — use `Isolate.run` (P2-91)
+- New Pattern A FFI (`*_html_json`) for tier-1
+- New engine logic in tier-2 `packages/api`
+- Dart wrapper calling Rust instead of deleting Dart (tier-1)
 - `*Backend` hooks, `rust_delegates.dart`
-- Engine logic in `compute()` isolates
-- “Partial” migration without deleting Dart files
-- “Facade until Phase 4” for engine packages — Phase 2 deletes them
+- “Facade until Phase 4” for tier-1 packages
+
+## Allowed
+
+- Host orchestration for provider race UX (ENGINE_BOUNDARY R6)
+- Tier-2 `packages/api` frozen during Phase 2/3
+- `Isolate.run` for long FFI calls
+- Nuvio, WebView, WASM, player on host permanently
 
 ## Before coding
 
 1. Read [docs/migration/README.md](../../docs/migration/README.md).
 2. Active: [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
-3. **Do not start Phase 3** until all engine Dart packages are deleted.
+3. Boundary: [ENGINE_BOUNDARY.md](../../docs/ENGINE_BOUNDARY.md).
+4. **Do not start Phase 3** until tier-1 exit checklist is ✅.
 
 ## Doc status
 
-- Phase 3 = UI swap only (Compose replaces Flutter).
-- Phase 4 = delete `apps/forja` + `packages/rust`.
+- Phase 3 = UI swap; tier-2 api may remain temporarily.
+- Phase 4 = delete Flutter, `packages/rust`, `packages/api`.

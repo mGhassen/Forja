@@ -1,25 +1,26 @@
 # RFC-009: Rust core FFI
 
 **Version:** v1.0 engine phase (web/WASM deferred to v3.0)  
-**Status:** **Phase 1 complete** — B2 (mobile librqbit) → [Phase 2](../migration/02-rust-engine-complete.md)
+**Status:** **Phase 1 complete** — Phase 2 tier-1 → [02-rust-engine-complete.md](../migration/02-rust-engine-complete.md)  
+**Boundary:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
 ## Summary
 
-Extract performance-critical and shareable engine logic into Rust crates. Flutter consumes via C ABI (`ffi`) through `packages/rust`. Flutter UI unchanged; Dart becomes thin wrappers with fallbacks.
+Extract tier-1 playback-path logic into Rust crates. Flutter consumes via C ABI (`ffi`) through `packages/rust`. Tier-2 catalog may remain in host packages until Phase 3/4.
 
-**Migration:** [docs/migration/README.md](../migration/README.md) · Phase 1: [01-rust-engine.md](../migration/01-rust-engine.md)
+**Migration:** [docs/migration/README.md](../migration/README.md) · [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
 ## Architecture
 
 ```
 Flutter UI (apps/forja)
-    → orchestrators (stream_resolver, debrid, iptv)
-        → Engine facade (packages/rust)
+    → host: provider race UX, player, WebView adapters
+        → ForjaEngine facade (packages/rust)
             → libffi.dylib/.so/.dll
-                → utils | stream-core | iptv-core | stremio-core | webstreamr | scrapers | torrent | proxy
+                → utils | stream-core | iptv-core | stremio-core | webstreamr | scrapers | torrent | proxy | storage
 ```
 
-WebView extractors (~1,900 LOC) stay in Dart/Kotlin adapters — not in the engine.
+Host orchestration for provider order and loading UX — see [ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) R6. WebView extractors (~1,900 LOC) stay in Dart/Kotlin adapters.
 
 ## Crates
 
@@ -64,11 +65,22 @@ Copies dylib to `apps/forja/macos/Runner/Frameworks/` on macOS.
 | 2 | stream-core | done (5 providers) |
 | 3 | iptv-core | done |
 | 4 | stremio-core | done |
-| 5 | webstreamr | done (fetch/registry in Dart) |
+| 5 | webstreamr | done — fetch+resolve in Rust (`webstreamr_get_streams_json`) |
 | 6 | scrapers | done |
-| 7 | torrent + proxy | done (desktop librqbit; mobile libtorrent) |
+| 7 | torrent + proxy | done (librqbit; mobile B2) |
 | 8 | integration | done |
-| 9 | cleanup | Phase 2 (B2 + drop libtorrent) |
+| 9 | tier-1 cleanup | Phase 2 — [02-rust-engine-complete.md](../migration/02-rust-engine-complete.md) |
+
+## FFI patterns
+
+| Pattern | Description | Status |
+|---------|-------------|--------|
+| **B — fetch+parse** | Rust performs HTTP and parsing (`webstreamr_get_streams_json`, `search_torrents_json`, `stremio_http_get_json`) | **Default for tier-1** |
+| **A — parse-only** | Caller supplies HTML/body (`extract_*_html_json`, `parse_stremio_*_json`) | Legacy; do not add for tier-1 |
+
+## Threading
+
+FFI resolve/search entry points must **not block the UI thread**. Long calls (webstreamr, torrent search) use `Isolate.run` from Dart ([P2-91](../migration/02-rust-engine-complete.md), [issue 001](../issues/001-webstreamr-blocks-ui.md)). Future: async job API or Rust parallel resolve.
 
 ## Tests
 

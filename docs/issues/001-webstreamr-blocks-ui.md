@@ -1,5 +1,6 @@
 # 001 — WebStreamr extraction blocks the UI thread
 
+**Tracked:** P2-91 ([Phase 2 task](../migration/02-rust-engine-complete.md))  
 **Status:** open  
 **Area:** `packages/streaming`, `crates/webstreamr`, `crates/ffi`  
 **Reported:** 2026-07-06
