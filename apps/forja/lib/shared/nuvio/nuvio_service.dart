@@ -166,6 +166,11 @@ class NuvioService {
 
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
+  int _scraperGeneration = 0;
+
+  /// Ignore in-flight [runOneScraper] / JS runtime work (e.g. user Cancel).
+  void cancelPending() => _scraperGeneration++;
+
   Future<List<NuvioAddon>> listAddons() async {
     final prefs = await SharedPreferences.getInstance();
     // One-time migration: prior app versions auto-installed the bundled
@@ -644,7 +649,9 @@ class NuvioService {
     int? season,
     int? episode,
   }) async {
+    final gen = ++_scraperGeneration;
     final addons = await listAddons();
+    if (gen != _scraperGeneration) return const [];
     NuvioAddon? owner;
     NuvioScraper? target;
     for (final a in addons) {
@@ -673,22 +680,24 @@ class NuvioService {
       }
     }
     if (owner == null || target == null) return const [];
+    if (gen != _scraperGeneration) return const [];
 
     try {
-      // Per-click freshness: always re-download the scraper file and reload
-      // it into the JS runtime so any upstream fix is picked up immediately
-      // without the user having to reinstall.
       final code = await _loadScriptBody(owner, target, forceFresh: true);
+      if (gen != _scraperGeneration) return const [];
       if (code == null) return const [];
       final rt = NuvioRuntime.instance;
       await rt.loadScraper(scraperId: target.id, code: code);
+      if (gen != _scraperGeneration) return const [];
       final raw = await rt.getStreams(
         scraperId: target.id,
         tmdbId: tmdbId,
         mediaType: type,
         season: season,
         episode: episode,
+        isCancelled: () => gen != _scraperGeneration,
       );
+      if (gen != _scraperGeneration) return const [];
       final out = <NuvioStreamResult>[];
       for (final m in raw) {
         final url = (m['url'] ?? '').toString();

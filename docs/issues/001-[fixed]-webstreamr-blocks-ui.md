@@ -36,28 +36,25 @@ When WebStreamr resolves streams in the app, the UI freezes for the entire extra
 - Narrow country codes in **Settings → WebStreamr** to reduce scraper load (does not skip all sources — resolver still iterates all 21 when `enabled_sources` is empty).
 - Wait for extraction to finish; app is not crashed.
 
-## Proposed fix (later)
+## Solution (2026-07-06)
 
-### Dart (minimum)
+Offloaded sync FFI to a worker isolate via shared `runRustIsolate` in `packages/rust/lib/src/isolate_runner.dart`:
 
-- Offload `webstreamrGetStreamsJson` to a background isolate (`Isolate.run` / `compute`).
-- Re-init or pass dylib path in the worker isolate (same pattern as `packages/rust/test/helpers/rust_engine.dart`).
-- Wire cancellation token so overlay cancel aborts in-flight work where possible.
+1. Added `runWebstreamrGetStreamsJson(requestJson)` — loads the Rust dylib in the worker (`RustLib.initSync(path)`) and calls `webstreamrGetStreamsJson` there.
+2. Updated `packages/api/lib/playback/webstreamr_service.dart` to `await runWebstreamrGetStreamsJson(...)` instead of calling `RustLib.instance` on the main isolate.
 
-### Rust (performance)
+The UI isolate stays responsive during extraction (spinner animates, navigation works). Rust still uses blocking HTTP internally — that is unchanged.
 
-- Parallelize source resolution (rayon or tokio + async fetcher).
-- Early exit once N playable streams are found.
-- Optional: honor `enabled_sources` from settings / limit sources by enabled country codes at resolver level.
-- Replace `reqwest::blocking` with async + shared client, or document that FFI entry must only be called off the UI thread.
+### Not done (follow-ups)
 
-### UX
-
-- Per-source progress callbacks to update loading message (`Searching vidsrc…`, etc.).
+- Cancellation token from overlay cancel into in-flight Rust work
+- Rust-side parallel source resolution / early exit
+- Per-source progress callbacks (`Searching vidsrc…`, etc.)
 
 ## Related
 
-- `packages/streaming/lib/src/webstreamr_service.dart`
+- `packages/api/lib/playback/webstreamr_service.dart`
+- `packages/rust/lib/src/isolate_runner.dart` — `runWebstreamrGetStreamsJson`
 - `crates/webstreamr/src/resolver.rs` — `get_streams_json`, `resolve_streams`
 - `crates/webstreamr/src/fetcher.rs` — blocking client
 - RFC-009 — WebStreamr Rust golden / FFI parity (done; fetch pipeline still blocking)

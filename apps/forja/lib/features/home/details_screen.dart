@@ -893,6 +893,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       changed = true;
     }
     if (_isNuvioFetching) {
+      NuvioService.instance.cancelPending();
       _nuvioSub?.cancel();
       _nuvioSub = null;
       _isNuvioFetching = false;

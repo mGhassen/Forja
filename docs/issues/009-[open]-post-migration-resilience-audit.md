@@ -13,8 +13,11 @@ Wave 1 migration verified **functional parity** (Rust goldens, happy-path smoke)
 ## Progress (2026-07-06)
 
 - **Details screen** (`details_screen.dart`): generation-token cancel for torrent search (Forja/Jackett/Prowlarr), Stremio fetch (all addons, single addon, custom ID), Nuvio sub cancel; **Cancel** button in results header while fetching.
-- **Streaming details** (`streaming_details_screen.dart`): Cancel stops WebStreamr, Vidsrc (gen token), headless WebView extractors, Videasy provider loop.
+- **Streaming details** (`streaming_details_screen.dart`): Cancel stops WebStreamr, Vidsrc (gen token), Nuvio, headless WebView extractors, Videasy provider loop.
+- **Details Nuvio tab**: Cancel calls `NuvioService.cancelPending()`.
+- **Player fallback** (mobile + desktop): `_fallbackGen` aborts auto-fallback chain on dispose; cancels WebStreamr/Vidsrc/Nuvio in-flight resolves.
 - **IPTV channel scan**: `isCancelled` on portal verify + early exit during parallel portal fetch.
+- **IPTV scrape**: Stop button + cancel gen (issue [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md)).
 - P1 FFI offload closed in [005](005-[fixed]-stremio-http-blocks-ui.md)–[008](008-[fixed]-ci-enforce-no-sync-ffi.md), [011](011-[fixed]-kisskh-hls-sync-ffi.md).
 
 ## Scope — audit each flow
@@ -28,7 +31,7 @@ Wave 1 migration verified **functional parity** (Rust goldens, happy-path smoke)
 | Torrent search | slow scrapers | yes (details) | [007](007-[fixed]-torrent-search-blocks-ui.md) fixed |
 | Vidsrc resolve | embed chain fail | yes (streaming cancel) | [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) fixed |
 | M3U fetch | 403/timeout | no | isolate fixed |
-| Provider race | one provider hangs | yes (streaming cancel) | vidsrc/videasy/webview cancel wired |
+| Provider race | one provider hangs | yes | streaming + player dispose abort |
 
 ## Deliverables
 
@@ -43,5 +46,6 @@ Wave 1 migration verified **functional parity** (Rust goldens, happy-path smoke)
 - [x] Each P1 FFI issue closed or has linked cancel/timeout UX fix
 - [x] IPTV scrape has Stop + bounded empty-page exit
 - [x] IPTV channel scan: Stop + cancel through verify + portal fetch
-- [x] Streaming provider race: cancel invalidates vidsrc / videasy / webview / webstreamr
-- [ ] No operation can loop unbounded without user-visible status + escape hatch (remaining: nuvio scraper, player fallback race)
+- [x] Streaming provider race: cancel invalidates vidsrc / videasy / webview / webstreamr / nuvio
+- [x] Player auto-fallback aborts on exit (no post-pop provider resolve)
+- [ ] No operation can loop unbounded without user-visible status + escape hatch (remaining: manual provider switch in player, widget tests)

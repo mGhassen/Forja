@@ -380,6 +380,7 @@ class NuvioRuntime {
     int? episode,
     Map<String, dynamic>? scraperSettings,
     Duration timeout = const Duration(seconds: 30),
+    bool Function()? isCancelled,
   }) async {
     await _ensureInit();
     if (!_loadedScraperIds.contains(scraperId)) {
@@ -431,6 +432,11 @@ class NuvioRuntime {
     final stopwatch = Stopwatch()..start();
     while (!completer.isCompleted &&
         stopwatch.elapsedMilliseconds < timeout.inMilliseconds) {
+      if (isCancelled?.call() == true) {
+        _pendingResults.remove(callId);
+        debugPrint('[NuvioRuntime] $scraperId cancelled');
+        return [];
+      }
       try {
         rt.executePendingJob();
       } catch (_) {}

@@ -433,6 +433,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   late final Player _player;
   late final VideoController _controller;
   bool _disposed = false;
+  int _fallbackGen = 0;
   bool _historySaved = false;
   bool _hasError = false;
   String _errorMessage = '';
@@ -697,6 +698,11 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   @override
   void dispose() {
     _saveWatchHistory();
+
+    _fallbackGen++;
+    WebStreamrService().cancelPending();
+    VidsrcExtractor.cancelPending();
+    NuvioService.instance.cancelPending();
 
     // Restore screen brightness to system default (mobile only)
     if (Platform.isAndroid || Platform.isIOS) {
@@ -1024,20 +1030,20 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       return;
     }
 
+    final chainGen = _fallbackGen;
     final providerKeys = widget.providers!.keys.toList();
     int currentIndex = providerKeys.indexOf(_currentProvider ?? '');
     
-    // Try the next provider in the list
     for (int i = currentIndex + 1; i < providerKeys.length; i++) {
+      if (_fallbackAborted(chainGen)) return;
       final nextKey = providerKeys[i];
       debugPrint('[Player] Auto-falling back to provider: $nextKey');
       
-      final success = await _silentSwitchProvider(nextKey);
+      final success = await _silentSwitchProvider(nextKey, chainGen: chainGen);
       if (success) return;
     }
 
-    // If we're here, everything failed
-    if (mounted) {
+    if (mounted && !_fallbackAborted(chainGen)) {
       setState(() {
         _hasError = true;
         _errorMessage = 'Could not find any working stream from any provider.';
@@ -1045,8 +1051,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
   }
 
+  bool _fallbackAborted(int chainGen) =>
+      !mounted || _disposed || chainGen != _fallbackGen;
+
   /// Switches provider without showing full error UI on failure, returns success
-  Future<bool> _silentSwitchProvider(String newProvider) async {
+  Future<bool> _silentSwitchProvider(String newProvider, {int? chainGen}) async {
+    final gen = chainGen ?? _fallbackGen;
+    if (_fallbackAborted(gen)) return false;
     try {
       final provider = widget.providers![newProvider];
       String? streamUrl;
@@ -1068,6 +1079,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
               : null;
           hits = await svc.findMovieSources(title: widget.movie!.title, year: year);
         }
+        if (_fallbackAborted(gen)) return false;
         if (hits.isNotEmpty) {
           if (site111477_proxy.is111477ProxyRunning) {
             await site111477_proxy.stop111477Proxy();
@@ -1084,6 +1096,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return false;
         if (webStreamrSources.isNotEmpty) {
           streamUrl = webStreamrSources.first.url;
           sources = webStreamrSources;
@@ -1095,7 +1108,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           isMovie: widget.movie!.mediaType == 'movie',
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
+          isCancelled: () => _fallbackAborted(gen),
         );
+        if (_fallbackAborted(gen)) return false;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -1109,6 +1124,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return false;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -1123,6 +1139,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return false;
         if (results.isNotEmpty) {
           final first = results.first;
           streamUrl = first.url;
@@ -1152,6 +1169,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         
         final extractor = StreamExtractor();
         final result = await extractor.extract(providerUrl);
+        if (_fallbackAborted(gen)) return false;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -1159,6 +1177,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         }
       }
       
+      if (_fallbackAborted(gen)) return false;
       if (streamUrl != null && streamUrl.isNotEmpty) {
         final currentPos = _positionNotifier.value;
         // Reset any stale mpv referrer set by the previous provider/quality
@@ -1168,6 +1187,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           await (_player.platform as NativePlayer).setProperty('referrer', ref);
         }
         await _player.open(Media(streamUrl, httpHeaders: headers));
+        if (_fallbackAborted(gen)) return false;
         if (currentPos.inSeconds > 0) await _player.seek(currentPos);
         _detectHlsQualities(streamUrl, headers);
         

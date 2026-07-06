@@ -226,6 +226,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
           _extractionCancelled = true;
           WebStreamrService().cancelPending();
           VidsrcExtractor.cancelPending();
+          NuvioService.instance.cancelPending();
           unawaited(_extractor.dispose());
           Navigator.of(context).pop();
         },
