@@ -21,16 +21,19 @@ fn sort_by_seeders(mut results: Vec<TorrentSearchResult>) -> Vec<TorrentSearchRe
 }
 
 async fn fetch_html(client: &reqwest::Client, url: &str) -> Result<String, String> {
-    let resp = client
-        .get(url)
-        .header("User-Agent", USER_AGENT)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if !resp.status().is_success() {
-        return Err(format!("HTTP {}", resp.status()));
-    }
-    resp.text().await.map_err(|e| e.to_string())
+    utils::engine_cancel::with_cancel(async {
+        let resp = client
+            .get(url)
+            .header("User-Agent", USER_AGENT)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        if !resp.status().is_success() {
+            return Err(format!("HTTP {}", resp.status()));
+        }
+        resp.text().await.map_err(|e| e.to_string())
+    })
+    .await
 }
 
 async fn search_knaben(client: &reqwest::Client, query: &str) -> Vec<TorrentSearchResult> {
@@ -55,6 +58,9 @@ async fn search_tpb(client: &reqwest::Client, query: &str) -> Vec<TorrentSearchR
     let encoded = urlencoding::encode(query);
     let mut all = Vec::new();
     for page in 1..=TPB_MAX_PAGES {
+        if utils::engine_cancel::is_requested() {
+            break;
+        }
         let url = if page == 1 {
             format!("{TPB_BASE}/s/?q={encoded}&video=on&category=0")
         } else {

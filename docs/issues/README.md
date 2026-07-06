@@ -49,7 +49,8 @@ Rename the file when status changes. **Filename tag and `**Status:**` in the iss
 | [013-[fixed]-…](013-[fixed]-site111477-captcha-still-dart.md) | 111477 index scrape / CF retry — Dart by design | P3 | Low | fixed |
 | [014-[fixed]-…](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) | IPTV Reddit catalog cursor infinite loop | P1 | High | fixed |
 | [015-[fixed]-…](015-[fixed]-rust-blocking-http-engine-debt.md) | Rust blocking HTTP / sync resolve engine debt | P2 | Medium | fixed |
+| [016-[fixed]-…](016-[fixed]-async-job-ffi-hard-cancel.md) | Async job FFI + hard HTTP cancel | P2 | Medium | fixed |
 
-**Sync FFI stack:** [001](001-[fixed]-webstreamr-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md), [011](011-[fixed]-kisskh-hls-sync-ffi.md) — **fixed** via [EngineWorkerPool](../../packages/rust/lib/src/engine_worker.dart) + engine async HTTP ([015](015-[fixed]-rust-blocking-http-engine-debt.md)). Parent [004](004-[fixed]-sync-ffi-ui-thread-audit.md) **fixed**. Cancel/resilience: [009](009-[fixed]-post-migration-resilience-audit.md).
+**Sync FFI stack:** [001](001-[fixed]-webstreamr-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md), [011](011-[fixed]-kisskh-hls-sync-ffi.md), [015](015-[fixed]-rust-blocking-http-engine-debt.md), [016](016-[fixed]-async-job-ffi-hard-cancel.md) — **fixed**. Parent [004](004-[fixed]-sync-ffi-ui-thread-audit.md) **fixed**.
 
 Add new items as `NNN-[open]-short-slug.md`. Set **Priority**, **Severity**, and **Status**. Rename when status changes: `[open]` → `[workaround]` or `[fixed]`.

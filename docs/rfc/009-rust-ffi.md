@@ -80,7 +80,10 @@ Copies dylib to `apps/forja/macos/Runner/Frameworks/` on macOS.
 
 ## Threading
 
-FFI resolve/search entry points must **not block the UI thread**. Long sync FFI runs on a **pooled worker isolate** ([EngineWorkerPool](../../packages/rust/lib/src/engine_worker.dart)) started at `Engine.init()` — 3 workers, round-robin jobs, Rust dylib loaded once per worker.
+FFI resolve/search entry points must **not block the UI thread**.
+
+- **Long I/O** (webstreamr, vidsrc, stremio HTTP, torrent search, IPTV HTTP): [`EngineJobs`](../../packages/rust/lib/src/engine_jobs.dart) — Rust tokio runtime, poll-based completion.
+- **CPU work** (parse, filter, decrypt): [`EngineWorkerPool`](../../packages/rust/lib/src/engine_worker.dart) — 3 worker isolates.
 
 **Engine (shipped — [issue 015](../issues/015-[fixed]-rust-blocking-http-engine-debt.md)):**
 
@@ -89,8 +92,9 @@ FFI resolve/search entry points must **not block the UI thread**. Long sync FFI 
 | `webstreamr` | Shared async `reqwest::Client` + tokio runtime; primary sources resolve in parallel (rayon) with early exit at 8 playable URLs |
 | `stremio-core` | Shared async HTTP client + runtime (no per-call `Runtime::new()`) |
 | `scrapers` | Parallel async `search_all`; FFI entry still sync via shared tokio runtime |
-| Cancel | `engine_cancel_pending()` bumps a generation counter; in-flight jobs call `enter_job()` per worker thread and abort HTTP at next check ([009](../issues/009-[fixed]-post-migration-resilience-audit.md)) |
-| Dart workers | `EngineWorkerPool` — typed job dispatch; replaces per-call `Isolate.run` ([001](../issues/001-[fixed]-webstreamr-blocks-ui.md)–[007](../issues/007-[fixed]-torrent-search-blocks-ui.md), [011](../issues/011-[fixed]-kisskh-hls-sync-ffi.md)) |
+| Cancel | `CancellationToken` + `tokio::select!` aborts in-flight HTTP; `engine_cancel_pending()` cancels all jobs |
+| Dart I/O | `EngineJobs` — submit/poll on Rust tokio runtime (main isolate free) |
+| Dart CPU | `EngineWorkerPool` — parse/decrypt/filter on pooled worker isolates |
 
 ## Tests
 

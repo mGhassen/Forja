@@ -52,36 +52,33 @@ fn fetch_with_headers(
     if url.is_empty() || !url.starts_with("http") {
         return Err("Invalid URL".into());
     }
-    if utils::engine_cancel::is_requested() {
-        return Err(utils::engine_cancel::cancelled_message());
-    }
     RUNTIME.block_on(async {
-        if utils::engine_cancel::is_requested() {
-            return Err(utils::engine_cancel::cancelled_message());
-        }
-        let timeout = Duration::from_secs(timeout_secs.max(1));
-        let client = if headers.is_empty() && body.is_none() {
-            CLIENT.clone()
-        } else {
-            reqwest::Client::builder()
-                .timeout(timeout)
-                .redirect(reqwest::redirect::Policy::limited(8))
-                .build()
-                .map_err(|e| e.to_string())?
-        };
-        let mut req = if let Some(body) = body {
-            client.post(url).body(body.to_string())
-        } else {
-            client.get(url)
-        };
-        req = req.timeout(timeout);
-        for (k, v) in headers {
-            req = req.header(k.as_str(), v.as_str());
-        }
-        let resp = req.send().await.map_err(|e| e.to_string())?;
-        let status = resp.status().as_u16();
-        let body = resp.text().await.map_err(|e| e.to_string())?;
-        Ok(HttpResponse { status, body })
+        utils::engine_cancel::with_cancel(async {
+            let timeout = Duration::from_secs(timeout_secs.max(1));
+            let client = if headers.is_empty() && body.is_none() {
+                CLIENT.clone()
+            } else {
+                reqwest::Client::builder()
+                    .timeout(timeout)
+                    .redirect(reqwest::redirect::Policy::limited(8))
+                    .build()
+                    .map_err(|e| e.to_string())?
+            };
+            let mut req = if let Some(body) = body {
+                client.post(url).body(body.to_string())
+            } else {
+                client.get(url)
+            };
+            req = req.timeout(timeout);
+            for (k, v) in headers {
+                req = req.header(k.as_str(), v.as_str());
+            }
+            let resp = req.send().await.map_err(|e| e.to_string())?;
+            let status = resp.status().as_u16();
+            let body = resp.text().await.map_err(|e| e.to_string())?;
+            Ok(HttpResponse { status, body })
+        })
+        .await
     })
 }
 

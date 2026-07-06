@@ -3,6 +3,7 @@ export 'src/settings_service.dart';
 export 'src/watch_history_service.dart';
 export 'src/engine.dart';
 export 'src/facade.dart';
+export 'src/engine_jobs.dart';
 export 'src/engine_worker.dart';
 export 'src/isolate_runner.dart';
 export 'src/utils/episode_matcher.dart';

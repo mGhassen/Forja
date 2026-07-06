@@ -1,3 +1,4 @@
+mod engine_jobs;
 mod c_api;
 #[cfg(feature = "torrent-engine")]
 mod engine_torrent;
@@ -33,7 +34,15 @@ fn version() -> String {
 }
 
 fn engine_cancel_pending() {
-    utils::engine_cancel::request();
+    engine_jobs::cancel_all();
+}
+
+fn engine_submit_job(kind: u32, payload_json: String) -> u64 {
+    engine_jobs::submit(kind, payload_json)
+}
+
+fn engine_take_job_result(job_id: u64) -> Option<String> {
+    engine_jobs::take_result(job_id)
 }
 
 fn add(a: i64, b: i64) -> i64 {

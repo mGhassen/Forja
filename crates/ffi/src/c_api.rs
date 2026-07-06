@@ -32,6 +32,19 @@ pub extern "C" fn ffi_engine_cancel_pending() {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_engine_submit_job(kind: u32, payload_json: *const c_char) -> u64 {
+    crate::engine_submit_job(kind, from_c_str(payload_json))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_engine_take_job_result(job_id: u64) -> *mut c_char {
+    match crate::engine_take_job_result(job_id) {
+        Some(s) => to_c_string(s),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_add(a: i64, b: i64) -> i64 {
     crate::add(a, b)
 }

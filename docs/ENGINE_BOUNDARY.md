@@ -91,7 +91,10 @@ HTTP location is an implementation detail inside the engine. The split line is *
 ### R5 — FFI
 
 - Default: **fetch+parse in Rust** (Pattern B)
-- **Forbidden:** sync FFI on UI thread for calls expected to exceed ~50ms — route through `EngineWorkerPool` / typed runners in [isolate_runner.dart](../packages/rust/lib/src/isolate_runner.dart) ([001](issues/001-[fixed]-webstreamr-blocks-ui.md)–[007](issues/007-[fixed]-torrent-search-blocks-ui.md))
+- **Forbidden:** sync FFI on UI thread for calls > ~50ms
+- **Long I/O:** [`EngineJobs`](../packages/rust/lib/src/engine_jobs.dart) — Rust tokio runtime ([016](issues/016-[fixed]-async-job-ffi-hard-cancel.md))
+- **CPU / parse:** [`EngineWorkerPool`](../packages/rust/lib/src/engine_worker.dart) — worker isolates
+- Typed entry points: [isolate_runner.dart](../packages/rust/lib/src/isolate_runner.dart)
 - **Deprecated:** Pattern A (`*_html_json` HTML-in) for new engine work
 - Exception: Pattern A OK when host already holds HTML from an active WebView session (C3)
 
@@ -118,7 +121,7 @@ WebView, `flutter_js`, and WASM hosts **cannot** move off the main Dart isolate.
 | Videasy WASM | `packages/api/lib/playback/videasy_extractor.dart` | 5–45s (HTTP + WASM + AES FFI) | ✅ 45s | ✅ `isCancelled` |
 | Arabic WebView fallback | `packages/api/lib/api/arabic_service.dart` | 5–15s | ✅ 15s | via `StreamExtractor.cancel()` |
 
-Rust-side decrypt/resolve for vidsrc/videasy uses isolate offload ([006](issues/006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md)). Long-term: port scrape chains to Rust where Pattern B applies ([010](issues/010-[fixed]-webview-js-extractors-main-thread.md)).
+Rust-side decrypt/resolve for vidsrc/videasy uses [`EngineJobs`](../packages/rust/lib/src/engine_jobs.dart) ([006](issues/006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md), [016](issues/016-[fixed]-async-job-ffi-hard-cancel.md)).
 
 ### R9 — 111477 index scrape stays in Dart (legacy `packages/api`)
 

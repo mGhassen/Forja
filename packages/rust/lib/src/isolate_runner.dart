@@ -1,28 +1,68 @@
+import 'engine_jobs.dart';
 import 'engine_worker.dart';
 
-// ── WebStreamr ──────────────────────────────────────────────────────────────
+// ── Long I/O — Rust tokio jobs (main isolate stays free) ────────────────────
 
 Future<String> runWebstreamrGetStreamsJson(String requestJson) =>
-    EngineWorkerPool.run(
-      EngineJobKind.webstreamrGetStreams,
+    EngineJobs.run(
+      EngineAsyncJob.webstreamrGetStreams,
       {'requestJson': requestJson},
     );
-
-// ── Stremio ─────────────────────────────────────────────────────────────────
 
 Future<String> runStremioHttpGet(String url, {int timeoutSecs = 15}) =>
-    EngineWorkerPool.run(
-      EngineJobKind.stremioHttpGet,
-      {'url': url, 'timeoutSecs': timeoutSecs},
+    EngineJobs.run(
+      EngineAsyncJob.stremioHttpGet,
+      {'url': url, 'timeout_secs': timeoutSecs},
     );
-
-// ── Stream extractors ───────────────────────────────────────────────────────
 
 Future<String> runResolveVidsrcEmbedJson(String requestJson) =>
-    EngineWorkerPool.run(
-      EngineJobKind.resolveVidsrcEmbed,
+    EngineJobs.run(
+      EngineAsyncJob.resolveVidsrcEmbed,
       {'requestJson': requestJson},
     );
+
+Future<String> runSearchTorrentsJson(String query) => EngineJobs.run(
+      EngineAsyncJob.searchTorrents,
+      {'query': query},
+    );
+
+Future<String> runHttpGetJson(
+  String url, {
+  int timeoutSecs = 15,
+  String headersJson = '{}',
+}) =>
+    EngineJobs.run(
+      EngineAsyncJob.httpGet,
+      {
+        'url': url,
+        'timeout_secs': timeoutSecs,
+        'headers_json': headersJson,
+      },
+    );
+
+Future<String> runHttpPostJson(
+  String url, {
+  int timeoutSecs = 15,
+  String headersJson = '{}',
+  String body = '',
+}) =>
+    EngineJobs.run(
+      EngineAsyncJob.httpPost,
+      {
+        'url': url,
+        'timeout_secs': timeoutSecs,
+        'headers_json': headersJson,
+        'body': body,
+      },
+    );
+
+Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
+    EngineJobs.run(
+      EngineAsyncJob.iptvProbeStream,
+      {'url': url, 'timeout_secs': timeoutSecs},
+    );
+
+// ── CPU / fast — worker pool ────────────────────────────────────────────────
 
 Future<String> runOpensslAesDecryptJson(
   String intermediate, {
@@ -31,13 +71,6 @@ Future<String> runOpensslAesDecryptJson(
     EngineWorkerPool.run(
       EngineJobKind.opensslAesDecrypt,
       {'b64': intermediate, 'passphrase': passphrase},
-    );
-
-// ── Torrent search / filter ─────────────────────────────────────────────────
-
-Future<String> runSearchTorrentsJson(String query) => EngineWorkerPool.run(
-      EngineJobKind.searchTorrents,
-      {'query': query},
     );
 
 Future<String> runFilterTorrentsJson(
@@ -62,8 +95,6 @@ Future<String> runSortTorrentsJson(String resultsJson, String preference) =>
       {'resultsJson': resultsJson, 'preference': preference},
     );
 
-// ── Parsers / decrypt ───────────────────────────────────────────────────────
-
 Future<String> runParseM3uJson(String content) => EngineWorkerPool.run(
       EngineJobKind.parseM3u,
       {'content': content},
@@ -79,38 +110,6 @@ Future<String> runDecryptKisskhBody(String body, {String? sourceUrl}) =>
     EngineWorkerPool.run(
       EngineJobKind.decryptKisskh,
       {'body': body, 'sourceUrl': sourceUrl},
-    );
-
-// ── IPTV HTTP / xtream / probe ──────────────────────────────────────────────
-
-Future<String> runHttpGetJson(
-  String url, {
-  int timeoutSecs = 15,
-  String headersJson = '{}',
-}) =>
-    EngineWorkerPool.run(
-      EngineJobKind.httpGet,
-      {
-        'url': url,
-        'timeoutSecs': timeoutSecs,
-        'headersJson': headersJson,
-      },
-    );
-
-Future<String> runHttpPostJson(
-  String url, {
-  int timeoutSecs = 15,
-  String headersJson = '{}',
-  String body = '',
-}) =>
-    EngineWorkerPool.run(
-      EngineJobKind.httpPost,
-      {
-        'url': url,
-        'timeoutSecs': timeoutSecs,
-        'headersJson': headersJson,
-        'body': body,
-      },
     );
 
 Future<String> runParseXtreamCategoriesJson(String json) =>
@@ -129,12 +128,6 @@ Future<String> runParseXtreamSeriesEpisodesJson(String json) =>
     EngineWorkerPool.run(
       EngineJobKind.parseXtreamSeriesEpisodes,
       {'json': json},
-    );
-
-Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
-    EngineWorkerPool.run(
-      EngineJobKind.iptvProbeStream,
-      {'url': url, 'timeoutSecs': timeoutSecs},
     );
 
 Future<String> runDecryptPasteResponse(

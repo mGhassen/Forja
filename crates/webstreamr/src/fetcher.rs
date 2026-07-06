@@ -44,22 +44,24 @@ fn client_for(config: &FetchConfig) -> Result<reqwest::Client, String> {
 }
 
 async fn fetch_text_async(url: &str, config: &FetchConfig) -> Result<String, String> {
-    if utils::engine_cancel::is_requested() {
-        return Err(utils::engine_cancel::cancelled_message());
-    }
-    let client = client_for(config)?;
-    let mut req = client.get(url);
-    for (k, v) in &config.headers {
-        req = req.header(k.as_str(), v.as_str());
-    }
-    req.send()
-        .await
-        .map_err(|e| e.to_string())?
-        .error_for_status()
-        .map_err(|e| e.to_string())?
-        .text()
-        .await
-        .map_err(|e| e.to_string())
+    utils::engine_cancel::with_cancel(async {
+        let client = client_for(config)?;
+        let mut req = client.get(url);
+        for (k, v) in &config.headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        let text = req
+            .send()
+            .await
+            .map_err(|e| e.to_string())?
+            .error_for_status()
+            .map_err(|e| e.to_string())?
+            .text()
+            .await
+            .map_err(|e| e.to_string())?;
+        Ok(text)
+    })
+    .await
 }
 
 async fn fetch_text_post_async(
@@ -67,35 +69,37 @@ async fn fetch_text_post_async(
     body: &str,
     config: &FetchConfig,
 ) -> Result<String, String> {
-    if utils::engine_cancel::is_requested() {
-        return Err(utils::engine_cancel::cancelled_message());
-    }
-    let client = client_for(config)?;
-    let mut req = client.post(url).body(body.to_string());
-    for (k, v) in &config.headers {
-        req = req.header(k.as_str(), v.as_str());
-    }
-    req.send()
-        .await
-        .map_err(|e| e.to_string())?
-        .error_for_status()
-        .map_err(|e| e.to_string())?
-        .text()
-        .await
-        .map_err(|e| e.to_string())
+    utils::engine_cancel::with_cancel(async {
+        let client = client_for(config)?;
+        let mut req = client.post(url).body(body.to_string());
+        for (k, v) in &config.headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        let text = req
+            .send()
+            .await
+            .map_err(|e| e.to_string())?
+            .error_for_status()
+            .map_err(|e| e.to_string())?
+            .text()
+            .await
+            .map_err(|e| e.to_string())?;
+        Ok(text)
+    })
+    .await
 }
 
 async fn final_redirect_url_async(url: &str, config: &FetchConfig) -> Result<String, String> {
-    if utils::engine_cancel::is_requested() {
-        return Err(utils::engine_cancel::cancelled_message());
-    }
-    let client = client_for(config)?;
-    let mut req = client.get(url);
-    for (k, v) in &config.headers {
-        req = req.header(k.as_str(), v.as_str());
-    }
-    let resp = req.send().await.map_err(|e| e.to_string())?;
-    Ok(resp.url().to_string())
+    utils::engine_cancel::with_cancel(async {
+        let client = client_for(config)?;
+        let mut req = client.get(url);
+        for (k, v) in &config.headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        let resp = req.send().await.map_err(|e| e.to_string())?;
+        Ok(resp.url().to_string())
+    })
+    .await
 }
 
 pub fn fetch_text(url: &str, config: &FetchConfig) -> Result<String, String> {

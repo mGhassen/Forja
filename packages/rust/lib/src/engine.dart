@@ -71,6 +71,17 @@ class RustLib {
 
   void engineCancelPending() => _native.ffi_engine_cancel_pending();
 
+  int engineSubmitJob(int kind, String payloadJson) => using((arena) {
+        final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _native.ffi_engine_submit_job(kind, ptr);
+      });
+
+  String? engineTakeJobResult(int jobId) {
+    final ptr = _native.ffi_engine_take_job_result(jobId);
+    if (ptr == ffi.nullptr) return null;
+    return _readString(ptr);
+  }
+
   int add(int a, int b) => _native.ffi_add(a, b);
 
   bool episodeMatches(String filename, int season, int episode) {
@@ -558,6 +569,16 @@ final class _FfiNative {
               'ffi_engine_cancel_pending',
             )
             .asFunction(),
+        ffi_engine_submit_job = lib
+            .lookup<ffi.NativeFunction<_EngineSubmitJobNative>>(
+              'ffi_engine_submit_job',
+            )
+            .asFunction(),
+        ffi_engine_take_job_result = lib
+            .lookup<ffi.NativeFunction<_EngineTakeJobNative>>(
+              'ffi_engine_take_job_result',
+            )
+            .asFunction(),
         ffi_add =
             lib.lookup<ffi.NativeFunction<_AddNative>>('ffi_add').asFunction(),
         ffi_episode_matches = lib
@@ -895,6 +916,8 @@ final class _FfiNative {
   final void Function(ffi.Pointer<ffi.Char>) ffi_free_string;
   final ffi.Pointer<ffi.Char> Function() ffi_version;
   final void Function() ffi_engine_cancel_pending;
+  final int Function(int, ffi.Pointer<ffi.Char>) ffi_engine_submit_job;
+  final ffi.Pointer<ffi.Char> Function(int) ffi_engine_take_job_result;
   final int Function(int, int) ffi_add;
   final bool Function(ffi.Pointer<ffi.Char>, int, int) ffi_episode_matches;
   final int Function(ffi.Pointer<ffi.Char>, int, int)
@@ -1148,6 +1171,12 @@ typedef _KinogerUrlsNative = ffi.Pointer<ffi.Char> Function(
 typedef _StringBoolNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStartNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStopNative = ffi.Void Function();
+typedef _EngineSubmitJobNative = ffi.Uint64 Function(
+  ffi.Uint32,
+  ffi.Pointer<ffi.Char>,
+);
+typedef _EngineTakeJobNative =
+    ffi.Pointer<ffi.Char> Function(ffi.Uint64);
 typedef _TorrentSetPeerLimitNative = ffi.Void Function(ffi.Uint32);
 typedef _TorrentIsRunningNative = ffi.Bool Function();
 typedef _TorrentStreamJsonNative = ffi.Pointer<ffi.Char> Function(
