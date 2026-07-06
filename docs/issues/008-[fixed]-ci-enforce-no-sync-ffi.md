@@ -14,7 +14,7 @@
 | **CI grep + allowlist** | **fixed** | prevents new sync FFI regressions in app/api |
 | **Engine debt** (Rust blocking HTTP) | **open** | unrelated to this issue — [015](015-[open]-rust-blocking-http-engine-debt.md) |
 
-This issue is **fully fixed**. It enforces the symptom-fix pattern (`isolate_runner`); it does not fix Rust internals.
+This issue is **fully fixed**. It enforces the workaround pattern (`isolate_runner`); it does not fix Rust internals.
 
 ## Problem (before fix)
 
