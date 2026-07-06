@@ -2,7 +2,7 @@ mod http;
 
 use serde::{de::Error as DeError, Deserialize, Serialize};
 
-pub use http::{fetch_get, fetch_get_with_headers, HttpResponse};
+pub use http::{fetch_get, fetch_get_with_headers, fetch_post_with_headers, HttpResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct StremioManifest {

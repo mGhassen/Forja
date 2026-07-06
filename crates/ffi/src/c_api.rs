@@ -247,6 +247,21 @@ pub unsafe extern "C" fn ffi_http_get_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_http_post_json(
+    url: *const c_char,
+    timeout_secs: u64,
+    headers_json: *const c_char,
+    body: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::http_post_json(
+        from_c_str(url),
+        timeout_secs,
+        from_c_str(headers_json),
+        from_c_str(body),
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_parse_knaben_html_json(html: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_knaben_html_json(from_c_str(html)))
 }

@@ -9,8 +9,8 @@ use iptv_core::pastesh;
 use scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html, search_all};
 use stream_core::list_providers;
 use stremio_core::{
-    build_resource_url, fetch_get, fetch_get_with_headers, parse_catalog, parse_manifest,
-    parse_meta, parse_streams, parse_subtitles,
+    build_resource_url, fetch_get, fetch_get_with_headers, fetch_post_with_headers, parse_catalog,
+    parse_manifest, parse_meta, parse_streams, parse_subtitles,
 };
 use utils::{
     episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter,
@@ -178,6 +178,20 @@ fn http_get_json(url: String, timeout_secs: u64, headers_json: String) -> String
     let headers: std::collections::HashMap<String, String> =
         serde_json::from_str(&headers_json).unwrap_or_default();
     match fetch_get_with_headers(&url, timeout_secs, &headers) {
+        Ok(resp) => serde_json::to_string(&resp).unwrap_or_else(|_| "{}".into()),
+        Err(e) => serde_json::json!({ "error": e.to_string() }).to_string(),
+    }
+}
+
+fn http_post_json(
+    url: String,
+    timeout_secs: u64,
+    headers_json: String,
+    body: String,
+) -> String {
+    let headers: std::collections::HashMap<String, String> =
+        serde_json::from_str(&headers_json).unwrap_or_default();
+    match fetch_post_with_headers(&url, timeout_secs, &headers, &body) {
         Ok(resp) => serde_json::to_string(&resp).unwrap_or_else(|_| "{}".into()),
         Err(e) => serde_json::json!({ "error": e.to_string() }).to_string(),
     }

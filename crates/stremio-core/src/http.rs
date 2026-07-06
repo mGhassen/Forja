@@ -17,6 +17,24 @@ pub fn fetch_get_with_headers(
     timeout_secs: u64,
     headers: &HashMap<String, String>,
 ) -> Result<HttpResponse, String> {
+    fetch_with_headers(url, timeout_secs, headers, None)
+}
+
+pub fn fetch_post_with_headers(
+    url: &str,
+    timeout_secs: u64,
+    headers: &HashMap<String, String>,
+    body: &str,
+) -> Result<HttpResponse, String> {
+    fetch_with_headers(url, timeout_secs, headers, Some(body))
+}
+
+fn fetch_with_headers(
+    url: &str,
+    timeout_secs: u64,
+    headers: &HashMap<String, String>,
+    body: Option<&str>,
+) -> Result<HttpResponse, String> {
     let url = url.trim();
     if url.is_empty() || !url.starts_with("http") {
         return Err("Invalid URL".into());
@@ -28,7 +46,11 @@ pub fn fetch_get_with_headers(
             .redirect(reqwest::redirect::Policy::limited(8))
             .build()
             .map_err(|e| e.to_string())?;
-        let mut req = client.get(url);
+        let mut req = if let Some(body) = body {
+            client.post(url).body(body.to_string())
+        } else {
+            client.get(url)
+        };
         for (k, v) in headers {
             req = req.header(k.as_str(), v.as_str());
         }

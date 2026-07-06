@@ -241,6 +241,22 @@ class RustLib {
         );
       });
 
+  String httpPostJson(
+    String url, {
+    int timeoutSecs = 15,
+    String headersJson = '{}',
+    String body = '',
+  }) =>
+      using((arena) {
+        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final hdrPtr =
+            headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final bodyPtr = body.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.ffi_http_post_json(urlPtr, timeoutSecs, hdrPtr, bodyPtr),
+        );
+      });
+
   String parseKnabenHtmlJson(String html) => using((arena) {
         final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_parse_knaben_html_json(ptr));
@@ -641,6 +657,11 @@ final class _FfiNative {
               'ffi_http_get_json',
             )
             .asFunction(),
+        ffi_http_post_json = lib
+            .lookup<ffi.NativeFunction<_HttpPostNative>>(
+              'ffi_http_post_json',
+            )
+            .asFunction(),
         ffi_parse_knaben_html_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_parse_knaben_html_json',
@@ -877,6 +898,12 @@ final class _FfiNative {
     int,
     ffi.Pointer<ffi.Char>,
   ) ffi_http_get_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    int,
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) ffi_http_post_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_parse_knaben_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
@@ -1000,6 +1027,12 @@ typedef _StremioHttpGetNative = ffi.Pointer<ffi.Char> Function(
 typedef _HttpGetNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
   ffi.Uint64,
+  ffi.Pointer<ffi.Char>,
+);
+typedef _HttpPostNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Uint64,
+  ffi.Pointer<ffi.Char>,
   ffi.Pointer<ffi.Char>,
 );
 typedef _BuildMovieUrlNative = ffi.Pointer<ffi.Char> Function(

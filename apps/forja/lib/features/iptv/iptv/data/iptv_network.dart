@@ -27,6 +27,29 @@ Future<String?> _engineHttpGet(
   }
 }
 
+Future<String?> _engineHttpPost(
+  String url, {
+  Duration timeout = const Duration(seconds: 10),
+  Map<String, String>? headers,
+  String body = '',
+}) async {
+  try {
+    final raw = RustLib.instance.httpPostJson(
+      url,
+      timeoutSecs: timeout.inSeconds.clamp(1, 120),
+      headersJson: jsonEncode(headers ?? const {}),
+      body: body,
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return null;
+    final status = parsed['status'] as int;
+    if (status < 200 || status >= 300) return null;
+    return parsed['body'] as String;
+  } catch (_) {
+    return null;
+  }
+}
+
 /// Xtream-Codes player_api client. Login + categories + streams + episodes.
 class IptvClient {
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
@@ -665,7 +688,7 @@ class IptvScraper {
           }
         }
       } else {
-        debugPrint('[XML2] list HTTP ${resp.statusCode}');
+        debugPrint('[XML2] list HTTP failed');
       }
     } catch (e) {
       debugPrint('[XML2] list failed: $e');
@@ -1109,26 +1132,23 @@ class IptvScraper {
       final idx = (_oauthClientIdx + i) % _oauthClientIds.length;
       final clientId = _oauthClientIds[idx];
       try {
-        final resp = await http.post(
-          Uri.parse('https://www.reddit.com/api/v1/access_token'),
+        final body = await _engineHttpPost(
+          'https://www.reddit.com/api/v1/access_token',
+          timeout: const Duration(seconds: 8),
           headers: {
             'User-Agent': _oauthUa,
-            'Authorization':
-                'Basic ${base64.encode(utf8.encode('$clientId:'))}',
+            'Authorization': 'Basic ${base64.encode(utf8.encode('$clientId:'))}',
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: {
-            'grant_type':
-                'https://oauth.reddit.com/grants/installed_client',
-            'device_id': 'DO_NOT_TRACK_THIS_DEVICE',
-          },
-        ).timeout(const Duration(seconds: 8));
-        if (resp.statusCode == 200) {
-          final data = json.decode(resp.body) as Map<String, dynamic>;
+          body:
+              'grant_type=https%3A%2F%2Foauth.reddit.com%2Fgrants%2Finstalled_client&device_id=DO_NOT_TRACK_THIS_DEVICE',
+        );
+        if (body != null) {
+          final data = json.decode(body) as Map<String, dynamic>;
           final token = data['access_token'] as String?;
           final expiresIn = data['expires_in'] as int? ?? 3600;
           if (token != null && token.isNotEmpty) {
             _oauthToken = token;
-            // Refresh 60s early to avoid edge-case expiry during requests.
             _oauthTokenExpiry = DateTime.now()
                 .add(Duration(seconds: expiresIn - 60));
             _oauthClientIdx = idx;
@@ -1136,8 +1156,7 @@ class IptvScraper {
             return token;
           }
         }
-        debugPrint(
-            '[Catalog] OAuth auth failed (client #$idx): ${resp.statusCode}');
+        debugPrint('[Catalog] OAuth auth failed (client #$idx)');
       } catch (e) {
         debugPrint('[Catalog] OAuth auth error (client #$idx): $e');
       }
