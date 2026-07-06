@@ -512,14 +512,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.6.0"
-  http_methods:
-    dependency: transitive
-    description:
-      name: http_methods
-      sha256: "6bccce8f1ec7b5d701e7921dca35e202d425b57e317ba1a37f2638590e29e566"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.1"
   http_parser:
     dependency: transitive
     description:
@@ -1124,30 +1116,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.1"
-  shelf:
-    dependency: transitive
-    description:
-      name: shelf
-      sha256: e7dd780a7ffb623c57850b33f43309312fc863fb6aa3d276a754bb299839ef12
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.4.2"
-  shelf_proxy:
-    dependency: transitive
-    description:
-      name: shelf_proxy
-      sha256: "0c3a7b2b4c111cae8a6d9077701e0622c6013d38a780373ac359d6d45b3aa10b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.5"
-  shelf_router:
-    dependency: transitive
-    description:
-      name: shelf_router
-      sha256: f5e5d492440a7fb165fe1e2e1a623f31f734d3370900070b2b1e0d0428d59864
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.4"
   shimmer:
     dependency: "direct main"
     description:
@@ -1233,13 +1201,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.12.1"
-  storage:
-    dependency: "direct main"
-    description:
-      path: "../../packages/storage"
-      relative: true
-    source: path
-    version: "1.0.0"
   stream_channel:
     dependency: transitive
     description:

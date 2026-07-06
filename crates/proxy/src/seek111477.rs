@@ -22,7 +22,6 @@ use tokio::io::SeekFrom;
 use tokio::sync::{Notify, RwLock};
 
 const CHUNK_SIZE: u64 = 4 * 1024 * 1024;
-const FORWARD_BUFFER_BYTES: u64 = 256 * 1024 * 1024;
 const RECONNECT_DELAY_MS: u64 = 1500;
 const MAX_RECONNECTS: u32 = 20;
 const MAX_REDIRECTS: u32 = 8;
@@ -54,7 +53,6 @@ struct FileMeta {
 
 #[derive(Clone)]
 struct SharedState {
-    original_url: String,
     target_url: Arc<RwLock<String>>,
     cache_key_dir: PathBuf,
     meta: Arc<RwLock<Option<FileMeta>>>,
@@ -101,7 +99,6 @@ impl Seek111477Proxy {
         extra_headers.extend(req.headers);
 
         let state = Arc::new(SharedState {
-            original_url: req.upstream_url.clone(),
             target_url: Arc::new(RwLock::new(req.upstream_url.clone())),
             cache_key_dir,
             meta: Arc::new(RwLock::new(None)),

@@ -6,13 +6,6 @@ use axum::{
 
 use crate::ProxyState;
 
-pub fn build_comic_proxy_url(proxy_base: &str, url: &str) -> String {
-    format!(
-        "{proxy_base}/comic-proxy?url={}",
-        urlencoding::encode(url)
-    )
-}
-
 fn comic_target_url(raw: Option<&str>) -> Option<String> {
     let query = raw?;
     let rest = query.strip_prefix("url=")?;

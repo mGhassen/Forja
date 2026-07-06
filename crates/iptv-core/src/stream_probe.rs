@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn detects_ts_sync() {
-        let mut buf = vec![0x47; 600];
+        let buf = vec![0x47; 600];
         assert!(has_video_signature(&buf));
     }
 }
