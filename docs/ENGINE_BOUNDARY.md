@@ -68,7 +68,7 @@ Migration is sequenced in **two waves** (playback, then catalog) — scheduling 
 
 All non-platform logic:
 
-- **Playback (wave 1):** `webstreamr`, `torrent`, `proxy`, `scrapers`, `stream-core`, `stremio-core` (P2-93), `site111477` (P2-83), `storage`, `utils`, `iptv-core` (P2-94), consolidated local HTTP (P2-92)
+- **Playback (wave 1):** `webstreamr`, `torrent`, `proxy` (incl. `seek111477`), `scrapers`, `stream-core`, `stremio-core` (P2-93), `storage`, `utils`, `iptv-core` (P2-94), consolidated local HTTP (P2-92)
 - **Catalog (wave 2):** TMDB, Trakt, Jellyfin, anime, manga, music, Arabic verticals — port from `packages/api` to `crates/*` (Phase 3)
 
 **No new engine logic in Dart** — port to `crates/*` when touching.
@@ -119,6 +119,18 @@ WebView, `flutter_js`, and WASM hosts **cannot** move off the main Dart isolate.
 | Arabic WebView fallback | `packages/api/lib/api/arabic_service.dart` | 5–15s | ✅ 15s | via `StreamExtractor.cancel()` |
 
 Rust-side decrypt/resolve for vidsrc/videasy uses isolate offload ([006](issues/006-[workaround]-vidsrc-videasy-extractors-blocks-ui.md)). Long-term: port scrape chains to Rust where Pattern B applies ([010](issues/010-[fixed]-webview-js-extractors-main-thread.md)).
+
+### R9 — 111477 index scrape stays in Dart (legacy `packages/api`)
+
+**Decision (2026-07-06):** Permanent host/legacy-api responsibility until Phase 3 catalog port — [013](issues/013-[fixed]-site111477-captcha-still-dart.md).
+
+| Component | Location | Engine? |
+|-----------|----------|---------|
+| Index fetch + CF/rate-limit retry (429, error 1015) | `packages/api/lib/api/site111477_service.dart` | Legacy API — **not** engine |
+| Seekable localhost proxy | `crates/proxy/src/seek111477.rs` | **Engine** (C7) |
+| Proxy FFI glue | `packages/api/lib/playback/site111477_proxy.dart` | Thin wrapper |
+
+The Rust proxy receives a **resolved file URL** only. Cloudflare backoff is not duplicated in Rust by design. See [crates/proxy/README.md](../../crates/proxy/README.md).
 
 ---
 

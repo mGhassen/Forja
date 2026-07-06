@@ -46,7 +46,7 @@ Rename the file when status changes. **Filename tag and `**Status:**` in the iss
 | [010-[fixed]-…](010-[fixed]-webview-js-extractors-main-thread.md) | WebView / JS / WASM extractors main thread | P2 | Medium | fixed |
 | [011-[workaround]-…](011-[workaround]-kisskh-hls-sync-ffi.md) | Kisskh decrypt and HLS parse sync FFI | P2 | Medium | workaround |
 | [012-[fixed]-…](012-[fixed]-mobile-magnet-e2e-p2-14.md) | Mobile magnet E2E (P2-14) | P2 | Medium | fixed |
-| [013-[open]-…](013-[open]-site111477-captcha-still-dart.md) | 111477 captcha/CF still in Dart | P3 | Low | open |
+| [013-[fixed]-…](013-[fixed]-site111477-captcha-still-dart.md) | 111477 index scrape / CF retry — Dart by design | P3 | Low | fixed |
 | [014-[fixed]-…](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) | IPTV Reddit catalog cursor infinite loop | P1 | High | fixed |
 | [015-[open]-…](015-[open]-rust-blocking-http-engine-debt.md) | Rust blocking HTTP / sync resolve engine debt | P2 | Medium | open |
 

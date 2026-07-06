@@ -1,10 +1,8 @@
 // Scraper + fuzzy matcher for the 111477.xyz file index.
 //
-// Listings (`/movies/` and `/tvs/`) are flat HTML directory indexes ~3-8 MB
-// each. We download once, cache to disk for 24 h, then resolve TMDB titles
-// → exact file URL via a normalized-title + year match.
-//
-// On HTTP 429 or Cloudflare 1015, we wait exactly 7.2 s and retry.
+// Split: index scrape + CF/rate-limit retry here (legacy packages/api).
+// Seekable playback proxy is Rust — crates/proxy/seek111477 via site111477_proxy.dart.
+// See crates/proxy/README.md and docs/ENGINE_BOUNDARY.md R9.
 
 import 'dart:async';
 import 'dart:convert';

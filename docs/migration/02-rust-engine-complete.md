@@ -67,7 +67,7 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | 32 | P2-89 | Stremio catalog service → `crates/stremio-core` | ⏭️ Phase 3 |
 | 33 | P2-90 | Delete `packages/core` → `api/models` + app utils | ✅ |
 | 34 | P2-91 | WebStreamr `Isolate.run` workaround + `cancelPending()` — [001](../issues/001-[workaround]-webstreamr-blocks-ui.md); root [015](../issues/015-[open]-rust-blocking-http-engine-debt.md) | ⚠️ workaround |
-| 35 | P2-92 | Consolidate loopback servers in `crates/proxy` (111477 captcha/CF still Dart — known gap) | ✅ |
+| 35 | P2-92 | Consolidate loopback servers in `crates/proxy` (111477 index scrape stays Dart — [013](../issues/013-[fixed]-site111477-captcha-still-dart.md)) | ✅ |
 | 36 | P2-93 | Stremio HTTP via `stremioHttpGet` (kill Dart HTTP split) | ✅ |
 | 37 | P2-94 | IPTV HTTP + stream probe via `iptv_probe_stream_json` | ✅ |
 | 38 | P2-95 | Delete dead repos, unused Dart scrapers, `StreamResolver` | ✅ |
