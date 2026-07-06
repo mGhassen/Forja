@@ -2,7 +2,7 @@
 
 Technical architecture reference for the Forja engine and monorepo.
 
-**Status:** v1.0 shipped on macOS. Active work: [Phase 2 — Rust engine complete](migration/02-rust-engine-complete.md) (wave 1 ~done — `streaming`/`storage`/`core` deleted; catalog in `api` remains wave 2).
+**Status:** v1.0 shipped on macOS. **Phase 2 playback complete** — [Phase 3 catalog](migration/03-engine-catalog.md) active.
 
 **Companion docs:** [DEVELOPMENT.md](DEVELOPMENT.md) (build/run) · [features/README.md](features/README.md) (user guide) · [INVENTORY.md](INVENTORY.md) (as-built facts) · [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) (boundary decisions) · [migration/README.md](migration/README.md) (phases) · [RFC-009](rfc/009-rust-ffi.md) (FFI spec)
 
@@ -458,7 +458,7 @@ The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
 |-------|----------|---------|
 | Rust unit + golden | `crates/*/src`, `crates/*/tests/` | `cargo test --workspace` |
 | Dart ↔ Rust parity | `packages/rust/test/parity/` | `cd packages/rust && flutter test` |
-| App integration | `apps/forja/integration_test/` | `melos run rust:integration` |
+| App smoke | `apps/forja/test/engine_smoke_test.dart` | `melos run rust:integration` |
 
 Parity rule: Rust output must match Dart reference for the same fixture before switching a call site.
 

@@ -31,7 +31,7 @@ jobs:
         working-directory: apps/forja
         run: |
           flutter pub get
-          flutter test integration_test/
+          flutter test test/engine_smoke_test.dart
 
   android-ffi:
     name: Android arm64 FFI

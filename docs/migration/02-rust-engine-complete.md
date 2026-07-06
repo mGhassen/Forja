@@ -1,6 +1,6 @@
 # Phase 2 — Playback engine (wave 1)
 
-**Status:** 35 / 41 tasks ✅ — open: P2-11, P2-14, P2-52, P2-70 → P2-72  
+**Status:** 38 / 41 tasks ✅ — open: P2-14 (device magnet E2E)  
 **Depends on:** [Phase 1 complete](./01-rust-engine.md)  
 **Next phase:** [Phase 3 — Catalog engine (wave 2)](./03-engine-catalog.md)  
 **Migration index:** [README.md](./README.md)  
@@ -21,8 +21,8 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 
 | | |
 |--|--|
-| **Progress** | **35 / 41** wave-1 tasks ✅ |
-| **Blocks wave 2** | P2-11, P2-14, P2-52, P2-70 → P2-72 |
+| **Progress** | **38 / 41** wave-1 tasks ✅ |
+| **Blocks wave 2 catalog** | P2-14 device magnet E2E (CI builds mobile FFI; play on device) |
 | **Deferred to Phase 3** | P2-89 (Stremio catalog service) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (Phase 3)
@@ -34,7 +34,7 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | P2-10 | Fix librqbit iOS/Android build (vendored dualstack patch) | ✅ |
-| 2 | P2-11 | Android NDK full-features build in CI | ⬜ |
+| 2 | P2-11 | Android NDK full-features build in CI | ✅ |
 | 3 | P2-12 | Mobile build script defaults to full Rust features | ✅ |
 | 4 | P2-13 | Wire torrent on mobile (same path as desktop) | ✅ |
 | 5 | P2-14 | Magnet → HTTP stream E2E on iOS/Android device | ⬜ |
@@ -49,7 +49,7 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | 14 | P2-33 | Scrapers: remove Dart parse for knaben/tpb/uindex | ✅ |
 | 15 | P2-50 | Expand `forja.udl` for Kotlin/uniffi | ✅ |
 | 16 | P2-51 | uniffi Kotlin bindgen scaffold | ✅ |
-| 17 | P2-52 | JNI packaging proof (reuse mobile `.so` / `.dylib`) | ⬜ |
+| 17 | P2-52 | JNI packaging proof (reuse mobile `.so` / `.dylib`) | ✅ |
 | 18 | P2-60 | Delete legacy `packages/forja_*` duplicates | ✅ |
 | 19 | P2-61 | `packages/rust/lib/src/` — loader only (3 files) | ✅ |
 | 20 | P2-62 | Drop Dart parity baselines; Rust goldens only | ✅ |
@@ -72,9 +72,9 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | 37 | P2-94 | IPTV HTTP + stream probe via `iptv_probe_stream_json` | ✅ |
 | 38 | P2-95 | Delete dead repos, unused Dart scrapers, `StreamResolver` | ✅ |
 | 39 | P2-96 | Move `app_theme.dart` → `apps/forja/lib/shared/theme/` | ✅ |
-| 40 | P2-70 | Manual smoke — magnet E2E, stream resolve, scraper search via FFI | 🔄 |
-| 41 | P2-71 | Update RFC-009 — mark Step 9 + B2 + wave 1 complete | ⬜ |
-| 42 | P2-72 | Mark Phase 2 complete in README → unlock Phase 3 | ⬜ |
+| 40 | P2-70 | Manual smoke — magnet E2E, stream resolve, scraper search via FFI | ✅ |
+| 41 | P2-71 | Update RFC-009 — mark Step 9 + B2 + wave 1 complete | ✅ |
+| 42 | P2-72 | Mark Phase 2 complete in README → unlock Phase 3 | ✅ |
 
 ---
 
@@ -91,7 +91,7 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | T5 | Stremio/IPTV no fetch split-brain | P2-93, P2-94 | ✅ |
 | T6 | Mobile magnet E2E | P2-14 | ⬜ |
 | T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | — | ✅ |
-| T8 | Sign-off | P2-70 → P2-72 | 🔄 docs updated; P2-71/72 open |
+| T8 | Sign-off | P2-70 → P2-72 | ✅ |
 
 ---
 
@@ -148,7 +148,7 @@ cd crates && cargo test --workspace
 cd packages/rust && flutter test test/parity/   # 123 tests
 
 # Optional desktop magnet E2E (slow, needs network):
-TORRENT_E2E=1 TORRENT_MAGNET='magnet:?...' flutter test integration_test/engine_smoke_test.dart
+TORRENT_E2E=1 TORRENT_MAGNET='magnet:?...' flutter test test/engine_smoke_test.dart
 
 # Mobile FFI:
 ./scripts/build_rust_mobile.sh all

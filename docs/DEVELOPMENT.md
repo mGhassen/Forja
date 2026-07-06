@@ -2,7 +2,7 @@
 
 Technical guide for building, running, and contributing to Forja.
 
-**Status:** v1.0 shipped on macOS. Active work: [Phase 2 — Rust engine complete](migration/02-rust-engine-complete.md).
+**Status:** v1.0 shipped on macOS. Phase 2 playback complete — [Phase 3 catalog](migration/03-engine-catalog.md) active.
 
 ---
 
@@ -146,8 +146,8 @@ More detail: [apps/forja/README.md](../apps/forja/README.md) · [crates/README.m
 
 ```bash
 melos run rust:test                              # Rust unit + golden + Dart parity
-melos run rust:integration                       # integration_test/ (build Rust first)
-cd apps/forja && flutter test integration_test/
+melos run rust:integration                       # test/engine_smoke_test.dart (build Rust first)
+cd apps/forja && flutter test test/engine_smoke_test.dart
 ```
 
 Parity tests: `packages/rust/test/` — compare `RustLib.instance.*` against Dart reference implementations.

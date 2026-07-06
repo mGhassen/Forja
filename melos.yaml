@@ -23,8 +23,8 @@ scripts:
     description: Rust unit + golden + Dart parity tests
   rust:integration:
     run: |
-      cd ../../apps/forja && flutter pub get && flutter test integration_test/
-    description: App engine smoke integration tests (desktop; run build_rust.sh first)
+      cd ../../apps/forja && flutter pub get && flutter test test/engine_smoke_test.dart
+    description: App engine smoke tests (desktop; run build_rust.sh first)
   rust:release-check:
     run: ../../scripts/check_rust_mobile_artifacts.sh
     description: Verify Android/iOS libffi artifacts exist after build_rust_mobile.sh

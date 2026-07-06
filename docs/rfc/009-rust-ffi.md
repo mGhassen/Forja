@@ -1,7 +1,7 @@
 # RFC-009: Rust core FFI
 
 **Version:** v1.0 engine phase (web/WASM deferred to v3.0)  
-**Status:** **Phase 1 complete** — wave 1 playback → [02-rust-engine-complete.md](../migration/02-rust-engine-complete.md)  
+**Status:** **Wave 1 playback complete** (catalog wave 2 → [03-engine-catalog.md](../migration/03-engine-catalog.md))  
 **Boundary:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
 ## Summary
@@ -33,7 +33,7 @@ crates/
   stremio-core/  manifest parse, resource URL builder
   webstreamr/    23 extractors + 21 sources (HTML/JSON parse in Rust)
   scrapers/      Knaben, TPB, Uindex HTML parsers
-  torrent/       librqbit session (desktop; mobile stub)
+  torrent/       librqbit session (desktop + iOS/Android via libffi)
   proxy/         axum local HTTP proxy
 ```
 
@@ -67,9 +67,9 @@ Copies dylib to `apps/forja/macos/Runner/Frameworks/` on macOS.
 | 4 | stremio-core | done |
 | 5 | webstreamr | done — fetch+resolve in Rust (`webstreamr_get_streams_json`) |
 | 6 | scrapers | done |
-| 7 | torrent + proxy | done (librqbit; mobile B2) |
+| 7 | torrent + proxy | done (librqbit desktop + mobile) |
 | 8 | integration | done |
-| 9 | playback cleanup | Wave 1 — [02-rust-engine-complete.md](../migration/02-rust-engine-complete.md) |
+| 9 | playback cleanup | ✅ — `streaming`/`storage`/`core` deleted; glue in `api/playback/` |
 
 ## FFI patterns
 
@@ -97,7 +97,7 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 
 - WASM build → [Phase 4](../migration/04-web-client.md)
 - Replacing WebView extractors with Rust
-- Full libtorrent in Rust (mobile uses libtorrent until B2)
+- Full libtorrent removed — librqbit on all platforms (P2-20 → P2-23)
 
 ## Acceptance
 
@@ -115,12 +115,13 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 - [x] Episode matcher golden parity (18 match + 3 pick cases)
 - [x] Webstreamr Rust golden suite (23 extractors · 21 sources)
 - [x] Webstreamr Dart FFI parity (21/23 extractors · 22/22 sources)
-- [x] App engine smoke tests (`integration_test/` — 11 tests in CI)
+- [x] App engine smoke tests (`apps/forja/test/engine_smoke_test.dart` — 13 tests in CI)
 - [x] Mobile release bundles Rust parsers (Android `buildRust=true` · iOS Release build phase)
 - [x] Full parity suite (core paths; lulustream/fastream stream-fetch documented gap)
 - [ ] WASM smoke test (v3.0)
-- [x] Step 9: runtime Dart engine removed from `lib/` (parity baselines in `test/` only)
-- [ ] Drop `libtorrent_flutter` (B2) — [Phase 2 P2-20](../migration/02-rust-engine-complete.md#drop-libtorrent--rust-only-torrent)
+- [x] Step 9: playback Dart engine deleted (`streaming`/`storage`/`core`; parity in `packages/rust/test/`)
+- [x] B2: `libtorrent_flutter` dropped — librqbit via `crates/torrent` (P2-20 → P2-23)
+- [ ] Device magnet E2E on iOS/Android (P2-14)
 
 ## Related
 

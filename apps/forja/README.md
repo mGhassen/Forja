@@ -43,7 +43,7 @@ See [crates/README.md](../../crates/README.md) for NDK discovery details.
 
 ```bash
 melos run rust:test                              # Rust + Dart parity
-cd apps/forja && flutter test integration_test/  # engine smoke (desktop)
+cd apps/forja && flutter test test/engine_smoke_test.dart  # engine smoke (desktop)
 ```
 
 ## Layout

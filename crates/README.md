@@ -58,7 +58,7 @@ Or manually:
 ```bash
 cd crates && cargo test --workspace
 cd packages/rust && flutter test
-cd apps/forja && flutter test integration_test/
+cd apps/forja && flutter test test/engine_smoke_test.dart
 ```
 
 ## Crates

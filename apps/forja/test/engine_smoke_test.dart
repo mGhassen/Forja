@@ -5,13 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
 import 'package:api/playback/playback.dart';
-import 'package:integration_test/integration_test.dart';
+
+import 'helpers/rust_test_init.dart';
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await Engine.init();
+    await initEngineForTests();
   });
 
   setUp(() {
@@ -32,7 +33,7 @@ void main() {
     expect(
       Engine.isReady,
       isTrue,
-      reason: 'Run ./scripts/build_rust.sh before integration tests',
+      reason: 'Run ./scripts/build_rust.sh before engine smoke tests',
     );
     expect(RustLib.instance.version, isNotEmpty);
   });
@@ -69,19 +70,13 @@ http://stream.example/live
 
   test('torrent peer limit + engine restart', () async {
     final svc = TorrentStreamService();
-    final started = await svc.start();
-    if (!started) {
-      // macOS integration-test .app sandbox may block librqbit loopback;
-      // packages/rust/test/parity/torrent_stub_test.dart covers the engine path.
-      return;
-    }
+    expect(await svc.start(), isTrue);
     await svc.applyConnectionsLimit(75);
     expect(svc.state, EngineState.ready);
   });
 
   test('torrent engine starts on loopback', () {
     final port = RustLib.instance.torrentEngineStart(0);
-    if (port <= 0) return;
     expect(port, greaterThan(0));
     expect(RustLib.instance.torrentEnginePort(), port);
   });
