@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 
 class AppTheme {
   static const bgDark = Color(0xFF141414);

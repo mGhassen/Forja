@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'server_grid.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 
 class PlayerOverlayPanel extends StatelessWidget {
   const PlayerOverlayPanel({

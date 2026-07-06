@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 const splashSlogan = 'THE RAKSHA YOU DESERVE';

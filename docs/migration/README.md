@@ -1,7 +1,7 @@
 # Forja global migration
 
 **Last updated:** 2026-07-06  
-**Current phase:** [Phase 2 — Playback engine (wave 1)](./02-rust-engine-complete.md)  
+**Current phase:** [Phase 2 — Playback engine (wave 1)](./02-rust-engine-complete.md) — `streaming`/`storage`/`core` deleted; mobile E2E + sign-off remain  
 **Boundary rules:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
 ---
@@ -11,7 +11,7 @@
 | # | Doc | Summary |
 |---|-----|---------|
 | 1 | [01-rust-engine.md](./01-rust-engine.md) | ✅ Rust crates + FFI primitives |
-| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | 🔄 **Wave 1: playback engine → `crates/*`; delete `streaming`/`storage`/`core`** |
+| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | 🔄 **Wave 1: playback engine → `crates/*`; `streaming`/`storage`/`core` deleted** |
 | 3 | [03-engine-catalog.md](./03-engine-catalog.md) | ⬜ **Wave 2: catalog engine → `crates/*`; delete `packages/api` + `kotlin`** |
 | 4 | [04-web-client.md](./04-web-client.md) | ⬜ WASM parallel |
 
@@ -46,15 +46,15 @@ There is no “Dart wrapper calling Rust” for engine code — delete the Dart 
 | **`packages/rust`** | Dart FFI loader + parity tests | **Permanent** |
 | **`packages/api`** | Legacy catalog engine | Delete wave 2 (Phase 3) |
 | **`packages/kotlin`** | UniFFI POC (Compose cancelled) | Delete P3-00 |
-| **`packages/{storage,core,streaming}`** | Legacy playback engine | Delete wave 1 (Phase 2) |
+| **`packages/{storage,core,streaming}`** | Legacy playback engine | ✅ deleted (wave 1) |
 
 ### Legacy package deletion
 
 | Package | Wave |
 |---------|------|
-| `streaming` | 1 — after P2-83, 91, 92 |
-| `storage` | 1 — after P2-88 (+ P2-96 theme → app) |
-| `core` | 1 — after P2-90 |
+| `streaming` | 1 — ✅ deleted → `api/playback` + `forja/nuvio` |
+| `storage` | 1 — ✅ deleted → `packages/rust` |
+| `core` | 1 — ✅ deleted → `api/models` + app utils |
 | `api` (playback slices) | 1 — P2-89 |
 | `api` (catalog verticals) | 2 — Phase 3 |
 | `webstreamr`, `scrapers` | ✅ deleted — logic in `crates/*` |

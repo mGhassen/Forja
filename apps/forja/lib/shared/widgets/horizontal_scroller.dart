@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 /// Horizontal scrollable strip with overlaid left/right arrow buttons.

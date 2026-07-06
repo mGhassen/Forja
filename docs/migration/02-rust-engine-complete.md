@@ -1,6 +1,6 @@
 # Phase 2 — Playback engine (wave 1)
 
-**Status:** In progress  
+**Status:** Near complete — mobile magnet E2E + sign-off remain  
 **Depends on:** [Phase 1 complete](./01-rust-engine.md)  
 **Next phase:** [Phase 3 — Catalog engine (wave 2)](./03-engine-catalog.md)  
 **Migration index:** [README.md](./README.md)  
@@ -23,15 +23,15 @@ Catalog engine (`packages/api` verticals) ports in **wave 2** (Phase 3) — same
 |------|--------|
 | 1 | Port engine logic → Rust crate |
 | 2 | Add FFI in `crates/ffi` (fetch+parse, Pattern B) |
-| 3 | UI calls `ForjaEngine.*` |
+| 3 | UI calls `ForjaEngine.*` / `RustLib.*` |
 | 4 | **Delete the Dart equivalent** — directory slice, deps, imports |
 
 ### `packages/` after wave 1
 
 | Package | Purpose |
 |---------|---------|
-| `packages/rust` | Dart FFI bridge (**permanent**) |
-| `packages/api` | **Legacy catalog engine** — wave 2 |
+| `packages/rust` | Dart FFI bridge + host prefs (`SettingsService`, watch history) (**permanent**) |
+| `packages/api` | Catalog + thin playback glue (`lib/playback/`) — wave 2 deletes catalog |
 
 ---
 
@@ -39,22 +39,25 @@ Catalog engine (`packages/api` verticals) ports in **wave 2** (Phase 3) — same
 
 ```
 UI (apps/forja — Flutter permanent host)
-  → widgets, navigation, player chrome, provider race UX
-  → calls ForjaEngine for engine paths
+  → widgets, navigation, player chrome, Nuvio (flutter_js)
+  → calls Engine / RustLib for engine paths
 
 Engine (crates/* + libffi)
   → playback: stream resolve, torrent, proxy, storage, parsers
+
+packages/api/lib/playback/
+  → thin Dart wrappers over Rust FFI (torrent, proxy, webstreamr, extractors)
 ```
 
 | **Engine (`crates/*`)** | **Host (`apps/forja`)** |
 |-------------------------|-------------------------|
 | Stream resolve, torrent, proxy | Player (media_kit) |
-| Storage, prefs, history | WebView, Nuvio, WASM |
-| Parse, crypto, extract (playback) | OAuth, secure storage |
-| | Theme, navigation |
+| Storage KV, parsers | WebView, Nuvio, WASM |
+| Parse, crypto, extract (playback) | OAuth, secure storage, theme |
+| | Theme presets, navigation |
 
 **Anti-patterns:**
-- Dart wrapper calling Rust instead of deleting Dart
+- Dart wrapper calling Rust instead of deleting Dart engine logic
 - Sync FFI on UI thread for long resolve/search — use isolate (P2-91)
 - New Pattern A FFI (`*_html_json`) for engine work
 - New engine logic in Dart anywhere
@@ -63,6 +66,7 @@ Engine (crates/* + libffi)
 **Allowed:**
 - Host orchestration for provider race + loading/cancel UX ([ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) R6)
 - `Isolate.run` for long FFI calls
+- Thin playback glue in `packages/api/lib/playback/` until wave 2
 
 ---
 
@@ -71,7 +75,7 @@ Engine (crates/* + libffi)
 | | |
 |--|--|
 | **Goal** | Playback engine normalized; `streaming` + `storage` + `core` deleted |
-| **Blocks wave 2** | P2-83, 88, 90, 91, 92, 93, 94, 14 |
+| **Blocks wave 2** | P2-14 (mobile magnet E2E), P2-70 (sign-off) |
 | **Wave 2 (catalog)** | P3-01 → P3-03 in [Phase 3](./03-engine-catalog.md) |
 
 **Legend:** ✅ done · 🔄 partial · ⬜ not started
@@ -93,35 +97,28 @@ Engine (crates/* + libffi)
 | **P2-86** | All `*Backend` hooks removed |
 | **P2-85** | HLS proxy in Rust |
 | **P2-82** | `packages/webstreamr` **deleted**; logic in `crates/webstreamr` |
-| **P2-91** | WebStreamr `Isolate.run` offload + `cancelPending()` — UI no longer frozen |
+| **P2-91** | WebStreamr `Isolate.run` offload + `cancelPending()` |
 | **P2-96** | `app_theme.dart` → `apps/forja/lib/shared/theme/` |
-| **P2-93** | Stremio HTTP via `stremioHttpGet` — no Dart `package:http` split |
-| **P2-94** | IPTV Xtream/catalog HTTP via `httpGetJson` / `httpPostJson` FFI |
-| **P2-95** | Deleted dead repos + `stream_resolver`/`stream_extractor` in streaming |
+| **P2-93** | Stremio HTTP via `stremioHttpGet` |
+| **P2-94** | IPTV HTTP + stream probe (`iptv_probe_stream_json`) via Rust |
+| **P2-95** | Deleted dead repos + unused Dart scrapers |
+| **P2-92** | Proxy consolidated in `crates/proxy` (111477, toky, comic, jellyfin, subtitlecat, hls) |
+| **P2-88** | `packages/storage` **deleted** → `packages/rust` |
+| **P2-90** | `packages/core` **deleted** → `api/models` + app utils |
+| **P2-83** | `packages/streaming` **deleted** → `api/playback` + `forja/shared/nuvio` |
 
-#### 🔄 Partial
+#### 🔄 Partial / wave 2
 
-| ID | Rust done | Dart still alive |
-|----|-----------|------------------|
-| **P2-83** | vidsrc, webstreamr service, videasy AES, provider URLs | **`packages/streaming`** — Nuvio (host), 111477 proxy, shelf routes |
-| **P2-88** | `crates/storage` KV + FFI; `kv.dart` Engine-only | **`packages/storage`** — `SettingsService`, watch history |
-| **P2-89** | Stremio parse + HTTP via Rust | Stremio service still in **`packages/api`** (wave 2 catalog) |
-
-#### ⬜ Wave 1 todo
-
-| ID | What |
-|----|------|
-| **P2-92** | Consolidate shelf + 111477 + mega routes into `crates/proxy` |
-| **P2-94** | IPTV: stream probe (`IptvVerifier._isAlive`) still Dart |
-| **P2-83** | Finish streaming engine delete (with 92) |
-| **P2-88** | Finish storage delete |
-| **P2-90** | Delete `packages/core` — JSON from Rust / maps in UI |
+| ID | Notes |
+|----|-------|
+| **P2-89** | Stremio catalog service still in `packages/api` (wave 2) |
+| **P2-92** | 111477 captcha/CF not ported to Rust (known gap) |
 
 #### ⬜ Mobile + sign-off
 
 | ID | What |
 |----|------|
-| P2-14 | Magnet → stream mobile E2E |
+| P2-14 | Magnet → stream mobile E2E (device + `build_rust_mobile.sh`) |
 | P2-11, P2-52 | Android NDK CI, JNI proof |
 | P2-70 → P2-72 | Smoke · RFC · README gate |
 
@@ -133,27 +130,14 @@ Engine (crates/* + libffi)
 
 | # | Criterion | |
 |---|-----------|---|
-| T1 | `packages/streaming` engine deleted (P2-83, 92) | ⬜ |
-| T2 | `packages/storage` deleted (P2-88) | ⬜ |
-| T3 | `packages/core` deleted (P2-90) | ⬜ |
+| T1 | `packages/streaming` deleted (P2-83, 92) | ✅ |
+| T2 | `packages/storage` deleted (P2-88) | ✅ |
+| T3 | `packages/core` deleted (P2-90) | ✅ |
 | T4 | WebStreamr non-blocking (P2-91) | ✅ |
-| T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | 🔄 probe left |
+| T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | ✅ |
 | T6 | Mobile magnet E2E (P2-14) | ⬜ |
-| T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | ⬜ |
+| T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | 🔄 |
 | T8 | Sign-off (P2-70) | ⬜ |
-
----
-
-## Architecture normalized checklist (wave 2 — Phase 3)
-
-See [03-engine-catalog.md](./03-engine-catalog.md#exit-checklist).
-
-| # | Criterion | |
-|---|-----------|---|
-| A1 | `packages/api` deleted | ⬜ |
-| A2 | All C1 catalog logic in `crates/*` | ⬜ |
-| A3 | Only `packages/rust` under `packages/` | ⬜ |
-| A4 | No engine logic in Dart outside FFI calls | ⬜ |
 
 ---
 
@@ -162,24 +146,14 @@ See [03-engine-catalog.md](./03-engine-catalog.md#exit-checklist).
 ```bash
 ./scripts/build_rust.sh
 cd crates && cargo test --workspace
-melos run rust:test && melos run rust:integration
-```
+cd packages/rust && flutter test test/parity/   # 123 tests
 
----
+# Optional desktop magnet E2E (slow, needs network):
+TORRENT_E2E=1 TORRENT_MAGNET='magnet:?...' flutter test integration_test/engine_smoke_test.dart
 
-## Dependency chain
-
-```mermaid
-flowchart LR
-  P283["P2-83 streaming"]
-  P288["P2-88 storage"]
-  P290["P2-90 core"]
-  P291["P2-91 webstreamr UX"]
-  P214["P2-14 mobile"]
-  W1["Wave1 done\nshippable"]
-  W2["Wave2 catalog\nPhase3"]
-
-  P283 --> P288 --> P290 --> P291 --> P214 --> W1 --> W2
+# Mobile FFI:
+./scripts/build_rust_mobile.sh all
+melos run rust:release-check
 ```
 
 ---
