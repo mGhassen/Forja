@@ -14,7 +14,7 @@
 |-------|--------|-------|
 | **Symptom** — UI thread blocks during resolve/decrypt | **workaround** | isolate wrappers |
 | **Root** — multi-page blocking resolve in Rust | **open** | [015](015-[open]-rust-blocking-http-engine-debt.md) |
-| **Cancel** — abort in-flight resolve | **open** | [009](009-[open]-post-migration-resilience-audit.md) |
+| **Cancel** — abort in-flight resolve | **open** | [009](009-[workaround]-post-migration-resilience-audit.md) |
 
 ## Root cause (before fix)
 

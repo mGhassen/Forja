@@ -64,12 +64,26 @@ If you call something **fixed** without documenting the root fix, or delete/move
 
 ## Status must match reality
 
-| Situation | Filename tag | Action |
-|-----------|--------------|--------|
-| Root cause fixed, verified in code | **`[fixed]`** | Rename file; document what was verified |
-| Symptom only (e.g. isolate offload; Rust still blocking) | **`[workaround]`** | Rename file; link **`[open]`** root issue (e.g. engine debt) |
-| Work started, not done | **`[open]`** | Never `[fixed]` or `[workaround]` |
-| User-approved workaround before ship | **`[workaround]`** | Document tradeoffs; link root fix |
+| Situation | Filename tag | `**Status:**` in file | Action |
+|-----------|--------------|----------------------|--------|
+| Root cause fixed, verified in code | **`[fixed]`** | `fixed` | Rename file **and** update status line |
+| Symptom only (e.g. isolate offload; Rust still blocking) | **`[workaround]`** | `workaround` | Rename file **and** update status line; link **`[open]`** root issue |
+| Work started, not done | **`[open]`** | `open` | Never `[fixed]` or `[workaround]` until scope ships |
+
+### Mandatory: filename tag + `**Status:**` together
+
+When issue status changes, update **all** of these in the **same turn** as the code/doc fix — not later, not in a follow-up summary:
+
+1. **Rename the file** — `git mv 'NNN-[old]-slug.md' 'NNN-[new]-slug.md'`
+2. **`**Status:**` line** at the top of the issue body — must match the filename tag (`open` / `workaround` / `fixed`)
+3. **`docs/issues/README.md` index** — Status column and link path
+4. **Cross-links** — grep `NNN-[open]-` / old slug in `docs/` and update references
+
+**Never** ship workaround or fixed code while the issue file still says `[open]` in the filename or `**Status:** open`. Updating prose inside the issue without renaming is **not** a status change.
+
+Example (wrong): code shipped, issue body says "workaround shipped", but file is still `009-[open]-….md` and `**Status:** open`.
+
+Example (right): `009-[workaround]-post-migration-resilience-audit.md` + `**Status:** workaround` + README row `workaround`.
 
 When updating issues/docs for a workaround:
 
@@ -92,3 +106,4 @@ Always state:
 2. **Root fix** — done or not; if not, link to open issue you created
 3. Whether any part is a **workaround** (and whether user approved it)
 4. What happens if someone deletes the docs — where the root fix is still tracked
+5. **Issue file** — confirm filename tag and `**Status:**` were updated (or say explicitly if not yet done)

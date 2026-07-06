@@ -3,7 +3,7 @@
 **Priority:** P1  
 **Severity:** High  
 **Tracked:** P2-91 ([Phase 2 task](../migration/02-rust-engine-complete.md))  
-**Status:** open — Dart workarounds shipped; engine root fix [015](015-[open]-rust-blocking-http-engine-debt.md); parent closes when [015](015-[open]-rust-blocking-http-engine-debt.md) + [009](009-[open]-post-migration-resilience-audit.md) done  
+**Status:** open — Dart workarounds shipped; engine root fix [015](015-[open]-rust-blocking-http-engine-debt.md); parent closes when [015](015-[open]-rust-blocking-http-engine-debt.md) done  
 **Area:** `packages/rust`, `packages/api`, `apps/forja`  
 **Reported:** 2026-07-06
 
@@ -17,7 +17,7 @@ Sync `RustLib.instance.*` on the **main Dart isolate** blocked the UI for second
 |-------|--------|---------------|
 | Symptom — UI thread must not block | **workaround** (P1 call sites) | [001](001-[workaround]-webstreamr-blocks-ui.md), [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md), [011](011-[workaround]-kisskh-hls-sync-ffi.md); CI [008](008-[fixed]-ci-enforce-no-sync-ffi.md) **fixed** |
 | Root — blocking HTTP / sync resolve in `crates/*` | **open** | [015](015-[open]-rust-blocking-http-engine-debt.md) |
-| Cancel / resilience | **open** | [009](009-[open]-post-migration-resilience-audit.md) |
+| Cancel / resilience (host UX) | **workaround** | [009](009-[workaround]-post-migration-resilience-audit.md) |
 
 Isolate offload stops UI freeze but is a **workaround** — root engine fix is [015](015-[open]-rust-blocking-http-engine-debt.md).
 
@@ -78,4 +78,4 @@ Enforced by [008](008-[fixed]-ci-enforce-no-sync-ffi.md) (`check_sync_ffi.sh`).
 - [x] [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md) workaround shipped
 - [x] [008](008-[fixed]-ci-enforce-no-sync-ffi.md) CI grep in place
 - [ ] [015](015-[open]-rust-blocking-http-engine-debt.md) engine root fix
-- [ ] [009](009-[open]-post-migration-resilience-audit.md) checklist completed
+- [x] [009](009-[workaround]-post-migration-resilience-audit.md) host cancel UX workaround shipped (QA/tests deferred in that file)

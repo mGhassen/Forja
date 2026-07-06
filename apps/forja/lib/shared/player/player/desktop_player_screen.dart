@@ -3046,7 +3046,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   Future<void> _switchProvider(String newProvider) async {
     if (_isSwitchingProvider) return;
-    
+
+    final gen = ++_fallbackGen;
+    WebStreamrService().cancelPending();
+    VidsrcExtractor.cancelPending();
+    NuvioService.instance.cancelPending();
+
     setState(() => _isSwitchingProvider = true);
     
     final currentPos = _positionNotifier.value;
@@ -3079,6 +3084,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               : null;
           hits = await svc.findMovieSources(title: widget.movie!.title, year: year);
         }
+        if (_fallbackAborted(gen)) return;
         if (hits.isNotEmpty) {
           if (site111477_proxy.is111477ProxyRunning) {
             await site111477_proxy.stop111477Proxy();
@@ -3099,6 +3105,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           streamUrl = webStreamrSources.first.url;
           sources = webStreamrSources;
         }
+        if (_fallbackAborted(gen)) return;
       } else if (newProvider == 'videasy' && widget.movie != null) {
         final ve = VideasyExtractor(onLog: (m) => debugPrint(m));
         final result = await ve.extract(
@@ -3106,7 +3113,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           isMovie: widget.movie!.mediaType == 'movie',
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
+          isCancelled: () => _fallbackAborted(gen),
         );
+        if (_fallbackAborted(gen)) return;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -3120,6 +3129,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -3134,6 +3144,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return;
         if (results.isNotEmpty) {
           final first = results.first;
           streamUrl = first.url;
@@ -3163,6 +3174,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         
         final extractor = StreamExtractor();
         final result = await extractor.extract(providerUrl);
+        if (_fallbackAborted(gen)) return;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -3170,6 +3182,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
       }
       
+      if (_fallbackAborted(gen)) return;
       if (streamUrl != null && streamUrl.isNotEmpty) {
         // Reset any stale mpv referrer set by the previous provider/quality
         // selection — then re-apply from the new headers if present.
@@ -3180,6 +3193,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         await _player.open(
           Media(streamUrl, httpHeaders: headers),
         );
+        if (_fallbackAborted(gen)) return;
         
         if (currentPos.inSeconds > 0) {
           await _player.seek(currentPos);
@@ -3202,7 +3216,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           ));
         }
       } else {
-        if (mounted) {
+        if (mounted && !_fallbackAborted(gen)) {
           messenger.showSnackBar(SnackBar(
             content: Text('Failed to extract from ${provider['name']}'),
             duration: const Duration(seconds: 2),
@@ -3210,7 +3224,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !_fallbackAborted(gen)) {
         messenger.showSnackBar(SnackBar(
           content: Text('Error switching provider: $e'),
           duration: const Duration(seconds: 2),

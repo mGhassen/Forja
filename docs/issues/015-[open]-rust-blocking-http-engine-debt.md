@@ -6,7 +6,7 @@
 **Area:** `crates/webstreamr`, `crates/stremio-core`, `crates/stream-core`, `crates/scrapers`, `crates/ffi`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)  
-**Related:** [009](009-[open]-post-migration-resilience-audit.md) (cancel-abort UX)
+**Related:** [009](009-[workaround]-post-migration-resilience-audit.md) (cancel-abort UX)
 
 ## Summary
 
@@ -29,7 +29,7 @@ Dart `Isolate.run` only moves the block off the UI thread. It does not fix engin
 
 1. **Async HTTP** — replace `reqwest::blocking` with async client + shared connection pool in affected crates.
 2. **Parallel resolve** — webstreamr: parallel source queries, early exit when N streams found; torrent: already parallel in Rust — verify FFI boundary.
-3. **Cancellable jobs** — FFI job API or cancellation token so overlay Cancel stops in-flight Rust work (see also [009](009-[open]-post-migration-resilience-audit.md)).
+3. **Cancellable jobs** — FFI job API or cancellation token so overlay Cancel stops in-flight Rust work (see also [009](009-[workaround]-post-migration-resilience-audit.md)).
 4. **Optional:** async job API from Dart (poll/cancel) instead of one sync FFI call per operation — reduces isolate spawn churn.
 
 **Note:** Even after async Rust, Dart must still use `Isolate.run` or non-blocking FFI — sync FFI on UI thread stays forbidden ([ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) R5).
@@ -48,7 +48,7 @@ Dart `Isolate.run` only moves the block off the UI thread. It does not fix engin
 
 - [ ] `webstreamr` uses async HTTP; sources resolve in parallel with early exit
 - [ ] `stremio-core` uses async HTTP
-- [ ] Cancel from host aborts in-flight resolve in Rust (with [009](009-[open]-post-migration-resilience-audit.md))
+- [ ] Cancel from host aborts in-flight resolve in Rust (with [009](009-[workaround]-post-migration-resilience-audit.md))
 - [ ] Document in [RFC-009](../rfc/009-rust-ffi.md) threading section — remove "Future:" placeholder
 - [ ] Profile: long resolve no longer spawns new isolate per call (if job API adopted)
 

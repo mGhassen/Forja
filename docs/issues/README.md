@@ -12,7 +12,7 @@ Filename includes status after the number:
 | **`NNN-[workaround]-…`** | Symptom addressed; root cause still open — see linked root issue |
 | **`NNN-[fixed]-…`** | Root cause fixed and verified |
 
-Rename the file when status changes.
+Rename the file when status changes. **Filename tag and `**Status:**` in the issue body must always match** (see [honesty rule](../../.cursor/rules/honesty-and-completion.mdc)).
 
 ## Priority / severity
 
@@ -42,7 +42,7 @@ Rename the file when status changes.
 | [006-[workaround]-…](006-[workaround]-vidsrc-videasy-extractors-blocks-ui.md) | Vidsrc / Videasy extractors block UI thread | P1 | High | workaround |
 | [007-[workaround]-…](007-[workaround]-torrent-search-blocks-ui.md) | Torrent search/filter blocks UI thread | P1 | High | workaround |
 | [008-[fixed]-…](008-[fixed]-ci-enforce-no-sync-ffi.md) | CI must reject sync FFI in app/api | P1 | High | fixed |
-| [009-[open]-…](009-[open]-post-migration-resilience-audit.md) | Post-migration resilience audit (fail/cancel) | P2 | Medium | open |
+| [009-[workaround]-…](009-[workaround]-post-migration-resilience-audit.md) | Post-migration resilience audit (fail/cancel) | P2 | Medium | workaround |
 | [010-[open]-…](010-[open]-webview-js-extractors-main-thread.md) | WebView / JS / WASM extractors main thread | P2 | Medium | open |
 | [011-[workaround]-…](011-[workaround]-kisskh-hls-sync-ffi.md) | Kisskh decrypt and HLS parse sync FFI | P2 | Medium | workaround |
 | [012-[open]-…](012-[open]-mobile-magnet-e2e-p2-14.md) | Mobile magnet E2E not verified (P2-14) | P2 | Medium | open |
@@ -52,6 +52,6 @@ Rename the file when status changes.
 
 **Workaround vs fixed:** [001](001-[workaround]-webstreamr-blocks-ui.md), [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md), [011](011-[workaround]-kisskh-hls-sync-ffi.md) — isolate offload stops UI freeze; **root fix open** in [015](015-[open]-rust-blocking-http-engine-debt.md). [008](008-[fixed]-ci-enforce-no-sync-ffi.md) and [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) are **fixed** (complete).
 
-**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md) closes when [015](015-[open]-rust-blocking-http-engine-debt.md) + [009](009-[open]-post-migration-resilience-audit.md) done.
+**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md) closes when [015](015-[open]-rust-blocking-http-engine-debt.md) done. Host cancel UX: [009](009-[workaround]-post-migration-resilience-audit.md) workaround shipped.
 
 Add new items as `NNN-[open]-short-slug.md`. Set **Priority**, **Severity**, and **Status**. Rename when status changes: `[open]` → `[workaround]` or `[fixed]`.

@@ -14,7 +14,7 @@
 |-------|--------|-------|
 | **Symptom** — UI thread blocks during resolve | **workaround** | `runWebstreamrGetStreamsJson` → worker isolate |
 | **Root** — blocking HTTP, sequential 21 sources in Rust | **open** | [015](015-[open]-rust-blocking-http-engine-debt.md) |
-| **Cancel** — abort in-flight Rust work | **partial** | Generation discard only; Rust keeps running — [009](009-[open]-post-migration-resilience-audit.md) |
+| **Cancel** — abort in-flight Rust work | **partial** | Generation discard only; Rust keeps running — [009](009-[workaround]-post-migration-resilience-audit.md) |
 
 ## Root cause (before fix)
 
@@ -42,7 +42,7 @@ final raw = await runWebstreamrGetStreamsJson(jsonEncode(request));
 Track in [015](015-[open]-rust-blocking-http-engine-debt.md):
 
 - `crates/webstreamr`: async HTTP, parallel source resolve, early exit
-- Cancel token into Rust resolver ([009](009-[open]-post-migration-resilience-audit.md))
+- Cancel token into Rust resolver ([009](009-[workaround]-post-migration-resilience-audit.md))
 
 ## If this file is deleted
 
