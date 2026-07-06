@@ -332,7 +332,7 @@ flowchart TD
 
 ### 4.3 Provider registry resolve
 
-From [RFC-004](rfc/004-provider-registry.md). Registry: `packages/streaming/lib/src/provider_registry.dart`.
+From [RFC-004](rfc/004-provider-registry.md). Registry: `packages/api/lib/playback/provider_registry.dart`.
 
 ```mermaid
 flowchart TD

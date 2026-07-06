@@ -16,7 +16,7 @@ Canonical rules for what lives in **Rust engine (`crates/*`)**, **Flutter host (
 | **Host** | `apps/forja` | UI + platform capabilities (C3–C6, C10, C12, host-side C11 UX) |
 | **FFI bridge** | `packages/rust` | Loader + parity tests only — **not engine** |
 
-`packages/api`, `packages/streaming`, etc. are **legacy engine code** pending port to `crates/*`. They are not a valid permanent home.
+`packages/api` is **legacy catalog engine** pending port to `crates/*`. Playback packages (`streaming`, `storage`, `core`) are deleted (wave 1).
 
 Migration is sequenced in **two waves** (playback, then catalog) — scheduling only, not different architectural layers.
 

@@ -1,7 +1,7 @@
 # Forja global migration
 
 **Last updated:** 2026-07-06  
-**Current phase:** [Phase 2 — Playback engine (wave 1)](./02-rust-engine-complete.md) — `streaming`/`storage`/`core` deleted; mobile E2E + sign-off remain  
+**Current phase:** [Phase 2 — Playback engine (wave 1)](./02-rust-engine-complete.md) — **35 / 41 tasks ✅** · open: P2-11, P2-14, P2-52, P2-70 → P2-72  
 **Boundary rules:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
 ---
@@ -11,7 +11,7 @@
 | # | Doc | Summary |
 |---|-----|---------|
 | 1 | [01-rust-engine.md](./01-rust-engine.md) | ✅ Rust crates + FFI primitives |
-| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | 🔄 **Wave 1: playback engine → `crates/*`; `streaming`/`storage`/`core` deleted** |
+| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | 🔄 **35 / 41** — playback engine → `crates/*` |
 | 3 | [03-engine-catalog.md](./03-engine-catalog.md) | ⬜ **Wave 2: catalog engine → `crates/*`; delete `packages/api` + `kotlin`** |
 | 4 | [04-web-client.md](./04-web-client.md) | ⬜ WASM parallel |
 
@@ -25,7 +25,7 @@
 | **Host** | `apps/forja` | UI + platform (C3–C6, C10, C12, host C11 UX) |
 | **FFI bridge** | `packages/rust` | Loader + parity tests only |
 
-Legacy engine in `packages/api`, `packages/streaming`, etc. must port to `crates/*` — not a permanent tier.
+Legacy engine in `packages/api` must port to `crates/*` — not a permanent tier. (`streaming`/`storage`/`core` deleted wave 1.)
 
 ---
 

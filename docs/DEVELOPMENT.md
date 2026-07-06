@@ -17,7 +17,7 @@ Forja is a **melos monorepo**:
 | **UI** | `apps/forja` | Flutter app — permanent host |
 | **FFI bridge** | `packages/rust` | Dart bindings to `libffi` |
 | **Engine** | `crates/*` | Rust — parsers, crypto, extractors, torrent (librqbit), proxy, catalog |
-| **Legacy engine** | `packages/{api,streaming,storage,core}` | Port to `crates/*` per [ENGINE_BOUNDARY](ENGINE_BOUNDARY.md) |
+| **Legacy engine** | `packages/api` (catalog; wave 2) | Port to `crates/*` per [ENGINE_BOUNDARY](ENGINE_BOUNDARY.md) |
 
 ```
 apps/forja (Flutter host)
@@ -39,11 +39,8 @@ Forja/
 │   ├── lib/features/        One folder per nav tab
 │   └── lib/shared/          Player, widgets, casting/sync stubs
 ├── packages/
-│   ├── core/                Models, utilities (deleted Phase 2)
-│   ├── storage/             Settings, persistence, theme (deleted Phase 2)
-│   ├── api/                 TMDB, Trakt, Stremio, Jellyfin (deleted Phase 2)
-│   ├── streaming/           Torrent session, providers, proxy glue (deleted Phase 2)
-│   ├── rust/                Dart FFI bridge + parity tests (permanent)
+│   ├── api/                 Catalog + lib/playback/ (catalog deleted wave 2)
+│   ├── rust/                FFI bridge, SettingsService, parity tests (permanent)
 │   └── kotlin/              UniFFI POC (delete wave 2)
 ├── crates/                  Rust engine — ffi, utils, webstreamr, scrapers, torrent, proxy, catalog, …
 ├── docs/migration/          Phases 1–4
