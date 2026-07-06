@@ -25,6 +25,7 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class DetailsScreen extends StatefulWidget {
   final Movie movie;

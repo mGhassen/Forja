@@ -10,6 +10,7 @@ import 'package:storage/storage.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'anime_player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimeDetailsScreen extends StatefulWidget {
   final AnimeCard anime;

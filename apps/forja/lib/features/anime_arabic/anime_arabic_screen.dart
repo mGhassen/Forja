@@ -17,6 +17,7 @@ import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_arabic_details_screen.dart';
 import 'anime_arabic_player_screen.dart';
 import 'anime_arabic_search_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimeArabicScreen extends StatefulWidget {
   const AnimeArabicScreen({super.key});

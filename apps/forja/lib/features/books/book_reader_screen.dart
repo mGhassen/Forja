@@ -10,6 +10,7 @@ import 'package:xml/xml.dart';
 
 import 'package:api/api/books_service.dart';
 import 'package:storage/storage.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class BookReaderScreen extends StatefulWidget {
   final File file;

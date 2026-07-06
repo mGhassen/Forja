@@ -7,6 +7,7 @@ import 'package:api/api/tmdb_api.dart';
 import 'package:core/models/movie.dart';
 import 'package:storage/storage.dart';
 import 'package:forja/features/home/details_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 /// Full-screen catalog browser for Stremio addons.
 /// Shows all catalogs from installed addons, supports genre filtering,

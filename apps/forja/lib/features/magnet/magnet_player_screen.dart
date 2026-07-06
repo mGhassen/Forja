@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:streaming/streaming.dart';
 import 'package:storage/storage.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MagnetPlayerScreen extends StatefulWidget {
   const MagnetPlayerScreen({super.key});

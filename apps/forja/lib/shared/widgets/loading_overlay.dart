@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core/models/movie.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:storage/storage.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class LoadingOverlay extends StatefulWidget {
   final Movie movie;

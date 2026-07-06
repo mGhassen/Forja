@@ -6,6 +6,7 @@ import 'comic_details_screen.dart';
 import 'comic_reader_screen.dart';
 import 'package:api/api/comics_service.dart';
 import 'package:storage/storage.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class ComicsScreen extends StatefulWidget {
   final String? initialSearch;

@@ -4,6 +4,7 @@ import 'package:storage/storage.dart';
 import 'package:api/api/arabic_service.dart';
 import 'arabic_details_screen.dart';
 import 'arabic_player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class ArabicScreen extends StatefulWidget {
   const ArabicScreen({super.key});

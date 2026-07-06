@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:storage/storage.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 /// A small interactive wrapper that scales + glows on mouse hover.
 /// Cheap drop-in replacement for `GestureDetector(onTap: …)` on cards.

@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:api/services/jellyfin_service.dart';
 import 'package:storage/storage.dart';
 import 'jellyfin_details_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 // ─── Jellyfin Palette ────────────────────────────────────────────────────────
 const _jfBlue = Color(0xFF00A4DC);

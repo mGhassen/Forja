@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:api/api/manga_service.dart';
 import 'package:storage/storage.dart';
 import 'manga_reader_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MangaDetailsScreen extends StatefulWidget {
   final Manga manga;

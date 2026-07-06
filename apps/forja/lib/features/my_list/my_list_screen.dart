@@ -5,6 +5,7 @@ import 'package:storage/storage.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:core/models/movie.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MyListScreen extends StatefulWidget {
   const MyListScreen({super.key});

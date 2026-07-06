@@ -7,6 +7,7 @@ import 'package:api/api/audiobook_service.dart';
 import 'package:api/api/audiobook_player_service.dart';
 import 'package:api/api/audiobook_download_service.dart';
 import 'package:storage/storage.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AudiobookPlayerScreen extends StatefulWidget {
   final Audiobook audiobook;

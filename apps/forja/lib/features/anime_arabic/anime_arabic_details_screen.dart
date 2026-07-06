@@ -12,6 +12,7 @@ import 'package:storage/storage.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_arabic_player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimeArabicDetailsScreen extends StatefulWidget {
   final ArabicAnimeCard anime;

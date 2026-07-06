@@ -6,6 +6,7 @@ import 'package:storage/storage.dart';
 import 'package:api/api/manga_service.dart';
 import 'manga_details_screen.dart';
 import 'manga_reader_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MangaScreen extends StatefulWidget {
   final String? initialSearch;

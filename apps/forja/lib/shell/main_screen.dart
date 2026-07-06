@@ -9,6 +9,7 @@ import 'package:storage/storage.dart';
 import 'package:api/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});

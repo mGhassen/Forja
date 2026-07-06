@@ -24,6 +24,7 @@ import 'package:forja/features/my_list/lists_screen.dart';
 import 'package:rust/rust.dart';
 import 'webstreamr_settings_screen.dart';
 import 'splash_preview_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

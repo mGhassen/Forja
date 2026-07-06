@@ -17,6 +17,7 @@ import 'asian_drama_details_screen.dart';
 import 'asian_drama_explore_screen.dart';
 import 'asian_drama_player_screen.dart';
 import 'asian_drama_search_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AsianDramaScreen extends StatefulWidget {
   const AsianDramaScreen({super.key});

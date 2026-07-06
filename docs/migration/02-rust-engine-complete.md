@@ -94,26 +94,26 @@ Engine (crates/* + libffi)
 | **P2-85** | HLS proxy in Rust |
 | **P2-82** | `packages/webstreamr` **deleted**; logic in `crates/webstreamr` |
 | **P2-91** | WebStreamr `Isolate.run` offload + `cancelPending()` — UI no longer frozen |
+| **P2-96** | `app_theme.dart` → `apps/forja/lib/shared/theme/` |
+| **P2-93** | Stremio HTTP via `stremioHttpGet` — no Dart `package:http` split |
 
 #### 🔄 Partial
 
 | ID | Rust done | Dart still alive |
 |----|-----------|------------------|
 | **P2-83** | vidsrc, webstreamr service, videasy AES, provider URLs | **`packages/streaming`** — Nuvio (host), 111477 proxy, shelf routes |
-| **P2-88** | `crates/storage` KV + FFI | **`packages/storage`** — kv glue, `app_theme`, thin repos |
-| **P2-89** | Stremio parse via Rust | Stremio **HTTP still Dart** — P2-93 |
+| **P2-88** | `crates/storage` KV + FFI | **`packages/storage`** — kv glue, thin repos |
+| **P2-89** | Stremio parse + HTTP via Rust | Stremio service still in **`packages/api`** (wave 2 catalog) |
 
 #### ⬜ Wave 1 todo
 
 | ID | What |
 |----|------|
 | **P2-92** | Consolidate shelf + 111477 + mega routes into `crates/proxy` |
-| **P2-93** | Stremio: wire `stremio_http_get_json` (kill Dart HTTP split) |
 | **P2-94** | IPTV: move `iptv_network.dart` HTTP to Rust or unified FFI |
 | **P2-95** | Dead code: unused repos, duplicate `stream_extractor`, `StreamResolver` |
-| **P2-96** | Move `app_theme.dart` → `apps/forja` |
 | **P2-83** | Finish streaming engine delete (with 92) |
-| **P2-88** | Finish storage delete (with 96) |
+| **P2-88** | Finish storage delete |
 | **P2-90** | Delete `packages/core` — JSON from Rust / maps in UI |
 
 #### ⬜ Mobile + sign-off
@@ -133,10 +133,10 @@ Engine (crates/* + libffi)
 | # | Criterion | |
 |---|-----------|---|
 | T1 | `packages/streaming` engine deleted (P2-83, 92) | ⬜ |
-| T2 | `packages/storage` deleted; theme in app (P2-88, 96) | ⬜ |
+| T2 | `packages/storage` deleted (P2-88) | ⬜ |
 | T3 | `packages/core` deleted (P2-90) | ⬜ |
 | T4 | WebStreamr non-blocking (P2-91) | ✅ |
-| T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | ⬜ |
+| T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | 🔄 P2-93 ✅ |
 | T6 | Mobile magnet E2E (P2-14) | ⬜ |
 | T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | ⬜ |
 | T8 | Sign-off (P2-70) | ⬜ |

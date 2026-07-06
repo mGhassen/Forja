@@ -6,6 +6,7 @@ import 'package:api/api/tmdb_api.dart';
 import 'package:storage/storage.dart';
 import 'package:core/models/movie.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});

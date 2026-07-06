@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'settings_service.dart';
+import 'package:storage/storage.dart';
 
 /// A single color theme preset with its own personality.
 class AppThemePreset {

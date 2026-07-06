@@ -8,6 +8,7 @@ import 'package:storage/storage.dart';
 import 'audiobook_player_screen.dart';
 import 'audiobook_downloads_screen.dart';
 import 'generate_audiobook_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AudiobookScreen extends StatefulWidget {
   const AudiobookScreen({super.key});

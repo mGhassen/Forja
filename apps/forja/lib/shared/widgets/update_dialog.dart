@@ -8,6 +8,7 @@ import 'package:storage/storage.dart';
 
 // Conditional import for Android-only package
 import 'package:ota_update/ota_update.dart' if (dart.library.html) 'package:ota_update/ota_update_stub.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class UpdateDialog extends StatefulWidget {
   final UpdateInfo updateInfo;

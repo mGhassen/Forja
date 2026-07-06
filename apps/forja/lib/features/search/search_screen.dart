@@ -8,6 +8,7 @@ import 'package:storage/storage.dart';
 import 'package:core/models/movie.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 /// A single result section that streams in dynamically.
 class _SearchSection {

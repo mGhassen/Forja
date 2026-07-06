@@ -17,6 +17,7 @@ import 'anime_details_screen.dart';
 import 'anime_discover_screen.dart';
 import 'anime_player_screen.dart';
 import 'anime_search_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimeScreen extends StatefulWidget {
   const AnimeScreen({super.key});

@@ -21,6 +21,7 @@ import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'stremio_catalog_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

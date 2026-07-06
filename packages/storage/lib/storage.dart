@@ -1,7 +1,6 @@
 library storage;
 
 export 'src/settings_service.dart';
-export 'src/app_theme.dart';
 export 'services/watch_history_service.dart';
 export 'src/stremio_settings_repo.dart';
 export 'src/iptv_settings_repo.dart';

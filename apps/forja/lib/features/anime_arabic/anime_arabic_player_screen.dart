@@ -11,6 +11,7 @@ import 'package:api/api/anime_arabic_extractor.dart';
 import 'package:api/api/anime_arabic_service.dart';
 import 'package:storage/storage.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimeArabicPlayerScreen extends StatefulWidget {
   final ArabicAnimeCard anime;

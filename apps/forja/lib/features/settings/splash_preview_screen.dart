@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:storage/storage.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class SplashPreviewScreen extends StatefulWidget {
   const SplashPreviewScreen({super.key});

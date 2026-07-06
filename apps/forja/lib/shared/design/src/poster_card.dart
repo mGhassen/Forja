@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class PosterCard extends StatefulWidget {
   const PosterCard({

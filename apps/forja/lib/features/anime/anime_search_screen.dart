@@ -8,6 +8,7 @@ import 'package:api/api/anime_service.dart';
 import 'package:storage/storage.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_details_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimeSearchScreen extends StatefulWidget {
   const AnimeSearchScreen({super.key});

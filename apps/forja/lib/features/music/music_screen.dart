@@ -11,6 +11,7 @@ import 'package:api/api/music_storage_service.dart';
 import 'package:api/api/music_downloader_service.dart';
 import 'package:storage/storage.dart';
 import 'music_player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MusicScreen extends StatefulWidget {
   const MusicScreen({super.key});

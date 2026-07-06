@@ -10,6 +10,7 @@ import 'package:api/api/kisskh_extractor.dart';
 import 'package:api/api/kisskh_service.dart';
 import 'package:storage/storage.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AsianDramaPlayerScreen extends StatefulWidget {
   final KdramaCard drama;

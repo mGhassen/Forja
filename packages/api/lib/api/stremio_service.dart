@@ -1,8 +1,13 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:storage/storage.dart';
 import 'package:rust/rust.dart';
+
+class _StremioHttpResponse {
+  const _StremioHttpResponse(this.statusCode, this.body);
+  final int statusCode;
+  final String body;
+}
 
 ({String baseUrl, String? queryParams}) _splitStremioAddonUrl(String url) {
   final m = jsonDecode(RustLib.instance.splitStremioAddonUrlJson(url))
@@ -74,14 +79,18 @@ class StremioService {
 
   final SettingsService _settings = SettingsService();
 
-  /// Retry an HTTP GET with exponential backoff.
+  /// Retry a GET via Rust engine with exponential backoff.
   /// Does NOT retry on 404 (content simply doesn't exist).
-  Future<http.Response> _retryGet(Uri uri, {int retries = 2, Duration timeout = const Duration(seconds: 15)}) async {
-    http.Response? lastResponse;
+  Future<_StremioHttpResponse> _retryGet(
+    Uri uri, {
+    int retries = 2,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    _StremioHttpResponse? lastResponse;
     Object? lastError;
     for (var attempt = 0; attempt <= retries; attempt++) {
       try {
-        final response = await http.get(uri).timeout(timeout);
+        final response = await _rustGet(uri, timeout: timeout);
         if (response.statusCode == 200) return response;
         lastResponse = response;
         if (response.statusCode == 404) break;
@@ -94,6 +103,24 @@ class StremioService {
     }
     if (lastResponse != null) return lastResponse;
     throw lastError ?? Exception('Request failed after $retries retries');
+  }
+
+  Future<_StremioHttpResponse> _rustGet(
+    Uri uri, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final raw = RustLib.instance.stremioHttpGet(
+      uri.toString(),
+      timeoutSecs: timeout.inSeconds.clamp(1, 120),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) {
+      throw Exception(parsed['error']);
+    }
+    return _StremioHttpResponse(
+      parsed['status'] as int,
+      parsed['body'] as String,
+    );
   }
 
   /// Extracts a clean base URL and optional query parameters from an addon URL.
@@ -119,7 +146,8 @@ class StremioService {
     manifestUrl = _normalizeStremioManifestUrl(manifestUrl);
 
     try {
-      final response = await http.get(Uri.parse(manifestUrl)).timeout(const Duration(seconds: 10));
+      final response =
+          await _rustGet(Uri.parse(manifestUrl), timeout: const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final body = response.body;
         final parsed = _parseStremioManifest(body);

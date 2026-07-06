@@ -26,6 +26,7 @@ import 'package:forja/shell/main_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
