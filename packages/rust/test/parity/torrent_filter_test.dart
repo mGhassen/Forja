@@ -19,7 +19,7 @@ void main() {
     ];
     for (final title in titles) {
       expect(
-        ForjaRust.instance.normalizeTorrentTitle(title),
+        RustLib.instance.normalizeTorrentTitle(title),
         isA<String>(),
         reason: title,
       );
@@ -33,7 +33,7 @@ void main() {
     final cases = jsonDecode(raw) as List;
     for (final c in cases) {
       final title = c['title'] as String;
-      final rustJson = ForjaRust.instance.parseSceneInfoJson(title);
+      final rustJson = RustLib.instance.parseSceneInfoJson(title);
       final rust = jsonDecode(rustJson) as Map<String, dynamic>;
       if (c['season'] != null) {
         expect(rust['season'], c['season'], reason: title);
@@ -62,7 +62,7 @@ void main() {
       },
     ];
     final out = jsonDecode(
-      ForjaRust.instance.filterTorrentsJson(
+      RustLib.instance.filterTorrentsJson(
         jsonEncode(rows),
         'Scary Movie',
       ),
@@ -89,7 +89,7 @@ void main() {
       },
     ];
     final out = jsonDecode(
-      ForjaRust.instance.sortTorrentsJson(
+      RustLib.instance.sortTorrentsJson(
         jsonEncode(rows),
         'Seeders (High to Low)',
       ),
@@ -116,7 +116,7 @@ void main() {
       },
     ];
     final out = jsonDecode(
-      ForjaRust.instance.sortTorrentsJson(
+      RustLib.instance.sortTorrentsJson(
         jsonEncode(rows),
         'Size (Low to High)',
       ),
@@ -126,9 +126,9 @@ void main() {
   });
 
   test('isVideoFile via FFI', () {
-    expect(ForjaRust.instance.isVideoFile('movie.mkv'), isTrue);
-    expect(ForjaRust.instance.isVideoFile('readme.txt'), isFalse);
-    expect(ForjaRust.instance.isVideoFile('clip.MP4'), isTrue);
+    expect(RustLib.instance.isVideoFile('movie.mkv'), isTrue);
+    expect(RustLib.instance.isVideoFile('readme.txt'), isFalse);
+    expect(RustLib.instance.isVideoFile('clip.MP4'), isTrue);
   });
 }
 

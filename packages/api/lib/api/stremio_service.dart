@@ -5,7 +5,7 @@ import 'package:storage/storage.dart';
 import 'package:rust/rust.dart';
 
 ({String baseUrl, String? queryParams}) _splitStremioAddonUrl(String url) {
-  final m = jsonDecode(ForjaRust.instance.splitStremioAddonUrlJson(url))
+  final m = jsonDecode(RustLib.instance.splitStremioAddonUrlJson(url))
       as Map<String, dynamic>;
   return (
     baseUrl: m['base_url'] as String,
@@ -14,18 +14,18 @@ import 'package:rust/rust.dart';
 }
 
 String _buildStremioResourceUrl(String addonUrl, String resourcePath) =>
-    ForjaRust.instance.buildStremioResourceUrl(addonUrl, resourcePath);
+    RustLib.instance.buildStremioResourceUrl(addonUrl, resourcePath);
 
 String _normalizeStremioManifestUrl(String url) =>
-    ForjaRust.instance.normalizeStremioManifestUrl(url);
+    RustLib.instance.normalizeStremioManifestUrl(url);
 
 Map<String, dynamic> _parseStremioManifest(String body) =>
-    jsonDecode(ForjaRust.instance.parseStremioManifestJson(body))
+    jsonDecode(RustLib.instance.parseStremioManifestJson(body))
         as Map<String, dynamic>;
 
 List<dynamic> _parseStremioStreams(String body) {
   final parsed =
-      jsonDecode(ForjaRust.instance.parseStremioStreamsJson(body))
+      jsonDecode(RustLib.instance.parseStremioStreamsJson(body))
           as Map<String, dynamic>;
   if (parsed.containsKey('error')) return const [];
   final streams = parsed['streams'];
@@ -34,7 +34,7 @@ List<dynamic> _parseStremioStreams(String body) {
 
 List<Map<String, dynamic>> _parseStremioSubtitles(String body) {
   final parsed =
-      jsonDecode(ForjaRust.instance.parseStremioSubtitlesJson(body))
+      jsonDecode(RustLib.instance.parseStremioSubtitlesJson(body))
           as Map<String, dynamic>;
   if (parsed.containsKey('error')) return const [];
   final subs = parsed['subtitles'];
@@ -47,7 +47,7 @@ List<Map<String, dynamic>> _parseStremioSubtitles(String body) {
 
 List<Map<String, dynamic>> _parseStremioCatalog(String body) {
   final parsed =
-      jsonDecode(ForjaRust.instance.parseStremioCatalogJson(body))
+      jsonDecode(RustLib.instance.parseStremioCatalogJson(body))
           as Map<String, dynamic>;
   if (parsed.containsKey('error')) return const [];
   final metas = parsed['metas'];
@@ -59,7 +59,7 @@ List<Map<String, dynamic>> _parseStremioCatalog(String body) {
 }
 
 Map<String, dynamic>? _parseStremioMeta(String body) {
-  final parsed = jsonDecode(ForjaRust.instance.parseStremioMetaJson(body))
+  final parsed = jsonDecode(RustLib.instance.parseStremioMetaJson(body))
       as Map<String, dynamic>;
   if (parsed.containsKey('error')) return null;
   final meta = parsed['meta'];

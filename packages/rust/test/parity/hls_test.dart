@@ -16,7 +16,7 @@ void main() {
       '${_repoRoot()}/crates/utils/tests/fixtures/hls_master.m3u8',
     ).readAsStringSync();
 
-    final rustJson = ForjaRust.instance.parseHlsMasterJson(masterUrl, body);
+    final rustJson = RustLib.instance.parseHlsMasterJson(masterUrl, body);
     final rustList = (jsonDecode(rustJson) as List)
         .cast<Map<String, dynamic>>();
 

@@ -9,11 +9,11 @@ import 'engine.dart';
 import 'library_path.dart';
 
 /// Rust engine facade — native library required for parser/torrent features.
-abstract final class ForjaEngine {
+abstract final class Engine {
   static bool _enabled = false;
   static bool _initialized = false;
 
-  static bool get isReady => _enabled && ForjaRust.isInitialized;
+  static bool get isReady => _enabled && RustLib.isInitialized;
 
   /// Load the native library. Required for engine features.
   static Future<void> init({String? storagePath}) async {
@@ -29,27 +29,27 @@ abstract final class ForjaEngine {
           if (!File(candidate).existsSync()) continue;
         }
         try {
-          await ForjaRust.init(libraryPath: candidate);
+          await RustLib.init(libraryPath: candidate);
           _enabled = true;
           final storePath = storagePath ?? await _defaultStoragePath();
           _openStorage(storePath);
           try {
             await _migrateLegacyPrefsIfNeeded();
           } catch (e) {
-            debugPrint('[ForjaEngine] legacy prefs migration skipped: $e');
+            debugPrint('[Engine] legacy prefs migration skipped: $e');
           }
           debugPrint(
-            '[ForjaEngine] Rust engine v${ForjaRust.instance.version} ($candidate)',
+            'Rust engine v${RustLib.instance.version} ($candidate)',
           );
           return;
         } catch (e) {
           lastError = e;
         }
       }
-      debugPrint('[ForjaEngine] Rust library not loaded: $lastError');
+      debugPrint('[Engine] Rust library not loaded: $lastError');
       _enabled = false;
     } catch (e) {
-      debugPrint('[ForjaEngine] init failed: $e');
+      debugPrint('[Engine] init failed: $e');
       _enabled = false;
     }
   }
@@ -60,12 +60,12 @@ abstract final class ForjaEngine {
   }
 
   static void _openStorage(String path) {
-    final raw = ForjaRust.instance.storageOpen(path);
+    final raw = RustLib.instance.storageOpen(path);
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) {
       throw StateError('storage_open failed: ${parsed['error']}');
     }
-    debugPrint('[ForjaEngine] storage: $path');
+    debugPrint('[Engine] storage: $path');
   }
 
   static void _requireReady() {
@@ -81,7 +81,7 @@ abstract final class ForjaEngine {
     if (!isReady) return null;
     final id = int.tryParse(tmdbId);
     if (id == null) return null;
-    final url = ForjaRust.instance.buildMovieUrl(providerId, id);
+    final url = RustLib.instance.buildMovieUrl(providerId, id);
     return url.isEmpty ? null : url;
   }
 
@@ -104,7 +104,7 @@ abstract final class ForjaEngine {
     final id = int.tryParse(tmdbId);
     if (id == null) return null;
     final url =
-        ForjaRust.instance.buildTvUrl(providerId, id, season, episode);
+        RustLib.instance.buildTvUrl(providerId, id, season, episode);
     return url.isEmpty ? null : url;
   }
 
@@ -124,7 +124,7 @@ abstract final class ForjaEngine {
 
   static List<Map<String, dynamic>> parseM3uChannels(String content) {
     _requireReady();
-    final json = ForjaRust.instance.parseM3uJson(content);
+    final json = RustLib.instance.parseM3uJson(content);
     final decoded = jsonDecode(json);
     if (decoded is Map && decoded['error'] != null) {
       throw FormatException(decoded['error'] as String);
@@ -134,12 +134,12 @@ abstract final class ForjaEngine {
 
   static String normalizeTorrentTitle(String title) {
     if (!isReady) return title;
-    return ForjaRust.instance.normalizeTorrentTitle(title);
+    return RustLib.instance.normalizeTorrentTitle(title);
   }
 
   static List<Map<String, dynamic>> searchTorrents(String query) {
     _requireReady();
-    final json = ForjaRust.instance.searchTorrentsJson(query);
+    final json = RustLib.instance.searchTorrentsJson(query);
     return (jsonDecode(json) as List)
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
@@ -152,7 +152,7 @@ abstract final class ForjaEngine {
     int? requiredEpisode,
   }) {
     _requireReady();
-    final json = ForjaRust.instance.filterTorrentsJson(
+    final json = RustLib.instance.filterTorrentsJson(
       jsonEncode(results),
       showTitle,
       requiredSeason: requiredSeason ?? -1,
@@ -168,7 +168,7 @@ abstract final class ForjaEngine {
     String preference,
   ) {
     _requireReady();
-    final json = ForjaRust.instance.sortTorrentsJson(
+    final json = RustLib.instance.sortTorrentsJson(
       jsonEncode(results),
       preference,
     );
@@ -179,19 +179,19 @@ abstract final class ForjaEngine {
 
   static bool isVideoFile(String fileName) {
     _requireReady();
-    return ForjaRust.instance.isVideoFile(fileName);
+    return RustLib.instance.isVideoFile(fileName);
   }
 
   // ── Engine KV store (crates/storage via FFI) ─────────────────────────────
 
   static bool storageHasKey(String key) {
     _requireReady();
-    return ForjaRust.instance.storageGetJson(key) != 'null';
+    return RustLib.instance.storageGetJson(key) != 'null';
   }
 
   static dynamic storageRead(String key) {
     _requireReady();
-    final raw = ForjaRust.instance.storageGetJson(key);
+    final raw = RustLib.instance.storageGetJson(key);
     if (raw == 'null') return null;
     return jsonDecode(raw);
   }
@@ -199,7 +199,7 @@ abstract final class ForjaEngine {
   static void storageWrite(String key, Object value) {
     _requireReady();
     final resp = jsonDecode(
-      ForjaRust.instance.storageSetJson(key, jsonEncode(value)),
+      RustLib.instance.storageSetJson(key, jsonEncode(value)),
     ) as Map<String, dynamic>;
     if (resp.containsKey('error')) {
       throw StateError('storage_set failed: ${resp['error']}');

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class ForjaTheme {
+class AppTheme {
   static const bgDark = Color(0xFF141414);
   static const bgCard = Color(0xFF1C1C1C);
   static const primary = Color(0xFF3B82F6);

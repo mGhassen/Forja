@@ -15,7 +15,7 @@ class WebStreamrService {
   WebStreamrService._internal();
 
   static Future<void> init() async {
-    if (!ForjaEngine.isReady) await ForjaEngine.init();
+    if (!Engine.isReady) await Engine.init();
   }
 
   Future<List<StreamSource>> getStreams({
@@ -27,7 +27,7 @@ class WebStreamrService {
   }) async {
     try {
       await init();
-      if (!ForjaEngine.isReady) {
+      if (!Engine.isReady) {
         debugPrint('[WebStreamrService] Rust engine not loaded');
         return [];
       }
@@ -42,7 +42,7 @@ class WebStreamrService {
       if (request == null) return [];
 
       final raw =
-          ForjaRust.instance.webstreamrGetStreamsJson(jsonEncode(request));
+          RustLib.instance.webstreamrGetStreamsJson(jsonEncode(request));
       final streams = jsonDecode(raw);
       if (streams is! List) {
         debugPrint('[WebStreamrService] Unexpected response: $raw');

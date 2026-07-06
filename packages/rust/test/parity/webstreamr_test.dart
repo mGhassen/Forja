@@ -24,7 +24,7 @@ String _repoRoot() {
 }
 
 Map<String, dynamic> _embed(String id, String html, String pageUrl) {
-  final json = ForjaRust.instance.extractEmbedHtmlJson(id, html, pageUrl);
+  final json = RustLib.instance.extractEmbedHtmlJson(id, html, pageUrl);
   return jsonDecode(json) as Map<String, dynamic>;
 }
 
@@ -34,7 +34,7 @@ Map<String, dynamic> _mfpEmbed(
   String pageUrl, {
   String extraHtml = '',
 }) {
-  final json = ForjaRust.instance.extractMfpEmbedHtmlJson(
+  final json = RustLib.instance.extractMfpEmbedHtmlJson(
     id,
     html,
     pageUrl,
@@ -141,7 +141,7 @@ void main() {
   });
 
   test('vidsrc chain golden via FFI', () {
-    final json = ForjaRust.instance.extractVidsrcChainJson(
+    final json = RustLib.instance.extractVidsrcChainJson(
       _fixture('vidsrc_outer.html'),
       _fixture('vidsrc_rcp.html'),
       _fixture('vidsrc_prorcp.html'),
@@ -150,7 +150,7 @@ void main() {
   });
 
   test('resolve_vidsrc_embed_json returns error for bad id', () {
-    final raw = ForjaRust.instance.resolveVidsrcEmbedJson(
+    final raw = RustLib.instance.resolveVidsrcEmbedJson(
       jsonEncode({'tmdb_id': 0, 'is_movie': true}),
     );
     final m = jsonDecode(raw) as Map<String, dynamic>;
@@ -235,7 +235,7 @@ void main() {
   });
 
   test('hubcloud links golden via FFI', () {
-    final json = ForjaRust.instance.extractHubcloudLinksJson(
+    final json = RustLib.instance.extractHubcloudLinksJson(
       _fixture('hubcloud_links.html'),
       'https://hubcloud.example/origin',
     );
@@ -305,7 +305,7 @@ void main() {
       'enabled_sources': ['vidsrc'],
       'config': {'multi': 'on'},
     });
-    final raw = ForjaRust.instance.webstreamrGetStreamsJson(req);
+    final raw = RustLib.instance.webstreamrGetStreamsJson(req);
     final decoded = jsonDecode(raw);
     expect(decoded, isA<List>());
   });

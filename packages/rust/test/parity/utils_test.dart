@@ -12,13 +12,13 @@ void main() {
       "eval(function(p,a,c,k,e,d){}('0 1',10,2,'hello|world'.split('|'),0,{}))";
 
   test('js unpack via FFI', () {
-    final rust = ForjaRust.instance.unpackJs(packed);
+    final rust = RustLib.instance.unpackJs(packed);
     expect(rust, 'hello world');
   });
 
   test('kisskh decryptBody passthrough via FFI', () {
     const body = 'WEBVTT\n\n1\n00:00:00.000 --> 00:00:01.000\nHello\n';
-    final rust = ForjaRust.instance.decryptKisskhBody(body);
+    final rust = RustLib.instance.decryptKisskhBody(body);
     final viaBackend = KissKhSubtitleDecryptor.decryptBody(body);
     expect(rust, viaBackend);
     expect(rust, contains('Hello'));
@@ -30,6 +30,6 @@ void main() {
     final m = RegExp(r'eval\(function\(p,a,c,k,e,d\).*?\)\)', dotAll: true)
         .firstMatch(html);
     expect(m, isNotNull);
-    expect(ForjaRust.instance.unpackJs(m!.group(0)!), 'hello world');
+    expect(RustLib.instance.unpackJs(m!.group(0)!), 'hello world');
   });
 }

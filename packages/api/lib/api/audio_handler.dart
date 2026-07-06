@@ -4,12 +4,12 @@ import 'music_player_service.dart';
 
 enum AudioPlayerType { music, audiobook }
 
-class ForjaAudioHandler extends BaseAudioHandler with SeekHandler {
+class AppAudioHandler extends BaseAudioHandler with SeekHandler {
   final mk.Player _musicPlayer;
   AudioPlayerType _currentType = AudioPlayerType.music;
   dynamic _activePlayer;
 
-  ForjaAudioHandler(this._musicPlayer) {
+  AppAudioHandler(this._musicPlayer) {
     _activePlayer = _musicPlayer;
     // Bind music player events
     _musicPlayer.stream.position.listen((p) => _updateState());

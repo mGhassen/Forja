@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/crates"
 
-PROFILE="${FORJA_RUST_PROFILE:-release}"
+PROFILE="${RUST_PROFILE:-release}"
 cargo build -p ffi "--$PROFILE"
 cargo test --workspace
 

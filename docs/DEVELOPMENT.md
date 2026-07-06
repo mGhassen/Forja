@@ -8,7 +8,7 @@ Technical guide for building, running, and contributing to Forja.
 
 ## Architecture
 
-Full system architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
+Full system architecture: [ARCHITECTURE.md](ARCHITECTURE.md). As-built inventory: [INVENTORY.md](INVENTORY.md). Boundary decisions: [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md).
 
 Forja is a **melos monorepo**:
 
@@ -34,7 +34,7 @@ End-state: Kotlin Compose UI + Rust engine. See [migration/README.md](migration/
 ```
 Forja/
 ├── apps/forja/              Flutter product
-│   ├── lib/app/             Bootstrap, ForjaEngine init
+│   ├── lib/app/             Bootstrap, Engine init
 │   ├── lib/shell/           MainScreen, AppRouter, nav (19 tabs)
 │   ├── lib/features/        One folder per nav tab
 │   └── lib/shared/          Player, widgets, casting/sync stubs
@@ -79,11 +79,11 @@ flutter pub get
 flutter run -d macos             # or windows / linux / android / ios
 ```
 
-Boot log must show `[ForjaEngine] Rust engine v0.1.0`. If you see `Rust engine NOT loaded`:
+Boot log must show `[Engine] Rust engine v0.1.0`. If you see `Rust engine NOT loaded`:
 
 - Re-run `./scripts/build_rust.sh`
-- Or set `FORJA_RUST_LIB` to the release dylib path
-- Debug: `FORJA_RUST_STRICT=1` fails fast when the library is missing
+- Or set `RUST_LIB` to the release dylib path
+- Debug: `RUST_STRICT=1` fails fast when the library is missing
 
 ---
 
@@ -115,7 +115,7 @@ Mobile FFI ships the full engine (parsers + librqbit torrent + proxy).
 
 ```bash
 ./scripts/build_rust_mobile.sh android
-FORJA_BUILD_RUST_ANDROID=1 flutter run -d android
+BUILD_RUST_ANDROID=1 flutter run -d android
 ```
 
 **Android release** — Rust bundles automatically:
@@ -153,7 +153,7 @@ melos run rust:integration                       # integration_test/ (build Rust
 cd apps/forja && flutter test integration_test/
 ```
 
-Parity tests: `packages/rust/test/` — compare `ForjaRust.instance.*` against Dart reference implementations.
+Parity tests: `packages/rust/test/` — compare `RustLib.instance.*` against Dart reference implementations.
 
 ---
 
@@ -175,6 +175,8 @@ Agent rules: [`.cursor/rules/rust-migration.mdc`](../.cursor/rules/rust-migratio
 | Doc | Purpose |
 |-----|---------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, engine, data flows |
+| [INVENTORY.md](INVENTORY.md) | As-built codebase inventory (facts only) |
+| [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary decisions (draft) |
 | [apps/forja/README.md](../apps/forja/README.md) | App run/build, layout |
 | [crates/README.md](../crates/README.md) | Rust crates, NDK, iOS patch |
 | [migration/README.md](migration/README.md) | Migration phases 1–5 |

@@ -11,7 +11,7 @@ Future<void> initRustAndWireRustBackends() async {
 }
 
 List<Map<String, dynamic>> m3uRowsFromRust(String content) {
-  final json = ForjaRust.instance.parseM3uJson(content);
+  final json = RustLib.instance.parseM3uJson(content);
   final decoded = jsonDecode(json);
   if (decoded is Map && decoded['error'] != null) {
     throw FormatException(decoded['error'] as String);

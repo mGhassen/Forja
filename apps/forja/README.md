@@ -16,7 +16,7 @@ flutter pub get
 flutter run -d macos
 ```
 
-Boot log should show `[ForjaEngine] Rust engine v0.1.0`. If you see `Rust engine NOT loaded`, re-run `build_rust.sh` or set `FORJA_RUST_LIB` to the release dylib path. Set `FORJA_RUST_STRICT=1` to fail fast in debug when the library is missing.
+Boot log should show `[Engine] Rust engine v0.1.0`. If you see `Rust engine NOT loaded`, re-run `build_rust.sh` or set `RUST_LIB` to the release dylib path. Set `RUST_STRICT=1` to fail fast in debug when the library is missing.
 
 ## Run (mobile)
 
@@ -29,11 +29,11 @@ Mobile FFI ships full engine (parsers + librqbit torrent + proxy). Magnet playba
 
 ### Android (NDK)
 
-Release APK bundles Rust automatically (`forjaBuildRust=true`). Debug needs a manual build or env flag:
+Release APK bundles Rust automatically (`buildRust=true`). Debug needs a manual build or env flag:
 
 ```bash
 ./scripts/build_rust_mobile.sh android          # optional pre-build
-FORJA_BUILD_RUST_ANDROID=1 flutter run -d android
+BUILD_RUST_ANDROID=1 flutter run -d android
 flutter build apk                               # release — builds Rust via preReleaseBuild
 ```
 

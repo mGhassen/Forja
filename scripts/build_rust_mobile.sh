@@ -2,7 +2,7 @@
 # Cross-compile ffi for iOS/Android.
 #
 # Default: full features (torrent-engine + local-proxy + parsers).
-# Parser-only (legacy): FORJA_RUST_MOBILE_PARSER_ONLY=1
+# Parser-only (legacy): RUST_MOBILE_PARSER_ONLY=1
 #
 # Android: needs NDK (Android Studio, ANDROID_NDK_HOME, or sdk.dir in local.properties)
 # iOS: macOS + Xcode toolchain
@@ -11,9 +11,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/crates"
 
-PROFILE="${FORJA_RUST_PROFILE:-release}"
+PROFILE="${RUST_PROFILE:-release}"
 MOBILE_FLAGS=()
-if [[ "${FORJA_RUST_MOBILE_PARSER_ONLY:-}" == "1" ]]; then
+if [[ "${RUST_MOBILE_PARSER_ONLY:-}" == "1" ]]; then
   MOBILE_FLAGS=(--no-default-features)
   echo "Building mobile FFI parsers only (no torrent/proxy)."
 fi

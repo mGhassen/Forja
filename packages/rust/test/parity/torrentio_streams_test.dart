@@ -13,13 +13,13 @@ void main() {
   test('Rust HTTP + parse returns Toy Story 5 streams', () {
     const url =
         'https://torrentio.strem.fun/stream/movie/tt29355505.json';
-    final raw = ForjaRust.instance.stremioHttpGet(url, timeoutSecs: 15);
+    final raw = RustLib.instance.stremioHttpGet(url, timeoutSecs: 15);
     final http = jsonDecode(raw) as Map<String, dynamic>;
     expect(http.containsKey('error'), isFalse, reason: raw);
     expect(http['status'], 200);
 
     final parsedJson =
-        ForjaRust.instance.parseStremioStreamsJson(http['body'] as String);
+        RustLib.instance.parseStremioStreamsJson(http['body'] as String);
     final parsed = jsonDecode(parsedJson) as Map<String, dynamic>;
     expect(parsed.containsKey('error'), isFalse, reason: parsedJson);
     final streams = parsed['streams'] as List<dynamic>;
@@ -30,7 +30,7 @@ void main() {
     const base = 'https://torrentio.strem.fun';
     const path = '/stream/movie/tt29355505.json';
     expect(
-      ForjaRust.instance.buildStremioResourceUrl(base, path),
+      RustLib.instance.buildStremioResourceUrl(base, path),
       'https://torrentio.strem.fun/stream/movie/tt29355505.json',
     );
   });

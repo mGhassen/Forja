@@ -14,7 +14,7 @@ Extract performance-critical and shareable engine logic into Rust crates. Flutte
 ```
 Flutter UI (apps/forja)
     → orchestrators (stream_resolver, debrid, iptv)
-        → ForjaEngine facade (packages/rust)
+        → Engine facade (packages/rust)
             → libffi.dylib/.so/.dll
                 → utils | stream-core | iptv-core | stremio-core | webstreamr | scrapers | torrent | proxy
 ```
@@ -41,7 +41,7 @@ crates/
 **Package:** `packages/rust/`
 
 ```dart
-await ForjaEngine.init();
+await Engine.init();
 // Delegates wire episode matcher, HLS, IPTV, webstreamr, scrapers, torrent, proxy when dylib loads
 ```
 
@@ -53,7 +53,7 @@ await ForjaEngine.init();
 
 Copies dylib to `apps/forja/macos/Runner/Frameworks/` on macOS.
 
-**Load paths:** `packages/rust/lib/src/library_path.dart` — app bundle Frameworks, walk-up to repo `crates/target/release/`, or `FORJA_RUST_LIB` env.
+**Load paths:** `packages/rust/lib/src/library_path.dart` — app bundle Frameworks, walk-up to repo `crates/target/release/`, or `RUST_LIB` env.
 
 ## Migration order
 
@@ -91,10 +91,10 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 ## Acceptance
 
 - [x] `crates/` workspace with `cargo test --workspace` green
-- [x] `ffi` C ABI round-trip (`forja_add`)
+- [x] `ffi` C ABI round-trip (`ffi_add`)
 - [x] `packages/rust` parity test suite
 - [x] CI workflow `rust.yml`
-- [x] `ForjaEngine.init()` in app bootstrap
+- [x] `Engine.init()` in app bootstrap
 - [x] M3U parse via FFI in IPTV path
 - [x] Provider URLs (vidlink, vixsrc, vidnest) via FFI
 - [x] Dylib loads on `flutter run -d macos` without env override
@@ -105,7 +105,7 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 - [x] Webstreamr Rust golden suite (23 extractors · 21 sources)
 - [x] Webstreamr Dart FFI parity (21/23 extractors · 22/22 sources)
 - [x] App engine smoke tests (`integration_test/` — 11 tests in CI)
-- [x] Mobile release bundles Rust parsers (Android `forjaBuildRust=true` · iOS Release build phase)
+- [x] Mobile release bundles Rust parsers (Android `buildRust=true` · iOS Release build phase)
 - [x] Full parity suite (core paths; lulustream/fastream stream-fetch documented gap)
 - [ ] WASM smoke test (v3.0)
 - [x] Step 9: runtime Dart engine removed from `lib/` (parity baselines in `test/` only)

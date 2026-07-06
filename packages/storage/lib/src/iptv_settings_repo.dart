@@ -85,10 +85,10 @@ class IptvSettingsRepo {
   static const _metaKey = 'forja_iptv_portal_meta';
 
   Future<List<PortalGroup>> getGroups() async {
-    if (!ForjaEngine.isReady) {
+    if (!Engine.isReady) {
       return [const PortalGroup(id: 'default', name: 'All Portals')];
     }
-    final raw = ForjaEngine.storageRead(_groupsKey);
+    final raw = Engine.storageRead(_groupsKey);
     if (raw == null) {
       return [const PortalGroup(id: 'default', name: 'All Portals')];
     }
@@ -108,16 +108,16 @@ class IptvSettingsRepo {
   }
 
   Future<void> saveGroups(List<PortalGroup> groups) async {
-    if (!ForjaEngine.isReady) return;
-    ForjaEngine.storageWriteString(
+    if (!Engine.isReady) return;
+    Engine.storageWriteString(
       _groupsKey,
       jsonEncode(groups.map((g) => g.toJson()).toList()),
     );
   }
 
   Future<Map<String, PortalMeta>> getPortalMeta() async {
-    if (!ForjaEngine.isReady) return {};
-    final raw = ForjaEngine.storageRead(_metaKey);
+    if (!Engine.isReady) return {};
+    final raw = Engine.storageRead(_metaKey);
     if (raw == null) return {};
     final decoded = raw is String ? jsonDecode(raw) : raw;
     if (decoded is! Map) return {};
@@ -130,10 +130,10 @@ class IptvSettingsRepo {
   }
 
   Future<void> upsertPortalMeta(PortalMeta meta) async {
-    if (!ForjaEngine.isReady) return;
+    if (!Engine.isReady) return;
     final all = await getPortalMeta();
     all[meta.portalKey] = meta;
-    ForjaEngine.storageWriteString(
+    Engine.storageWriteString(
       _metaKey,
       jsonEncode(all.map((k, v) => MapEntry(k, v.toJson()))),
     );

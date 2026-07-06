@@ -100,7 +100,7 @@ class IptvClient {
 
   static List<Map<String, dynamic>> _parseCategoryRows(String text) {
     try {
-      final decoded = json.decode(ForjaRust.instance.parseXtreamCategoriesJson(text));
+      final decoded = json.decode(RustLib.instance.parseXtreamCategoriesJson(text));
       if (decoded is List) {
         return decoded.map((e) => e as Map<String, dynamic>).toList();
       }
@@ -144,7 +144,7 @@ class IptvClient {
   static List<Map<String, dynamic>> _parseStreamRows(String text, String section) {
     try {
       final decoded =
-          json.decode(ForjaRust.instance.parseXtreamStreamsJson(text, section));
+          json.decode(RustLib.instance.parseXtreamStreamsJson(text, section));
       if (decoded is List) {
         return decoded.map((e) => e as Map<String, dynamic>).toList();
       }
@@ -155,7 +155,7 @@ class IptvClient {
   static List<Map<String, dynamic>> _parseSeriesEpisodeRows(String text) {
     try {
       final decoded =
-          json.decode(ForjaRust.instance.parseXtreamSeriesEpisodesJson(text));
+          json.decode(RustLib.instance.parseXtreamSeriesEpisodesJson(text));
       if (decoded is List) {
         return decoded.map((e) => e as Map<String, dynamic>).toList();
       }
@@ -207,7 +207,7 @@ class IptvClient {
   ///
   /// Xtream encodes `title` and `description` as base64 strings.
   static String _decodeXtreamField(String s) {
-    return ForjaRust.instance.decodeXtreamText(s);
+    return RustLib.instance.decodeXtreamText(s);
   }
 
   static Future<List<EpgEntry>> shortEpg(

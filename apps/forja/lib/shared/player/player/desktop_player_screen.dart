@@ -2786,10 +2786,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         final query = '${widget.movie!.title} S${s}E$e';
         debugPrint('[NextEp] Searching torrents: $query');
 
-        final results = ForjaEngine.searchTorrents(query)
+        final results = Engine.searchTorrents(query)
             .map(TorrentResult.fromJson)
             .toList();
-        final filtered = ForjaEngine.filterTorrents(
+        final filtered = Engine.filterTorrents(
           results.map((e) => e.toJson()).toList(),
           widget.movie!.title,
           requiredSeason: nextSeason,

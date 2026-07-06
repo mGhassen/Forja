@@ -13,7 +13,7 @@ class AudiobookPlayerService {
   AudiobookPlayerService._internal();
 
   final Player _player = Player();
-  ForjaAudioHandler? _handler;
+  AppAudioHandler? _handler;
   
   // State
   final ValueNotifier<Audiobook?> currentBook = ValueNotifier<Audiobook?>(null);
@@ -29,7 +29,7 @@ class AudiobookPlayerService {
   bool _isResuming = false;
 
   void init(BaseAudioHandler handler) {
-    _handler = handler as ForjaAudioHandler;
+    _handler = handler as AppAudioHandler;
     
     _subscriptions.add(_player.stream.position.listen((p) {
       position.value = p;

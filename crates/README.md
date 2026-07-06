@@ -13,7 +13,7 @@ Workspace crates consumed by Flutter via `packages/rust` (FFI, transitional).
 ./scripts/build_rust_mobile.sh all         # both mobile targets
 ```
 
-Mobile defaults to **full features** (parsers + librqbit + proxy). Legacy parser-only: `FORJA_RUST_MOBILE_PARSER_ONLY=1`.
+Mobile defaults to **full features** (parsers + librqbit + proxy). Legacy parser-only: `RUST_MOBILE_PARSER_ONLY=1`.
 
 iOS librqbit uses a vendored patch for `librqbit-dualstack-sockets` (`crates/third_party/` — see README there). Probe: `./scripts/try_build_mobile_torrent.sh ios`.
 
@@ -28,7 +28,7 @@ Set one of:
 
 Output: `apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so`
 
-Release APK bundles Rust automatically (`forjaBuildRust=true` → `preReleaseBuild`):
+Release APK bundles Rust automatically (`buildRust=true` → `preReleaseBuild`):
 
 ```bash
 flutter build apk
@@ -37,14 +37,14 @@ flutter build apk
 Debug with Rust:
 
 ```bash
-FORJA_BUILD_RUST_ANDROID=1 flutter run -d android
+BUILD_RUST_ANDROID=1 flutter run -d android
 ```
 
 ### iOS
 
 Requires macOS + Xcode. Release/Profile builds compile Rust via `build_rust_ios.sh`; output lands in `apps/forja/ios/Runner/Frameworks/libffi.dylib` (Xcode copy phase embeds it).
 
-Debug: run `./scripts/build_rust_mobile.sh ios` once, or set `FORJA_BUILD_RUST_IOS=0` to skip the release build phase.
+Debug: run `./scripts/build_rust_mobile.sh ios` once, or set `BUILD_RUST_IOS=0` to skip the release build phase.
 
 ## Test
 

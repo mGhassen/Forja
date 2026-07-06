@@ -56,7 +56,7 @@ class TorrentStreamService {
 
   final SettingsService _settings = SettingsService();
 
-  bool get _rustReady => ForjaRust.isInitialized && _rustEnginePort > 0;
+  bool get _rustReady => RustLib.isInitialized && _rustEnginePort > 0;
 
   Future<bool> start() async {
     if (_state == EngineState.ready) return true;
@@ -71,14 +71,14 @@ class TorrentStreamService {
 
     _setState(EngineState.starting);
     try {
-      if (!ForjaRust.isInitialized) {
-        _log('Rust torrent engine not loaded — run ForjaEngine.init()');
+      if (!RustLib.isInitialized) {
+        _log('Rust torrent engine not loaded — run Engine.init()');
         _setState(EngineState.error);
         return false;
       }
       final connLimit = (await _settings.getTorrentConnectionsLimit()).clamp(5, 200);
-      ForjaRust.instance.torrentSetPeerLimit(connLimit);
-      final port = ForjaRust.instance.torrentEngineStart(0);
+      RustLib.instance.torrentSetPeerLimit(connLimit);
+      final port = RustLib.instance.torrentEngineStart(0);
       if (port <= 0) {
         _log('Rust torrent engine failed to start');
         _setState(EngineState.error);
@@ -98,11 +98,11 @@ class TorrentStreamService {
   Future<void> applyConnectionsLimit(int limit) async {
     final clamped = limit.clamp(5, 200);
     await _settings.setTorrentConnectionsLimit(clamped);
-    if (ForjaRust.isInitialized) {
-      ForjaRust.instance.torrentSetPeerLimit(clamped);
+    if (RustLib.isInitialized) {
+      RustLib.instance.torrentSetPeerLimit(clamped);
     }
     if (_state == EngineState.ready && _rustReady) {
-      ForjaRust.instance.torrentEngineStop();
+      RustLib.instance.torrentEngineStop();
       _rustEnginePort = 0;
       _rustActiveHash = null;
       _setState(EngineState.stopped);
@@ -116,10 +116,10 @@ class TorrentStreamService {
       final started = await start();
       if (!started) return null;
     }
-    if (!ForjaRust.isInitialized) return null;
+    if (!RustLib.isInitialized) return null;
     try {
       return _parseFileList(
-        ForjaRust.instance.torrentListFilesJson(magnetLink),
+        RustLib.instance.torrentListFilesJson(magnetLink),
       );
     } catch (e) {
       _log('Rust listTorrentFiles error: $e');
@@ -142,10 +142,10 @@ class TorrentStreamService {
     }
 
     final hash = _extractHash(magnetLink);
-    if (!ForjaRust.isInitialized) return null;
+    if (!RustLib.isInitialized) return null;
 
     try {
-      final json = ForjaRust.instance.torrentStreamJson(
+      final json = RustLib.instance.torrentStreamJson(
         magnetLink,
         season: season,
         episode: episode,
@@ -168,7 +168,7 @@ class TorrentStreamService {
   void removeTorrent(String magnetOrHash) {
     final hash = _extractHash(magnetOrHash);
     if (hash == null || hash != _rustActiveHash) return;
-    if (ForjaRust.isInitialized) ForjaRust.instance.torrentStop();
+    if (RustLib.isInitialized) RustLib.instance.torrentStop();
     _rustActiveHash = null;
     _log('Removed torrent $hash (Rust)');
   }
@@ -176,8 +176,8 @@ class TorrentStreamService {
   TorrentStats? getTorrentStats(String magnetOrHash) {
     final hash = _extractHash(magnetOrHash);
     if (hash == null || hash != _rustActiveHash) return null;
-    if (!ForjaRust.isInitialized) return null;
-    return _rustStatsFromJson(ForjaRust.instance.torrentStatusJson(), hash);
+    if (!RustLib.isInitialized) return null;
+    return _rustStatsFromJson(RustLib.instance.torrentStatusJson(), hash);
   }
 
   Stream<TorrentStats> statsStream(
@@ -205,16 +205,16 @@ class TorrentStreamService {
   }
 
   Future<void> stop() async {
-    if (!ForjaRust.isInitialized) return;
-    ForjaRust.instance.torrentStop();
+    if (!RustLib.isInitialized) return;
+    RustLib.instance.torrentStop();
     _rustActiveHash = null;
     _log('All torrents stopped (Rust).');
   }
 
   Future<void> cleanup() async {
     await stop();
-    if (ForjaRust.isInitialized && _rustEnginePort > 0) {
-      ForjaRust.instance.torrentEngineStop();
+    if (RustLib.isInitialized && _rustEnginePort > 0) {
+      RustLib.instance.torrentEngineStop();
       _rustEnginePort = 0;
       _setState(EngineState.stopped);
       _log('Engine cleaned up (Rust).');

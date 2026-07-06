@@ -10,7 +10,7 @@ void main() {
   });
 
   test('searchTorrentsJson returns JSON array', () {
-    final raw = ForjaRust.instance.searchTorrentsJson('ubuntu');
+    final raw = RustLib.instance.searchTorrentsJson('ubuntu');
     final decoded = jsonDecode(raw);
     expect(decoded, isA<List>());
   });
@@ -33,7 +33,7 @@ void main() {
       },
     ];
     final filtered = jsonDecode(
-      ForjaRust.instance.filterTorrentsJson(
+      RustLib.instance.filterTorrentsJson(
         jsonEncode(rows),
         'Show',
         requiredSeason: 1,
@@ -42,13 +42,13 @@ void main() {
     ) as List;
     expect(filtered, hasLength(2));
     final sorted = jsonDecode(
-      ForjaRust.instance.sortTorrentsJson(
+      RustLib.instance.sortTorrentsJson(
         jsonEncode(filtered),
         'Seeders (High to Low)',
       ),
     ) as List;
     expect(sorted.first['seeders'], '50');
-    expect(ForjaRust.instance.isVideoFile('a.mkv'), isTrue);
-    expect(ForjaRust.instance.isVideoFile('nfo.txt'), isFalse);
+    expect(RustLib.instance.isVideoFile('a.mkv'), isTrue);
+    expect(RustLib.instance.isVideoFile('nfo.txt'), isFalse);
   });
 }

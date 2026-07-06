@@ -52,7 +52,7 @@ For each engine Dart package:
 
 1. **Port** — implement logic in the matching `crates/<name>/` crate (not a Dart shim).
 2. **FFI** — expose via `crates/ffi` / uniffi (`*_json` or typed API).
-3. **Wire UI** — `apps/forja` calls `ForjaEngine.*` only (no intermediate Dart package).
+3. **Wire UI** — `apps/forja` calls `Engine.*` only (no intermediate Dart package).
 4. **Delete** — remove the Dart package directory, pubspec deps, and all imports.
 5. **Test** — Rust unit/golden + `packages/rust/test/parity/` for every new FFI. **No migration without tests.**
 

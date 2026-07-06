@@ -17,7 +17,7 @@ class PasteShDecryptor {
   }
 
   static String decryptRaw(String urlWithHash, String rawResponse) {
-    return ForjaRust.instance.decryptPasteResponse(urlWithHash, rawResponse);
+    return RustLib.instance.decryptPasteResponse(urlWithHash, rawResponse);
   }
 
   static Future<String?> _httpGetText(String url) async {

@@ -34,7 +34,7 @@ void main() {
   });
 
   test('empty playlist returns error object', () {
-    final json = ForjaRust.instance.parseM3uJson('');
+    final json = RustLib.instance.parseM3uJson('');
     final decoded = jsonDecode(json);
     expect(decoded, isA<Map>());
     expect((decoded as Map)['error'], isNotNull);

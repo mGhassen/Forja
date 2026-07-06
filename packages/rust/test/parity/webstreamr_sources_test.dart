@@ -5,7 +5,7 @@ import 'package:rust/rust.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 List<dynamic> _resolve(String sourceId, Map<String, dynamic> req) {
-  final json = ForjaRust.instance.resolveWebstreamrSourceJson(
+  final json = RustLib.instance.resolveWebstreamrSourceJson(
     sourceId,
     jsonEncode(req),
   );
@@ -13,7 +13,7 @@ List<dynamic> _resolve(String sourceId, Map<String, dynamic> req) {
 }
 
 List<dynamic> _parseHtml(String sourceId, String html, String contextJson) {
-  final json = ForjaRust.instance.parseWebstreamrSourceHtmlJson(
+  final json = RustLib.instance.parseWebstreamrSourceHtmlJson(
     sourceId,
     html,
     contextJson,
@@ -258,7 +258,7 @@ void main() {
   test('kinoger show.js episode URLs via FFI', () {
     const html =
         r'<script>$(".ep").show([["https://cdn.example/ep1.m3u8","x"],["https://cdn.example/s2e1.m3u8"]])</script>';
-    final json = ForjaRust.instance.extractKinogerEpisodeUrlsJson(html, 1, 0);
+    final json = RustLib.instance.extractKinogerEpisodeUrlsJson(html, 1, 0);
     final urls = jsonDecode(json) as List<dynamic>;
     expect(urls, ['https://cdn.example/s2e1.m3u8']);
   });

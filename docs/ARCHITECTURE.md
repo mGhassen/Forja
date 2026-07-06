@@ -4,7 +4,7 @@ Technical architecture reference for the Forja engine and monorepo.
 
 **Status:** v1.0 shipped on macOS. Active work: [Phase 2 — Rust engine complete](migration/02-rust-engine-complete.md) (78% — Dart engine packages still transitional).
 
-**Companion docs:** [DEVELOPMENT.md](DEVELOPMENT.md) (build/run) · [migration/README.md](migration/README.md) (phases) · [RFC-009](rfc/009-rust-ffi.md) (FFI spec)
+**Companion docs:** [DEVELOPMENT.md](DEVELOPMENT.md) (build/run) · [INVENTORY.md](INVENTORY.md) (as-built facts) · [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) (boundary decisions) · [migration/README.md](migration/README.md) (phases) · [RFC-009](rfc/009-rust-ffi.md) (FFI spec)
 
 ---
 
@@ -55,7 +55,7 @@ Phase 3 swaps Flutter for Kotlin Compose. Phase 4 deletes `apps/forja` and `pack
 ├─────────────────────────────────────┤
 │  packages/{api,storage,streaming}   │  ← transitional (Phase 2 delete)
 ├─────────────────────────────────────┤
-│  packages/rust — ForjaEngine FFI    │
+│  packages/rust — Engine FFI    │
 ├─────────────────────────────────────┤
 │  libffi — c_api + stateful engines  │
 ├─────────────────────────────────────┤
@@ -204,7 +204,7 @@ Two FFI paths load the same `libffi` artifact:
 
 | Path | Contract | Consumer | Status |
 |------|----------|----------|--------|
-| **C ABI** | `crates/ffi/src/c_api.rs` — `#[no_mangle] extern "C" forja_*` | `packages/rust` (`ForjaRust` + `ForjaEngine`) | **Active** |
+| **C ABI** | `crates/ffi/src/c_api.rs` — `#[no_mangle] extern "C" ffi_*` | `packages/rust` (`RustLib` + `Engine`) | **Active** |
 | **UniFFI** | `crates/ffi/src/forja.udl` — 65 flat functions, namespace `forja` | `packages/kotlin/generated/` | Phase 3 |
 
 Dart does **not** use UniFFI. The C ABI and UDL must be kept in sync manually.
@@ -215,16 +215,16 @@ Dart does **not** use UniFFI. The C ABI and UDL must be kept in sync manually.
 |------|------------|
 | Primitives | Direct (`i64`, `bool`, `i32`) |
 | Complex data | **JSON strings** both ways |
-| String memory | `CString::into_raw` out; `forja_free_string` to release |
+| String memory | `CString::into_raw` out; `ffi_free_string` to release |
 | Errors | Embedded in JSON `{"error":"..."}` or sentinels (`"null"`, `-1`) |
 | Async Rust | Global `LazyLock<Runtime>` in `ffi`; `block_on` from FFI threads |
 
 #### Dart call chain
 
 ```
-App → ForjaEngine.init() → ForjaRust.init()
+App → Engine.init() → RustLib.init()
   → DynamicLibrary.open("libffi...")
-  → lookup("forja_*") → call → _readString() → forja_free_string()
+  → lookup("ffi_*") → call → _readString() → ffi_free_string()
 ```
 
 Load paths (`packages/rust/lib/src/library_path.dart`):
@@ -232,7 +232,7 @@ Load paths (`packages/rust/lib/src/library_path.dart`):
 - Android: `libffi.so` (jniLibs)
 - iOS/macOS: `libffi.dylib` (app bundle Frameworks)
 - Desktop dev: `crates/target/release/libffi.{dylib,so,dll}`
-- Override: `FORJA_RUST_LIB` env
+- Override: `RUST_LIB` env
 
 ### 3.4 Stateful subsystems
 
@@ -287,7 +287,7 @@ Dart registers token routes, then points the player at `http://127.0.0.1:{port}/
 ```mermaid
 sequenceDiagram
   participant UI as Flutter Player
-  participant FE as ForjaEngine
+  participant FE as Engine
   participant TOR as crates/torrent
   participant AX as localhost axum
   participant RK as librqbit
@@ -308,26 +308,32 @@ sequenceDiagram
 
 ### 4.2 Web stream resolution
 
+**Main path (WebStreamr):** `WebStreamrService` builds a JSON request from settings, then one FFI call — `webstreamrGetStreamsJson`. Rust (`crates/webstreamr`) fetches pages via `fetcher.rs` and runs the full source/extractor pipeline. Dart only post-processes URLs (e.g. 1shows.app HLS re-proxy).
+
 ```mermaid
 flowchart TD
   UI[Flutter UI]
-  HTTP[Dart http client]
-  FE[ForjaEngine]
+  WSS[WebStreamrService]
+  FE[Engine]
   WS[crates/webstreamr]
   PRX[crates/proxy]
   MK[media_kit]
 
-  UI --> HTTP
-  HTTP -->|HTML body| FE
-  FE -->|extract_embed_html_json\nresolve_webstreamr_source_json| WS
+  UI --> WSS
+  WSS -->|request JSON| FE
+  FE -->|webstreamr_get_streams_json| WS
+  WS -->|fetch + parse in Rust| WS
   WS -->|JSON stream URLs| FE
-  FE --> UI
+  FE --> WSS
+  WSS --> UI
   UI -->|CORS/headers needed| PRX
-  PRX -->|proxied URL| MK
+  PRX --> MK
   UI -->|direct URL| MK
 ```
 
-Dart fetches HTML (network I/O stays in Flutter for now). Rust parsers run synchronously in-process. Proxy registration happens when the player needs CORS bypass or custom headers.
+**Legacy / granular FFI:** `extract_embed_html_json`, `parse_webstreamr_source_html_json`, etc. accept pre-fetched HTML (Pattern A in [INVENTORY.md](INVENTORY.md)). The app’s primary WebStreamr path does not use these for full resolve.
+
+**Embed providers (videasy, vidsrc, template):** Mix of Rust (`resolveVidsrcEmbedJson`, template URLs) and host-side WebView/WASM where required — see [INVENTORY.md](INVENTORY.md) §5.
 
 ### 4.3 Provider registry resolve
 
@@ -356,7 +362,7 @@ flowchart TD
 ### 4.4 Storage / prefs
 
 ```
-ForjaEngine.init(storagePath)
+Engine.init(storagePath)
   → storage_open(path)           # crates/storage JSON KV
   → kv.dart prefers Rust KV when engine ready
   → one-time SharedPreferences migration in facade.dart
@@ -408,7 +414,7 @@ The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
 
 | Layer | Path | Role |
 |-------|------|------|
-| Bootstrap | `apps/forja/lib/app/bootstrap.dart` | Platform init, `ForjaEngine.init()`, service warm-up, splash |
+| Bootstrap | `apps/forja/lib/app/bootstrap.dart` | Platform init, `Engine.init()`, service warm-up, splash |
 | Shell | `apps/forja/lib/shell/` | `MainScreen` tab map, `AppRouter`, `ShellBus`, `nav_config` |
 | Features | `apps/forja/lib/features/` | One folder per nav tab (~20 verticals) |
 | Shared | `apps/forja/lib/shared/` | Player (`media_kit`), design tokens, casting stubs |
@@ -417,7 +423,7 @@ The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
 
 **Routing:** `MaterialApp(home: SplashScreen())` — no named routes. Tab switching via `MainScreen` index. Secondary nav via `Navigator.push`. Cross-feature hot paths via `AppRouter.openMovie()` / `openPlayer()`.
 
-**Player:** `shared/player/` → media_kit (custom AimesSoft fork). Defers to `ForjaEngine` for torrent re-search, proxy URLs, episode matching. Platform split: `mobile_player_screen.dart` / `desktop_player_screen.dart`.
+**Player:** `shared/player/` → media_kit (custom AimesSoft fork). Defers to `Engine` for torrent re-search, proxy URLs, episode matching. Platform split: `mobile_player_screen.dart` / `desktop_player_screen.dart`.
 
 **Nav tabs (19 + settings):** Home · Discover · Similar · Search · My List · Media Downloader · Magnet · Live Matches · IPTV · Audiobooks · Books · Music · Comics · Manga · Jellyfin · Anime · Anime Arabic · Asian Drama · Arabic · Settings.
 
@@ -476,7 +482,7 @@ Snapshot from [02-rust-engine-complete.md](migration/02-rust-engine-complete.md)
 ### Done
 
 - `packages/scrapers` deleted → `search_torrents_json`
-- `packages/webstreamr` deleted → `forja_webstreamr_get_streams_json`
+- `packages/webstreamr` deleted → `ffi_webstreamr_get_streams_json`
 - Legacy `packages/forja_*` deleted (7 orphan packages)
 - Torrent filter → `filter_torrents_json`; Dart filter logic deleted
 - HLS proxy in Rust; Dart HLS rewrite deleted
@@ -529,7 +535,7 @@ Snapshot from [02-rust-engine-complete.md](migration/02-rust-engine-complete.md)
 | **Dual FFI surface** | C ABI for Dart (hand-maintained); UniFFI UDL for Kotlin codegen — must stay in sync manually |
 | **Long-lived localhost axum servers** | Torrent + proxy run inside `libffi`; Dart controls lifecycle via start/stop/port FFI |
 | **WebView extractors stay in UI** | ~1,900 LOC of JS-heavy extractors remain in Dart/Kotlin adapters ([RFC-009](rfc/009-rust-ffi.md) non-goal) |
-| **`FORJA_RUST_STRICT=1`** | Hard-fail boot when dylib missing (debug aid) |
+| **`RUST_STRICT=1`** | Hard-fail boot when dylib missing (debug aid) |
 | **Move = port + delete** | No Dart wrapper calling Rust; no backend swap while keeping Dart package alive |
 | **Thin FFI, fat domain** | Business logic in pure crates; `ffi` is glue + JSON boundary only |
 
@@ -547,6 +553,8 @@ Snapshot from [02-rust-engine-complete.md](migration/02-rust-engine-complete.md)
 
 | Doc | Purpose |
 |-----|---------|
+| [INVENTORY.md](INVENTORY.md) | As-built codebase inventory (facts only) |
+| [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary decisions (draft) |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Build, run, melos scripts |
 | [crates/README.md](../crates/README.md) | Rust build, NDK, iOS patch |
 | [migration/README.md](migration/README.md) | Migration phases 1–5 |

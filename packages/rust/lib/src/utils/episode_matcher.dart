@@ -4,10 +4,10 @@ import '../engine.dart';
 
 class EpisodeMatcher {
   static bool matches(String filename, int season, int episode) {
-    if (!ForjaRust.isInitialized) {
-      throw StateError('ForjaEngine not initialized');
+    if (!RustLib.isInitialized) {
+      throw StateError('Engine not initialized');
     }
-    return ForjaRust.instance.episodeMatches(filename, season, episode);
+    return RustLib.instance.episodeMatches(filename, season, episode);
   }
 
   static T? pickEpisode<T>(
@@ -17,13 +17,13 @@ class EpisodeMatcher {
     required String Function(T) name,
     required int Function(T) size,
   }) {
-    if (!ForjaRust.isInitialized) {
-      throw StateError('ForjaEngine not initialized');
+    if (!RustLib.isInitialized) {
+      throw StateError('Engine not initialized');
     }
     final entries = [
       for (final f in files) {'name': name(f), 'size': size(f)},
     ];
-    final idx = ForjaRust.instance.pickEpisodeIndexJson(
+    final idx = RustLib.instance.pickEpisodeIndexJson(
       jsonEncode(entries),
       season,
       episode,
@@ -37,14 +37,14 @@ class EpisodeMatcher {
     required String Function(T) name,
     required int Function(T) size,
   }) {
-    if (!ForjaRust.isInitialized) {
-      throw StateError('ForjaEngine not initialized');
+    if (!RustLib.isInitialized) {
+      throw StateError('Engine not initialized');
     }
     final entries = [
       for (final f in files) {'name': name(f), 'size': size(f)},
     ];
     final idx =
-        ForjaRust.instance.pickLargestVideoIndexJson(jsonEncode(entries));
+        RustLib.instance.pickLargestVideoIndexJson(jsonEncode(entries));
     if (idx < 0 || idx >= files.length) return null;
     return files[idx];
   }

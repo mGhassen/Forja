@@ -5,25 +5,25 @@ class PlaybackSettingsRepo {
   static const _externalPlayerKey = 'forja_external_player';
 
   Future<bool> getAutoNext() async {
-    if (!ForjaEngine.isReady) return true;
-    return ForjaEngine.storageReadBool(_autoNextKey, fallback: true);
+    if (!Engine.isReady) return true;
+    return Engine.storageReadBool(_autoNextKey, fallback: true);
   }
 
   Future<void> setAutoNext(bool value) async {
-    if (!ForjaEngine.isReady) return;
-    ForjaEngine.storageWriteBool(_autoNextKey, value);
+    if (!Engine.isReady) return;
+    Engine.storageWriteBool(_autoNextKey, value);
   }
 
   Future<String> getExternalPlayer() async {
-    if (!ForjaEngine.isReady) return 'Built-in Player';
-    return ForjaEngine.storageReadString(
+    if (!Engine.isReady) return 'Built-in Player';
+    return Engine.storageReadString(
       _externalPlayerKey,
       fallback: 'Built-in Player',
     );
   }
 
   Future<void> setExternalPlayer(String value) async {
-    if (!ForjaEngine.isReady) return;
-    ForjaEngine.storageWriteString(_externalPlayerKey, value);
+    if (!Engine.isReady) return;
+    Engine.storageWriteString(_externalPlayerKey, value);
   }
 }

@@ -37,8 +37,8 @@ class LocalServerService {
     try {
       _server = await io.serve(_router.call, InternetAddress.loopbackIPv4, 0);
       _port = _server!.port;
-      if (ForjaEngine.isReady) {
-        final rustPort = ForjaRust.instance.proxyStart(0);
+      if (Engine.isReady) {
+        final rustPort = RustLib.instance.proxyStart(0);
         if (rustPort > 0) {
           _rustProxyPort = rustPort;
           debugPrint('[LocalServer] Rust proxy on 127.0.0.1:$rustPort');
@@ -432,8 +432,8 @@ class LocalServerService {
   }
 
   Future<void> stop() async {
-    if (_rustProxyPort > 0 && ForjaEngine.isReady) {
-      ForjaRust.instance.proxyStop();
+    if (_rustProxyPort > 0 && Engine.isReady) {
+      RustLib.instance.proxyStop();
       _rustProxyPort = 0;
     }
     await _server?.close(force: true);

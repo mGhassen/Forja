@@ -16,7 +16,7 @@
 |------|--------|
 | 1 | Port Dart engine logic → Rust crate |
 | 2 | Add FFI in `crates/ffi` / uniffi |
-| 3 | UI calls `ForjaEngine.*` directly |
+| 3 | UI calls `Engine.*` directly |
 | 4 | **Delete the Dart package** — directory, deps, imports |
 
 ### Only these `packages/` survive
@@ -46,7 +46,7 @@
 ```
 UI (apps/forja — Flutter Phase 2 · Compose Phase 3)
   → widgets, navigation, player chrome ONLY
-  → calls ForjaEngine / forja_kotlin FFI, renders JSON
+  → calls Engine / kotlin FFI, renders JSON
 
 Rust engine (crates/* + libffi)
   → EVERYTHING that is not pixels
@@ -81,7 +81,7 @@ Rust engine (crates/* + libffi)
 
 | | |
 |--|--|
-| **Progress** | **28 / 36 tasks done (78%)** — `scrapers` + `webstreamr` + `forja_*` deleted |
+| **Progress** | **28 / 36 tasks done (78%)** — `scrapers` + `webstreamr` + `ffi_*` deleted |
 | **Blocks Phase 3** | P2-83/87/88/89/90 — Dart engine packages still exist |
 | **Also open** | B2 mobile smoke · JNI proof · sign-off |
 
@@ -95,7 +95,7 @@ Rust engine (crates/* + libffi)
 |-----|------|
 | P2-20 → P2-23 | Drop libtorrent |
 | P2-30 → P2-33 | Strip Dart HTML parse fallbacks |
-| **P2-87** | `packages/scrapers` **deleted**; search via `ForjaEngine.searchTorrents` only |
+| **P2-87** | `packages/scrapers` **deleted**; search via `Engine.searchTorrents` only |
 | **P2-60** | Legacy `packages/forja_*` **deleted** (7 orphan packages removed) |
 | P2-12, P2-13, P2-15 | Mobile torrent wiring |
 | P2-50, P2-51 | uniffi UDL + Kotlin bindgen scaffold |
@@ -103,14 +103,14 @@ Rust engine (crates/* + libffi)
 | **P2-84** | Torrent filter → `filter_torrents_json`; Dart filter logic deleted |
 | **P2-86** | All `*Backend` hooks removed; direct FFI everywhere |
 | **P2-85** | HLS proxy in Rust; Dart HLS rewrite deleted from `local_server_service.dart` |
-| **P2-82** | `packages/webstreamr` **deleted**; full resolve via `forja_webstreamr_get_streams_json` |
+| **P2-82** | `packages/webstreamr` **deleted**; full resolve via `ffi_webstreamr_get_streams_json` |
 
 #### 🔄 Partial — not done until Dart package deleted
 
 | ID | Rust done | Dart still alive (must delete) |
 |----|-----------|--------------------------------|
-| **P2-83** | vidsrc 3-hop (`forja_resolve_vidsrc_embed_json`), webstreamr service, videasy OpenSSL AES (`forja_openssl_aes_decrypt_json`), provider URL dedup | **`packages/streaming`** — videasy WASM, nuvio JS runtime, site111477 seekable proxy (~1.5k LOC), `local_server_service` shelf routes |
-| **P2-88** | `crates/storage` KV + FFI; `ForjaEngine` storage facade + legacy prefs migration | **`packages/storage`** — `kv.dart` glue, `app_theme.dart`, repos still thin wrappers |
+| **P2-83** | vidsrc 3-hop (`ffi_resolve_vidsrc_embed_json`), webstreamr service, videasy OpenSSL AES (`ffi_openssl_aes_decrypt_json`), provider URL dedup | **`packages/streaming`** — videasy WASM, nuvio JS runtime, site111477 seekable proxy (~1.5k LOC), `local_server_service` shelf routes |
+| **P2-88** | `crates/storage` KV + FFI; `Engine` storage facade + legacy prefs migration | **`packages/storage`** — `kv.dart` glue, `app_theme.dart`, repos still thin wrappers |
 | **P2-85** | HLS + proxy forward | Jellyfin/toky/comic shelf routes in Dart |
 
 #### 🔄 In progress — B2 mobile

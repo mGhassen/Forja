@@ -12,7 +12,7 @@ class M3uParser {
   /// Parse raw playlist text into a list of channels. Throws [FormatException]
   /// if the content does not look like an M3U playlist at all.
   static List<M3uChannel> parse(String content) {
-    final rows = ForjaEngine.parseM3uChannels(content);
+    final rows = Engine.parseM3uChannels(content);
     return rows
         .map(
           (j) => M3uChannel(

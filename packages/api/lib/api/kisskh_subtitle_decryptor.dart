@@ -7,7 +7,7 @@ import 'package:rust/rust.dart';
 
 class KissKhSubtitleDecryptor {
   static String decryptBody(String body, {String? sourceUrl}) {
-    return ForjaRust.instance.decryptKisskhBody(body, sourceUrl: sourceUrl);
+    return RustLib.instance.decryptKisskhBody(body, sourceUrl: sourceUrl);
   }
 
   static Future<String?> fetchAndDecrypt({

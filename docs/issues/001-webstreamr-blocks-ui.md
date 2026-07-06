@@ -10,11 +10,11 @@ When WebStreamr resolves streams in the app, the UI freezes for the entire extra
 
 ## Root cause
 
-1. **Sync FFI on the main Dart isolate** — `WebStreamrService.getStreams()` calls `ForjaRust.instance.webstreamrGetStreamsJson()` synchronously. The call does not yield until Rust returns.
+1. **Sync FFI on the main Dart isolate** — `WebStreamrService.getStreams()` calls `RustLib.instance.webstreamrGetStreamsJson()` synchronously. The call does not yield until Rust returns.
 
    ```dart
    // packages/streaming/lib/src/webstreamr_service.dart
-   final raw = ForjaRust.instance.webstreamrGetStreamsJson(jsonEncode(request));
+   final raw = RustLib.instance.webstreamrGetStreamsJson(jsonEncode(request));
    ```
 
 2. **Blocking HTTP in Rust** — `crates/webstreamr` uses `reqwest::blocking` with a 20s timeout per request. Extractors chain multiple fetches (e.g. vidsrc = 3 pages, redirect hops, MFP hosts).

@@ -18,13 +18,13 @@ class MusicPlayerService {
   final Player _player = Player();
   final MusicService _musicService = MusicService();
   final MusicStorageService _storageService = MusicStorageService();
-  ForjaAudioHandler? _handler;
+  AppAudioHandler? _handler;
   final LyricsService _lyricsService = LyricsService();
 
   Player get player => _player;
 
   void setHandler(BaseAudioHandler handler) {
-    _handler = handler as ForjaAudioHandler;
+    _handler = handler as AppAudioHandler;
   }
 
   final ValueNotifier<MusicTrack?> currentTrack = ValueNotifier<MusicTrack?>(null);

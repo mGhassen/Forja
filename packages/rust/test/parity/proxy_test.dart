@@ -11,13 +11,13 @@ void main() {
   });
 
   tearDown(() {
-    ForjaRust.instance.proxyStop();
+    RustLib.instance.proxyStop();
   });
 
   test('proxy starts and exposes health endpoint', () async {
-    final port = ForjaRust.instance.proxyStart(0);
+    final port = RustLib.instance.proxyStart(0);
     expect(port, greaterThan(0));
-    expect(ForjaRust.instance.proxyPort(), port);
+    expect(RustLib.instance.proxyPort(), port);
 
     final client = HttpClient();
     try {
@@ -32,10 +32,10 @@ void main() {
   });
 
   test('proxy registers token route', () {
-    final port = ForjaRust.instance.proxyStart(0);
+    final port = RustLib.instance.proxyStart(0);
     expect(port, greaterThan(0));
     expect(
-      ForjaRust.instance.proxyRegisterRoute(
+      RustLib.instance.proxyRegisterRoute(
         'abc',
         'https://example.com/stream.bin',
       ),

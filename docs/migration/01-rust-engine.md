@@ -33,7 +33,7 @@
 | 5 | Webstreamr — 23 extractors, 21 sources (parse in Rust) | ✅ |
 | 6 | Scrapers — knaben/tpb/uindex parse + dedup | ✅ |
 | 7 | Torrent + proxy — librqbit desktop, local proxy | ✅ |
-| 8 | Flutter integration — `ForjaEngine.init()`, delegates, dylib | ✅ |
+| 8 | Flutter integration — `Engine.init()`, delegates, dylib | ✅ |
 | 9 | Cleanup — runtime Dart engine removed | ✅ |
 
 #### Handed off to Phase 2
@@ -60,7 +60,7 @@
 ./scripts/build_rust.sh
 ./scripts/build_rust_mobile.sh all
 cd crates && cargo test --workspace
-cd packages/forja_rust && flutter test
+cd packages/rust && flutter test
 ```
 
 **Next:** [Phase 2 — Rust engine complete](./02-rust-engine-complete.md)
@@ -135,11 +135,11 @@ Release builds bundle Rust parsers (B7 done)
 
 | Done | Todo |
 |------|------|
-| [x] Rust always loaded at boot (`ForjaEngine.init()`) | |
+| [x] Rust always loaded at boot (`Engine.init()`) | |
 | [x] Developer toggle removed | |
 | [x] All domain delegates when dylib loads | |
 | [x] Removed runtime Dart fallback from bootstrap | |
-| [x] `FORJA_RUST_STRICT=1` fails fast when dylib missing (desktop debug) | |
+| [x] `RUST_STRICT=1` fails fast when dylib missing (desktop debug) | |
 
 ### B7 — Mobile Rust FFI packaging
 
@@ -150,9 +150,9 @@ Release builds bundle Rust parsers (B7 done)
 | [x] `forja-ffi` feature flags (`torrent-engine`, `local-proxy`) | [ ] librqbit on mobile (B2; libtorrent = same user feature) |
 | [x] `scripts/build_rust_mobile.sh` + NDK discovery | [x] Android/iOS quickstart in `crates/README.md` + `apps/forja/README.md` |
 | [x] Android CI (`android-ffi` job) + iOS CI (`ios-ffi` job) | |
-| [x] `forjaBuildRust=true` — release APK bundles `.so` via `preReleaseBuild` | |
+| [x] `buildRust=true` — release APK bundles `.so` via `preReleaseBuild` | |
 | [x] iOS `build_rust_ios.sh` — compiles on Release/Profile Xcode builds | |
-| [x] Gradle `FORJA_BUILD_RUST_ANDROID=1` for debug APK with Rust | |
+| [x] Gradle `BUILD_RUST_ANDROID=1` for debug APK with Rust | |
 | [x] iOS Xcode copy phase + Android jniLibs path | |
 | [x] Boot tries Rust on all platforms | |
 
@@ -181,11 +181,11 @@ Release builds bundle Rust parsers (B7 done)
 
 | | |
 |--|--|
-| **What** | Native torrent engine still linked in `apps/forja`, `forja_streaming`, `forja_api` |
+| **What** | Native torrent engine still linked in `apps/forja`, `ffi_streaming`, `ffi_api` |
 | **Why it blocks** | Mobile `--features torrent-engine` fails to compile (see below); desktop falls back to libtorrent when Rust port is 0 |
 | **iOS compile error** | `librqbit-dualstack-sockets 0.7.0` → `Socket::bind_device` not available on iOS |
 | **Probe** | `./scripts/try_build_mobile_torrent.sh ios` |
-| **Files** | `packages/forja_streaming/lib/src/torrent_stream_service.dart` · `crates/forja-torrent/` |
+| **Files** | `packages/streaming/lib/src/torrent_stream_service.dart` · `crates/torrent/` |
 | **Manage** | Keep libtorrent on mobile; re-run probe when bumping librqbit; optional fork/patch of dualstack-sockets |
 | **Unblocks** | Step 9 “Drop libtorrent_flutter”; single torrent engine on all platforms |
 
@@ -219,7 +219,7 @@ Release builds bundle Rust parsers (B7 done)
 | [x] Rust unit + Clippy in CI | [ ] Full UI boot smoke (optional) |
 | [x] Dart parity 14 files / 96 tests in CI | [ ] Smoke: magnet → play end-to-end |
 | [x] `apps/forja/integration_test/engine_smoke_test.dart` (11 tests) | |
-| [x] Smoke: `ForjaEngine` + delegates (IPTV · Stremio · scrapers) | |
+| [x] Smoke: `Engine` + delegates (IPTV · Stremio · scrapers) | |
 | [x] Smoke: M3U · stream URL · torrent loopback | |
 | [x] CI job in `rust.yml` + `melos run rust:integration` | |
 
@@ -266,7 +266,7 @@ Do **not** track these as migration blockers:
 
 | Item | Reason |
 |------|--------|
-| `forja_adapters/` WebView package | Never existed; WebView stays in app per RFC-009 |
+| `ffi_adapters/` WebView package | Never existed; WebView stays in app per RFC-009 |
 | Webstreamr fetcher / registry / page HTTP | Orchestration stays Dart (same as scraper HTTP) |
 | HLS `/hls-proxy` | Out of Rust scope; shelf rewrite in Dart |
 | WASM / web client | RFC-014 v3.0 |
@@ -302,16 +302,16 @@ Each step below lists: **Rust** (crate status), **App** (wire-up), tests, and fi
 |------|------|
 | Cargo workspace | `crates/Cargo.toml` |
 | FFI crate | `crates/forja-ffi/` |
-| Dart loader | `packages/forja_rust/` |
+| Dart loader | `packages/rust/` |
 | Build script | `scripts/build_rust.sh` |
 | CI | `.github/workflows/rust.yml` |
 
 ```bash
 cd crates && cargo test -p forja-ffi
-cd packages/forja_rust && flutter test test/parity/scaffold_test.dart
+cd packages/rust && flutter test test/parity/scaffold_test.dart
 ```
 
-Wire-up: `ForjaEngine.init()` in `apps/forja/lib/app/bootstrap.dart`.
+Wire-up: `Engine.init()` in `apps/forja/lib/app/bootstrap.dart`.
 
 ---
 
@@ -329,26 +329,26 @@ Wire-up: `ForjaEngine.init()` in `apps/forja/lib/app/bootstrap.dart`.
 
 | Dart source | Rust module | FFI |
 |-------------|-------------|-----|
-| `episode_matcher.dart` | `episode_matcher` | `forja_episode_matches` |
-| `torrent_filter.dart` | `torrent_filter` | `forja_normalize_torrent_title`, `forja_parse_scene_info_json` |
-| `hls_master_parser.dart` | `hls_parser` | `forja_parse_hls_master_json` |
-| `unpacker.dart` | `js_unpacker` | `forja_unpack_js` |
-| `kisskh_subtitle_decryptor.dart` | `kisskh_subtitle` | `forja_decrypt_kisskh_body` |
+| `episode_matcher.dart` | `episode_matcher` | `ffi_episode_matches` |
+| `torrent_filter.dart` | `torrent_filter` | `ffi_normalize_torrent_title`, `ffi_parse_scene_info_json` |
+| `hls_master_parser.dart` | `hls_parser` | `ffi_parse_hls_master_json` |
+| `unpacker.dart` | `js_unpacker` | `ffi_unpack_js` |
+| `kisskh_subtitle_decryptor.dart` | `kisskh_subtitle` | `ffi_decrypt_kisskh_body` |
 
 ```bash
 cd crates && cargo test -p forja-utils
 cd crates && cargo test -p forja-utils --test golden
-cd packages/forja_rust && flutter test test/parity/episode_matcher_test.dart
-cd packages/forja_rust && flutter test test/parity/torrent_filter_test.dart
-cd packages/forja_rust && flutter test test/parity/hls_test.dart
-cd packages/forja_rust && flutter test test/parity/utils_test.dart
+cd packages/rust && flutter test test/parity/episode_matcher_test.dart
+cd packages/rust && flutter test test/parity/torrent_filter_test.dart
+cd packages/rust && flutter test test/parity/hls_test.dart
+cd packages/rust && flutter test test/parity/utils_test.dart
 ```
 
 Fixtures: `crates/forja-utils/tests/fixtures/`
 
 Manual: debrid TV episode pick · HLS quality menu.
 
-Wire-up: `ForjaEngine.init()` + `installRustAppDelegates()` — Rust required; `FORJA_RUST_STRICT=1` fails fast in debug when dylib missing.
+Wire-up: `Engine.init()` + `installRustAppDelegates()` — Rust required; `RUST_STRICT=1` fails fast in debug when dylib missing.
 
 ---
 
@@ -366,12 +366,12 @@ Wire-up: `ForjaEngine.init()` + `installRustAppDelegates()` — Rust required; `
 
 ```bash
 cd crates && cargo test -p forja-stream-core
-cd packages/forja_rust && flutter test test/parity/stream_providers_test.dart
+cd packages/rust && flutter test test/parity/stream_providers_test.dart
 ```
 
 Manual: enable provider in Settings → open movie TMDB 550 → open TV S01E01.
 
-Wire-up: `packages/forja_streaming/lib/src/provider_registry.dart` → `ForjaEngine.buildMovieUrl` / `buildTvUrl`.
+Wire-up: `packages/streaming/lib/src/provider_registry.dart` → `Engine.buildMovieUrl` / `buildTvUrl`.
 
 ---
 
@@ -390,8 +390,8 @@ Wire-up: `packages/forja_streaming/lib/src/provider_registry.dart` → `ForjaEng
 cd crates && cargo test -p forja-iptv-core
 cd crates && cargo test -p forja-iptv-core --test golden_m3u
 cd crates && cargo test -p forja-iptv-core --test golden_xtream
-cd packages/forja_rust && flutter test test/parity/m3u_test.dart
-cd packages/forja_rust && flutter test test/parity/iptv_test.dart
+cd packages/rust && flutter test test/parity/m3u_test.dart
+cd packages/rust && flutter test test/parity/iptv_test.dart
 ```
 
 Fixtures: `crates/forja-iptv-core/tests/fixtures/`
@@ -400,7 +400,7 @@ Manual: M3U import · CRLF playlist · paste.sh URL · Xtream EPG titles · Xtre
 
 Wire-up:
 
-- `m3u_parser.dart` → `ForjaEngine.parseM3uChannels`
+- `m3u_parser.dart` → `Engine.parseM3uChannels`
 - `pastesh_decryptor.dart` → `PasteShDecryptorBackend` · fallback `pastesh_decrypt_dart.dart`
 - `iptv_network.dart` → `IptvClientBackend` · fallback `iptv_dart_parse.dart`
 
@@ -422,7 +422,7 @@ Wire-up:
 
 ```bash
 cd crates && cargo test -p forja-stremio-core
-cd packages/forja_rust && flutter test test/parity/stremio_test.dart
+cd packages/rust && flutter test test/parity/stremio_test.dart
 ```
 
 Manual: install addon → Home catalog rows → player next-episode via `stremio_direct`.
@@ -463,7 +463,7 @@ Wire-up: `StremioServiceBackend` in `stremio_service.dart`.
 | fastream (MFP stream) | ✅ | ✅ |
 | voe (MFP stream + redirect) | ✅ | ✅ |
 
-FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`, `forja_extract_hubcloud_links_json`, `forja_extract_mfp_embed_html_json`, `forja_resolve_webstreamr_source_json`, `forja_extract_kinoger_episode_urls_json`, `forja_parse_webstreamr_source_html_json`. MFP stream fetch runs in Rust (blocking HTTP). Page fetch + registry still Dart.
+FFI: `ffi_extract_embed_html_json`, `ffi_extract_vidsrc_chain_json`, `ffi_extract_hubcloud_links_json`, `ffi_extract_mfp_embed_html_json`, `ffi_resolve_webstreamr_source_json`, `ffi_extract_kinoger_episode_urls_json`, `ffi_parse_webstreamr_source_html_json`. MFP stream fetch runs in Rust (blocking HTTP). Page fetch + registry still Dart.
 
 **Sources (URL-only / parse helpers):**
 
@@ -495,8 +495,8 @@ FFI: `forja_extract_embed_html_json`, `forja_extract_vidsrc_chain_json`, `forja_
 cd crates && cargo test -p forja-webstreamr
 cd crates && cargo test -p forja-webstreamr --test golden_extractors
 cd crates && cargo test -p forja-webstreamr --test golden_sources
-cd packages/forja_rust && flutter test test/parity/webstreamr_test.dart
-cd packages/forja_rust && flutter test test/parity/webstreamr_sources_test.dart
+cd packages/rust && flutter test test/parity/webstreamr_test.dart
+cd packages/rust && flutter test test/parity/webstreamr_sources_test.dart
 ```
 
 Fixtures: `crates/forja-webstreamr/tests/fixtures/`
@@ -520,12 +520,12 @@ Wire-up: `WebstreamrParseBackend` · `tryRustExtractFromHtml` / `tryRustVidsrcCh
 
 ```bash
 cd crates && cargo test -p forja-scrapers
-cd packages/forja_rust && flutter test test/parity/scrapers_test.dart
+cd packages/rust && flutter test test/parity/scrapers_test.dart
 ```
 
 Manual: torrent search on movie/TV details · no duplicate magnets.
 
-Wire-up: `ScraperParseBackend` in `forja_scrapers`.
+Wire-up: `ScraperParseBackend` in `ffi_scrapers`.
 
 ---
 
@@ -543,11 +543,11 @@ Wire-up: `ScraperParseBackend` in `forja_scrapers`.
 ```bash
 cd crates && cargo test -p forja-torrent
 cd crates && cargo test -p forja-proxy
-cd packages/forja_rust && flutter test test/parity/torrent_stub_test.dart
-cd packages/forja_rust && flutter test test/parity/proxy_test.dart
+cd packages/rust && flutter test test/parity/torrent_stub_test.dart
+cd packages/rust && flutter test test/parity/proxy_test.dart
 ```
 
-FFI: `forja_torrent_engine_start`, `forja_torrent_stream_json`, `forja_torrent_status_json`.
+FFI: `ffi_torrent_engine_start`, `ffi_torrent_stream_json`, `ffi_torrent_status_json`.
 
 Wire-up: `TorrentEngineBackend` in `rust_delegates.dart` · `TorrentStreamService` · `LocalServerService` proxy forward.
 
@@ -559,18 +559,18 @@ Wire-up: `TorrentEngineBackend` in `rust_delegates.dart` · `TorrentStreamServic
 
 | Task | Status |
 |------|--------|
-| `ForjaEngine.init()` in bootstrap | ✅ |
+| `Engine.init()` in bootstrap | ✅ |
 | Rust engine status (Developer, all platforms) | ✅ |
 | M3U / paste.sh / Xtream (EPG + JSON) → Rust | ✅ |
 | Provider URLs → Rust (5 providers) | ✅ |
 | Episode matcher + HLS delegates | ✅ |
 | Dylib bundled in `.app` | ✅ |
 
-WebView extractors stay in the app (`stream_extractor_view.dart` + `InAppWebView`) — out of scope per RFC-009. No `forja_adapters/` package required for this migration.
+WebView extractors stay in the app (`stream_extractor_view.dart` + `InAppWebView`) — out of scope per RFC-009. No `ffi_adapters/` package required for this migration.
 
 ```bash
 ./scripts/build_rust.sh
-cd packages/forja_rust && flutter test
+cd packages/rust && flutter test
 ```
 
 | Test file | Covers |
@@ -597,12 +597,12 @@ Manual: boot log shows `Rust engine v0.1.0` · IPTV + debrid + VidLink smoke tes
 If you see `Rust library not loaded — Dart fallback`:
 
 ```bash
-FORJA_RUST_LIB="$(pwd)/crates/target/release/libforja_ffi.dylib" flutter run -d macos
+RUST_LIB="$(pwd)/crates/target/release/libffi_ffi.dylib" flutter run -d macos
 # or
 ./scripts/build_rust.sh && flutter run -d macos
 ```
 
-Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `FORJA_RUST_STRICT=1` to fail fast when the dylib is missing.
+Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `RUST_STRICT=1` to fail fast when the dylib is missing.
 
 ---
 
@@ -616,7 +616,7 @@ Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `
 
 | Item | Status | Path |
 |------|:----:|------|
-| M3U parser | ✅ | Rust FFI only (`ForjaEngine.parseM3uChannels`) |
+| M3U parser | ✅ | Rust FFI only (`Engine.parseM3uChannels`) |
 | IPTV Xtream + series episodes | ✅ | Rust via `IptvClientBackend` |
 | Paste.sh decrypt | ✅ | Rust via `PasteShDecryptorBackend` |
 | Episode matcher | ✅ | Rust via `EpisodeMatcherBackend` |
@@ -626,15 +626,15 @@ Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `
 | Torrent filter | ✅ | Rust via `TorrentFilterBackend` |
 | Stremio JSON + URL helpers | ✅ | Rust via `StremioServiceBackend` |
 | Scrapers HTML parse + dedup | ✅ | Rust via `ScraperParseBackend` |
-| Provider URL templates | ✅ | `packages/forja_streaming/lib/src/provider_fallback_urls.dart` |
+| Provider URL templates | ✅ | `packages/streaming/lib/src/provider_fallback_urls.dart` |
 | Magnet player torrent API | ✅ | `TorrentStreamService.listTorrentFiles` (no direct libtorrent in UI) |
 
 ### Dead code removed (done)
 
 | Removed | Was duplicate of |
 |---------|------------------|
-| `forja_streaming/.../hls_master_parser.dart` | `forja_core` / Rust FFI |
-| `forja_streaming/.../debrid_api.dart` | `forja_api` |
+| `ffi_streaming/.../hls_master_parser.dart` | `ffi_core` / Rust FFI |
+| `ffi_streaming/.../debrid_api.dart` | `ffi_api` |
 
 ### Deletion (open)
 
@@ -642,14 +642,14 @@ Debug desktop builds also print a `[Boot] Rust engine NOT loaded` warning. Set `
 |------|:----:|---------|
 | Delete runtime Dart engine from `lib/` | ✅ | B1 · B3 — moved to `test/parity/dart_baseline/` |
 | Drop `libtorrent_flutter` from pubspecs | ❌ | B2 |
-| Mobile Rust in release APK/IPA | ✅ | B7 — `forjaBuildRust=true` · iOS Release phase |
+| Mobile Rust in release APK/IPA | ✅ | B7 — `buildRust=true` · iOS Release phase |
 | librqbit in mobile Rust FFI | ❌ | B2 |
 | Golden fixture per webstreamr extractor | ✅ | B5 — 23/23 Rust · 21/23 Dart (lulustream/fastream Rust-only) |
 | App `integration_test/` smoke | ✅ | B4 — 11 tests in CI |
 
 ### Parity baselines (test-only)
 
-`packages/forja_rust/test/parity/dart_baseline/` — **not shipped**; used by `flutter test` to compare Rust FFI output.
+`packages/rust/test/parity/dart_baseline/` — **not shipped**; used by `flutter test` to compare Rust FFI output.
 
 Barrel: `test/parity/dart_baseline/dart_baseline.dart`
 
@@ -677,7 +677,7 @@ Manual: boot log `Rust engine v0.1.0` on desktop + mobile after `build_rust_mobi
 |-----|---------|------|
 | Rust unit | `cargo test --workspace` | required |
 | Clippy | `cargo clippy --workspace` | required |
-| Dart parity | `cd packages/forja_rust && flutter test` | required |
+| Dart parity | `cd packages/rust && flutter test` | required |
 | App integration | `melos run rust:integration` | required (macOS CI) |
 | Android FFI | `./scripts/build_rust_mobile.sh android` | required |
 | iOS FFI | `./scripts/build_rust_mobile.sh ios` | required |

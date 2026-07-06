@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/crates"
 TARGET="${1:-ios}"
 FEATURES="torrent-engine,local-proxy"
-PROFILE="${FORJA_RUST_PROFILE:-release}"
+PROFILE="${RUST_PROFILE:-release}"
 
 resolve_ndk() {
   if [[ -n "${ANDROID_NDK_HOME:-}" && -d "$ANDROID_NDK_HOME" ]]; then

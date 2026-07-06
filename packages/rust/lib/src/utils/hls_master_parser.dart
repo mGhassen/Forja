@@ -42,10 +42,10 @@ Future<List<HlsQuality>?> fetchHlsQualities(
 }
 
 List<HlsQuality>? parseHlsMaster(String masterUrl, String body) {
-  if (!ForjaRust.isInitialized) {
-    throw StateError('ForjaEngine not initialized');
+  if (!RustLib.isInitialized) {
+    throw StateError('Engine not initialized');
   }
-  final json = ForjaRust.instance.parseHlsMasterJson(masterUrl, body);
+  final json = RustLib.instance.parseHlsMasterJson(masterUrl, body);
   final list = jsonDecode(json) as List;
   if (list.isEmpty) return null;
   return list.map((e) {

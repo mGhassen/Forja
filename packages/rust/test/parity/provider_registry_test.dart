@@ -12,7 +12,7 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     await initRustForTests();
     tmp = await Directory.systemTemp.createTemp('forja_provider_registry_');
-    await ForjaEngine.init(storagePath: '${tmp.path}/store.json');
+    await Engine.init(storagePath: '${tmp.path}/store.json');
   });
 
   tearDownAll(() {
@@ -28,10 +28,10 @@ void main() {
     for (final p in ProviderRegistry.all) {
       if (p.movieUrl == null) continue;
       final id = int.parse(tmdbId);
-      final rustMovie = ForjaRust.instance.buildMovieUrl(p.id, id);
+      final rustMovie = RustLib.instance.buildMovieUrl(p.id, id);
       expect(p.movieUrl!(tmdbId), rustMovie, reason: p.id);
       if (p.tvUrl != null) {
-        final rustTv = ForjaRust.instance.buildTvUrl(
+        final rustTv = RustLib.instance.buildTvUrl(
           p.id,
           int.parse(tvId),
           season,

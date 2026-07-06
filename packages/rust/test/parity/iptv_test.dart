@@ -13,18 +13,18 @@ void main() {
   test('decodeXtreamText decodes base64', () {
     const plain = 'News at Ten';
     final b64 = base64.encode(utf8.encode(plain));
-    expect(ForjaRust.instance.decodeXtreamText(b64), plain);
+    expect(RustLib.instance.decodeXtreamText(b64), plain);
   });
 
   test('decodeXtreamText passes through plain text', () {
     const plain = 'Already plain';
-    expect(ForjaRust.instance.decodeXtreamText(plain), plain);
+    expect(RustLib.instance.decodeXtreamText(plain), plain);
   });
 
   test('decryptPasteResponse returns empty for invalid input', () {
-    expect(ForjaRust.instance.decryptPasteResponse('bad', ''), '');
+    expect(RustLib.instance.decryptPasteResponse('bad', ''), '');
     expect(
-      ForjaRust.instance.decryptPasteResponse('https://paste.sh/x#k', ''),
+      RustLib.instance.decryptPasteResponse('https://paste.sh/x#k', ''),
       '',
     );
   });
@@ -34,7 +34,7 @@ void main() {
       '${_repoRoot()}/crates/iptv-core/tests/fixtures/xtream_categories.json',
     ).readAsStringSync();
     final rustOut =
-        jsonDecode(ForjaRust.instance.parseXtreamCategoriesJson(json)) as List;
+        jsonDecode(RustLib.instance.parseXtreamCategoriesJson(json)) as List;
     expect(rustOut.length, greaterThan(0));
     expect(rustOut.first['name'], 'Sports');
   });
@@ -44,7 +44,7 @@ void main() {
       '${_repoRoot()}/crates/iptv-core/tests/fixtures/xtream_live_streams.json',
     ).readAsStringSync();
     final rustOut =
-        jsonDecode(ForjaRust.instance.parseXtreamStreamsJson(json, 'live'))
+        jsonDecode(RustLib.instance.parseXtreamStreamsJson(json, 'live'))
             as List;
     expect(rustOut.length, greaterThan(0));
     expect(rustOut.first['container_ext'], 'ts');
@@ -55,7 +55,7 @@ void main() {
       '${_repoRoot()}/crates/iptv-core/tests/fixtures/xtream_series_info.json',
     ).readAsStringSync();
     final rustOut =
-        jsonDecode(ForjaRust.instance.parseXtreamSeriesEpisodesJson(json))
+        jsonDecode(RustLib.instance.parseXtreamSeriesEpisodesJson(json))
             as List;
     expect(rustOut, hasLength(2));
     expect(rustOut.first['season'], 1);

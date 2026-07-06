@@ -10,16 +10,16 @@ const _logoAspectRatio = 370.0 / 160.0;
 const _maxLogoHeight = 320.0;
 const _haloScale = 4.0;
 
-class ForjaLogoColors {
-  const ForjaLogoColors({required this.base});
+class LogoColors {
+  const LogoColors({required this.base});
 
   final Color base;
 
-  static ForjaLogoColors forTheme(bool isLight) {
+  static LogoColors forTheme(bool isLight) {
     if (isLight) {
-      return const ForjaLogoColors(base: Color(0xFFE6DCD0));
+      return const LogoColors(base: Color(0xFFE6DCD0));
     }
-    return const ForjaLogoColors(base: Color(0xFF1CE783));
+    return const LogoColors(base: Color(0xFF1CE783));
   }
 }
 
@@ -35,7 +35,7 @@ class SplashLogoWithHalo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ForjaLogoColors.forTheme(isLight);
+    final colors = LogoColors.forTheme(isLight);
     final logoWidth = logoHeight * _logoAspectRatio;
     final haloDiameter = logoHeight * _haloScale;
     final blurSigma = haloDiameter * 0.14;
@@ -103,7 +103,7 @@ class SplashOverlayContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logoColors = ForjaLogoColors.forTheme(isLight);
+    final logoColors = LogoColors.forTheme(isLight);
 
     return Container(
       decoration: AppTheme.backgroundDecoration,

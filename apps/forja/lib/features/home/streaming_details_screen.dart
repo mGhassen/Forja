@@ -171,7 +171,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
 
   Future<void> _startExtraction() async {
     if (_selectedSourceId == 'forja') {
-      _startForjaExtraction();
+      _runStreamExtraction();
     } else {
       _startStremioExtraction();
     }
@@ -211,7 +211,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     }
   }
 
-  Future<void> _startForjaExtraction() async {
+  Future<void> _runStreamExtraction() async {
     _extractionCancelled = false;
     showDialog(
       context: context,
@@ -334,7 +334,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
           _selectedEpisode = nextEpisode;
         });
         _loadWatchedEpisodes();
-        _startExtraction();
+        _runStreamExtraction();
       });
     }
 

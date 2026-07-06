@@ -765,9 +765,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildRustEngineSection() {
-    final loaded = ForjaEngine.isReady;
+    final loaded = Engine.isReady;
     final version = loaded
-        ? ForjaRust.instance.version
+        ? RustLib.instance.version
         : 'not loaded (Dart fallback)';
     final statusColor = loaded ? Colors.greenAccent : Colors.orangeAccent;
     final platformNote = loaded

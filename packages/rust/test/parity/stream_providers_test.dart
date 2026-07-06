@@ -38,25 +38,25 @@ void main() {
   for (final entry in providers.entries) {
     test('${entry.key} movie URL', () {
       expect(
-        ForjaRust.instance.buildMovieUrl(entry.key, tmdbId),
+        RustLib.instance.buildMovieUrl(entry.key, tmdbId),
         entry.value.movie,
       );
     });
 
     test('${entry.key} tv URL', () {
       expect(
-        ForjaRust.instance.buildTvUrl(entry.key, tvId, season, episode),
+        RustLib.instance.buildTvUrl(entry.key, tvId, season, episode),
         entry.value.tv,
       );
     });
   }
 
   test('unknown provider returns empty string', () {
-    expect(ForjaRust.instance.buildMovieUrl('unknown', 1), '');
+    expect(RustLib.instance.buildMovieUrl('unknown', 1), '');
   });
 
   test('listProvidersJson includes vidlink', () {
-    final json = ForjaRust.instance.listProvidersJson();
+    final json = RustLib.instance.listProvidersJson();
     expect(json, contains('vidlink'));
   });
 }

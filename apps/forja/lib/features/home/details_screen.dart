@@ -247,7 +247,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   Future<void> _sortResults() async {
     if (_allTorrentResults.isEmpty) return;
-    final sorted = ForjaEngine.sortTorrents(
+    final sorted = Engine.sortTorrents(
       _allTorrentResults.map((e) => e.toJson()).toList(),
       _sortPreference,
     ).map(TorrentResult.fromJson).toList();
@@ -1285,20 +1285,20 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
     try {
       final results = await Future.wait([
-        Future(() => ForjaEngine.searchTorrents(seasonQuery)
+        Future(() => Engine.searchTorrents(seasonQuery)
             .map(TorrentResult.fromJson)
             .toList()),
-        Future(() => ForjaEngine.searchTorrents(episodeQuery)
+        Future(() => Engine.searchTorrents(episodeQuery)
             .map(TorrentResult.fromJson)
             .toList()),
       ]);
       if (mounted) {
-        final filteredSeason = ForjaEngine.filterTorrents(
+        final filteredSeason = Engine.filterTorrents(
           results[0].map((e) => e.toJson()).toList(),
           _movie.title,
           requiredSeason: _selectedSeason,
         ).map(TorrentResult.fromJson).toList();
-        final filteredEpisode = ForjaEngine.filterTorrents(
+        final filteredEpisode = Engine.filterTorrents(
           results[1].map((e) => e.toJson()).toList(),
           _movie.title,
           requiredSeason: _selectedSeason,
@@ -1320,11 +1320,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _searchTorrents(String query) async {
     setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
     try {
-      final results = ForjaEngine.searchTorrents(query)
+      final results = Engine.searchTorrents(query)
           .map(TorrentResult.fromJson)
           .toList();
       if (mounted) {
-        final filtered = ForjaEngine.filterTorrents(
+        final filtered = Engine.filterTorrents(
           results.map((e) => e.toJson()).toList(),
           _movie.title,
         ).map(TorrentResult.fromJson).toList();
@@ -1368,12 +1368,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _jackett.search(baseUrl, apiKey, '${_movie.title} S${s}E$e'),
         ]);
         if (mounted) {
-          final filteredSeason = ForjaEngine.filterTorrents(
+          final filteredSeason = Engine.filterTorrents(
             results[0].map((e) => e.toJson()).toList(),
             _movie.title,
             requiredSeason: _selectedSeason,
           ).map(TorrentResult.fromJson).toList();
-          final filteredEpisode = ForjaEngine.filterTorrents(
+          final filteredEpisode = Engine.filterTorrents(
             results[1].map((e) => e.toJson()).toList(),
             _movie.title,
             requiredSeason: _selectedSeason,
@@ -1396,7 +1396,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         final query = year.isNotEmpty ? '${_movie.title} $year' : _movie.title;
         final results = await _jackett.search(baseUrl, apiKey, query);
         if (mounted) {
-          final filtered = ForjaEngine.filterTorrents(
+          final filtered = Engine.filterTorrents(
           results.map((e) => e.toJson()).toList(),
           _movie.title,
         ).map(TorrentResult.fromJson).toList();
@@ -1455,12 +1455,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _prowlarr.search(baseUrl, apiKey, '${_movie.title} S${s}E$e', indexerIds: allowedIndexerIds),
         ]);
         if (mounted) {
-          final filteredSeason = ForjaEngine.filterTorrents(
+          final filteredSeason = Engine.filterTorrents(
             results[0].map((e) => e.toJson()).toList(),
             _movie.title,
             requiredSeason: _selectedSeason,
           ).map(TorrentResult.fromJson).toList();
-          final filteredEpisode = ForjaEngine.filterTorrents(
+          final filteredEpisode = Engine.filterTorrents(
             results[1].map((e) => e.toJson()).toList(),
             _movie.title,
             requiredSeason: _selectedSeason,
@@ -1483,7 +1483,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         final query = year.isNotEmpty ? '${_movie.title} $year' : _movie.title;
         final results = await _prowlarr.search(baseUrl, apiKey, query, indexerIds: allowedIndexerIds);
         if (mounted) {
-          final filtered = ForjaEngine.filterTorrents(
+          final filtered = Engine.filterTorrents(
           results.map((e) => e.toJson()).toList(),
           _movie.title,
         ).map(TorrentResult.fromJson).toList();

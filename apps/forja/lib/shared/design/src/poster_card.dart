@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
 
-class ForjaPosterCard extends StatefulWidget {
-  const ForjaPosterCard({
+class PosterCard extends StatefulWidget {
+  const PosterCard({
     super.key,
     required this.title,
     this.imageUrl,
@@ -16,10 +16,10 @@ class ForjaPosterCard extends StatefulWidget {
   final double aspectRatio;
 
   @override
-  State<ForjaPosterCard> createState() => _ForjaPosterCardState();
+  State<PosterCard> createState() => _PosterCardState();
 }
 
-class _ForjaPosterCardState extends State<ForjaPosterCard> {
+class _PosterCardState extends State<PosterCard> {
   bool _hover = false;
 
   @override
@@ -53,7 +53,7 @@ class _ForjaPosterCardState extends State<ForjaPosterCard> {
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: ForjaTheme.textPrimary,
+                  color: AppTheme.textPrimary,
                 ),
               ),
             ],
@@ -64,9 +64,9 @@ class _ForjaPosterCardState extends State<ForjaPosterCard> {
   }
 
   Widget _placeholder() => Container(
-        color: ForjaTheme.bgCard,
+        color: AppTheme.bgCard,
         child: const Center(
-          child: Icon(Icons.movie_outlined, color: ForjaTheme.textSecondary),
+          child: Icon(Icons.movie_outlined, color: AppTheme.textSecondary),
         ),
       );
 }

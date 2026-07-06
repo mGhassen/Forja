@@ -10,7 +10,7 @@ List<String> rustLibraryCandidates() {
     candidates.add(discovered);
   }
 
-  final env = Platform.environment['FORJA_RUST_LIB'];
+  final env = Platform.environment['RUST_LIB'];
   if (env != null && env.isNotEmpty) {
     candidates.insert(0, env);
   }

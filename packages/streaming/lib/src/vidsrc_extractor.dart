@@ -32,7 +32,7 @@ class VidsrcExtractor {
       debugPrint('[Vidsrc] Invalid tmdbId: $tmdbId');
       return null;
     }
-    if (!ForjaEngine.isReady) {
+    if (!Engine.isReady) {
       debugPrint('[Vidsrc] Rust engine not loaded');
       return null;
     }
@@ -45,7 +45,7 @@ class VidsrcExtractor {
         if (!isMovie) 'episode': episode ?? 1,
       });
       final raw = await Future<String>(() =>
-              ForjaRust.instance.resolveVidsrcEmbedJson(req))
+              RustLib.instance.resolveVidsrcEmbedJson(req))
           .timeout(timeout);
       final m = jsonDecode(raw) as Map<String, dynamic>;
       if (m.containsKey('error')) {

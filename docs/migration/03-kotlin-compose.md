@@ -26,23 +26,23 @@
 | ID | What |
 |----|------|
 | P3-01 | KMP app skeleton — `apps/forja_compose/` |
-| P3-02 | Finish `packages/forja_kotlin/` (expand P2-50/51 uniffi) |
+| P3-02 | Finish `packages/kotlin/` (expand P2-50/51 uniffi) |
 | P3-03 | CI: Kotlin smoke test — full delegate round-trip |
-| P3-04 | Gradle/Xcode link `libforja_ffi` |
+| P3-04 | Gradle/Xcode link `libffi_ffi` |
 
 #### ⬜ Port order (P3-10 → P3-70)
 
 | ID | What | Flutter source |
 |----|------|----------------|
-| P3-10 | Storage + theme + prefs | `forja_storage` |
+| P3-10 | Storage + theme + prefs | `ffi_storage` |
 | P3-11 | Shell + 19-tab nav | `shell/nav_config.dart` |
-| P3-20 | Engine bridge — `forja_kotlin` → uniffi | not `rust_delegates.dart` hooks |
+| P3-20 | Engine bridge — `kotlin` → uniffi | not `rust_delegates.dart` hooks |
 | P3-30 | Unified player | `shared/player/` |
 | P3-31 | Magnet tab | `features/magnet/` |
 | P3-32 | IPTV | `features/iptv/` |
 | P3-40 | Core browse (home, discover, search, my_list) | feature modules |
 | P3-50 | Remaining 15 tabs | anime, manga, jellyfin, … |
-| P3-51 | Dart package ports (orchestration already in Rust post-P2-80) | `forja_api`, `streaming`, … |
+| P3-51 | Dart package ports (orchestration already in Rust post-P2-80) | `ffi_api`, `streaming`, … |
 | P3-60 | WebView extractors — **host only** | kisskh, videasy, … |
 | P3-61 | Nuvio JS — **host only** | `nuvio_runtime.dart` |
 | P3-62 | Player PiP / casting stubs | `shared/casting/` |
@@ -68,7 +68,7 @@ Phase 3 ports **UI screens only** from `apps/forja` — no Dart package logic, n
 | # | Criterion | |
 |---|-----------|---|
 | 1 | 19 nav tabs + player + settings (RFC-011) | ⬜ |
-| 2 | `forja_kotlin` covers Phase 2 high-level FFI | ⬜ |
+| 2 | `kotlin` covers Phase 2 high-level FFI | ⬜ |
 | 3 | Magnet on mobile via Rust librqbit | ⬜ |
 | 4 | Smoke: UI renders engine JSON | ⬜ |
 
@@ -86,7 +86,7 @@ apps/forja_compose/
   androidApp/
   iosApp/
   desktopApp/                # if CMP desktop chosen
-packages/kotlin/             # uniffi/JNI bindings over libforja_ffi (only package/ survivor with rust)
+packages/kotlin/             # uniffi/JNI bindings over libffi_ffi (only package/ survivor with rust)
 ```
 
 Existing Rust build scripts unchanged: `scripts/build_rust.sh`, `scripts/build_rust_mobile.sh`.
@@ -100,9 +100,9 @@ Existing Rust build scripts unchanged: `scripts/build_rust.sh`, `scripts/build_r
 | ID | Task | Paths |
 |----|------|-------|
 | P3-01 | Create KMP app skeleton | `apps/forja_compose/` |
-| P3-02 | Finish Kotlin FFI package | `packages/forja_kotlin/` — expand Phase 2 uniffi POC |
+| P3-02 | Finish Kotlin FFI package | `packages/kotlin/` — expand Phase 2 uniffi POC |
 | P3-03 | CI job: Kotlin smoke test | Full delegate surface round-trip |
-| P3-04 | Gradle/Xcode link `libforja_ffi` | Reuse Phase 2 mobile artifacts |
+| P3-04 | Gradle/Xcode link `libffi_ffi` | Reuse Phase 2 mobile artifacts |
 
 ### Port order
 
@@ -166,7 +166,7 @@ Phase 3 ports **screens**, not engine logic.
 
 ---
 
-## FFI surfaces to bind (`forja_kotlin`)
+## FFI surfaces to bind (`kotlin`)
 
 Bind Phase 2 high-level engine API (post P2-80), e.g.:
 

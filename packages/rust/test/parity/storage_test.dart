@@ -20,12 +20,12 @@ void main() {
 
   test('storage round-trip', () {
     final path = '${tmp.path}/store.json';
-    final open = jsonDecode(ForjaRust.instance.storageOpen(path))
+    final open = jsonDecode(RustLib.instance.storageOpen(path))
         as Map<String, dynamic>;
     expect(open['ok'], isTrue);
 
     final set = jsonDecode(
-      ForjaRust.instance.storageSetJson(
+      RustLib.instance.storageSetJson(
         'forja_provider_order',
         jsonEncode(['videasy', 'vidsrc']),
       ),
@@ -33,14 +33,14 @@ void main() {
     expect(set['ok'], isTrue);
 
     final got = jsonDecode(
-      ForjaRust.instance.storageGetJson('forja_provider_order'),
+      RustLib.instance.storageGetJson('forja_provider_order'),
     ) as List;
     expect(got, ['videasy', 'vidsrc']);
   });
 
   test('storage stremio addons map list round-trip', () {
     final path = '${tmp.path}/store_stremio.json';
-    final open = jsonDecode(ForjaRust.instance.storageOpen(path))
+    final open = jsonDecode(RustLib.instance.storageOpen(path))
         as Map<String, dynamic>;
     expect(open['ok'], isTrue);
 
@@ -48,7 +48,7 @@ void main() {
       {'baseUrl': 'https://addon.example/manifest.json', 'name': 'Test'},
     ];
     final set = jsonDecode(
-      ForjaRust.instance.storageSetJson(
+      RustLib.instance.storageSetJson(
         'stremio_addons',
         jsonEncode(addons),
       ),
@@ -56,7 +56,7 @@ void main() {
     expect(set['ok'], isTrue);
 
     final got = jsonDecode(
-      ForjaRust.instance.storageGetJson('stremio_addons'),
+      RustLib.instance.storageGetJson('stremio_addons'),
     ) as List;
     expect(got, hasLength(1));
     expect(got.first['baseUrl'], 'https://addon.example/manifest.json');
@@ -64,37 +64,37 @@ void main() {
 
   test('storage string list round-trip', () {
     final path = '${tmp.path}/store_order.json';
-    jsonDecode(ForjaRust.instance.storageOpen(path));
-    ForjaRust.instance.storageSetJson(
+    jsonDecode(RustLib.instance.storageOpen(path));
+    RustLib.instance.storageSetJson(
       'stream_provider_order',
       jsonEncode(['videasy', 'vidsrc', 'webstreamr']),
     );
     final got = jsonDecode(
-      ForjaRust.instance.storageGetJson('stream_provider_order'),
+      RustLib.instance.storageGetJson('stream_provider_order'),
     ) as List;
     expect(got, ['videasy', 'vidsrc', 'webstreamr']);
   });
 
-  test('ForjaEngine storage facade helpers', () async {
+  test('Engine storage facade helpers', () async {
     final path = '${tmp.path}/facade_store.json';
-    await ForjaEngine.init(storagePath: path);
-    expect(ForjaEngine.isReady, isTrue);
-    ForjaEngine.storageWriteStringList('forja_provider_order', ['vidsrc']);
+    await Engine.init(storagePath: path);
+    expect(Engine.isReady, isTrue);
+    Engine.storageWriteStringList('forja_provider_order', ['vidsrc']);
     expect(
-      ForjaEngine.storageReadStringList(
+      Engine.storageReadStringList(
         'forja_provider_order',
         fallback: const [],
       ),
       ['vidsrc'],
     );
-    ForjaEngine.storageWriteMapList('stremio_addons', [
+    Engine.storageWriteMapList('stremio_addons', [
       {'baseUrl': 'https://x/manifest.json', 'name': 'X'},
     ]);
-    expect(ForjaEngine.storageReadMapList('stremio_addons'), hasLength(1));
-    ForjaEngine.storageWrite('watch_history', [
+    expect(Engine.storageReadMapList('stremio_addons'), hasLength(1));
+    Engine.storageWrite('watch_history', [
       {'uniqueId': '550', 'title': 'Fight Club'},
     ]);
-    final hist = ForjaEngine.storageRead('watch_history') as List;
+    final hist = Engine.storageRead('watch_history') as List;
     expect(hist, hasLength(1));
   });
 }

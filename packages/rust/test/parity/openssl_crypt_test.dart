@@ -10,7 +10,7 @@ void main() {
   });
 
   test('openssl_aes_decrypt_json rejects invalid blob', () {
-    final raw = ForjaRust.instance.opensslAesDecryptJson('not-valid-b64');
+    final raw = RustLib.instance.opensslAesDecryptJson('not-valid-b64');
     final m = jsonDecode(raw) as Map<String, dynamic>;
     expect(m['error'], isNotNull);
   });

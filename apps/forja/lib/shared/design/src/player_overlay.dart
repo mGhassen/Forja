@@ -37,7 +37,7 @@ class PlayerOverlayPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ForjaTheme.border),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -114,8 +114,8 @@ class _NavBtn extends StatelessWidget {
       icon: Icon(icon),
       label: Text(label),
       style: OutlinedButton.styleFrom(
-        foregroundColor: ForjaTheme.textPrimary,
-        side: const BorderSide(color: ForjaTheme.border),
+        foregroundColor: AppTheme.textPrimary,
+        side: const BorderSide(color: AppTheme.border),
         padding: const EdgeInsets.symmetric(vertical: 14),
       ),
     );
@@ -142,10 +142,10 @@ class _ChipBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = primary
-        ? ForjaTheme.primary
+        ? AppTheme.primary
         : active
-            ? ForjaTheme.primary.withValues(alpha: 0.2)
-            : ForjaTheme.bgCard;
+            ? AppTheme.primary.withValues(alpha: 0.2)
+            : AppTheme.bgCard;
     return Opacity(
       opacity: enabled ? 1 : 0.45,
       child: Material(

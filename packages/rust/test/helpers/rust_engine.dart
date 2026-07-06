@@ -4,14 +4,14 @@ import 'package:rust/rust.dart';
 
 /// Resolves the release dylib built by `./scripts/build_rust.sh`.
 Future<void> initRustForTests() async {
-  if (ForjaRust.isInitialized) return;
+  if (RustLib.isInitialized) return;
   final path = resolveRustLibPath();
   if (!File(path).existsSync()) {
     throw StateError(
       'Rust dylib not found at $path — run ./scripts/build_rust.sh first',
     );
   }
-  await ForjaRust.init(libraryPath: path);
+  await RustLib.init(libraryPath: path);
 }
 
 String resolveRustLibPath() {

@@ -25,14 +25,14 @@ void main() {
 ''';
 
   test('parses knaben HTML row', () {
-    final json = ForjaRust.instance.parseKnabenHtmlJson(knabenHtml);
+    final json = RustLib.instance.parseKnabenHtmlJson(knabenHtml);
     final list = jsonDecode(json) as List;
     expect(list, hasLength(1));
     expect(list.first['magnet'], startsWith('magnet:'));
   });
 
   test('parses TPB HTML row', () {
-    final json = ForjaRust.instance.parseTpbHtmlJson(tpbHtml);
+    final json = RustLib.instance.parseTpbHtmlJson(tpbHtml);
     final list = jsonDecode(json) as List;
     expect(list, hasLength(1));
     expect(list.first['name'], 'Movie 1080p');
@@ -45,7 +45,7 @@ void main() {
       {'name': 'C', 'magnet': 'magnet:?xt=urn:btih:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'seeders': '3', 'size': '1 GB', 'source': 'Z'},
     ];
     final out = jsonDecode(
-      ForjaRust.instance.dedupTorrentsJson(jsonEncode(rows)),
+      RustLib.instance.dedupTorrentsJson(jsonEncode(rows)),
     ) as List;
     expect(out, hasLength(2));
   });

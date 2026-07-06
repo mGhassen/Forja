@@ -8,10 +8,10 @@ void main() {
   });
 
   test('FFI round-trip add', () {
-    expect(ForjaRust.instance.add(2, 2), 4);
+    expect(RustLib.instance.add(2, 2), 4);
   });
 
   test('version string is non-empty', () {
-    expect(ForjaRust.instance.version, isNotEmpty);
+    expect(RustLib.instance.version, isNotEmpty);
   });
 }

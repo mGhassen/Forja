@@ -159,7 +159,7 @@ class VideasyExtractor {
       String json;
       try {
         final raw =
-            ForjaRust.instance.opensslAesDecryptJson(intermediate, passphrase: '');
+            RustLib.instance.opensslAesDecryptJson(intermediate, passphrase: '');
         if (raw.startsWith('{')) {
           final probe = jsonDecode(raw) as Map<String, dynamic>;
           if (probe.containsKey('error') && !probe.containsKey('sources')) {

@@ -101,7 +101,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   
   debugPrint('[Boot] Initializing AudioService...');
   final audioHandler = await AudioService.init(
-    builder: () => ForjaAudioHandler(MusicPlayerService().player),
+    builder: () => AppAudioHandler(MusicPlayerService().player),
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'com.forja.app.channel.audio',
       androidNotificationChannelName: 'Music Playback',
@@ -116,7 +116,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   AudiobookPlayerService().init(audioHandler);
   
   // Hydrate light mode setting before first frame
-  await ForjaEngine.init();
+  await Engine.init();
   _warnIfRustMissing();
   await SettingsService().initLightMode();
   
@@ -137,19 +137,19 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   }));
   debugPrint('[Boot] All init complete — launching app');
 
-  runApp(ForjaApp(title: title));
+  runApp(App(title: title));
 }
 
-class ForjaApp extends StatefulWidget {
-  const ForjaApp({super.key, this.title = 'Forja'});
+class App extends StatefulWidget {
+  const App({super.key, this.title = 'Forja'});
 
   final String title;
 
   @override
-  State<ForjaApp> createState() => _ForjaAppState();
+  State<App> createState() => _AppState();
 }
 
-class _ForjaAppState extends State<ForjaApp> with WidgetsBindingObserver, WindowListener {
+class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
   @override
   void initState() {
     super.initState();
@@ -489,7 +489,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 }
 
 void _warnIfRustMissing() {
-  if (!kDebugMode || ForjaEngine.isReady) return;
+  if (!kDebugMode || Engine.isReady) return;
 
   final isDesktop =
       Platform.isMacOS || Platform.isLinux || Platform.isWindows;
@@ -501,11 +501,11 @@ void _warnIfRustMissing() {
       '[Boot] Rust engine NOT loaded — engine features unavailable. '
       'From repo root run: ';
   final full = '$msg$buildHint. '
-      'Override: FORJA_RUST_LIB=/path/to/libffi.dylib|.so. '
-      'Strict fail: FORJA_RUST_STRICT=1';
+      'Override: RUST_LIB=/path/to/libffi.dylib|.so. '
+      'Strict fail: RUST_STRICT=1';
 
   debugPrint(full);
-  if (Platform.environment['FORJA_RUST_STRICT'] == '1') {
+  if (Platform.environment['RUST_STRICT'] == '1') {
     throw StateError(full);
   }
 }

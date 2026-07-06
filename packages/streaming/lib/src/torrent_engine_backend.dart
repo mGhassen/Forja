@@ -12,5 +12,5 @@ class TorrentFileEntry {
     required this.size,
   });
 
-  bool get isStreamable => ForjaEngine.isVideoFile(name);
+  bool get isStreamable => Engine.isVideoFile(name);
 }

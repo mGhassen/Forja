@@ -25,7 +25,7 @@ void main() {
       final expected = c['expected'] as bool;
 
       expect(
-        ForjaRust.instance.episodeMatches(file, season, episode),
+        RustLib.instance.episodeMatches(file, season, episode),
         expected,
         reason: '$file S${season}E$episode',
       );
@@ -38,7 +38,7 @@ void main() {
       {'name': 'Show.S03E07.720p.mkv', 'size': 700},
       {'name': 'Show.S03E07.1080p.mkv', 'size': 1080},
     ];
-    final idx = ForjaRust.instance.pickEpisodeIndexJson(
+    final idx = RustLib.instance.pickEpisodeIndexJson(
       jsonEncode(files),
       3,
       7,
