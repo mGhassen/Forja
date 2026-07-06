@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
-import 'package:rust/rust.dart';
 
 class _StremioHttpResponse {
   const _StremioHttpResponse(this.statusCode, this.body);

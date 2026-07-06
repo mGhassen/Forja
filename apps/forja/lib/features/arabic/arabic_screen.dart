@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:rust/rust.dart';
 import 'package:api/api/arabic_service.dart';
 import 'arabic_details_screen.dart';
 import 'arabic_player_screen.dart';

@@ -2,22 +2,15 @@
 # See https://dart.dev/tools/pub/glossary#lockfile
 packages:
   android_intent_plus:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: android_intent_plus
       sha256: "2329378af63f49b985cb2e110ac784d08374f1e2b1984be77ba9325b1c8cce11"
       url: "https://pub.dev"
     source: hosted
     version: "5.3.1"
-  api:
-    dependency: "direct dev"
-    description:
-      path: "../api"
-      relative: true
-    source: path
-    version: "1.0.0"
   archive:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: archive
       sha256: a96e8b390886ee8abb49b7bd3ac8df6f451c621619f52a26e815fdcf568959ff
@@ -41,7 +34,7 @@ packages:
     source: hosted
     version: "2.13.1"
   audio_service:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: audio_service
       sha256: "95f3267f3449eb5cf71c8fcf1d556f57af1e898e2dc5815fb168d1843653edb7"
@@ -65,7 +58,7 @@ packages:
     source: hosted
     version: "0.1.4"
   audio_session:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: audio_session
       sha256: "2b7fff16a552486d078bfc09a8cde19f426dc6d6329262b684182597bec5b1ac"
@@ -136,6 +129,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.2"
+  dbus:
+    dependency: transitive
+    description:
+      name: dbus
+      sha256: "0ce9b0a839e6dee59a37a623d2fc26a35bbbe6404213e419b0d6411023d62645"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.14"
   fake_async:
     dependency: transitive
     description:
@@ -145,7 +146,7 @@ packages:
     source: hosted
     version: "1.3.3"
   ffi:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: ffi
       sha256: "6d7fd89431262d8f3125e81b50d3847a091d846eafcd4fdb88dd06f36d705a45"
@@ -169,7 +170,7 @@ packages:
     source: hosted
     version: "1.1.1"
   floating:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: floating
       sha256: d6e7046bfec4c1ab9e09ef9d88fee104b1eb41171d6e083099bf310535d26b79
@@ -190,7 +191,7 @@ packages:
     source: hosted
     version: "3.4.1"
   flutter_inappwebview:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: flutter_inappwebview
       sha256: "80092d13d3e29b6227e25b67973c67c7210bd5e35c4b747ca908e31eb71a46d5"
@@ -359,6 +360,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  image:
+    dependency: transitive
+    description:
+      name: image
+      sha256: f9881ff4998044947ec38d098bc7c8316ae1186fa786eddffdb867b9bc94dfce
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.8.0"
   jni:
     dependency: transitive
     description:
@@ -447,6 +456,78 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
+  media_kit:
+    dependency: "direct overridden"
+    description:
+      path: media_kit
+      ref: HEAD
+      resolved-ref: "7a2135661ff37a717f11d6012fefa56cae27ef36"
+      url: "https://github.com/AimesSoft/media-kit.git"
+    source: git
+    version: "1.2.6"
+  media_kit_libs_android_video:
+    dependency: "direct overridden"
+    description:
+      path: "libs/android/media_kit_libs_android_video"
+      ref: HEAD
+      resolved-ref: "7a2135661ff37a717f11d6012fefa56cae27ef36"
+      url: "https://github.com/AimesSoft/media-kit.git"
+    source: git
+    version: "1.3.8"
+  media_kit_libs_ios_video:
+    dependency: "direct overridden"
+    description:
+      path: "libs/ios/media_kit_libs_ios_video"
+      ref: HEAD
+      resolved-ref: "7a2135661ff37a717f11d6012fefa56cae27ef36"
+      url: "https://github.com/AimesSoft/media-kit.git"
+    source: git
+    version: "1.1.4"
+  media_kit_libs_linux:
+    dependency: "direct overridden"
+    description:
+      path: "libs/linux/media_kit_libs_linux"
+      ref: HEAD
+      resolved-ref: "7a2135661ff37a717f11d6012fefa56cae27ef36"
+      url: "https://github.com/AimesSoft/media-kit.git"
+    source: git
+    version: "1.2.1"
+  media_kit_libs_macos_video:
+    dependency: "direct overridden"
+    description:
+      path: "libs/macos/media_kit_libs_macos_video"
+      ref: HEAD
+      resolved-ref: "7a2135661ff37a717f11d6012fefa56cae27ef36"
+      url: "https://github.com/AimesSoft/media-kit.git"
+    source: git
+    version: "1.1.4"
+  media_kit_libs_video:
+    dependency: "direct overridden"
+    description:
+      path: "libs/universal/media_kit_libs_video"
+      ref: HEAD
+      resolved-ref: "7a2135661ff37a717f11d6012fefa56cae27ef36"
+      url: "https://github.com/AimesSoft/media-kit.git"
+    source: git
+    version: "1.0.8"
+  media_kit_libs_windows_video:
+    dependency: "direct overridden"
+    description:
+      path: "libs/windows/media_kit_libs_windows_video"
+      ref: HEAD
+      resolved-ref: "7a2135661ff37a717f11d6012fefa56cae27ef36"
+      url: "https://github.com/AimesSoft/media-kit.git"
+    source: git
+    version: "1.0.12"
+  media_kit_video:
+    dependency: "direct overridden"
+    description:
+      path: media_kit_video
+      ref: HEAD
+      resolved-ref: "7a2135661ff37a717f11d6012fefa56cae27ef36"
+      url: "https://github.com/AimesSoft/media-kit.git"
+    source: git
+    version: "2.0.1"
   meta:
     dependency: transitive
     description:
@@ -464,7 +545,7 @@ packages:
     source: hosted
     version: "9.4.1"
   ota_update:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: ota_update
       sha256: "1f4c7c3c4f306729a6c00b84435096ce2d8b28439013f7237173acc699b2abc8"
@@ -480,7 +561,7 @@ packages:
     source: hosted
     version: "2.2.0"
   package_info_plus:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: package_info_plus
       sha256: "468c26b4254ab01979fa5e4a98cb343ea3631b9acee6f21028997419a80e1a20"
@@ -552,7 +633,7 @@ packages:
     source: hosted
     version: "2.3.0"
   permission_handler:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: permission_handler
       sha256: "59adad729136f01ea9e35a48f5d1395e25cba6cea552249ddbe9cf950f5d7849"
@@ -655,6 +736,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.0"
+  rust:
+    dependency: "direct main"
+    description:
+      path: "../rust"
+      relative: true
+    source: path
+    version: "0.1.0"
   rxdart:
     dependency: transitive
     description:
@@ -663,6 +751,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.28.0"
+  safe_local_storage:
+    dependency: transitive
+    description:
+      name: safe_local_storage
+      sha256: "7483b3d5e8976f0bd263647c03b96131ee8e43f48b56fa8a8ec459e8515d74b0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.4"
   screen_retriever:
     dependency: transitive
     description:
@@ -884,8 +980,24 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.9"
-  url_launcher:
+  universal_platform:
     dependency: transitive
+    description:
+      name: universal_platform
+      sha256: "64e16458a0ea9b99260ceb5467a214c1f298d647c659af1bff6d3bf82536b1ec"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
+  uri_parser:
+    dependency: transitive
+    description:
+      name: uri_parser
+      sha256: "051c62e5f693de98ca9f130ee707f8916e2266945565926be3ff20659f7853ce"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.2"
+  url_launcher:
+    dependency: "direct main"
     description:
       name: url_launcher
       sha256: f6a7e5c4835bb4e3026a04793a4199ca2d14c739ec378fdfe23fc8075d0439f8
@@ -972,6 +1084,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "15.2.0"
+  wakelock_plus:
+    dependency: transitive
+    description:
+      name: wakelock_plus
+      sha256: ddf3db70eaa10c37558ff817519b85d527dbd21034fd5d8e1c2e85f31588f1c1
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.2"
+  wakelock_plus_platform_interface:
+    dependency: transitive
+    description:
+      name: wakelock_plus_platform_interface
+      sha256: b13f99e992e7ae6a152e16c5559d3c07ff445b13330192662494e614ca3e7d7b
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.1"
   web:
     dependency: transitive
     description:
@@ -989,7 +1117,7 @@ packages:
     source: hosted
     version: "5.15.0"
   window_manager:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: window_manager
       sha256: "05c231fd7b23d2380f14c5cc10b7b93d60d4fa4a2fb4e0f032de27e44b5560e9"
@@ -1005,7 +1133,7 @@ packages:
     source: hosted
     version: "1.1.0"
   xml:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: xml
       sha256: "971043b3a0d3da28727e40ed3e0b5d18b742fa5a68665cca88e74b7876d5e025"
@@ -1021,7 +1149,7 @@ packages:
     source: hosted
     version: "3.1.3"
   youtube_explode_dart:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: youtube_explode_dart
       sha256: "10134a53989b2f3dc576121735aec8fc6d88784956f4a2ad1a2525b006373a76"

@@ -17,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'package:api/api/bestsimilar_scraper.dart';
-import 'package:rust/rust.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:api/models/movie.dart';
 import 'package:forja/shell/app_router.dart';
@@ -224,7 +223,7 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
         return;
       }
       if (!mounted) return;
-      await AppRouter.openMovie(context, movie: movie!);
+      await AppRouter.openMovie(context, movie: movie);
       if (mounted) setState(() => _resolvingId = null);
     } catch (e) {
       if (mounted) {

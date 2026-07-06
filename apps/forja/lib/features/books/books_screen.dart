@@ -3,7 +3,6 @@ import 'package:api/services/book_progress_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:api/api/books_service.dart';
-import 'package:rust/rust.dart';
 import 'book_reader_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

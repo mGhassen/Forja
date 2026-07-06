@@ -1,4 +1,4 @@
-library nuvio;
+library;
 
 export 'nuvio_bootstrap.dart';
 export 'nuvio_runtime.dart';

@@ -9,7 +9,6 @@ import 'package:api/api/audiobook_service.dart';
 import 'package:api/api/music_player_service.dart';
 import 'package:api/api/epub_splitter.dart';
 import 'package:api/api/epub_cover.dart';
-import 'package:rust/rust.dart';
 import 'audiobook_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

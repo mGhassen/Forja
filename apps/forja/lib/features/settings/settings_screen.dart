@@ -22,7 +22,6 @@ import 'package:api/services/prowlarr_service.dart';
 import 'package:api/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
-import 'package:rust/rust.dart';
 import 'webstreamr_settings_screen.dart';
 import 'splash_preview_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -1120,9 +1119,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: child,
             );
           },
-          onReorder: (oldIndex, newIndex) {
+          onReorderItem: (oldIndex, newIndex) {
             setState(() {
-              if (newIndex > oldIndex) newIndex--;
               final item = _navbarOrder.removeAt(oldIndex);
               _navbarOrder.insert(newIndex, item);
             });
@@ -3053,8 +3051,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: order.length,
-              onReorder: (oldIndex, newIndex) async {
-                if (newIndex > oldIndex) newIndex -= 1;
+              onReorderItem: (oldIndex, newIndex) async {
                 final item = order.removeAt(oldIndex);
                 order.insert(newIndex, item);
                 setState(() => _streamProviderOrder = List<String>.from(order));

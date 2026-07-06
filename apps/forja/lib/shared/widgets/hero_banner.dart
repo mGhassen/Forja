@@ -173,7 +173,7 @@ class _HeroBannerState extends State<HeroBanner> {
                   ),
                   const SizedBox(width: 16),
                   OutlinedButton.icon(
-                    onPressed: () {}, // TODO: Add to list
+                    onPressed: null,
                     icon: const Icon(Icons.add_rounded, size: 24),
                     label: const Text('My List'),
                     style: OutlinedButton.styleFrom(

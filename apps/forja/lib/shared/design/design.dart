@@ -1,4 +1,4 @@
-library design;
+library;
 
 export 'src/theme.dart';
 export 'src/poster_card.dart';

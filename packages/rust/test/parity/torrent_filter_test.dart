@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../helpers/parity_backends.dart';
 import '../helpers/rust_engine.dart';
 import 'package:rust/rust.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -1,3 +1,6 @@
+// FFI symbol names mirror the Rust exports.
+// ignore_for_file: non_constant_identifier_names
+
 import 'dart:ffi' as ffi;
 import 'dart:io';
 

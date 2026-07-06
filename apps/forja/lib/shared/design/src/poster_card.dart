@@ -41,7 +41,7 @@ class _PosterCardState extends State<PosterCard> {
                   borderRadius: BorderRadius.circular(10),
                   child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
                       ? Image.network(widget.imageUrl!, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _placeholder())
+                          errorBuilder: (_, _, _) => _placeholder())
                       : _placeholder(),
                 ),
               ),

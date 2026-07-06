@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
-import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -244,7 +243,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   String _sportFilter = 'all';
 
   TabController? _tabController;
-  _DataProvider _provider = _DataProvider.damiTv;
+  final _DataProvider _provider = _DataProvider.damiTv;
   List<_DamiTvStream> _damiTvStreams = [];
   List<_CdnChannel> _cdnChannels = [];
   List<_CdnSportEvent> _cdnSports = [];

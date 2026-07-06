@@ -8,7 +8,6 @@ import 'package:api/api/music_service.dart';
 import 'package:api/api/music_storage_service.dart';
 import 'package:api/api/music_downloader_service.dart';
 import 'package:api/api/lyrics_service.dart';
-import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 enum PlayerView { art, lyrics, related }

@@ -1,5 +1,3 @@
-library api;
-
 export 'models/stream_source.dart';
 export 'models/torrent_result.dart';
 export 'models/movie.dart';

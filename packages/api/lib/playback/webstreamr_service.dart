@@ -143,8 +143,8 @@ class WebStreamrService {
     }
 
     final req = <String, dynamic>{
-      if (imdb != null) 'imdb_id': imdb,
-      if (tmdb != null) 'tmdb_id': tmdb,
+      'imdb_id': ?imdb,
+      'tmdb_id': ?tmdb,
       'media_type': isMovie ? 'movie' : 'series',
       if (!isMovie) 'season': season ?? 1,
       if (!isMovie) 'episode': episode ?? 1,

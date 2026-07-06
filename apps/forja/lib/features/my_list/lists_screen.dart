@@ -3,7 +3,6 @@ import 'package:api/api/trakt_service.dart';
 import 'package:api/api/mdblist_service.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:api/models/movie.dart';
-import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

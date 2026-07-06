@@ -244,7 +244,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
       builder: (context, preset, _) {
         return ValueListenableBuilder<bool>(
           valueListenable: SettingsService.lightModeNotifier,
-          builder: (context, _, __) {
+          builder: (context, _, _) {
             Widget app = MaterialApp(
               title: widget.title,
               debugShowCheckedModeBanner: false,

@@ -3,6 +3,7 @@ import 'package:api/services/my_list_service.dart';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:shimmer/shimmer.dart';
@@ -856,8 +857,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               ),
             ),
           CustomScrollView(
-            cacheExtent: 500,
-            physics: const BouncingScrollPhysics(),
+            scrollCacheExtent: ScrollCacheExtent.pixels(500), physics: const BouncingScrollPhysics(),
             slivers: [
               // Hero
               SliverToBoxAdapter(
@@ -906,7 +906,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                         imdbId: item['imdbId'] as String?,
                       );
                       final isStreaming = await SettingsService().isStreamingModeEnabled();
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       Navigator.push(context, MaterialPageRoute(
                         builder: (_) => isStreaming
                             ? StreamingDetailsScreen(

@@ -1,5 +1,3 @@
-library playback;
-
 export 'extracted_media.dart';
 export 'local_server_service.dart';
 export 'provider_registry.dart';
