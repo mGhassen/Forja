@@ -14,6 +14,11 @@ class WebStreamrService {
   factory WebStreamrService() => _instance;
   WebStreamrService._internal();
 
+  int _resolveGeneration = 0;
+
+  /// Ignore results from in-flight resolves (e.g. user tapped Cancel).
+  void cancelPending() => _resolveGeneration++;
+
   static Future<void> init() async {
     if (!Engine.isReady) await Engine.init();
   }
@@ -25,6 +30,7 @@ class WebStreamrService {
     int? episode,
     int? tmdbId,
   }) async {
+    final generation = ++_resolveGeneration;
     try {
       await init();
       if (!Engine.isReady) {
@@ -39,10 +45,10 @@ class WebStreamrService {
         episode: episode,
         tmdbId: tmdbId,
       );
-      if (request == null) return [];
+      if (request == null || generation != _resolveGeneration) return [];
 
-      final raw =
-          RustLib.instance.webstreamrGetStreamsJson(jsonEncode(request));
+      final raw = await runWebstreamrGetStreamsJson(jsonEncode(request));
+      if (generation != _resolveGeneration) return [];
       final streams = jsonDecode(raw);
       if (streams is! List) {
         debugPrint('[WebStreamrService] Unexpected response: $raw');

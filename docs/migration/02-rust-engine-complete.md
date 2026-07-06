@@ -93,6 +93,7 @@ Engine (crates/* + libffi)
 | **P2-86** | All `*Backend` hooks removed |
 | **P2-85** | HLS proxy in Rust |
 | **P2-82** | `packages/webstreamr` **deleted**; logic in `crates/webstreamr` |
+| **P2-91** | WebStreamr `Isolate.run` offload + `cancelPending()` — UI no longer frozen |
 
 #### 🔄 Partial
 
@@ -106,7 +107,6 @@ Engine (crates/* + libffi)
 
 | ID | What |
 |----|------|
-| **P2-91** | WebStreamr: `Isolate.run` for `webstreamrGetStreamsJson`; cancel token — [issue 001](../issues/001-webstreamr-blocks-ui.md) |
 | **P2-92** | Consolidate shelf + 111477 + mega routes into `crates/proxy` |
 | **P2-93** | Stremio: wire `stremio_http_get_json` (kill Dart HTTP split) |
 | **P2-94** | IPTV: move `iptv_network.dart` HTTP to Rust or unified FFI |
@@ -135,7 +135,7 @@ Engine (crates/* + libffi)
 | T1 | `packages/streaming` engine deleted (P2-83, 92) | ⬜ |
 | T2 | `packages/storage` deleted; theme in app (P2-88, 96) | ⬜ |
 | T3 | `packages/core` deleted (P2-90) | ⬜ |
-| T4 | WebStreamr non-blocking (P2-91) | ⬜ |
+| T4 | WebStreamr non-blocking (P2-91) | ✅ |
 | T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | ⬜ |
 | T6 | Mobile magnet E2E (P2-14) | ⬜ |
 | T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | ⬜ |

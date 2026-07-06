@@ -21,11 +21,21 @@ class RustLib {
 
   static bool get isInitialized => _instance != null;
 
+  /// Path used by the main isolate after [init]. Pass to worker isolates.
+  static String? loadedLibraryPath;
+
   static Future<void> init({String? libraryPath}) async {
     if (_instance != null) return;
     final path = libraryPath ?? _defaultLibraryPath();
-    final lib = ffi.DynamicLibrary.open(path);
+    initSync(path);
+  }
+
+  /// Opens the dylib synchronously — for worker isolates only.
+  static void initSync(String libraryPath) {
+    if (_instance != null) return;
+    final lib = ffi.DynamicLibrary.open(libraryPath);
     _instance = RustLib._(lib);
+    loadedLibraryPath = libraryPath;
   }
 
   static String _defaultLibraryPath() {

@@ -12,8 +12,12 @@ import 'library_path.dart';
 abstract final class Engine {
   static bool _enabled = false;
   static bool _initialized = false;
+  static String? _libraryPath;
 
   static bool get isReady => _enabled && RustLib.isInitialized;
+
+  /// Dylib path loaded on the main isolate — pass to worker isolates.
+  static String? get libraryPath => _libraryPath;
 
   /// Load the native library. Required for engine features.
   static Future<void> init({String? storagePath}) async {
@@ -31,6 +35,7 @@ abstract final class Engine {
         try {
           await RustLib.init(libraryPath: candidate);
           _enabled = true;
+          _libraryPath = RustLib.loadedLibraryPath ?? candidate;
           final storePath = storagePath ?? await _defaultStoragePath();
           _openStorage(storePath);
           try {

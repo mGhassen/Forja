@@ -221,6 +221,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
         movie: _movie,
         onCancel: () {
           _extractionCancelled = true;
+          WebStreamrService().cancelPending();
           Navigator.of(context).pop();
         },
       ),
