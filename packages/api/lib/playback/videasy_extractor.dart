@@ -73,6 +73,7 @@ class VideasyExtractor {
     int? season,
     int? episode,
     Duration timeout = const Duration(seconds: 45),
+    bool Function()? isCancelled,
   }) async {
     try {
       return await _extract(
@@ -80,6 +81,7 @@ class VideasyExtractor {
         isMovie: isMovie,
         season: season,
         episode: episode,
+        isCancelled: isCancelled,
       ).timeout(timeout);
     } on TimeoutException {
       onLog('[Videasy] Extraction timed out after ${timeout.inSeconds}s');
@@ -95,6 +97,7 @@ class VideasyExtractor {
     required bool isMovie,
     int? season,
     int? episode,
+    bool Function()? isCancelled,
   }) async {
     final tmdb = int.tryParse(tmdbId);
     if (tmdb == null) {
@@ -125,6 +128,10 @@ class VideasyExtractor {
     String? firstProvider;
 
     for (final provider in _providers) {
+      if (isCancelled?.call() == true) {
+        onLog('[Videasy] cancelled');
+        return null;
+      }
       final uri = Uri.https(
         'api.videasy.net',
         '/$provider/sources-with-title',
@@ -159,7 +166,7 @@ class VideasyExtractor {
       String json;
       try {
         final raw =
-            RustLib.instance.opensslAesDecryptJson(intermediate, passphrase: '');
+            await runOpensslAesDecryptJson(intermediate, passphrase: '');
         if (raw.startsWith('{')) {
           final probe = jsonDecode(raw) as Map<String, dynamic>;
           if (probe.containsKey('error') && !probe.containsKey('sources')) {

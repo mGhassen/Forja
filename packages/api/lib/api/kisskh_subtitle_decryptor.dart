@@ -6,9 +6,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 
 class KissKhSubtitleDecryptor {
-  static String decryptBody(String body, {String? sourceUrl}) {
-    return RustLib.instance.decryptKisskhBody(body, sourceUrl: sourceUrl);
-  }
+  static Future<String> decryptBody(String body, {String? sourceUrl}) =>
+      runDecryptKisskhBody(body, sourceUrl: sourceUrl);
 
   static Future<String?> fetchAndDecrypt({
     required String url,
@@ -32,7 +31,7 @@ class KissKhSubtitleDecryptor {
       final body = await res.transform(utf8.decoder).join();
       debugPrint('[KissKhSub] fetched ${body.length} chars from $url');
       final ext = url.split('?').first.split('.').last.toLowerCase();
-      final decoded = (ext == 'srt') ? body : decryptBody(body, sourceUrl: url);
+      final decoded = (ext == 'srt') ? body : await decryptBody(body, sourceUrl: url);
 
       final tmp = await getTemporaryDirectory();
       final dir = Directory('${tmp.path}/kisskh_subs');

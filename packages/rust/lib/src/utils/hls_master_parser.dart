@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../engine.dart';
+import '../isolate_runner.dart';
 
 class HlsQuality {
   final String label;
@@ -41,11 +42,11 @@ Future<List<HlsQuality>?> fetchHlsQualities(
   }
 }
 
-List<HlsQuality>? parseHlsMaster(String masterUrl, String body) {
+Future<List<HlsQuality>?> parseHlsMaster(String masterUrl, String body) async {
   if (!RustLib.isInitialized) {
     throw StateError('Engine not initialized');
   }
-  final json = RustLib.instance.parseHlsMasterJson(masterUrl, body);
+  final json = await runParseHlsMasterJson(masterUrl, body);
   final list = jsonDecode(json) as List;
   if (list.isEmpty) return null;
   return list.map((e) {

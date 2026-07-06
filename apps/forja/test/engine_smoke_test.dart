@@ -43,13 +43,13 @@ void main() {
     await tester.pump();
   });
 
-  test('M3U parse returns channels', () {
+  test('M3U parse returns channels', () async {
     const content = '''
 #EXTM3U
 #EXTINF:-1 tvg-id="ch1" tvg-name="News" tvg-logo="http://logo.example/icon.png" group-title="News",News HD
 http://stream.example/live
 ''';
-    final channels = Engine.parseM3uChannels(content);
+    final channels = await Engine.parseM3uChannels(content);
     expect(channels, hasLength(1));
     expect(channels.first['name'], 'News HD');
     expect(channels.first['group'], 'News');

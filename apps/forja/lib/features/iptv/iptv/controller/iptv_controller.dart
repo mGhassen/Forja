@@ -1139,6 +1139,12 @@ class IptvController extends ChangeNotifier {
           final after = _channelCatalogAfter[ch.id];
           final page = await IptvScraper.scrapeCatalogPage(
               maxResults: 60, after: after, source: scrapeSource);
+          if (_channelCancel) {
+            channelIsRunning = false;
+            channelStatus = 'Stopped.';
+            notifyListeners();
+            return;
+          }
           _channelCatalogAfter[ch.id] = page.nextAfter;
           final knownKeys = {
             ...pool.map((p) => p.key),
@@ -1168,6 +1174,7 @@ class IptvController extends ChangeNotifier {
         await IptvVerifier.verifyUntil(
           portals: snapshot,
           target: 5,
+          isCancelled: () => _channelCancel,
           onAttempted: (p) {
             if (pendingKeys.remove(p.credKey)) {
               pendingQueue.removeWhere((x) => x.credKey == p.credKey);
@@ -1221,9 +1228,16 @@ class IptvController extends ChangeNotifier {
     pool.removeWhere((p) => attempted.contains(p.key));
 
     // ── 4. Fan out: fetch live streams from all 8 portals IN PARALLEL ──
+    if (_channelCancel) {
+      channelIsRunning = false;
+      channelStatus = 'Stopped.';
+      notifyListeners();
+      return;
+    }
     final verifiedByKey = {for (final v in verified) v.key: v};
     final candidatesByPortal =
         await Future.wait(toScan.map((p) async {
+      if (_channelCancel) return <_Candidate>[];
       final vp = verifiedByKey[p.key] ??
           VerifiedPortal(
             portal: p,

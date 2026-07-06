@@ -8,6 +8,11 @@ import 'extracted_media.dart';
 
 /// Vidsrc / vsembed.ru — resolved via Rust (3 HTTP fetches + HTML chain).
 class VidsrcExtractor {
+  static int _resolveGeneration = 0;
+
+  /// Ignore in-flight resolves (e.g. user tapped Cancel during provider race).
+  static void cancelPending() => _resolveGeneration++;
+
   static String buildEmbedUrl({
     required String tmdbId,
     required bool isMovie,
@@ -37,6 +42,8 @@ class VidsrcExtractor {
       return null;
     }
 
+    final gen = ++_resolveGeneration;
+
     try {
       final req = jsonEncode({
         'tmdb_id': tmdb,
@@ -44,9 +51,8 @@ class VidsrcExtractor {
         if (!isMovie) 'season': season ?? 1,
         if (!isMovie) 'episode': episode ?? 1,
       });
-      final raw = await Future<String>(() =>
-              RustLib.instance.resolveVidsrcEmbedJson(req))
-          .timeout(timeout);
+      final raw = await runResolveVidsrcEmbedJson(req).timeout(timeout);
+      if (gen != _resolveGeneration) return null;
       final m = jsonDecode(raw) as Map<String, dynamic>;
       if (m.containsKey('error')) {
         debugPrint('[Vidsrc] ${m['error']}');

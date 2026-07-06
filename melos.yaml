@@ -28,6 +28,9 @@ scripts:
   rust:release-check:
     run: ../../scripts/check_rust_mobile_artifacts.sh
     description: Verify Android/iOS libffi artifacts exist after build_rust_mobile.sh
+  rust:check-sync-ffi:
+    run: ../../scripts/check_sync_ffi.sh
+    description: Fail if RustLib.instance used outside allowlisted app/api files
   analyze:
     run: flutter analyze
     exec:

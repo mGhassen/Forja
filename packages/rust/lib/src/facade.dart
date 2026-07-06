@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'engine.dart';
+import 'isolate_runner.dart';
 import 'library_path.dart';
 
 /// Rust engine facade — native library required for parser/torrent features.
@@ -128,9 +129,9 @@ abstract final class Engine {
     return url;
   }
 
-  static List<Map<String, dynamic>> parseM3uChannels(String content) {
+  static Future<List<Map<String, dynamic>>> parseM3uChannels(String content) async {
     _requireReady();
-    final json = RustLib.instance.parseM3uJson(content);
+    final json = await runParseM3uJson(content);
     final decoded = jsonDecode(json);
     if (decoded is Map && decoded['error'] != null) {
       throw FormatException(decoded['error'] as String);
@@ -143,22 +144,22 @@ abstract final class Engine {
     return RustLib.instance.normalizeTorrentTitle(title);
   }
 
-  static List<Map<String, dynamic>> searchTorrents(String query) {
+  static Future<List<Map<String, dynamic>>> searchTorrents(String query) async {
     _requireReady();
-    final json = RustLib.instance.searchTorrentsJson(query);
+    final json = await runSearchTorrentsJson(query);
     return (jsonDecode(json) as List)
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
   }
 
-  static List<Map<String, dynamic>> filterTorrents(
+  static Future<List<Map<String, dynamic>>> filterTorrents(
     List<Map<String, dynamic>> results,
     String showTitle, {
     int? requiredSeason,
     int? requiredEpisode,
-  }) {
+  }) async {
     _requireReady();
-    final json = RustLib.instance.filterTorrentsJson(
+    final json = await runFilterTorrentsJson(
       jsonEncode(results),
       showTitle,
       requiredSeason: requiredSeason ?? -1,
@@ -169,15 +170,12 @@ abstract final class Engine {
         .toList();
   }
 
-  static List<Map<String, dynamic>> sortTorrents(
+  static Future<List<Map<String, dynamic>>> sortTorrents(
     List<Map<String, dynamic>> results,
     String preference,
-  ) {
+  ) async {
     _requireReady();
-    final json = RustLib.instance.sortTorrentsJson(
-      jsonEncode(results),
-      preference,
-    );
+    final json = await runSortTorrentsJson(jsonEncode(results), preference);
     return (jsonDecode(json) as List)
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();

@@ -108,7 +108,7 @@ class StremioService {
     Uri uri, {
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    final raw = RustLib.instance.stremioHttpGet(
+    final raw = await runStremioHttpGet(
       uri.toString(),
       timeoutSecs: timeout.inSeconds.clamp(1, 120),
     );

@@ -3309,15 +3309,15 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         final query = '${widget.movie!.title} S${s}E$e';
         debugPrint('[NextEp] Searching torrents: $query');
 
-        final results = Engine.searchTorrents(query)
+        final results = (await Engine.searchTorrents(query))
             .map(TorrentResult.fromJson)
             .toList();
-        final filtered = Engine.filterTorrents(
+        final filtered = (await Engine.filterTorrents(
           results.map((e) => e.toJson()).toList(),
           widget.movie!.title,
           requiredSeason: nextSeason,
           requiredEpisode: nextEpisode,
-        ).map(TorrentResult.fromJson).toList();
+        )).map(TorrentResult.fromJson).toList();
 
         if (filtered.isEmpty) throw Exception('No torrents found for S${s}E$e');
 

@@ -16,10 +16,10 @@ void main() {
     expect(rust, 'hello world');
   });
 
-  test('kisskh decryptBody passthrough via FFI', () {
+  test('kisskh decryptBody passthrough via FFI', () async {
     const body = 'WEBVTT\n\n1\n00:00:00.000 --> 00:00:01.000\nHello\n';
     final rust = RustLib.instance.decryptKisskhBody(body);
-    final viaBackend = KissKhSubtitleDecryptor.decryptBody(body);
+    final viaBackend = await KissKhSubtitleDecryptor.decryptBody(body);
     expect(rust, viaBackend);
     expect(rust, contains('Hello'));
   });

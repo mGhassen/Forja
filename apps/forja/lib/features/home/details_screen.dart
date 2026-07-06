@@ -58,6 +58,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Set<String> _activeAudioFilters = {};
   List<TorrentResult> _allTorrentResults = [];
   bool _isSearching = false;
+  int _torrentSearchGen = 0;
+  int _stremioFetchGen = 0;
   String? _errorMessage;
   Map<String, dynamic>? _lastProgress;
 
@@ -248,10 +250,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   Future<void> _sortResults() async {
     if (_allTorrentResults.isEmpty) return;
-    final sorted = Engine.sortTorrents(
+    final sorted = (await Engine.sortTorrents(
       _allTorrentResults.map((e) => e.toJson()).toList(),
       _sortPreference,
-    ).map(TorrentResult.fromJson).toList();
+    )).map(TorrentResult.fromJson).toList();
     if (_lastProgress != null && _lastProgress!['method'] == 'torrent') {
       final historyHash = _getHash(_lastProgress!['sourceId']);
       final index = sorted.indexWhere((r) => _getHash(r.magnet) == historyHash);
@@ -877,8 +879,31 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   /// Fetches streams from ALL installed stream addons in parallel,
   /// updating the UI incrementally as each addon responds.
+  /// Stops in-flight torrent / Stremio / Nuvio fetches on the details tab.
+  void _cancelActiveSourceFetch() {
+    var changed = false;
+    if (_isSearching) {
+      _torrentSearchGen++;
+      _isSearching = false;
+      changed = true;
+    }
+    if (_isStremioFetching) {
+      _stremioFetchGen++;
+      _isStremioFetching = false;
+      changed = true;
+    }
+    if (_isNuvioFetching) {
+      _nuvioSub?.cancel();
+      _nuvioSub = null;
+      _isNuvioFetching = false;
+      changed = true;
+    }
+    if (changed && mounted) setState(() {});
+  }
+
   Future<void> _fetchAllStremioStreams() async {
     if (_streamAddons.isEmpty) return;
+    final gen = ++_stremioFetchGen;
     setState(() {
       _isStremioFetching = true;
       _errorMessage = null;
@@ -889,7 +914,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     try {
       String stremioId = _movie.imdbId ?? '';
       if (stremioId.isEmpty) {
-        if (mounted) setState(() => _isStremioFetching = false);
+        if (mounted && gen == _stremioFetchGen) {
+          setState(() => _isStremioFetching = false);
+        }
         return;
       }
       if (_movie.mediaType == 'tv') stremioId = '$stremioId:$_selectedSeason:$_selectedEpisode';
@@ -898,7 +925,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       int pendingCount = _streamAddons.length;
 
       void completeOne() {
-        if (!mounted) return;
+        if (!mounted || gen != _stremioFetchGen) return;
         pendingCount--;
         if (pendingCount <= 0) {
           setState(() {
@@ -912,9 +939,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       }
 
       for (final addon in _streamAddons) {
-        // Fire each addon fetch independently — don't await here
         _stremio.getStreams(baseUrl: addon['baseUrl'], type: type, id: stremioId).then((streams) {
-          if (!mounted) return;
+          if (!mounted || gen != _stremioFetchGen) return;
           final tagged = streams.map((s) {
             if (s is Map<String, dynamic>) {
               return <String, dynamic>{
@@ -945,7 +971,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _errorMessage = 'Error: $e'; _isStremioFetching = false; });
+      if (mounted && gen == _stremioFetchGen) {
+        setState(() { _errorMessage = 'Error: $e'; _isStremioFetching = false; });
+      }
     }
   }
 
@@ -1066,12 +1094,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       return;
     }
 
+    final gen = ++_stremioFetchGen;
     setState(() { _isStremioFetching = true; _errorMessage = null; _stremioStreams = []; _allCombinedStremioStreams = []; _loadedAddonBaseUrls.clear(); });
     
     try {
-      // For collections, fetch meta to get videos array with collection items
       if (type == 'collections') {
         final meta = await _stremio.getMeta(baseUrl: addonBaseUrl, type: type, id: customId);
+        if (!mounted || gen != _stremioFetchGen) return;
         if (meta != null && meta['videos'] != null) {
           final videos = meta['videos'] as List;
           debugPrint('[CustomIdStreams] Got ${videos.length} collection items from meta');
@@ -1081,7 +1110,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           
           // Collections don't have streams - they're just containers for other content
           // The UI will display the collection items and allow navigation to them
-          if (mounted) {
+          if (mounted && gen == _stremioFetchGen) {
             setState(() {
               _isStremioFetching = false;
               _errorMessage = null;
@@ -1091,9 +1120,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         }
       }
       
-      // For series, first fetch meta to get videos array with season/episode info
       if (type == 'series') {
         final meta = await _stremio.getMeta(baseUrl: addonBaseUrl, type: type, id: customId);
+        if (!mounted || gen != _stremioFetchGen) return;
         if (meta != null && meta['videos'] != null) {
           final videos = meta['videos'] as List;
           debugPrint('[CustomIdStreams] Got ${videos.length} videos from meta');
@@ -1109,47 +1138,50 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             final streams = await _stremio.getStreams(baseUrl: addonBaseUrl, type: type, id: videoId);
             debugPrint('[CustomIdStreams] Got ${streams.length} streams');
             
-            if (mounted) {
-              final tagged = streams.map((s) {
-                if (s is Map<String, dynamic>) {
-                  return <String, dynamic>{...s, '_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-                }
-                return <String, dynamic>{'_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-              }).toList();
-              setState(() {
-                _stremioStreams = tagged;
-                _allCombinedStremioStreams = tagged;
-                _loadedAddonBaseUrls.add(addonBaseUrl);
-                _isStremioFetching = false;
-                if (streams.isEmpty) _errorMessage = 'No streams found';
-              });
-            }
+            if (!mounted || gen != _stremioFetchGen) return;
+            final tagged = streams.map((s) {
+              if (s is Map<String, dynamic>) {
+                return <String, dynamic>{...s, '_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
+              }
+              return <String, dynamic>{'_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
+            }).toList();
+            setState(() {
+              _stremioStreams = tagged;
+              _allCombinedStremioStreams = tagged;
+              _loadedAddonBaseUrls.add(addonBaseUrl);
+              _isStremioFetching = false;
+              if (streams.isEmpty) _errorMessage = 'No streams found';
+            });
             return;
           }
         }
       }
       
-      // For movies or if meta fetch failed, use the original ID directly
       final streams = await _stremio.getStreams(baseUrl: addonBaseUrl, type: type, id: customId);
       debugPrint('[CustomIdStreams] Got ${streams.length} streams');
       if (streams.isNotEmpty) debugPrint('[CustomIdStreams] First stream: ${streams.first}');
-      if (mounted) {
-        final tagged = streams.map((s) {
-          if (s is Map<String, dynamic>) {
-            return <String, dynamic>{...s, '_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-          }
-          return <String, dynamic>{'_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-        }).toList();
+      if (!mounted || gen != _stremioFetchGen) return;
+      final tagged = streams.map((s) {
+        if (s is Map<String, dynamic>) {
+          return <String, dynamic>{...s, '_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
+        }
+        return <String, dynamic>{'_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
+      }).toList();
+      setState(() {
+        _stremioStreams = tagged;
+        _allCombinedStremioStreams = tagged;
+        _loadedAddonBaseUrls.add(addonBaseUrl);
+        _isStremioFetching = false;
+        if (streams.isEmpty) _errorMessage = 'No streams found';
+      });
+    } catch (e) {
+      if (mounted && gen == _stremioFetchGen) {
         setState(() {
-          _stremioStreams = tagged;
-          _allCombinedStremioStreams = tagged;
-          _loadedAddonBaseUrls.add(addonBaseUrl);
+          _errorMessage = 'Error: $e';
           _isStremioFetching = false;
-          if (streams.isEmpty) _errorMessage = 'No streams found';
+          _loadedAddonBaseUrls.add(addonBaseUrl);
         });
       }
-    } catch (e) {
-      if (mounted) setState(() { _errorMessage = 'Error: $e'; _isStremioFetching = false; _loadedAddonBaseUrls.add(addonBaseUrl); });
     }
   }
 
@@ -1252,22 +1284,25 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       (a) => a['baseUrl'] == _selectedSourceId,
       orElse: () => _streamAddons.isNotEmpty ? _streamAddons.first : <String, dynamic>{},);
     if (addon.isEmpty) return;
+    final gen = ++_stremioFetchGen;
     setState(() { _isStremioFetching = true; _errorMessage = null; _stremioStreams = []; });
     try {
       String stremioId = _movie.imdbId ?? '';
       if (_movie.mediaType == 'tv') stremioId = '$stremioId:$_selectedSeason:$_selectedEpisode';
       final type = _movie.mediaType == 'tv' ? 'series' : 'movie';
       final streams = await _stremio.getStreams(baseUrl: addon['baseUrl'], type: type, id: stremioId);
-      if (mounted) {
-        setState(() {
-          _stremioStreams = streams;
-          if (streams.isEmpty) _errorMessage = 'No streams found in ${addon['name']}';
-        });
-      }
+      if (!mounted || gen != _stremioFetchGen) return;
+      setState(() {
+        _stremioStreams = streams;
+        if (streams.isEmpty) _errorMessage = 'No streams found in ${addon['name']}';
+      });
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = 'Error: $e');
+      if (!mounted || gen != _stremioFetchGen) return;
+      setState(() => _errorMessage = 'Error: $e');
     } finally {
-      if (mounted) setState(() => _isStremioFetching = false);
+      if (mounted && gen == _stremioFetchGen) {
+        setState(() => _isStremioFetching = false);
+      }
     }
   }
 
@@ -1283,59 +1318,60 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   Future<void> _searchTvTorrents(String seasonQuery, String episodeQuery) async {
+    final gen = ++_torrentSearchGen;
     setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
     try {
       final results = await Future.wait([
-        Future(() => Engine.searchTorrents(seasonQuery)
-            .map(TorrentResult.fromJson)
-            .toList()),
-        Future(() => Engine.searchTorrents(episodeQuery)
-            .map(TorrentResult.fromJson)
-            .toList()),
+        Engine.searchTorrents(seasonQuery).then(
+            (list) => list.map(TorrentResult.fromJson).toList()),
+        Engine.searchTorrents(episodeQuery).then(
+            (list) => list.map(TorrentResult.fromJson).toList()),
       ]);
-      if (mounted) {
-        final filteredSeason = Engine.filterTorrents(
-          results[0].map((e) => e.toJson()).toList(),
-          _movie.title,
-          requiredSeason: _selectedSeason,
-        ).map(TorrentResult.fromJson).toList();
-        final filteredEpisode = Engine.filterTorrents(
-          results[1].map((e) => e.toJson()).toList(),
-          _movie.title,
-          requiredSeason: _selectedSeason,
-          requiredEpisode: _selectedEpisode,
-        ).map(TorrentResult.fromJson).toList();
-        final combined = <String, TorrentResult>{};
-        for (var r in filteredEpisode) { combined[r.magnet] = r; }
-        for (var r in filteredSeason) { combined[r.magnet] = r; }
-        if (mounted) {
-          setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
-          _sortResults();
-        }
-      }
+      if (!mounted || gen != _torrentSearchGen) return;
+      final filteredSeason = (await Engine.filterTorrents(
+        results[0].map((e) => e.toJson()).toList(),
+        _movie.title,
+        requiredSeason: _selectedSeason,
+      )).map(TorrentResult.fromJson).toList();
+      if (!mounted || gen != _torrentSearchGen) return;
+      final filteredEpisode = (await Engine.filterTorrents(
+        results[1].map((e) => e.toJson()).toList(),
+        _movie.title,
+        requiredSeason: _selectedSeason,
+        requiredEpisode: _selectedEpisode,
+      )).map(TorrentResult.fromJson).toList();
+      final combined = <String, TorrentResult>{};
+      for (var r in filteredEpisode) { combined[r.magnet] = r; }
+      for (var r in filteredSeason) { combined[r.magnet] = r; }
+      if (!mounted || gen != _torrentSearchGen) return;
+      setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
+      _sortResults();
     } catch (e) {
-      if (mounted) setState(() { _errorMessage = e.toString(); _isSearching = false; });
+      if (mounted && gen == _torrentSearchGen) {
+        setState(() { _errorMessage = e.toString(); _isSearching = false; });
+      }
     }
   }
 
   Future<void> _searchTorrents(String query) async {
+    final gen = ++_torrentSearchGen;
     setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
     try {
-      final results = Engine.searchTorrents(query)
+      final results = (await Engine.searchTorrents(query))
           .map(TorrentResult.fromJson)
           .toList();
-      if (mounted) {
-        final filtered = Engine.filterTorrents(
-          results.map((e) => e.toJson()).toList(),
-          _movie.title,
-        ).map(TorrentResult.fromJson).toList();
-        if (mounted) {
-          setState(() { _allTorrentResults = filtered; _isSearching = false; });
-          _sortResults();
-        }
-      }
+      if (!mounted || gen != _torrentSearchGen) return;
+      final filtered = (await Engine.filterTorrents(
+        results.map((e) => e.toJson()).toList(),
+        _movie.title,
+      )).map(TorrentResult.fromJson).toList();
+      if (!mounted || gen != _torrentSearchGen) return;
+      setState(() { _allTorrentResults = filtered; _isSearching = false; });
+      _sortResults();
     } catch (e) {
-      if (mounted) setState(() { _errorMessage = e.toString(); _isSearching = false; });
+      if (mounted && gen == _torrentSearchGen) {
+        setState(() { _errorMessage = e.toString(); _isSearching = false; });
+      }
     }
   }
 
@@ -1353,11 +1389,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       return;
     }
 
+    final gen = ++_torrentSearchGen;
     setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
 
     try {
       final baseUrl = await _settings.getJackettBaseUrl();
       final apiKey = await _settings.getJackettApiKey();
+      if (!mounted || gen != _torrentSearchGen) return;
 
       if (baseUrl == null || apiKey == null) throw Exception('Jackett configuration missing');
 
@@ -1368,51 +1406,50 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _jackett.search(baseUrl, apiKey, '${_movie.title} S$s'),
           _jackett.search(baseUrl, apiKey, '${_movie.title} S${s}E$e'),
         ]);
-        if (mounted) {
-          final filteredSeason = Engine.filterTorrents(
-            results[0].map((e) => e.toJson()).toList(),
-            _movie.title,
-            requiredSeason: _selectedSeason,
-          ).map(TorrentResult.fromJson).toList();
-          final filteredEpisode = Engine.filterTorrents(
-            results[1].map((e) => e.toJson()).toList(),
-            _movie.title,
-            requiredSeason: _selectedSeason,
-            requiredEpisode: _selectedEpisode,
-          ).map(TorrentResult.fromJson).toList();
-          final combined = <String, TorrentResult>{};
-          for (var r in filteredEpisode) { combined[r.magnet] = r; }
-          for (var r in filteredSeason) { combined[r.magnet] = r; }
-          if (mounted) {
-            if (combined.isEmpty) {
-              setState(() { _errorMessage = 'No results found for "S${s}E$e". Try checking your configured indexers in Jackett.'; _isSearching = false; });
-            } else {
-              setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
-              _sortResults();
-            }
-          }
+        if (!mounted || gen != _torrentSearchGen) return;
+        final filteredSeason = (await Engine.filterTorrents(
+          results[0].map((e) => e.toJson()).toList(),
+          _movie.title,
+          requiredSeason: _selectedSeason,
+        )).map(TorrentResult.fromJson).toList();
+        if (!mounted || gen != _torrentSearchGen) return;
+        final filteredEpisode = (await Engine.filterTorrents(
+          results[1].map((e) => e.toJson()).toList(),
+          _movie.title,
+          requiredSeason: _selectedSeason,
+          requiredEpisode: _selectedEpisode,
+        )).map(TorrentResult.fromJson).toList();
+        final combined = <String, TorrentResult>{};
+        for (var r in filteredEpisode) { combined[r.magnet] = r; }
+        for (var r in filteredSeason) { combined[r.magnet] = r; }
+        if (!mounted || gen != _torrentSearchGen) return;
+        if (combined.isEmpty) {
+          setState(() { _errorMessage = 'No results found for "S${s}E$e". Try checking your configured indexers in Jackett.'; _isSearching = false; });
+        } else {
+          setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
+          _sortResults();
         }
       } else {
         final year = _movie.releaseDate.length >= 4 ? _movie.releaseDate.substring(0, 4) : '';
         final query = year.isNotEmpty ? '${_movie.title} $year' : _movie.title;
         final results = await _jackett.search(baseUrl, apiKey, query);
-        if (mounted) {
-          final filtered = Engine.filterTorrents(
+        if (!mounted || gen != _torrentSearchGen) return;
+        final filtered = (await Engine.filterTorrents(
           results.map((e) => e.toJson()).toList(),
           _movie.title,
-        ).map(TorrentResult.fromJson).toList();
-          if (mounted) {
-            if (filtered.isEmpty) {
-              setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Jackett.'; _isSearching = false; });
-            } else {
-              setState(() { _allTorrentResults = filtered; _isSearching = false; });
-              _sortResults();
-            }
-          }
+        )).map(TorrentResult.fromJson).toList();
+        if (!mounted || gen != _torrentSearchGen) return;
+        if (filtered.isEmpty) {
+          setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Jackett.'; _isSearching = false; });
+        } else {
+          setState(() { _allTorrentResults = filtered; _isSearching = false; });
+          _sortResults();
         }
       }
     } catch (e) {
-      if (mounted) setState(() { _errorMessage = e.toString(); _isSearching = false; });
+      if (mounted && gen == _torrentSearchGen) {
+        setState(() { _errorMessage = e.toString(); _isSearching = false; });
+      }
     }
   }
 
@@ -1430,22 +1467,23 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       return;
     }
 
+    final gen = ++_torrentSearchGen;
     setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
 
     try {
       final baseUrl = await _settings.getProwlarrBaseUrl();
       final apiKey = await _settings.getProwlarrApiKey();
+      if (!mounted || gen != _torrentSearchGen) return;
 
       if (baseUrl == null || apiKey == null) throw Exception('Prowlarr configuration missing');
 
-      // Resolve any saved tag filter to indexer IDs for this session.
-      // Empty tag selection means no filter — use all torrent indexers.
       final tagIds = await _settings.getProwlarrTagIds();
+      if (!mounted || gen != _torrentSearchGen) return;
       List<int>? allowedIndexerIds;
       if (tagIds.isNotEmpty) {
         final resolved = await _prowlarr.resolveTagIndexerIds(baseUrl, apiKey, tagIds);
+        if (!mounted || gen != _torrentSearchGen) return;
         if (resolved.isNotEmpty) allowedIndexerIds = resolved;
-        // If resolved is empty (tags exist but no matching indexers), fall back to all.
       }
 
       if (_movie.mediaType == 'tv') {
@@ -1455,51 +1493,50 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _prowlarr.search(baseUrl, apiKey, '${_movie.title} S$s', indexerIds: allowedIndexerIds),
           _prowlarr.search(baseUrl, apiKey, '${_movie.title} S${s}E$e', indexerIds: allowedIndexerIds),
         ]);
-        if (mounted) {
-          final filteredSeason = Engine.filterTorrents(
-            results[0].map((e) => e.toJson()).toList(),
-            _movie.title,
-            requiredSeason: _selectedSeason,
-          ).map(TorrentResult.fromJson).toList();
-          final filteredEpisode = Engine.filterTorrents(
-            results[1].map((e) => e.toJson()).toList(),
-            _movie.title,
-            requiredSeason: _selectedSeason,
-            requiredEpisode: _selectedEpisode,
-          ).map(TorrentResult.fromJson).toList();
-          final combined = <String, TorrentResult>{};
-          for (var r in filteredEpisode) { combined[r.magnet] = r; }
-          for (var r in filteredSeason) { combined[r.magnet] = r; }
-          if (mounted) {
-            if (combined.isEmpty) {
-              setState(() { _errorMessage = 'No results found for "S${s}E$e". Try checking your configured indexers in Prowlarr.'; _isSearching = false; });
-            } else {
-              setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
-              _sortResults();
-            }
-          }
+        if (!mounted || gen != _torrentSearchGen) return;
+        final filteredSeason = (await Engine.filterTorrents(
+          results[0].map((e) => e.toJson()).toList(),
+          _movie.title,
+          requiredSeason: _selectedSeason,
+        )).map(TorrentResult.fromJson).toList();
+        if (!mounted || gen != _torrentSearchGen) return;
+        final filteredEpisode = (await Engine.filterTorrents(
+          results[1].map((e) => e.toJson()).toList(),
+          _movie.title,
+          requiredSeason: _selectedSeason,
+          requiredEpisode: _selectedEpisode,
+        )).map(TorrentResult.fromJson).toList();
+        final combined = <String, TorrentResult>{};
+        for (var r in filteredEpisode) { combined[r.magnet] = r; }
+        for (var r in filteredSeason) { combined[r.magnet] = r; }
+        if (!mounted || gen != _torrentSearchGen) return;
+        if (combined.isEmpty) {
+          setState(() { _errorMessage = 'No results found for "S${s}E$e". Try checking your configured indexers in Prowlarr.'; _isSearching = false; });
+        } else {
+          setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
+          _sortResults();
         }
       } else {
         final year = _movie.releaseDate.length >= 4 ? _movie.releaseDate.substring(0, 4) : '';
         final query = year.isNotEmpty ? '${_movie.title} $year' : _movie.title;
         final results = await _prowlarr.search(baseUrl, apiKey, query, indexerIds: allowedIndexerIds);
-        if (mounted) {
-          final filtered = Engine.filterTorrents(
+        if (!mounted || gen != _torrentSearchGen) return;
+        final filtered = (await Engine.filterTorrents(
           results.map((e) => e.toJson()).toList(),
           _movie.title,
-        ).map(TorrentResult.fromJson).toList();
-          if (mounted) {
-            if (filtered.isEmpty) {
-              setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Prowlarr.'; _isSearching = false; });
-            } else {
-              setState(() { _allTorrentResults = filtered; _isSearching = false; });
-              _sortResults();
-            }
-          }
+        )).map(TorrentResult.fromJson).toList();
+        if (!mounted || gen != _torrentSearchGen) return;
+        if (filtered.isEmpty) {
+          setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Prowlarr.'; _isSearching = false; });
+        } else {
+          setState(() { _allTorrentResults = filtered; _isSearching = false; });
+          _sortResults();
         }
       }
     } catch (e) {
-      if (mounted) setState(() { _errorMessage = e.toString(); _isSearching = false; });
+      if (mounted && gen == _torrentSearchGen) {
+        setState(() { _errorMessage = e.toString(); _isSearching = false; });
+      }
     }
   }
 
@@ -2912,6 +2949,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           const SizedBox(width: 8),
           const SizedBox(width: 12, height: 12,
             child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor)),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: _cancelActiveSourceFetch,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54, fontSize: 12)),
+          ),
         ],
         const Spacer(),
         if (showSort)

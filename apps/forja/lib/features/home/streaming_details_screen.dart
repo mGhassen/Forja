@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -223,6 +225,8 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
         onCancel: () {
           _extractionCancelled = true;
           WebStreamrService().cancelPending();
+          VidsrcExtractor.cancelPending();
+          unawaited(_extractor.dispose());
           Navigator.of(context).pop();
         },
       ),
@@ -395,6 +399,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
         isMovie: !isTv,
         season: isTv ? _selectedSeason : null,
         episode: isTv ? _selectedEpisode : null,
+        isCancelled: () => _extractionCancelled,
       );
       if (_extractionCancelled || result == null || result.url.isEmpty) {
         return false;

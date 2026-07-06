@@ -176,7 +176,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
       } else {
         throw const FormatException('Could not read file contents');
       }
-      final channels = M3uParser.parse(content);
+      final channels = await M3uParser.parse(content);
       final now = DateTime.now().millisecondsSinceEpoch;
       final baseName = f.name.replaceAll(
           RegExp(r'\.(m3u8?|txt)$', caseSensitive: false), '');
