@@ -82,6 +82,12 @@ Get the latest build from [Releases](https://github.com/forja/forja/releases).
 
 ---
 
+## User guide
+
+Feature-by-feature help for using the app: **[docs/features/README.md](docs/features/README.md)**
+
+---
+
 ## Developers
 
 Building from source, architecture, and contribution docs: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**

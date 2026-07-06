@@ -49,7 +49,7 @@ pub fn extract_from_html(
         .captures(html)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str())
-        .and_then(|s| parse_bytes(s));
+        .and_then(parse_bytes);
     let title = Html::parse_document(html)
         .select(&Selector::parse(r#"meta[name="description"]"#).unwrap())
         .next()

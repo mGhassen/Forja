@@ -198,58 +198,55 @@ fn fnv1a_hex(s: &str) -> String {
 }
 
 async fn probe(state: &SharedState) -> Result<FileMeta, String> {
-    for _ in 0..8 {
-        let resp = follow_redirects(
-            state,
-            reqwest::Method::GET,
-            HashMap::from([("Range".into(), "bytes=0-0".into())]),
-        )
-        .await?;
-        let status = resp.status().as_u16();
-        let ct = resp
-            .headers()
-            .get(header::CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("application/octet-stream")
-            .to_string();
-        let cr = resp
-            .headers()
-            .get(header::CONTENT_RANGE)
-            .and_then(|v| v.to_str().ok())
-            .map(str::to_string);
-        let cl = resp
-            .headers()
-            .get(header::CONTENT_LENGTH)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.parse::<u64>().ok());
-        let body = resp.text().await.unwrap_or_default();
-        if looks_like_html(status, &body) {
-            return Err("upstream returned HTML (captcha/CF not ported in Rust yet)".into());
-        }
-        if status == 429 {
-            return Err(format!("upstream 429: {}", body.trim()));
-        }
-        if let Some(cr) = cr {
-            if let Some(m) = cr.rsplit('/').next() {
-                if let Ok(len) = m.trim().parse::<u64>() {
-                    return Ok(FileMeta {
-                        length: len,
-                        content_type: ct,
-                    });
-                }
-            }
-        }
-        if let Some(len) = cl {
-            if len > 0 {
+    let resp = follow_redirects(
+        state,
+        reqwest::Method::GET,
+        HashMap::from([("Range".into(), "bytes=0-0".into())]),
+    )
+    .await?;
+    let status = resp.status().as_u16();
+    let ct = resp
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/octet-stream")
+        .to_string();
+    let cr = resp
+        .headers()
+        .get(header::CONTENT_RANGE)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+    let cl = resp
+        .headers()
+        .get(header::CONTENT_LENGTH)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse::<u64>().ok());
+    let body = resp.text().await.unwrap_or_default();
+    if looks_like_html(status, &body) {
+        return Err("upstream returned HTML (captcha/CF not ported in Rust yet)".into());
+    }
+    if status == 429 {
+        return Err(format!("upstream 429: {}", body.trim()));
+    }
+    if let Some(cr) = cr {
+        if let Some(m) = cr.rsplit('/').next() {
+            if let Ok(len) = m.trim().parse::<u64>() {
                 return Ok(FileMeta {
                     length: len,
                     content_type: ct,
                 });
             }
         }
-        return Err("cannot determine content-length".into());
     }
-    Err("probe failed".into())
+    if let Some(len) = cl {
+        if len > 0 {
+            return Ok(FileMeta {
+                length: len,
+                content_type: ct,
+            });
+        }
+    }
+    Err("cannot determine content-length".into())
 }
 
 fn looks_like_html(status: u16, body: &str) -> bool {

@@ -30,7 +30,7 @@ pub fn extract_from_html(
             let bytes = c
                 .get(2)
                 .map(|m| m.as_str())
-                .and_then(|s| parse_bytes(s));
+                .and_then(parse_bytes);
             (height, bytes)
         })
         .unwrap_or((None, None));

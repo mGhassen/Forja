@@ -8,6 +8,12 @@ use crate::types::MediaType;
 use regex::Regex;
 use scraper::{ElementRef, Html, Selector};
 use std::collections::HashMap;
+use std::sync::LazyLock;
+
+static VEGAMOVIES_SEASON_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\bS\d{1,2}\b").unwrap());
+static KOKOSHKA_TITLE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\(\d+\).*").unwrap());
 
 #[derive(Debug, Clone)]
 pub struct SourceDef {
@@ -486,7 +492,7 @@ fn find_homecine_episode(html: &str, season: i32, episode: i32) -> Option<String
 fn run_eurostreaming(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, Some("it"), token).ok()?;
-    let keyword = ny.name.replace(':', "").replace('-', "");
+    let keyword = ny.name.replace([':', '-'], "");
     let base = "https://eurostreaming.luxe";
     let post_url = format!("{base}/index.php?do=search");
     let origin = url_origin(&post_url);
@@ -826,7 +832,7 @@ fn run_vegamovies(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
             if !season_matches(post_title, season) {
                 continue;
             }
-        } else if post_title.contains("Season ") || Regex::new(r"\bS\d{1,2}\b").unwrap().is_match(post_title) {
+        } else if post_title.contains("Season ") || VEGAMOVIES_SEASON_RE.is_match(post_title) {
             continue;
         }
         let permalink = doc.get("permalink").and_then(|v| v.as_str())?;
@@ -966,8 +972,7 @@ fn find_kokoshka_page(
             .next()
             .map(|el| el.text().collect::<String>())
             .unwrap_or_default();
-        let cleaned = Regex::new(r"\(\d+\).*")
-            .unwrap()
+        let cleaned = KOKOSHKA_TITLE_RE
             .replace(&t_text, "")
             .trim()
             .to_string();

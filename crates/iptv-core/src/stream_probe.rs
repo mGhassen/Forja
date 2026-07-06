@@ -22,7 +22,7 @@ pub fn probe_stream_alive(url: &str, timeout_secs: u64) -> Result<bool, String> 
     if url.is_empty() || !url.starts_with("http") {
         return Err("Invalid URL".into());
     }
-    let timeout = Duration::from_secs(timeout_secs.max(1).min(120));
+    let timeout = Duration::from_secs(timeout_secs.clamp(1, 120));
     let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
     rt.block_on(async {
         let client = reqwest::Client::builder()
@@ -88,7 +88,7 @@ pub fn probe_stream_alive(url: &str, timeout_secs: u64) -> Result<bool, String> 
         if ended && buf.len() < MIN_BYTES {
             return Ok(false);
         }
-        if cl >= 1 && cl <= 5_000_000 {
+        if (1..=5_000_000).contains(&cl) {
             return Ok(false);
         }
 

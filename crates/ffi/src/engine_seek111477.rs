@@ -19,10 +19,9 @@ pub fn seek111477_start(runtime: &Runtime, json: String) -> String {
                     .unwrap_or_else(|_| "{}".into());
                 }
             };
-            if let Ok(mut slot) = SEEK.lock() {
-                if let Some(existing) = slot.take() {
-                    existing.stop().await;
-                }
+            let existing = SEEK.lock().ok().and_then(|mut slot| slot.take());
+            if let Some(existing) = existing {
+                existing.stop().await;
             }
             match Seek111477Proxy::start(req).await {
                 Ok(proxy) => {
@@ -48,10 +47,9 @@ pub fn seek111477_start(runtime: &Runtime, json: String) -> String {
 
 pub fn seek111477_stop(runtime: &Runtime) {
     runtime.block_on(async {
-        if let Ok(mut slot) = SEEK.lock() {
-            if let Some(proxy) = slot.take() {
-                proxy.stop().await;
-            }
+        let proxy = SEEK.lock().ok().and_then(|mut slot| slot.take());
+        if let Some(proxy) = proxy {
+            proxy.stop().await;
         }
     });
 }

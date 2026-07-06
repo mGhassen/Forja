@@ -8,8 +8,9 @@ static PROXY_PORT: LazyLock<Mutex<u16>> = LazyLock::new(|| Mutex::new(0));
 pub fn proxy_start(runtime: &Runtime, preferred_port: u16) -> i32 {
     runtime
         .block_on(async {
-            let mut proxy = PROXY.lock().ok()?;
+            let mut proxy = std::mem::replace(&mut *PROXY.lock().ok()?, LocalProxy::new());
             let port = proxy.start(preferred_port).await.ok()?;
+            *PROXY.lock().ok()? = proxy;
             if let Ok(mut stored) = PROXY_PORT.lock() {
                 *stored = port;
             }
@@ -35,8 +36,12 @@ pub fn proxy_port() -> u16 {
 pub fn proxy_register_route(runtime: &Runtime, token: String, upstream_url: String) -> bool {
     runtime
         .block_on(async {
-            let proxy = PROXY.lock().ok()?;
-            proxy.register_route(&token, &upstream_url).await;
+            let state = PROXY.lock().ok()?.state.clone();
+            state
+                .routes
+                .write()
+                .await
+                .insert(token, upstream_url);
             Some(())
         })
         .is_some()

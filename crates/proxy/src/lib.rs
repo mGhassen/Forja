@@ -45,6 +45,12 @@ pub struct LocalProxy {
     shutdown: Option<tokio::sync::oneshot::Sender<()>>,
 }
 
+impl Default for LocalProxy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LocalProxy {
     pub fn new() -> Self {
         Self {
@@ -190,7 +196,7 @@ fn forward_response(resp: reqwest::Response) -> Result<Response, StatusCode> {
 
     let stream = resp
         .bytes_stream()
-        .map_err(|e| std::io::Error::other(e));
+        .map_err(std::io::Error::other);
     builder
         .body(Body::from_stream(stream))
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)

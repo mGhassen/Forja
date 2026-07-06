@@ -121,13 +121,18 @@ impl TorrentEngine {
 
     pub fn start_engine(&self, preferred_port: u16) -> Result<u16, String> {
         self.runtime.block_on(async {
-            let mut inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
-            if inner.http_port > 0 {
-                return Ok(inner.http_port);
-            }
+            let peer_limit = {
+                let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
+                if inner.http_port > 0 {
+                    return Ok(inner.http_port);
+                }
+                inner.peer_limit
+            };
             std::fs::create_dir_all(Self::download_dir()).map_err(|e| e.to_string())?;
-            let mut opts = SessionOptions::default();
-            opts.peer_limit = Some(inner.peer_limit);
+            let opts = SessionOptions {
+                peer_limit: Some(peer_limit),
+                ..Default::default()
+            };
             let session = Session::new_with_opts(Self::download_dir(), opts)
                 .await
                 .map_err(|e| e.to_string())?;
@@ -154,6 +159,7 @@ impl TorrentEngine {
                     .await
                     .ok();
             });
+            let mut inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
             inner.session = Some(session);
             inner.api = Some(api);
             inner.http_port = port;
@@ -167,7 +173,7 @@ impl TorrentEngine {
     }
 
     pub fn stop_engine(&self) {
-        let _ = self.runtime.block_on(async {
+        self.runtime.block_on(async {
             let Ok(mut inner) = self.inner.lock() else {
                 return;
             };
@@ -297,16 +303,23 @@ impl TorrentEngine {
         };
 
         let new_hash = extract_info_hash(magnet);
-        {
+        let forget_id = {
             let mut inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
             if let Some(active) = inner.active.clone() {
                 if new_hash.as_deref() != Some(active.info_hash.as_str()) {
-                    let _ = api
-                        .api_torrent_action_forget(TorrentIdOrHash::Id(active.id))
-                        .await;
                     inner.active = None;
+                    Some(active.id)
+                } else {
+                    None
                 }
+            } else {
+                None
             }
+        };
+        if let Some(id) = forget_id {
+            let _ = api
+                .api_torrent_action_forget(TorrentIdOrHash::Id(id))
+                .await;
         }
 
         let session = {
@@ -374,14 +387,22 @@ impl TorrentEngine {
     }
 
     pub fn stop(&self) {
-        let _ = self.runtime.block_on(async {
-            let Ok(mut inner) = self.inner.lock() else {
-                return;
-            };
-            if let (Some(session), Some(active)) = (inner.session.clone(), inner.active.take()) {
-                if let Some(handle) = session.get(TorrentIdOrHash::Id(active.id)) {
-                    let _ = session.pause(&handle).await;
+        self.runtime.block_on(async {
+            let pause = {
+                let Ok(mut inner) = self.inner.lock() else {
+                    return;
+                };
+                if let (Some(session), Some(active)) = (inner.session.clone(), inner.active.take())
+                {
+                    session
+                        .get(TorrentIdOrHash::Id(active.id))
+                        .map(|handle| (session, handle))
+                } else {
+                    None
                 }
+            };
+            if let Some((session, handle)) = pause {
+                let _ = session.pause(&handle).await;
             }
         });
     }
@@ -424,7 +445,7 @@ impl TorrentEngine {
             (
                 (live.download_speed.mbps * 1_000_000.0) as u64,
                 (live.upload_speed.mbps * 1_000_000.0) as u64,
-                live.snapshot.peer_stats.live as u32,
+                live.snapshot.peer_stats.live,
             )
         } else {
             (0, stats.uploaded_bytes, 0)
@@ -527,7 +548,7 @@ async fn stream_file_handler(
     };
 
     let body_stream = ReaderStream::with_capacity(reader, 65536)
-        .map_err(|e| std::io::Error::other(e));
+        .map_err(std::io::Error::other);
     Response::builder()
         .status(status)
         .body(Body::from_stream(body_stream))

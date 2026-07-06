@@ -22,7 +22,7 @@ pub fn extract_from_html(
         .captures(html)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str())
-        .and_then(|s| parse_bytes(s));
+        .and_then(parse_bytes);
     let url = build_redirect_url(mfp, "Streamtape", page_url)?;
 
     Some(ExtractResult {

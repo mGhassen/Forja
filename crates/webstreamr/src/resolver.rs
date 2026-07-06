@@ -312,7 +312,7 @@ mod tests {
             "https://bullstream.example/v/1",
         )
         .unwrap();
-        let mut url_results = vec![UrlResult {
+        let mut url_results = [UrlResult {
             url: extract.url,
             format: extract.format,
             is_external: false,

@@ -132,10 +132,10 @@ pub async fn toky_proxy_handler(
         .to_string();
     let bytes = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
 
-    Ok(Response::builder()
+    Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, content_type.as_str())
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .body(axum::body::Body::from(bytes))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }

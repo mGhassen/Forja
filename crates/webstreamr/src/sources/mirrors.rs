@@ -14,6 +14,7 @@ fn normalize_link(raw: &str, fix_protocol: bool) -> String {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn parse_episode_mirrors(
     html: &str,
     referer: &str,

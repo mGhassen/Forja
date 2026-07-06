@@ -323,7 +323,7 @@ fn webstreamr_get_streams_json(request_json: String) -> String {
 fn torrent_start(magnet: String) -> bool {
     #[cfg(feature = "torrent-engine")]
     {
-        return engine_torrent::torrent_start(magnet);
+        engine_torrent::torrent_start(magnet)
     }
     #[cfg(not(feature = "torrent-engine"))]
     {
@@ -340,7 +340,7 @@ fn torrent_stop() {
 fn torrent_is_running() -> bool {
     #[cfg(feature = "torrent-engine")]
     {
-        return engine_torrent::torrent_is_running();
+        engine_torrent::torrent_is_running()
     }
     #[cfg(not(feature = "torrent-engine"))]
     {
@@ -351,7 +351,7 @@ fn torrent_is_running() -> bool {
 fn torrent_status_json() -> String {
     #[cfg(feature = "torrent-engine")]
     {
-        return engine_torrent::torrent_status_json();
+        engine_torrent::torrent_status_json()
     }
     #[cfg(not(feature = "torrent-engine"))]
     {
@@ -362,7 +362,7 @@ fn torrent_status_json() -> String {
 fn torrent_engine_start(preferred_port: u32) -> i32 {
     #[cfg(feature = "torrent-engine")]
     {
-        return engine_torrent::torrent_engine_start(preferred_port.min(u16::MAX as u32) as u16);
+        engine_torrent::torrent_engine_start(preferred_port.min(u16::MAX as u32) as u16)
     }
     #[cfg(not(feature = "torrent-engine"))]
     {
@@ -374,7 +374,7 @@ fn torrent_engine_start(preferred_port: u32) -> i32 {
 fn torrent_engine_port() -> u32 {
     #[cfg(feature = "torrent-engine")]
     {
-        return engine_torrent::torrent_engine_port() as u32;
+        engine_torrent::torrent_engine_port() as u32
     }
     #[cfg(not(feature = "torrent-engine"))]
     {
@@ -399,7 +399,7 @@ fn torrent_set_peer_limit(limit: u32) {
 fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
     #[cfg(feature = "torrent-engine")]
     {
-        return engine_torrent::torrent_stream_json(magnet, season, episode, file_idx);
+        engine_torrent::torrent_stream_json(magnet, season, episode, file_idx)
     }
     #[cfg(not(feature = "torrent-engine"))]
     {
@@ -411,7 +411,7 @@ fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32)
 fn torrent_list_files_json(magnet: String) -> String {
     #[cfg(feature = "torrent-engine")]
     {
-        return engine_torrent::torrent_list_files_json(magnet);
+        engine_torrent::torrent_list_files_json(magnet)
     }
     #[cfg(not(feature = "torrent-engine"))]
     {
@@ -423,10 +423,10 @@ fn torrent_list_files_json(magnet: String) -> String {
 fn proxy_start(preferred_port: u32) -> i32 {
     #[cfg(feature = "local-proxy")]
     {
-        return engine_proxy::proxy_start(
+        engine_proxy::proxy_start(
             &RUNTIME,
             preferred_port.min(u16::MAX as u32) as u16,
-        );
+        )
     }
     #[cfg(not(feature = "local-proxy"))]
     {
@@ -443,7 +443,7 @@ fn proxy_stop() {
 fn proxy_port() -> u32 {
     #[cfg(feature = "local-proxy")]
     {
-        return engine_proxy::proxy_port() as u32;
+        engine_proxy::proxy_port() as u32
     }
     #[cfg(not(feature = "local-proxy"))]
     {
@@ -454,7 +454,7 @@ fn proxy_port() -> u32 {
 fn proxy_register_route(token: String, upstream_url: String) -> bool {
     #[cfg(feature = "local-proxy")]
     {
-        return engine_proxy::proxy_register_route(&RUNTIME, token, upstream_url);
+        engine_proxy::proxy_register_route(&RUNTIME, token, upstream_url)
     }
     #[cfg(not(feature = "local-proxy"))]
     {
@@ -466,7 +466,7 @@ fn proxy_register_route(token: String, upstream_url: String) -> bool {
 fn seek111477_start_json(json: String) -> String {
     #[cfg(feature = "local-proxy")]
     {
-        return engine_seek111477::seek111477_start(&RUNTIME, json);
+        engine_seek111477::seek111477_start(&RUNTIME, json)
     }
     #[cfg(not(feature = "local-proxy"))]
     {
@@ -483,7 +483,7 @@ fn seek111477_stop() {
 fn seek111477_port() -> u32 {
     #[cfg(feature = "local-proxy")]
     {
-        return engine_seek111477::seek111477_port() as u32;
+        engine_seek111477::seek111477_port() as u32
     }
     #[cfg(not(feature = "local-proxy"))]
     {
@@ -494,7 +494,7 @@ fn seek111477_port() -> u32 {
 fn seek111477_is_running() -> bool {
     #[cfg(feature = "local-proxy")]
     {
-        return engine_seek111477::seek111477_is_running();
+        engine_seek111477::seek111477_is_running()
     }
     #[cfg(not(feature = "local-proxy"))]
     {
@@ -505,7 +505,7 @@ fn seek111477_is_running() -> bool {
 fn seek111477_purge_cache_json(cache_dir: String) -> String {
     #[cfg(feature = "local-proxy")]
     {
-        return engine_seek111477::seek111477_purge_cache(&RUNTIME, cache_dir);
+        engine_seek111477::seek111477_purge_cache(&RUNTIME, cache_dir)
     }
     #[cfg(not(feature = "local-proxy"))]
     {

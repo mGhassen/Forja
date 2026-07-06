@@ -10,10 +10,14 @@ use crate::fetcher::{fetch_text, FetchConfig};
 use crate::types::{ExtractResult, StreamFormat};
 use regex::Regex;
 use scraper::{Html, Selector};
+use std::sync::LazyLock;
+
+static HUBCLOUD_SRC_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"src:\s*'(.*)'").unwrap());
 use std::collections::HashMap;
 use url::Url;
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct EmbedMeta {
     pub bytes: Option<u64>,
     pub country_codes: Vec<String>,
@@ -26,21 +30,6 @@ pub struct EmbedMeta {
     pub title: Option<String>,
 }
 
-impl Default for EmbedMeta {
-    fn default() -> Self {
-        Self {
-            bytes: None,
-            country_codes: Vec::new(),
-            extractor_id: None,
-            height: None,
-            priority: None,
-            referer: None,
-            source_id: None,
-            source_label: None,
-            title: None,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct UrlResult {
@@ -381,7 +370,7 @@ fn run_fetch_chain(
     }
 
     let referer = meta.referer.as_deref().unwrap_or(page_url);
-    let mut cfg = fetch_cfg(Some(referer));
+    let cfg = fetch_cfg(Some(referer));
 
     if extractor_id == "mixdrop" {
         let file_url = page_url.replace("/e/", "/f/");
@@ -391,7 +380,7 @@ fn run_fetch_chain(
         let _ = fetch_text(&embed_url, &cfg);
     }
 
-    let html = match fetch_text(page_url, &mut cfg) {
+    let html = match fetch_text(page_url, &cfg) {
         Ok(h) => h,
         Err(e) => {
             return vec![UrlResult {
@@ -557,7 +546,7 @@ fn run_vidsrc_extractor(page_url: &str, meta: &EmbedMeta, _label: &str) -> Vec<U
         let Ok(iframe_html) = fetch_text(&rcp_url, &fetch_cfg(Some(&referer_host))) else {
             continue;
         };
-        let src_re = Regex::new(r"src:\s*'(.*)'").unwrap();
+        let src_re = &*HUBCLOUD_SRC_RE;
         let Some(player_path) = src_re
             .captures(&iframe_html)
             .and_then(|c| c.get(1))
