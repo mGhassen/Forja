@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:streaming/streaming.dart';
+import 'package:api/playback/playback.dart';
 import 'mysubs_service.dart';
 import 'package:rust/rust.dart';
 import 'stremio_service.dart';

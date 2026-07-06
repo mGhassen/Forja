@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:streaming/streaming.dart';
+import 'package:api/playback/playback.dart';
 import 'stream_extractor.dart';
 
 // ── Dynamic base URL ───────────────────────────────────────────────────────

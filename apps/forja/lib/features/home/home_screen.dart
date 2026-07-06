@@ -11,7 +11,7 @@ import 'package:api/api/bestsimilar_scraper.dart';
 import 'package:rust/rust.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:api/api/stream_extractor.dart';
-import 'package:streaming/streaming.dart';
+import 'package:api/playback/playback.dart';
 import 'package:api/api/amri_extractor.dart';
 import 'package:api/api/debrid_api.dart';
 import 'package:api/api/trakt_service.dart';

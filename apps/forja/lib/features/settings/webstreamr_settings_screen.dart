@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:streaming/streaming.dart';
+import 'package:api/playback/playback.dart';
 import 'package:api/api/webstreamr_settings.dart';
 
 /// Settings UI for the local WebStreamr port — country toggles, MFP,

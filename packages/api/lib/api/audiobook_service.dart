@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
-import 'package:streaming/streaming.dart';
+import 'package:api/playback/playback.dart';
 
 class Audiobook {
   final String uuid;
