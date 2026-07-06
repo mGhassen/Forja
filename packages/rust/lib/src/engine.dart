@@ -30,6 +30,12 @@ class RustLib {
     initSync(path);
   }
 
+  /// Clears a partially-loaded library so [init] can try another path.
+  static void reset() {
+    _instance = null;
+    loadedLibraryPath = null;
+  }
+
   /// Opens the dylib synchronously — for worker isolates only.
   static void initSync(String libraryPath) {
     if (_instance != null) return;

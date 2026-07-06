@@ -48,6 +48,7 @@ abstract final class Engine {
           );
           return;
         } catch (e) {
+          RustLib.reset();
           lastError = e;
         }
       }

@@ -4,27 +4,11 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:api/models/stream_source.dart';
+import 'package:api/playback/extracted_media.dart';
 import 'amri_extractor.dart';
 import 'tmdb_service.dart';
 
-class ExtractedMedia {
-  final String url;
-  final String? audioUrl;
-  final Map<String, String> headers;
-  final List<StreamSource>? sources;
-  final String? provider;
-  /// Optional external subtitles: [{url, title, language}].
-  final List<Map<String, dynamic>>? externalSubtitles;
-
-  ExtractedMedia({
-    required this.url,
-    this.audioUrl,
-    required this.headers,
-    this.sources,
-    this.provider,
-    this.externalSubtitles,
-  });
-}
+export 'package:api/playback/extracted_media.dart';
 
 class StreamExtractor {
   HeadlessInAppWebView? _headlessWebView;
