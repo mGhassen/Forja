@@ -440,10 +440,11 @@ class _PortalListView extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             _PrimaryButton(
-              icon: Icons.travel_explore,
-              label: 'Find Portals',
-              busy: ctrl.isScraping,
-              onPressed: ctrl.scrape,
+              icon: ctrl.isScraping
+                  ? Icons.stop_circle_rounded
+                  : Icons.travel_explore,
+              label: ctrl.isScraping ? 'Stop' : 'Find Portals',
+              onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
             ),
           ],
         ),
@@ -512,10 +513,11 @@ class _PortalListView extends StatelessWidget {
             child: Row(
               children: [
                 _PrimaryButton(
-                  icon: Icons.travel_explore,
-                  label: 'Scrape',
-                  busy: ctrl.isScraping,
-                  onPressed: ctrl.scrape,
+                  icon: ctrl.isScraping
+                      ? Icons.stop_circle_rounded
+                      : Icons.travel_explore,
+                  label: ctrl.isScraping ? 'Stop' : 'Scrape',
+                  onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
                 ),
                 const SizedBox(width: 8),
                 if (ctrl.canGetMore)

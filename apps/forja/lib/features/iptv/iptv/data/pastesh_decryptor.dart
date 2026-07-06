@@ -14,19 +14,25 @@ class PasteShDecryptor {
 
     final raw = await _httpGetText('$baseUrl.txt');
     if (raw == null || raw.isEmpty) return '';
-    return decryptRaw(urlWithHash, raw);
+    return await decryptRaw(urlWithHash, raw);
   }
 
-  static String decryptRaw(String urlWithHash, String rawResponse) {
-    return RustLib.instance.decryptPasteResponse(urlWithHash, rawResponse);
+  static Future<String> decryptRaw(
+      String urlWithHash, String rawResponse) async {
+    return runRustIsolate(
+      () => RustLib.instance.decryptPasteResponse(urlWithHash, rawResponse),
+    );
   }
 
   static Future<String?> _httpGetText(String url) async {
     try {
-      final raw = RustLib.instance.httpGetJson(
-        url,
-        timeoutSecs: 12,
-        headersJson: jsonEncode({'User-Agent': _ua}),
+      final hdr = jsonEncode({'User-Agent': _ua});
+      final raw = await runRustIsolate(
+        () => RustLib.instance.httpGetJson(
+          url,
+          timeoutSecs: 12,
+          headersJson: hdr,
+        ),
       );
       final parsed = jsonDecode(raw) as Map<String, dynamic>;
       if (parsed.containsKey('error')) return null;

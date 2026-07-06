@@ -23,6 +23,7 @@ class IptvController extends ChangeNotifier {
 
   // ── Portal-list state ──
   bool isScraping = false;
+  bool _scrapeCancel = false;
   String statusText = '';
   List<VerifiedPortal> verified = const [];
 
@@ -244,15 +245,23 @@ class IptvController extends ChangeNotifier {
   Future<void> scrape() async {
     if (isScraping) return;
     isScraping = true;
+    _scrapeCancel = false;
     statusText = 'Finding portals…';
     canGetMore = false;
     notifyListeners();
     await _scrapeAndVerify();
   }
 
+  void stopScrape() {
+    _scrapeCancel = true;
+    statusText = 'Stopped.';
+    notifyListeners();
+  }
+
   Future<void> getMore() async {
     if (isScraping) return;
     isScraping = true;
+    _scrapeCancel = false;
     statusText = 'Searching for more…';
     notifyListeners();
     await _scrapeAndVerify();
@@ -266,17 +275,22 @@ class IptvController extends ChangeNotifier {
     ScrapePage? page;
     var pagesTried = 0;
     var exhausted = false;
+    var emptyPagesInRow = 0;
 
     try {
       // Outer loop: keep fetching catalog pages and verifying them until we
       // collect [targetAlive] live portals OR the source runs out of pages
       // OR we hit the safety cap.
-      while (newAlive.length < targetAlive && pagesTried < maxPagesPerPress) {
+      while (newAlive.length < targetAlive &&
+          pagesTried < maxPagesPerPress &&
+          !_scrapeCancel) {
         // ── Step 1: fetch fresh pages until the pending queue has work.
         //         (Pending queue may already be non-empty from a prior
         //         press that found enough alive portals before draining
         //         everything — in that case we skip the fetch entirely.)
-        while (_pendingPortals.isEmpty && pagesTried < maxPagesPerPress) {
+        while (_pendingPortals.isEmpty &&
+            pagesTried < maxPagesPerPress &&
+            !_scrapeCancel) {
           pagesTried++;
           page = await IptvScraper.scrapeCatalogPage(
             maxResults: 50,
@@ -296,12 +310,26 @@ class IptvController extends ChangeNotifier {
             _pendingPortals.add(p);
           }
 
+          if (page.portals.isEmpty) {
+            emptyPagesInRow++;
+            // Dead Reddit source: stop after cycling all subs with zero portals.
+            if (scrapeSource == CatalogSource.best &&
+                emptyPagesInRow >= IptvScraper.catalogSubCount) {
+              exhausted = true;
+              break;
+            }
+          } else {
+            emptyPagesInRow = 0;
+          }
+
           // No more pages from this source — bail out of the fetch loop.
           if (_pendingPortals.isEmpty && !page.hasMore) {
             exhausted = true;
             break;
           }
         }
+
+        if (_scrapeCancel) break;
 
         if (_pendingPortals.isEmpty) {
           // Nothing left to verify and nothing left to fetch.
@@ -319,6 +347,7 @@ class IptvController extends ChangeNotifier {
         await IptvVerifier.verifyUntil(
           portals: snapshot,
           target: remaining,
+          isCancelled: () => _scrapeCancel,
           onAttempted: (p) {
             _attemptedKeys.add(p.credKey);
             if (_pendingKeys.remove(p.credKey)) {
@@ -358,7 +387,9 @@ class IptvController extends ChangeNotifier {
       canGetMore = _pendingPortals.isNotEmpty ||
           (page?.hasMore ?? canGetMore);
 
-      if (newAlive.isEmpty) {
+      if (_scrapeCancel) {
+        statusText = 'Stopped.';
+      } else if (newAlive.isEmpty) {
         statusText = exhausted
             ? 'No live portals found in this source.'
             : (canGetMore

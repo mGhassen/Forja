@@ -11,10 +11,14 @@ Future<String?> _engineHttpGet(
   Map<String, String>? headers,
 }) async {
   try {
-    final raw = RustLib.instance.httpGetJson(
-      url,
-      timeoutSecs: timeout.inSeconds.clamp(1, 120),
-      headersJson: jsonEncode(headers ?? const {}),
+    final hdr = jsonEncode(headers ?? const {});
+    final secs = timeout.inSeconds.clamp(1, 120);
+    final raw = await runRustIsolate(
+      () => RustLib.instance.httpGetJson(
+        url,
+        timeoutSecs: secs,
+        headersJson: hdr,
+      ),
     );
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) return null;
@@ -33,11 +37,15 @@ Future<String?> _engineHttpPost(
   String body = '',
 }) async {
   try {
-    final raw = RustLib.instance.httpPostJson(
-      url,
-      timeoutSecs: timeout.inSeconds.clamp(1, 120),
-      headersJson: jsonEncode(headers ?? const {}),
-      body: body,
+    final hdr = jsonEncode(headers ?? const {});
+    final secs = timeout.inSeconds.clamp(1, 120);
+    final raw = await runRustIsolate(
+      () => RustLib.instance.httpPostJson(
+        url,
+        timeoutSecs: secs,
+        headersJson: hdr,
+        body: body,
+      ),
     );
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) return null;
@@ -48,6 +56,24 @@ Future<String?> _engineHttpPost(
     return null;
   }
 }
+
+Future<String> _engineParseXtreamCategories(String text) => runRustIsolate(
+      () => RustLib.instance.parseXtreamCategoriesJson(text),
+    );
+
+Future<String> _engineParseXtreamStreams(String text, String section) =>
+    runRustIsolate(
+      () => RustLib.instance.parseXtreamStreamsJson(text, section),
+    );
+
+Future<String> _engineParseXtreamSeriesEpisodes(String text) => runRustIsolate(
+      () => RustLib.instance.parseXtreamSeriesEpisodesJson(text),
+    );
+
+Future<String> _engineProbeStream(String url, int timeoutSecs) =>
+    runRustIsolate(
+      () => RustLib.instance.iptvProbeStreamJson(url, timeoutSecs: timeoutSecs),
+    );
 
 /// Xtream-Codes player_api client. Login + categories + streams + episodes.
 class IptvClient {
@@ -126,7 +152,7 @@ class IptvClient {
         '&password=${_enc(p.password)}&action=$action';
     final text = await _httpGet(url, timeout: const Duration(seconds: 8));
     if (text == null) return [];
-    final rows = _parseCategoryRows(text);
+    final rows = await _parseCategoryRows(text);
     return rows
         .map(
           (o) => IptvCategory(
@@ -137,11 +163,11 @@ class IptvClient {
         .toList();
   }
 
-  static List<Map<String, dynamic>> _parseCategoryRows(String text) {
+  static Future<List<Map<String, dynamic>>> _parseCategoryRows(String text) async {
     try {
-      final decoded = json.decode(RustLib.instance.parseXtreamCategoriesJson(text));
-      if (decoded is List) {
-        return decoded.map((e) => e as Map<String, dynamic>).toList();
+      final parsed = json.decode(await _engineParseXtreamCategories(text));
+      if (parsed is List) {
+        return parsed.map((e) => e as Map<String, dynamic>).toList();
       }
     } catch (_) {}
     return const [];
@@ -164,7 +190,7 @@ class IptvClient {
       IptvSection.vod => 'vod',
       IptvSection.series => 'series',
     };
-    final rows = _parseStreamRows(text, sectionName);
+    final rows = await _parseStreamRows(text, sectionName);
     return rows
         .map(
           (o) => IptvStream(
@@ -180,23 +206,25 @@ class IptvClient {
         .toList();
   }
 
-  static List<Map<String, dynamic>> _parseStreamRows(String text, String section) {
+  static Future<List<Map<String, dynamic>>> _parseStreamRows(
+      String text, String section) async {
     try {
-      final decoded =
-          json.decode(RustLib.instance.parseXtreamStreamsJson(text, section));
-      if (decoded is List) {
-        return decoded.map((e) => e as Map<String, dynamic>).toList();
+      final parsed =
+          json.decode(await _engineParseXtreamStreams(text, section));
+      if (parsed is List) {
+        return parsed.map((e) => e as Map<String, dynamic>).toList();
       }
     } catch (_) {}
     return const [];
   }
 
-  static List<Map<String, dynamic>> _parseSeriesEpisodeRows(String text) {
+  static Future<List<Map<String, dynamic>>> _parseSeriesEpisodeRows(
+      String text) async {
     try {
-      final decoded =
-          json.decode(RustLib.instance.parseXtreamSeriesEpisodesJson(text));
-      if (decoded is List) {
-        return decoded.map((e) => e as Map<String, dynamic>).toList();
+      final parsed =
+          json.decode(await _engineParseXtreamSeriesEpisodes(text));
+      if (parsed is List) {
+        return parsed.map((e) => e as Map<String, dynamic>).toList();
       }
     } catch (_) {}
     return const [];
@@ -208,7 +236,7 @@ class IptvClient {
         '&password=${_enc(p.password)}&action=get_series_info&series_id=${_enc(seriesId)}';
     final text = await _httpGet(url, timeout: const Duration(seconds: 15));
     if (text == null) return [];
-    final rows = _parseSeriesEpisodeRows(text);
+    final rows = await _parseSeriesEpisodeRows(text);
     return rows
         .map(
           (o) => IptvEpisode(
@@ -436,10 +464,7 @@ class IptvAliveChecker {
 
   static Future<bool> _isAlive(String url) async {
     try {
-      final raw = RustLib.instance.iptvProbeStreamJson(
-        url,
-        timeoutSecs: _timeout.inSeconds,
-      );
+      final raw = await _engineProbeStream(url, _timeout.inSeconds);
       final parsed = jsonDecode(raw) as Map<String, dynamic>;
       if (parsed.containsKey('error')) return false;
       return parsed['alive'] == true;
@@ -460,7 +485,40 @@ class IptvAliveChecker {
 ///   - [works]   → GitHub XML2 dumps (quick plain-text dumps)
 enum CatalogSource { best, works }
 
+/// Parsed Reddit catalog pagination cursor.
+class RedditCatalogCursor {
+  final int subIdx;
+  final String? after;
+  const RedditCatalogCursor({this.subIdx = 0, this.after});
+}
+
+/// Decodes cursors produced by [_scrapeRedditCatalog]:
+///   `reddit:<subIdx>:<token>` — current format
+///   `reddit:<token>`          — legacy (sub 0)
+///   `<token>`                 — legacy bare token (sub 0)
+RedditCatalogCursor parseRedditCatalogCursor(String? after) {
+  if (after == null || after.isEmpty) {
+    return const RedditCatalogCursor();
+  }
+  if (after.startsWith('reddit:')) {
+    final rest = after.substring(7);
+    if (rest.isEmpty) return const RedditCatalogCursor();
+    final colon = rest.indexOf(':');
+    if (colon >= 0) {
+      final subIdx = int.tryParse(rest.substring(0, colon)) ?? 0;
+      final token = rest.substring(colon + 1);
+      final pageAfter = (token.isEmpty || token == 'null') ? null : token;
+      return RedditCatalogCursor(subIdx: subIdx, after: pageAfter);
+    }
+    final pageAfter = rest == 'null' ? null : rest;
+    return RedditCatalogCursor(subIdx: 0, after: pageAfter);
+  }
+  final pageAfter = after == 'null' ? null : after;
+  return RedditCatalogCursor(subIdx: 0, after: pageAfter);
+}
+
 class IptvScraper {
+  static const catalogSubCount = 4;
   // Reddit killed unauthenticated `.json` access in mid-2026 and all CORS
   // proxies are dead. We now use OAuth2 "installed_client" grants with
   // open-source Reddit app client IDs for anonymous bearer tokens.
@@ -613,16 +671,7 @@ class IptvScraper {
   }) async {
     switch (source) {
       case CatalogSource.best:
-        // Reddit catalog (volatile but fresh).
-        String? redditAfter;
-        if (after != null && after.startsWith('reddit:')) {
-          final t = after.substring(7);
-          redditAfter = t.isEmpty ? null : t;
-        } else if (after != null && after.isNotEmpty) {
-          redditAfter = after;
-        }
-        return _scrapeRedditCatalog(
-            maxResults: maxResults, after: redditAfter);
+        return _scrapeRedditCatalog(maxResults: maxResults, after: after);
 
       case CatalogSource.works:
         // XML2 GitHub dumps (fast plain-text fetches).
@@ -675,21 +724,10 @@ class IptvScraper {
       {int maxResults = 50, String? after}) async {
     final out = <String, IptvPortal>{};
 
-    // Determine which subreddit + cursor we're on.
-    // Cursor format: 'reddit:<subIdx>:<after>' or 'reddit:<after>' (legacy).
-    var subIdx = 0;
-    String? redditAfter;
-    if (after != null && after.isNotEmpty) {
-      final parts = after.split(':');
-      if (parts.length >= 3) {
-        subIdx = int.tryParse(parts[1]) ?? 0;
-        redditAfter = parts.sublist(2).join(':');
-        if (redditAfter.isEmpty || redditAfter == 'null') redditAfter = null;
-      } else if (parts.length == 2) {
-        redditAfter = parts[1];
-        if (redditAfter.isEmpty || redditAfter == 'null') redditAfter = null;
-      }
-    }
+    // Cursor format: 'reddit:<subIdx>:<token>' or legacy 'reddit:<token>'.
+    final cursor = parseRedditCatalogCursor(after);
+    var subIdx = cursor.subIdx;
+    var redditAfter = cursor.after;
     if (subIdx >= _catalogSubs.length) subIdx = 0;
     final currentSub = _catalogSubs[subIdx];
 
