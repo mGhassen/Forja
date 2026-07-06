@@ -27,14 +27,23 @@ RustLib.instance.opensslAesDecryptJson(intermediate, passphrase: '')
 - Cancel button on loading overlay may not respond
 - User perceives Rust crash; it is UI isolate starvation
 
-## Fix
+## Solution (2026-07-06)
 
-- `runResolveVidsrcEmbedJson` / `runOpensslAesDecryptJson` in `isolate_runner.dart`
-- Wire extractors through wrappers
-- Optional: cancellation token plumbed into Rust resolver
+1. Added typed wrappers in `packages/rust/lib/src/isolate_runner.dart`:
+   - `runResolveVidsrcEmbedJson(requestJson)` — multi-page HTTP resolve in Rust
+   - `runOpensslAesDecryptJson(intermediate, {passphrase})` — AES decrypt in Rust
+2. Updated call sites:
+   - `packages/api/lib/playback/vidsrc_extractor.dart` → `await runResolveVidsrcEmbedJson(req).timeout(timeout)`
+   - `packages/api/lib/playback/videasy_extractor.dart` → `await runOpensslAesDecryptJson(...)`
+
+Player loading overlay and provider switch stay responsive while Rust resolves.
+
+### Not done (follow-up)
+
+- Cancellation token plumbed into Rust resolver
 
 ## Acceptance
 
-- [ ] Both extractors use `runRustIsolate` for FFI entry points
+- [x] Both extractors use `runRustIsolate` for FFI entry points
 - [ ] Manual test: vidsrc-first provider order on slow network — UI responsive
 - [ ] [004](004-[open]-sync-ffi-ui-thread-audit.md) inventory rows marked fixed

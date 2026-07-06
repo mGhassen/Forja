@@ -20,13 +20,27 @@ Secondary FFI call sites still on the main isolate. Lower traffic than [005](005
 | `facade.dart` | `parseM3uJson` | Medium — large M3U files |
 | `iptv_network.dart` | `decodeXtreamText` | Low — base64 field decode |
 
-## Fix
+## Solution (2026-07-06)
 
-- Wrap decrypt/parse FFI in `runRustIsolate` when input size > threshold or unconditionally for consistency
-- `decodeXtreamText` — profile first; offload only if needed
+Unconditional isolate offload for consistency (no size threshold):
+
+1. Added wrappers in `packages/rust/lib/src/isolate_runner.dart`:
+   - `runDecryptKisskhBody(body, {sourceUrl})`
+   - `runParseHlsMasterJson(masterUrl, body)`
+   - `runParseM3uJson(content)`
+2. Updated call sites:
+   - `packages/api/lib/api/kisskh_subtitle_decryptor.dart` → `runDecryptKisskhBody`
+   - `packages/rust/lib/src/utils/hls_master_parser.dart` → `runParseHlsMasterJson`
+   - `packages/rust/lib/src/facade.dart` → `runParseM3uJson` in `Engine.parseM3uChannels`
+
+### Waived (not offloaded)
+
+| File | Call | Reason |
+|------|------|--------|
+| `iptv_network.dart` | `decodeXtreamText` | Low risk — small base64 field decode; already inside `runRustIsolate` callbacks for HTTP-heavy paths |
 
 ## Acceptance
 
-- [ ] Kisskh decrypt uses isolate wrapper
-- [ ] HLS/M3U parse uses isolate wrapper or documented size threshold
-- [ ] [004](004-[open]-sync-ffi-ui-thread-audit.md) rows marked fixed or waived with justification
+- [x] Kisskh decrypt uses isolate wrapper
+- [x] HLS/M3U parse uses isolate wrapper
+- [x] [004](004-[open]-sync-ffi-ui-thread-audit.md) rows marked fixed or waived with justification

@@ -32,13 +32,24 @@ final json = RustLib.instance.searchTorrentsJson(query);
 - Player provider switch feels dead
 - Worst case: user force-quits during long search
 
-## Fix
+## Solution (2026-07-06)
 
-- Move `searchTorrentsJson`, `filterTorrentsJson`, `sortTorrentsJson` behind `runRustIsolate` in facade or isolate_runner
-- Consider progress callback from Rust for per-source status (UX follow-up)
+1. Added wrappers in `packages/rust/lib/src/isolate_runner.dart`:
+   - `runSearchTorrentsJson(query)`
+   - `runFilterTorrentsJson(resultsJson, showTitle, {requiredSeason, requiredEpisode})`
+   - `runSortTorrentsJson(resultsJson, preference)`
+2. Updated `packages/rust/lib/src/facade.dart` — `Engine.searchTorrents`, `filterTorrents`, and `sortTorrents` now `await` the wrappers. Call sites in `details_screen.dart`, `desktop_player_screen.dart`, and `mobile_player_screen.dart` are unchanged (they already call the async facade).
+
+`Future(() => Engine.searchTorrents(...))` was never sufficient — the FFI ran on the UI isolate regardless. The facade wrappers fix that at the source.
+
+Tiny sync FFI kept on main isolate: `normalizeTorrentTitle`, `isVideoFile` (microsecond ops).
+
+### Not done (follow-up)
+
+- Per-source progress callback from Rust during search
 
 ## Acceptance
 
-- [ ] Facade torrent search/filter/sort never block main isolate
+- [x] Facade torrent search/filter/sort never block main isolate
 - [ ] Manual test: open movie details → torrent search on slow network — UI animates
 - [ ] [004](004-[open]-sync-ffi-ui-thread-audit.md) facade row marked fixed

@@ -26,14 +26,15 @@ Rust uses blocking HTTP. Dart `async` on the caller does not yield during the FF
 - Back navigation unresponsive during fetch
 - Same symptom class as [001](001-[fixed]-webstreamr-blocks-ui.md) and IPTV scrape freeze
 
-## Fix
+## Solution (2026-07-06)
 
-- Add `runStremioHttpGet` wrapper in `packages/rust/lib/src/isolate_runner.dart`
-- Route all `stremioHttpGet` call sites through it
-- JSON parse helpers (`parseStremioManifestJson`, etc.) can stay on UI thread if payloads are small; offload if profiling shows jank
+1. Added `runStremioHttpGet(url, {timeoutSecs})` in `packages/rust/lib/src/isolate_runner.dart` — runs `RustLib.instance.stremioHttpGet` inside `runRustIsolate`.
+2. Updated `packages/api/lib/api/stremio_service.dart` to `await runStremioHttpGet(...)` for all addon HTTP fetches.
+
+JSON parse helpers (`parseStremioManifestJson`, etc.) remain on the UI thread — payloads are small and CPU-only. `stremio_service.dart` is allowlisted in `docs/issues/sync-ffi-allowlist.txt` only for those parse helpers, not for HTTP.
 
 ## Acceptance
 
-- [ ] `stremioHttpGet` never called on main isolate from production code
+- [x] `stremioHttpGet` never called on main isolate from production code
 - [ ] Manual test: slow addon URL — spinner animates, back works
 - [ ] [004](004-[open]-sync-ffi-ui-thread-audit.md) inventory row marked fixed
