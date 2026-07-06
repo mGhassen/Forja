@@ -13,12 +13,10 @@ Future<String?> _engineHttpGet(
   try {
     final hdr = jsonEncode(headers ?? const {});
     final secs = timeout.inSeconds.clamp(1, 120);
-    final raw = await runRustIsolate(
-      () => RustLib.instance.httpGetJson(
-        url,
-        timeoutSecs: secs,
-        headersJson: hdr,
-      ),
+    final raw = await runHttpGetJson(
+      url,
+      timeoutSecs: secs,
+      headersJson: hdr,
     );
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) return null;
@@ -39,13 +37,11 @@ Future<String?> _engineHttpPost(
   try {
     final hdr = jsonEncode(headers ?? const {});
     final secs = timeout.inSeconds.clamp(1, 120);
-    final raw = await runRustIsolate(
-      () => RustLib.instance.httpPostJson(
-        url,
-        timeoutSecs: secs,
-        headersJson: hdr,
-        body: body,
-      ),
+    final raw = await runHttpPostJson(
+      url,
+      timeoutSecs: secs,
+      headersJson: hdr,
+      body: body,
     );
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) return null;
@@ -57,23 +53,17 @@ Future<String?> _engineHttpPost(
   }
 }
 
-Future<String> _engineParseXtreamCategories(String text) => runRustIsolate(
-      () => RustLib.instance.parseXtreamCategoriesJson(text),
-    );
+Future<String> _engineParseXtreamCategories(String text) =>
+    runParseXtreamCategoriesJson(text);
 
 Future<String> _engineParseXtreamStreams(String text, String section) =>
-    runRustIsolate(
-      () => RustLib.instance.parseXtreamStreamsJson(text, section),
-    );
+    runParseXtreamStreamsJson(text, section);
 
-Future<String> _engineParseXtreamSeriesEpisodes(String text) => runRustIsolate(
-      () => RustLib.instance.parseXtreamSeriesEpisodesJson(text),
-    );
+Future<String> _engineParseXtreamSeriesEpisodes(String text) =>
+    runParseXtreamSeriesEpisodesJson(text);
 
 Future<String> _engineProbeStream(String url, int timeoutSecs) =>
-    runRustIsolate(
-      () => RustLib.instance.iptvProbeStreamJson(url, timeoutSecs: timeoutSecs),
-    );
+    runIptvProbeStreamJson(url, timeoutSecs: timeoutSecs);
 
 /// Xtream-Codes player_api client. Login + categories + streams + episodes.
 class IptvClient {

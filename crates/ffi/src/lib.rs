@@ -182,6 +182,7 @@ fn stremio_http_get_json(url: String, timeout_secs: u64) -> String {
 }
 
 fn http_get_json(url: String, timeout_secs: u64, headers_json: String) -> String {
+    utils::engine_cancel::enter_job();
     let headers: std::collections::HashMap<String, String> =
         serde_json::from_str(&headers_json).unwrap_or_default();
     match fetch_get_with_headers(&url, timeout_secs, &headers) {
@@ -196,6 +197,7 @@ fn http_post_json(
     headers_json: String,
     body: String,
 ) -> String {
+    utils::engine_cancel::enter_job();
     let headers: std::collections::HashMap<String, String> =
         serde_json::from_str(&headers_json).unwrap_or_default();
     match fetch_post_with_headers(&url, timeout_secs, &headers, &body) {
@@ -205,6 +207,7 @@ fn http_post_json(
 }
 
 fn iptv_probe_stream_json(url: String, timeout_secs: u64) -> String {
+    utils::engine_cancel::enter_job();
     iptv_core::stream_probe::probe_stream_alive_json(&url, timeout_secs)
 }
 

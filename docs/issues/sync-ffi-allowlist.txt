@@ -4,10 +4,8 @@
 #
 # Format: repo-relative path
 
-# IPTV — RustLib only inside runRustIsolate() callbacks
+# IPTV — decodeXtreamText only (tiny base64; long HTTP via isolate_runner)
 apps/forja/lib/features/iptv/iptv/data/iptv_network.dart
-apps/forja/lib/features/iptv/iptv/data/pastesh_decryptor.dart
-apps/forja/lib/features/iptv/iptv/m3u/m3u_store.dart
 
 # Instant / tiny FFI
 apps/forja/lib/features/settings/settings_screen.dart

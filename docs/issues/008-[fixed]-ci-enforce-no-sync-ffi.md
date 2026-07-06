@@ -32,7 +32,7 @@ Rule "no sync FFI on UI thread" existed in docs but nothing enforced it.
 
 | Path | Reason |
 |------|--------|
-| IPTV files (`iptv_network`, `pastesh_decryptor`, `m3u_store`) | `RustLib.instance` only inside `runRustIsolate` callbacks |
+| IPTV files (`iptv_network`, `pastesh_decryptor`, `m3u_store`) | typed runners in `isolate_runner.dart` → `EngineWorkerPool` |
 | `settings_screen.dart` | instant FFI |
 | `stremio_service.dart` | JSON parse helpers only; HTTP offloaded |
 | `torrent_stream_service`, `local_server_service`, `site111477_proxy` | short lifecycle ops |

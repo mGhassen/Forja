@@ -16,9 +16,9 @@ Sync `RustLib.instance.*` on the **main Dart isolate** blocked the UI for second
 
 | Layer | Status | Where tracked |
 |-------|--------|---------------|
-| Symptom — UI thread must not block | **workaround** (P1 call sites) | [001](001-[workaround]-webstreamr-blocks-ui.md), [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md), [011](011-[workaround]-kisskh-hls-sync-ffi.md); CI [008](008-[fixed]-ci-enforce-no-sync-ffi.md) **fixed** |
+| Symptom — UI thread must not block | **fixed** | [001](001-[fixed]-webstreamr-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md), [011](011-[fixed]-kisskh-hls-sync-ffi.md); CI [008](008-[fixed]-ci-enforce-no-sync-ffi.md) |
 | Root — blocking HTTP / sync resolve in `crates/*` | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
-| Cancel / resilience (host UX) | **workaround** + Rust abort | [009](009-[workaround]-post-migration-resilience-audit.md); Rust cancel in 015 |
+| Cancel / resilience | **fixed** | [009](009-[fixed]-post-migration-resilience-audit.md) |
 
 Isolate offload remains required (R5). It is no longer masking blocking HTTP inside Rust.
 
@@ -34,17 +34,17 @@ Enforced by [008](008-[fixed]-ci-enforce-no-sync-ffi.md) (`check_sync_ffi.sh`).
 
 | # | Title | Symptom | Root |
 |---|-------|---------|------|
-| [001](001-[workaround]-webstreamr-blocks-ui.md) | WebStreamr | workaround | **fixed** → [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
-| [005](005-[workaround]-stremio-http-blocks-ui.md) | Stremio HTTP | workaround | **fixed** → [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
-| [006](006-[workaround]-vidsrc-videasy-extractors-blocks-ui.md) | Vidsrc / Videasy | workaround | **fixed** → [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
-| [007](007-[workaround]-torrent-search-blocks-ui.md) | Torrent search | workaround | **fixed** → [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
+| [001](001-[fixed]-webstreamr-blocks-ui.md) | WebStreamr | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
+| [005](005-[fixed]-stremio-http-blocks-ui.md) | Stremio HTTP | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
+| [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) | Vidsrc / Videasy | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
+| [007](007-[fixed]-torrent-search-blocks-ui.md) | Torrent search | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
 | [008](008-[fixed]-ci-enforce-no-sync-ffi.md) | CI enforcement | **fixed** | — |
-| [011](011-[workaround]-kisskh-hls-sync-ffi.md) | Kisskh / HLS / M3U | workaround | partial — large payload parse; job API deferred |
+| [011](011-[fixed]-kisskh-hls-sync-ffi.md) | Kisskh / HLS / M3U | **fixed** | `EngineWorkerPool` |
 | [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) | Reddit cursor loop | **fixed** | — |
 
 ## Acceptance
 
-- [x] [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md) workaround shipped
+- [x] [005](005-[fixed]-stremio-http-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md) workaround shipped
 - [x] [008](008-[fixed]-ci-enforce-no-sync-ffi.md) CI grep in place
 - [x] [015](015-[fixed]-rust-blocking-http-engine-debt.md) engine root fix (async HTTP, parallel resolve, cancel-abort)
-- [x] [009](009-[workaround]-post-migration-resilience-audit.md) host cancel UX workaround shipped; Rust abort wired in 015
+- [x] [009](009-[fixed]-post-migration-resilience-audit.md) host cancel UX workaround shipped; Rust abort wired in 015

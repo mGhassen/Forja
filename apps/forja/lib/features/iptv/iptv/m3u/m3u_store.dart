@@ -52,12 +52,10 @@ class M3uFetcher {
   static Future<String> fetch(String url) async {
     final uri = Uri.parse(url);
     final hdr = jsonEncode({'User-Agent': _ua});
-    final raw = await runRustIsolate(
-      () => RustLib.instance.httpGetJson(
-        url,
-        timeoutSecs: 25,
-        headersJson: hdr,
-      ),
+    final raw = await runHttpGetJson(
+      url,
+      timeoutSecs: 25,
+      headersJson: hdr,
     );
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) {

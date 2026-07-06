@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'engine.dart';
+import 'engine_worker.dart';
 import 'isolate_runner.dart';
 import 'library_path.dart';
 
@@ -47,6 +48,7 @@ abstract final class Engine {
           debugPrint(
             'Rust engine v${RustLib.instance.version} ($candidate)',
           );
+          await EngineWorkerPool.start(_libraryPath!);
           return;
         } catch (e) {
           RustLib.reset();
