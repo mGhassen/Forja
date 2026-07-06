@@ -71,6 +71,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     ...StreamProviders.providers,
   };
   final SettingsService _settings = SettingsService();
+  final PlaybackProfile _playbackProfile = PlatformPlayback.capabilities;
 
   @override
   void initState() {
@@ -183,7 +184,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   Future<void> _startStremioExtraction() async {
     final addon = _streamAddons.firstWhere((a) => a['baseUrl'] == _selectedSourceId);
     final baseUrl = addon['baseUrl'];
-    
+
     setState(() {
       _statusMessage = 'Fetching from ${addon['name']}...';
     });
@@ -196,15 +197,92 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
 
       final type = _movie.mediaType == 'tv' ? 'series' : 'movie';
       final streams = await _stremio.getStreams(baseUrl: baseUrl, type: type, id: stremioId);
+      final visible = filterStremioStreamsForProfile(streams, _playbackProfile);
 
-      if (mounted) {
-        setState(() {
-          if (streams.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No streams found for this content.')));
-          }
-        });
+      if (!mounted) return;
+      if (visible.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No streams found for this content.')),
+        );
+        return;
       }
 
+      final isTv = _movie.mediaType == 'tv';
+      final title = isTv
+          ? '${_movie.title} - S$_selectedSeason E$_selectedEpisode'
+          : _movie.title;
+
+      for (final stream in visible) {
+        final useDebrid = await _settings.useDebridForStreams();
+        final debridService = await _settings.getDebridService();
+        final precheck = classifyStremioStream(
+          stream,
+          _playbackProfile,
+          useDebrid: useDebrid,
+          debridService: debridService,
+        );
+
+        if (precheck is StremioPlayable) {
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PlayerScreen(
+                streamUrl: precheck.streamUrl,
+                title: title,
+                headers: precheck.headers,
+                movie: _movie,
+                selectedSeason: isTv ? _selectedSeason : null,
+                selectedEpisode: isTv ? _selectedEpisode : null,
+                startPosition: widget.startPosition,
+                activeProvider: 'stremio_direct',
+              ),
+            ),
+          );
+          return;
+        }
+
+        if (precheck is StremioResolveFailure) continue;
+
+        final resolved = await resolveStremioStream(
+          stream: stream,
+          profile: _playbackProfile,
+          settings: _settings,
+          season: isTv ? _selectedSeason : null,
+          episode: isTv ? _selectedEpisode : null,
+        );
+        if (resolved is StremioPlayable && mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PlayerScreen(
+                streamUrl: resolved.streamUrl,
+                title: title,
+                magnetLink: resolved.magnetLink,
+                movie: _movie,
+                selectedSeason: isTv ? _selectedSeason : null,
+                selectedEpisode: isTv ? _selectedEpisode : null,
+                fileIndex: resolved.fileIndex,
+                startPosition: widget.startPosition,
+                activeProvider: 'stremio_direct',
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _playbackProfile.localTorrentEngine
+                  ? 'Failed to resolve stream.'
+                  : 'Hash-based streams require debrid on this platform.',
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));

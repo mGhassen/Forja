@@ -53,6 +53,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   final JackettService _jackett = JackettService();
   final ProwlarrService _prowlarr = ProwlarrService();
   final LinkResolver _linkResolver = LinkResolver();
+  final PlaybackProfile _playbackProfile = PlatformPlayback.capabilities;
 
   String _sortPreference = 'Seeders (High to Low)';
   Set<String> _activeAudioFilters = {};
@@ -331,8 +332,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _movie = fullDetails;
           _streamAddons = streamAddons;
           _isLoading = false;
+          if (!_playbackProfile.builtinTorrentSearch && streamAddons.isNotEmpty) {
+            _selectedSourceId = streamAddons.length > 1
+                ? 'all_stremio'
+                : streamAddons.first['baseUrl'] as String;
+          }
         });
-        _autoSearch();
+        if (_playbackProfile.builtinTorrentSearch) _autoSearch();
         _fetchAllStremioStreams();
         _checkAndFetchNuvio();
         _fetchStremioRecommendations();
@@ -942,7 +948,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       for (final addon in _streamAddons) {
         _stremio.getStreams(baseUrl: addon['baseUrl'], type: type, id: stremioId).then((streams) {
           if (!mounted || gen != _stremioFetchGen) return;
-          final tagged = streams.map((s) {
+          final tagged = _filterStremioStreams(streams.map((s) {
             if (s is Map<String, dynamic>) {
               return <String, dynamic>{
                 ...s,
@@ -951,7 +957,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               };
             }
             return <String, dynamic>{'_addonName': addon['name'], '_addonBaseUrl': addon['baseUrl']};
-          }).toList();
+          }).toList());
 
           setState(() {
             // Only show chip if addon returned results
@@ -1140,12 +1146,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             debugPrint('[CustomIdStreams] Got ${streams.length} streams');
             
             if (!mounted || gen != _stremioFetchGen) return;
-            final tagged = streams.map((s) {
+            final tagged = _filterStremioStreams(streams.map((s) {
               if (s is Map<String, dynamic>) {
                 return <String, dynamic>{...s, '_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
               }
               return <String, dynamic>{'_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-            }).toList();
+            }).toList());
             setState(() {
               _stremioStreams = tagged;
               _allCombinedStremioStreams = tagged;
@@ -1162,12 +1168,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       debugPrint('[CustomIdStreams] Got ${streams.length} streams');
       if (streams.isNotEmpty) debugPrint('[CustomIdStreams] First stream: ${streams.first}');
       if (!mounted || gen != _stremioFetchGen) return;
-      final tagged = streams.map((s) {
+      final tagged = _filterStremioStreams(streams.map((s) {
         if (s is Map<String, dynamic>) {
           return <String, dynamic>{...s, '_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
         }
         return <String, dynamic>{'_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-      }).toList();
+      }).toList());
       setState(() {
         _stremioStreams = tagged;
         _allCombinedStremioStreams = tagged;
@@ -1294,7 +1300,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       final streams = await _stremio.getStreams(baseUrl: addon['baseUrl'], type: type, id: stremioId);
       if (!mounted || gen != _stremioFetchGen) return;
       setState(() {
-        _stremioStreams = streams;
+        _stremioStreams = _filterStremioStreams(streams);
         if (streams.isEmpty) _errorMessage = 'No streams found in ${addon['name']}';
       });
     } catch (e) {
@@ -1561,113 +1567,113 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     return '';
   }
 
+  List<Map<String, dynamic>> _filterStremioStreams(List<dynamic> streams) =>
+      filterStremioStreamsForProfile(streams, _playbackProfile);
+
   // ─── play methods ─────────────────────────────────────────────────────────
 
   void _playStremioStream(Map<String, dynamic> stream, {Duration? startPosition}) async {
-    // Handle externalUrl streams (e.g. "More Like This" addon)
-    final externalUrl = stream['externalUrl']?.toString();
-    if (externalUrl != null && externalUrl.isNotEmpty) {
-      final streamAddonBaseUrl = stream['_addonBaseUrl']?.toString() ?? _selectedSourceId;
-      await _handleExternalUrl(externalUrl, addonBaseUrl: streamAddonBaseUrl);
-      return;
-    }
+    final stremioId = widget.stremioItem?['id']?.toString() ?? _movie.imdbId;
+    final stremioAddonBaseUrl = stream['_addonBaseUrl']?.toString() ?? _selectedSourceId;
+    final isTv = _movie.mediaType == 'tv';
 
     final useDebrid = await _settings.useDebridForStreams();
     final debridService = await _settings.getDebridService();
+    final precheck = classifyStremioStream(
+      stream,
+      _playbackProfile,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    );
 
-    // Determine stremio item ID for resume (custom ID or IMDB ID)
-    final stremioId = widget.stremioItem?['id']?.toString() ?? _movie.imdbId;
-    final stremioAddonBaseUrl = stream['_addonBaseUrl']?.toString() ?? _selectedSourceId;
+    if (precheck is StremioExternalLink) {
+      await _handleExternalUrl(
+        precheck.externalUrl,
+        addonBaseUrl: stremioAddonBaseUrl,
+      );
+      return;
+    }
 
-    if (stream['url'] != null) {
+    if (precheck is StremioResolveFailure) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(precheck.message)),
+        );
+      }
+      return;
+    }
+
+    if (precheck is StremioPlayable) {
       if (!mounted) return;
       Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
-        streamUrl: stream['url'], title: _movie.title,
-        headers: Map<String, String>.from(stream['behaviorHints']?['proxyHeaders']?['request'] ?? {}),
+        streamUrl: precheck.streamUrl,
+        title: _movie.title,
+        headers: precheck.headers,
         movie: _movie,
-        selectedSeason: _movie.mediaType == 'tv' ? _selectedSeason : null,
-        selectedEpisode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
+        selectedSeason: isTv ? _selectedSeason : null,
+        selectedEpisode: isTv ? _selectedEpisode : null,
         startPosition: startPosition,
         activeProvider: 'stremio_direct',
         stremioId: stremioId,
         stremioAddonBaseUrl: stremioAddonBaseUrl,
       )));
-    } else if (stream['infoHash'] != null) {
-      // Build a proper magnet link:
-      // - include display name from stream title
-      // - include tracker URLs from the 'sources' list
-      //   (Stremio addons provide these as "tracker:udp://...", "tracker:http://...")
-      final infoHash = stream['infoHash'] as String;
-      final streamTitle = (stream['title'] ?? stream['name'] ?? '').toString();
-      final dn = streamTitle.isNotEmpty ? '&dn=${Uri.encodeComponent(streamTitle)}' : '';
+      return;
+    }
 
-      // Extract trackers from sources
-      final sources = stream['sources'];
-      final trackerParams = StringBuffer();
-      if (sources is List) {
-        for (final src in sources) {
-          if (src is String && src.startsWith('tracker:')) {
-            final tracker = src.substring('tracker:'.length);
-            trackerParams.write('&tr=${Uri.encodeComponent(tracker)}');
-          }
-        }
-      }
+    if (!mounted) return;
+    _streamCancelled = false;
+    final loadingMessage = stremioResolveLoadingMessage(
+      profile: _playbackProfile,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    );
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black,
+      builder: (_) => LoadingOverlay(
+        movie: _movie,
+        message: loadingMessage,
+        onCancel: () {
+          _streamCancelled = true;
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+    final navigator = Navigator.of(context);
 
-      final magnet = 'magnet:?xt=urn:btih:$infoHash$dn$trackerParams';
+    final resolved = await resolveStremioStream(
+      stream: stream,
+      profile: _playbackProfile,
+      settings: _settings,
+      season: isTv ? _selectedSeason : null,
+      episode: isTv ? _selectedEpisode : null,
+      isCancelled: () => _streamCancelled,
+    );
 
-      // fileIdx tells us exactly which file to play — no metadata poll needed
+    if (_streamCancelled) return;
+    if (navigator.canPop()) navigator.pop();
 
-      if (!mounted) return;
-      _streamCancelled = false;
-      showDialog(context: context, barrierDismissible: false, barrierColor: Colors.black,
-        builder: (_) => LoadingOverlay(movie: _movie,
-          message: useDebrid && debridService != 'None' ? 'Resolving with $debridService...' : 'Starting Torrent Engine...',
-          onCancel: () { _streamCancelled = true; Navigator.of(context).pop(); }));
-      final navigator = Navigator.of(context);
-      String? url;
-      int? resolvedFileIndex;
-      try {
-        if (useDebrid && debridService != 'None') {
-          final debrid = DebridApi();
-          final isTv = _movie.mediaType == 'tv';
-          final files = await debrid.resolveByService(
-            debridService,
-            magnet,
-            season: isTv ? _selectedSeason : null,
-            episode: isTv ? _selectedEpisode : null,
-          );
-          if (_streamCancelled) return;
-          if (files.isNotEmpty) {
-            // resolveX always returns a single, pre-picked file.
-            resolvedFileIndex = 0;
-            url = files.first.downloadUrl;
-          }
-        } else {
-          url = await TorrentStreamService().streamTorrent(magnet,
-            season: _movie.mediaType == 'tv' ? _selectedSeason : null,
-            episode: _movie.mediaType == 'tv' ? _selectedEpisode : null);
-          if (_streamCancelled) return;
-          if (url != null) {
-            final idx = Uri.parse(url).queryParameters['index'];
-            if (idx != null) resolvedFileIndex = int.tryParse(idx);
-          }
-        }
-      } catch (e) { debugPrint('Stremio hash error: $e'); }
-      if (_streamCancelled) return;
-      if (navigator.canPop()) navigator.pop();
-      if (url != null && mounted) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
-          streamUrl: url!, title: _movie.title, magnetLink: magnet, movie: _movie,
-          selectedSeason: _movie.mediaType == 'tv' ? _selectedSeason : null,
-          selectedEpisode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
-          fileIndex: resolvedFileIndex,
-          startPosition: startPosition,
-          activeProvider: 'stremio_direct',
-          stremioId: stremioId,
-          stremioAddonBaseUrl: stremioAddonBaseUrl)));
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to resolve stream.')));
-      }
+    if (resolved is StremioPlayable && mounted) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
+        streamUrl: resolved.streamUrl,
+        title: _movie.title,
+        magnetLink: resolved.magnetLink,
+        movie: _movie,
+        selectedSeason: isTv ? _selectedSeason : null,
+        selectedEpisode: isTv ? _selectedEpisode : null,
+        fileIndex: resolved.fileIndex,
+        startPosition: startPosition,
+        activeProvider: 'stremio_direct',
+        stremioId: stremioId,
+        stremioAddonBaseUrl: stremioAddonBaseUrl,
+      )));
+    } else if (resolved is StremioResolveFailure &&
+        resolved.error != StremioPlaybackError.cancelled &&
+        mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(resolved.message)),
+      );
     }
   }
 
@@ -2696,7 +2702,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 _applyStremioFilter();
                 _errorMessage = null;
               });
-              // Re-fetch if we don't have cached results
               if (_allCombinedStremioStreams.isEmpty) _fetchAllStremioStreams();
             }
           }),
@@ -2711,17 +2716,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 _nuvioStreams = [];
                 _errorMessage = null;
               });
-              // Refresh the addon list lazily in case the user just
-              // installed/enabled something.
               _checkAndFetchNuvio();
             }),
             ),
-          Expanded(
-            child: _sourceTab('Torrent Sources', Icons.downloading_rounded, isTorrent, compact, () {
-            setState(() => _selectedSourceId = 'forja');
-            _autoSearch();
-          }),
-          ),
+          if (_playbackProfile.builtinTorrentSearch)
+            Expanded(
+              child: _sourceTab('Torrent Sources', Icons.downloading_rounded, isTorrent, compact, () {
+              setState(() => _selectedSourceId = 'forja');
+              _autoSearch();
+            }),
+            ),
         ],
       ),
     );

@@ -7,6 +7,7 @@ import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 import 'package:api/services/app_updater_service.dart';
+import 'package:api/playback/playback.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -62,7 +63,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _loadNavbarConfig() async {
-    final visible = await SettingsService().getNavbarConfig();
+    var visible = await SettingsService().getNavbarConfig();
+    if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
+      visible = visible
+          .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
+          .toList();
+    }
     if (!mounted) return;
     setState(() {
       // Remember which screen we're currently on

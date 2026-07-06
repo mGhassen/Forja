@@ -201,11 +201,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themePreset = await _settings.getThemePreset();
 
     // Load navbar config
-    final navVisible = await _settings.getNavbarConfig();
+    var navVisible = await _settings.getNavbarConfig();
     // Full order: visible items first, then hidden items
     final allIds = SettingsService.allNavIds;
     final hidden = allIds.where((id) => !navVisible.contains(id)).toList();
-    final navOrder = [...navVisible, ...hidden];
+    var navOrder = [...navVisible, ...hidden];
+    if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
+      navOrder = navOrder
+          .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
+          .toList();
+      navVisible.removeWhere((id) => PlatformPlayback.torrentNavIds.contains(id));
+    }
 
     // Load stream provider order
     final streamOrder = await _settings.getStreamProviderOrder();
@@ -484,8 +490,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildExpandableSection(
                       id: 'search',
                       icon: Icons.search_rounded,
-                      title: 'Search & Torrents',
+                      title: PlatformPlayback.capabilities.builtinTorrentSearch
+                          ? 'Search & Torrents'
+                          : 'Stream Extractors',
                       children: [
+                        if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
                         _buildFocusableDropdown(
                           'Default Sort Order',
                           'How torrent results are sorted automatically.',
@@ -572,6 +581,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
+                        ],
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text('WEBSTREAMR (LOCAL)', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                        ),
+                        const SizedBox(height: 8),
+                        Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.language),
+                            title: const Text('WebStreamr Settings'),
+                            subtitle: const Text('Country toggles, MFP, FlareSolverr, TMDB token'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => const WebStreamrSettingsScreen(),
+                            )),
+                          ),
+                        ),
                       ],
                     ),
 
@@ -594,6 +620,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 8),
                         _buildNuvioAddonSection(),
+                        if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
                         const SizedBox(height: 20),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -608,23 +635,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 8),
                         _buildProwlarrConfig(),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('WEBSTREAMR (LOCAL)', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.language),
-                            title: const Text('WebStreamr Settings'),
-                            subtitle: const Text('Country toggles, MFP, FlareSolverr, TMDB token'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const WebStreamrSettingsScreen(),
-                            )),
-                          ),
-                        ),
+                        ],
                       ],
                     ),
 

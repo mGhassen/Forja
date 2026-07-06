@@ -361,23 +361,31 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     debugPrint('[Boot] Step 2: Initializing services in parallel...');
     final api = TmdbApi();
     
-    debugPrint('[Boot]   - Starting TorrentStream engine...');
+    final profile = PlatformPlayback.capabilities;
+    debugPrint('[Boot]   - Playback profile: localTorrent=${profile.localTorrentEngine}');
+    if (profile.localTorrentEngine) {
+      debugPrint('[Boot]   - Starting TorrentStream engine...');
+    } else {
+      debugPrint('[Boot]   - Skipping TorrentStream (constrained profile)');
+    }
     debugPrint('[Boot]   - Starting LocalServer...');
     debugPrint('[Boot]   - Initializing MusicPlayer...');
     debugPrint('[Boot]   - Fetching TMDB data (trending, popular, top rated, now playing)...');
     
     final results = await Future.wait([
-      TorrentStreamService().start().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('[Boot] ⚠ TorrentStream startup timed out after 10s');
-          return false;
-        },
-      ).catchError((e, st) {
-        debugPrint('[Boot] ✗ TorrentStream error: $e');
-        debugPrint('[Boot] Stack trace: $st');
-        return false;
-      }),
+      profile.localTorrentEngine
+          ? TorrentStreamService().start().timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                debugPrint('[Boot] ⚠ TorrentStream startup timed out after 10s');
+                return false;
+              },
+            ).catchError((e, st) {
+              debugPrint('[Boot] ✗ TorrentStream error: $e');
+              debugPrint('[Boot] Stack trace: $st');
+              return false;
+            })
+          : Future.value(false),
       LocalServerService().start().catchError((e) {
         debugPrint('[Boot] ✗ LocalServer error: $e');
       }),

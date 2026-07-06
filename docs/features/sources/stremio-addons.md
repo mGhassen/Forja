@@ -29,6 +29,16 @@ Stremio addons are manifest-based extensions. Forja supports installing the same
 
 - Not every addon implements catalog, stream, and search — check the addon's manifest resources
 - Community addon lists change frequently — verify manifests are trustworthy
+- **Hash-based streams** (`infoHash`, e.g. Torrentio): on desktop and Android, Forja plays these via the local torrent engine or debrid. On **web** and future TV builds (`constrained` profile), only direct `url` streams and debrid-resolved hashes work — hash-only addons need debrid configured or streams are hidden
+
+## Platform playback
+
+| Platform | `url` streams | `infoHash` (no debrid) | `infoHash` + debrid |
+|----------|---------------|------------------------|---------------------|
+| Desktop, Android, iOS | Play direct | Local torrent engine | Debrid URL |
+| Web, TV (planned) | Play direct | Requires debrid | Debrid URL |
+
+Capability profile: `PlatformPlayback.capabilities` in `packages/api/lib/playback/playback_profile.dart`. Stream resolution: `resolveStremioStream()` in `stremio_stream_resolver.dart`.
 
 ## Related
 

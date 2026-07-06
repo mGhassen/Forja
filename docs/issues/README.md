@@ -36,7 +36,7 @@ Rename the file when status changes. **Filename tag and `**Status:**` in the iss
 |------|-------|---|-----|--------|
 | [001-[workaround]-…](001-[workaround]-webstreamr-blocks-ui.md) | WebStreamr extraction blocks the UI thread | P1 | High | workaround |
 | [002-[open]-…](002-[open]-torrent-disk-cache-not-cleaned.md) | Torrent stream cache never purged from disk | P2 | High | open |
-| [003-[open]-…](003-[open]-stremio-platform-playback-model.md) | Match Stremio platform playback model | P2 | Medium | open |
+| [003-[fixed]-…](003-[fixed]-stremio-platform-playback-model.md) | Match Stremio platform playback model | P2 | Medium | fixed |
 | [004-[open]-…](004-[open]-sync-ffi-ui-thread-audit.md) | Sync Rust FFI on UI thread — parent audit | P1 | High | open |
 | [005-[workaround]-…](005-[workaround]-stremio-http-blocks-ui.md) | Stremio addon HTTP blocks UI thread | P1 | High | workaround |
 | [006-[workaround]-…](006-[workaround]-vidsrc-videasy-extractors-blocks-ui.md) | Vidsrc / Videasy extractors block UI thread | P1 | High | workaround |

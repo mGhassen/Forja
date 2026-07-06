@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
+import 'playback_profile.dart';
 import 'torrent_engine_backend.dart';
 
 /// Rich torrent statistics object.
@@ -58,6 +59,11 @@ class TorrentStreamService {
   bool get _rustReady => RustLib.isInitialized && _rustEnginePort > 0;
 
   Future<bool> start() async {
+    if (!PlatformPlayback.capabilities.localTorrentEngine) {
+      _log('Torrent engine not available on this platform profile');
+      _setState(EngineState.error);
+      return false;
+    }
     if (_state == EngineState.ready) return true;
     if (_state == EngineState.starting) {
       for (int i = 0; i < 50; i++) {

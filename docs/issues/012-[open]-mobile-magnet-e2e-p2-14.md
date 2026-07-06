@@ -14,7 +14,7 @@ Wave 1 exit checklist row **T6** is still ⬜. Desktop magnet E2E exists (`engin
 ## Risk
 
 - Mobile-specific FFI/dylib loading failures undetected until user plays torrent
-- Architecture assumptions in [003](003-[open]-stremio-platform-playback-model.md) untested on real devices
+- Architecture assumptions in [003](003-[fixed]-stremio-platform-playback-model.md) untested on real devices
 
 ## Acceptance
 

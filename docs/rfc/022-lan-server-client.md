@@ -2,7 +2,7 @@
 
 **Version:** post-v1.2 (after [RFC-013](013-v1.2-sync-lan-party.md))  
 **Status:** Draft  
-**Depends on:** [RFC-009 — Rust FFI](009-rust-ffi.md), [RFC-004 — Provider registry](004-provider-registry.md), [issue 003 — playback profiles](../issues/003-[open]-stremio-platform-playback-model.md)  
+**Depends on:** [RFC-009 — Rust FFI](009-rust-ffi.md), [RFC-004 — Provider registry](004-provider-registry.md), [issue 003 — playback profiles](../issues/003-[fixed]-stremio-platform-playback-model.md)  
 **Related:** [ARCHITECTURE.md](../ARCHITECTURE.md), [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md), [RFC-007 — LAN companion](007-lan-companion.md) (remote control, orthogonal), [RFC-010 — Web client](010-web-client.md)
 
 ---
@@ -21,7 +21,7 @@ Devices find each other on the local network with zero typed IP addresses (mDNS)
 
 ## 2. Motivation
 
-Playback routing depends on three facts: whether the source is a direct URL or a magnet/`infoHash`, whether the client needs the **local proxy** (CORS, custom headers, HLS rewrite, site-specific relays), and whether the current device can run the **Rust engine** (librqbit, blocking resolve, WebView extractors). Today every native target runs the full engine locally ([issue 003](../issues/003-[open]-stremio-platform-playback-model.md)); constrained platforms cannot ship that way.
+Playback routing depends on three facts: whether the source is a direct URL or a magnet/`infoHash`, whether the client needs the **local proxy** (CORS, custom headers, HLS rewrite, site-specific relays), and whether the current device can run the **Rust engine** (librqbit, blocking resolve, WebView extractors). Today every native target runs the full engine locally ([issue 003](../issues/003-[fixed]-stremio-platform-playback-model.md)); constrained platforms cannot ship that way.
 
 This RFC fixes routing into two paths (**play direct**, or **desktop serves**), plus one opt-in local exception, and specifies discovery and pairing so the desktop is reachable without configuration.
 
@@ -59,7 +59,7 @@ Future **constrained clients** (web per RFC-010, Tizen/webOS when added) are cli
 
 ## 4. Routing model
 
-Routing uses a **playback capability profile** ([issue 003](../issues/003-[open]-stremio-platform-playback-model.md)) plus source kind. The profile is compile-time (platform) with one user override (Android TV local torrent).
+Routing uses a **playback capability profile** ([issue 003](../issues/003-[fixed]-stremio-platform-playback-model.md)) plus source kind. The profile is compile-time (platform) with one user override (Android TV local torrent).
 
 ### 4.1 Capability profiles (baseline)
 
@@ -235,7 +235,7 @@ Host-only concerns stay in Flutter: media_kit player, WebView extractors (when r
 |-------|--------|
 | Torrent + proxy axum in `libffi` | **Shipped** — localhost only |
 | Provider registry + resolver | **Shipped** — `packages/api/lib/playback/` |
-| Playback profiles | **Spec'd** — [issue 003](../issues/003-[open]-stremio-platform-playback-model.md), not implemented |
+| Playback profiles | **Implemented** — [issue 003](../issues/003-[fixed]-stremio-platform-playback-model.md) |
 | Debrid → direct URL | **Shipped** — bypasses torrent engine |
 | Bind axum to LAN + token auth | New |
 | mDNS announce/discover | New |
@@ -283,4 +283,4 @@ No research-grade problems. This RFC adds LAN plumbing on top of existing engine
 - [RFC-013 — v1.2 sync / LAN party](013-v1.2-sync-lan-party.md)
 - [ARCHITECTURE.md](../ARCHITECTURE.md)
 - [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
-- [issue 003 — playback profiles](../issues/003-[open]-stremio-platform-playback-model.md)
+- [issue 003 — playback profiles](../issues/003-[fixed]-stremio-platform-playback-model.md)
