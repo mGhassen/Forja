@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -8,6 +9,14 @@ pub struct HttpResponse {
 }
 
 pub fn fetch_get(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {
+    fetch_get_with_headers(url, timeout_secs, &HashMap::new())
+}
+
+pub fn fetch_get_with_headers(
+    url: &str,
+    timeout_secs: u64,
+    headers: &HashMap<String, String>,
+) -> Result<HttpResponse, String> {
     let url = url.trim();
     if url.is_empty() || !url.starts_with("http") {
         return Err("Invalid URL".into());
@@ -19,7 +28,11 @@ pub fn fetch_get(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {
             .redirect(reqwest::redirect::Policy::limited(8))
             .build()
             .map_err(|e| e.to_string())?;
-        let resp = client.get(url).send().await.map_err(|e| e.to_string())?;
+        let mut req = client.get(url);
+        for (k, v) in headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        let resp = req.send().await.map_err(|e| e.to_string())?;
         let status = resp.status().as_u16();
         let body = resp.text().await.map_err(|e| e.to_string())?;
         Ok(HttpResponse { status, body })

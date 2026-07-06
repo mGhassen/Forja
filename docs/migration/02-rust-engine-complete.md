@@ -96,6 +96,8 @@ Engine (crates/* + libffi)
 | **P2-91** | WebStreamr `Isolate.run` offload + `cancelPending()` — UI no longer frozen |
 | **P2-96** | `app_theme.dart` → `apps/forja/lib/shared/theme/` |
 | **P2-93** | Stremio HTTP via `stremioHttpGet` — no Dart `package:http` split |
+| **P2-94** | IPTV Xtream/catalog GET via `httpGetJson` FFI |
+| **P2-95** | Deleted dead `stream_resolver` + `stream_extractor` in `packages/streaming` |
 
 #### 🔄 Partial
 
@@ -110,8 +112,8 @@ Engine (crates/* + libffi)
 | ID | What |
 |----|------|
 | **P2-92** | Consolidate shelf + 111477 + mega routes into `crates/proxy` |
-| **P2-94** | IPTV: move `iptv_network.dart` HTTP to Rust or unified FFI |
-| **P2-95** | Dead code: unused repos, duplicate `stream_extractor`, `StreamResolver` |
+| **P2-94** | IPTV: Reddit OAuth POST + stream probe still Dart |
+| **P2-95** | Dead code: unused repos in `packages/storage` |
 | **P2-83** | Finish streaming engine delete (with 92) |
 | **P2-88** | Finish storage delete |
 | **P2-90** | Delete `packages/core` — JSON from Rust / maps in UI |
@@ -136,7 +138,7 @@ Engine (crates/* + libffi)
 | T2 | `packages/storage` deleted (P2-88) | ⬜ |
 | T3 | `packages/core` deleted (P2-90) | ⬜ |
 | T4 | WebStreamr non-blocking (P2-91) | ✅ |
-| T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | 🔄 P2-93 ✅ |
+| T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | 🔄 IPTV GET ✅ · OAuth POST left |
 | T6 | Mobile magnet E2E (P2-14) | ⬜ |
 | T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | ⬜ |
 | T8 | Sign-off (P2-70) | ⬜ |

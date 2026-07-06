@@ -6,25 +6,42 @@ import 'package:rust/rust.dart';
 import 'models.dart';
 import 'pastesh_decryptor.dart';
 
+Future<String?> _engineHttpGet(
+  String url, {
+  Duration timeout = const Duration(seconds: 10),
+  Map<String, String>? headers,
+}) async {
+  try {
+    final raw = RustLib.instance.httpGetJson(
+      url,
+      timeoutSecs: timeout.inSeconds.clamp(1, 120),
+      headersJson: jsonEncode(headers ?? const {}),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return null;
+    final status = parsed['status'] as int;
+    if (status < 200 || status >= 300) return null;
+    return parsed['body'] as String;
+  } catch (_) {
+    return null;
+  }
+}
+
 /// Xtream-Codes player_api client. Login + categories + streams + episodes.
 class IptvClient {
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
   static String _enc(String s) => Uri.encodeComponent(s);
 
-  static Future<String?> _httpGet(String url, {Duration? timeout}) async {
-    try {
-      final req = http.Request('GET', Uri.parse(url))
-        ..headers['User-Agent'] = _ua
-        ..headers['Accept'] = 'application/json,*/*';
-      final stream =
-          await req.send().timeout(timeout ?? const Duration(seconds: 10));
-      if (stream.statusCode < 200 || stream.statusCode >= 300) return null;
-      return await stream.stream.bytesToString();
-    } catch (e) {
-      return null;
-    }
-  }
+  static Future<String?> _httpGet(String url, {Duration? timeout}) =>
+      _engineHttpGet(
+        url,
+        timeout: timeout ?? const Duration(seconds: 10),
+        headers: const {
+          'User-Agent': _ua,
+          'Accept': 'application/json,*/*',
+        },
+      );
 
   static Future<Map<String, dynamic>?> login(IptvPortal p,
       {Duration timeout = const Duration(seconds: 6)}) async {
@@ -613,12 +630,16 @@ class IptvScraper {
       return cached;
     }
     try {
-      final resp = await http.get(Uri.parse(_xml2ListApi), headers: {
-        'User-Agent': _ua,
-        'Accept': 'application/vnd.github+json',
-      }).timeout(const Duration(seconds: 12));
-      if (resp.statusCode == 200) {
-        final decoded = json.decode(resp.body);
+      final body = await _engineHttpGet(
+        _xml2ListApi,
+        timeout: const Duration(seconds: 12),
+        headers: const {
+          'User-Agent': _ua,
+          'Accept': 'application/vnd.github+json',
+        },
+      );
+      if (body != null) {
+        final decoded = json.decode(body);
         if (decoded is List) {
           // Collect (encoded-name, size) pairs so we can sort ascending —
           // smaller files = fewer portals = faster first results for the user.
@@ -705,14 +726,16 @@ class IptvScraper {
 
     String? body;
     try {
-      final resp = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _ua,
-        'Accept': 'text/plain,*/*',
-      }).timeout(const Duration(seconds: 25));
-      if (resp.statusCode == 200) {
-        body = resp.body;
-      } else {
-        debugPrint('[XML2]   HTTP ${resp.statusCode}');
+      body = await _engineHttpGet(
+        url,
+        timeout: const Duration(seconds: 25),
+        headers: const {
+          'User-Agent': _ua,
+          'Accept': 'text/plain,*/*',
+        },
+      );
+      if (body == null) {
+        debugPrint('[XML2]   fetch failed');
       }
     } catch (e) {
       debugPrint('[XML2]   fetch failed: $e');
@@ -1053,18 +1076,14 @@ class IptvScraper {
     }
   }
 
-  static Future<String?> _httpGetText(String url) async {
-    try {
-      final resp = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _ua,
-        'Accept': 'text/html,application/json,*/*',
-      }).timeout(const Duration(seconds: 15));
-      return resp.body;
-    } catch (e) {
-      debugPrint('[Catalog] httpGet failed: $e');
-      return null;
-    }
-  }
+  static Future<String?> _httpGetText(String url) => _engineHttpGet(
+        url,
+        timeout: const Duration(seconds: 15),
+        headers: const {
+          'User-Agent': _ua,
+          'Accept': 'text/html,application/json,*/*',
+        },
+      );
 
   /// Decode common XML/HTML entities in RSS content.
   static String _decodeXmlEntities(String s) => s
@@ -1146,21 +1165,22 @@ class IptvScraper {
 
     debugPrint('[Catalog] OAuth GET r/$sub (after=$after)');
     try {
-      final resp = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _oauthUa,
-        'Authorization': 'Bearer $token',
-      }).timeout(const Duration(seconds: 12));
-      if (resp.statusCode == 200) {
-        final t = resp.body.trimLeft();
-        if (t.startsWith('{') || t.startsWith('[')) return resp.body;
+      final body = await _engineHttpGet(
+        url,
+        timeout: const Duration(seconds: 12),
+        headers: {
+          'User-Agent': _oauthUa,
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (body != null) {
+        final t = body.trimLeft();
+        if (t.startsWith('{') || t.startsWith('[')) return body;
       }
-      if (resp.statusCode == 401 || resp.statusCode == 403) {
-        // Token expired or revoked — clear cache so next call re-auths.
+      if (body == null) {
         _oauthToken = null;
         _oauthTokenExpiry = null;
       }
-      debugPrint(
-          '[Catalog]   OAuth ${resp.statusCode} len=${resp.body.length}');
     } catch (e) {
       debugPrint('[Catalog]   OAuth failed: $e');
     }
@@ -1178,15 +1198,18 @@ class IptvScraper {
 
     debugPrint('[Catalog] GET RSS ${_redact(url)}');
     try {
-      final resp = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _oauthUa,
-        'Accept': 'application/atom+xml, application/xml, */*',
-      }).timeout(const Duration(seconds: 15));
-      if (resp.statusCode == 200 && resp.body.contains('<entry>')) {
-        return resp.body;
+      final body = await _engineHttpGet(
+        url,
+        timeout: const Duration(seconds: 15),
+        headers: const {
+          'User-Agent': _oauthUa,
+          'Accept': 'application/atom+xml, application/xml, */*',
+        },
+      );
+      if (body != null && body.contains('<entry>')) {
+        return body;
       }
-      debugPrint(
-          '[Catalog]   RSS ${resp.statusCode} len=${resp.body.length}');
+      debugPrint('[Catalog]   RSS fetch failed');
     } catch (e) {
       debugPrint('[Catalog]   RSS failed: $e');
     }

@@ -227,6 +227,20 @@ class RustLib {
         );
       });
 
+  String httpGetJson(
+    String url, {
+    int timeoutSecs = 15,
+    String headersJson = '{}',
+  }) =>
+      using((arena) {
+        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final hdrPtr =
+            headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.ffi_http_get_json(urlPtr, timeoutSecs, hdrPtr),
+        );
+      });
+
   String parseKnabenHtmlJson(String html) => using((arena) {
         final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_parse_knaben_html_json(ptr));
@@ -622,6 +636,11 @@ final class _FfiNative {
               'ffi_stremio_http_get_json',
             )
             .asFunction(),
+        ffi_http_get_json = lib
+            .lookup<ffi.NativeFunction<_HttpGetNative>>(
+              'ffi_http_get_json',
+            )
+            .asFunction(),
         ffi_parse_knaben_html_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_parse_knaben_html_json',
@@ -853,6 +872,11 @@ final class _FfiNative {
       ffi_parse_stremio_meta_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
       ffi_stremio_http_get_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    int,
+    ffi.Pointer<ffi.Char>,
+  ) ffi_http_get_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_parse_knaben_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
@@ -972,6 +996,11 @@ typedef _StringInOutNative =
 typedef _StremioHttpGetNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
   ffi.Uint64,
+);
+typedef _HttpGetNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Uint64,
+  ffi.Pointer<ffi.Char>,
 );
 typedef _BuildMovieUrlNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
