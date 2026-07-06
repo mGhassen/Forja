@@ -8,14 +8,16 @@ Technical guide for building, running, and contributing to Forja.
 
 ## Architecture
 
+Full system architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
+
 Forja is a **melos monorepo**:
 
 | Layer | Location | Role |
 |-------|----------|------|
 | **UI** | `apps/forja` | Flutter app — transitional; deleted in Phase 4 |
-| **FFI loader** | `packages/rust` | Thin Dart bindings to `libforja_ffi` |
+| **FFI loader** | `packages/rust` | Thin Dart bindings to `libffi` |
 | **Engine** | `crates/*` | Rust — parsers, crypto, extractors, torrent (librqbit), proxy |
-| **Orchestration** | `packages/*` | Dart services (HTTP, registry, shelf) — ports to Kotlin in Phase 3 |
+| **Orchestration** | `packages/*` | Dart services (HTTP, registry, shelf) — deleted in Phase 2 |
 
 ```
 apps/forja (Flutter UI)
@@ -37,14 +39,13 @@ Forja/
 │   ├── lib/features/        One folder per nav tab
 │   └── lib/shared/          Player, widgets, casting/sync stubs
 ├── packages/
-│   ├── core/                Models, episode matcher, utilities
-│   ├── storage/             Settings, persistence, theme
-│   ├── api/                 TMDB, Trakt, Stremio, Jellyfin, extractors
-│   ├── streaming/           Torrent session, stream providers, local proxy
-│   ├── webstreamr/          21 sources + 23 extractors
-│   ├── scrapers/            Knaben, TPB, LimeTorrents, …
-│   └── rust/                Dart FFI + parity tests
-├── crates/                  Rust workspace (see ../crates/README.md)
+│   ├── core/                Models, utilities (deleted Phase 2)
+│   ├── storage/             Settings, persistence, theme (deleted Phase 2)
+│   ├── api/                 TMDB, Trakt, Stremio, Jellyfin (deleted Phase 2)
+│   ├── streaming/           Torrent session, providers, proxy glue (deleted Phase 2)
+│   ├── rust/                Dart FFI + parity tests (deleted Phase 4)
+│   └── kotlin/              UniFFI bindings (permanent)
+├── crates/                  Rust engine — ffi, utils, webstreamr, scrapers, torrent, proxy, …
 ├── docs/migration/          Phases 1–5
 ├── docs/rfc/                Design specs
 └── scripts/                 build_rust.sh, build_rust_mobile.sh, build_macos.sh
@@ -173,6 +174,7 @@ Agent rules: [`.cursor/rules/rust-migration.mdc`](../.cursor/rules/rust-migratio
 
 | Doc | Purpose |
 |-----|---------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, engine, data flows |
 | [apps/forja/README.md](../apps/forja/README.md) | App run/build, layout |
 | [crates/README.md](../crates/README.md) | Rust crates, NDK, iOS patch |
 | [migration/README.md](migration/README.md) | Migration phases 1–5 |
