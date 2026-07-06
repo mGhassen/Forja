@@ -2,7 +2,7 @@
 
 **Priority:** P2  
 **Severity:** Medium  
-**Status:** workaround (2026-07-06) — host cancel UX shipped; root abort open in [015](015-[open]-rust-blocking-http-engine-debt.md)  
+**Status:** workaround (2026-07-06) — host cancel UX + Rust abort shipped ([015](015-[fixed]-rust-blocking-http-engine-debt.md))  
 **Area:** `apps/forja`, `packages/api`  
 **Reported:** 2026-07-06
 
@@ -15,7 +15,7 @@ Wave 1 migration verified **functional parity** (Rust goldens, happy-path smoke)
 | Layer | What we shipped | What remains |
 |-------|-----------------|--------------|
 | **Symptom / UX** | Gen-token cancel, Stop buttons, discard stale results — UI stays responsive | Manual QA per flow below |
-| **Root / engine** | Not in scope here | [015](015-[open]-rust-blocking-http-engine-debt.md) — Rust still blocks internally; cancel does not abort in-flight HTTP |
+| **Root / engine** | Rust abort on cancel ([015](015-[fixed]-rust-blocking-http-engine-debt.md)) | Manual QA per flow below |
 
 Do **not** mark FFI-related rows `[fixed]` — those are `[workaround]` in [001](001-[workaround]-webstreamr-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md), [011](011-[workaround]-kisskh-hls-sync-ffi.md).
 
@@ -27,7 +27,7 @@ Do **not** mark FFI-related rows `[fixed]` — those are `[workaround]` in [001]
 - **IPTV scrape**: Stop + bounded empty-page exit — [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) **fixed** (logic bug, not FFI).
 - **IPTV channel scan**: Stop + `isCancelled` through verify / portal fetch.
 
-**Limitation (honest):** Cancel = discard results + stop applying UI updates. Worker isolate / Rust / headless WebView may still run until timeout. Root abort: [015](015-[open]-rust-blocking-http-engine-debt.md).
+**Limitation (honest):** Cancel aborts Rust HTTP at next boundary (webstreamr, vidsrc, stremio, torrent search). Headless WebView / Nuvio JS may still run until timeout ([010](010-[fixed]-webview-js-extractors-main-thread.md)).
 
 ## Audit checklist
 
@@ -35,7 +35,7 @@ Code reviewed 2026-07-06. **Manual device QA not run** — rows marked "needs QA
 
 | Flow | Spinner | Back works | Error message | No infinite loop | Cancel / escape | Status |
 |------|---------|------------|---------------|------------------|-----------------|--------|
-| WebStreamr resolve | overlay | yes | yes (empty) | yes | partial — gen discard | workaround [001](001-[workaround]-webstreamr-blocks-ui.md); Rust keeps running |
+| WebStreamr resolve | overlay | yes | yes (empty) | yes | Cancel — gen discard + Rust abort | workaround [001](001-[workaround]-webstreamr-blocks-ui.md); isolate still required |
 | IPTV scrape | yes | yes | yes | yes — 4 empty pages | Stop | **fixed** [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) |
 | IPTV channel scan | yes | yes | yes | bounded portals | Stop | symptom done; needs QA |
 | Stremio browse (details) | yes | yes | yes | yes | Cancel | workaround [005](005-[workaround]-stremio-http-blocks-ui.md) |
@@ -56,10 +56,10 @@ Code reviewed 2026-07-06. **Manual device QA not run** — rows marked "needs QA
 
 ## Acceptance
 
-- [x] Host cancel pattern documented (symptom layer vs [015](015-[open]-rust-blocking-http-engine-debt.md))
+- [x] Host cancel pattern documented (symptom layer + [015](015-[fixed]-rust-blocking-http-engine-debt.md) Rust abort)
 - [x] Details / streaming / player / IPTV escape hatches in code
+- [x] Root cancel-abort in Rust ([015](015-[fixed]-rust-blocking-http-engine-debt.md))
 - [ ] Manual QA pass on checklist rows marked "needs QA"
 - [ ] Widget/integration tests with mocked slow FFI
-- [ ] Root cancel-abort in Rust (tracked in [015](015-[open]-rust-blocking-http-engine-debt.md), not this issue)
 
-**Close 009:** workaround shipped. Remaining: manual QA + widget tests (optional); engine cancel → [015](015-[open]-rust-blocking-http-engine-debt.md).
+**Close 009:** workaround shipped (host UX + Rust abort). Remaining: manual QA + widget tests (optional).

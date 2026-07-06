@@ -1,5 +1,5 @@
 # Production files allowed to call RustLib.instance directly.
-# Every entry must be justified in docs/issues/004-[open]-sync-ffi-ui-thread-audit.md
+# Every entry must be justified in docs/issues/004-[fixed]-sync-ffi-ui-thread-audit.md
 # or a child issue. Prefer isolate_runner wrappers for new code.
 #
 # Format: repo-relative path

@@ -5,14 +5,14 @@
 **Status:** fixed (2026-07-06) — **complete** (not symptom-only; enforcement shipped)  
 **Area:** `scripts/check_sync_ffi.sh`, `docs/issues/sync-ffi-allowlist.txt`, `melos.yaml`  
 **Reported:** 2026-07-06  
-**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)
+**Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
 
 ## Status summary
 
 | Layer | Status | Notes |
 |-------|--------|-------|
 | **CI grep + allowlist** | **fixed** | prevents new sync FFI regressions in app/api |
-| **Engine debt** (Rust blocking HTTP) | **open** | unrelated to this issue — [015](015-[open]-rust-blocking-http-engine-debt.md) |
+| **Engine debt** (Rust blocking HTTP) | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
 
 This issue is **fully fixed**. It enforces the workaround pattern (`isolate_runner`); it does not fix Rust internals.
 

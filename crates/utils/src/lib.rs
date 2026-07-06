@@ -1,3 +1,4 @@
+pub mod engine_cancel;
 pub mod episode_matcher;
 pub mod hls_parser;
 pub mod js_unpacker;

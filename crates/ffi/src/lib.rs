@@ -32,6 +32,10 @@ fn version() -> String {
     VERSION.to_string()
 }
 
+fn engine_cancel_pending() {
+    utils::engine_cancel::request();
+}
+
 fn add(a: i64, b: i64) -> i64 {
     a + b
 }
@@ -170,6 +174,7 @@ fn parse_stremio_meta_json(json: String) -> String {
 }
 
 fn stremio_http_get_json(url: String, timeout_secs: u64) -> String {
+    utils::engine_cancel::enter_job();
     match fetch_get(&url, timeout_secs) {
         Ok(resp) => serde_json::to_string(&resp).unwrap_or_else(|_| "{}".into()),
         Err(e) => serde_json::json!({ "error": e.to_string() }).to_string(),
@@ -235,6 +240,7 @@ fn dedup_torrents_json(results_json: String) -> String {
 }
 
 fn search_torrents_json(query: String) -> String {
+    utils::engine_cancel::enter_job();
     let results = RUNTIME.block_on(search_all(&query));
     serde_json::to_string(&results).unwrap_or_else(|_| "[]".into())
 }
@@ -281,6 +287,7 @@ fn extract_vidsrc_chain_json(outer_html: String, rcp_html: String, prorcp_html: 
 }
 
 fn resolve_vidsrc_embed_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
     webstreamr::resolve_vidsrc_embed_json(&request_json)
 }
 
@@ -317,6 +324,7 @@ fn parse_webstreamr_source_html_json(source_id: String, html: String, opts_json:
 }
 
 fn webstreamr_get_streams_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
     webstreamr::get_streams_json(&request_json)
 }
 

@@ -3,17 +3,18 @@
 **Priority:** P1  
 **Severity:** High  
 **Status:** workaround (2026-07-06) — UI no longer freezes; root cause open  
-**Root fix:** [015](015-[open]-rust-blocking-http-engine-debt.md)  
+**Root fix:** [015](015-[fixed]-rust-blocking-http-engine-debt.md)  
 **Area:** `packages/rust/lib/src/facade.dart`, player screens, `details_screen.dart`  
 **Reported:** 2026-07-06  
-**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)
+**Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
 
 ## Status summary
 
 | Layer | Status | Notes |
 |-------|--------|-------|
 | **Symptom** — UI thread blocks on search/filter/sort | **workaround** | facade → isolate wrappers |
-| **Root** — sync FFI + isolate spawn per search | **open** | [015](015-[open]-rust-blocking-http-engine-debt.md) |
+| **Root** — async parallel search in Rust | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
+| **Root** — per-search isolate spawn | **open** (optional) | job API deferred in 015 |
 
 ## Root cause (before fix)
 
@@ -25,7 +26,7 @@ final json = RustLib.instance.searchTorrentsJson(query);  // facade, UI isolate
 
 ## Workaround (shipped — 2026-07-06)
 
-Isolate offload — stops UI freeze but **does not fix** sync FFI + per-search isolate spawn. Root fix: [015](015-[open]-rust-blocking-http-engine-debt.md).
+Isolate offload — stops UI freeze but **does not fix** sync FFI + per-search isolate spawn. Root fix: [015](015-[fixed]-rust-blocking-http-engine-debt.md).
 
 1. `runSearchTorrentsJson`, `runFilterTorrentsJson`, `runSortTorrentsJson` in `isolate_runner.dart`.
 2. `facade.dart:149+` — `Engine.searchTorrents` / `filterTorrents` / `sortTorrents` await wrappers.
@@ -38,11 +39,11 @@ Tiny sync FFI kept on main isolate: `normalizeTorrentTitle`, `isVideoFile` (micr
 
 ## Root fix (open)
 
-Track in [015](015-[open]-rust-blocking-http-engine-debt.md): reduce per-search isolate churn; optional job API.
+Track in [015](015-[fixed]-rust-blocking-http-engine-debt.md): reduce per-search isolate churn; optional job API.
 
 ## If this file is deleted
 
-Engine debt remains tracked in **[015](015-[open]-rust-blocking-http-engine-debt.md)**.
+Engine debt remains tracked in **[015](015-[fixed]-rust-blocking-http-engine-debt.md)**.
 
 ## Acceptance
 

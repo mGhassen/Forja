@@ -11,7 +11,10 @@ class VidsrcExtractor {
   static int _resolveGeneration = 0;
 
   /// Ignore in-flight resolves (e.g. user tapped Cancel during provider race).
-  static void cancelPending() => _resolveGeneration++;
+  static void cancelPending() {
+    _resolveGeneration++;
+    Engine.cancelPendingResolve();
+  }
 
   static String buildEmbedUrl({
     required String tmdbId,

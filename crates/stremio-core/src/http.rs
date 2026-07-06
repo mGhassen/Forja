@@ -52,7 +52,13 @@ fn fetch_with_headers(
     if url.is_empty() || !url.starts_with("http") {
         return Err("Invalid URL".into());
     }
+    if utils::engine_cancel::is_requested() {
+        return Err(utils::engine_cancel::cancelled_message());
+    }
     RUNTIME.block_on(async {
+        if utils::engine_cancel::is_requested() {
+            return Err(utils::engine_cancel::cancelled_message());
+        }
         let timeout = Duration::from_secs(timeout_secs.max(1));
         let client = if headers.is_empty() && body.is_none() {
             CLIENT.clone()

@@ -37,7 +37,7 @@ Rename the file when status changes. **Filename tag and `**Status:**` in the iss
 | [001-[workaround]-…](001-[workaround]-webstreamr-blocks-ui.md) | WebStreamr extraction blocks the UI thread | P1 | High | workaround |
 | [002-[open]-…](002-[open]-torrent-disk-cache-not-cleaned.md) | Torrent stream cache never purged from disk | P2 | High | open |
 | [003-[fixed]-…](003-[fixed]-stremio-platform-playback-model.md) | Match Stremio platform playback model | P2 | Medium | fixed |
-| [004-[open]-…](004-[open]-sync-ffi-ui-thread-audit.md) | Sync Rust FFI on UI thread — parent audit | P1 | High | open |
+| [004-[fixed]-…](004-[fixed]-sync-ffi-ui-thread-audit.md) | Sync Rust FFI on UI thread — parent audit | P1 | High | fixed |
 | [005-[workaround]-…](005-[workaround]-stremio-http-blocks-ui.md) | Stremio addon HTTP blocks UI thread | P1 | High | workaround |
 | [006-[workaround]-…](006-[workaround]-vidsrc-videasy-extractors-blocks-ui.md) | Vidsrc / Videasy extractors block UI thread | P1 | High | workaround |
 | [007-[workaround]-…](007-[workaround]-torrent-search-blocks-ui.md) | Torrent search/filter blocks UI thread | P1 | High | workaround |
@@ -48,10 +48,8 @@ Rename the file when status changes. **Filename tag and `**Status:**` in the iss
 | [012-[fixed]-…](012-[fixed]-mobile-magnet-e2e-p2-14.md) | Mobile magnet E2E (P2-14) | P2 | Medium | fixed |
 | [013-[fixed]-…](013-[fixed]-site111477-captcha-still-dart.md) | 111477 index scrape / CF retry — Dart by design | P3 | Low | fixed |
 | [014-[fixed]-…](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) | IPTV Reddit catalog cursor infinite loop | P1 | High | fixed |
-| [015-[open]-…](015-[open]-rust-blocking-http-engine-debt.md) | Rust blocking HTTP / sync resolve engine debt | P2 | Medium | open |
+| [015-[fixed]-…](015-[fixed]-rust-blocking-http-engine-debt.md) | Rust blocking HTTP / sync resolve engine debt | P2 | Medium | fixed |
 
-**Workaround vs fixed:** [001](001-[workaround]-webstreamr-blocks-ui.md), [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md), [011](011-[workaround]-kisskh-hls-sync-ffi.md) — isolate offload stops UI freeze; **root fix open** in [015](015-[open]-rust-blocking-http-engine-debt.md). [008](008-[fixed]-ci-enforce-no-sync-ffi.md) and [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) are **fixed** (complete).
-
-**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md) closes when [015](015-[open]-rust-blocking-http-engine-debt.md) done. Host cancel UX: [009](009-[workaround]-post-migration-resilience-audit.md) workaround shipped.
+**Workaround vs fixed:** [001](001-[workaround]-webstreamr-blocks-ui.md), [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md), [011](011-[workaround]-kisskh-hls-sync-ffi.md) — isolate offload still required (R5); **engine root fixed** in [015](015-[fixed]-rust-blocking-http-engine-debt.md). [004](004-[fixed]-sync-ffi-ui-thread-audit.md) parent **fixed**. Host cancel: [009](009-[workaround]-post-migration-resilience-audit.md) + Rust abort in 015.
 
 Add new items as `NNN-[open]-short-slug.md`. Set **Priority**, **Severity**, and **Status**. Rename when status changes: `[open]` → `[workaround]` or `[fixed]`.

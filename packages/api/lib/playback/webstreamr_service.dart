@@ -17,7 +17,10 @@ class WebStreamrService {
   int _resolveGeneration = 0;
 
   /// Ignore results from in-flight resolves (e.g. user tapped Cancel).
-  void cancelPending() => _resolveGeneration++;
+  void cancelPending() {
+    _resolveGeneration++;
+    Engine.cancelPendingResolve();
+  }
 
   static Future<void> init() async {
     if (!Engine.isReady) await Engine.init();

@@ -66,7 +66,7 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | 31 | P2-88 | Delete `packages/storage` → `crates/storage` + `packages/rust` | ✅ |
 | 32 | P2-89 | Stremio catalog service → `crates/stremio-core` | ⏭️ Phase 3 |
 | 33 | P2-90 | Delete `packages/core` → `api/models` + app utils | ✅ |
-| 34 | P2-91 | WebStreamr `Isolate.run` workaround + `cancelPending()` — [001](../issues/001-[workaround]-webstreamr-blocks-ui.md); root [015](../issues/015-[open]-rust-blocking-http-engine-debt.md) | ⚠️ workaround |
+| 34 | P2-91 | WebStreamr `Isolate.run` (R5) + `cancelPending()` + Rust abort — [001](../issues/001-[workaround]-webstreamr-blocks-ui.md); engine [015](../issues/015-[fixed]-rust-blocking-http-engine-debt.md) **fixed** | ⚠️ isolate workaround |
 | 35 | P2-92 | Consolidate loopback servers in `crates/proxy` (111477 index scrape stays Dart — [013](../issues/013-[fixed]-site111477-captcha-still-dart.md)) | ✅ |
 | 36 | P2-93 | Stremio HTTP via `stremioHttpGet` (kill Dart HTTP split) | ✅ |
 | 37 | P2-94 | IPTV HTTP + stream probe via `iptv_probe_stream_json` | ✅ |
@@ -87,7 +87,7 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | T1 | `packages/streaming` deleted | P2-83, P2-92 | ✅ |
 | T2 | `packages/storage` deleted | P2-88, P2-96 | ✅ |
 | T3 | `packages/core` deleted | P2-90 | ✅ |
-| T4 | WebStreamr UI non-blocking (workaround) | P2-91 | ⚠️ workaround — root [015](../issues/015-[open]-rust-blocking-http-engine-debt.md) |
+| T4 | WebStreamr UI non-blocking (isolate + engine) | P2-91, [015](../issues/015-[fixed]-rust-blocking-http-engine-debt.md) | ⚠️ isolate workaround; engine **fixed** |
 | T5 | Stremio/IPTV no fetch split-brain | P2-93, P2-94 | ✅ |
 | T6 | Mobile magnet E2E | P2-14 | ✅ |
 | T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | — | ✅ |

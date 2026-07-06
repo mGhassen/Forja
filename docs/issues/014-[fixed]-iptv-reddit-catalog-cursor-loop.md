@@ -5,7 +5,7 @@
 **Status:** fixed (2026-07-06) — **complete** (root cause fixed, not symptom-only)  
 **Area:** `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart`, `iptv_controller.dart`  
 **Reported:** 2026-07-06  
-**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)
+**Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
 
 ## Status summary
 
@@ -13,7 +13,7 @@
 |-------|--------|-------|
 | **Root cause** — cursor parsing bug → infinite loop | **fixed** | logic fix, not isolate offload |
 | **Safety net** — empty-page exit, Stop button | **fixed** | `iptv_controller.dart` |
-| **UI freeze during scrape** | **fixed** (separate) | isolate offload — [004](004-[open]-sync-ffi-ui-thread-audit.md) |
+| **UI freeze during scrape** | **fixed** (separate) | isolate offload — [004](004-[fixed]-sync-ffi-ui-thread-audit.md) |
 
 No open engine debt for this issue. This is a **real fix**, not a workaround.
 

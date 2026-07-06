@@ -1,5 +1,6 @@
 namespace forja {
     string version();
+    void engine_cancel_pending();
     i64 add(i64 a, i64 b);
     boolean episode_matches(string filename, i32 season, i32 episode);
     i32 pick_episode_index_json(string files_json, i32 season, i32 episode);

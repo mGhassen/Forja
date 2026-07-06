@@ -44,6 +44,9 @@ fn client_for(config: &FetchConfig) -> Result<reqwest::Client, String> {
 }
 
 async fn fetch_text_async(url: &str, config: &FetchConfig) -> Result<String, String> {
+    if utils::engine_cancel::is_requested() {
+        return Err(utils::engine_cancel::cancelled_message());
+    }
     let client = client_for(config)?;
     let mut req = client.get(url);
     for (k, v) in &config.headers {
@@ -64,6 +67,9 @@ async fn fetch_text_post_async(
     body: &str,
     config: &FetchConfig,
 ) -> Result<String, String> {
+    if utils::engine_cancel::is_requested() {
+        return Err(utils::engine_cancel::cancelled_message());
+    }
     let client = client_for(config)?;
     let mut req = client.post(url).body(body.to_string());
     for (k, v) in &config.headers {
@@ -80,6 +86,9 @@ async fn fetch_text_post_async(
 }
 
 async fn final_redirect_url_async(url: &str, config: &FetchConfig) -> Result<String, String> {
+    if utils::engine_cancel::is_requested() {
+        return Err(utils::engine_cancel::cancelled_message());
+    }
     let client = client_for(config)?;
     let mut req = client.get(url);
     for (k, v) in &config.headers {
@@ -90,6 +99,9 @@ async fn final_redirect_url_async(url: &str, config: &FetchConfig) -> Result<Str
 }
 
 pub fn fetch_text(url: &str, config: &FetchConfig) -> Result<String, String> {
+    if utils::engine_cancel::is_requested() {
+        return Err(utils::engine_cancel::cancelled_message());
+    }
     RUNTIME.block_on(fetch_text_async(url, config))
 }
 

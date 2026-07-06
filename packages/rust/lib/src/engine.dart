@@ -69,6 +69,8 @@ class RustLib {
 
   String get version => _readString(_native.ffi_version());
 
+  void engineCancelPending() => _native.ffi_engine_cancel_pending();
+
   int add(int a, int b) => _native.ffi_add(a, b);
 
   bool episodeMatches(String filename, int season, int episode) {
@@ -551,6 +553,11 @@ final class _FfiNative {
         ffi_version = lib
             .lookup<ffi.NativeFunction<_VersionNative>>('ffi_version')
             .asFunction(),
+        ffi_engine_cancel_pending = lib
+            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+              'ffi_engine_cancel_pending',
+            )
+            .asFunction(),
         ffi_add =
             lib.lookup<ffi.NativeFunction<_AddNative>>('ffi_add').asFunction(),
         ffi_episode_matches = lib
@@ -887,6 +894,7 @@ final class _FfiNative {
 
   final void Function(ffi.Pointer<ffi.Char>) ffi_free_string;
   final ffi.Pointer<ffi.Char> Function() ffi_version;
+  final void Function() ffi_engine_cancel_pending;
   final int Function(int, int) ffi_add;
   final bool Function(ffi.Pointer<ffi.Char>, int, int) ffi_episode_matches;
   final int Function(ffi.Pointer<ffi.Char>, int, int)

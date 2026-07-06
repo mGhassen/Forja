@@ -27,6 +27,11 @@ pub extern "C" fn ffi_version() -> *mut c_char {
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_engine_cancel_pending() {
+    crate::engine_cancel_pending();
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_add(a: i64, b: i64) -> i64 {
     crate::add(a, b)
 }

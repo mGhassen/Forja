@@ -197,7 +197,9 @@ pub fn resolve_streams(request: &StreamsRequest) -> Vec<serde_json::Value> {
     let mut url_results: Vec<UrlResult> = primary_sources
         .par_iter()
         .flat_map(|def| {
-            if playable_count.load(Ordering::Relaxed) >= EARLY_EXIT_PLAYABLE_URLS {
+            if utils::engine_cancel::is_requested()
+                || playable_count.load(Ordering::Relaxed) >= EARLY_EXIT_PLAYABLE_URLS
+            {
                 return Vec::new();
             }
             let results = source_results(def, &req, &config, token);
@@ -215,6 +217,9 @@ pub fn resolve_streams(request: &StreamsRequest) -> Vec<serde_json::Value> {
     let mut source_errors = 0usize;
 
     for fb in skipped_fallback {
+        if utils::engine_cancel::is_requested() {
+            break;
+        }
         let count = url_results.iter().filter(|r| {
             r.meta
                 .country_codes

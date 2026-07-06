@@ -84,6 +84,11 @@ abstract final class Engine {
     }
   }
 
+  static void cancelPendingResolve() {
+    if (!isReady) return;
+    RustLib.instance.engineCancelPending();
+  }
+
   static String? buildMovieUrl(String providerId, String tmdbId) {
     if (!isReady) return null;
     final id = int.tryParse(tmdbId);
