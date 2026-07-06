@@ -3,6 +3,8 @@ mod c_api;
 mod engine_torrent;
 #[cfg(feature = "local-proxy")]
 mod engine_proxy;
+#[cfg(feature = "local-proxy")]
+mod engine_seek111477;
 
 use iptv_core::m3u;
 use iptv_core::pastesh;
@@ -454,6 +456,57 @@ fn proxy_register_route(token: String, upstream_url: String) -> bool {
     {
         let _ = (token, upstream_url);
         false
+    }
+}
+
+fn seek111477_start_json(json: String) -> String {
+    #[cfg(feature = "local-proxy")]
+    {
+        return engine_seek111477::seek111477_start(&RUNTIME, json);
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        let _ = json;
+        r#"{"error":"local_proxy_unavailable"}"#.into()
+    }
+}
+
+fn seek111477_stop() {
+    #[cfg(feature = "local-proxy")]
+    engine_seek111477::seek111477_stop(&RUNTIME);
+}
+
+fn seek111477_port() -> u32 {
+    #[cfg(feature = "local-proxy")]
+    {
+        return engine_seek111477::seek111477_port() as u32;
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        0
+    }
+}
+
+fn seek111477_is_running() -> bool {
+    #[cfg(feature = "local-proxy")]
+    {
+        return engine_seek111477::seek111477_is_running();
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        false
+    }
+}
+
+fn seek111477_purge_cache_json(cache_dir: String) -> String {
+    #[cfg(feature = "local-proxy")]
+    {
+        return engine_seek111477::seek111477_purge_cache(&RUNTIME, cache_dir);
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        let _ = cache_dir;
+        r#"{"error":"local_proxy_unavailable"}"#.into()
     }
 }
 

@@ -485,6 +485,22 @@ class RustLib {
         return _native.ffi_proxy_register_route(tokenPtr, urlPtr);
       });
 
+  String seek111477StartJson(String json) => using((arena) {
+        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_seek111477_start_json(ptr));
+      });
+
+  void seek111477Stop() => _native.ffi_seek111477_stop();
+
+  int seek111477Port() => _native.ffi_seek111477_port();
+
+  bool seek111477IsRunning() => _native.ffi_seek111477_is_running();
+
+  String seek111477PurgeCacheJson(String cacheDir) => using((arena) {
+        final ptr = cacheDir.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_seek111477_purge_cache_json(ptr));
+      });
+
   String storageOpen(String path) => using((arena) {
         final ptr = path.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_storage_open(ptr));
@@ -809,6 +825,31 @@ final class _FfiNative {
               'ffi_proxy_register_route',
             )
             .asFunction(),
+        ffi_seek111477_start_json = lib
+            .lookup<ffi.NativeFunction<_Seek111477JsonNative>>(
+              'ffi_seek111477_start_json',
+            )
+            .asFunction(),
+        ffi_seek111477_stop = lib
+            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+              'ffi_seek111477_stop',
+            )
+            .asFunction(),
+        ffi_seek111477_port = lib
+            .lookup<ffi.NativeFunction<_Seek111477PortNative>>(
+              'ffi_seek111477_port',
+            )
+            .asFunction(),
+        ffi_seek111477_is_running = lib
+            .lookup<ffi.NativeFunction<_Seek111477IsRunningNative>>(
+              'ffi_seek111477_is_running',
+            )
+            .asFunction(),
+        ffi_seek111477_purge_cache_json = lib
+            .lookup<ffi.NativeFunction<_Seek111477JsonNative>>(
+              'ffi_seek111477_purge_cache_json',
+            )
+            .asFunction(),
         ffi_storage_open = lib
             .lookup<ffi.NativeFunction<_StoragePathNative>>('ffi_storage_open')
             .asFunction(),
@@ -987,6 +1028,13 @@ final class _FfiNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) ffi_proxy_register_route;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_seek111477_start_json;
+  final void Function() ffi_seek111477_stop;
+  final int Function() ffi_seek111477_port;
+  final bool Function() ffi_seek111477_is_running;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_seek111477_purge_cache_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) ffi_storage_open;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_storage_get_json;
@@ -1086,6 +1134,11 @@ typedef _ProxyRegisterNative = ffi.Bool Function(
   ffi.Pointer<ffi.Char>,
   ffi.Pointer<ffi.Char>,
 );
+typedef _Seek111477JsonNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+);
+typedef _Seek111477PortNative = ffi.Uint32 Function();
+typedef _Seek111477IsRunningNative = ffi.Bool Function();
 typedef _StoragePathNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
 );

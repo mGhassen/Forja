@@ -506,6 +506,31 @@ pub unsafe extern "C" fn ffi_proxy_register_route(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_seek111477_start_json(json: *const c_char) -> *mut c_char {
+    to_c_string(crate::seek111477_start_json(from_c_str(json)))
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_seek111477_stop() {
+    crate::seek111477_stop();
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_seek111477_port() -> u32 {
+    crate::seek111477_port()
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_seek111477_is_running() -> bool {
+    crate::seek111477_is_running()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_seek111477_purge_cache_json(cache_dir: *const c_char) -> *mut c_char {
+    to_c_string(crate::seek111477_purge_cache_json(from_c_str(cache_dir)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_storage_open(path: *const c_char) -> *mut c_char {
     to_c_string(crate::storage_open(from_c_str(path)))
 }
