@@ -5,7 +5,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'm3u_models.dart';
@@ -51,15 +51,20 @@ class M3uFetcher {
 
   static Future<String> fetch(String url) async {
     final uri = Uri.parse(url);
-    final res = await http
-        .get(uri, headers: const {'User-Agent': _ua})
-        .timeout(const Duration(seconds: 25));
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw HttpException(
-          'HTTP ${res.statusCode} while fetching playlist',
-          uri: uri);
+    final raw = RustLib.instance.httpGetJson(
+      url,
+      timeoutSecs: 25,
+      headersJson: jsonEncode({'User-Agent': _ua}),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) {
+      throw HttpException('${parsed['error']}', uri: uri);
     }
-    final body = res.body;
+    final status = parsed['status'] as int;
+    if (status < 200 || status >= 300) {
+      throw HttpException('HTTP $status while fetching playlist', uri: uri);
+    }
+    final body = parsed['body'] as String? ?? '';
     if (body.trim().isEmpty) {
       throw const FormatException('Empty response body');
     }

@@ -2,7 +2,7 @@
 
 Technical architecture reference for the Forja engine and monorepo.
 
-**Status:** v1.0 shipped on macOS. Active work: [Phase 2 — Rust engine complete](migration/02-rust-engine-complete.md) (78% — Dart engine packages still transitional).
+**Status:** v1.0 shipped on macOS. Active work: [Phase 2 — Rust engine complete](migration/02-rust-engine-complete.md) (wave 1 ~done — `streaming`/`storage`/`core` deleted; catalog in `api` remains wave 2).
 
 **Companion docs:** [DEVELOPMENT.md](DEVELOPMENT.md) (build/run) · [features/README.md](features/README.md) (user guide) · [INVENTORY.md](INVENTORY.md) (as-built facts) · [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) (boundary decisions) · [migration/README.md](migration/README.md) (phases) · [RFC-009](rfc/009-rust-ffi.md) (FFI spec)
 
@@ -50,7 +50,7 @@ Normalized end state: only `packages/rust` under `packages/`. All engine logic i
 ┌─────────────────────────────────────┐
 │  apps/forja — widgets, nav, player  │
 ├─────────────────────────────────────┤
-│  packages/{api,storage,streaming}   │  ← transitional (Phase 2 delete)
+│  packages/{api, rust}               │  ← api catalog transitional (wave 2)
 ├─────────────────────────────────────┤
 │  packages/rust — Engine FFI    │
 ├─────────────────────────────────────┤
@@ -69,12 +69,9 @@ Normalized end state: only `packages/rust` under `packages/`. All engine logic i
 Forja/
 ├── apps/forja/          Flutter product (permanent host)
 ├── packages/
-│   ├── rust/            Dart FFI bridge (permanent)
+│   ├── rust/            Dart FFI bridge + host prefs (permanent)
 │   ├── kotlin/          UniFFI POC (delete wave 2)
-│   ├── core/            Legacy engine (delete wave 1)
-│   ├── storage/         Legacy engine (delete wave 1)
-│   ├── api/             Legacy catalog engine (delete wave 2)
-│   └── streaming/       Legacy playback engine (delete wave 1)
+│   └── api/             Legacy catalog engine + lib/playback/ (wave 2 deletes catalog)
 ├── crates/              Rust engine workspace
 ├── docs/                Architecture, migration, RFCs
 └── scripts/             build_rust.sh, build_rust_mobile.sh, …
@@ -85,7 +82,7 @@ Forja/
 | `apps/forja` | Flutter UI + platform host | **Permanent** |
 | `packages/rust` | Dart FFI bridge + parity tests | **Permanent** |
 | `packages/kotlin` | UniFFI POC (Compose cancelled) | Delete wave 2 |
-| `packages/{core,storage,streaming}` | Legacy playback engine | Delete wave 1 |
+| `packages/{core,storage,streaming}` | Legacy playback engine | **Deleted** (wave 1) |
 | `packages/api` | Legacy catalog engine | Delete wave 2 |
 | `crates/*` | Rust engine | **Permanent** |
 
@@ -96,8 +93,8 @@ From [RFC-001](rfc/001-monorepo.md):
 ```
 apps/forja → packages/* only
 packages/* → never import apps/forja
-api → storage → core
-streaming → api, core, rust
+api → rust
+apps/forja → api, rust (Nuvio host in app)
 ```
 
 Cross-feature navigation uses `shell/app_router.dart` and `shell/shell_bus.dart` — features must not import other features' screens directly.
@@ -366,7 +363,7 @@ Engine.init(storagePath)
   → one-time SharedPreferences migration in facade.dart
 ```
 
-`packages/storage` repos are thin wrappers during Phase 2; target is typed Rust APIs with Dart package deleted.
+Host prefs (`SettingsService`, `kv.dart`, watch history) live in **`packages/rust/lib/src/`** after wave 1.
 
 ---
 
@@ -374,28 +371,23 @@ Engine.init(storagePath)
 
 See [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md). All engine logic targets `crates/*`.
 
-| Package | Wave | Still in Dart | Status |
-|---------|------|---------------|--------|
-| `packages/streaming` | 1 | Nuvio (host), 111477 proxy, shelf routes | P2-83, 92 |
-| `packages/storage` | 1 | `kv.dart`, `app_theme` (→ app P2-96), repos | P2-88 |
-| `packages/core` | 1 | DTOs | P2-90 |
-| `packages/api` | 2 | TMDB, Trakt, verticals | Phase 3 catalog port |
+| Package | Wave | Status |
+|---------|------|--------|
+| `packages/streaming` | 1 | **Deleted** — playback in `api/lib/playback/`, Nuvio in app |
+| `packages/storage` | 1 | **Deleted** — prefs in `packages/rust` |
+| `packages/core` | 1 | **Deleted** — DTOs in `api/models/` |
+| `packages/api` | 2 | Catalog + playback glue — catalog port wave 2 |
 
-Deleted (engine in Rust): `packages/scrapers`, `packages/webstreamr`, legacy `packages/forja_*`.
+Deleted (engine in Rust): `packages/scrapers`, `packages/webstreamr`, legacy `packages/forja_*`, `streaming`, `storage`, `core`.
 
-### Package dependency graph
+### Package dependency graph (post wave 1)
 
 ```mermaid
 flowchart BT
-  core[core]
-  rust[rust] --> core
-  storage[storage] --> rust
-  api[api] --> storage & streaming & rust & core
-  streaming[streaming] --> api & storage & rust & core
-  app["apps/forja"] --> api & storage & streaming & rust & core
+  rust[rust]
+  api[api] --> rust
+  app["apps/forja"] --> api & rust
 ```
-
-**Narrow cycle:** `api ↔ streaming` — `api` imports `streaming` for `LocalServerService` in a few content services; `streaming` imports `api` for `subtitlecat_service` and `webstreamr_settings`.
 
 ### What survives in `packages/` (normalized)
 
@@ -480,9 +472,8 @@ See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGI
 
 | Status | Items |
 |--------|-------|
-| Done | scrapers, webstreamr, forja_*, torrent filter, HLS proxy, *Backend removed |
-| Partial | streaming (P2-83), storage (P2-88) |
-| Open | P2-91 webstreamr isolate, P2-92 server consolidate, P2-93/94 Stremio/IPTV, P2-90 core, P2-14 mobile |
+| Done | scrapers, webstreamr, forja_*, torrent filter, HLS proxy, *Backend removed, streaming/storage/core delete, Stremio/IPTV HTTP, proxy consolidate |
+| Open | P2-14 mobile magnet E2E, P2-70 sign-off, IPTV catalog scraper (wave 2) |
 
 ### Wave 2 — catalog engine (Phase 3)
 

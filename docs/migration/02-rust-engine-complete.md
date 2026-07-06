@@ -136,8 +136,8 @@ packages/api/lib/playback/
 | T4 | WebStreamr non-blocking (P2-91) | ✅ |
 | T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | ✅ |
 | T6 | Mobile magnet E2E (P2-14) | ⬜ |
-| T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | 🔄 |
-| T8 | Sign-off (P2-70) | ⬜ |
+| T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | ✅ HTTP/probe/decrypt via Rust; IPTV catalog scraper = host orchestration |
+| T8 | Sign-off (P2-70) | 🔄 INVENTORY + ARCHITECTURE updated |
 
 ---
 

@@ -16,27 +16,21 @@ Forja is a **melos monorepo** shipping one Flutter desktop/mobile app with **~20
 
 ```mermaid
 flowchart BT
-  app["apps/forja\n~70 screens, bootstrap, player"]
-  api["packages/api\n~23.7k LOC"]
-  streaming["packages/streaming\n~5.6k LOC"]
-  storage["packages/storage\n~1.4k LOC"]
-  core["packages/core\n~490 LOC"]
-  rustPkg["packages/rust\nFFI + facade"]
+  app["apps/forja\n~70 screens, bootstrap, player, Nuvio host"]
+  api["packages/api\ncatalog + lib/playback/"]
+  rustPkg["packages/rust\nFFI + SettingsService + KV"]
   crates["crates/*\nRust engine"]
 
-  app --> api & streaming & storage & core & rustPkg
-  api --> storage & streaming & core & rustPkg
-  streaming --> api & storage & core & rustPkg
-  rustPkg --> core
+  app --> api & rustPkg
+  api --> rustPkg
   rustPkg --> crates
 ```
 
 ### Notable facts
 
-- **`api` and `streaming` are circular** (both declare each other in `pubspec.yaml`).
-- **Engine logic is not confined to `packages/`** — IPTV HTTP client lives in [`apps/forja/lib/features/iptv/iptv/data/iptv_network.dart`](../apps/forja/lib/features/iptv/iptv/data/iptv_network.dart) (~1.2k LOC, Dart `http` + Rust parsers).
-- **`apps/forja` barely touches Rust directly** — only ~8 files import `Engine` / `RustLib`; most engine calls go through `api`, `streaming`, or `storage`.
-- **Migration docs** state all engine packages must be deleted ([migration/README.md](migration/README.md)) — that is a **project decision**, not enforced by runtime.
+- **Legacy `packages/streaming`, `storage`, `core` deleted** (wave 1). Playback glue lives in `packages/api/lib/playback/`; Nuvio in `apps/forja/lib/shared/nuvio/`.
+- **IPTV catalog scraper** remains in [`iptv_network.dart`](../apps/forja/lib/features/iptv/iptv/data/iptv_network.dart) (~1.1k LOC) — orchestration + Reddit/GitHub portal discovery; HTTP/probe via Rust FFI.
+- **`apps/forja` calls Rust directly** in IPTV data, M3U fetch, bootstrap, and player paths; most playback goes through `api/playback` or `Engine` facade.
 
 ---
 
@@ -44,13 +38,10 @@ flowchart BT
 
 | Layer | LOC (approx) | Files | Role |
 |-------|-------------|-------|------|
-| `packages/api` | 23,700 | 59 | HTTP clients, scrapers, WebView extractors, players, orchestration |
-| `packages/streaming` | 5,640 | 17 | Torrent/proxy FFI glue, Nuvio JS host, 111477 proxy, local shelf server |
-| `packages/storage` | 1,380 | 8 | Settings singleton, watch history, theme/widgets, Rust KV glue |
-| `packages/core` | 490 | 7 | DTOs + small utils |
-| `packages/rust` | ~2,000+ | — | FFI bindings + facade + parity tests |
-| `crates/*` (Rust) | ~8,500+ (excl. vendored sockets) | 90+ `.rs` | Parsers, webstreamr, torrent, proxy, storage |
-| `apps/forja/lib` | large | 61 feature files + shell/shared | UI + IPTV network client |
+| `packages/api` | ~24k | 60+ | Catalog HTTP/scrapers + `lib/playback/` (torrent/proxy/extractors) |
+| `packages/rust` | ~2.5k | — | FFI bindings, facade, SettingsService, watch history, parity tests |
+| `crates/*` (Rust) | ~10k+ | 100+ `.rs` | Parsers, webstreamr, torrent, proxy, storage, iptv probe |
+| `apps/forja/lib` | large | 61+ feature files + shell/shared | UI, Nuvio host, IPTV catalog orchestration |
 
 **Rust is concentrated** in stream-resolution, torrent, and parsing paths. **Dart still owns** almost all metadata APIs (TMDB, Trakt, Jellyfin), vertical content (anime, Arabic, manga), and platform integration (players, OAuth, secure storage).
 
@@ -125,63 +116,54 @@ Grouped by **technology used**, not package role.
 
 ---
 
-## 5. `packages/streaming` — capability inventory
+## 5. Playback glue — `packages/api/lib/playback/` + Nuvio host
 
-| File | LOC | Nature | Technology |
-|------|-----|--------|------------|
-| `site111477_proxy.dart` | 1,572 | Substantial Dart logic | `dart:io` seekable proxy, captcha HTML, chunk cache |
-| `nuvio_runtime.dart` | 1,164 | JS execution host | `flutter_js` + Dart `http` bridge + cheerio bundle |
-| `nuvio_service.dart` | 730 | Addon lifecycle | HTTP manifest/scripts + prefs |
-| `local_server_service.dart` | 443 | Parallel local server | **shelf** + Rust proxy start + domain routes |
-| `videasy_extractor.dart` | 394 | Hybrid | Dart HTTP + WebView WASM + Rust AES |
-| `torrent_stream_service.dart` | 281 | FFI orchestration | Rust torrent engine |
-| `webstreamr_service.dart` | 156 | Thin wrapper | Rust `webstreamrGetStreamsJson` + HLS URL rewrite |
-| `stream_extractor.dart` | 450 | WebView sniffer | **Duplicate of api copy** — unused by apps |
-| `stream_resolver.dart` | 120 | Provider orchestration | **Unused by apps** |
+| File | Nature | Technology |
+|------|--------|------------|
+| `torrent_stream_service.dart` | FFI orchestration | Rust torrent engine |
+| `webstreamr_service.dart` | Thin wrapper | Rust `webstreamrGetStreamsJson` + isolate offload |
+| `site111477_proxy.dart` | Thin FFI | Rust seekable proxy |
+| `local_server_service.dart` | Thin FFI | Rust axum shelf routes (toky, comic, jellyfin, subtitlecat) |
+| `videasy_extractor.dart` | Hybrid | Dart HTTP + WebView WASM + Rust AES |
+| `stream_extractor.dart` | WebView sniffer | Used by player flows |
+| `provider_registry.dart` | Provider orchestration | Rust `stream-core` templates |
 
-### Localhost HTTP server implementations (four patterns)
+Nuvio JS host lives in **`apps/forja/lib/shared/nuvio/`** (`nuvio_runtime.dart`, `nuvio_service.dart`).
+
+### Localhost HTTP server implementations
 
 | # | Location | Stack | Routes / purpose |
 |---|----------|-------|------------------|
-| 1 | `crates/proxy` | axum (Rust) | `/proxy`, `/hls-proxy`, `/proxy/{token}` |
-| 2 | `local_server_service.dart` | shelf (Dart) | Jellyfin, toky, comic, subtitlecat translate |
-| 3 | `site111477_proxy.dart` | `dart:io` (Dart) | Seekable byte-range proxy for 111477 |
-| 4 | `mega_proxy.dart` (in api) | `dart:io` (Dart) | Mega.nz AES decrypt loopback |
+| 1 | `crates/proxy` | axum (Rust) | `/proxy`, `/hls-proxy`, `/proxy/{token}`, domain routes |
+| 2 | `site111477` (Rust via FFI) | axum | Seekable byte-range proxy for 111477 |
+| 3 | `mega_proxy.dart` (in api) | `dart:io` (Dart) | Mega.nz AES decrypt loopback |
 
-**Apps never use** `StreamResolver`, the `ProviderSettingsRepo` → resolver path, or streaming's `stream_extractor`. They use the **api duplicate** and inline resolution in player/home screens.
-
----
-
-## 6. `packages/storage` — capability inventory
-
-| Module | LOC | What it actually is |
-|--------|-----|---------------------|
-| `settings_service.dart` | 471 | Singleton: streaming prefs, debrid, navbar, subtitles, theme key, stremio addons, provider order — duplicate keys in some cases |
-| `app_theme.dart` | 331 | Flutter UI: `ThemeData`, GoogleFonts, `FocusableControl` widget |
-| `kv.dart` | 160 | Dual backend: Rust KV when engine ready, else SharedPreferences |
-| `watch_history_service.dart` | 166 | Continue-watching CRUD |
-| `iptv_settings_repo.dart` | 141 | Models + Rust persistence — **zero app imports** |
-| `provider_settings_repo.dart` | 51 | Rust KV — only used by unused `stream_resolver` |
-| `playback_settings_repo.dart` | 29 | Rust KV — **zero imports anywhere** |
-| `stremio_settings_repo.dart` | 25 | Rust KV — **dead** (apps use `SettingsService` instead) |
-
-**Observation:** Rust KV exists and is wired, but persistence is fragmented across `SettingsService` (`kv.dart`), direct repos (mostly dead), and duplicate keys (`stream_provider_order` vs `forja_provider_order`).
-
-**`flutter_secure_storage`** is used in api (Trakt, Jellyfin, MDBList), not in the storage package.
+**Deleted:** `packages/streaming` (shelf server, Dart 111477 proxy, duplicate extractors).
 
 ---
 
-## 7. `packages/core`
+## 6. Host prefs — `packages/rust/lib/src/`
 
-| File | LOC | Content |
-|------|-----|---------|
-| `movie.dart`, `stream_source.dart` | 126 | JSON DTOs |
-| `torrent_result.dart` | 47 | DTO + `qualityScore` / `sizeInBytes` parsing logic |
-| `language_display.dart` | 172 | Pure Dart lookup table |
-| `webview_cleanup.dart` | 99 | Platform FS cleanup |
-| `smooth_page_route.dart` | 35 | Unused UI route helper |
+| Module | What it actually is |
+|--------|---------------------|
+| `settings_service.dart` | Singleton: streaming prefs, debrid, navbar, subtitles, theme key, stremio addons, provider order |
+| `kv.dart` | Dual backend: Rust KV when engine ready, else SharedPreferences |
+| `watch_history_service.dart` | Continue-watching CRUD |
 
-Imported mainly by `api`, `streaming`, and app screens. Small but widely referenced.
+**Deleted:** `packages/storage` (`app_theme` moved to app design layer).
+
+**`flutter_secure_storage`** is used in api (Trakt, Jellyfin, MDBList).
+
+---
+
+## 7. Shared DTOs — `packages/api/lib/models/`
+
+| File | Content |
+|------|---------|
+| `movie.dart`, `stream_source.dart` | JSON DTOs |
+| `torrent_result.dart` | DTO + `qualityScore` / `sizeInBytes` parsing logic |
+
+**Deleted:** `packages/core` — utils moved to `apps/forja/lib/shared/utils/`.
 
 ---
 
@@ -189,13 +171,13 @@ Imported mainly by `api`, `streaming`, and app screens. Small but widely referen
 
 | Location | LOC | What |
 |----------|-----|------|
-| [`iptv_network.dart`](../apps/forja/lib/features/iptv/iptv/data/iptv_network.dart) | ~1,200 | Full Xtream HTTP client; Rust only parses responses |
-| [`m3u_parser.dart`](../apps/forja/lib/features/iptv/iptv/m3u/m3u_parser.dart) | small | Delegates to `Engine.parseM3uChannels` |
-| [`pastesh_decryptor.dart`](../apps/forja/lib/features/iptv/iptv/data/pastesh_decryptor.dart) | small | HTTP fetch in Dart, decrypt in Rust |
+| [`iptv_network.dart`](../apps/forja/lib/features/iptv/iptv/data/iptv_network.dart) | ~1,100 | Catalog scraper orchestration; Xtream HTTP via Rust FFI |
+| [`m3u_store.dart`](../apps/forja/lib/features/iptv/iptv/m3u/m3u_store.dart) | small | M3U fetch via Rust `httpGetJson` |
+| [`pastesh_decryptor.dart`](../apps/forja/lib/features/iptv/iptv/data/pastesh_decryptor.dart) | small | HTTP + decrypt via Rust FFI |
 | [`details_screen.dart`](../apps/forja/lib/features/home/details_screen.dart) | — | Direct `Engine.sortTorrents` |
-| Player screens | — | Inline provider resolution (webstreamr, nuvio, 111477, videasy) — not centralized in `StreamResolver` |
+| Player screens | — | Inline provider resolution (webstreamr, nuvio, 111477, videasy) |
 
-**Observation:** Deleting `packages/` does not automatically consolidate engine logic — some lives under `apps/forja/features/`.
+**Observation:** IPTV catalog discovery (Reddit/GitHub portals) remains Dart orchestration — wave 2 or permanent host adapter.
 
 ---
 
@@ -203,16 +185,16 @@ Imported mainly by `api`, `streaming`, and app screens. Small but widely referen
 
 | Capability | Rust | Dart still active | Notes |
 |------------|------|-------------------|-------|
-| WebStreamr full resolve | `webstreamr_get_streams_json` fetches | `webstreamr_service` builds request only | Main path: Rust does HTTP (`fetcher.rs`) |
-| WebStreamr granular | `extract_*_html_json` parse-only | No active full-chain Dart caller found | Legacy FFI surface |
-| Stremio | `stremio_http_get_json` exists | `StremioService` uses `package:http` | Rust HTTP export unused by app |
+| WebStreamr full resolve | `webstreamr_get_streams_json` fetches | Thin Dart wrapper + isolate | Rust does HTTP |
+| Stremio | `stremio_http_get_json` | `StremioService` uses FFI | ✅ unified |
+| IPTV Xtream HTTP | `http_get_json` FFI | `iptv_network` calls FFI | ✅ unified; catalog scraper still Dart |
+| IPTV probe | `iptv_probe_stream_json` | thin wrapper | ✅ unified |
 | Torrent search | `search_torrents_json` | Jackett / Prowlarr separate in api | Two indexer systems |
 | HLS qualities | `parse_hls_master_json` | Dart fetches master playlist first | Split fetch / parse |
-| IPTV Xtream | parsers in `iptv-core` | Full HTTP in app feature folder | Split fetch / parse |
-| Stream embed sniff | — | WebView in **api** `stream_extractor` | streaming copy orphaned |
+| Stream embed sniff | — | WebView in **api** `stream_extractor` | Host WebView |
 | Provider templates | `stream-core` | `provider_registry` wraps FFI | Aligned |
 | KV storage | `crates/storage` | `kv.dart` + SharedPreferences fallback | Dual path |
-| Local proxy | Rust axum | Dart shelf runs in parallel at boot | Two servers |
+| Local proxy | Rust axum only | — | shelf deleted |
 
 ---
 
@@ -224,7 +206,7 @@ Imported mainly by `api`, `streaming`, and app screens. Small but widely referen
 | [DEVELOPMENT.md](DEVELOPMENT.md) "Orchestration in packages/*" | Player/home screens orchestrate providers; `StreamResolver` unused |
 | Migration: `packages/webstreamr` deleted | True for Dart package; logic lives in `crates/webstreamr` |
 | Migration: engine only in `packages/` | IPTV HTTP in `apps/forja/features/iptv/` |
-| RFC-001: no circular deps | `api ↔ streaming` cycle exists |
+| RFC-001: no circular deps | `api ↔ streaming` cycle **resolved** (streaming deleted) |
 | Target: "UI calls Engine only" | Apps call `TmdbApi`, `StremioService`, `SettingsService` widely |
 
 ---

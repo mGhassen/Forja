@@ -1,5 +1,6 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 
 class PasteShDecryptor {
@@ -22,11 +23,16 @@ class PasteShDecryptor {
 
   static Future<String?> _httpGetText(String url) async {
     try {
-      final resp = await http
-          .get(Uri.parse(url), headers: {'User-Agent': _ua})
-          .timeout(const Duration(seconds: 12));
-      if (resp.statusCode < 200 || resp.statusCode >= 300) return null;
-      return resp.body;
+      final raw = RustLib.instance.httpGetJson(
+        url,
+        timeoutSecs: 12,
+        headersJson: jsonEncode({'User-Agent': _ua}),
+      );
+      final parsed = jsonDecode(raw) as Map<String, dynamic>;
+      if (parsed.containsKey('error')) return null;
+      final status = parsed['status'] as int;
+      if (status < 200 || status >= 300) return null;
+      return parsed['body'] as String?;
     } catch (e) {
       debugPrint('Decrypt GET failed: $e');
       return null;
