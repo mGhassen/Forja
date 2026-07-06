@@ -45,7 +45,7 @@ Code reviewed 2026-07-06. **Manual device QA not run** — rows marked "needs QA
 | Provider race (streaming) | overlay | yes | snackbar | order loop | Cancel | symptom done; needs QA |
 | Player auto-fallback | inline | back pops | error UI | provider list finite | exit aborts | symptom done; needs QA |
 | Player manual switch | snackbar | back pops | snackbar | — | exit aborts | symptom done; needs QA |
-| WebView embed extract | headless | — | null | 60s timeout | overlay dispose | partial — [010](010-[open]-webview-js-extractors-main-thread.md) open |
+| WebView embed extract | headless | — | null | 60s timeout | overlay cancel | [010](010-[fixed]-webview-js-extractors-main-thread.md) fixed |
 | Nuvio scraper | overlay / details | yes | yes | JS timeout 30s | gen discard | symptom done; needs QA |
 
 ## Deliverables

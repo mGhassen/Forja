@@ -46,8 +46,9 @@ Dart `Isolate.run` only moves the block off the UI thread. It does not fix engin
 
 ## Acceptance
 
-- [ ] `webstreamr` uses async HTTP; sources resolve in parallel with early exit
-- [ ] `stremio-core` uses async HTTP
+- [x] `webstreamr` uses async HTTP (`fetcher.rs` — shared `reqwest::Client` + tokio runtime; sync API wraps `block_on`)
+- [x] `webstreamr` primary sources resolve in parallel with early exit (`resolver.rs` — rayon, 8 playable URLs)
+- [x] `stremio-core` uses shared async HTTP client + runtime (no per-call `Runtime::new()`)
 - [ ] Cancel from host aborts in-flight resolve in Rust (with [009](009-[workaround]-post-migration-resilience-audit.md))
 - [ ] Document in [RFC-009](../rfc/009-rust-ffi.md) threading section — remove "Future:" placeholder
 - [ ] Profile: long resolve no longer spawns new isolate per call (if job API adopted)

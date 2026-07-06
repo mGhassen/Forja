@@ -68,6 +68,35 @@ jobs:
           path: apps/forja/ios/Runner/Frameworks/libffi.dylib
           if-no-files-found: error
 
+  android-magnet-e2e:
+    name: Android emulator magnet smoke (P2-14)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+      - name: build libffi.so
+        run: ./scripts/build_rust_mobile.sh android
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: mobile magnet smoke on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          script: |
+            cd apps/forja
+            flutter pub get
+            flutter test test/mobile_magnet_e2e_test.dart
+
   mobile-torrent-probe:
     name: Mobile torrent FFI probe (informational)
     runs-on: macos-latest

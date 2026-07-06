@@ -14,6 +14,7 @@ class StreamExtractor {
   HeadlessInAppWebView? _headlessWebView;
   Completer<ExtractedMedia?>? _completer;
   Timer? _timeoutTimer;
+  bool _cancelled = false;
   
   String? _capturedVideo;
   String? _capturedAudio;
@@ -45,6 +46,7 @@ class StreamExtractor {
     required bool isMovie,
     int? season,
     int? episode,
+    bool Function()? isCancelled,
   }) async {
     try {
       // Initialize Amri extractor if needed
@@ -71,6 +73,7 @@ class StreamExtractor {
         year,
         season: season,
         episode: episode,
+        isCancelled: isCancelled,
       );
       
       // Check for rate limit
@@ -107,14 +110,27 @@ class StreamExtractor {
     }
   }
 
+  /// Stop an in-flight sniff and dispose the headless WebView.
+  Future<void> cancel() async {
+    _cancelled = true;
+    await _cleanup();
+    if (_completer != null && !_completer!.isCompleted) {
+      _completer!.complete(null);
+    }
+  }
+
   Future<ExtractedMedia?> extract(
     String url, {
     Duration timeout = const Duration(seconds: 60),
     String? referer,
     String? iframeWrapperBaseUrl,
+    bool Function()? isCancelled,
   }) async {
     // 0. Ensure previous instance is fully cleaned up before starting new one
     await _cleanup();
+    _cancelled = false;
+
+    bool cancelled() => _cancelled || (isCancelled?.call() ?? false);
     
     _completer = Completer<ExtractedMedia?>();
     _capturedVideo = null;
@@ -124,6 +140,11 @@ class StreamExtractor {
     
     _timeoutTimer = Timer(timeout, () { 
       if (_completer != null && !_completer!.isCompleted) {
+        if (cancelled()) {
+          _cleanup();
+          _completer?.complete(null);
+          return;
+        }
         // Select best quality from detected URLs before completing
         if (_detectedVideoUrls.isNotEmpty) {
            _capturedVideo = _selectBestQuality(_detectedVideoUrls);
@@ -201,6 +222,10 @@ class StreamExtractor {
       await _headlessWebView?.run();
     } catch (e) {
       debugPrint('[StreamExtractor] Engine Error: $e');
+    }
+    if (cancelled()) {
+      await cancel();
+      return null;
     }
     return _completer?.future;
   }
@@ -347,6 +372,7 @@ class StreamExtractor {
   }
 
   void _completeWithCaptured(String referer) {
+    if (_cancelled) return;
     if (_completer != null && !_completer!.isCompleted) {
       _completer!.complete(ExtractedMedia(
         url: _capturedVideo!,
@@ -511,10 +537,7 @@ class StreamExtractor {
   }
 
   Future<void> dispose() async {
-    await _cleanup();
-    if (_completer != null && !_completer!.isCompleted) {
-      _completer!.complete(null);
-    }
+    await cancel();
     
     // Dispose Amri extractor
     await _amriExtractor?.dispose();

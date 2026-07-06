@@ -45,6 +45,7 @@ class KissKhExtractor {
   HeadlessInAppWebView? _web;
   Completer<_RawHit>? _videoCompleter;
   final List<Map<String, dynamic>> _subsBuffer = [];
+  bool _cancelled = false;
 
   static const _userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -57,7 +58,10 @@ class KissKhExtractor {
     required double episodeNumber,
     void Function(String phase, String detail)? onProgress,
     Duration timeout = const Duration(seconds: 25),
+    bool Function()? isCancelled,
   }) async {
+    _cancelled = false;
+    bool cancelled() => _cancelled || (isCancelled?.call() ?? false);
     onProgress?.call('init', 'Opening kisskh page…');
 
     final pageUrl = KissKhService.episodePageUrl(
@@ -139,35 +143,36 @@ class KissKhExtractor {
       );
 
       await _web!.run();
+      if (cancelled()) return null;
 
       final hit = await _videoCompleter!.future.timeout(
         timeout,
         onTimeout: () =>
             throw TimeoutException('No video URL in ${timeout.inSeconds}s'),
       );
+      if (cancelled()) return null;
 
       // Brief grace window so subtitles (which often arrive slightly after
       // the video URL) can land in the same payload.
       await Future.any<void>([
         Future<void>.delayed(const Duration(milliseconds: 1200)),
-        // Bail early if subs are already there.
         Future<void>.delayed(const Duration(milliseconds: 0))
             .then((_) => _subsBuffer.isEmpty
                 ? Future<void>.delayed(const Duration(milliseconds: 1200))
                 : Future<void>.value()),
       ]);
+      if (cancelled()) return null;
 
       onProgress?.call('done', 'Stream ready');
 
       // ─── Decrypt subtitles ────────────────────────────────────────────
-      // kisskh ships AES-128-CBC encrypted SRTs. Download + decrypt + write
-      // to a temp file so the player can consume them as plain local files.
       if (_subsBuffer.isNotEmpty) {
         onProgress?.call('subs',
             'Decrypting ${_subsBuffer.length} subtitle track(s)…');
-        await Future.wait(_subsBuffer.map((s) async {
+        for (final s in _subsBuffer) {
+          if (cancelled()) break;
           final url = (s['url'] ?? '').toString();
-          if (url.isEmpty) return;
+          if (url.isEmpty) continue;
           final localUri = await KissKhSubtitleDecryptor.fetchAndDecrypt(
             url: url,
             episodeId: episodeId,
@@ -179,8 +184,9 @@ class KissKhExtractor {
             s['url'] = localUri;
             s['id'] = localUri;
           }
-        }));
+        }
       }
+      if (cancelled()) return null;
 
       return KissKhStream(
         url: hit.url,
@@ -193,6 +199,7 @@ class KissKhExtractor {
         },
       );
     } catch (e) {
+      if (cancelled()) return null;
       onProgress?.call('error', '$e');
       return null;
     } finally {
@@ -201,8 +208,19 @@ class KissKhExtractor {
     }
   }
 
-  Future<void> dispose() async {
+  Future<void> cancel() async {
+    _cancelled = true;
+    if (_videoCompleter != null && !_videoCompleter!.isCompleted) {
+      _videoCompleter!.completeError(
+        TimeoutException('KissKh extraction cancelled'),
+      );
+    }
     await _cleanup();
+    _videoCompleter = null;
+  }
+
+  Future<void> dispose() async {
+    await cancel();
   }
 
   Future<void> _cleanup() async {

@@ -1,12 +1,25 @@
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 use std::time::Duration;
+
+use tokio::runtime::Runtime;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct HttpResponse {
     pub status: u16,
     pub body: String,
 }
+
+static RUNTIME: LazyLock<Runtime> =
+    LazyLock::new(|| Runtime::new().expect("stremio-core tokio runtime"));
+
+static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::limited(8))
+        .build()
+        .expect("stremio-core http client")
+});
 
 pub fn fetch_get(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {
     fetch_get_with_headers(url, timeout_secs, &HashMap::new())
@@ -39,18 +52,23 @@ fn fetch_with_headers(
     if url.is_empty() || !url.starts_with("http") {
         return Err("Invalid URL".into());
     }
-    let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
-    rt.block_on(async {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(timeout_secs.max(1)))
-            .redirect(reqwest::redirect::Policy::limited(8))
-            .build()
-            .map_err(|e| e.to_string())?;
+    RUNTIME.block_on(async {
+        let timeout = Duration::from_secs(timeout_secs.max(1));
+        let client = if headers.is_empty() && body.is_none() {
+            CLIENT.clone()
+        } else {
+            reqwest::Client::builder()
+                .timeout(timeout)
+                .redirect(reqwest::redirect::Policy::limited(8))
+                .build()
+                .map_err(|e| e.to_string())?
+        };
         let mut req = if let Some(body) = body {
             client.post(url).body(body.to_string())
         } else {
             client.get(url)
         };
+        req = req.timeout(timeout);
         for (k, v) in headers {
             req = req.header(k.as_str(), v.as_str());
         }

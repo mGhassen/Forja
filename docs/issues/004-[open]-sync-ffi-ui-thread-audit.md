@@ -69,13 +69,13 @@ Enforced by [008](008-[fixed]-ci-enforce-no-sync-ffi.md) (`check_sync_ffi.sh`).
 | `settings_screen.dart` | `version` | Instant |
 | `iptv_network.dart` | `decodeXtreamText` | Tiny base64 decode |
 
-## Root fix (open)
+## Root fix (open — partial engine work shipped 2026-07-06)
 
-[015](015-[open]-rust-blocking-http-engine-debt.md) — async HTTP, parallel resolve, cancel-abort, reduce isolate churn.
+[015](015-[open]-rust-blocking-http-engine-debt.md) — async HTTP + parallel resolve **partially shipped** in `crates/webstreamr`, `crates/stremio-core`. Still open: cancel-abort in Rust, job API / isolate churn, RFC-009 threading doc.
 
 ## Acceptance
 
 - [x] [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md) workaround shipped
 - [x] [008](008-[fixed]-ci-enforce-no-sync-ffi.md) CI grep in place
-- [ ] [015](015-[open]-rust-blocking-http-engine-debt.md) engine root fix
+- [ ] [015](015-[open]-rust-blocking-http-engine-debt.md) engine root fix (async HTTP + parallel resolve shipped; cancel + job API open)
 - [x] [009](009-[workaround]-post-migration-resilience-audit.md) host cancel UX workaround shipped (QA/tests deferred in that file)

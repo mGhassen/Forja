@@ -121,7 +121,7 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 - [ ] WASM smoke test (v3.0)
 - [x] Step 9: playback Dart engine deleted (`streaming`/`storage`/`core`; parity in `packages/rust/test/`)
 - [x] B2: `libtorrent_flutter` dropped — librqbit via `crates/torrent` (P2-20 → P2-23)
-- [ ] Device magnet E2E on iOS/Android (P2-14)
+- [x] Device magnet E2E on iOS/Android (P2-14) — `mobile_magnet_e2e_test.dart` + CI `android-magnet-e2e`
 
 ## Related
 

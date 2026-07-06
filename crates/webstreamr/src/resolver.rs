@@ -4,8 +4,13 @@ use crate::language::country_flags;
 use crate::sources::{source_by_id, run_source, ALL_SOURCES, SourceDef, SourceEmbed};
 use crate::types::{MediaType, StreamFormat};
 use crate::utils::get_closest_resolution;
+use rayon::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// Stop querying extra primary sources once this many playable URLs are found.
+const EARLY_EXIT_PLAYABLE_URLS: usize = 8;
 
 #[derive(Debug, Deserialize)]
 pub struct StreamsRequest {
@@ -171,9 +176,8 @@ pub fn resolve_streams(request: &StreamsRequest) -> Vec<serde_json::Value> {
         MediaType::Series => "series",
     };
 
-    let mut url_results: Vec<UrlResult> = Vec::new();
-    let mut source_errors = 0usize;
     let mut skipped_fallback = Vec::new();
+    let mut primary_sources = Vec::new();
 
     for source_id in &enabled {
         let Some(def) = source_by_id(source_id) else {
@@ -186,8 +190,29 @@ pub fn resolve_streams(request: &StreamsRequest) -> Vec<serde_json::Value> {
             skipped_fallback.push(def);
             continue;
         }
-        handle_source(def, &req, &config, token, media_type, &mut url_results, &mut source_errors);
+        primary_sources.push(def);
     }
+
+    let playable_count = AtomicUsize::new(0);
+    let mut url_results: Vec<UrlResult> = primary_sources
+        .par_iter()
+        .flat_map(|def| {
+            if playable_count.load(Ordering::Relaxed) >= EARLY_EXIT_PLAYABLE_URLS {
+                return Vec::new();
+            }
+            let results = source_results(def, &req, &config, token);
+            let added = results
+                .iter()
+                .filter(|r| r.error.is_none() && !r.url.is_empty())
+                .count();
+            if added > 0 {
+                playable_count.fetch_add(added, Ordering::Relaxed);
+            }
+            results
+        })
+        .collect();
+
+    let mut source_errors = 0usize;
 
     for fb in skipped_fallback {
         let count = url_results.iter().filter(|r| {
@@ -259,6 +284,18 @@ pub fn resolve_streams(request: &StreamsRequest) -> Vec<serde_json::Value> {
     }
 
     streams
+}
+
+fn source_results(
+    def: &SourceDef,
+    req: &crate::sources::SourceRequest,
+    config: &Config,
+    token: Option<&str>,
+) -> Vec<UrlResult> {
+    let mut results = Vec::new();
+    let mut errors = 0usize;
+    handle_source(def, req, config, token, "", &mut results, &mut errors);
+    results
 }
 
 fn handle_source(

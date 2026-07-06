@@ -305,7 +305,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
           WebStreamrService().cancelPending();
           VidsrcExtractor.cancelPending();
           NuvioService.instance.cancelPending();
-          unawaited(_extractor.dispose());
+          unawaited(_extractor.cancel());
           Navigator.of(context).pop();
         },
       ),
@@ -569,7 +569,11 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
         : provider['movie'](_movie.id.toString());
     debugPrint('[StreamExtractor] Trying ${provider['name']} source: $url');
     final result =
-        await _extractor.extract(url, timeout: const Duration(seconds: 5));
+        await _extractor.extract(
+      url,
+      timeout: const Duration(seconds: 5),
+      isCancelled: () => _extractionCancelled,
+    );
     if (_extractionCancelled || result == null) return false;
     if (!mounted) return false;
     pushPlayer(

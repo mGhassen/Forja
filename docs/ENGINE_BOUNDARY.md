@@ -105,6 +105,21 @@ HTTP location is an implementation detail inside the engine. The split line is *
 
 Engine logic in `apps/forja/features/**/data/` must move to `crates/*` (or host adapters only). IPTV HTTP is engine (P2-94).
 
+### R8 — Host-side extractors (C3–C5) stay on the UI isolate
+
+WebView, `flutter_js`, and WASM hosts **cannot** move off the main Dart isolate. They may still freeze the spinner during heavy work — mitigate with **timeout + cancel**, not sync Rust FFI patterns.
+
+| Extractor | File | Typical block | Timeout | Cancel |
+|-----------|------|---------------|---------|--------|
+| Headless embed sniff | `packages/api/lib/api/stream_extractor.dart` | 5–60s (page load + JS hooks) | ✅ param (default 60s) | ✅ `cancel()` + `isCancelled` |
+| Kisskh WebView | `packages/api/lib/api/kisskh_extractor.dart` | 10–25s (+ subtitle decrypt) | ✅ 25s | ✅ `cancel()` + `isCancelled` |
+| Amri WebView | `packages/api/lib/api/amri_extractor.dart` | 15–30s | ✅ 30s | ✅ `cancel()` + `isCancelled` |
+| Nuvio scrapers | `apps/forja/lib/shared/nuvio/nuvio_runtime.dart` | 10–30s (JS event loop) | ✅ 30s | ✅ `NuvioService.cancelPending()` |
+| Videasy WASM | `packages/api/lib/playback/videasy_extractor.dart` | 5–45s (HTTP + WASM + AES FFI) | ✅ 45s | ✅ `isCancelled` |
+| Arabic WebView fallback | `packages/api/lib/api/arabic_service.dart` | 5–15s | ✅ 15s | via `StreamExtractor.cancel()` |
+
+Rust-side decrypt/resolve for vidsrc/videasy uses isolate offload ([006](issues/006-[workaround]-vidsrc-videasy-extractors-blocks-ui.md)). Long-term: port scrape chains to Rust where Pattern B applies ([010](issues/010-[fixed]-webview-js-extractors-main-thread.md)).
+
 ---
 
 ## 5. What survives in `packages/`

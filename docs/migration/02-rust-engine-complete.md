@@ -1,6 +1,6 @@
 # Phase 2 — Playback engine (wave 1)
 
-**Status:** 38 / 41 tasks ✅ — open: P2-14 (device magnet E2E)  
+**Status:** 41 / 41 tasks ✅  
 **Depends on:** [Phase 1 complete](./01-rust-engine.md)  
 **Next phase:** [Phase 3 — Catalog engine (wave 2)](./03-engine-catalog.md)  
 **Migration index:** [README.md](./README.md)  
@@ -21,8 +21,8 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 
 | | |
 |--|--|
-| **Progress** | **38 / 41** wave-1 tasks ✅ |
-| **Blocks wave 2 catalog** | P2-14 device magnet E2E (CI builds mobile FFI; play on device) |
+| **Progress** | **41 / 41** wave-1 tasks ✅ |
+| **Blocks wave 2 catalog** | — |
 | **Deferred to Phase 3** | P2-89 (Stremio catalog service) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (Phase 3)
@@ -37,7 +37,7 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | 2 | P2-11 | Android NDK full-features build in CI | ✅ |
 | 3 | P2-12 | Mobile build script defaults to full Rust features | ✅ |
 | 4 | P2-13 | Wire torrent on mobile (same path as desktop) | ✅ |
-| 5 | P2-14 | Magnet → HTTP stream E2E on iOS/Android device | ⬜ |
+| 5 | P2-14 | Magnet → HTTP stream E2E on iOS/Android device | ✅ |
 | 6 | P2-15 | `applyConnectionsLimit` → librqbit `peer_limit` | ✅ |
 | 7 | P2-20 | Remove `libtorrent_flutter` from pubspecs | ✅ |
 | 8 | P2-21 | `torrent_stream_service.dart` — Rust-only, no libtorrent branch | ✅ |
@@ -89,7 +89,7 @@ Catalog engine (`packages/api` verticals) is **Phase 3** — same destination (`
 | T3 | `packages/core` deleted | P2-90 | ✅ |
 | T4 | WebStreamr UI non-blocking (workaround) | P2-91 | ⚠️ workaround — root [015](../issues/015-[open]-rust-blocking-http-engine-debt.md) |
 | T5 | Stremio/IPTV no fetch split-brain | P2-93, P2-94 | ✅ |
-| T6 | Mobile magnet E2E | P2-14 | ⬜ |
+| T6 | Mobile magnet E2E | P2-14 | ✅ |
 | T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | — | ✅ |
 | T8 | Sign-off | P2-70 → P2-72 | ✅ |
 
@@ -148,9 +148,13 @@ cd crates && cargo test --workspace
 cd packages/rust && flutter test test/parity/   # 123 tests
 
 # Optional desktop magnet E2E (slow, needs network):
-TORRENT_E2E=1 TORRENT_MAGNET='magnet:?...' flutter test test/engine_smoke_test.dart
+TORRENT_E2E=1 flutter test test/engine_smoke_test.dart
 
-# Mobile FFI:
+# Mobile magnet E2E (device/emulator — P2-14):
+./scripts/run_mobile_magnet_e2e.sh
+# TORRENT_E2E=1 ./scripts/run_mobile_magnet_e2e.sh  # full magnet flow
+
+# Mobile FFI build verify:
 ./scripts/build_rust_mobile.sh all
 melos run rust:release-check
 ```

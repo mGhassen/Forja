@@ -43,9 +43,9 @@ Rename the file when status changes. **Filename tag and `**Status:**` in the iss
 | [007-[workaround]-…](007-[workaround]-torrent-search-blocks-ui.md) | Torrent search/filter blocks UI thread | P1 | High | workaround |
 | [008-[fixed]-…](008-[fixed]-ci-enforce-no-sync-ffi.md) | CI must reject sync FFI in app/api | P1 | High | fixed |
 | [009-[workaround]-…](009-[workaround]-post-migration-resilience-audit.md) | Post-migration resilience audit (fail/cancel) | P2 | Medium | workaround |
-| [010-[open]-…](010-[open]-webview-js-extractors-main-thread.md) | WebView / JS / WASM extractors main thread | P2 | Medium | open |
+| [010-[fixed]-…](010-[fixed]-webview-js-extractors-main-thread.md) | WebView / JS / WASM extractors main thread | P2 | Medium | fixed |
 | [011-[workaround]-…](011-[workaround]-kisskh-hls-sync-ffi.md) | Kisskh decrypt and HLS parse sync FFI | P2 | Medium | workaround |
-| [012-[open]-…](012-[open]-mobile-magnet-e2e-p2-14.md) | Mobile magnet E2E not verified (P2-14) | P2 | Medium | open |
+| [012-[fixed]-…](012-[fixed]-mobile-magnet-e2e-p2-14.md) | Mobile magnet E2E (P2-14) | P2 | Medium | fixed |
 | [013-[open]-…](013-[open]-site111477-captcha-still-dart.md) | 111477 captcha/CF still in Dart | P3 | Low | open |
 | [014-[fixed]-…](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) | IPTV Reddit catalog cursor infinite loop | P1 | High | fixed |
 | [015-[open]-…](015-[open]-rust-blocking-http-engine-debt.md) | Rust blocking HTTP / sync resolve engine debt | P2 | Medium | open |

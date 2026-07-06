@@ -8,6 +8,7 @@ class AmriExtractor {
   final void Function(String) onLog;
   HeadlessInAppWebView? _headlessWebView;
   Completer<Map<String, dynamic>>? _sourcesCompleter;
+  bool _cancelled = false;
 
   AmriExtractor({required this.onLog});
 
@@ -32,13 +33,26 @@ class AmriExtractor {
     }
   }
 
+  Future<void> cancel() async {
+    _cancelled = true;
+    if (_sourcesCompleter != null && !_sourcesCompleter!.isCompleted) {
+      _sourcesCompleter!.complete({'sources': []});
+    }
+    await _cleanup();
+    _sourcesCompleter = null;
+  }
+
   Future<Map<String, dynamic>> extractSources(
     String tmdbId,
     String title,
     String year, {
     int? season,
     int? episode,
+    bool Function()? isCancelled,
+    Duration timeout = const Duration(seconds: 30),
   }) async {
+    _cancelled = false;
+    bool cancelled() => _cancelled || (isCancelled?.call() ?? false);
     _sourcesCompleter = Completer<Map<String, dynamic>>();
     
     try {
@@ -128,15 +142,17 @@ class AmriExtractor {
       );
       
       await _headlessWebView!.run();
+      if (cancelled()) return {'sources': []};
       
       onLog('Waiting for sources data...');
       
       final sourcesData = await _sourcesCompleter!.future.timeout(
-        const Duration(seconds: 30),
+        timeout,
         onTimeout: () {
-          throw TimeoutException('Automation timed out after 30 seconds');
+          throw TimeoutException('Automation timed out after ${timeout.inSeconds} seconds');
         },
       );
+      if (cancelled()) return {'sources': []};
       
       onLog('✓ Extraction completed successfully!');
       onLog('✓ Got ${sourcesData['sources']?.length ?? 0} sources');
@@ -144,6 +160,7 @@ class AmriExtractor {
       return sourcesData;
       
     } catch (e) {
+      if (cancelled()) return {'sources': []};
       onLog('✗ Extraction failed: $e');
       rethrow;
     } finally {
@@ -248,9 +265,6 @@ class AmriExtractor {
   }
 
   Future<void> dispose() async {
-    await _cleanup();
-    if (_sourcesCompleter != null && !_sourcesCompleter!.isCompleted) {
-      _sourcesCompleter!.complete({'sources': []});
-    }
+    await cancel();
   }
 }

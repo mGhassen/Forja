@@ -1,7 +1,7 @@
 # Forja global migration
 
 **Last updated:** 2026-07-06  
-**Current phase:** [Phase 3 — Catalog engine (wave 2)](./03-engine-catalog.md) — Phase 2 playback engine ✅ (device magnet E2E P2-14 optional gate)  
+**Current phase:** [Phase 3 — Catalog engine (wave 2)](./03-engine-catalog.md) — Phase 2 playback engine ✅  
 **Boundary rules:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
 ---
@@ -11,7 +11,7 @@
 | # | Doc | Summary |
 |---|-----|---------|
 | 1 | [01-rust-engine.md](./01-rust-engine.md) | ✅ Rust crates + FFI primitives |
-| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | ✅ Playback engine → `crates/*` (P2-14 device E2E remains) |
+| 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | ✅ Playback engine → `crates/*` |
 | 3 | [03-engine-catalog.md](./03-engine-catalog.md) | 🔄 **Wave 2: catalog engine → `crates/*`; delete `packages/api` + `kotlin`** |
 | 4 | [04-web-client.md](./04-web-client.md) | ⬜ WASM parallel |
 
@@ -102,6 +102,6 @@ Wave 1 normalizes playback engine. Wave 2 normalizes catalog engine. **Normalize
 5. **Wave 2** = catalog engine normalized — [architecture complete](./03-engine-catalog.md#exit-checklist).
 6. **Web client** = parallel Phase 4.
 
-**Start wave 2** — Phase 2 playback exit checklist met except optional [T6 device magnet E2E](./02-rust-engine-complete.md#playback-engine-exit-checklist) (P2-14).
+**Start wave 2** — Phase 2 playback exit checklist complete ([T6 mobile magnet E2E](./02-rust-engine-complete.md#playback-engine-exit-checklist) ✅).
 
 Agent workflow: [`.cursor/rules/rust-migration.mdc`](../../.cursor/rules/rust-migration.mdc)

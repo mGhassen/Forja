@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +6,7 @@ import 'package:rust/rust.dart';
 import 'package:api/playback/playback.dart';
 
 import 'helpers/rust_test_init.dart';
+import 'helpers/torrent_e2e.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -125,34 +125,8 @@ http://stream.example/live
   });
 
   test('magnet stream E2E (optional)', () async {
-    final run = Platform.environment['TORRENT_E2E'] == '1';
-    final magnet = Platform.environment['TORRENT_MAGNET'];
-    if (!run || magnet == null || magnet.isEmpty) {
-      return;
-    }
-    RustLib.instance.torrentSetPeerLimit(50);
-    expect(RustLib.instance.torrentEngineStart(0), greaterThan(0));
-
-    final listJson = RustLib.instance.torrentListFilesJson(magnet);
-    final listParsed = jsonDecode(listJson) as Map<String, dynamic>;
-    expect(listParsed['error'], isNull, reason: '${listParsed['error']}');
-    final files = listParsed['files'] as List?;
-    expect(files, isNotEmpty);
-
-    final json = RustLib.instance.torrentStreamJson(magnet);
-    final parsed = jsonDecode(json) as Map<String, dynamic>;
-    expect(parsed['error'], isNull, reason: '${parsed['error']}');
-    final url = parsed['url'] as String?;
-    expect(url, isNotEmpty);
-    expect(url, startsWith('http://127.0.0.1:'));
-
-    final client = HttpClient();
-    final req = await client.getUrl(Uri.parse(url!));
-    req.headers.set('Range', 'bytes=0-1023');
-    final resp = await req.close();
-    expect(resp.statusCode, anyOf(200, 206));
-    final bytes = await resp.fold<List<int>>([], (a, b) => a..addAll(b));
-    expect(bytes.length, greaterThan(0));
-    client.close();
+    final magnet = torrentE2eMagnet();
+    if (magnet == null) return;
+    await runMagnetStreamE2e(magnet);
   }, timeout: const Timeout(Duration(minutes: 10)));
 }

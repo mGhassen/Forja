@@ -473,7 +473,7 @@ See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGI
 | Status | Items |
 |--------|-------|
 | Done | scrapers, webstreamr, forja_*, torrent filter, HLS proxy, *Backend removed, streaming/storage/core delete, Stremio/IPTV HTTP, proxy consolidate |
-| Open | P2-14 mobile magnet E2E, P2-70 sign-off, IPTV catalog scraper (wave 2) |
+| Open | IPTV catalog scraper (wave 2) |
 
 ### Wave 2 — catalog engine (Phase 3)
 

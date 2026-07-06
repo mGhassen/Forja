@@ -1168,7 +1168,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         }
         
         final extractor = StreamExtractor();
-        final result = await extractor.extract(providerUrl);
+        final result = await extractor.extract(
+          providerUrl,
+          isCancelled: () => _fallbackAborted(gen),
+        );
         if (_fallbackAborted(gen)) return false;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
@@ -2963,7 +2966,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         }
         
         final extractor = StreamExtractor();
-        final result = await extractor.extract(providerUrl);
+        final result = await extractor.extract(
+          providerUrl,
+          isCancelled: () => _fallbackAborted(gen),
+        );
         if (_fallbackAborted(gen)) return;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
