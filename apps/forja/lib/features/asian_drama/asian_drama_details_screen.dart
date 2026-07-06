@@ -11,7 +11,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:api/api/kisskh_service.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'asian_drama_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';

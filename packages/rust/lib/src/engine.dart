@@ -257,6 +257,13 @@ class RustLib {
         );
       });
 
+  String iptvProbeStreamJson(String url, {int timeoutSecs = 8}) => using((arena) {
+        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.ffi_iptv_probe_stream_json(urlPtr, timeoutSecs),
+        );
+      });
+
   String parseKnabenHtmlJson(String html) => using((arena) {
         final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_parse_knaben_html_json(ptr));
@@ -678,6 +685,11 @@ final class _FfiNative {
               'ffi_http_post_json',
             )
             .asFunction(),
+        ffi_iptv_probe_stream_json = lib
+            .lookup<ffi.NativeFunction<_StremioHttpGetNative>>(
+              'ffi_iptv_probe_stream_json',
+            )
+            .asFunction(),
         ffi_parse_knaben_html_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_parse_knaben_html_json',
@@ -945,6 +957,8 @@ final class _FfiNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) ffi_http_post_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
+      ffi_iptv_probe_stream_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_parse_knaben_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

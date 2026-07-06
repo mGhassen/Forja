@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 /// A small interactive wrapper that scales + glows on mouse hover.

@@ -262,6 +262,17 @@ pub unsafe extern "C" fn ffi_http_post_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_iptv_probe_stream_json(
+    url: *const c_char,
+    timeout_secs: u64,
+) -> *mut c_char {
+    to_c_string(crate::iptv_probe_stream_json(
+        from_c_str(url),
+        timeout_secs,
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_parse_knaben_html_json(html: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_knaben_html_json(from_c_str(html)))
 }

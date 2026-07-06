@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:api/api/manga_service.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class MangaReaderScreen extends StatefulWidget {

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 import 'models.dart';
 import 'pastesh_decryptor.dart';
@@ -396,8 +395,6 @@ class AliveProgress {
 }
 
 class IptvAliveChecker {
-  static const int _minBytes = 16 * 1024;
-  static const int _maxBytes = 64 * 1024;
   static const Duration _timeout = Duration(seconds: 8);
   static const int _concurrency = 24;
 
@@ -438,117 +435,17 @@ class IptvAliveChecker {
   static Future<bool> checkOne(String url) => _isAlive(url);
 
   static Future<bool> _isAlive(String url) async {
-    final client = http.Client();
     try {
-      final req = http.Request('GET', Uri.parse(url))
-        ..followRedirects = true
-        ..headers['User-Agent'] = 'VLC/3.0.20 LibVLC/3.0.20'
-        ..headers['Accept'] = '*/*'
-        ..headers['Connection'] = 'keep-alive'
-        ..headers['Range'] = 'bytes=0-${_maxBytes - 1}';
-      final resp = await client.send(req).timeout(_timeout);
-      final code = resp.statusCode;
-      if (code != 206 && (code < 200 || code >= 300)) return false;
-      final ct = (resp.headers['content-type'] ?? '').toLowerCase();
-      final cl = int.tryParse(resp.headers['content-length'] ?? '') ?? -1;
-      if (_isDeadContentType(ct)) return false;
-
-      // Read up to MAX_BYTES (or until end)
-      final buf = <int>[];
-      var ended = true;
-      try {
-        await for (final chunk in resp.stream.timeout(_timeout)) {
-          buf.addAll(chunk);
-          if (buf.length >= _maxBytes) {
-            ended = false;
-            break;
-          }
-          if (buf.length >= _minBytes) {
-            // got enough
-            ended = false;
-            break;
-          }
-        }
-      } catch (_) {
-        // partial read is fine
-      }
-
-      final isM3U8 = ct.contains('mpegurl') || url.toLowerCase().contains('.m3u8');
-      if (isM3U8) {
-        final headStr = utf8.decode(
-            buf.sublist(0, buf.length < 1024 ? buf.length : 1024),
-            allowMalformed: true);
-        return headStr.contains('#EXTM3U');
-      }
-      if (ended && buf.length < _minBytes) return false;
-      // canned offline videos typically 0..5MB
-      if (cl >= 1 && cl <= 5_000_000) return false;
-
-      // MPEG-TS sync byte (0x47), check ≥3 consecutive 188-byte packets
-      if (buf.isNotEmpty && buf[0] == 0x47) {
-        var validTs = true;
-        var checkedPackets = 0;
-        var i = 0;
-        while (i < buf.length - 188 && checkedPackets < 10) {
-          if (buf[i] != 0x47) {
-            validTs = false;
-            break;
-          }
-          checkedPackets++;
-          i += 188;
-        }
-        if (validTs && checkedPackets >= 3) return true;
-      }
-      // MP4 ftyp
-      if (buf.length >= 8) {
-        final s = String.fromCharCodes(buf.sublist(4, 8));
-        if (s == 'ftyp') return true;
-      }
-      if (_hasVideoSignature(buf)) return true;
-      if (buf.length >= 32 * 1024) return true;
-      return false;
+      final raw = RustLib.instance.iptvProbeStreamJson(
+        url,
+        timeoutSecs: _timeout.inSeconds,
+      );
+      final parsed = jsonDecode(raw) as Map<String, dynamic>;
+      if (parsed.containsKey('error')) return false;
+      return parsed['alive'] == true;
     } catch (_) {
       return false;
-    } finally {
-      client.close();
     }
-  }
-
-  static bool _isDeadContentType(String ct) =>
-      ct.contains('text/html') ||
-      ct.contains('application/json') ||
-      ct.contains('text/xml') ||
-      ct.contains('text/plain');
-
-  static bool _hasVideoSignature(List<int> buf) {
-    if (buf.length < 4) return false;
-    if (buf[0] == 0x47) return true;
-    if (buf.length >= 7) {
-      final s = String.fromCharCodes(buf.sublist(0, 7));
-      if (s == '#EXTM3U') return true;
-    }
-    if (buf.length >= 4) {
-      final s = String.fromCharCodes(buf.sublist(0, 4));
-      if (s == '#EXT') return true;
-    }
-    // AAC/MPEG sync (1111 1111 111x xxxx)
-    if (buf[0] == 0xFF && (buf[1] & 0xE0) == 0xE0) return true;
-    // Matroska / WebM
-    if (buf[0] == 0x1A && buf[1] == 0x45 && buf[2] == 0xDF && buf[3] == 0xA3) {
-      return true;
-    }
-    // Ogg
-    if (buf[0] == 0x4F && buf[1] == 0x67 && buf[2] == 0x67 && buf[3] == 0x53) {
-      return true;
-    }
-    // H.264 NAL start code
-    if (buf[0] == 0x00 && buf[1] == 0x00 && buf[2] == 0x00 && buf[3] == 0x01) {
-      return true;
-    }
-    if (buf[0] == 0x00 && buf[1] == 0x00 && buf[2] == 0x01 && (buf[3] & 0xFF) >= 0xB0) {
-      return true;
-    }
-    return false;
   }
 }
 

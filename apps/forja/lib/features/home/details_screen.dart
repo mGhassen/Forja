@@ -9,7 +9,7 @@ import 'package:api/api/tmdb_api.dart';
 import 'package:core/models/torrent_result.dart';
 import 'package:rust/rust.dart';
 import 'package:streaming/streaming.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:api/api/debrid_api.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:api/services/jackett_service.dart';

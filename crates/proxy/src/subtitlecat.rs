@@ -101,14 +101,15 @@ async fn translate_srt(
         let cleaned = FONT_CLOSE.replace_all(&cleaned, "").into_owned();
         let cleaned = cleaned.replace('&', "and");
 
-        if cur_chars + cleaned.len() + 1 < CHARS_PER_BATCH {
+        let cleaned_len = cleaned.len();
+        if cur_chars + cleaned_len + 1 < CHARS_PER_BATCH {
             if cur_batch.is_empty() {
-                cur_batch = cleaned.clone();
+                cur_batch = cleaned;
             } else {
                 cur_batch.push('\n');
                 cur_batch.push_str(&cleaned);
             }
-            cur_chars += cleaned.len() + 1;
+            cur_chars += cleaned_len + 1;
             cur_indices.push(i);
         } else {
             batches.push(std::mem::take(&mut cur_batch));

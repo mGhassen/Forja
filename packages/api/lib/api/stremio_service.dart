@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:rust/rust.dart';
 
 class _StremioHttpResponse {

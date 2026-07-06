@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'torrent_engine_backend.dart';
 
 /// Rich torrent statistics object.

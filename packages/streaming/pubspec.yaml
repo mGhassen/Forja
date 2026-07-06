@@ -17,8 +17,6 @@ dependencies:
   logging: ^1.2.0
   core:
     path: ../core
-  storage:
-    path: ../storage
   api:
     path: ../api
   rust:

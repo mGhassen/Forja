@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:api/api/arabic_service.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'arabic_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

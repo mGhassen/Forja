@@ -26,7 +26,7 @@ import 'package:rust/rust.dart';
 import 'package:api/api/subtitle_api.dart';
 import 'package:streaming/streaming.dart';
 import 'package:api/api/stream_extractor.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:api/api/trakt_service.dart';
 import 'package:api/api/simkl_service.dart';
 import 'package:api/api/site111477_service.dart';

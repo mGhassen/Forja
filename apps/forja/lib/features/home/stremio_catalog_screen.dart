@@ -5,7 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:core/models/movie.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

@@ -9,7 +9,7 @@ import 'package:streaming/streaming.dart';
 import 'package:core/models/stream_source.dart';
 import 'package:api/api/site111477_service.dart';
 import 'package:streaming/src/site111477_proxy.dart' as site111477_proxy;
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:api/services/episode_watched_service.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';

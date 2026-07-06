@@ -1,3 +1,6 @@
+export 'src/kv.dart';
+export 'src/settings_service.dart';
+export 'src/watch_history_service.dart';
 export 'src/engine.dart';
 export 'src/facade.dart';
 export 'src/isolate_runner.dart';

@@ -4,7 +4,6 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::Deserialize;
-use std::collections::HashMap;
 
 use crate::ProxyState;
 
@@ -53,25 +52,22 @@ pub async fn toky_proxy_handler(
         })
         .unwrap_or_default();
 
-    let mut headers: HashMap<String, String> = HashMap::new();
-    headers.insert(
-        "User-Agent".into(),
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36".into(),
-    );
-    headers.insert("Referer".into(), "https://tokybook.com/".into());
-    headers.insert("Origin".into(), "https://tokybook.com".into());
-    headers.insert("Accept".into(), "*/*".into());
+    let mut req = state
+        .client
+        .get(&final_url)
+        .header(
+            header::USER_AGENT,
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+        )
+        .header(header::REFERER, "https://tokybook.com/")
+        .header(header::ORIGIN, "https://tokybook.com")
+        .header(header::ACCEPT, "*/*")
+        .header("x-track-src", final_track_src.as_str());
     if let Some(id) = &query.id {
-        headers.insert("x-audiobook-id".into(), id.clone());
+        req = req.header("x-audiobook-id", id.as_str());
     }
     if let Some(token) = &query.token {
-        headers.insert("x-stream-token".into(), token.clone());
-    }
-    headers.insert("x-track-src".into(), final_track_src);
-
-    let mut req = state.client.get(&final_url);
-    for (k, v) in &headers {
-        req = req.header(k.as_str(), v);
+        req = req.header("x-stream-token", token.as_str());
     }
 
     let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;

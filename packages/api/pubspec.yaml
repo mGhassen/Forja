@@ -28,8 +28,6 @@ dependencies:
   android_intent_plus: ^5.1.0
   core:
     path: ../core
-  storage:
-    path: ../storage
   streaming:
     path: ../streaming
   rust:

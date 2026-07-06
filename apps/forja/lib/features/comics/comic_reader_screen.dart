@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:api/api/comics_service.dart';
 import 'package:api/api/comic_page_extractor.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class ComicReaderScreen extends StatefulWidget {

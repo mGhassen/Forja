@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:api/api/manga_service.dart';
 import 'manga_details_screen.dart';
 import 'manga_reader_screen.dart';

@@ -15,6 +15,9 @@ pbkdf2 = { workspace = true }
 sha2 = { workspace = true }
 md-5 = { workspace = true }
 base64 = { workspace = true }
+reqwest = { workspace = true, features = ["stream"] }
+tokio = { workspace = true }
+futures-util = "0.3"
 
 [dev-dependencies]
 serde_json = { workspace = true }

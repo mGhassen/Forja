@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:core/models/movie.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'movie_poster.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

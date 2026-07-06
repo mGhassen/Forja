@@ -1623,13 +1623,16 @@ dependencies = [
  "aes",
  "base64",
  "cbc",
+ "futures-util",
  "md-5",
  "pbkdf2",
  "regex",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2",
  "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]

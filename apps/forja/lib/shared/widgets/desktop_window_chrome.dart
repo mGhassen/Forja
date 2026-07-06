@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:core/models/movie.dart';
 import 'package:core/models/stream_source.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';

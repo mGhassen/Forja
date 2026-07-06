@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:streaming/streaming.dart';
 import 'mysubs_service.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'stremio_service.dart';
 import 'subtitlecat_service.dart';
 

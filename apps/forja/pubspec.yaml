@@ -53,8 +53,6 @@ dependencies:
       path: libs/macos/media_kit_libs_macos_video
   core:
     path: ../../packages/core
-  storage:
-    path: ../../packages/storage
   api:
     path: ../../packages/api
   streaming:

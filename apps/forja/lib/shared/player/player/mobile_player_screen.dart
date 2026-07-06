@@ -18,7 +18,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
 import 'package:api/api/subtitle_api.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:api/api/trakt_service.dart';
 import 'package:api/api/simkl_service.dart';

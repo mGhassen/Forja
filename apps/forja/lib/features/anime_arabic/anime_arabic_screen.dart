@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'package:api/api/anime_arabic_service.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_arabic_details_screen.dart';

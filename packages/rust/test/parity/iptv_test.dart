@@ -64,6 +64,12 @@ void main() {
     expect(rustOut.last['container_ext'], 'mp4');
     expect(rustOut.last['episode'], 3);
   });
+
+  test('iptvProbeStreamJson rejects invalid url', () {
+    final raw = RustLib.instance.iptvProbeStreamJson('not-a-url');
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    expect(parsed['error'], isNotNull);
+  });
 }
 
 String _repoRoot() {

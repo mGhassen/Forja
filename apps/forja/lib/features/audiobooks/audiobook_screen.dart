@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:api/api/audiobook_service.dart';
 import 'package:api/api/audiobook_player_service.dart';
 import 'package:api/api/music_player_service.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'audiobook_player_screen.dart';
 import 'audiobook_downloads_screen.dart';
 import 'generate_audiobook_screen.dart';

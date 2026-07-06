@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:streaming/streaming.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:api/api/track_auto_select.dart';

@@ -199,6 +199,10 @@ fn http_post_json(
     }
 }
 
+fn iptv_probe_stream_json(url: String, timeout_secs: u64) -> String {
+    iptv_core::stream_probe::probe_stream_alive_json(&url, timeout_secs)
+}
+
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {
     build_resource_url(&addon_url, &resource_path)
 }

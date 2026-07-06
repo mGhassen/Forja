@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:storage/storage.dart';
+import 'package:rust/rust.dart';
 import 'package:api/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
