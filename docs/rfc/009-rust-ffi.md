@@ -80,7 +80,7 @@ Copies dylib to `apps/forja/macos/Runner/Frameworks/` on macOS.
 
 ## Threading
 
-FFI resolve/search entry points must **not block the UI thread**. Long calls (webstreamr, torrent search) use `Isolate.run` from Dart ([P2-91](../migration/02-rust-engine-complete.md), [issue 001](../issues/001-[fixed]-webstreamr-blocks-ui.md)). Future: async job API or Rust parallel resolve.
+FFI resolve/search entry points must **not block the UI thread**. Long calls (webstreamr, torrent search) use `Isolate.run` from Dart ([P2-91](../migration/02-rust-engine-complete.md), [issue 001](../issues/001-[workaround]-webstreamr-blocks-ui.md)) — **symptom fix only**. Engine root fix (async HTTP, parallel resolve, cancel-abort): [issue 015](../issues/015-[open]-rust-blocking-http-engine-debt.md).
 
 ## Tests
 

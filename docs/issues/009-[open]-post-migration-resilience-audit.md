@@ -18,19 +18,19 @@ Wave 1 migration verified **functional parity** (Rust goldens, happy-path smoke)
 - **Player fallback** (mobile + desktop): `_fallbackGen` aborts auto-fallback chain on dispose; cancels WebStreamr/Vidsrc/Nuvio in-flight resolves.
 - **IPTV channel scan**: `isCancelled` on portal verify + early exit during parallel portal fetch.
 - **IPTV scrape**: Stop button + cancel gen (issue [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md)).
-- P1 FFI offload closed in [005](005-[fixed]-stremio-http-blocks-ui.md)–[008](008-[fixed]-ci-enforce-no-sync-ffi.md), [011](011-[fixed]-kisskh-hls-sync-ffi.md).
+- P1 FFI workarounds shipped: [001](001-[workaround]-webstreamr-blocks-ui.md), [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md), [011](011-[workaround]-kisskh-hls-sync-ffi.md); CI [008](008-[fixed]-ci-enforce-no-sync-ffi.md) fixed.
 
 ## Scope — audit each flow
 
 | Flow | Failure modes to test | Cancel? | Known gaps |
 |------|----------------------|---------|------------|
-| WebStreamr resolve | all sources timeout | partial | [001](001-[fixed]-webstreamr-blocks-ui.md) fixed |
-| IPTV scrape | Reddit OAuth/RSS dead | yes (added) | cursor loop fixed |
+| WebStreamr resolve | all sources timeout | partial | [001](001-[workaround]-webstreamr-blocks-ui.md) workaround; Rust still runs on cancel |
+| IPTV scrape | Reddit OAuth/RSS dead | yes (added) | [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) fixed |
 | IPTV channel scan | no portals | partial | |
-| Stremio addon browse | dead addon | yes (details) | [005](005-[fixed]-stremio-http-blocks-ui.md) fixed |
-| Torrent search | slow scrapers | yes (details) | [007](007-[fixed]-torrent-search-blocks-ui.md) fixed |
-| Vidsrc resolve | embed chain fail | yes (streaming cancel) | [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) fixed |
-| M3U fetch | 403/timeout | no | isolate fixed |
+| Stremio addon browse | dead addon | yes (details) | [005](005-[workaround]-stremio-http-blocks-ui.md) workaround |
+| Torrent search | slow scrapers | yes (details) | [007](007-[workaround]-torrent-search-blocks-ui.md) workaround |
+| Vidsrc resolve | embed chain fail | yes (streaming cancel) | [006](006-[workaround]-vidsrc-videasy-extractors-blocks-ui.md) workaround |
+| M3U fetch | 403/timeout | no | [011](011-[workaround]-kisskh-hls-sync-ffi.md) workaround |
 | Provider race | one provider hangs | yes | streaming + player dispose abort |
 
 ## Deliverables

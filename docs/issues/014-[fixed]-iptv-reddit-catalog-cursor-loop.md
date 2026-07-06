@@ -2,53 +2,35 @@
 
 **Priority:** P1 (when hit)  
 **Severity:** High  
-**Status:** fixed (2026-07-06)  
-**Area:** `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart`  
+**Status:** fixed (2026-07-06) — **complete** (root cause fixed, not symptom-only)  
+**Area:** `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart`, `iptv_controller.dart`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)
 
-## Summary
+## Status summary
 
-When Reddit OAuth and RSS both failed, catalog cursor `reddit:1:` was parsed as subreddit **0** instead of **1**. Scraper retried `IPTV_ZONENEW` forever. Combined with sync FFI ([004](004-[open]-sync-ffi-ui-thread-audit.md)), app appeared permanently stuck.
+| Layer | Status | Notes |
+|-------|--------|-------|
+| **Root cause** — cursor parsing bug → infinite loop | **fixed** | logic fix, not isolate offload |
+| **Safety net** — empty-page exit, Stop button | **fixed** | `iptv_controller.dart` |
+| **UI freeze during scrape** | **fixed** (separate) | isolate offload — [004](004-[open]-sync-ffi-ui-thread-audit.md) |
 
-## Root cause
+No open engine debt for this issue. This is a **real fix**, not a workaround.
 
-`scrapeCatalogPage` stripped `reddit:` prefix before `_scrapeRedditCatalog`, breaking `reddit:<subIdx>:<token>` parsing.
+## Root cause (before fix)
 
-## Solution (2026-07-06)
+`scrapeCatalogPage` stripped `reddit:` prefix before `_scrapeRedditCatalog`. Cursor `reddit:1:` parsed as subreddit **0** instead of **1** → infinite retry on `IPTV_ZONENEW`.
 
-### 1. Cursor parsing — `parseRedditCatalogCursor()`
+## Fix (done — 2026-07-06)
 
-Added in `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart`. Decodes cursors produced by `_scrapeRedditCatalog`:
+1. **`parseRedditCatalogCursor()`** — `iptv_network.dart:499`; used at `:728`. Formats: `reddit:<subIdx>:<token>`, legacy `reddit:<token>`, bare token.
+2. **Full cursor passthrough** — `scrapeCatalogPage` passes `after` unchanged to `_scrapeRedditCatalog`.
+3. **Early exit** — after 4 consecutive empty Reddit pages (`catalogSubCount`), stop — `iptv_controller.dart:316`.
+4. **Cancel** — `stopScrape()` / `_scrapeCancel` — `iptv_controller.dart:255`.
+5. **Tests** — `apps/forja/test/iptv_catalog_cursor_test.dart` (4 tests pass).
 
-| Format | Meaning |
-|--------|---------|
-| `reddit:<subIdx>:<token>` | Current — subreddit index + pagination token |
-| `reddit:<token>` | Legacy — sub 0 |
-| `<token>` | Legacy bare token — sub 0 |
+**Verify:** `flutter test apps/forja/test/iptv_catalog_cursor_test.dart`
 
-Returns `RedditCatalogCursor(subIdx, after)`.
+## If this file is deleted
 
-**Bug:** `scrapeCatalogPage` previously stripped the `reddit:` prefix before calling `_scrapeRedditCatalog`, so `reddit:1:` was parsed as sub **0** instead of **1**, causing an infinite retry on `IPTV_ZONENEW`.
-
-**Fix:** Pass the full cursor string through unchanged; `_scrapeRedditCatalog` calls `parseRedditCatalogCursor(after)`.
-
-### 2. Early exit — `_scrapeAndVerify` in `iptv_controller.dart`
-
-After `catalogSubCount` (4) consecutive empty Reddit pages — one full cycle through all subreddits with zero portals — set `exhausted = true` and stop fetching.
-
-### 3. Cancel — `stopScrape()`
-
-`_scrapeCancel` flag checked in the scrape loop. UI Stop button calls `stopScrape()` and sets status to `Stopped.`.
-
-### 4. Tests
-
-`apps/forja/test/iptv_catalog_cursor_test.dart` — sub index, pagination token, legacy formats.
-
-### Combined effect
-
-With sync FFI also offloaded ([004](004-[open]-sync-ffi-ui-thread-audit.md)), the app no longer appears permanently stuck when Reddit OAuth and RSS both fail.
-
-## Retained for
-
-Regression reference. If catalog pagination changes, re-run cursor tests.
+Regression risk: cursor format spec lost. Tests in repo remain but spec should stay documented. Re-run cursor tests if pagination changes.

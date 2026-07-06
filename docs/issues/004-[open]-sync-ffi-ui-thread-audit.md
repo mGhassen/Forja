@@ -3,113 +3,79 @@
 **Priority:** P1  
 **Severity:** High  
 **Tracked:** P2-91 ([Phase 2 task](../migration/02-rust-engine-complete.md))  
-**Status:** open — P1 children fixed; parent closes when [009](009-[open]-post-migration-resilience-audit.md) done  
+**Status:** open — Dart workarounds shipped; engine root fix [015](015-[open]-rust-blocking-http-engine-debt.md); parent closes when [015](015-[open]-rust-blocking-http-engine-debt.md) + [009](009-[open]-post-migration-resilience-audit.md) done  
 **Area:** `packages/rust`, `packages/api`, `apps/forja`  
-**Reported:** 2026-07-06  
-**Related:** [001](001-[fixed]-webstreamr-blocks-ui.md) · [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md)
+**Reported:** 2026-07-06
 
 ## Summary
 
-Any `RustLib.instance.*` call on the **main Dart isolate** is synchronous from Flutter's point of view. Rust uses `reqwest::blocking` for HTTP — a single call can block the UI for **seconds to minutes**. Spinner stops, back button dead, app feels crashed. **Rust is not crashing**; the UI isolate is starved.
+Sync `RustLib.instance.*` on the **main Dart isolate** blocked the UI for seconds to minutes. **Workarounds** (isolate offload) shipped for P1 call sites. **Root engine fix** (async Rust, parallel resolve, cancel-abort) is **open** — [015](015-[open]-rust-blocking-http-engine-debt.md).
 
-This is a **Dart threading mistake**, not a Rust bug. Rust is doing blocking I/O on the thread Dart gave it.
+## Two layers (do not conflate)
 
-## Rule (already documented, not enforced)
+| Layer | Status | Where tracked |
+|-------|--------|---------------|
+| Symptom — UI thread must not block | **workaround** (P1 call sites) | [001](001-[workaround]-webstreamr-blocks-ui.md), [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md), [011](011-[workaround]-kisskh-hls-sync-ffi.md); CI [008](008-[fixed]-ci-enforce-no-sync-ffi.md) **fixed** |
+| Root — blocking HTTP / sync resolve in `crates/*` | **open** | [015](015-[open]-rust-blocking-http-engine-debt.md) |
+| Cancel / resilience | **open** | [009](009-[open]-post-migration-resilience-audit.md) |
+
+Isolate offload stops UI freeze but is a **workaround** — root engine fix is [015](015-[open]-rust-blocking-http-engine-debt.md).
+
+## Rule
 
 From [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) and [RFC-009](../rfc/009-rust-ffi.md):
 
 > Sync FFI on UI thread forbidden for calls expected to exceed ~50ms — use `Isolate.run` / `runRustIsolate`.
 
-`packages/rust/lib/src/isolate_runner.dart` exists for this. **Nothing enforces it.**
+Enforced by [008](008-[fixed]-ci-enforce-no-sync-ffi.md) (`check_sync_ffi.sh`).
 
-## Incidents
+## Child issues
 
-| Date | Feature | Symptom | Fix |
-|------|---------|---------|-----|
-| 2026-07-06 | WebStreamr | Resolve freezes player overlay | `runWebstreamrGetStreamsJson` |
-| 2026-07-06 | IPTV scrape/channels | Scrape spinner frozen, Reddit loop | `runRustIsolate` + [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) |
+| # | Title | Symptom | Root |
+|---|-------|---------|------|
+| [001](001-[workaround]-webstreamr-blocks-ui.md) | WebStreamr | workaround | open → [015](015-[open]-rust-blocking-http-engine-debt.md) |
+| [005](005-[workaround]-stremio-http-blocks-ui.md) | Stremio HTTP | workaround | open → [015](015-[open]-rust-blocking-http-engine-debt.md) |
+| [006](006-[workaround]-vidsrc-videasy-extractors-blocks-ui.md) | Vidsrc / Videasy | workaround | open → [015](015-[open]-rust-blocking-http-engine-debt.md) |
+| [007](007-[workaround]-torrent-search-blocks-ui.md) | Torrent search | workaround | open → [015](015-[open]-rust-blocking-http-engine-debt.md) |
+| [008](008-[fixed]-ci-enforce-no-sync-ffi.md) | CI enforcement | **fixed** | — |
+| [011](011-[workaround]-kisskh-hls-sync-ffi.md) | Kisskh / HLS / M3U | workaround | open → [015](015-[open]-rust-blocking-http-engine-debt.md) |
+| [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) | Reddit cursor loop | **fixed** | — |
 
-## Child issues (open P1)
+## Inventory — production call sites (2026-07-06, verified)
 
-| # | Title |
-|---|-------|
-| [005](005-[fixed]-stremio-http-blocks-ui.md) | Stremio addon HTTP |
-| [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) | Vidsrc / Videasy extractors |
-| [007](007-[fixed]-torrent-search-blocks-ui.md) | Torrent search/filter |
-| [008](008-[fixed]-ci-enforce-no-sync-ffi.md) | CI enforcement |
-
-## Related (P2+)
-
-| # | Title |
-|---|-------|
-| [009](009-[open]-post-migration-resilience-audit.md) | Broken-network / cancel UX audit |
-| [010](010-[open]-webview-js-extractors-main-thread.md) | WebView / JS extractors |
-| [011](011-[fixed]-kisskh-hls-sync-ffi.md) | Kisskh / HLS parse FFI |
-
-## Inventory — production call sites (2026-07-06)
-
-### Fixed (isolate offload)
+### Workaround shipped — isolate offload
 
 | File | Calls |
 |------|-------|
-| `packages/api/lib/playback/webstreamr_service.dart` | `webstreamrGetStreamsJson` via `runWebstreamrGetStreamsJson` |
-| `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart` | `httpGetJson`, `httpPostJson`, xtream parse, `iptvProbeStreamJson` |
-| `apps/forja/lib/features/iptv/iptv/data/pastesh_decryptor.dart` | `httpGetJson`, `decryptPasteResponse` |
+| `packages/api/lib/playback/webstreamr_service.dart` | `runWebstreamrGetStreamsJson` |
+| `packages/api/lib/api/stremio_service.dart` | `runStremioHttpGet` (HTTP); parse helpers on UI — OK |
+| `packages/api/lib/playback/vidsrc_extractor.dart` | `runResolveVidsrcEmbedJson` |
+| `packages/api/lib/playback/videasy_extractor.dart` | `runOpensslAesDecryptJson` |
+| `packages/api/lib/api/kisskh_subtitle_decryptor.dart` | `runDecryptKisskhBody` |
+| `packages/rust/lib/src/facade.dart` | `runSearchTorrentsJson`, `runFilterTorrentsJson`, `runSortTorrentsJson`, `runParseM3uJson` |
+| `packages/rust/lib/src/utils/hls_master_parser.dart` | `runParseHlsMasterJson` |
+| `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart` | HTTP/xtream inside `runRustIsolate`; `decodeXtreamText` waived |
+| `apps/forja/lib/features/iptv/iptv/data/pastesh_decryptor.dart` | inside `runRustIsolate` |
+| `apps/forja/lib/features/iptv/iptv/m3u/m3u_store.dart` | inside `runRustIsolate` |
 
-### Still on UI thread — **audit required**
-
-| File | Call | Risk |
-|------|------|------|
-| `apps/forja/lib/features/iptv/iptv/m3u/m3u_store.dart` | `httpGetJson` | ~~High~~ **fixed** |
-| `packages/api/lib/api/stremio_service.dart` | `stremioHttpGet` | **High** — [005](005-[fixed]-stremio-http-blocks-ui.md) |
-| `packages/api/lib/playback/vidsrc_extractor.dart` | `resolveVidsrcEmbedJson` | **High** — [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) |
-| `packages/api/lib/playback/videasy_extractor.dart` | `opensslAesDecryptJson` | Medium — [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) |
-| `packages/api/lib/api/kisskh_subtitle_decryptor.dart` | `decryptKisskhBody` | Medium — [011](011-[fixed]-kisskh-hls-sync-ffi.md) |
-| `packages/rust/lib/src/facade.dart` | `searchTorrentsJson`, `filterTorrentsJson`, `parseM3uJson` | **High** — [007](007-[fixed]-torrent-search-blocks-ui.md) |
-| `packages/rust/lib/src/utils/hls_master_parser.dart` | `parseHlsMasterJson` | Low–medium — [011](011-[fixed]-kisskh-hls-sync-ffi.md) |
-| `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart` | `decodeXtreamText` | Low (base64 only) |
-
-### UI thread OK (fast / lifecycle)
+### UI thread OK (fast / lifecycle / allowlisted)
 
 | File | Call | Why OK |
 |------|------|--------|
-| `packages/api/lib/playback/torrent_stream_service.dart` | engine start/stop, list files | Short ops; mostly off playback path |
-| `packages/api/lib/playback/local_server_service.dart` | `proxyStart` / `proxyStop` | Startup only |
-| `packages/api/lib/playback/site111477_proxy.dart` | proxy lifecycle | Startup only |
-| `packages/api/lib/api/stremio_service.dart` | JSON parse helpers | CPU-only, small payloads |
-| `apps/forja/lib/features/settings/settings_screen.dart` | `version` | Instant |
+| `torrent_stream_service.dart` | engine start/stop, list files | Short lifecycle ops |
+| `local_server_service.dart` | proxy start/stop | Startup only |
+| `site111477_proxy.dart` | proxy lifecycle | Startup only |
+| `stremio_service.dart` | JSON parse helpers | CPU-only, small payloads |
+| `settings_screen.dart` | `version` | Instant |
+| `iptv_network.dart` | `decodeXtreamText` | Tiny base64 decode |
 
-## Proposed enforcement
+## Root fix (open)
 
-### 1. Lint / CI grep (cheap, immediate)
-
-Fail CI if `RustLib.instance.` appears in `apps/forja/lib` or `packages/api/lib` **outside**:
-- `packages/rust/lib/src/isolate_runner.dart`
-- `**/test/**`
-- An explicit allowlist file
-
-### 2. Wrapper policy
-
-All HTTP + scrape + torrent-search FFI must go through `runRustIsolate` (or a typed wrapper in `isolate_runner.dart`). Direct `RustLib.instance.httpGetJson` etc. forbidden in app/api layers.
-
-### 3. Parity test
-
-`packages/rust/test/parity/isolate_runner_test.dart` exists. Add one integration test per high-risk wrapper that asserts the wrapper uses `runRustIsolate` (or run from a non-main isolate in widget test).
-
-### 4. Rust side (performance, not UI fix)
-
-Replace `reqwest::blocking` with async + shared client where possible. **Still** require isolate offload — async Rust doesn't help if Dart calls FFI synchronously.
-
-## Test plan (manual)
-
-For each row in "Still on UI thread":
-1. Trigger the feature on a slow/broken network (or airplane mode mid-request).
-2. Confirm spinner animates and back/cancel work while waiting.
-3. Confirm logs show work continuing without UI jank.
+[015](015-[open]-rust-blocking-http-engine-debt.md) — async HTTP, parallel resolve, cancel-abort, reduce isolate churn.
 
 ## Acceptance
 
-- [ ] [005](005-[fixed]-stremio-http-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md) closed
-- [ ] [008](008-[fixed]-ci-enforce-no-sync-ffi.md) CI grep in place
+- [x] [005](005-[workaround]-stremio-http-blocks-ui.md)–[007](007-[workaround]-torrent-search-blocks-ui.md) workaround shipped
+- [x] [008](008-[fixed]-ci-enforce-no-sync-ffi.md) CI grep in place
+- [ ] [015](015-[open]-rust-blocking-http-engine-debt.md) engine root fix
 - [ ] [009](009-[open]-post-migration-resilience-audit.md) checklist completed
-- [ ] `.cursor/rules/rust-migration.mdc` references this audit
