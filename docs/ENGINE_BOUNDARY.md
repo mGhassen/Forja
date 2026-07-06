@@ -37,7 +37,7 @@ Migration is sequenced in **two waves** (playback, then catalog) — scheduling 
 | **D9** | Phased legacy package deletion — see §6 |
 | **D10** | **Flutter permanent** — `apps/forja` is the only mobile/desktop UI host |
 
-**Webstreamr:** Lives in `crates/webstreamr` because C2 scrape + C7 proxy + playback pipeline = **engine** — same rule as TMDB (C1). UI freeze fixed via isolate offload (P2-91), not language change. See [issue 001](issues/001-webstreamr-blocks-ui.md).
+**Webstreamr:** Lives in `crates/webstreamr` because C2 scrape + C7 proxy + playback pipeline = **engine** — same rule as TMDB (C1). UI freeze fixed via isolate offload (P2-91), not language change. See [issue 001](issues/001-[fixed]-webstreamr-blocks-ui.md).
 
 **Compose / kotlin:** Cancelled. Delete `packages/kotlin` in wave 2 (P3-00).
 
@@ -91,7 +91,7 @@ HTTP location is an implementation detail inside the engine. The split line is *
 ### R5 — FFI
 
 - Default: **fetch+parse in Rust** (Pattern B)
-- **Forbidden:** sync FFI on UI thread for calls expected to exceed ~50ms — use `Isolate.run` ([P2-91](issues/001-webstreamr-blocks-ui.md))
+- **Forbidden:** sync FFI on UI thread for calls expected to exceed ~50ms — use `Isolate.run` ([P2-91](issues/001-[fixed]-webstreamr-blocks-ui.md))
 - **Deprecated:** Pattern A (`*_html_json` HTML-in) for new engine work
 - Exception: Pattern A OK when host already holds HTML from an active WebView session (C3)
 

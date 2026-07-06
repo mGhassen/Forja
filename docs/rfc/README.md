@@ -43,6 +43,7 @@ Design docs for Forja. Topic RFCs (001–010) define **what**; version RFCs (011
 | [019](019-god-file-decomposition.md) | God file splits | v1.1 | Not started |
 | [020](020-media-details-routing.md) | Media details routing | v1.1 | Not started |
 | [021](021-release-ship-hygiene.md) | Release ship hygiene | v1.0 | Not started |
+| [022](022-lan-server-client.md) | LAN server/client streaming + pairing | post-v1.2 | Draft |
 
 ## Dependency graph
 

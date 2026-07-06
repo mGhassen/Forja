@@ -1,0 +1,21 @@
+# Production files allowed to call RustLib.instance directly.
+# Every entry must be justified in docs/issues/004-[open]-sync-ffi-ui-thread-audit.md
+# or a child issue. Prefer isolate_runner wrappers for new code.
+#
+# Format: repo-relative path
+
+# IPTV — RustLib only inside runRustIsolate() callbacks
+apps/forja/lib/features/iptv/iptv/data/iptv_network.dart
+apps/forja/lib/features/iptv/iptv/data/pastesh_decryptor.dart
+apps/forja/lib/features/iptv/iptv/m3u/m3u_store.dart
+
+# Instant / tiny FFI
+apps/forja/lib/features/settings/settings_screen.dart
+
+# Stremio — HTTP offloaded; JSON URL helpers are CPU-only on small payloads
+packages/api/lib/api/stremio_service.dart
+
+# Torrent/proxy lifecycle — short sync ops at startup/teardown
+packages/api/lib/playback/torrent_stream_service.dart
+packages/api/lib/playback/local_server_service.dart
+packages/api/lib/playback/site111477_proxy.dart

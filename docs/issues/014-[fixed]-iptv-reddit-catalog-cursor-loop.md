@@ -5,11 +5,11 @@
 **Status:** fixed (2026-07-06)  
 **Area:** `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart`  
 **Reported:** 2026-07-06  
-**Parent:** [004](004-sync-ffi-ui-thread-audit.md)
+**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)
 
 ## Summary
 
-When Reddit OAuth and RSS both failed, catalog cursor `reddit:1:` was parsed as subreddit **0** instead of **1**. Scraper retried `IPTV_ZONENEW` forever. Combined with sync FFI ([004](004-sync-ffi-ui-thread-audit.md)), app appeared permanently stuck.
+When Reddit OAuth and RSS both failed, catalog cursor `reddit:1:` was parsed as subreddit **0** instead of **1**. Scraper retried `IPTV_ZONENEW` forever. Combined with sync FFI ([004](004-[open]-sync-ffi-ui-thread-audit.md)), app appeared permanently stuck.
 
 ## Root cause
 

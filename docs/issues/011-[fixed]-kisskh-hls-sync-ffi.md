@@ -2,14 +2,14 @@
 
 **Priority:** P2  
 **Severity:** Medium  
-**Status:** open  
+**Status:** fixed  
 **Area:** `packages/api/lib/api/kisskh_subtitle_decryptor.dart`, `packages/rust/lib/src/utils/hls_master_parser.dart`  
 **Reported:** 2026-07-06  
-**Parent:** [004](004-sync-ffi-ui-thread-audit.md)
+**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)
 
 ## Summary
 
-Secondary FFI call sites still on the main isolate. Lower traffic than [005](005-stremio-http-blocks-ui.md)–[007](007-torrent-search-blocks-ui.md) but same failure class on large payloads or slow devices.
+Secondary FFI call sites still on the main isolate. Lower traffic than [005](005-[fixed]-stremio-http-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md) but same failure class on large payloads or slow devices.
 
 ## Call sites
 
@@ -29,4 +29,4 @@ Secondary FFI call sites still on the main isolate. Lower traffic than [005](005
 
 - [ ] Kisskh decrypt uses isolate wrapper
 - [ ] HLS/M3U parse uses isolate wrapper or documented size threshold
-- [ ] [004](004-sync-ffi-ui-thread-audit.md) rows marked fixed or waived with justification
+- [ ] [004](004-[open]-sync-ffi-ui-thread-audit.md) rows marked fixed or waived with justification

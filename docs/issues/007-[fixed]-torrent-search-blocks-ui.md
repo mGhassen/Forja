@@ -2,10 +2,10 @@
 
 **Priority:** P1  
 **Severity:** High  
-**Status:** open  
+**Status:** fixed  
 **Area:** `packages/rust/lib/src/facade.dart`, `apps/forja/lib/features/home/details_screen.dart`, player screens  
 **Reported:** 2026-07-06  
-**Parent:** [004](004-sync-ffi-ui-thread-audit.md)
+**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)
 
 ## Summary
 
@@ -41,4 +41,4 @@ final json = RustLib.instance.searchTorrentsJson(query);
 
 - [ ] Facade torrent search/filter/sort never block main isolate
 - [ ] Manual test: open movie details → torrent search on slow network — UI animates
-- [ ] [004](004-sync-ffi-ui-thread-audit.md) facade row marked fixed
+- [ ] [004](004-[open]-sync-ffi-ui-thread-audit.md) facade row marked fixed

@@ -142,4 +142,4 @@ Pick one product rule and enforce consistently in `streaming_details_screen.dart
 - [RFC-010](../rfc/010-web-client.md) — web capability matrix (torrent hidden)
 - [Direct streaming mode](../features/movies-tv/direct-streaming-mode.md)
 - [Stremio addons](../features/sources/stremio-addons.md)
-- [002](002-torrent-disk-cache-not-cleaned.md) — torrent lifecycle (desktop profile only)
+- [002](002-[open]-torrent-disk-cache-not-cleaned.md) — torrent lifecycle (desktop profile only)

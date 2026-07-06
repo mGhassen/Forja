@@ -12,7 +12,7 @@ Not all "stuck app" reports are Rust FFI. Host-side extractors (C3–C5 per [ENG
 
 - WebView embed sniff / `stream_extractor`
 - Nuvio `flutter_js`
-- Videasy WASM (Dart host; Rust decrypt is [006](006-vidsrc-videasy-extractors-blocks-ui.md))
+- Videasy WASM (Dart host; Rust decrypt is [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md))
 
 Heavy JS evaluation, WebView navigation chains, and WASM crypto on the UI thread produce the **same frozen-spinner symptom** as sync FFI.
 
@@ -24,7 +24,7 @@ Heavy JS evaluation, WebView navigation chains, and WASM crypto on the UI thread
 ## Fix options
 
 - Profile each extractor path; document max expected duration
-- Offload WASM decrypt to isolate ([006](006-vidsrc-videasy-extractors-blocks-ui.md))
+- Offload WASM decrypt to isolate ([006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md))
 - WebView: timeout + cancel; avoid synchronous `evaluateJavascript` chains where possible
 - Long-term: move scrape chains to Rust where Pattern B applies
 

@@ -2,10 +2,10 @@
 
 **Priority:** P1  
 **Severity:** High  
-**Status:** open  
+**Status:** fixed  
 **Area:** `packages/api/lib/playback/vidsrc_extractor.dart`, `videasy_extractor.dart`, `crates/stream-core`  
 **Reported:** 2026-07-06  
-**Parent:** [004](004-sync-ffi-ui-thread-audit.md)
+**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)
 
 ## Summary
 
@@ -37,4 +37,4 @@ RustLib.instance.opensslAesDecryptJson(intermediate, passphrase: '')
 
 - [ ] Both extractors use `runRustIsolate` for FFI entry points
 - [ ] Manual test: vidsrc-first provider order on slow network — UI responsive
-- [ ] [004](004-sync-ffi-ui-thread-audit.md) inventory rows marked fixed
+- [ ] [004](004-[open]-sync-ffi-ui-thread-audit.md) inventory rows marked fixed

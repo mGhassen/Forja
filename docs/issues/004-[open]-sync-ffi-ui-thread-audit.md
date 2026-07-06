@@ -3,10 +3,10 @@
 **Priority:** P1  
 **Severity:** High  
 **Tracked:** P2-91 ([Phase 2 task](../migration/02-rust-engine-complete.md))  
-**Status:** open — parent index; fix children [005](005-stremio-http-blocks-ui.md)–[008](008-ci-enforce-no-sync-ffi.md)  
+**Status:** open — P1 children fixed; parent closes when [009](009-[open]-post-migration-resilience-audit.md) done  
 **Area:** `packages/rust`, `packages/api`, `apps/forja`  
 **Reported:** 2026-07-06  
-**Related:** [001](001-webstreamr-blocks-ui.md) · [014](014-iptv-reddit-catalog-cursor-loop.md)
+**Related:** [001](001-[fixed]-webstreamr-blocks-ui.md) · [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md)
 
 ## Summary
 
@@ -27,24 +27,24 @@ From [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) and [RFC-009](../rfc/009-rust-f
 | Date | Feature | Symptom | Fix |
 |------|---------|---------|-----|
 | 2026-07-06 | WebStreamr | Resolve freezes player overlay | `runWebstreamrGetStreamsJson` |
-| 2026-07-06 | IPTV scrape/channels | Scrape spinner frozen, Reddit loop | `runRustIsolate` + [014](014-iptv-reddit-catalog-cursor-loop.md) |
+| 2026-07-06 | IPTV scrape/channels | Scrape spinner frozen, Reddit loop | `runRustIsolate` + [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) |
 
 ## Child issues (open P1)
 
 | # | Title |
 |---|-------|
-| [005](005-stremio-http-blocks-ui.md) | Stremio addon HTTP |
-| [006](006-vidsrc-videasy-extractors-blocks-ui.md) | Vidsrc / Videasy extractors |
-| [007](007-torrent-search-blocks-ui.md) | Torrent search/filter |
-| [008](008-ci-enforce-no-sync-ffi.md) | CI enforcement |
+| [005](005-[fixed]-stremio-http-blocks-ui.md) | Stremio addon HTTP |
+| [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) | Vidsrc / Videasy extractors |
+| [007](007-[fixed]-torrent-search-blocks-ui.md) | Torrent search/filter |
+| [008](008-[fixed]-ci-enforce-no-sync-ffi.md) | CI enforcement |
 
 ## Related (P2+)
 
 | # | Title |
 |---|-------|
-| [009](009-post-migration-resilience-audit.md) | Broken-network / cancel UX audit |
-| [010](010-webview-js-extractors-main-thread.md) | WebView / JS extractors |
-| [011](011-kisskh-hls-sync-ffi.md) | Kisskh / HLS parse FFI |
+| [009](009-[open]-post-migration-resilience-audit.md) | Broken-network / cancel UX audit |
+| [010](010-[open]-webview-js-extractors-main-thread.md) | WebView / JS extractors |
+| [011](011-[fixed]-kisskh-hls-sync-ffi.md) | Kisskh / HLS parse FFI |
 
 ## Inventory — production call sites (2026-07-06)
 
@@ -61,12 +61,12 @@ From [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) and [RFC-009](../rfc/009-rust-f
 | File | Call | Risk |
 |------|------|------|
 | `apps/forja/lib/features/iptv/iptv/m3u/m3u_store.dart` | `httpGetJson` | ~~High~~ **fixed** |
-| `packages/api/lib/api/stremio_service.dart` | `stremioHttpGet` | **High** — [005](005-stremio-http-blocks-ui.md) |
-| `packages/api/lib/playback/vidsrc_extractor.dart` | `resolveVidsrcEmbedJson` | **High** — [006](006-vidsrc-videasy-extractors-blocks-ui.md) |
-| `packages/api/lib/playback/videasy_extractor.dart` | `opensslAesDecryptJson` | Medium — [006](006-vidsrc-videasy-extractors-blocks-ui.md) |
-| `packages/api/lib/api/kisskh_subtitle_decryptor.dart` | `decryptKisskhBody` | Medium — [011](011-kisskh-hls-sync-ffi.md) |
-| `packages/rust/lib/src/facade.dart` | `searchTorrentsJson`, `filterTorrentsJson`, `parseM3uJson` | **High** — [007](007-torrent-search-blocks-ui.md) |
-| `packages/rust/lib/src/utils/hls_master_parser.dart` | `parseHlsMasterJson` | Low–medium — [011](011-kisskh-hls-sync-ffi.md) |
+| `packages/api/lib/api/stremio_service.dart` | `stremioHttpGet` | **High** — [005](005-[fixed]-stremio-http-blocks-ui.md) |
+| `packages/api/lib/playback/vidsrc_extractor.dart` | `resolveVidsrcEmbedJson` | **High** — [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) |
+| `packages/api/lib/playback/videasy_extractor.dart` | `opensslAesDecryptJson` | Medium — [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) |
+| `packages/api/lib/api/kisskh_subtitle_decryptor.dart` | `decryptKisskhBody` | Medium — [011](011-[fixed]-kisskh-hls-sync-ffi.md) |
+| `packages/rust/lib/src/facade.dart` | `searchTorrentsJson`, `filterTorrentsJson`, `parseM3uJson` | **High** — [007](007-[fixed]-torrent-search-blocks-ui.md) |
+| `packages/rust/lib/src/utils/hls_master_parser.dart` | `parseHlsMasterJson` | Low–medium — [011](011-[fixed]-kisskh-hls-sync-ffi.md) |
 | `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart` | `decodeXtreamText` | Low (base64 only) |
 
 ### UI thread OK (fast / lifecycle)
@@ -109,7 +109,7 @@ For each row in "Still on UI thread":
 
 ## Acceptance
 
-- [ ] [005](005-stremio-http-blocks-ui.md)–[007](007-torrent-search-blocks-ui.md) closed
-- [ ] [008](008-ci-enforce-no-sync-ffi.md) CI grep in place
-- [ ] [009](009-post-migration-resilience-audit.md) checklist completed
+- [ ] [005](005-[fixed]-stremio-http-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md) closed
+- [ ] [008](008-[fixed]-ci-enforce-no-sync-ffi.md) CI grep in place
+- [ ] [009](009-[open]-post-migration-resilience-audit.md) checklist completed
 - [ ] `.cursor/rules/rust-migration.mdc` references this audit

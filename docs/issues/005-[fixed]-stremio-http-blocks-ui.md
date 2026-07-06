@@ -2,10 +2,10 @@
 
 **Priority:** P1  
 **Severity:** High  
-**Status:** open  
+**Status:** fixed  
 **Area:** `packages/api/lib/api/stremio_service.dart`, `crates/stremio-core`  
 **Reported:** 2026-07-06  
-**Parent:** [004](004-sync-ffi-ui-thread-audit.md)
+**Parent:** [004](004-[open]-sync-ffi-ui-thread-audit.md)
 
 ## Summary
 
@@ -24,7 +24,7 @@ Rust uses blocking HTTP. Dart `async` on the caller does not yield during the FF
 
 - Stremio addon browse feels stuck on slow/dead addons
 - Back navigation unresponsive during fetch
-- Same symptom class as [001](001-webstreamr-blocks-ui.md) and IPTV scrape freeze
+- Same symptom class as [001](001-[fixed]-webstreamr-blocks-ui.md) and IPTV scrape freeze
 
 ## Fix
 
@@ -36,4 +36,4 @@ Rust uses blocking HTTP. Dart `async` on the caller does not yield during the FF
 
 - [ ] `stremioHttpGet` never called on main isolate from production code
 - [ ] Manual test: slow addon URL — spinner animates, back works
-- [ ] [004](004-sync-ffi-ui-thread-audit.md) inventory row marked fixed
+- [ ] [004](004-[open]-sync-ffi-ui-thread-audit.md) inventory row marked fixed
