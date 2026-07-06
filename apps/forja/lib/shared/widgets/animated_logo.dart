@@ -91,6 +91,61 @@ class SplashLogoWithHalo extends StatelessWidget {
   }
 }
 
+class SplashLoadingDots extends StatefulWidget {
+  const SplashLoadingDots({super.key, required this.color});
+
+  final Color color;
+
+  @override
+  State<SplashLoadingDots> createState() => _SplashLoadingDotsState();
+}
+
+class _SplashLoadingDotsState extends State<SplashLoadingDots>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (index) {
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            final phase = (_controller.value + index * 0.2) % 1.0;
+            final opacity = 0.25 + 0.75 * (1 - (phase - 0.5).abs() * 2).clamp(0.0, 1.0);
+            return Opacity(opacity: opacity, child: child);
+          },
+          child: Container(
+            width: 7,
+            height: 7,
+            margin: EdgeInsets.only(left: index == 0 ? 0 : 10),
+            decoration: BoxDecoration(
+              color: widget.color,
+              shape: BoxShape.circle,
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
 class SplashOverlayContent extends StatelessWidget {
   const SplashOverlayContent({
     super.key,
@@ -107,61 +162,44 @@ class SplashOverlayContent extends StatelessWidget {
 
     return Container(
       decoration: AppTheme.backgroundDecoration,
-      child: Column(
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final logoHeight = math.min(
-                  _maxLogoHeight,
-                  constraints.maxHeight * 0.38,
-                );
-                return Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    clipBehavior: Clip.none,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SplashLogoWithHalo(
-                          logoHeight: logoHeight,
-                          isLight: isLight,
-                        ),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Text(
-                            slogan,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 18,
-                              letterSpacing: 4,
-                              color: logoColors.base,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        ),
-                      ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final logoHeight = math.min(
+            _maxLogoHeight,
+            constraints.maxHeight * 0.38,
+          );
+          return Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              clipBehavior: Clip.none,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SplashLogoWithHalo(
+                    logoHeight: logoHeight,
+                    isLight: isLight,
+                  ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      slogan,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        letterSpacing: 4,
+                        color: logoColors.base,
+                        fontFamily: 'Poppins',
+                      ),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 48),
-            child: Text(
-              'INITIALIZING ENGINE...',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 4,
-                color: isLight ? Colors.black38 : Colors.white38,
-                fontFamily: 'Poppins',
+                  const SizedBox(height: 16),
+                  SplashLoadingDots(color: logoColors.base),
+                ],
               ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
