@@ -1,5 +1,5 @@
 ---
-description: Rust engine migration — tier-1 port to crates, tier-2 freeze
+description: Rust engine migration — port engine to crates, Flutter permanent host
 globs: crates/**,packages/rust/**,docs/migration/**,docs/ENGINE_BOUNDARY.md,docs/rfc/009-rust-ffi.md
 alwaysApply: false
 ---
@@ -10,56 +10,54 @@ alwaysApply: false
 
 Read [ENGINE_BOUNDARY.md](../../docs/ENGINE_BOUNDARY.md) first.
 
-- **Tier-1** = port to `crates/*`, expose FFI, delete Dart equivalent, test.
-- **Tier-2** = freeze `packages/api` — no new Dart engine logic; port opportunistically in Phase 3 (P2-89b).
-- **Host slice** = move to `apps/forja` (theme, WebView), not Rust.
+- **Engine** = port to `crates/*`, expose FFI, delete Dart equivalent, test.
+- **Host** = `apps/forja` (Flutter permanent) — theme, WebView, player, OAuth.
+- **No new engine logic in Dart** — port to `crates/*` when touching.
 
-Only these survive under `packages/` long-term:
-- `packages/rust` — Dart FFI loader (until Phase 4)
-- `packages/kotlin` — uniffi bindings (permanent)
+Only `packages/rust` survives under `packages/` long-term (FFI bridge).
 
-**Phase 2 deletes:** `streaming`, `storage`, `core` (tier-1).
-**Phase 3/4 deletes:** remaining `packages/api` (tier-2).
+**Wave 1 deletes:** `streaming`, `storage`, `core` (playback engine).
+**Wave 2 deletes:** `packages/api`, `packages/kotlin` (catalog engine + cancelled Compose POC).
 
-## Phase 3 gate
+## Wave 1 exit gate
 
-[tier-1 exit checklist](../../docs/migration/02-rust-engine-complete.md#tier-1-exit-checklist) — **NOT** full `packages/api` delete.
+[Playback engine exit checklist](../../docs/migration/02-rust-engine-complete.md#playback-engine-exit-checklist) — app shippable; then start wave 2.
 
-## Mandatory per tier-1 port
+## Mandatory per engine port
 
 1. Read Dart engine source.
 2. Implement in matching `crates/<name>/`.
-3. Add FFI in `crates/ffi` / uniffi — **fetch+parse in Rust** (Pattern B).
-4. Wire `apps/forja` to `ForjaEngine.*` for tier-1 paths.
+3. Add FFI in `crates/ffi` — **fetch+parse in Rust** (Pattern B).
+4. Wire `apps/forja` to `ForjaEngine.*`.
 5. **Delete the Dart slice** — directory, pubspec deps, imports.
 6. **Tests** — Rust unit/golden + Dart parity in `packages/rust/test/parity/`.
-7. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
+7. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md) or [03-engine-catalog.md](../../docs/migration/03-engine-catalog.md).
 8. Run `./scripts/build_rust.sh`, `cargo test --workspace`, `cd packages/rust && flutter test`.
 
 ## Never do
 
 - Sync FFI on UI thread for resolve/search — use `Isolate.run` (P2-91)
-- New Pattern A FFI (`*_html_json`) for tier-1
-- New engine logic in tier-2 `packages/api`
-- Dart wrapper calling Rust instead of deleting Dart (tier-1)
+- New Pattern A FFI (`*_html_json`) for engine work
+- New engine logic in Dart
+- Dart wrapper calling Rust instead of deleting Dart
 - `*Backend` hooks, `rust_delegates.dart`
-- “Facade until Phase 4” for tier-1 packages
 
 ## Allowed
 
 - Host orchestration for provider race UX (ENGINE_BOUNDARY R6)
-- Tier-2 `packages/api` frozen during Phase 2/3
+- Legacy `packages/api` during wave 2 — no new Dart engine logic
 - `Isolate.run` for long FFI calls
 - Nuvio, WebView, WASM, player on host permanently
 
 ## Before coding
 
 1. Read [docs/migration/README.md](../../docs/migration/README.md).
-2. Active: [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
-3. Boundary: [ENGINE_BOUNDARY.md](../../docs/ENGINE_BOUNDARY.md).
-4. **Do not start Phase 3** until tier-1 exit checklist is ✅.
+2. Active wave 1: [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
+3. Wave 2: [03-engine-catalog.md](../../docs/migration/03-engine-catalog.md).
+4. Boundary: [ENGINE_BOUNDARY.md](../../docs/ENGINE_BOUNDARY.md).
 
 ## Doc status
 
-- Phase 3 = UI swap; tier-2 api may remain temporarily.
-- Phase 4 = delete Flutter, `packages/rust`, `packages/api`.
+- Flutter + Rust permanent — no UI framework migration.
+- Wave 1 = playback engine normalized.
+- Wave 2 = catalog engine normalized; only `packages/rust` remains.

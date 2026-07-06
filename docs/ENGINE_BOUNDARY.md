@@ -1,20 +1,24 @@
 # Forja — engine boundary
 
-Canonical rules for what lives in **Rust (`crates/*`)**, the **host app** (Flutter / Compose), or **FFI loaders only** (`packages/rust`, `packages/kotlin`).
+Canonical rules for what lives in **Rust engine (`crates/*`)**, **Flutter host (`apps/forja`)**, or **FFI bridge only** (`packages/rust`).
 
 **Status:** Locked (2026-07-06). Grounded in [INVENTORY.md](INVENTORY.md).
 
-**Migration execution:** [migration/README.md](migration/README.md) · [Phase 2 tasks](migration/02-rust-engine-complete.md)
+**Migration execution:** [migration/README.md](migration/README.md) · [Wave 1 — playback](./migration/02-rust-engine-complete.md) · [Wave 2 — catalog](./migration/03-engine-catalog.md)
 
 ---
 
-## 1. Engine tiers
+## 1. Two layers
 
-| Tier | Definition | Phase gate |
-|------|------------|------------|
-| **Tier-1** | Playback path — title selected → playable URL in player | Must be Rust before Phase 3 |
-| **Tier-2** | Catalog/metadata APIs (TMDB, verticals) | May stay in host packages; freeze — no new Dart logic |
-| **Host-only** | Platform capabilities (R3) | Never Rust |
+| Layer | Location | What belongs |
+|-------|----------|--------------|
+| **Engine** | `crates/*` | All logic that does not require platform (C1, C2, C7, C8, C9, Rust-side C11 pipelines) |
+| **Host** | `apps/forja` | UI + platform capabilities (C3–C6, C10, C12, host-side C11 UX) |
+| **FFI bridge** | `packages/rust` | Loader + parity tests only — **not engine** |
+
+`packages/api`, `packages/streaming`, etc. are **legacy engine code** pending port to `crates/*`. They are not a valid permanent home.
+
+Migration is sequenced in **two waves** (playback, then catalog) — scheduling only, not different architectural layers.
 
 ---
 
@@ -22,7 +26,7 @@ Canonical rules for what lives in **Rust (`crates/*`)**, the **host app** (Flutt
 
 | ID | Choice |
 |----|--------|
-| **D1** | **C** — Rust core + incremental tier-2 crates |
+| **D1** | **C** — All engine in `crates/*`; incremental vertical crates |
 | **D2** | **C** — Hybrid orchestration: Rust pipelines; host provider race + loading UX |
 | **D3** | **A** — Nuvio permanent host (C4) |
 | **D4** | **B** — Jackett/Prowlarr optional host plugins; Knaben in Rust |
@@ -30,52 +34,46 @@ Canonical rules for what lives in **Rust (`crates/*`)**, the **host app** (Flutt
 | **D6** | **A** — Consolidate loopback servers into `crates/proxy` (P2-92) |
 | **D7** | **A** — Move `app_theme` to `apps/forja` (P2-96) |
 | **D8** | **A** — New FFI: fetch+parse in Rust; deprecate HTML-in shims |
-| **D9** | Phased package deletion — see §7 |
+| **D9** | Phased legacy package deletion — see §6 |
+| **D10** | **Flutter permanent** — `apps/forja` is the only mobile/desktop UI host |
 
-**Webstreamr:** Keep `crates/webstreamr` (no Dart rollback). UI freeze fixed via isolate offload (P2-91), not language change. See [issue 001](issues/001-webstreamr-blocks-ui.md).
+**Webstreamr:** Lives in `crates/webstreamr` because C2 scrape + C7 proxy + playback pipeline = **engine** — same rule as TMDB (C1). UI freeze fixed via isolate offload (P2-91), not language change. See [issue 001](issues/001-webstreamr-blocks-ui.md).
+
+**Compose / kotlin:** Cancelled. Delete `packages/kotlin` in wave 2 (P3-00).
 
 ---
 
 ## 3. Capability taxonomy
 
-| ID | Class | Examples | Platform required? |
-|----|-------|----------|-------------------|
-| **C1** | REST/JSON/GraphQL | TMDB, Trakt, Jellyfin | No — tier-2 |
-| **C2** | HTML/XML scrape + parse | manga, Knaben (Rust) | No |
-| **C3** | WebView embed sniff | `stream_extractor`, kisskh | **Yes** — host |
-| **C4** | JS runtime (non-browser) | Nuvio `flutter_js` | **Yes** — host |
-| **C5** | WASM host | Videasy extractor | **Yes** — host |
-| **C6** | Video/audio decode | media_kit, audio_service | **Yes** — host |
-| **C7** | Local loopback HTTP | proxy, shelf, 111477 | No — tier-1 → Rust |
-| **C8** | Crypto/transform | openssl_crypt, AES | No — tier-1 |
-| **C9** | Persistence | prefs, history | Tier-1 in Rust KV; secrets on host |
-| **C10** | UI | theme, widgets, nav | **Yes** — host |
+| ID | Class | Examples | Destination |
+|----|-------|----------|-------------|
+| **C1** | REST/JSON/GraphQL | TMDB, Trakt, Jellyfin | **Engine** — `crates/*` |
+| **C2** | HTML/XML scrape + parse | webstreamr, manga, Knaben | **Engine** — `crates/*` |
+| **C3** | WebView embed sniff | `stream_extractor`, kisskh | **Host** |
+| **C4** | JS runtime (non-browser) | Nuvio `flutter_js` | **Host** |
+| **C5** | WASM host | Videasy extractor | **Host** |
+| **C6** | Video/audio decode | media_kit, audio_service | **Host** |
+| **C7** | Local loopback HTTP | proxy, shelf, 111477 | **Engine** — `crates/*` |
+| **C8** | Crypto/transform | openssl_crypt, AES | **Engine** — `crates/*` |
+| **C9** | Persistence | prefs, history | **Engine** — `crates/storage`; secrets on host |
+| **C10** | UI | theme, widgets, nav | **Host** |
 | **C11** | Orchestration | provider races, subtitles | Split — see R6 |
-| **C12** | OAuth / OS intents | Trakt OAuth, VLC | **Yes** — host |
+| **C12** | OAuth / OS intents | Trakt OAuth, VLC | **Host** |
 
 ---
 
 ## 4. Rules
 
-### R1 — Tier-1 (must be Rust before Phase 3)
+### RE — Engine (`crates/*`)
 
-Playback path: title selected → playable URL in player.
+All non-platform logic:
 
-- `crates/webstreamr`, `torrent`, `proxy`, `scrapers`, `stream-core`, `stremio-core` (fetch+parse unified — P2-93)
-- `site111477` proxy + index (P2-83)
-- `crates/storage` typed prefs/history (P2-88)
-- Stateless transforms: `utils`, `iptv-core` parsers; IPTV HTTP unified (P2-94)
-- Consolidated local HTTP (P2-92)
+- **Playback (wave 1):** `webstreamr`, `torrent`, `proxy`, `scrapers`, `stream-core`, `stremio-core` (P2-93), `site111477` (P2-83), `storage`, `utils`, `iptv-core` (P2-94), consolidated local HTTP (P2-92)
+- **Catalog (wave 2):** TMDB, Trakt, Jellyfin, anime, manga, music, Arabic verticals — port from `packages/api` to `crates/*` (Phase 3)
 
-### R2 — Tier-2 (host until opportunistic Rust port)
+**No new engine logic in Dart** — port to `crates/*` when touching.
 
-Catalog/metadata verticals (C1): TMDB, Trakt, Jellyfin, anime, manga, music, Arabic, etc.
-
-- May remain in `packages/api` through early Phase 3 (P2-89b)
-- **No new engine logic in Dart** — freeze; port when touching a vertical
-- Compose may bridge to remaining `packages/api` temporarily or port vertical to Rust per screen
-
-### R3 — Host-only (never Rust)
+### RH — Host (`apps/forja`)
 
 | Class | Examples |
 |-------|----------|
@@ -88,13 +86,13 @@ Catalog/metadata verticals (C1): TMDB, Trakt, Jellyfin, anime, manga, music, Ara
 
 ### R4 — Network is not the boundary
 
-HTTP in Rust or host is an implementation choice. The split line is **tier-1 playback path** vs **host capabilities** (R2–R3).
+HTTP location is an implementation detail inside the engine. The split line is **engine vs host capabilities** (RE vs RH).
 
 ### R5 — FFI
 
 - Default: **fetch+parse in Rust** (Pattern B)
 - **Forbidden:** sync FFI on UI thread for calls expected to exceed ~50ms — use `Isolate.run` ([P2-91](issues/001-webstreamr-blocks-ui.md))
-- **Deprecated:** Pattern A (`*_html_json` HTML-in) for new tier-1 work
+- **Deprecated:** Pattern A (`*_html_json` HTML-in) for new engine work
 - Exception: Pattern A OK when host already holds HTML from an active WebView session (C3)
 
 ### R6 — Orchestration (C11)
@@ -105,32 +103,33 @@ HTTP in Rust or host is an implementation choice. The split line is **tier-1 pla
 
 ### R7 — App feature folders
 
-Engine logic in `apps/forja/features/**/data/` must move to the same destination as equivalent package code (tier-1 → Rust, tier-2 → freeze/port, host → app). IPTV HTTP is tier-1 (P2-94).
+Engine logic in `apps/forja/features/**/data/` must move to `crates/*` (or host adapters only). IPTV HTTP is engine (P2-94).
 
 ---
 
-## 5. Package deletion (D9)
-
-| Package | Phase 2 | Phase 3 / 4 |
-|---------|---------|-------------|
-| `streaming` | Delete after P2-83, 91, 92 | — |
-| `storage` | Delete after P2-88 (+ P2-96 theme → app) | — |
-| `core` | Delete after P2-90 | — |
-| `api` | Shrink — tier-1 slices out; freeze tier-2 | Delete when Compose screens ported (P2-89b) |
-| `webstreamr` | Deleted — logic in `crates/webstreamr` (no rollback) | — |
-| `rust` | — | Delete Phase 4 |
-| `kotlin` | — | **Permanent** |
-
----
-
-## 6. What survives in `packages/`
+## 5. What survives in `packages/`
 
 | Package | Fate |
 |---------|------|
-| `packages/rust` | FFI loader until Phase 4 — no logic |
-| `packages/kotlin` | Generated UniFFI bindings — permanent |
-| `packages/api` | Tier-2 transitional — delete Phase 3/4 |
-| Others | Delete per §5 |
+| `packages/rust` | **Permanent** FFI bridge — no engine logic |
+| `packages/api` | Legacy engine — delete wave 2 when verticals live in `crates/*` |
+| `packages/kotlin` | **Delete** (P3-00) — Compose cancelled |
+| `streaming`, `storage`, `core`, `webstreamr`, `scrapers` | Legacy engine — delete wave 1 |
+
+**Normalized end state:** only `packages/rust` under `packages/`.
+
+---
+
+## 6. Legacy package deletion (D9)
+
+| Package | Wave |
+|---------|------|
+| `streaming` | 1 — after P2-83, 91, 92 |
+| `storage` | 1 — after P2-88 (+ P2-96 theme → app) |
+| `core` | 1 — after P2-90 |
+| `api` (playback slices) | 1 — P2-89 |
+| `api` (catalog verticals) | 2 — Phase 3 (P3-01 → P3-03) |
+| `kotlin` | 2 — P3-00 |
 
 ---
 
@@ -138,9 +137,9 @@ Engine logic in `apps/forja/features/**/data/` must move to the same destination
 
 | Fact | Implication |
 |------|-------------|
-| Rust ~8.5k LOC; Dart api ~23.7k LOC | Tier-2 port is large — not a Phase 2 gate |
+| Rust ~8.5k LOC; Dart api ~23.7k LOC | Catalog port is wave 2 — large but same destination as playback |
 | Four localhost server patterns | Consolidate in P2-92 |
-| FFI Pattern A + B coexist | Standardize on B for tier-1 |
+| FFI Pattern A + B coexist | Standardize on B for engine |
 | WebView ~1.9k, player ~1.8k, REST ~17k | Boundary by capability class, not package name |
 | Engine in `apps/forja/features/iptv/` | R7 — package delete ≠ engine complete |
 

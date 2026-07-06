@@ -1,6 +1,6 @@
 # Forja App
 
-Main Flutter product — **transitional UI only**. Engine completion: [Phase 2](../../docs/migration/02-rust-engine-complete.md). Compose UI: [Phase 3](../../docs/migration/03-kotlin-compose.md).
+Main Flutter product — permanent UI host. Engine: [Phase 2 playback wave](../../docs/migration/02-rust-engine-complete.md) · [Phase 3 catalog wave](../../docs/migration/03-engine-catalog.md).
 
 ## Run (desktop)
 
@@ -51,4 +51,4 @@ cd apps/forja && flutter test integration_test/  # engine smoke (desktop)
 - `lib/app/` — bootstrap
 - `lib/shell/` — nav, `AppRouter`, `ShellBus`
 - `lib/features/` — one folder per nav tab
-- `lib/shared/` — player, widgets, Phase 3 stubs (design/casting/sync)
+- `lib/shared/` — player, widgets, casting/sync stubs

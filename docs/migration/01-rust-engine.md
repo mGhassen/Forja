@@ -270,7 +270,8 @@ Do **not** track these as migration blockers:
 | Webstreamr fetcher / registry / page HTTP | Orchestration stays Dart (same as scraper HTTP) |
 | HLS `/hls-proxy` | Out of Rust scope; shelf rewrite in Dart |
 | WASM / web client | RFC-014 v3.0 |
-| KMP / Compose | [Phase 3](./03-kotlin-compose.md) |
+| Catalog engine (wave 2) | [Phase 3](./03-engine-catalog.md) |
+| Web client | [Phase 4](./04-web-client.md) |
 | Parity baselines in `test/parity/dart_baseline/` | Test-only; not shipped |
 
 **Known intentional gaps (not bugs):**

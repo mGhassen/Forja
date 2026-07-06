@@ -14,38 +14,35 @@ Forja is a **GPL-2.0 melos monorepo**: one cross-platform Flutter product (`apps
 
 **Core principle** ([ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md)):
 
-> **Tier-1 engine works in Rust. Host shows pixels and platform capabilities.**
+> **Engine in `crates/*`. Flutter host shows pixels and platform capabilities.**
 
 | Concern | Owner |
 |---------|-------|
-| Playback path (stream resolve, torrent, proxy) | `crates/*` (tier-1) |
-| Catalog APIs (TMDB, verticals) | Tier-2 — transitional `packages/api` |
-| Storage, prefs, watch history | `crates/storage` |
-| WebView, Nuvio, WASM, player, OAuth | Host |
-| Widgets, navigation, theme | Host |
+| Engine (playback, catalog, storage, proxy, scrape) | `crates/*` |
+| Legacy engine (`packages/api`, etc.) | Transitional — port to `crates/*` |
+| WebView, Nuvio, WASM, player, OAuth | Host (`apps/forja`) |
+| Widgets, navigation, theme | Host (`apps/forja`) |
+| FFI bridge | `packages/rust` (permanent) |
 
 ### Target end-state
 
 ```mermaid
 flowchart TB
-  subgraph ui [UI Layer]
-    Flutter["apps/forja (Phase 2-4)"]
-    Compose["apps/forja_compose (Phase 3)"]
+  subgraph host [Host]
+    Flutter["apps/forja Flutter permanent"]
   end
-  subgraph ffi [FFI Loaders]
-    DartFFI["packages/rust — C ABI"]
-    KotlinFFI["packages/kotlin — UniFFI"]
+  subgraph bridge [FFI bridge]
+    DartFFI["packages/rust C ABI"]
   end
-  subgraph engine [Rust Engine crates/*]
-    FFICrate["crates/ffi — libffi"]
-    Domain["utils · stream-core · iptv-core · stremio-core · webstreamr · scrapers · torrent · proxy · storage"]
+  subgraph engine [Engine crates/*]
+    FFICrate["crates/ffi libffi"]
+    Domain["utils stream-core iptv-core stremio-core webstreamr scrapers torrent proxy storage catalog"]
     FFICrate --> Domain
   end
   Flutter --> DartFFI --> FFICrate
-  Compose --> KotlinFFI --> FFICrate
 ```
 
-Phase 3 swaps Flutter for Kotlin Compose. Phase 4 deletes `apps/forja` and `packages/rust`. `packages/kotlin` + `crates/*` are permanent.
+Normalized end state: only `packages/rust` under `packages/`. All engine logic in `crates/*`.
 
 ### Layer cake (current)
 
@@ -70,14 +67,14 @@ Phase 3 swaps Flutter for Kotlin Compose. Phase 4 deletes `apps/forja` and `pack
 
 ```
 Forja/
-├── apps/forja/          Flutter product (transitional UI)
+├── apps/forja/          Flutter product (permanent host)
 ├── packages/
-│   ├── rust/            Dart FFI loader (deleted Phase 4)
-│   ├── kotlin/          UniFFI bindings (permanent)
-│   ├── core/            Models, utilities (deleted Phase 2)
-│   ├── storage/         Settings, repos (deleted Phase 2)
-│   ├── api/             HTTP clients, services (deleted Phase 2)
-│   └── streaming/       Torrent session, providers, proxy glue (deleted Phase 2)
+│   ├── rust/            Dart FFI bridge (permanent)
+│   ├── kotlin/          UniFFI POC (delete wave 2)
+│   ├── core/            Legacy engine (delete wave 1)
+│   ├── storage/         Legacy engine (delete wave 1)
+│   ├── api/             Legacy catalog engine (delete wave 2)
+│   └── streaming/       Legacy playback engine (delete wave 1)
 ├── crates/              Rust engine workspace
 ├── docs/                Architecture, migration, RFCs
 └── scripts/             build_rust.sh, build_rust_mobile.sh, …
@@ -85,10 +82,11 @@ Forja/
 
 | Path | Role | Fate |
 |------|------|------|
-| `apps/forja` | Flutter UI shell | Deleted Phase 4 |
-| `packages/rust` | Dart FFI loader + parity tests | Deleted Phase 4 |
-| `packages/kotlin` | UniFFI-generated Kotlin bindings | **Permanent** |
-| `packages/{core,storage,api,streaming}` | Transitional Dart orchestration | Deleted Phase 2 |
+| `apps/forja` | Flutter UI + platform host | **Permanent** |
+| `packages/rust` | Dart FFI bridge + parity tests | **Permanent** |
+| `packages/kotlin` | UniFFI POC (Compose cancelled) | Delete wave 2 |
+| `packages/{core,storage,streaming}` | Legacy playback engine | Delete wave 1 |
+| `packages/api` | Legacy catalog engine | Delete wave 2 |
 | `crates/*` | Rust engine | **Permanent** |
 
 ### Dependency rules
@@ -205,7 +203,7 @@ Two FFI paths load the same `libffi` artifact:
 | Path | Contract | Consumer | Status |
 |------|----------|----------|--------|
 | **C ABI** | `crates/ffi/src/c_api.rs` — `#[no_mangle] extern "C" ffi_*` | `packages/rust` (`RustLib` + `Engine`) | **Active** |
-| **UniFFI** | `crates/ffi/src/forja.udl` — 65 flat functions, namespace `forja` | `packages/kotlin/generated/` | Phase 3 |
+| **UniFFI** | `crates/ffi/src/forja.udl` — POC only | `packages/kotlin/generated/` | Delete wave 2 (P3-00) |
 
 Dart does **not** use UniFFI. The C ABI and UDL must be kept in sync manually.
 
@@ -372,18 +370,18 @@ Engine.init(storagePath)
 
 ---
 
-## 5. Dart transitional layer
+## 5. Legacy engine packages (transitional)
 
-See [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) for tier-1 vs tier-2.
+See [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md). All engine logic targets `crates/*`.
 
-| Package | Tier | Still in Dart | Status |
+| Package | Wave | Still in Dart | Status |
 |---------|------|---------------|--------|
-| `packages/streaming` | 1 | Nuvio (host), 111477 proxy, shelf routes | P2-83, 92 — delete in Phase 2 |
-| `packages/storage` | 1 | `kv.dart`, `app_theme` (→ app P2-96), repos | P2-88 — delete in Phase 2 |
-| `packages/core` | 1 | DTOs | P2-90 — delete in Phase 2 |
-| `packages/api` | 2 | TMDB, Trakt, verticals | **Frozen** — P2-89b, delete Phase 3/4 |
+| `packages/streaming` | 1 | Nuvio (host), 111477 proxy, shelf routes | P2-83, 92 |
+| `packages/storage` | 1 | `kv.dart`, `app_theme` (→ app P2-96), repos | P2-88 |
+| `packages/core` | 1 | DTOs | P2-90 |
+| `packages/api` | 2 | TMDB, Trakt, verticals | Phase 3 catalog port |
 
-Deleted (tier-1 in Rust): `packages/scrapers`, `packages/webstreamr` (no rollback), legacy `packages/forja_*`.
+Deleted (engine in Rust): `packages/scrapers`, `packages/webstreamr`, legacy `packages/forja_*`.
 
 ### Package dependency graph
 
@@ -399,12 +397,11 @@ flowchart BT
 
 **Narrow cycle:** `api ↔ streaming` — `api` imports `streaming` for `LocalServerService` in a few content services; `streaming` imports `api` for `subtitlecat_service` and `webstreamr_settings`.
 
-### What survives in `packages/`
+### What survives in `packages/` (normalized)
 
-| Package | Role | When deleted |
-|---------|------|--------------|
-| `packages/rust` | Dart FFI loader + parity tests | Phase 4 |
-| `packages/kotlin` | UniFFI bindings for Compose | **Never** |
+| Package | Role | Fate |
+|---------|------|------|
+| `packages/rust` | Dart FFI bridge + parity tests | **Permanent** |
 
 ---
 
@@ -479,21 +476,25 @@ Parity rule: Rust output must match Dart reference for the same fixture before s
 
 See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md).
 
-### Tier-1 (Phase 2 — blocks Phase 3)
+### Wave 1 — playback engine (Phase 2)
 
 | Status | Items |
 |--------|-------|
-| Done | scrapers, webstreamr (Rust, no rollback), forja_*, torrent filter, HLS proxy, *Backend removed |
+| Done | scrapers, webstreamr, forja_*, torrent filter, HLS proxy, *Backend removed |
 | Partial | streaming (P2-83), storage (P2-88) |
 | Open | P2-91 webstreamr isolate, P2-92 server consolidate, P2-93/94 Stremio/IPTV, P2-90 core, P2-14 mobile |
 
-### Tier-2 (deferred — P2-89b)
+### Wave 2 — catalog engine (Phase 3)
 
-`packages/api` catalog verticals — **frozen**; delete during Phase 3/4 as Compose screens port.
+`packages/api` verticals → `crates/*`; delete `packages/api` and `packages/kotlin`.
 
-### Phase 3 gate
+### Wave 1 exit gate
 
-[tier-1 exit checklist](migration/02-rust-engine-complete.md#tier-1-exit-checklist) — **not** full `packages/api` delete.
+[Playback engine exit checklist](migration/02-rust-engine-complete.md#playback-engine-exit-checklist) — app shippable; starts wave 2.
+
+### Architecture complete
+
+[03-engine-catalog.md exit checklist](migration/03-engine-catalog.md#exit-checklist) — only `packages/rust` remains.
 
 ---
 
@@ -501,29 +502,29 @@ See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGI
 
 | Decision | Rationale |
 |----------|-----------|
-| **Tier-1 / tier-2 split** | Rust owns playback path; catalog APIs port incrementally ([ENGINE_BOUNDARY](ENGINE_BOUNDARY.md)) |
+| **Two layers: engine vs host** | All non-platform logic in `crates/*`; Flutter for UI + platform ([ENGINE_BOUNDARY](ENGINE_BOUNDARY.md)) |
 | **JSON as FFI IPC** | Simplicity over zero-copy |
-| **Dual FFI surface** | C ABI for Dart; UniFFI for Kotlin — sync manually |
+| **C ABI via `packages/rust`** | Permanent Dart FFI bridge |
 | **FFI Pattern B default** | fetch+parse in Rust; Pattern A (`*_html_json`) legacy only |
 | **No sync FFI on UI thread** | Long resolve → `Isolate.run` (P2-91) |
 | **Host orchestration** | Provider race UX in UI; Rust owns pipelines (webstreamr, torrent search) |
 | **WebView / Nuvio / player host-only** | Platform capabilities — never Rust |
-| **Network is not the boundary** | HTTP location is implementation choice |
+| **Network is not the boundary** | HTTP location is implementation detail inside engine |
 | **Long-lived localhost axum** | Torrent + proxy inside `libffi` |
 | **Thin FFI, fat domain** | Logic in pure crates |
 
-### Anti-patterns (tier-1)
+### Anti-patterns
 
 - Dart wrapper calling Rust instead of deleting Dart
 - Sync FFI on UI thread for resolve/search
-- New Pattern A FFI for tier-1
-- New engine logic in tier-2 `packages/api`
+- New Pattern A FFI for engine work
+- New engine logic in Dart
 - `*Backend` hooks (removed P2-86)
 
 ### Allowed
 
 - Host provider race + loading/cancel UX
-- Tier-2 `packages/api` frozen during Phase 2/3
+- Legacy `packages/api` during wave 2 only — no new Dart engine logic
 - `Isolate.run` for long FFI calls
 
 ---
@@ -536,7 +537,7 @@ See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGI
 | [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary (locked) |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Build, run, melos scripts |
 | [crates/README.md](../crates/README.md) | Rust build, NDK, iOS patch |
-| [migration/README.md](migration/README.md) | Migration phases 1–5 |
+| [migration/README.md](migration/README.md) | Migration phases 1–4 |
 | [migration/02-rust-engine-complete.md](migration/02-rust-engine-complete.md) | Active phase task tracker |
 | [rfc/001-monorepo.md](rfc/001-monorepo.md) | Monorepo layout, dependency rules |
 | [rfc/004-provider-registry.md](rfc/004-provider-registry.md) | Stream provider registry |

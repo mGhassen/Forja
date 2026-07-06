@@ -1,8 +1,10 @@
-# Kotlin FFI (Phase 2 POC)
+# Kotlin FFI (deprecated)
 
-UniFFI Kotlin bindings for the Rust engine. Consumed by Compose UI in Phase 3.
+**Scheduled deletion:** P3-00 in [Phase 3 — Catalog engine](../../docs/migration/03-engine-catalog.md).
 
-## Generate
+UniFFI Kotlin bindings were a Phase 2 POC. Compose UI migration was cancelled — Flutter is the permanent host.
+
+## Generate (until deleted)
 
 ```bash
 ./scripts/generate_kotlin_ffi.sh
@@ -13,9 +15,7 @@ Output: `generated/dev/forja/ffi/forja.kt` (package `dev.forja.ffi`, loads `libf
 ## Source of truth
 
 - UDL: `crates/ffi/src/forja.udl`
-- C ABI (Dart/JNI): `crates/ffi/src/c_api.rs`
+- C ABI (Dart): `crates/ffi/src/c_api.rs`
 - Config: `crates/ffi/uniffi.toml`
 
-## Phase 3
-
-Wire into `apps/forja_compose/` Gradle — link prebuilt `libffi.so` / `.dylib` from `./scripts/build_rust_mobile.sh`.
+Dart uses C ABI via `packages/rust` — not UniFFI.

@@ -14,18 +14,18 @@ Forja is a **melos monorepo**:
 
 | Layer | Location | Role |
 |-------|----------|------|
-| **UI** | `apps/forja` | Flutter app — transitional; deleted in Phase 4 |
-| **FFI loader** | `packages/rust` | Thin Dart bindings to `libffi` |
-| **Engine** | `crates/*` | Rust — parsers, crypto, extractors, torrent (librqbit), proxy |
-| **Orchestration** | `packages/*` | Tier-1 ports to Rust; tier-2 frozen; deleted per [ENGINE_BOUNDARY](ENGINE_BOUNDARY.md) |
+| **UI** | `apps/forja` | Flutter app — permanent host |
+| **FFI bridge** | `packages/rust` | Dart bindings to `libffi` |
+| **Engine** | `crates/*` | Rust — parsers, crypto, extractors, torrent (librqbit), proxy, catalog |
+| **Legacy engine** | `packages/{api,streaming,storage,core}` | Port to `crates/*` per [ENGINE_BOUNDARY](ENGINE_BOUNDARY.md) |
 
 ```
-apps/forja (Flutter UI)
-    └── packages/rust (FFI)
-            └── crates/ffi → utils, webstreamr, iptv-core, torrent, proxy, …
+apps/forja (Flutter host)
+    └── packages/rust (FFI bridge)
+            └── crates/ffi → utils, webstreamr, iptv-core, torrent, proxy, catalog, …
 ```
 
-End-state: Kotlin Compose UI + Rust engine. See [migration/README.md](migration/README.md).
+End-state: Flutter + Rust engine. See [migration/README.md](migration/README.md).
 
 ---
 
@@ -43,10 +43,10 @@ Forja/
 │   ├── storage/             Settings, persistence, theme (deleted Phase 2)
 │   ├── api/                 TMDB, Trakt, Stremio, Jellyfin (deleted Phase 2)
 │   ├── streaming/           Torrent session, providers, proxy glue (deleted Phase 2)
-│   ├── rust/                Dart FFI + parity tests (deleted Phase 4)
-│   └── kotlin/              UniFFI bindings (permanent)
-├── crates/                  Rust engine — ffi, utils, webstreamr, scrapers, torrent, proxy, …
-├── docs/migration/          Phases 1–5
+│   ├── rust/                Dart FFI bridge + parity tests (permanent)
+│   └── kotlin/              UniFFI POC (delete wave 2)
+├── crates/                  Rust engine — ffi, utils, webstreamr, scrapers, torrent, proxy, catalog, …
+├── docs/migration/          Phases 1–4
 ├── docs/rfc/                Design specs
 └── scripts/                 build_rust.sh, build_rust_mobile.sh, build_macos.sh
 ```

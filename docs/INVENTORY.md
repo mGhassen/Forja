@@ -269,7 +269,7 @@ flowchart LR
 | media_kit playback | Yes — decoder/surface | No | ~1.8k |
 | OAuth secure storage | Yes — keychain/keystore | No | scattered |
 | Local loopback servers | No | Partial (Rust proxy + Dart servers) | ~2.5k |
-| Flutter ThemeData/widgets | Yes — Flutter/Compose | No | ~330+ in storage |
+| Flutter ThemeData/widgets | Yes — Flutter host | No | ~330+ in storage |
 
 ---
 
@@ -287,7 +287,7 @@ flowchart LR
 
 6. **Migration progress is uneven** — torrent/webstreamr/vidsrc/scrapers are Rust-backed; Stremio splits HTTP (Dart) / parse (Rust) despite FFI for both; IPTV splits across app feature + Rust parsers.
 
-7. **Deleting packages is phased** — tier-1 in Phase 2; tier-2 `api` in Phase 3/4. See [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) tier model (supersedes “packaging goal only” framing).
+7. **Deleting packages is phased** — wave 1 playback, wave 2 catalog. See [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) two-layer model.
 
 ---
 

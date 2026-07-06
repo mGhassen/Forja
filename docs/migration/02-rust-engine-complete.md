@@ -1,8 +1,8 @@
-# Phase 2 — Rust engine complete (tier-1)
+# Phase 2 — Playback engine (wave 1)
 
 **Status:** In progress  
 **Depends on:** [Phase 1 complete](./01-rust-engine.md)  
-**Next phase:** [Phase 3 — Kotlin Compose UI](./03-kotlin-compose.md)  
+**Next phase:** [Phase 3 — Catalog engine (wave 2)](./03-engine-catalog.md)  
 **Migration index:** [README.md](./README.md)  
 **Boundary:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)  
 **Spec:** [RFC-009](../rfc/009-rust-ffi.md)
@@ -11,55 +11,53 @@
 
 ## Goal
 
-**Tier-1 playback path** lives in `crates/*`. Delete `packages/{streaming,storage,core}` and tier-1 slices of `packages/api`.
+**Playback-path engine** lives in `crates/*`. Delete `packages/{streaming,storage,core}` and playback slices of `packages/api`.
 
-Tier-2 catalog (`packages/api` verticals) is **frozen** — no new Dart logic; full delete in Phase 3/4 (P2-89b).
+Catalog engine (`packages/api` verticals) ports in **wave 2** (Phase 3) — same destination (`crates/*`), different schedule.
 
 ---
 
-## Migration rule (tier-1)
+## Migration rule
 
 | Step | Action |
 |------|--------|
-| 1 | Port tier-1 logic → Rust crate |
-| 2 | Add FFI in `crates/ffi` / uniffi (fetch+parse, Pattern B) |
-| 3 | UI calls `ForjaEngine.*` for tier-1 paths |
+| 1 | Port engine logic → Rust crate |
+| 2 | Add FFI in `crates/ffi` (fetch+parse, Pattern B) |
+| 3 | UI calls `ForjaEngine.*` |
 | 4 | **Delete the Dart equivalent** — directory slice, deps, imports |
 
-### Only these `packages/` survive after Phase 2
+### `packages/` after wave 1
 
 | Package | Purpose |
 |---------|---------|
-| `packages/rust` | Dart FFI loader (deleted Phase 4) |
-| `packages/kotlin` | uniffi bindings (permanent) |
-| `packages/api` | **Tier-2 only** — frozen catalog APIs |
+| `packages/rust` | Dart FFI bridge (**permanent**) |
+| `packages/api` | **Legacy catalog engine** — wave 2 |
 
 ---
 
 ## Architecture
 
 ```
-UI (apps/forja — Flutter · Compose Phase 3)
+UI (apps/forja — Flutter permanent host)
   → widgets, navigation, player chrome, provider race UX
-  → calls ForjaEngine / kotlin FFI for tier-1; tier-2 api frozen
+  → calls ForjaEngine for engine paths
 
-Rust tier-1 (crates/* + libffi)
-  → playback path: stream resolve, torrent, proxy, storage, parsers
+Engine (crates/* + libffi)
+  → playback: stream resolve, torrent, proxy, storage, parsers
 ```
 
-| **Rust tier-1** | **Host** |
-|-----------------|----------|
+| **Engine (`crates/*`)** | **Host (`apps/forja`)** |
+|-------------------------|-------------------------|
 | Stream resolve, torrent, proxy | Player (media_kit) |
 | Storage, prefs, history | WebView, Nuvio, WASM |
 | Parse, crypto, extract (playback) | OAuth, secure storage |
 | | Theme, navigation |
-| | Tier-2 catalog (`packages/api`) |
 
 **Anti-patterns:**
-- Dart wrapper calling Rust instead of deleting Dart (tier-1)
+- Dart wrapper calling Rust instead of deleting Dart
 - Sync FFI on UI thread for long resolve/search — use isolate (P2-91)
-- New Pattern A FFI (`*_html_json`) for tier-1
-- New engine logic in tier-2 `packages/api`
+- New Pattern A FFI (`*_html_json`) for engine work
+- New engine logic in Dart anywhere
 - `*Backend` hooks (P2-86 ✅ — stay dead)
 
 **Allowed:**
@@ -72,9 +70,9 @@ Rust tier-1 (crates/* + libffi)
 
 | | |
 |--|--|
-| **Goal** | Tier-1 complete; `streaming` + `storage` + `core` deleted |
-| **Blocks Phase 3** | P2-83, 88, 90, 91, 92, 93, 94, 14 |
-| **Deferred Phase 3** | P2-89b (full api tier-2 port) |
+| **Goal** | Playback engine normalized; `streaming` + `storage` + `core` deleted |
+| **Blocks wave 2** | P2-83, 88, 90, 91, 92, 93, 94, 14 |
+| **Wave 2 (catalog)** | P3-01 → P3-03 in [Phase 3](./03-engine-catalog.md) |
 
 **Legend:** ✅ done · 🔄 partial · ⬜ not started
 
@@ -89,12 +87,12 @@ Rust tier-1 (crates/* + libffi)
 | **P2-87** | `packages/scrapers` **deleted** |
 | **P2-60** | Legacy `packages/forja_*` **deleted** |
 | P2-12, P2-13, P2-15 | Mobile torrent wiring |
-| P2-50, P2-51 | uniffi UDL + Kotlin bindgen scaffold |
+| P2-50, P2-51 | uniffi UDL + Kotlin bindgen scaffold (kotlin deleted in wave 2) |
 | **P2-81** | Scraper pipeline → `search_torrents_json` |
 | **P2-84** | Torrent filter → `filter_torrents_json` |
 | **P2-86** | All `*Backend` hooks removed |
 | **P2-85** | HLS proxy in Rust |
-| **P2-82** | `packages/webstreamr` **deleted**; `webstreamr_get_streams_json` in Rust (**no rollback**) |
+| **P2-82** | `packages/webstreamr` **deleted**; logic in `crates/webstreamr` |
 
 #### 🔄 Partial
 
@@ -104,7 +102,7 @@ Rust tier-1 (crates/* + libffi)
 | **P2-88** | `crates/storage` KV + FFI | **`packages/storage`** — kv glue, `app_theme`, thin repos |
 | **P2-89** | Stremio parse via Rust | Stremio **HTTP still Dart** — P2-93 |
 
-#### ⬜ Tier-1 todo
+#### ⬜ Wave 1 todo
 
 | ID | What |
 |----|------|
@@ -118,12 +116,6 @@ Rust tier-1 (crates/* + libffi)
 | **P2-88** | Finish storage delete (with 96) |
 | **P2-90** | Delete `packages/core` — JSON from Rust / maps in UI |
 
-#### ⬜ Tier-2 deferred (Phase 3 — P2-89b)
-
-| ID | What |
-|----|------|
-| **P2-89b** | `packages/api` tier-2 verticals — port opportunistically per Compose screen; **freeze** until then |
-
 #### ⬜ Mobile + sign-off
 
 | ID | What |
@@ -134,9 +126,9 @@ Rust tier-1 (crates/* + libffi)
 
 ---
 
-## Tier-1 exit checklist
+## Playback engine exit checklist
 
-**Phase 3 starts when all rows are ✅.**
+**Wave 2 (catalog) starts when all rows are ✅.**
 
 | # | Criterion | |
 |---|-----------|---|
@@ -146,17 +138,21 @@ Rust tier-1 (crates/* + libffi)
 | T4 | WebStreamr non-blocking (P2-91) | ⬜ |
 | T5 | Stremio/IPTV no fetch split-brain (P2-93, 94) | ⬜ |
 | T6 | Mobile magnet E2E (P2-14) | ⬜ |
-| T7 | No tier-1 engine logic in `apps/forja/features/*/data/` except host adapters | ⬜ |
+| T7 | No engine logic in `apps/forja/features/*/data/` except host adapters | ⬜ |
 | T8 | Sign-off (P2-70) | ⬜ |
 
 ---
 
-## Full engine exit (Phase 4)
+## Architecture normalized checklist (wave 2 — Phase 3)
+
+See [03-engine-catalog.md](./03-engine-catalog.md#exit-checklist).
 
 | # | Criterion | |
 |---|-----------|---|
-| F1 | `packages/api` deleted (P2-89b) | ⬜ |
-| F2 | Only `packages/rust` + `packages/kotlin` under `packages/` | ⬜ |
+| A1 | `packages/api` deleted | ⬜ |
+| A2 | All C1 catalog logic in `crates/*` | ⬜ |
+| A3 | Only `packages/rust` under `packages/` | ⬜ |
+| A4 | No engine logic in Dart outside FFI calls | ⬜ |
 
 ---
 
@@ -179,15 +175,14 @@ flowchart LR
   P290["P2-90 core"]
   P291["P2-91 webstreamr UX"]
   P214["P2-14 mobile"]
-  P3["Phase3 Compose"]
-  P289b["P2-89b api tier-2\nopportunistic"]
+  W1["Wave1 done\nshippable"]
+  W2["Wave2 catalog\nPhase3"]
 
-  P283 --> P288 --> P290 --> P291 --> P214 --> P3
-  P3 -.-> P289b
+  P283 --> P288 --> P290 --> P291 --> P214 --> W1 --> W2
 ```
 
 ---
 
 ## Related
 
-- [Phase 1](./01-rust-engine.md) · [Phase 3 UI](./03-kotlin-compose.md) · [ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) · [RFC-009](../rfc/009-rust-ffi.md)
+- [Phase 1](./01-rust-engine.md) · [Phase 3 catalog](./03-engine-catalog.md) · [ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) · [RFC-009](../rfc/009-rust-ffi.md)

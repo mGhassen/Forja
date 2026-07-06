@@ -1,12 +1,12 @@
 # RFC-009: Rust core FFI
 
 **Version:** v1.0 engine phase (web/WASM deferred to v3.0)  
-**Status:** **Phase 1 complete** — Phase 2 tier-1 → [02-rust-engine-complete.md](../migration/02-rust-engine-complete.md)  
+**Status:** **Phase 1 complete** — wave 1 playback → [02-rust-engine-complete.md](../migration/02-rust-engine-complete.md)  
 **Boundary:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
 ## Summary
 
-Extract tier-1 playback-path logic into Rust crates. Flutter consumes via C ABI (`ffi`) through `packages/rust`. Tier-2 catalog may remain in host packages until Phase 3/4.
+Extract engine logic into Rust crates. Flutter consumes via C ABI (`ffi`) through `packages/rust`. Legacy catalog in `packages/api` ports in wave 2.
 
 **Migration:** [docs/migration/README.md](../migration/README.md) · [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
@@ -69,14 +69,14 @@ Copies dylib to `apps/forja/macos/Runner/Frameworks/` on macOS.
 | 6 | scrapers | done |
 | 7 | torrent + proxy | done (librqbit; mobile B2) |
 | 8 | integration | done |
-| 9 | tier-1 cleanup | Phase 2 — [02-rust-engine-complete.md](../migration/02-rust-engine-complete.md) |
+| 9 | playback cleanup | Wave 1 — [02-rust-engine-complete.md](../migration/02-rust-engine-complete.md) |
 
 ## FFI patterns
 
 | Pattern | Description | Status |
 |---------|-------------|--------|
-| **B — fetch+parse** | Rust performs HTTP and parsing (`webstreamr_get_streams_json`, `search_torrents_json`, `stremio_http_get_json`) | **Default for tier-1** |
-| **A — parse-only** | Caller supplies HTML/body (`extract_*_html_json`, `parse_stremio_*_json`) | Legacy; do not add for tier-1 |
+| **B — fetch+parse** | Rust performs HTTP and parsing (`webstreamr_get_streams_json`, `search_torrents_json`, `stremio_http_get_json`) | **Default** |
+| **A — parse-only** | Caller supplies HTML/body (`extract_*_html_json`, `parse_stremio_*_json`) | Legacy; do not add for engine work |
 
 ## Threading
 
@@ -95,8 +95,7 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 
 ## Non-goals (Phase 1 — complete)
 
-- KMP / Compose UI → [Phase 3](../migration/03-kotlin-compose.md)
-- WASM build → [Phase 5](../migration/05-web-client.md)
+- WASM build → [Phase 4](../migration/04-web-client.md)
 - Replacing WebView extractors with Rust
 - Full libtorrent in Rust (mobile uses libtorrent until B2)
 
