@@ -15,6 +15,10 @@ use tokio::sync::RwLock;
 
 mod hls;
 pub mod seek111477;
+mod toky;
+mod comic;
+mod jellyfin;
+mod subtitlecat;
 
 #[derive(Clone)]
 pub struct ProxyState {
@@ -69,6 +73,16 @@ impl LocalProxy {
                 get(hls::hls_proxy_handler).head(hls::hls_proxy_handler),
             )
             .route("/proxy/{token}", get(token_proxy_handler))
+            .route("/toky-proxy", get(toky::toky_proxy_handler))
+            .route("/comic-proxy", get(comic::comic_proxy_handler))
+            .route(
+                "/jellyfin-stream",
+                get(jellyfin::jellyfin_stream_handler).head(jellyfin::jellyfin_stream_handler),
+            )
+            .route(
+                "/subtitlecat-translate",
+                get(subtitlecat::subtitlecat_translate_handler),
+            )
             .with_state(self.state.clone());
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
         let listener = tokio::net::TcpListener::bind(addr)

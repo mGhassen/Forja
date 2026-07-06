@@ -58,7 +58,6 @@ struct ExtractorDef {
     id: &'static str,
     label: &'static str,
     via_mfp: bool,
-    mfp_host: Option<&'static str>,
 }
 
 const EXTRACTORS: &[ExtractorDef] = &[
@@ -66,139 +65,116 @@ const EXTRACTORS: &[ExtractorDef] = &[
         id: "streamembed",
         label: "StreamEmbed",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "savefiles",
         label: "SaveFiles",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "dropload",
         label: "Dropload",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "supervideo",
         label: "SuperVideo",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "vidora",
         label: "Vidora",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "fsst",
         label: "FSST",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "vixsrc",
         label: "VixSrc",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "kinoger",
         label: "KinoGer",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "youtube",
         label: "YouTube",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "filemoon",
         label: "FileMoon",
         via_mfp: true,
-        mfp_host: Some("FileMoon"),
     },
     ExtractorDef {
         id: "hubdrive",
         label: "HubDrive",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "hubcloud",
         label: "HubCloud",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "rgshows",
         label: "RGShows",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "vidsrc",
         label: "VidSrc",
         via_mfp: false,
-        mfp_host: None,
     },
     ExtractorDef {
         id: "mixdrop",
         label: "Mixdrop",
         via_mfp: true,
-        mfp_host: Some("Mixdrop"),
     },
     ExtractorDef {
         id: "streamtape",
         label: "Streamtape",
         via_mfp: true,
-        mfp_host: Some("Streamtape"),
     },
     ExtractorDef {
         id: "uqload",
         label: "Uqload",
         via_mfp: true,
-        mfp_host: Some("Uqload"),
     },
     ExtractorDef {
         id: "doodstream",
         label: "DoodStream",
         via_mfp: true,
-        mfp_host: Some("DoodStream"),
     },
     ExtractorDef {
         id: "filelions",
         label: "FileLions",
         via_mfp: true,
-        mfp_host: Some("FileLions"),
     },
     ExtractorDef {
         id: "lulustream",
         label: "LuluStream",
         via_mfp: true,
-        mfp_host: Some("LuluStream"),
     },
     ExtractorDef {
         id: "fastream",
         label: "Fastream",
         via_mfp: true,
-        mfp_host: Some("Fastream"),
     },
     ExtractorDef {
         id: "voe",
         label: "Voe",
         via_mfp: true,
-        mfp_host: Some("Voe"),
     },
     ExtractorDef {
         id: "external",
         label: "External",
         via_mfp: false,
-        mfp_host: None,
     },
 ];
 
@@ -638,7 +614,6 @@ mod tests {
     #[test]
     fn streamembed_fixture_yields_hls() {
         let html = fs::read_to_string("tests/fixtures/streamembed.html").unwrap();
-        let config = config::default_config();
         let meta = EmbedMeta {
             referer: Some("https://ref.example/".into()),
             ..Default::default()

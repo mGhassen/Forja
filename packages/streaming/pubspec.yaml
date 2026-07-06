@@ -10,9 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.6.0
-  shelf: ^1.4.1
-  shelf_router: ^1.1.4
-  shelf_proxy: ^1.0.4
   flutter_inappwebview: ^6.1.5
   flutter_js: ^0.8.0
   crypto: ^3.0.5

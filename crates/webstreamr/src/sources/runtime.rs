@@ -355,7 +355,7 @@ fn run_imdb_movie_page(source_id: &str, ids: &MediaIds, base_url: &str) -> Optio
 fn run_megakino(ids: &MediaIds, base_url: &str) -> Option<Vec<SourceEmbed>> {
     let imdb = ids.imdb_id.as_deref()?;
     let base = final_redirect_url(base_url, &FetchConfig::default()).unwrap_or_else(|_| base_url.into());
-    let origin = UrlOrigin::from(&base);
+    let origin = url_origin(&base);
     let form = format!(
         "do=search&subaction=search&story={}",
         urlencoding_encode(imdb)
@@ -386,14 +386,11 @@ fn run_megakino(ids: &MediaIds, base_url: &str) -> Option<Vec<SourceEmbed>> {
     ))
 }
 
-struct UrlOrigin(String);
-impl UrlOrigin {
-    fn from(url: &str) -> String {
-        url::Url::parse(url)
-            .ok()
-            .map(|u| format!("{}://{}", u.scheme(), u.host_str().unwrap_or("")))
-            .unwrap_or_else(|| url.into())
-    }
+fn url_origin(url: &str) -> String {
+    url::Url::parse(url)
+        .ok()
+        .map(|u| format!("{}://{}", u.scheme(), u.host_str().unwrap_or("")))
+        .unwrap_or_else(|| url.into())
 }
 
 fn urlencoding_encode(s: &str) -> String {
@@ -486,13 +483,13 @@ fn find_homecine_episode(html: &str, season: i32, episode: i32) -> Option<String
         })
 }
 
-fn run_eurostreaming(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
+fn run_eurostreaming(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, Some("it"), token).ok()?;
     let keyword = ny.name.replace(':', "").replace('-', "");
     let base = "https://eurostreaming.luxe";
     let post_url = format!("{base}/index.php?do=search");
-    let origin = UrlOrigin::from(&post_url);
+    let origin = url_origin(&post_url);
     let body = format!("subaction=search&story={}", urlencoding_encode(&keyword));
     let html = fetch_text_post(
         &post_url,
@@ -608,7 +605,7 @@ fn run_einschalten(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
     ))
 }
 
-fn run_movix(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
+fn run_movix(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, None, token).ok()?;
     let api_url = if ids.season.is_some() {
@@ -655,12 +652,12 @@ fn run_movix(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option
     ))
 }
 
-fn run_frembed(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
+fn run_frembed(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, None, token).ok()?;
     let base = final_redirect_url("https://frembed.work", &FetchConfig::default())
         .unwrap_or_else(|_| "https://frembed.work".into());
-    let origin = UrlOrigin::from(&base);
+    let origin = url_origin(&base);
     let api_url = if ids.season.is_some() {
         format!(
             "{base}/api/series?id={tmdb_id}&sa={}&epi={}&idType=tmdb",
@@ -702,7 +699,7 @@ fn run_frembed(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Opti
         .collect())
 }
 
-fn run_kinoger(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
+fn run_kinoger(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, Some("de"), token).ok()?;
     let page_url = find_kinoger_page(&ny.name, ny.year)?;
@@ -864,7 +861,7 @@ fn season_matches(text: &str, season: i32) -> bool {
     false
 }
 
-fn run_fourkhdhub(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
+fn run_fourkhdhub(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, None, token).ok()?;
     let base = final_redirect_url("https://4khdhub.dad", &FetchConfig::default())
@@ -895,7 +892,7 @@ fn run_fourkhdhub(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> O
     ))
 }
 
-fn run_kokoshka(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
+fn run_kokoshka(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let page_url = find_kokoshka_page(tmdb_id, ids.season, token, "sq")
         .or_else(|| find_kokoshka_page(tmdb_id, ids.season, token, "en"))?;
@@ -994,17 +991,16 @@ fn find_kokoshka_episode(html: &str, season: i32, episode: i32) -> Option<String
     Some(resolve_href("https://kokoshka.digital", href))
 }
 
-fn run_cuevana(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
+fn run_cuevana(_req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
     let tmdb_id = ids.tmdb_id?;
     let ny = get_tmdb_name_and_year(tmdb_id, ids.season, Some("es"), token).ok()?;
     let mut page_url = find_cuevana_page(&ny.name)?;
-    let mut title = ny.name.clone();
-    if ids.season.is_some() {
-        title = series_title(&ny.name, ids.season.unwrap_or(1), ids.episode.unwrap_or(1));
+    let title = if ids.season.is_some() {
         page_url = find_cuevana_episode(&page_url, ids.season?, ids.episode?)?;
+        series_title(&ny.name, ids.season.unwrap_or(1), ids.episode.unwrap_or(1))
     } else {
-        title = format!("{} ({})", ny.name, ny.year);
-    }
+        format!("{} ({})", ny.name, ny.year)
+    };
     let html = fetch_text(&page_url, &FetchConfig::default()).ok()?;
     let mut out = parse_source_html(
         "cuevana",
@@ -1014,7 +1010,7 @@ fn run_cuevana(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Opti
             "title": title,
         })),
     );
-    let origin = UrlOrigin::from(&page_url);
+    let origin = url_origin(&page_url);
     out = out
         .into_iter()
         .filter_map(|mut e| {
@@ -1038,7 +1034,7 @@ fn run_cuevana(req: &SourceRequest, ids: &MediaIds, token: Option<&str>) -> Opti
 fn find_cuevana_page(keyword: &str) -> Option<String> {
     let base = "https://ww1.cuevana3.is";
     let search_url = format!("{base}/search/{}/", urlencoding_encode(keyword));
-    let origin = UrlOrigin::from(&search_url);
+    let origin = url_origin(&search_url);
     let html = fetch_text(&search_url, &fetch_cfg(Some(&origin))).ok()?;
     let doc = Html::parse_document(&html);
     for t in doc.select(&Selector::parse(".TPost .Title").unwrap()) {
@@ -1062,7 +1058,7 @@ fn find_cuevana_page(keyword: &str) -> Option<String> {
 }
 
 fn find_cuevana_episode(page_url: &str, season: i32, episode: i32) -> Option<String> {
-    let origin = UrlOrigin::from(page_url);
+    let origin = url_origin(page_url);
     let html = fetch_text(page_url, &fetch_cfg(Some(&origin))).ok()?;
     let doc = Html::parse_document(&html);
     let marker = format!("{season}x{episode}");

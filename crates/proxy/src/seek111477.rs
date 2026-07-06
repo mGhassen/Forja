@@ -523,7 +523,7 @@ async fn serve_root(
         file.seek(SeekFrom::Start(off))
             .await
             .map_err(|_| StatusCode::BAD_GATEWAY)?;
-        let max_in_chunk = (chunk_expected_size(&state, idx).await as u64).saturating_sub(off);
+        let max_in_chunk = (chunk_expected_size(state.as_ref(), idx).await as u64).saturating_sub(off);
         let want = (end - pos + 1).min(max_in_chunk).min(256 * 1024);
         let mut buf = vec![0u8; want as usize];
         let n = file

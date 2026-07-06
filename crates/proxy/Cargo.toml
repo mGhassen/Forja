@@ -13,3 +13,5 @@ reqwest = { workspace = true, features = ["stream"] }
 thiserror = { workspace = true }
 futures-util = "0.3"
 urlencoding = "2"
+regex = { workspace = true }
+url = { workspace = true }
