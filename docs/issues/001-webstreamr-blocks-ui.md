@@ -1,7 +1,9 @@
 # 001 — WebStreamr extraction blocks the UI thread
 
+**Priority:** P1  
+**Severity:** High  
 **Tracked:** P2-91 ([Phase 2 task](../migration/02-rust-engine-complete.md))  
-**Status:** fixed (Dart isolate offload) — Rust parallelization still open  
+**Status:** fixed (Dart isolate offload) — see also [004](004-sync-ffi-ui-thread-audit.md)  
 **Area:** `packages/streaming`, `crates/webstreamr`, `crates/ffi`  
 **Reported:** 2026-07-06
 

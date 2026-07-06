@@ -1,5 +1,7 @@
 # 003 — Match Stremio platform playback model
 
+**Priority:** P2  
+**Severity:** Medium  
 **Status:** open  
 **Area:** `apps/forja`, `packages/streaming`, `packages/api`, `crates/torrent`, `crates/stremio-core`  
 **Reported:** 2026-07-06

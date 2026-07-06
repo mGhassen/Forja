@@ -1,5 +1,7 @@
 # 002 — Torrent stream cache is never purged from disk
 
+**Priority:** P2  
+**Severity:** High  
 **Status:** open  
 **Area:** `crates/torrent`, `packages/streaming`, `apps/forja` (player, settings, bootstrap)  
 **Reported:** 2026-07-06
