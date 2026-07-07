@@ -14,4 +14,12 @@ void main() {
     final map = jsonDecode(raw) as Map<String, dynamic>;
     expect(map['error'], contains('unknown action'));
   });
+
+  test('metadataRequestJson rejects mdblist remove without id', () {
+    final raw = RustLib.instance.metadataRequestJson(
+      '{"action":"mdblist_remove_from_list","api_key":"k","list_id":1}',
+    );
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    expect(map['error'], isNotNull);
+  });
 }

@@ -72,6 +72,7 @@ Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices
 | Port mega_proxy → `crates/proxy/mega` + FFI | ✅ |
 | Port music_service → `crates/music-core` + FFI | ✅ |
 | Port lyrics + introdb → `anime-core/metadata` + FFI | ✅ |
+| Port mdblist → `anime-core/mdblist` + FFI | ✅ |
 | Document host exceptions (WebView/C3 extractors) | ✅ |
 | A2 + A4 exit checklist green | ⬜ |
 
@@ -168,9 +169,10 @@ Per [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) §3, these **stay in `apps/forja
 | Anime Arabic | `anime_arabic/catalog/anime_arabic_extractor.dart` | C2+C3 | Mega Rust; iframe scrape Dart |
 | Nuvio | `shared/nuvio/nuvio_runtime.dart` | C4 | `flutter_js` |
 | Videasy | `packages/rust/.../videasy_extractor.dart` | C5 | WASM host |
-| Subtitle browse | `packages/rust/lib/src/catalog/*_service.dart` | C2 | Fetch via `animeHttp`; parse still Dart |
+| Subtitle browse (SubtitleCat, MySubs, …) | `packages/rust/lib/src/catalog/*_service.dart` | C2 | Fetch via `animeHttp`; parse still Dart |
+| MDBlist | `anime-core/mdblist` + thin Dart FFI | ✅ |
 
-**A4 not green:** subtitle/mdblist/paper2audio/mysubs still parse in Dart. C3 extractors are permanent host exceptions.
+**A4 not green:** subtitle/paper2audio/mysubs still parse in Dart. C3 extractors are permanent host exceptions.
 
 ---
 

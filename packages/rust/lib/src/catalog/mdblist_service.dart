@@ -1,175 +1,126 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'package:rust/rust.dart';
+import '../metadata_http.dart';
 
 /// MDBlist integration — API-key auth, ratings aggregation, list management.
-/// Register at https://mdblist.com/ to get an API key.
+/// HTTP engine: `anime-core/mdblist` via `metadataRequest`. API key stays in host secure storage.
 class MdblistService {
-  // ── Singleton ──────────────────────────────────────────────────────────
   static final MdblistService _instance = MdblistService._internal();
   factory MdblistService() => _instance;
   MdblistService._internal();
 
-  // ── Constants ──────────────────────────────────────────────────────────
-  static const String _baseUrl = 'https://api.mdblist.com';
-
-  // ── Secure Storage Key ─────────────────────────────────────────────────
   static const String _keyApiKey = 'mdblist_api_key';
 
-  // ── Runtime state ──────────────────────────────────────────────────────
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   String? _cachedApiKey;
 
-  // ═══════════════════════════════════════════════════════════════════════
-  //  A U T H   ( A P I   K E Y )
-  // ═══════════════════════════════════════════════════════════════════════
-
-  /// Save API key.
   Future<void> setApiKey(String apiKey) async {
     await _storage.write(key: _keyApiKey, value: apiKey);
     _cachedApiKey = apiKey;
     debugPrint('[MDBlist] API key saved.');
   }
 
-  /// Get stored API key.
   Future<String?> getApiKey() async {
     _cachedApiKey ??= await _storage.read(key: _keyApiKey);
     return _cachedApiKey;
   }
 
-  /// Check if API key is configured.
   Future<bool> isConfigured() async {
     final key = await getApiKey();
     return key != null && key.isNotEmpty;
   }
 
-  /// Remove API key (log out).
   Future<void> logout() async {
     await _storage.delete(key: _keyApiKey);
     _cachedApiKey = null;
     debugPrint('[MDBlist] API key removed.');
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  //  U S E R   I N F O
-  // ═══════════════════════════════════════════════════════════════════════
-
-  /// Get user info / validate API key.
   Future<Map<String, dynamic>?> getUserInfo() async {
     final apiKey = await getApiKey();
     if (apiKey == null) return null;
-
     try {
-      final resp = await animeHttp(
-        'GET',
-        '$_baseUrl/user?apikey=$apiKey',
-        maxRetries: 0,
-      );
-      if (resp.status == 200) {
-        return json.decode(resp.body) as Map<String, dynamic>;
-      }
-      debugPrint('[MDBlist] User info failed: ${resp.status}');
+      final decoded = await metadataRequest({
+        'action': 'mdblist_user_info',
+        'api_key': apiKey,
+      });
+      return decoded['data'] as Map<String, dynamic>?;
     } catch (e) {
       debugPrint('[MDBlist] User info error: $e');
+      return null;
     }
-    return null;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  //  R A T I N G S   L O O K U P
-  // ═══════════════════════════════════════════════════════════════════════
-
-  /// Get aggregated ratings for a title by IMDb ID.
-  /// Returns ratings from IMDb, TMDB, Trakt, Letterboxd, RT, Metacritic, etc.
   Future<Map<String, dynamic>?> getRatingsByImdb(String imdbId) async {
     final apiKey = await getApiKey();
     if (apiKey == null) return null;
-
     try {
-      final resp = await animeHttp(
-        'GET',
-        '$_baseUrl/?apikey=$apiKey&i=$imdbId',
-        maxRetries: 0,
-      );
-      if (resp.status == 200) {
-        return json.decode(resp.body) as Map<String, dynamic>;
-      }
+      final decoded = await metadataRequest({
+        'action': 'mdblist_ratings_by_imdb',
+        'api_key': apiKey,
+        'imdb_id': imdbId,
+      });
+      return decoded['data'] as Map<String, dynamic>?;
     } catch (e) {
       debugPrint('[MDBlist] Get ratings error: $e');
+      return null;
     }
-    return null;
   }
 
-  /// Get aggregated ratings for a title by TMDB ID + media type.
-  Future<Map<String, dynamic>?> getRatingsByTmdb(int tmdbId, String mediaType) async {
+  Future<Map<String, dynamic>?> getRatingsByTmdb(
+    int tmdbId,
+    String mediaType,
+  ) async {
     final apiKey = await getApiKey();
     if (apiKey == null) return null;
-
-    final type = (mediaType == 'tv' || mediaType == 'series') ? 'show' : 'movie';
     try {
-      final resp = await animeHttp(
-        'GET',
-        '$_baseUrl/?apikey=$apiKey&tm=$tmdbId&m=$type',
-        maxRetries: 0,
-      );
-      if (resp.status == 200) {
-        return json.decode(resp.body) as Map<String, dynamic>;
-      }
+      final decoded = await metadataRequest({
+        'action': 'mdblist_ratings_by_tmdb',
+        'api_key': apiKey,
+        'tmdb_id': tmdbId,
+        'media_type': mediaType,
+      });
+      return decoded['data'] as Map<String, dynamic>?;
     } catch (e) {
       debugPrint('[MDBlist] Get ratings by TMDB error: $e');
+      return null;
     }
-    return null;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  //  L I S T S
-  // ═══════════════════════════════════════════════════════════════════════
-
-  /// Get all of the user's lists.
   Future<List<Map<String, dynamic>>> getUserLists() async {
     final apiKey = await getApiKey();
     if (apiKey == null) return [];
-
     try {
-      final resp = await animeHttp(
-        'GET',
-        '$_baseUrl/lists/user?apikey=$apiKey',
-        maxRetries: 0,
-      );
-      if (resp.status == 200) {
-        final data = json.decode(resp.body);
-        if (data is List) return data.cast<Map<String, dynamic>>();
-      }
+      final decoded = await metadataRequest({
+        'action': 'mdblist_user_lists',
+        'api_key': apiKey,
+      });
+      final items = decoded['items'] as List<dynamic>? ?? [];
+      return items.cast<Map<String, dynamic>>();
     } catch (e) {
       debugPrint('[MDBlist] Get lists error: $e');
+      return [];
     }
-    return [];
   }
 
-  /// Get items in a specific list by list ID.
   Future<List<Map<String, dynamic>>> getListItems(int listId) async {
     final apiKey = await getApiKey();
     if (apiKey == null) return [];
-
     try {
-      final resp = await animeHttp(
-        'GET',
-        '$_baseUrl/lists/$listId/items?apikey=$apiKey',
-        maxRetries: 0,
-      );
-      if (resp.status == 200) {
-        final data = json.decode(resp.body);
-        if (data is List) return data.cast<Map<String, dynamic>>();
-      }
+      final decoded = await metadataRequest({
+        'action': 'mdblist_list_items',
+        'api_key': apiKey,
+        'list_id': listId,
+      });
+      final items = decoded['items'] as List<dynamic>? ?? [];
+      return items.cast<Map<String, dynamic>>();
     } catch (e) {
       debugPrint('[MDBlist] Get list items error: $e');
+      return [];
     }
-    return [];
   }
 
-  /// Remove an item from a user list.
   Future<bool> removeFromList({
     required int listId,
     String? imdbId,
@@ -179,51 +130,35 @@ class MdblistService {
     final apiKey = await getApiKey();
     if (apiKey == null) return false;
     if (imdbId == null && tmdbId == null) return false;
-
-    final body = <String, dynamic>{};
-    if (imdbId != null) body['imdb_id'] = imdbId;
-    if (tmdbId != null) body['tmdb_id'] = tmdbId;
-    if (mediaType != null) {
-      body['mediatype'] = (mediaType == 'tv' || mediaType == 'series') ? 'show' : 'movie';
-    }
-
     try {
-      final resp = await animeHttp(
-        'POST',
-        '$_baseUrl/lists/$listId/items/remove?apikey=$apiKey',
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode([body]),
-        maxRetries: 0,
-      );
-      return resp.status == 200;
+      final decoded = await metadataRequest({
+        'action': 'mdblist_remove_from_list',
+        'api_key': apiKey,
+        'list_id': listId,
+        if (imdbId != null) 'imdb_id': imdbId,
+        if (tmdbId != null) 'tmdb_id': tmdbId,
+        if (mediaType != null) 'media_type': mediaType,
+      });
+      return decoded['ok'] == true;
     } catch (e) {
       debugPrint('[MDBlist] Remove from list error: $e');
       return false;
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  //  T O P   L I S T S   ( P U B L I C )
-  // ═══════════════════════════════════════════════════════════════════════
-
-  /// Get top/popular lists from MDBlist.
   Future<List<Map<String, dynamic>>> getTopLists() async {
     final apiKey = await getApiKey();
     if (apiKey == null) return [];
-
     try {
-      final resp = await animeHttp(
-        'GET',
-        '$_baseUrl/lists/top?apikey=$apiKey',
-        maxRetries: 0,
-      );
-      if (resp.status == 200) {
-        final data = json.decode(resp.body);
-        if (data is List) return data.cast<Map<String, dynamic>>();
-      }
+      final decoded = await metadataRequest({
+        'action': 'mdblist_top_lists',
+        'api_key': apiKey,
+      });
+      final items = decoded['items'] as List<dynamic>? ?? [];
+      return items.cast<Map<String, dynamic>>();
     } catch (e) {
       debugPrint('[MDBlist] Get top lists error: $e');
+      return [];
     }
-    return [];
   }
 }

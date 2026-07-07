@@ -1,6 +1,7 @@
 mod http;
 mod introdb;
 mod lyrics;
+mod mdblist;
 mod metadata;
 
 use base64::Engine;
