@@ -43,7 +43,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [020-[draft]-…](020-[draft]-media-details-routing.md) | Media details routing | v1.1 | draft | 0/4 | [1.0.0](../backlog/1.0.0-[draft].md) |
 | [021-[draft]-…](021-[draft]-release-ship-hygiene.md) | Release ship hygiene | v1.0 | draft | 0/8 | — |
 | [022-[draft]-…](022-[draft]-lan-server-client.md) | LAN server/client | post-v1.2 | draft | 3/7 · 0/12 | v2+ |
-| [023-[fixed]-…](fixed/023-[fixed]-app-shell-redesign.md) | App shell redesign | v0.8.0 | fixed | Complete · 5/5 · 14/14 | [0.8.0](../backlog/done/0.8.0-[done].md) |
+| [023-[partial]-…](023-[partial]-app-shell-redesign.md) | App shell redesign | v0.8.0 | partial | 5/5 · 10/14 · 1 ⏭️ mobile | [0.8.0](../backlog/0.8.0-[partial].md) |
 
 ## Related
 

@@ -38,7 +38,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | File | Codename | Status |
 |------|----------|--------|
-| — | — | — |
+| [0.8.0-[partial].md](0.8.0-[partial].md) | Sidi Bou Said | partial |
 
 ## Done — v0 master index
 
@@ -72,7 +72,6 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | [0.6.2](done/0.6.2-[done].md) | — | 009† | — | — |
 | [0.6.3](done/0.6.3-[done].md) | — | 015† | — | — |
 | [0.7.0](done/0.7.0-[done].md) | Halfaouine | — | — | index |
-| [0.8.0](done/0.8.0-[done].md) | Sidi Bou Said | 023 | — | — |
 
 † = slice only; RFC/issue may stay `[partial]` or `[draft]` until fully done.
 
