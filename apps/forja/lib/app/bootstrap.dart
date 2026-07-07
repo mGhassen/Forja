@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -9,24 +10,30 @@ import 'package:audio_service/audio_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:forja_api/api/audio_handler.dart';
-import 'package:forja_api/api/audiobook_player_service.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_streaming/forja_streaming.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_api/api/music_player_service.dart';
-import 'package:forja_streaming/src/site111477_proxy.dart' as site111477_proxy;
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_api/services/player_pool_service.dart';
-import 'package:forja_core/utils/webview_cleanup.dart';
+import 'package:forja/shared/audio/audio_handler.dart';
+import 'package:forja/shared/audio/audiobook_player_service.dart';
+import 'package:rust/rust.dart';
+import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:rust/rust.dart' as site111477_proxy;
+import 'package:forja/shared/services/tracker_sync.dart';
+import 'package:forja/shared/services/player_pool_service.dart';
+import 'package:forja/shared/utils/webview_cleanup.dart';
 
 import 'package:forja/shell/main_screen.dart';
-import 'package:forja/features/search/search_screen.dart';
-import 'package:forja/features/discover/discover_screen.dart';
-import 'package:forja/shared/widgets/animated_forja_logo.dart';
+import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/app/boot_cache.dart';
+import 'package:forja/shared/widgets/animated_logo.dart';
+import 'package:forja/shared/services/app_version.dart';
+import 'package:forja/shared/services/splash_sound.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
+  EpisodeWatchedService().syncHandler = syncEpisodeWatchedToTrackers;
+  MyListService().syncAddHandler = syncMyListAddToTrackers;
+  MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;
+  unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
 
   // Configure InAppWebView (Android only — not supported on iOS)
@@ -99,7 +106,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   
   debugPrint('[Boot] Initializing AudioService...');
   final audioHandler = await AudioService.init(
-    builder: () => ForjaAudioHandler(MusicPlayerService().player),
+    builder: () => AppAudioHandler(MusicPlayerService().player),
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'com.forja.app.channel.audio',
       androidNotificationChannelName: 'Music Playback',
@@ -114,6 +121,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   AudiobookPlayerService().init(audioHandler);
   
   // Hydrate light mode setting before first frame
+  await Engine.init();
+  _warnIfRustMissing();
   await SettingsService().initLightMode();
   
   // Hydrate theme preset before first frame
@@ -131,21 +140,24 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   unawaited(NuvioService.instance.refreshAllInstalled().catchError((e) {
     debugPrint('[Boot] Nuvio refresh failed (non-fatal): $e');
   }));
+  debugPrint('[Boot] Preloading splash sound...');
+  await SplashSound.instance.preload();
+  debugPrint('[Boot] Splash sound ready');
   debugPrint('[Boot] All init complete — launching app');
 
-  runApp(ForjaApp(title: title));
+  runApp(App(title: title));
 }
 
-class ForjaApp extends StatefulWidget {
-  const ForjaApp({super.key, this.title = 'Forja'});
+class App extends StatefulWidget {
+  const App({super.key, this.title = 'Forja'});
 
   final String title;
 
   @override
-  State<ForjaApp> createState() => _ForjaAppState();
+  State<App> createState() => _AppState();
 }
 
-class _ForjaAppState extends State<ForjaApp> with WidgetsBindingObserver, WindowListener {
+class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
   @override
   void initState() {
     super.initState();
@@ -171,7 +183,7 @@ class _ForjaAppState extends State<ForjaApp> with WidgetsBindingObserver, Window
     final bool isPreventClose = await windowManager.isPreventClose();
     if (!isPreventClose) return;
 
-    // Graceful shutdown — calling exit(0) while libtorrent / media_kit (mpv)
+    // Graceful shutdown — calling exit(0) while media_kit (mpv)
     // / WebView2 native threads are still running races their teardown and
     // produces the Windows "system error unknown hard error" dialog
     // (STATUS_ASSERTION_FAILURE in ntdll). Dispose the heavy native plugins
@@ -239,7 +251,7 @@ class _ForjaAppState extends State<ForjaApp> with WidgetsBindingObserver, Window
       builder: (context, preset, _) {
         return ValueListenableBuilder<bool>(
           valueListenable: SettingsService.lightModeNotifier,
-          builder: (context, _, __) {
+          builder: (context, _, _) {
             Widget app = MaterialApp(
               title: widget.title,
               debugShowCheckedModeBanner: false,
@@ -273,7 +285,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   /// HomeScreen build, layout, paint and prefetch in the background. That
   /// way, when the overlay slides away, the first frames of the real UI are
   /// already warm and scrolling is smooth instead of janky.
-  static const Duration _minSplashDuration = Duration(seconds: 10);
+  static const Duration _minSplashDuration = Duration(seconds: 8);
 
   /// Built once and kept alive in the widget tree behind the splash overlay
   /// so its element (and all child State objects) survive the transition
@@ -300,15 +312,54 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     _slideController.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
         setState(() => _showOverlay = false);
+        _notifySplashDismissed();
       }
     });
 
-    _initEngine();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initEngine();
+    });
   }
 
   void _skipSplash() {
     if (!mounted || !_showOverlay) return;
     setState(() => _showOverlay = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _notifySplashDismissed();
+    });
+  }
+
+  void _notifySplashDismissed() {
+    if (ShellBus.splashDismissed.value) return;
+    ShellBus.splashDismissed.value = true;
+    unawaited(_startPostSplashServices());
+  }
+
+  Future<void> _startPostSplashServices() async {
+    // Let the slide-away and first interactive frames finish before Rust/network burst.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+
+    final profile = PlatformPlayback.capabilities;
+    if (!profile.localTorrentEngine) return;
+
+    debugPrint('[Boot] Post-splash: Starting TorrentStream engine...');
+    final ok = await TorrentStreamService()
+        .start()
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('[Boot] Post-splash: TorrentStream timed out after 10s');
+            return false;
+          },
+        )
+        .catchError((e, st) {
+          debugPrint('[Boot] Post-splash: TorrentStream error: $e');
+          debugPrint('[Boot] Stack trace: $st');
+          return false;
+        });
+    debugPrint(
+      '[Boot] Post-splash: TorrentStream ${ok ? "✓ READY" : "✗ FAILED"}',
+    );
   }
 
   /// Called once the engine is ready AND the minimum splash time has
@@ -318,6 +369,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     if (!mounted || !_showOverlay || _slideController.isAnimating) return;
     if (_slideController.isCompleted) {
       setState(() => _showOverlay = false);
+      _notifySplashDismissed();
       return;
     }
     _slideController.forward();
@@ -353,26 +405,14 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       return;
     }
 
-    debugPrint('[Boot] Step 2: Initializing services in parallel...');
+    debugPrint('[Boot] Step 2: Initializing splash-critical services...');
     final api = TmdbApi();
-    
-    debugPrint('[Boot]   - Starting TorrentStream engine...');
+
     debugPrint('[Boot]   - Starting LocalServer...');
     debugPrint('[Boot]   - Initializing MusicPlayer...');
     debugPrint('[Boot]   - Fetching TMDB data (trending, popular, top rated, now playing)...');
-    
+
     final results = await Future.wait([
-      TorrentStreamService().start().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('[Boot] ⚠ TorrentStream startup timed out after 10s');
-          return false;
-        },
-      ).catchError((e, st) {
-        debugPrint('[Boot] ✗ TorrentStream error: $e');
-        debugPrint('[Boot] Stack trace: $st');
-        return false;
-      }),
       LocalServerService().start().catchError((e) {
         debugPrint('[Boot] ✗ LocalServer error: $e');
       }),
@@ -397,36 +437,32 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       }),
     ]);
 
+    final trendingList = results[2] as List<Movie>;
+    final popularList = results[3] as List<Movie>;
+    final topRatedList = results[4] as List<Movie>;
+    final nowPlayingList = results[5] as List<Movie>;
+
+    BootCache.setTmdb(
+      trendingList: trendingList,
+      popularList: popularList,
+      topRatedList: topRatedList,
+      nowPlayingList: nowPlayingList,
+    );
+
     debugPrint('[Boot] Step 3: Service initialization results:');
-    final torrentEngineReady = (results[0] as bool?) == true;
-    // LocalServer and MusicPlayer return void, just check if they completed without throwing
-    debugPrint('[Boot]   TorrentStream: ${torrentEngineReady ? "✓ READY" : "✗ FAILED"}');
     debugPrint('[Boot]   LocalServer: ✓ READY');
     debugPrint('[Boot]   MusicPlayer: ✓ READY');
-    
-    final trendingList = results[3] as List;
-    final popularList = results[4] as List;
-    final topRatedList = results[5] as List;
-    final nowPlayingList = results[6] as List;
-    
     debugPrint('[Boot]   TMDB Trending: ${trendingList.isNotEmpty ? "✓ ${trendingList.length} items" : "✗ Empty"}');
     debugPrint('[Boot]   TMDB Popular: ${popularList.isNotEmpty ? "✓ ${popularList.length} items" : "✗ Empty"}');
     debugPrint('[Boot]   TMDB Top Rated: ${topRatedList.isNotEmpty ? "✓ ${topRatedList.length} items" : "✗ Empty"}');
     debugPrint('[Boot]   TMDB Now Playing: ${nowPlayingList.isNotEmpty ? "✓ ${nowPlayingList.length} items" : "✗ Empty"}');
 
-    debugPrint('[Boot] Step 4: Pre-warming screens...');
-    // ignore: unused_local_variable
-    const warmupSearch = SearchScreen();
-    // ignore: unused_local_variable
-    const warmupDiscover = DiscoverScreen();
-    debugPrint('[Boot] ✓ Screens pre-warmed');
-
-    debugPrint('[Boot] Step 5: Waiting for minimum splash time so the '
+    debugPrint('[Boot] Step 4: Waiting for minimum splash time so the '
         'pre-built MainScreen / HomeScreen finishes its first paints...');
     await minSplashFuture;
 
     if (mounted) {
-      debugPrint('[Boot] Step 6: Dismissing splash overlay (MainScreen '
+      debugPrint('[Boot] Step 5: Dismissing splash overlay (MainScreen '
           'already mounted underneath)');
       _dismissSplash();
       debugPrint('═══════════════════════════════════════════════════════════');
@@ -481,5 +517,27 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         ),
       ),
     );
+  }
+}
+
+void _warnIfRustMissing() {
+  if (!kDebugMode || Engine.isReady) return;
+
+  final isDesktop =
+      Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+  final buildHint = isDesktop
+      ? './scripts/build_rust.sh (or melos run rust:build)'
+      : './scripts/build_rust_mobile.sh (or melos run rust:build:mobile)';
+
+  const msg =
+      '[Boot] Rust engine NOT loaded — engine features unavailable. '
+      'From repo root run: ';
+  final full = '$msg$buildHint. '
+      'Override: RUST_LIB=/path/to/libffi.dylib|.so. '
+      'Strict fail: RUST_STRICT=1';
+
+  debugPrint(full);
+  if (Platform.environment['RUST_STRICT'] == '1') {
+    throw StateError(full);
   }
 }

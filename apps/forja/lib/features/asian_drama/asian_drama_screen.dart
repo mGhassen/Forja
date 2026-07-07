@@ -9,14 +9,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
-import 'package:forja_api/api/kisskh_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'asian_drama_details_screen.dart';
 import 'asian_drama_explore_screen.dart';
 import 'asian_drama_player_screen.dart';
 import 'asian_drama_search_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AsianDramaScreen extends StatefulWidget {
   const AsianDramaScreen({super.key});
@@ -259,9 +259,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: _loading
+        return _loading
               ? Center(
                   child: CircularProgressIndicator(
                     color: AppTheme.primaryColor,
@@ -381,8 +379,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                           ),
                         ),
                       ],
-                    ),
-        );
+                    );
       },
     );
   }

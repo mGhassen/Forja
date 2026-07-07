@@ -1,13 +1,11 @@
 import 'dart:async';
-import 'package:forja_api/services/my_list_service.dart';
+import 'package:rust/rust.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_api/api/stremio_service.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_core/models/movie.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/shell_search_bar.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 /// A single result section that streams in dynamically.
 class _SearchSection {
@@ -30,10 +28,10 @@ class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  State<SearchScreen> createState() => SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClientMixin {
+class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClientMixin {
   final TextEditingController _controller = TextEditingController();
   final TmdbApi _api = TmdbApi();
   final StremioService _stremio = StremioService();
@@ -62,6 +60,9 @@ class _SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClie
     super.initState();
     _loadProviders();
     ShellBus.stremioSearchNotifier.addListener(_onExternalSearch);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ShellBus.notifyShellChromeChanged();
+    });
   }
 
   Future<void> _loadProviders() async {
@@ -99,6 +100,7 @@ class _SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClie
 
   void _onSearchChanged(String query) {
     setState(() => _query = query);
+    ShellBus.notifyShellChromeChanged();
     _debounce?.cancel();
     if (query.trim().isEmpty) {
       setState(() {
@@ -299,38 +301,23 @@ class _SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClie
   // UI
   // ─────────────────────────────────────────────────────────────────────────
 
+  Widget buildShellSearchBar() {
+    return ShellSearchBar(
+      controller: _controller,
+      focusNode: _focusNode,
+      query: _query,
+      onChanged: _onSearchChanged,
+      onClear: () {
+        _controller.clear();
+        _onSearchChanged('');
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
-    return Scaffold(
-      backgroundColor: AppTheme.bgDark,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: TextField(
-          controller: _controller,
-          focusNode: _focusNode,
-          onChanged: _onSearchChanged,
-          style: const TextStyle(color: Colors.white, fontSize: 18),
-          decoration: InputDecoration(
-            hintText: "Search movies, shows...",
-            hintStyle: const TextStyle(color: Colors.white38),
-            border: InputBorder.none,
-            suffixIcon: _query.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.white70),
-                    onPressed: () {
-                      _controller.clear();
-                      _onSearchChanged('');
-                    },
-                  )
-                : const Icon(Icons.search, color: Colors.white70),
-          ),
-        ),
-      ),
-      body: _buildBody(),
-    );
+    return _buildBody();
   }
 
   Widget _buildBody() {

@@ -1,0 +1,47 @@
+[package]
+name = "ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib", "staticlib"]
+name = "ffi"
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+required-features = ["cli"]
+
+[features]
+default = ["torrent-engine", "local-proxy"]
+torrent-engine = ["dep:torrent"]
+local-proxy = ["dep:proxy"]
+cli = ["uniffi/cli"]
+
+[dependencies]
+utils = { path = "../utils" }
+stream-core = { path = "../stream-core" }
+iptv-core = { path = "../iptv-core" }
+stremio-core = { path = "../stremio-core" }
+webstreamr = { path = "../webstreamr" }
+scrapers = { path = "../scrapers" }
+torrent = { path = "../torrent", optional = true }
+proxy = { path = "../proxy", optional = true }
+storage = { path = "../storage" }
+tmdb-core = { path = "../tmdb-core" }
+trakt-core = { path = "../trakt-core" }
+jellyfin-core = { path = "../jellyfin-core" }
+anilist-core = { path = "../anilist-core" }
+manga-core = { path = "../manga-core" }
+anime-core = { path = "../anime-core" }
+indexer-core = { path = "../indexer-core" }
+debrid-core = { path = "../debrid-core" }
+music-core = { path = "../music-core" }
+uniffi = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+
+[build-dependencies]
+uniffi = { workspace = true, features = ["build"] }

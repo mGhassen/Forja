@@ -1,0 +1,267 @@
+use axum::{
+    body::Body,
+    extract::{Query, State},
+    http::{header, HeaderMap, Method, StatusCode},
+    response::Response,
+};
+use serde::Deserialize;
+use std::collections::HashMap;
+
+use crate::{forward_response, parse_custom_headers, ProxyState};
+
+#[derive(Debug, Deserialize)]
+pub struct HlsProxyQuery {
+    pub url: String,
+    pub headers: Option<String>,
+    pub strip: Option<String>,
+}
+
+pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
+    if raw.len() < 16 {
+        return raw.to_vec();
+    }
+    if raw[0] != 0x89 || raw[1] != 0x50 || raw[2] != 0x4E || raw[3] != 0x47 {
+        return raw.to_vec();
+    }
+    let mut idx = None;
+    for i in 8..raw.len().saturating_sub(8) {
+        if raw[i] == 0x49
+            && raw[i + 1] == 0x45
+            && raw[i + 2] == 0x4E
+            && raw[i + 3] == 0x44
+        {
+            idx = Some(i + 8);
+            break;
+        }
+    }
+    let Some(start) = idx else {
+        return raw.to_vec();
+    };
+    for p in start..raw.len().saturating_sub(188) {
+        if raw[p] == 0x47 && raw[p + 188] == 0x47 {
+            return raw[p..].to_vec();
+        }
+    }
+    for p in start..raw.len() {
+        if raw[p] == 0x47 {
+            return raw[p..].to_vec();
+        }
+    }
+    raw.to_vec()
+}
+
+fn resolve_url(relative: &str, base_path: &str, server_base: &str) -> String {
+    if relative.starts_with("http://") || relative.starts_with("https://") {
+        relative.to_string()
+    } else if relative.starts_with('/') {
+        format!("{server_base}{relative}")
+    } else {
+        format!("{base_path}{relative}")
+    }
+}
+
+pub fn build_hls_proxy_url(
+    proxy_base: &str,
+    target: &str,
+    headers_json: &str,
+    strip: Option<&str>,
+) -> String {
+    let mut out = format!(
+        "{proxy_base}?url={}&headers={}",
+        urlencoding::encode(target),
+        urlencoding::encode(headers_json)
+    );
+    if let Some(mode) = strip.filter(|s| !s.is_empty()) {
+        out.push_str("&strip=");
+        out.push_str(&urlencoding::encode(mode));
+    }
+    out
+}
+
+pub fn rewrite_hls_playlist(
+    body: &str,
+    decoded_url: &str,
+    proxy_base: &str,
+    headers_json: &str,
+    strip: Option<&str>,
+) -> String {
+    let slash = decoded_url.rfind('/').unwrap_or(0);
+    let base_path = &decoded_url[..=slash];
+    let server_base = if let Some(scheme_end) = decoded_url.find("://") {
+        let rest = &decoded_url[scheme_end + 3..];
+        if let Some(path_start) = rest.find('/') {
+            &decoded_url[..scheme_end + 3 + path_start]
+        } else {
+            decoded_url
+        }
+    } else {
+        decoded_url
+    };
+
+    body.lines()
+        .map(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                if trimmed.contains("URI=\"") {
+                    let mut out = line.to_string();
+                    let mut search_from = 0;
+                    while let Some(rel) = out[search_from..].find("URI=\"") {
+                        let start = search_from + rel;
+                        let rest = &out[start + 5..];
+                        let Some(end) = rest.find('"') else { break };
+                        let uri = &rest[..end];
+                        let full = resolve_url(uri, base_path, server_base);
+                        let replacement = build_hls_proxy_url(
+                            proxy_base,
+                            &full,
+                            headers_json,
+                            strip,
+                        );
+                        let new_token = format!("URI=\"{replacement}\"");
+                        out.replace_range(start..start + 5 + end + 1, &new_token);
+                        search_from = start + new_token.len();
+                    }
+                    return out;
+                }
+                return line.to_string();
+            }
+            let full = resolve_url(trimmed, base_path, server_base);
+            build_hls_proxy_url(proxy_base, &full, headers_json, strip)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn build_hls_upstream_request(
+    state: &ProxyState,
+    method: Method,
+    target_url: &str,
+    custom_headers: &HashMap<String, String>,
+    incoming: &HeaderMap,
+) -> Result<reqwest::RequestBuilder, StatusCode> {
+    let mut req = state.client.request(method, target_url);
+    let ua = custom_headers
+        .get("User-Agent")
+        .cloned()
+        .unwrap_or_else(|| {
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36".into()
+        });
+    req = req.header(header::USER_AGENT, ua);
+    if let Some(referer) = custom_headers.get("Referer") {
+        req = req.header(header::REFERER, referer);
+    }
+    if let Some(origin) = custom_headers.get("Origin") {
+        req = req.header(header::ORIGIN, origin);
+    }
+    req = req.header(header::ACCEPT, "*/*");
+    req = req.header(header::ACCEPT_ENCODING, "identity");
+    req = req.header(header::CONNECTION, "keep-alive");
+    if let Some(range) = incoming.get(header::RANGE) {
+        req = req.header(header::RANGE, range);
+    }
+    Ok(req)
+}
+
+pub async fn hls_proxy_handler(
+    State(state): State<ProxyState>,
+    Query(query): Query<HlsProxyQuery>,
+    method: Method,
+    headers: HeaderMap,
+) -> Result<Response, StatusCode> {
+    let target_url = urlencoding::decode(&query.url)
+        .map(|s| s.into_owned())
+        .unwrap_or(query.url);
+    let custom = parse_custom_headers(query.headers.as_deref());
+    let headers_json = query.headers.as_deref().unwrap_or("{}");
+    let strip = query.strip.as_deref();
+
+    let req = build_hls_upstream_request(&state, method.clone(), &target_url, &custom, &headers)?;
+    let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    let status = resp.status();
+    let content_type = resp
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_lowercase();
+
+    let is_playlist = content_type.contains("mpegurl")
+        || content_type.contains("x-mpegurl")
+        || target_url.contains(".m3u8");
+
+    if is_playlist {
+        let body = resp.text().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+        let port = *state.listen_port.read().await;
+        let proxy_base = format!("http://127.0.0.1:{port}/hls-proxy");
+        let rewritten = rewrite_hls_playlist(&body, &target_url, &proxy_base, headers_json, strip);
+        return Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .body(Body::from(rewritten))
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    if strip == Some("png") {
+        let bytes = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+        let stripped = strip_png_wrapper(&bytes);
+        return Response::builder()
+            .status(status)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .header(header::ACCEPT_RANGES, "bytes")
+            .header(header::CONNECTION, "keep-alive")
+            .header(header::CONTENT_TYPE, "video/mp2t")
+            .header(header::CONTENT_LENGTH, stripped.len())
+            .body(Body::from(stripped))
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    forward_response(resp)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rewrites_segment_lines() {
+        const MASTER: &str = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\n720p/index.m3u8\n";
+        let out = rewrite_hls_playlist(
+            MASTER,
+            "https://cdn.example/path/master.m3u8",
+            "http://127.0.0.1:9999/hls-proxy",
+            r#"{"Referer":"https://ref/"}"#,
+            None,
+        );
+        assert!(out.contains("http://127.0.0.1:9999/hls-proxy?url="));
+        assert!(out.contains("720p%2Findex.m3u8") || out.contains("720p/index.m3u8"));
+    }
+
+    #[test]
+    fn rewrites_uri_attributes() {
+        const BODY: &str = "#EXT-X-MAP:URI=\"init.mp4\"\nseg.ts\n";
+        let out = rewrite_hls_playlist(
+            BODY,
+            "https://cdn.example/vid/playlist.m3u8",
+            "http://127.0.0.1:1/hls-proxy",
+            "{}",
+            Some("png"),
+        );
+        assert!(out.contains("URI=\"http://127.0.0.1:1/hls-proxy"));
+        assert!(out.contains("strip=png"));
+    }
+
+    #[test]
+    fn strip_png_finds_ts_after_iend() {
+        let mut raw = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        raw.extend(std::iter::repeat_n(0u8, 8));
+        raw.extend_from_slice(b"IEND");
+        raw.extend([0, 0, 0, 0]); // CRC placeholder
+        raw.push(0x47);
+        raw.extend(std::iter::repeat_n(0u8, 187));
+        raw.push(0x47);
+        let out = strip_png_wrapper(&raw);
+        assert_eq!(out[0], 0x47);
+    }
+}

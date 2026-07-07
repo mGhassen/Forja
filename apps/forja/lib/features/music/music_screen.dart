@@ -5,12 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja_api/api/music_service.dart';
-import 'package:forja_api/api/music_player_service.dart';
-import 'package:forja_api/api/music_storage_service.dart';
-import 'package:forja_api/api/music_downloader_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:rust/rust.dart';
+import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:forja/shared/audio/music_storage_service.dart';
+import 'package:forja/shared/audio/music_downloader_service.dart';
 import 'music_player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MusicScreen extends StatefulWidget {
   const MusicScreen({super.key});
@@ -174,14 +174,7 @@ class _MusicScreenState extends State<MusicScreen> with WidgetsBindingObserver, 
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: AppTheme.effectiveBackground,
-        child: SafeArea(
-          child: _isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
-        ),
-      ),
-    );
+    return _isDesktop ? _buildDesktopLayout() : _buildMobileLayout();
   }
 
   // ─────────────────────────────────────────────
@@ -1147,7 +1140,7 @@ class _MusicScreenState extends State<MusicScreen> with WidgetsBindingObserver, 
                     if (onPlayAll != null)
                       _buildPillButton(Icons.play_arrow_rounded, 'Play All', onPlayAll, filled: true),
                     const Spacer(),
-                    if (extraActions != null) ...extraActions,
+                    ...?extraActions,
                   ],
                 ),
               ],
@@ -1797,7 +1790,7 @@ class _MusicScreenState extends State<MusicScreen> with WidgetsBindingObserver, 
               ],
             ),
           ),
-          if (actions != null) ...actions,
+          ...?actions,
         ],
       ),
     );

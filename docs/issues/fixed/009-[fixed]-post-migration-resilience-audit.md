@@ -1,0 +1,65 @@
+# 009 — Post-migration resilience audit (broken network / cancel / UX)
+
+**Priority:** P2  
+**Severity:** Medium  
+**Status:** fixed (2026-07-06) — host cancel UX + Rust abort + worker pool  
+**Area:** `apps/forja`, `packages/api`  
+**Reported:** 2026-07-06
+
+## Summary
+
+Wave 1 migration verified **functional parity** (Rust goldens, happy-path smoke). It did **not** systematically test behavior under failure: dead networks, timeouts, empty scrapes, mid-flight cancel.
+
+**Two layers** (see [honesty rule](../../.cursor/rules/honesty-and-completion.mdc)):
+
+| Layer | What we shipped | What remains |
+|-------|-----------------|--------------|
+| **Symptom / UX** | Gen-token cancel, Stop buttons, discard stale results — UI stays responsive | Manual QA per flow below |
+| **Root / engine** | Rust abort on cancel ([015](015-[fixed]-rust-blocking-http-engine-debt.md)) | Manual QA per flow below |
+
+Do **not** mark host-only paths `[fixed]` without code — WebView/Nuvio rows in [010](010-[fixed]-webview-js-extractors-main-thread.md).
+
+## Host cancel work (shipped)
+
+- **Details** (`details_screen.dart`): gen-token for torrent / Stremio / Nuvio; Cancel in results header.
+- **Streaming** (`streaming_details_screen.dart`): Cancel discards WebStreamr / Vidsrc / Nuvio / Videasy / headless WebView results.
+- **Player** (mobile + desktop): `_fallbackGen` aborts auto-fallback and manual `_switchProvider` on exit; `cancelPending()` on dispose.
+- **IPTV scrape**: Stop + bounded empty-page exit — [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) **fixed** (logic bug, not FFI).
+- **IPTV channel scan**: Stop + `isCancelled` through verify / portal fetch.
+
+**Limitation (honest):** Cancel aborts Rust HTTP at next boundary (webstreamr, vidsrc, stremio, torrent search). Headless WebView / Nuvio JS may still run until timeout ([010](010-[fixed]-webview-js-extractors-main-thread.md)).
+
+## Audit checklist
+
+Code reviewed 2026-07-06. **Manual device QA not run** — rows marked "needs QA" where behavior is implemented but unverified on device.
+
+| Flow | Spinner | Back works | Error message | No infinite loop | Cancel / escape | Status |
+|------|---------|------------|---------------|------------------|-----------------|--------|
+| WebStreamr resolve | overlay | yes | yes (empty) | yes | Cancel — gen + Rust abort | **fixed** [001](001-[fixed]-webstreamr-blocks-ui.md) |
+| IPTV scrape | yes | yes | yes | yes — 4 empty pages | Stop | **fixed** [014](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) |
+| IPTV channel scan | yes | yes | yes | bounded portals | Stop | symptom done; needs QA |
+| Stremio browse (details) | yes | yes | yes | yes | Cancel | **fixed** [005](005-[fixed]-stremio-http-blocks-ui.md) |
+| Torrent search (details) | yes | yes | yes | yes | Cancel | **fixed** [007](007-[fixed]-torrent-search-blocks-ui.md) |
+| Vidsrc resolve (streaming) | overlay | yes | yes | timeout 30s | Cancel overlay | **fixed** [006](006-[fixed]-vidsrc-videasy-extractors-blocks-ui.md) |
+| M3U fetch | yes | yes | yes | timeout | none | **fixed** [011](011-[fixed]-kisskh-hls-sync-ffi.md) |
+| Provider race (streaming) | overlay | yes | snackbar | order loop | Cancel | symptom done; needs QA |
+| Player auto-fallback | inline | back pops | error UI | provider list finite | exit aborts | symptom done; needs QA |
+| Player manual switch | snackbar | back pops | snackbar | — | exit aborts | symptom done; needs QA |
+| WebView embed extract | headless | — | null | 60s timeout | overlay cancel | [010](010-[fixed]-webview-js-extractors-main-thread.md) fixed |
+| Nuvio scraper | overlay / details | yes | yes | JS timeout 30s | gen discard | symptom done; needs QA |
+
+## Deliverables
+
+1. Checklist per flow — **table above** (manual QA still open on most rows)
+2. Automated widget/integration tests — **not started**
+3. Standard pattern: gen-token + Stop/Cancel — **shipped** for listed flows
+
+## Acceptance
+
+- [x] Host cancel pattern documented (symptom layer + [015](015-[fixed]-rust-blocking-http-engine-debt.md) Rust abort)
+- [x] Details / streaming / player / IPTV escape hatches in code
+- [x] Root cancel-abort in Rust ([015](015-[fixed]-rust-blocking-http-engine-debt.md))
+- [ ] Manual QA pass on checklist rows marked "needs QA"
+- [ ] Widget/integration tests with mocked slow FFI
+
+**Close 009:** code shipped. Optional: manual device QA + widget tests with mocked slow FFI.

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_api/api/manga_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/manga/catalog/manga_service.dart';
 import 'manga_reader_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MangaDetailsScreen extends StatefulWidget {
   final Manga manga;

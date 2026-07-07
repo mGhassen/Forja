@@ -4,6 +4,24 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Repo root: apps/forja/android -> Forja/
+val repoRoot = rootProject.projectDir.parentFile.parentFile.parentFile
+val buildRust =
+    providers.gradleProperty("buildRust").orNull == "true" ||
+        System.getenv("BUILD_RUST_ANDROID") == "1"
+
+if (buildRust) {
+    tasks.register<Exec>("buildRustAndroid") {
+        group = "rust"
+        description = "Cross-compile libffi.so (arm64-v8a) via scripts/build_rust_mobile.sh"
+        workingDir = repoRoot
+        commandLine("bash", "scripts/build_rust_mobile.sh", "android")
+    }
+    tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+        dependsOn("buildRustAndroid")
+    }
+}
+
 android {
     namespace = "com.forja.app"
     compileSdk = flutter.compileSdkVersion

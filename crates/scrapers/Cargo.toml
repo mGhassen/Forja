@@ -1,0 +1,19 @@
+[package]
+name = "scrapers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+scraper = { workspace = true }
+regex = { workspace = true }
+thiserror = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+urlencoding = "2"
+utils = { path = "../utils" }
+
+[dev-dependencies]
+serde_json = { workspace = true }

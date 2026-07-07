@@ -7,22 +7,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_streaming/forja_streaming.dart';
-import 'package:forja_api/api/stremio_service.dart';
-import 'package:forja_api/api/track_auto_select.dart';
-import 'package:forja_api/services/external_player_service.dart';
-import 'package:forja_api/api/debrid_api.dart';
-import 'package:forja_api/api/trakt_service.dart';
-import 'package:forja_api/api/simkl_service.dart';
-import 'package:forja_api/api/mdblist_service.dart';
-import 'package:forja_api/services/jackett_service.dart';
-import 'package:forja_api/services/prowlarr_service.dart';
-import 'package:forja_api/services/app_updater_service.dart';
+import 'package:rust/rust.dart';
+import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/player/track_auto_select.dart';
+import 'package:forja/shared/services/external_player_service.dart';
+import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
+import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
 import 'webstreamr_settings_screen.dart';
 import 'splash_preview_screen.dart';
+import 'package:forja/shared/services/app_version.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/src/shell_tab_header.dart';
+import 'package:forja/shell/nav_config.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -113,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Light mode
   bool _isLightMode = false;
 
-  // Theme preset
+  // Rust engine status (read-only; always enabled at boot)
   String _selectedThemeId = AppTheme.defaultPresetId;
 
   // Navbar config
@@ -199,11 +198,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themePreset = await _settings.getThemePreset();
 
     // Load navbar config
-    final navVisible = await _settings.getNavbarConfig();
+    var navVisible = await _settings.getNavbarConfig();
     // Full order: visible items first, then hidden items
     final allIds = SettingsService.allNavIds;
     final hidden = allIds.where((id) => !navVisible.contains(id)).toList();
-    final navOrder = [...navVisible, ...hidden];
+    var navOrder = [...navVisible, ...hidden];
+    if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
+      navOrder = navOrder
+          .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
+          .toList();
+      navVisible.removeWhere((id) => PlatformPlayback.torrentNavIds.contains(id));
+    }
 
     // Load stream provider order
     final streamOrder = await _settings.getStreamProviderOrder();
@@ -369,29 +374,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: AppTheme.backgroundDecoration,
-        child: SafeArea(
-          child: Scrollbar(
-            controller: _scrollController,
-            thumbVisibility: true,
-            interactive: true,
-            // Plain SingleChildScrollView + Column instead of CustomScrollView
-            // / SliverList: every child's height is laid out up-front so the
-            // total scroll extent (and therefore the scrollbar thumb size)
-            // stays stable instead of jumping when heavy items like the
-            // ReorderableListView-based provider order get measured lazily.
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16, bottom: 12),
-                    child: Text('Settings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 32, fontFamily: 'Poppins')),
-                  ),
+    return SafeArea(
+      child: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        interactive: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const ShellTabHeader(
+                title: 'Settings',
+                padding: EdgeInsets.only(top: 16, bottom: 12),
+              ),
 
                     // ── Backup & Restore ──
                     _buildExpandableSection(
@@ -482,8 +479,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildExpandableSection(
                       id: 'search',
                       icon: Icons.search_rounded,
-                      title: 'Search & Torrents',
+                      title: PlatformPlayback.capabilities.builtinTorrentSearch
+                          ? 'Search & Torrents'
+                          : 'Stream Extractors',
                       children: [
+                        if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
                         _buildFocusableDropdown(
                           'Default Sort Order',
                           'How torrent results are sorted automatically.',
@@ -570,6 +570,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
+                        ],
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text('WEBSTREAMR (LOCAL)', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                        ),
+                        const SizedBox(height: 8),
+                        Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.language),
+                            title: const Text('WebStreamr Settings'),
+                            subtitle: const Text('Country toggles, MFP, FlareSolverr, TMDB token'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => const WebStreamrSettingsScreen(),
+                            )),
+                          ),
+                        ),
                       ],
                     ),
 
@@ -592,6 +609,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 8),
                         _buildNuvioAddonSection(),
+                        if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
                         const SizedBox(height: 20),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -606,23 +624,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 8),
                         _buildProwlarrConfig(),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('WEBSTREAMR (LOCAL)', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.language),
-                            title: const Text('WebStreamr Settings'),
-                            subtitle: const Text('Country toggles, MFP, FlareSolverr, TMDB token'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const WebStreamrSettingsScreen(),
-                            )),
-                          ),
-                        ),
+                        ],
                       ],
                     ),
 
@@ -706,30 +708,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [_buildNavbarConfig()],
                     ),
 
-                    // ── App Updates ──
-                    if (kDebugMode)
-                      _buildExpandableSection(
-                        id: 'developer',
-                        icon: Icons.developer_mode_rounded,
-                        title: 'Developer',
-                        children: [
-                          Card(
-                            child: ListTile(
-                              leading: const Icon(Icons.play_circle_outline),
-                              title: const Text('Preview Splash Screen'),
-                              subtitle: const Text(
-                                'Show the boot splash overlay without restarting',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const SplashPreviewScreen(),
+                    // ── Developer (Rust engine status) ──
+                    _buildExpandableSection(
+                      id: 'developer',
+                      icon: Icons.developer_mode_rounded,
+                      title: 'Developer',
+                      children: [
+                        _buildRustEngineSection(),
+                        if (kDebugMode && (Platform.isMacOS ||
+                            Platform.isWindows ||
+                            Platform.isLinux))
+                            Card(
+                              child: ListTile(
+                                leading: const Icon(Icons.play_circle_outline),
+                                title: const Text('Preview Splash Screen'),
+                                subtitle: const Text(
+                                  'Show the boot splash overlay without restarting',
+                                ),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const SplashPreviewScreen(),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       ),
+
+                    // ── App Updates ──
                     _buildExpandableSection(
                       id: 'updates',
                       icon: Icons.system_update_rounded,
@@ -738,25 +745,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
 
                     const SizedBox(height: 40),
-                    const Center(
-                      child: Text(
-                        'Forja v1.4.0',
-                        style: TextStyle(color: Colors.white24, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold),
+                    Center(
+                      child: AppVersionLabel(
+                        style: const TextStyle(
+                          color: Colors.white24,
+                          fontSize: 12,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 100),
                   ],
+                ),
               ),
             ),
-          ),
-        ),
-      ),
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Expandable Section Tile
   // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildRustEngineSection() {
+    final loaded = Engine.isReady;
+    final version = loaded
+        ? RustLib.instance.version
+        : 'not loaded (Dart fallback)';
+    final statusColor = loaded ? Colors.greenAccent : Colors.orangeAccent;
+    final platformNote = loaded
+        ? ''
+        : Platform.isAndroid || Platform.isIOS
+            ? ' — run ./scripts/build_rust_mobile.sh and rebuild'
+            : ' — run ./scripts/build_rust.sh';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Row(
+            children: [
+              Icon(Icons.memory_rounded, size: 16, color: statusColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  loaded
+                      ? 'Rust engine active — v$version'
+                      : 'Rust engine inactive — $version$platformNote',
+                  style: TextStyle(color: statusColor, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
 
   Widget _buildExpandableSection({
     required String id,
@@ -1026,28 +1072,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Navbar Configuration
   // ═══════════════════════════════════════════════════════════════════════════
 
-  static const Map<String, Map<String, dynamic>> _navMeta = {
-    'home':         {'icon': Icons.home,                       'label': 'Home'},
-    'discover':     {'icon': Icons.explore,                    'label': 'Discover'},
-    'similar':      {'icon': Icons.auto_awesome,               'label': 'Similar'},
-    'downloader':   {'icon': Icons.cloud_download,             'label': 'Media Downloader'},
-    'search':       {'icon': Icons.search,                     'label': 'Search'},
-    'mylist':       {'icon': Icons.bookmark,                   'label': 'My List'},
-    'magnet':       {'icon': Icons.link_rounded,               'label': 'Magnet'},
-    'live_matches': {'icon': Icons.sports_soccer_rounded,      'label': 'Live Matches'},
-    'iptv':         {'icon': Icons.live_tv,                    'label': 'IPTV'},
-    'audiobooks':   {'icon': Icons.menu_book,                  'label': 'Audiobooks'},
-    'books':        {'icon': Icons.import_contacts_rounded,    'label': 'Books'},
-    'music':        {'icon': Icons.music_note,                 'label': 'Music'},
-    'comics':       {'icon': Icons.auto_stories,               'label': 'Comics'},
-    'manga':        {'icon': Icons.book,                       'label': 'Manga'},
-    'jellyfin':     {'icon': Icons.dns_rounded,                'label': 'Jellyfin'},
-    'anime':        {'icon': Icons.play_circle_filled,         'label': 'Anime'},
-    'anime_arabic': {'icon': Icons.subtitles,                  'label': 'Anime Arabic'},
-    'asian_drama':  {'icon': Icons.theater_comedy,             'label': 'Asian Drama'},
-    'arabic':       {'icon': Icons.movie_filter,               'label': 'Arabic'},
-  };
-
   void _saveNavbarConfig() {
     final visible = _navbarOrder.where((id) => _navbarVisible.contains(id)).toList();
     _settings.setNavbarConfig(visible);
@@ -1075,9 +1099,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: child,
             );
           },
-          onReorder: (oldIndex, newIndex) {
+          onReorderItem: (oldIndex, newIndex) {
             setState(() {
-              if (newIndex > oldIndex) newIndex--;
               final item = _navbarOrder.removeAt(oldIndex);
               _navbarOrder.insert(newIndex, item);
             });
@@ -1085,7 +1108,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           },
           itemBuilder: (context, index) {
             final id = _navbarOrder[index];
-            final meta = _navMeta[id]!;
+            final dest = navDestinations[id]!;
             final isVisible = _navbarVisible.contains(id);
 
             return Container(
@@ -1099,12 +1122,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               child: ListTile(
                 leading: Icon(
-                  meta['icon'] as IconData,
+                  dest.activeIcon,
                   color: isVisible ? Colors.white : Colors.white24,
                   size: 22,
                 ),
                 title: Text(
-                  meta['label'] as String,
+                  dest.label,
                   style: TextStyle(
                     color: isVisible ? Colors.white : Colors.white38,
                     fontSize: 14,
@@ -3008,8 +3031,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: order.length,
-              onReorder: (oldIndex, newIndex) async {
-                if (newIndex > oldIndex) newIndex -= 1;
+              onReorderItem: (oldIndex, newIndex) async {
                 final item = order.removeAt(oldIndex);
                 order.insert(newIndex, item);
                 setState(() => _streamProviderOrder = List<String>.from(order));

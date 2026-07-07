@@ -6,11 +6,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:forja_api/api/anime_service.dart';
-import 'package:forja_api/api/stream_extractor.dart';
-import 'package:forja_core/models/stream_source.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimePlayerScreen extends StatefulWidget {
   final AnimeCard anime;
@@ -116,6 +116,11 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     // URLs (much more reliable than the anilist-mapped /stream/ani/... ones).
     _series = await _service.resolveAnikoto(widget.anime);
     if (!mounted) return;
+    if (_series == null) {
+      debugPrint(
+          '[AnimePlayer] Anikoto catalog miss for ${widget.anime.displayTitle} '
+          '(anilist ${widget.anime.id})');
+    }
     _allEmbeds = _service.buildAllEmbeds(
       anilistId: widget.anime.id,
       episode: widget.episodeNumber,
@@ -205,7 +210,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     setState(() {
       _resolving = false;
       _failedAll = true;
-      _phase = 'No streams available';
+      _phase = _series == null && _currentPair.every((e) => e.server != 'megaplay' && e.server != 'vidwish')
+          ? 'Catalog lookup failed'
+          : 'No streams available';
       _statusLine = '';
     });
   }

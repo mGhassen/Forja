@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:forja_api/services/my_list_service.dart';
+import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_core/models/movie.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MyListScreen extends StatefulWidget {
   const MyListScreen({super.key});
@@ -96,17 +94,15 @@ class _MyListScreenState extends State<MyListScreen> {
     final isDesktop = screenWidth > 900;
     final crossAxisCount = isDesktop ? 6 : (screenWidth > 600 ? 4 : 3);
 
-    return Scaffold(
-      backgroundColor: AppTheme.bgDark,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // App bar
-          SliverAppBar(
-            floating: true,
-            snap: true,
-            backgroundColor: AppTheme.bgDark,
-            title: Row(
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverAppBar(
+          floating: true,
+          snap: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Row(
               children: [
                 const Icon(Icons.bookmark, color: AppTheme.primaryColor),
                 const SizedBox(width: 8),
@@ -202,7 +198,6 @@ class _MyListScreenState extends State<MyListScreen> {
               ),
             ),
         ],
-      ),
     );
   }
 }

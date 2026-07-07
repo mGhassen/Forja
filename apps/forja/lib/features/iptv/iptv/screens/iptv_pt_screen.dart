@@ -50,30 +50,18 @@ class _IptvPtScreenState extends State<IptvPtScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF141414),
-      body: PopScope(
-        canPop: _ctrl.view == IptvView.portalList,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _ctrl.back();
-        },
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF141414), Color(0xFF141414), Color(0xFF141414)],
-            ),
-          ),
-          child: AnimatedBuilder(
-            animation: _ctrl,
-            builder: (_, _) => AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: KeyedSubtree(
-                key: ValueKey(_ctrl.view),
-                child: _buildView(context),
-              ),
-            ),
+    return PopScope(
+      canPop: _ctrl.view == IptvView.portalList,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _ctrl.back();
+      },
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (_, _) => AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: KeyedSubtree(
+            key: ValueKey(_ctrl.view),
+            child: _buildView(context),
           ),
         ),
       ),
@@ -440,10 +428,11 @@ class _PortalListView extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             _PrimaryButton(
-              icon: Icons.travel_explore,
-              label: 'Find Portals',
-              busy: ctrl.isScraping,
-              onPressed: ctrl.scrape,
+              icon: ctrl.isScraping
+                  ? Icons.stop_circle_rounded
+                  : Icons.travel_explore,
+              label: ctrl.isScraping ? 'Stop' : 'Find Portals',
+              onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
             ),
           ],
         ),
@@ -512,10 +501,11 @@ class _PortalListView extends StatelessWidget {
             child: Row(
               children: [
                 _PrimaryButton(
-                  icon: Icons.travel_explore,
-                  label: 'Scrape',
-                  busy: ctrl.isScraping,
-                  onPressed: ctrl.scrape,
+                  icon: ctrl.isScraping
+                      ? Icons.stop_circle_rounded
+                      : Icons.travel_explore,
+                  label: ctrl.isScraping ? 'Stop' : 'Scrape',
+                  onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
                 ),
                 const SizedBox(width: 8),
                 if (ctrl.canGetMore)

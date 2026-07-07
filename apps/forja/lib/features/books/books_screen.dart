@@ -1,10 +1,10 @@
 import 'dart:io';
-import 'package:forja_api/services/book_progress_service.dart';
+import 'package:rust/rust.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:forja_api/api/books_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/books/catalog/books_service.dart';
 import 'book_reader_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class BooksScreen extends StatefulWidget {
   const BooksScreen({super.key});
@@ -159,17 +159,12 @@ class _BooksScreenState extends State<BooksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: AppTheme.backgroundDecoration,
-      child: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildSearchBar(),
-            Expanded(child: _buildBody()),
-          ],
-        ),
-      ),
+    return Column(
+      children: [
+        _buildHeader(),
+        _buildSearchBar(),
+        Expanded(child: _buildBody()),
+      ],
     );
   }
 

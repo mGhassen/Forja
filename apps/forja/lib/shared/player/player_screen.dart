@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_core/models/stream_source.dart';
-import 'package:forja_api/services/external_player_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:rust/rust.dart';
+import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';
 import 'package:forja/shared/player/player/desktop_player_screen.dart';
 

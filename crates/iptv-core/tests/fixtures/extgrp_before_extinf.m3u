@@ -1,0 +1,6 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="grp1" group-title="FromExtgrp",Channel A
+http://stream.example/a
+#EXTGRP:OverrideGroup
+#EXTINF:-1,Channel B
+http://stream.example/b

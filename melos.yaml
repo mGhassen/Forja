@@ -10,6 +10,30 @@ command:
     runPubGetInParallel: true
 
 scripts:
+  rust:build:
+    run: ../../scripts/build_rust.sh
+    description: Build the Rust engine (ffi) for desktop
+  rust:build:mobile:
+    run: ../../scripts/build_rust_mobile.sh all
+    description: Build ffi for iOS/Android (full features; parser-only with RUST_MOBILE_PARSER_ONLY=1)
+  rust:test:
+    run: |
+      cd ../../crates && cargo test --workspace && cargo test -p utils --test golden && cargo test -p iptv-core --test golden_m3u
+      cd ../../packages/rust && flutter test
+    description: Rust unit + golden + Dart parity tests
+  rust:integration:
+    run: |
+      cd ../../apps/forja && flutter pub get && flutter test test/engine_smoke_test.dart
+    description: App engine smoke tests (desktop; run build_rust.sh first)
+  rust:release-check:
+    run: ../../scripts/check_rust_mobile_artifacts.sh
+    description: Verify Android/iOS libffi artifacts exist after build_rust_mobile.sh
+  rust:mobile-integration:
+    run: ../../scripts/run_mobile_magnet_e2e.sh
+    description: Mobile magnet E2E on connected Android/iOS device (P2-14)
+  rust:check-sync-ffi:
+    run: ../../scripts/check_sync_ffi.sh
+    description: Fail if RustLib.instance used outside allowlisted app/api files
   analyze:
     run: flutter analyze
     exec:

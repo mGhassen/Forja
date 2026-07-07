@@ -1,0 +1,78 @@
+# RFC-012: v1.1 — Casting + expanded providers
+
+**Version:** v1.1  
+**Status:** draft  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md)  
+**Depends on:** RFC-011 (v1.0)
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 8** acceptance (v1.1 bundle) · child RFCs: [003](003-[partial]-player-overlay.md) 4/6·0/4, [004](004-[partial]-provider-registry.md) 3/3·0/3, [005](005-[partial]-casting.md) 0/1·0/4 |
+| **Current slice** | v1.1 — overlay + providers + casting bundle |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+
+## Goal
+
+Polish the unified player UX (Cineby/Rive-style overlay with in-player server grid) and add native casting on mobile/desktop where supported.
+
+## Deliverables
+
+### 1. Player overlay (RFC-003)
+
+Wire existing stubs into `shared/player/`:
+
+| Component | Path | Action |
+|-----------|------|--------|
+| `PlayerOverlayPanel` | `shared/design/src/player_overlay.dart` | Mount in desktop/mobile player |
+| `ServerGrid` | `shared/design/src/server_grid.dart` | Connect to `StreamResolver.switchProvider()` |
+| `ForjaPosterCard` | `shared/design/src/poster_card.dart` | Use in browse rails (optional) |
+
+Controls: Previous/Next, AutoNext, Details, Shuffle, PiP, Cast (picker), Watch Party (disabled).
+
+### 2. Expanded providers (RFC-004)
+
+Add to `packages/streaming/lib/src/provider_registry.dart`:
+
+| Provider | v1.0 | v1.1 |
+|----------|------|------|
+| Videasy, Vidsrc, VidLink, VixSrc, Vidnest, 111477, Vidzee, VidRock | yes | yes |
+| RiveEmbed, SmashyStream, VidFast | | add |
+| 2Embed, AutoEmbed, MultiEmbed | | add |
+| PrimeSrc, VidSrc.wtf API | | add |
+
+Settings: enable/disable + drag order via `ProviderSettingsRepo`.
+
+### 3. Casting (RFC-005)
+
+Implement `CastingService` platform channels:
+
+| Platform | AirPlay | Chromecast |
+|----------|---------|------------|
+| macOS | AVRoutePickerView | N/A |
+| iOS | Native route | Google Cast SDK |
+| Android | N/A | Google Cast SDK |
+| Windows/Linux | N/A | DLNA optional (v2+) |
+
+VOD: cast resolved URL; use `LocalServerService` proxy when Referer required.  
+IPTV live: best-effort via HLS proxy transmux.
+
+## Acceptance checklist
+
+- [ ] Server grid visible in player; switch provider mid-playback without exit
+- [ ] Active provider highlighted (border + checkmark)
+- [ ] ~15+ providers in registry; toggles in Settings
+- [ ] AirPlay works on macOS + iOS for VOD
+- [ ] Chromecast works on Android + iOS for VOD
+- [ ] Cast button hidden when platform unsupported
+- [ ] Native macOS PiP evaluated (optional upgrade from simulated PiP)
+- [ ] In-app updates polished: skip version, SHA256 verify, macOS DMG (RFC-015)
+
+## Related RFCs
+
+RFC-003, RFC-004 (expansion), RFC-005, RFC-015, [RFC-019](019-[draft]-god-file-decomposition.md) (god file splits), [RFC-020](020-[draft]-media-details-routing.md) (media details routing)
+
+## Prerequisites
+
+Complete [RFC-016](016-[draft]-lazy-tab-mounting.md)–[018](018-[draft]-startup-splash-home.md) (v1.0.1 performance) before or in parallel with overlay work. Player control extraction in RFC-019 unblocks RFC-003 wiring.

@@ -1,54 +1,52 @@
 # Forja RFC Index
 
-Design docs for Forja. Topic RFCs (001–010) define **what**; version RFCs (011–014) define **when**.
+**Rules:** [docs-rfc-issues](../../.cursor/rules/docs-rfc-issues.mdc)
 
-## Version roadmap
+Every RFC filename includes a status tag matching `**Status:**` in the body.
 
-| Version | Release RFC | Ship target | Summary |
-|---------|-------------|-------------|---------|
-| **v1.0** | [RFC-011](011-v1.0-mvp.md) | macOS (+ mobile parity) | Feature-first app, 19 nav tabs, engines, unified player, IPTV, Stremio, provider registry |
-| **v1.0.1** | [RFC-016](016-lazy-tab-mounting.md)–[018](018-startup-splash-home.md) | Performance patch | Lazy tabs, deferred engine boot, splash/Home stagger |
-| **v1.1** | [RFC-012](012-v1.1-casting-providers.md) | + iOS/Android casting | AirPlay, Chromecast, expanded providers, player overlay wired, god-file splits, media routing |
-| **v1.2** | [RFC-013](013-v1.2-sync-lan-party.md) | + cloud optional | Supabase settings sync, LAN companion, watch party |
-| **v3.0** | [RFC-014](014-v3-web-rust.md) | Browser | Web client (HLS-only), Rust/WASM core |
+| Tag | Body status | Meaning |
+|-----|-------------|---------|
+| `[draft]` | `draft` | Spec exists — **not scheduled**, not being worked |
+| `[planned]` | `planned` | **You committed to build it** — not started yet |
+| `[open]` | `open` | Actively in progress |
+| `[partial]` | `partial` / `stub` | Code started, not shippable |
+| `[fixed]` | `fixed` | Shipped — in `fixed/` |
+| `[canceled]` | `canceled` | Won't build — in `canceled/` (document why) |
 
-## Topic RFCs
+Do **not** mark `[planned]` just because an RFC mentions a future version. Use `[draft]` until you explicitly schedule the work.
 
-| RFC | Topic | Primary version | Status |
-|-----|-------|-----------------|--------|
-| [001](001-monorepo.md) | Monorepo + feature boundaries | v1.0 | **Shipped** (feature-first) |
-| [002](002-iptv-groups.md) | IPTV portal groups | v1.0 | **Shipped** |
-| [003](003-player-overlay.md) | Player overlay + server grid | v1.1 | Stub UI, not wired |
-| [004](004-provider-registry.md) | Stream provider registry | v1.0 core / v1.1 expand | **Partial** (registry exists) |
-| [005](005-casting.md) | AirPlay + Chromecast | v1.1 | Stub only |
-| [006](006-supabase-sync.md) | Settings sync | v1.2 | Stub only |
-| [007](007-lan-companion.md) | LAN remote API | v1.2 | Not started |
-| [008](008-watch-party.md) | Watch party sync | v1.2+ | Placeholder button |
-| [009](009-rust-ffi.md) | Rust core FFI | v3.0 | Not started |
-| [010](010-web-client.md) | Web client | v3.0 | Not started |
-| [015](015-in-app-updates.md) | In-app update system | v1.0 partial / v1.1 | **Partial** |
-| [016](016-lazy-tab-mounting.md) | Lazy tab mounting | v1.0.1 | Not started |
-| [017](017-deferred-engine-boot.md) | Deferred engine boot | v1.0.1 | Not started |
-| [018](018-startup-splash-home.md) | Splash + Home perf | v1.0.1 | Not started |
-| [019](019-god-file-decomposition.md) | God file splits | v1.1 | Not started |
-| [020](020-media-details-routing.md) | Media details routing | v1.1 | Not started |
-| [021](021-release-ship-hygiene.md) | Release ship hygiene | v1.0 | Not started |
+Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migration/fixed/) phases 1–3
 
-## Dependency graph
+## Index
 
-```
-v1.0 (011) ──► v1.0.1 (016–018) ──► v1.1 (012 + 019–020) ──► v1.2 (013) ──► v3.0 (014)
-     │                    │                    │                    │
-  RFC-001             RFC-016              RFC-003              RFC-006
-  RFC-002             RFC-017              RFC-004              RFC-007
-  RFC-004             RFC-018              RFC-005              RFC-008
-  RFC-015             RFC-021 (ship anytime)
-  RFC-021
-```
+| File | Title | Version | Status | Progress | Backlog |
+|------|-------|---------|--------|----------|---------|
+| [001-[fixed]-…](fixed/001-[fixed]-monorepo.md) | Monorepo + feature boundaries | v1.0 | fixed | Complete · 4/4 | [0.0.1](../backlog/done/0.0.1-[done].md) |
+| [002-[fixed]-…](fixed/002-[fixed]-iptv-groups.md) | IPTV portal groups | v1.0 | fixed | Complete · 4/4 | [0.0.1](../backlog/done/0.0.1-[done].md) |
+| [003-[partial]-…](003-[partial]-player-overlay.md) | Player overlay + server grid | v1.1 | partial | 4/6 · 0/4 | [0.0.1](../backlog/done/0.0.1-[done].md) slice → [1.0.0](../backlog/1.0.0-[draft].md) |
+| [004-[partial]-…](004-[partial]-provider-registry.md) | Stream provider registry | v1.0 / v1.1 | partial | 3/3 · 0/3 | [0.0.1](../backlog/done/0.0.1-[done].md) → [1.0.0](../backlog/1.0.0-[draft].md) |
+| [005-[partial]-…](005-[partial]-casting.md) | AirPlay + Chromecast | v1.1 | stub | 0/1 · 0/4 | [1.0.0](../backlog/1.0.0-[draft].md) |
+| [006-[partial]-…](006-[partial]-supabase-sync.md) | Settings sync | v1.2 | stub | 0/1 · 0/4 | v2 |
+| [007-[draft]-…](007-[draft]-lan-companion.md) | LAN remote API | v1.2 | draft | 0/4 | v2 |
+| [008-[partial]-…](008-[partial]-watch-party.md) | Watch party sync | v1.2+ | stub | 0/4 | v2 |
+| [009-[fixed]-…](fixed/009-[fixed]-rust-ffi.md) | Rust core FFI | v1.0 engine | fixed | Complete · 22/23 | [0.1.0](../backlog/done/0.1.0-[done].md)–[0.6.2](../backlog/done/0.6.2-[done].md) |
+| [010-[draft]-…](010-[draft]-web-client.md) | Web client | v3.0 | draft | 0/5 | v3 |
+| [011-[fixed]-…](fixed/011-[fixed]-v1.0-mvp.md) | v1.0 MVP | v1.0 | fixed | Complete · 13/14 | [0.0.1](../backlog/done/0.0.1-[done].md) |
+| [012-[draft]-…](012-[draft]-v1.1-casting-providers.md) | v1.1 casting + providers | v1.1 | draft | 0/8 | [1.0.0](../backlog/1.0.0-[draft].md) |
+| [013-[draft]-…](013-[draft]-v1.2-sync-lan-party.md) | v1.2 sync + LAN party | v1.2 | draft | 0/6 | v2 |
+| [014-[draft]-…](014-[draft]-v3-web-rust.md) | v3.0 web + Rust/WASM | v3.0 | draft | 0/5 | v3 |
+| [015-[partial]-…](015-[partial]-in-app-updates.md) | In-app updates | v1.0 / v1.1 | partial | 7/7 · 0/7 | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md) |
+| [016-[draft]-…](016-[draft]-lazy-tab-mounting.md) | Lazy tab mounting | v1.0.1 | draft | 0/5 | [0.5.1](../backlog/done/0.5.1-[done].md) slice |
+| [017-[draft]-…](017-[draft]-deferred-engine-boot.md) | Deferred engine boot | v1.0.1 | draft | 0/6 | [0.5.0](../backlog/done/0.5.0-[done].md) slice |
+| [018-[draft]-…](018-[draft]-startup-splash-home.md) | Splash + Home perf | v1.0.1 | draft | 0/5 | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) |
+| [019-[draft]-…](019-[draft]-god-file-decomposition.md) | God file splits | v1.1 | draft | 0/5 | [1.0.0](../backlog/1.0.0-[draft].md) |
+| [020-[draft]-…](020-[draft]-media-details-routing.md) | Media details routing | v1.1 | draft | 0/4 | [1.0.0](../backlog/1.0.0-[draft].md) |
+| [021-[draft]-…](021-[draft]-release-ship-hygiene.md) | Release ship hygiene | v1.0 | draft | 0/9 | — |
+| [022-[draft]-…](022-[draft]-lan-server-client.md) | LAN server/client | post-v1.2 | draft | 0/12 | v2+ |
+| [023-[partial]-…](023-[partial]-app-shell-redesign.md) | App shell redesign | v0.8.0 | partial | 4/5 · 5/9 | [0.8.0](../backlog/0.8.0-[open].md) |
 
-## Conventions
+## Related
 
-- **Shipped** — in production code path today
-- **Partial** — engine or UI exists but not fully integrated
-- **Stub** — scaffold under `apps/forja/lib/shared/` with no feature wiring
-- **Not started** — spec only
+- [Issues](../issues/README.md)
+- [Backlog](../backlog/README.md)
+- [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)

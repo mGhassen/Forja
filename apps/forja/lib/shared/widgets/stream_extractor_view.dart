@@ -2,8 +2,8 @@ import 'dart:collection';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:forja_api/api/stream_extractor.dart';
-import 'package:forja_core/utils/webview_cleanup.dart';
+import 'package:rust/rust.dart';
+import 'package:forja/shared/utils/webview_cleanup.dart';
 
 class StreamExtractorView extends StatefulWidget {
   final String url;

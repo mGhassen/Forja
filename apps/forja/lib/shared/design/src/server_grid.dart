@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'forja_theme.dart';
+import 'theme.dart';
 
 typedef ProviderTap = void Function(String providerId);
 
@@ -42,7 +42,7 @@ class ServerGrid extends StatelessWidget {
         final p = providers[i];
         final active = p.id == activeId;
         return Material(
-          color: ForjaTheme.bgCard,
+          color: AppTheme.bgCard,
           borderRadius: BorderRadius.circular(10),
           child: InkWell(
             onTap: () => onSelect(p.id),
@@ -51,7 +51,7 @@ class ServerGrid extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: active ? ForjaTheme.primary : ForjaTheme.border,
+                  color: active ? AppTheme.primary : AppTheme.border,
                   width: active ? 2 : 1,
                 ),
               ),
@@ -67,12 +67,12 @@ class ServerGrid extends StatelessWidget {
                           p.name,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: active ? ForjaTheme.primary : ForjaTheme.textPrimary,
+                            color: active ? AppTheme.primary : AppTheme.textPrimary,
                           ),
                         ),
                       ),
                       if (active)
-                        const Icon(Icons.check_circle, size: 16, color: ForjaTheme.primary),
+                        const Icon(Icons.check_circle, size: 16, color: AppTheme.primary),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -80,7 +80,7 @@ class ServerGrid extends StatelessWidget {
                     active ? '✓ Active' : 'Click to switch',
                     style: TextStyle(
                       fontSize: 11,
-                      color: active ? ForjaTheme.primary : ForjaTheme.textSecondary,
+                      color: active ? AppTheme.primary : AppTheme.textSecondary,
                     ),
                   ),
                 ],

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_api/api/tmdb_api.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja_core/utils/extensions.dart';
+import 'package:forja/shared/utils/extensions.dart';
 
 class HeroBanner extends StatefulWidget {
   final List<Movie> movies;
@@ -173,7 +172,7 @@ class _HeroBannerState extends State<HeroBanner> {
                   ),
                   const SizedBox(width: 16),
                   OutlinedButton.icon(
-                    onPressed: () {}, // TODO: Add to list
+                    onPressed: null,
                     icon: const Icon(Icons.add_rounded, size: 24),
                     label: const Text('My List'),
                     style: OutlinedButton.styleFrom(

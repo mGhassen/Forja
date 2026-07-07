@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/widgets/animated_forja_logo.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/shared/widgets/animated_logo.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class SplashPreviewScreen extends StatefulWidget {
   const SplashPreviewScreen({super.key});
@@ -17,7 +17,7 @@ class _SplashPreviewScreenState extends State<SplashPreviewScreen> {
   @override
   void initState() {
     super.initState();
-    _autoDismissTimer = Timer(const Duration(seconds: 10), () {
+    _autoDismissTimer = Timer(const Duration(seconds: 9), () {
       if (mounted) Navigator.of(context).pop();
     });
   }

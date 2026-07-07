@@ -1,0 +1,3 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="ch1" tvg-name="News" tvg-logo="http://logo.example/icon.png" group-title="News",News HD
+http://stream.example/live

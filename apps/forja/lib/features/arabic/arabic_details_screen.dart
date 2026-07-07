@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_api/api/arabic_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/shared/extractors/arabic_service.dart';
 import 'arabic_player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class ArabicDetailsScreen extends StatefulWidget {
   final ArabicShow show;

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_api/api/manga_service.dart';
+import 'package:forja/features/manga/catalog/manga_service.dart';
 import 'manga_details_screen.dart';
 import 'manga_reader_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MangaScreen extends StatefulWidget {
   final String? initialSearch;
@@ -207,63 +207,57 @@ class _MangaScreenState extends State<MangaScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: Stack(
+    return Stack(
+      children: [
+        Column(
           children: [
-            Column(
-              children: [
-                const SizedBox(height: 24),
-                _buildHeader(),
-                _buildSearchBar(),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      if (_isShowingLiked) {
-                        await _fetchLikedManga();
-                      } else {
-                        await _fetchManga();
-                      }
-                      await _loadHistory();
-                    },
-                    color: AppTheme.primaryColor,
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Column(
-                        children: [
-                          _buildContinueReading(),
-                          _buildBody(),
-                        ],
-                      ),
-                    ),
+            _buildHeader(),
+            _buildSearchBar(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  if (_isShowingLiked) {
+                    await _fetchLikedManga();
+                  } else {
+                    await _fetchManga();
+                  }
+                  await _loadHistory();
+                },
+                color: AppTheme.primaryColor,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    children: [
+                      _buildContinueReading(),
+                      _buildBody(),
+                    ],
                   ),
                 ),
-                if (!_isShowingLiked && _selectedGenre == null) _buildPagination(),
-            if (!_isShowingLiked && _selectedGenre != null) _buildPagination(),
-              ],
+              ),
             ),
-            if (_isGenreDropdownOpen)
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isGenreDropdownOpen = false;
-                  });
-                },
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.5),
-                ),
-              ),
-            if (_isGenreDropdownOpen)
-              Positioned(
-                top: 140,
-                right: 24,
-                child: _buildGenreMenu(),
-              ),
+            if (!_isShowingLiked && _selectedGenre == null) _buildPagination(),
+            if (!_isShowingLiked && _selectedGenre != null) _buildPagination(),
           ],
         ),
-      ),
+        if (_isGenreDropdownOpen)
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isGenreDropdownOpen = false;
+              });
+            },
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.5),
+            ),
+          ),
+        if (_isGenreDropdownOpen)
+          Positioned(
+            top: 140,
+            right: 24,
+            child: _buildGenreMenu(),
+          ),
+      ],
     );
   }
 

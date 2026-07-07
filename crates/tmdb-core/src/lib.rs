@@ -1,0 +1,57 @@
+use stremio_core::fetch_get;
+
+pub const BASE_URL: &str = "https://api.themoviedb.org/3";
+pub const API_KEY: &str = "c3515fdc674ea2bd7b514f4bc3616a4a";
+
+/// `resource_path` is relative to v3 root, e.g. `movie/popular` or
+/// `tv/123?append_to_response=images,external_ids`.
+pub fn build_url(resource_path: &str) -> String {
+    let path = resource_path.trim_start_matches('/');
+    if path.contains('?') {
+        format!("{BASE_URL}/{path}&api_key={API_KEY}")
+    } else {
+        format!("{BASE_URL}/{path}?api_key={API_KEY}")
+    }
+}
+
+/// Fetches a TMDB v3 resource. On HTTP 200 returns the response body JSON string.
+/// On failure returns `{"error":"..."}` (optional `"status"` for non-200).
+pub fn get_json(resource_path: &str, timeout_secs: u64) -> String {
+    let url = build_url(resource_path);
+    match fetch_get(&url, timeout_secs) {
+        Ok(resp) if resp.status == 200 => resp.body,
+        Ok(resp) => serde_json::json!({
+            "error": format!("TMDB HTTP {}", resp.status),
+            "status": resp.status,
+        })
+        .to_string(),
+        Err(e) => serde_json::json!({ "error": e }).to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_url_without_query() {
+        let url = build_url("movie/popular");
+        assert_eq!(
+            url,
+            "https://api.themoviedb.org/3/movie/popular?api_key=c3515fdc674ea2bd7b514f4bc3616a4a"
+        );
+    }
+
+    #[test]
+    fn build_url_with_query() {
+        let url = build_url("tv/42?append_to_response=images");
+        assert!(url.starts_with("https://api.themoviedb.org/3/tv/42?append_to_response=images&api_key="));
+    }
+
+    #[test]
+    fn get_json_trending() {
+        let body = get_json("trending/movie/day", 15);
+        assert!(!body.contains("\"error\""));
+        assert!(body.contains("\"results\""));
+    }
+}

@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_api/api/audiobook_service.dart';
-import 'package:forja_api/api/audiobook_player_service.dart';
-import 'package:forja_api/api/music_player_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/audiobooks/catalog/audiobook_service.dart';
+import 'package:forja/shared/audio/audiobook_player_service.dart';
+import 'package:forja/shared/audio/music_player_service.dart';
 import 'audiobook_player_screen.dart';
 import 'audiobook_downloads_screen.dart';
 import 'generate_audiobook_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AudiobookScreen extends StatefulWidget {
   const AudiobookScreen({super.key});
@@ -203,36 +203,30 @@ class _AudiobookScreenState extends State<AudiobookScreen> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 24),
-            _buildHeader(),
-            _buildSearchBar(),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  await _loadBooks();
-                  await _loadHistory();
-                },
-                color: AppTheme.primaryColor,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    children: [
-                      if (!_isSearching && _history.isNotEmpty) _buildHistoryCarousel(),
-                      _buildBody(),
-                    ],
-                  ),
-                ),
+    return Column(
+      children: [
+        _buildHeader(),
+        _buildSearchBar(),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await _loadBooks();
+              await _loadHistory();
+            },
+            color: AppTheme.primaryColor,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  if (!_isSearching && _history.isNotEmpty) _buildHistoryCarousel(),
+                  _buildBody(),
+                ],
               ),
             ),
-            if (!_isSearching) _buildPagination(),
-          ],
+          ),
         ),
-      ),
+        if (!_isSearching) _buildPagination(),
+      ],
     );
   }
 
@@ -509,7 +503,23 @@ class _AudiobookScreenState extends State<AudiobookScreen> with WidgetsBindingOb
               ],
             ),
             Positioned(
-              top: 8, right: 8,
+              left: 8,
+              bottom: 56,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _formatSource(book.source),
+                  style: const TextStyle(fontSize: 9, color: Colors.white70),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
               child: GestureDetector(
                 onTap: () async {
                   await _playerService.toggleLikeBook(book);
@@ -533,6 +543,31 @@ class _AudiobookScreenState extends State<AudiobookScreen> with WidgetsBindingOb
         ),
       ),
     );
+  }
+
+  String _formatSource(String? source) {
+    switch (source) {
+      case 'tokybook':
+        return 'Tokybook';
+      case 'audiozaic':
+        return 'Audiozaic';
+      case 'goldenaudiobook':
+        return 'Golden';
+      case 'appaudiobooks':
+        return 'AppAB';
+      case 'audionest':
+        return 'Audionest';
+      case 'zaudiobooks':
+        return 'ZAudio';
+      case 'fulllengthaudiobooks':
+        return 'FullLength';
+      case 'hdaudiobooks':
+        return 'HD';
+      case 'bigaudiobooks':
+        return 'Big';
+      default:
+        return source ?? '';
+    }
   }
 
   Widget _buildPagination() {

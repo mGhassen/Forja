@@ -1,9 +1,69 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 import 'models.dart';
 import 'pastesh_decryptor.dart';
+
+Future<String?> _engineHttpGet(
+  String url, {
+  Duration timeout = const Duration(seconds: 10),
+  Map<String, String>? headers,
+}) async {
+  try {
+    final hdr = jsonEncode(headers ?? const {});
+    final secs = timeout.inSeconds.clamp(1, 120);
+    final raw = await runHttpGetJson(
+      url,
+      timeoutSecs: secs,
+      headersJson: hdr,
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return null;
+    final status = parsed['status'] as int;
+    if (status < 200 || status >= 300) return null;
+    return parsed['body'] as String;
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<String?> _engineHttpPost(
+  String url, {
+  Duration timeout = const Duration(seconds: 10),
+  Map<String, String>? headers,
+  String body = '',
+}) async {
+  try {
+    final hdr = jsonEncode(headers ?? const {});
+    final secs = timeout.inSeconds.clamp(1, 120);
+    final raw = await runHttpPostJson(
+      url,
+      timeoutSecs: secs,
+      headersJson: hdr,
+      body: body,
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return null;
+    final status = parsed['status'] as int;
+    if (status < 200 || status >= 300) return null;
+    return parsed['body'] as String;
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<String> _engineParseXtreamCategories(String text) =>
+    runParseXtreamCategoriesJson(text);
+
+Future<String> _engineParseXtreamStreams(String text, String section) =>
+    runParseXtreamStreamsJson(text, section);
+
+Future<String> _engineParseXtreamSeriesEpisodes(String text) =>
+    runParseXtreamSeriesEpisodesJson(text);
+
+Future<String> _engineProbeStream(String url, int timeoutSecs) =>
+    runIptvProbeStreamJson(url, timeoutSecs: timeoutSecs);
 
 /// Xtream-Codes player_api client. Login + categories + streams + episodes.
 class IptvClient {
@@ -11,19 +71,15 @@ class IptvClient {
 
   static String _enc(String s) => Uri.encodeComponent(s);
 
-  static Future<String?> _httpGet(String url, {Duration? timeout}) async {
-    try {
-      final req = http.Request('GET', Uri.parse(url))
-        ..headers['User-Agent'] = _ua
-        ..headers['Accept'] = 'application/json,*/*';
-      final stream =
-          await req.send().timeout(timeout ?? const Duration(seconds: 10));
-      if (stream.statusCode < 200 || stream.statusCode >= 300) return null;
-      return await stream.stream.bytesToString();
-    } catch (e) {
-      return null;
-    }
-  }
+  static Future<String?> _httpGet(String url, {Duration? timeout}) =>
+      _engineHttpGet(
+        url,
+        timeout: timeout ?? const Duration(seconds: 10),
+        headers: const {
+          'User-Agent': _ua,
+          'Accept': 'application/json,*/*',
+        },
+      );
 
   static Future<Map<String, dynamic>?> login(IptvPortal p,
       {Duration timeout = const Duration(seconds: 6)}) async {
@@ -86,20 +142,25 @@ class IptvClient {
         '&password=${_enc(p.password)}&action=$action';
     final text = await _httpGet(url, timeout: const Duration(seconds: 8));
     if (text == null) return [];
+    final rows = await _parseCategoryRows(text);
+    return rows
+        .map(
+          (o) => IptvCategory(
+            id: o['id']?.toString() ?? '',
+            name: o['name']?.toString() ?? '',
+          ),
+        )
+        .toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> _parseCategoryRows(String text) async {
     try {
-      final arr = json.decode(text) as List;
-      return arr
-          .map((e) {
-            final o = e as Map<String, dynamic>;
-            return IptvCategory(
-              id: o['category_id']?.toString() ?? '',
-              name: o['category_name']?.toString() ?? '',
-            );
-          })
-          .toList();
-    } catch (_) {
-      return [];
-    }
+      final parsed = json.decode(await _engineParseXtreamCategories(text));
+      if (parsed is List) {
+        return parsed.map((e) => e as Map<String, dynamic>).toList();
+      }
+    } catch (_) {}
+    return const [];
   }
 
   static Future<List<IptvStream>> streams(
@@ -114,51 +175,49 @@ class IptvClient {
     final url = categoryId.isEmpty ? base : '$base&category_id=${_enc(categoryId)}';
     final text = await _httpGet(url, timeout: const Duration(seconds: 15));
     if (text == null) return [];
+    final sectionName = switch (kind) {
+      IptvSection.live => 'live',
+      IptvSection.vod => 'vod',
+      IptvSection.series => 'series',
+    };
+    final rows = await _parseStreamRows(text, sectionName);
+    return rows
+        .map(
+          (o) => IptvStream(
+            streamId: o['stream_id']?.toString() ?? '',
+            name: o['name']?.toString() ?? '',
+            icon: o['icon']?.toString() ?? '',
+            categoryId: o['category_id']?.toString() ?? '',
+            containerExt: o['container_ext']?.toString() ?? '',
+            epgChannelId: o['epg_channel_id']?.toString() ?? '',
+            kind: o['kind']?.toString() ?? sectionName,
+          ),
+        )
+        .toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> _parseStreamRows(
+      String text, String section) async {
     try {
-      final arr = json.decode(text) as List;
-      return arr.map((e) {
-        final o = e as Map<String, dynamic>;
-        final ext = switch (kind) {
-          IptvSection.live => 'ts',
-          IptvSection.vod => () {
-              final v = o['container_extension']?.toString() ?? '';
-              return v.isEmpty ? 'mp4' : v;
-            }(),
-          IptvSection.series => '',
-        };
-        final id = switch (kind) {
-          IptvSection.series => () {
-              final v = o['series_id']?.toString() ?? '';
-              return v.isEmpty ? (o['id']?.toString() ?? '') : v;
-            }(),
-          _ => () {
-              final v = o['stream_id']?.toString() ?? '';
-              return v.isEmpty ? (o['id']?.toString() ?? '') : v;
-            }(),
-        };
-        return IptvStream(
-          streamId: id,
-          name: () {
-            final n = o['name']?.toString() ?? '';
-            return n.isEmpty ? (o['title']?.toString() ?? '') : n;
-          }(),
-          icon: () {
-            final i = o['stream_icon']?.toString() ?? '';
-            return i.isEmpty ? (o['cover']?.toString() ?? '') : i;
-          }(),
-          categoryId: o['category_id']?.toString() ?? '',
-          containerExt: ext,
-          epgChannelId: o['epg_channel_id']?.toString() ?? '',
-          kind: switch (kind) {
-            IptvSection.live => 'live',
-            IptvSection.vod => 'vod',
-            IptvSection.series => 'series',
-          },
-        );
-      }).toList();
-    } catch (_) {
-      return [];
-    }
+      final parsed =
+          json.decode(await _engineParseXtreamStreams(text, section));
+      if (parsed is List) {
+        return parsed.map((e) => e as Map<String, dynamic>).toList();
+      }
+    } catch (_) {}
+    return const [];
+  }
+
+  static Future<List<Map<String, dynamic>>> _parseSeriesEpisodeRows(
+      String text) async {
+    try {
+      final parsed =
+          json.decode(await _engineParseXtreamSeriesEpisodes(text));
+      if (parsed is List) {
+        return parsed.map((e) => e as Map<String, dynamic>).toList();
+      }
+    } catch (_) {}
+    return const [];
   }
 
   static Future<List<IptvEpisode>> seriesEpisodes(
@@ -167,43 +226,20 @@ class IptvClient {
         '&password=${_enc(p.password)}&action=get_series_info&series_id=${_enc(seriesId)}';
     final text = await _httpGet(url, timeout: const Duration(seconds: 15));
     if (text == null) return [];
-    try {
-      final root = json.decode(text) as Map<String, dynamic>;
-      final episodesObj = root['episodes'] as Map<String, dynamic>?;
-      if (episodesObj == null) return [];
-      final out = <IptvEpisode>[];
-      episodesObj.forEach((seasonKey, value) {
-        final arr = value as List?;
-        if (arr == null) return;
-        final seasonNum = int.tryParse(seasonKey) ?? 0;
-        for (final e in arr) {
-          final o = e as Map<String, dynamic>?;
-          if (o == null) continue;
-          final info = o['info'] as Map<String, dynamic>?;
-          out.add(IptvEpisode(
+    final rows = await _parseSeriesEpisodeRows(text);
+    return rows
+        .map(
+          (o) => IptvEpisode(
             id: o['id']?.toString() ?? '',
             title: o['title']?.toString() ?? '',
-            containerExt: () {
-              final c = o['container_extension']?.toString() ?? '';
-              return c.isEmpty ? 'mp4' : c;
-            }(),
-            season: seasonNum,
-            episode: (o['episode_num'] is num)
-                ? (o['episode_num'] as num).toInt()
-                : (int.tryParse(o['episode_num']?.toString() ?? '') ?? 0),
-            plot: info?['plot']?.toString() ?? '',
-            image: info?['movie_image']?.toString() ?? '',
-          ));
-        }
-      });
-      out.sort((a, b) {
-        final s = a.season.compareTo(b.season);
-        return s != 0 ? s : a.episode.compareTo(b.episode);
-      });
-      return out;
-    } catch (_) {
-      return [];
-    }
+            containerExt: o['container_ext']?.toString() ?? '',
+            season: o['season'] as int? ?? 0,
+            episode: o['episode'] as int? ?? 0,
+            plot: o['plot']?.toString() ?? '',
+            image: o['image']?.toString() ?? '',
+          ),
+        )
+        .toList();
   }
 
   static String streamUrl(IptvPortal p, IptvStream s) {
@@ -227,6 +263,10 @@ class IptvClient {
   /// timeout, malformed JSON, etc.) so callers can simply hide the row.
   ///
   /// Xtream encodes `title` and `description` as base64 strings.
+  static String _decodeXtreamField(String s) {
+    return RustLib.instance.decodeXtreamText(s);
+  }
+
   static Future<List<EpgEntry>> shortEpg(
     IptvPortal p,
     String streamId, {
@@ -263,13 +303,7 @@ class IptvClient {
 
       String decode64(dynamic v) {
         if (v == null) return '';
-        final s = v.toString();
-        if (s.isEmpty) return '';
-        try {
-          return utf8.decode(base64.decode(s), allowMalformed: true).trim();
-        } catch (_) {
-          return s;
-        }
+        return _decodeXtreamField(v.toString());
       }
 
       final out = <EpgEntry>[];
@@ -379,8 +413,6 @@ class AliveProgress {
 }
 
 class IptvAliveChecker {
-  static const int _minBytes = 16 * 1024;
-  static const int _maxBytes = 64 * 1024;
   static const Duration _timeout = Duration(seconds: 8);
   static const int _concurrency = 24;
 
@@ -421,117 +453,14 @@ class IptvAliveChecker {
   static Future<bool> checkOne(String url) => _isAlive(url);
 
   static Future<bool> _isAlive(String url) async {
-    final client = http.Client();
     try {
-      final req = http.Request('GET', Uri.parse(url))
-        ..followRedirects = true
-        ..headers['User-Agent'] = 'VLC/3.0.20 LibVLC/3.0.20'
-        ..headers['Accept'] = '*/*'
-        ..headers['Connection'] = 'keep-alive'
-        ..headers['Range'] = 'bytes=0-${_maxBytes - 1}';
-      final resp = await client.send(req).timeout(_timeout);
-      final code = resp.statusCode;
-      if (code != 206 && (code < 200 || code >= 300)) return false;
-      final ct = (resp.headers['content-type'] ?? '').toLowerCase();
-      final cl = int.tryParse(resp.headers['content-length'] ?? '') ?? -1;
-      if (_isDeadContentType(ct)) return false;
-
-      // Read up to MAX_BYTES (or until end)
-      final buf = <int>[];
-      var ended = true;
-      try {
-        await for (final chunk in resp.stream.timeout(_timeout)) {
-          buf.addAll(chunk);
-          if (buf.length >= _maxBytes) {
-            ended = false;
-            break;
-          }
-          if (buf.length >= _minBytes) {
-            // got enough
-            ended = false;
-            break;
-          }
-        }
-      } catch (_) {
-        // partial read is fine
-      }
-
-      final isM3U8 = ct.contains('mpegurl') || url.toLowerCase().contains('.m3u8');
-      if (isM3U8) {
-        final headStr = utf8.decode(
-            buf.sublist(0, buf.length < 1024 ? buf.length : 1024),
-            allowMalformed: true);
-        return headStr.contains('#EXTM3U');
-      }
-      if (ended && buf.length < _minBytes) return false;
-      // canned offline videos typically 0..5MB
-      if (cl >= 1 && cl <= 5_000_000) return false;
-
-      // MPEG-TS sync byte (0x47), check ≥3 consecutive 188-byte packets
-      if (buf.isNotEmpty && buf[0] == 0x47) {
-        var validTs = true;
-        var checkedPackets = 0;
-        var i = 0;
-        while (i < buf.length - 188 && checkedPackets < 10) {
-          if (buf[i] != 0x47) {
-            validTs = false;
-            break;
-          }
-          checkedPackets++;
-          i += 188;
-        }
-        if (validTs && checkedPackets >= 3) return true;
-      }
-      // MP4 ftyp
-      if (buf.length >= 8) {
-        final s = String.fromCharCodes(buf.sublist(4, 8));
-        if (s == 'ftyp') return true;
-      }
-      if (_hasVideoSignature(buf)) return true;
-      if (buf.length >= 32 * 1024) return true;
-      return false;
+      final raw = await _engineProbeStream(url, _timeout.inSeconds);
+      final parsed = jsonDecode(raw) as Map<String, dynamic>;
+      if (parsed.containsKey('error')) return false;
+      return parsed['alive'] == true;
     } catch (_) {
       return false;
-    } finally {
-      client.close();
     }
-  }
-
-  static bool _isDeadContentType(String ct) =>
-      ct.contains('text/html') ||
-      ct.contains('application/json') ||
-      ct.contains('text/xml') ||
-      ct.contains('text/plain');
-
-  static bool _hasVideoSignature(List<int> buf) {
-    if (buf.length < 4) return false;
-    if (buf[0] == 0x47) return true;
-    if (buf.length >= 7) {
-      final s = String.fromCharCodes(buf.sublist(0, 7));
-      if (s == '#EXTM3U') return true;
-    }
-    if (buf.length >= 4) {
-      final s = String.fromCharCodes(buf.sublist(0, 4));
-      if (s == '#EXT') return true;
-    }
-    // AAC/MPEG sync (1111 1111 111x xxxx)
-    if (buf[0] == 0xFF && (buf[1] & 0xE0) == 0xE0) return true;
-    // Matroska / WebM
-    if (buf[0] == 0x1A && buf[1] == 0x45 && buf[2] == 0xDF && buf[3] == 0xA3) {
-      return true;
-    }
-    // Ogg
-    if (buf[0] == 0x4F && buf[1] == 0x67 && buf[2] == 0x67 && buf[3] == 0x53) {
-      return true;
-    }
-    // H.264 NAL start code
-    if (buf[0] == 0x00 && buf[1] == 0x00 && buf[2] == 0x00 && buf[3] == 0x01) {
-      return true;
-    }
-    if (buf[0] == 0x00 && buf[1] == 0x00 && buf[2] == 0x01 && (buf[3] & 0xFF) >= 0xB0) {
-      return true;
-    }
-    return false;
   }
 }
 
@@ -546,7 +475,40 @@ class IptvAliveChecker {
 ///   - [works]   → GitHub XML2 dumps (quick plain-text dumps)
 enum CatalogSource { best, works }
 
+/// Parsed Reddit catalog pagination cursor.
+class RedditCatalogCursor {
+  final int subIdx;
+  final String? after;
+  const RedditCatalogCursor({this.subIdx = 0, this.after});
+}
+
+/// Decodes cursors produced by [_scrapeRedditCatalog]:
+///   `reddit:<subIdx>:<token>` — current format
+///   `reddit:<token>`          — legacy (sub 0)
+///   `<token>`                 — legacy bare token (sub 0)
+RedditCatalogCursor parseRedditCatalogCursor(String? after) {
+  if (after == null || after.isEmpty) {
+    return const RedditCatalogCursor();
+  }
+  if (after.startsWith('reddit:')) {
+    final rest = after.substring(7);
+    if (rest.isEmpty) return const RedditCatalogCursor();
+    final colon = rest.indexOf(':');
+    if (colon >= 0) {
+      final subIdx = int.tryParse(rest.substring(0, colon)) ?? 0;
+      final token = rest.substring(colon + 1);
+      final pageAfter = (token.isEmpty || token == 'null') ? null : token;
+      return RedditCatalogCursor(subIdx: subIdx, after: pageAfter);
+    }
+    final pageAfter = rest == 'null' ? null : rest;
+    return RedditCatalogCursor(subIdx: 0, after: pageAfter);
+  }
+  final pageAfter = after == 'null' ? null : after;
+  return RedditCatalogCursor(subIdx: 0, after: pageAfter);
+}
+
 class IptvScraper {
+  static const catalogSubCount = 4;
   // Reddit killed unauthenticated `.json` access in mid-2026 and all CORS
   // proxies are dead. We now use OAuth2 "installed_client" grants with
   // open-source Reddit app client IDs for anonymous bearer tokens.
@@ -636,12 +598,16 @@ class IptvScraper {
       return cached;
     }
     try {
-      final resp = await http.get(Uri.parse(_xml2ListApi), headers: {
-        'User-Agent': _ua,
-        'Accept': 'application/vnd.github+json',
-      }).timeout(const Duration(seconds: 12));
-      if (resp.statusCode == 200) {
-        final decoded = json.decode(resp.body);
+      final body = await _engineHttpGet(
+        _xml2ListApi,
+        timeout: const Duration(seconds: 12),
+        headers: const {
+          'User-Agent': _ua,
+          'Accept': 'application/vnd.github+json',
+        },
+      );
+      if (body != null) {
+        final decoded = json.decode(body);
         if (decoded is List) {
           // Collect (encoded-name, size) pairs so we can sort ascending —
           // smaller files = fewer portals = faster first results for the user.
@@ -667,7 +633,7 @@ class IptvScraper {
           }
         }
       } else {
-        debugPrint('[XML2] list HTTP ${resp.statusCode}');
+        debugPrint('[XML2] list HTTP failed');
       }
     } catch (e) {
       debugPrint('[XML2] list failed: $e');
@@ -695,16 +661,7 @@ class IptvScraper {
   }) async {
     switch (source) {
       case CatalogSource.best:
-        // Reddit catalog (volatile but fresh).
-        String? redditAfter;
-        if (after != null && after.startsWith('reddit:')) {
-          final t = after.substring(7);
-          redditAfter = t.isEmpty ? null : t;
-        } else if (after != null && after.isNotEmpty) {
-          redditAfter = after;
-        }
-        return _scrapeRedditCatalog(
-            maxResults: maxResults, after: redditAfter);
+        return _scrapeRedditCatalog(maxResults: maxResults, after: after);
 
       case CatalogSource.works:
         // XML2 GitHub dumps (fast plain-text fetches).
@@ -728,14 +685,16 @@ class IptvScraper {
 
     String? body;
     try {
-      final resp = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _ua,
-        'Accept': 'text/plain,*/*',
-      }).timeout(const Duration(seconds: 25));
-      if (resp.statusCode == 200) {
-        body = resp.body;
-      } else {
-        debugPrint('[XML2]   HTTP ${resp.statusCode}');
+      body = await _engineHttpGet(
+        url,
+        timeout: const Duration(seconds: 25),
+        headers: const {
+          'User-Agent': _ua,
+          'Accept': 'text/plain,*/*',
+        },
+      );
+      if (body == null) {
+        debugPrint('[XML2]   fetch failed');
       }
     } catch (e) {
       debugPrint('[XML2]   fetch failed: $e');
@@ -755,21 +714,10 @@ class IptvScraper {
       {int maxResults = 50, String? after}) async {
     final out = <String, IptvPortal>{};
 
-    // Determine which subreddit + cursor we're on.
-    // Cursor format: 'reddit:<subIdx>:<after>' or 'reddit:<after>' (legacy).
-    var subIdx = 0;
-    String? redditAfter;
-    if (after != null && after.isNotEmpty) {
-      final parts = after.split(':');
-      if (parts.length >= 3) {
-        subIdx = int.tryParse(parts[1]) ?? 0;
-        redditAfter = parts.sublist(2).join(':');
-        if (redditAfter.isEmpty || redditAfter == 'null') redditAfter = null;
-      } else if (parts.length == 2) {
-        redditAfter = parts[1];
-        if (redditAfter.isEmpty || redditAfter == 'null') redditAfter = null;
-      }
-    }
+    // Cursor format: 'reddit:<subIdx>:<token>' or legacy 'reddit:<token>'.
+    final cursor = parseRedditCatalogCursor(after);
+    var subIdx = cursor.subIdx;
+    var redditAfter = cursor.after;
     if (subIdx >= _catalogSubs.length) subIdx = 0;
     final currentSub = _catalogSubs[subIdx];
 
@@ -1076,18 +1024,14 @@ class IptvScraper {
     }
   }
 
-  static Future<String?> _httpGetText(String url) async {
-    try {
-      final resp = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _ua,
-        'Accept': 'text/html,application/json,*/*',
-      }).timeout(const Duration(seconds: 15));
-      return resp.body;
-    } catch (e) {
-      debugPrint('[Catalog] httpGet failed: $e');
-      return null;
-    }
-  }
+  static Future<String?> _httpGetText(String url) => _engineHttpGet(
+        url,
+        timeout: const Duration(seconds: 15),
+        headers: const {
+          'User-Agent': _ua,
+          'Accept': 'text/html,application/json,*/*',
+        },
+      );
 
   /// Decode common XML/HTML entities in RSS content.
   static String _decodeXmlEntities(String s) => s
@@ -1113,26 +1057,23 @@ class IptvScraper {
       final idx = (_oauthClientIdx + i) % _oauthClientIds.length;
       final clientId = _oauthClientIds[idx];
       try {
-        final resp = await http.post(
-          Uri.parse('https://www.reddit.com/api/v1/access_token'),
+        final body = await _engineHttpPost(
+          'https://www.reddit.com/api/v1/access_token',
+          timeout: const Duration(seconds: 8),
           headers: {
             'User-Agent': _oauthUa,
-            'Authorization':
-                'Basic ${base64.encode(utf8.encode('$clientId:'))}',
+            'Authorization': 'Basic ${base64.encode(utf8.encode('$clientId:'))}',
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: {
-            'grant_type':
-                'https://oauth.reddit.com/grants/installed_client',
-            'device_id': 'DO_NOT_TRACK_THIS_DEVICE',
-          },
-        ).timeout(const Duration(seconds: 8));
-        if (resp.statusCode == 200) {
-          final data = json.decode(resp.body) as Map<String, dynamic>;
+          body:
+              'grant_type=https%3A%2F%2Foauth.reddit.com%2Fgrants%2Finstalled_client&device_id=DO_NOT_TRACK_THIS_DEVICE',
+        );
+        if (body != null) {
+          final data = json.decode(body) as Map<String, dynamic>;
           final token = data['access_token'] as String?;
           final expiresIn = data['expires_in'] as int? ?? 3600;
           if (token != null && token.isNotEmpty) {
             _oauthToken = token;
-            // Refresh 60s early to avoid edge-case expiry during requests.
             _oauthTokenExpiry = DateTime.now()
                 .add(Duration(seconds: expiresIn - 60));
             _oauthClientIdx = idx;
@@ -1140,8 +1081,7 @@ class IptvScraper {
             return token;
           }
         }
-        debugPrint(
-            '[Catalog] OAuth auth failed (client #$idx): ${resp.statusCode}');
+        debugPrint('[Catalog] OAuth auth failed (client #$idx)');
       } catch (e) {
         debugPrint('[Catalog] OAuth auth error (client #$idx): $e');
       }
@@ -1169,21 +1109,22 @@ class IptvScraper {
 
     debugPrint('[Catalog] OAuth GET r/$sub (after=$after)');
     try {
-      final resp = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _oauthUa,
-        'Authorization': 'Bearer $token',
-      }).timeout(const Duration(seconds: 12));
-      if (resp.statusCode == 200) {
-        final t = resp.body.trimLeft();
-        if (t.startsWith('{') || t.startsWith('[')) return resp.body;
+      final body = await _engineHttpGet(
+        url,
+        timeout: const Duration(seconds: 12),
+        headers: {
+          'User-Agent': _oauthUa,
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (body != null) {
+        final t = body.trimLeft();
+        if (t.startsWith('{') || t.startsWith('[')) return body;
       }
-      if (resp.statusCode == 401 || resp.statusCode == 403) {
-        // Token expired or revoked — clear cache so next call re-auths.
+      if (body == null) {
         _oauthToken = null;
         _oauthTokenExpiry = null;
       }
-      debugPrint(
-          '[Catalog]   OAuth ${resp.statusCode} len=${resp.body.length}');
     } catch (e) {
       debugPrint('[Catalog]   OAuth failed: $e');
     }
@@ -1201,15 +1142,18 @@ class IptvScraper {
 
     debugPrint('[Catalog] GET RSS ${_redact(url)}');
     try {
-      final resp = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _oauthUa,
-        'Accept': 'application/atom+xml, application/xml, */*',
-      }).timeout(const Duration(seconds: 15));
-      if (resp.statusCode == 200 && resp.body.contains('<entry>')) {
-        return resp.body;
+      final body = await _engineHttpGet(
+        url,
+        timeout: const Duration(seconds: 15),
+        headers: const {
+          'User-Agent': _oauthUa,
+          'Accept': 'application/atom+xml, application/xml, */*',
+        },
+      );
+      if (body != null && body.contains('<entry>')) {
+        return body;
       }
-      debugPrint(
-          '[Catalog]   RSS ${resp.statusCode} len=${resp.body.length}');
+      debugPrint('[Catalog]   RSS fetch failed');
     } catch (e) {
       debugPrint('[Catalog]   RSS failed: $e');
     }

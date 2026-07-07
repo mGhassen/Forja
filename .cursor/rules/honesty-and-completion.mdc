@@ -1,0 +1,146 @@
+---
+description: Never lie or assume; symptom vs root fix; ask before workarounds; honest status
+alwaysApply: true
+---
+
+# Honesty and completion
+
+## Never lie
+
+- Do not claim something is fixed, done, tested, or verified unless it is true in code right now.
+- Do not soften or hide gaps with vague language ("should work", "mostly fixed", "addressed").
+- If uncertain, say so and verify before stating a fact.
+- Docs, issue status, commit messages, and summaries must match what actually shipped.
+
+## Never assume — check source code
+
+When the user asks anything (how it works, whether something is fixed, what changed, where logic lives):
+
+- **Read the source first** — grep, open files, run commands. Do not answer from memory, docs alone, or prior conversation.
+- **Do not guess** call sites, behavior, status, or architecture. If you have not looked at the code, say "I'll check" and check.
+- **Docs and issue files are not proof** — they can be stale or wrong. Code is the source of truth.
+- **Verify before explaining** — cite file paths and line numbers from what you actually read, not what you expect to find.
+
+If checking is blocked (file missing, tool failure), say that explicitly instead of inferring.
+
+## Symptom fix vs root fix vs workaround
+
+Many bugs have **two layers**. Name both. Never collapse them into "fixed."
+
+| Layer | What it is | Example in this repo |
+|-------|------------|----------------------|
+| **Symptom fix** | Stops user-visible failure without changing root engine behavior | `runRustIsolate` — UI thread no longer blocks; Rust still uses `reqwest::blocking` on a worker |
+| **Root / engine fix** | Removes the underlying cause in `crates/*` or architecture | Async HTTP, parallel resolve, cancel-abort in Rust, replace sync FFI with job API |
+| **Workaround** | Avoids the problem without fixing symptom or root — user pays a cost | Reorder providers, "wait it out", `Future(() => …)` on UI isolate, allowlists that hide violations |
+
+**Rules:**
+
+- A symptom fix alone is **not** a root fix. Say so explicitly every time.
+- If the project mandates a symptom fix (e.g. `ENGINE_BOUNDARY` requires `Isolate.run`), it is still **not** the engine fix — document what remains in Rust.
+- Before shipping only a symptom fix or workaround, **ask the user** unless they already scoped it that way.
+- Do not mark **fixed** for the whole problem when only the symptom layer is done.
+
+## Workarounds require permission
+
+- A **workaround** skips root cause (and often symptom fix too): user-side avoidance, deferred real fix, `Future(() => …)` on the UI isolate, allowlists that hide the problem, etc.
+- Before implementing a workaround, **ask the user for permission** and explain:
+  - what the symptom fix would be
+  - what the root / engine fix would be
+  - why you are proposing a workaround instead
+  - what the user loses (perf, cancel, correctness, maintainability)
+- Do not mark an issue **fixed** if only a workaround was applied.
+
+## Consequences of lying or omitting
+
+If you call something **fixed** without documenting the root fix, or delete/move docs without preserving engine debt:
+
+- **Real work gets lost** — if `[fixed]` issue files are deleted, nobody knows Rust still blocks internally, cancel doesn't abort, or parallel resolve was never built.
+- **Migration looks done** — phase checklists get marked ✅ while `crates/*` still has blocking HTTP; no one schedules the engine work.
+- **Trust breaks** — user discovers the UI "fix" is isolate offload while the engine debt was never tracked or mentioned.
+- **Regressions repeat** — next dev adds sync FFI thinking the area is "done" because docs said fixed.
+- **Cost is hidden** — every long call spawns a worker isolate forever instead of fixing Rust once.
+
+**Prevent this:** when shipping a workaround, rename to **`NNN-[workaround]-…`** and link an **`[open]`** issue for the root fix.
+
+## Status must match reality
+
+See [docs-rfc-issues.mdc](./docs-rfc-issues.mdc) for full RFC vs issue lifecycle.
+
+### Issues
+
+| Body status | Filename tag |
+|-------------|--------------|
+| `draft` | `[draft]` |
+| `open` | `[open]` |
+| `workaround` | `[workaround]` |
+| `fixed` | `[fixed]` in `issues/fixed/` |
+| `canceled` | `[canceled]` in `issues/canceled/` |
+
+### RFCs
+
+| Body status | Filename tag |
+|-------------|--------------|
+| `draft` | `[draft]` |
+| `planned` | `[planned]` |
+| `open` | `[open]` |
+| `partial` / `stub` | `[partial]` |
+| `fixed` | `[fixed]` in `rfc/fixed/` |
+| `canceled` | `[canceled]` in `rfc/canceled/` |
+
+### Backlog (`docs/backlog/`)
+
+One file per version: `0.7.6-[draft].md` … `done/0.7.6-[done].md` · `canceled/0.7.6-[canceled].md`
+
+| Body status | Filename |
+|-------------|----------|
+| `draft` | `X.Y.Z-[draft].md` |
+| `open` | `X.Y.Z-[open].md` |
+| `partial` | `X.Y.Z-[partial].md` |
+| `done` | `X.Y.Z-[done].md` in `backlog/done/` |
+| `canceled` | `X.Y.Z-[canceled].md` in `backlog/canceled/` |
+
+### Migration (`docs/migration/`)
+
+| Body status | Filename |
+|-------------|----------|
+| `draft` | `NN-[draft]-….md` |
+| `open` | `NN-[open]-….md` |
+| `partial` | `NN-[partial]-….md` |
+| `fixed` | `NN-[fixed]-….md` in `migration/fixed/` |
+| `canceled` | `NN-[canceled]-….md` in `migration/canceled/` |
+
+### Mandatory: filename tag + `**Status:**` together
+
+When status changes, update in the **same turn** as the code/doc fix:
+
+1. **Rename the file** — tag must match body; move to `fixed/` / `done/` / `canceled/` when terminal
+2. **`**Status:**` line** — must match filename tag
+3. **README index**
+4. **Cross-links** — grep old slug in `docs/`
+
+Example (wrong): code shipped, issue body says "workaround shipped", but file is still `009-[open]-….md` and `**Status:** open`.
+
+Example (right): `009-[workaround]-post-migration-resilience-audit.md` + `**Status:** workaround` + README row `workaround`.
+
+When updating issues/docs for a workaround:
+
+- **Workaround (shipped)** — what landed, files, how to verify, what user loses.
+- **Root fix (open)** — link to `[open]` issue: crates, behavior, acceptance criteria.
+- **Root cause (before fix)** — past tense, historical.
+- Never use **`[fixed]`** in filename or status when root cause remains open.
+
+## Finish what you start
+
+- When asked to fix something, deliver the complete fix for the stated scope — not a partial change unless scope was explicitly narrowed with the user.
+- Do not stop at docs, scaffolding, or symptom-only when the user asked for a root fix.
+- If blocked (missing info, architectural choice, external dependency), stop and ask — do not silently ship half a fix.
+
+## At the end of fix work, report plainly
+
+Always state:
+
+1. **Symptom fix** — what was fixed (file/line or command to verify)
+2. **Root fix** — done or not; if not, link to open issue you created
+3. Whether any part is a **workaround** (and whether user approved it)
+4. What happens if someone deletes the docs — where the root fix is still tracked
+5. **Issue file** — confirm filename tag and `**Status:**` were updated (or say explicitly if not yet done)

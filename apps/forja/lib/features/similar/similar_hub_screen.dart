@@ -16,9 +16,8 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import 'package:forja_api/api/bestsimilar_scraper.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_core/models/movie.dart';
+import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
+import 'package:rust/rust.dart';
 import 'similar_results_screen.dart';
 
 enum _MediaFilter { all, movies, tv }
@@ -191,10 +190,8 @@ class _SimilarHubScreenState extends State<SimilarHubScreen>
   @override
   Widget build(BuildContext context) {
     final showResults = _query.isNotEmpty;
-    return Scaffold(
-      backgroundColor: const Color(0xFF141414),
-      body: Stack(
-        children: [
+    return Stack(
+      children: [
           // Liquid background blobs.
           Positioned.fill(
             child: AnimatedBuilder(
@@ -220,11 +217,10 @@ class _SimilarHubScreenState extends State<SimilarHubScreen>
               ),
             ),
           ),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1400),
-                child: CustomScrollView(
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1400),
+              child: CustomScrollView(
                   physics: const BouncingScrollPhysics(
                       parent: AlwaysScrollableScrollPhysics()),
                   slivers: [
@@ -272,9 +268,7 @@ class _SimilarHubScreenState extends State<SimilarHubScreen>
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 

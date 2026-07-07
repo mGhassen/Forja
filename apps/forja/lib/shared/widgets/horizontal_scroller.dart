@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 /// Horizontal scrollable strip with overlaid left/right arrow buttons.
 /// Arrows appear on desktop/wide screens and on hover; they paginate the

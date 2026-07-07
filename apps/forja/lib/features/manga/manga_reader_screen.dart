@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:forja_api/api/manga_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/manga/catalog/manga_service.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class MangaReaderScreen extends StatefulWidget {
   final Manga manga;

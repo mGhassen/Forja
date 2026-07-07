@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:forja_api/services/jellyfin_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/jellyfin/catalog/jellyfin_service.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 // ─── Jellyfin Palette ────────────────────────────────────────────────────────
 const _jfBlue = Color(0xFF00A4DC);

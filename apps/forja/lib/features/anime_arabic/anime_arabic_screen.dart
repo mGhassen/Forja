@@ -10,13 +10,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
-import 'package:forja_api/api/anime_arabic_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_arabic_details_screen.dart';
 import 'anime_arabic_player_screen.dart';
 import 'anime_arabic_search_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimeArabicScreen extends StatefulWidget {
   const AnimeArabicScreen({super.key});
@@ -269,9 +269,7 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: _loading
+        return _loading
               ? Center(
                   child: CircularProgressIndicator(
                     color: AppTheme.primaryColor,
@@ -404,8 +402,7 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
                           ),
                         ),
                       ],
-                    ),
-        );
+                    );
       },
     );
   }

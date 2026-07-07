@@ -14,32 +14,21 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:forja_core/utils/language_display.dart';
+import 'package:forja/shared/utils/language_display.dart';
 
 import 'utils.dart';
 import 'menus.dart';
 
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_core/models/stream_source.dart';
-import 'package:forja_core/utils/hls_master_parser.dart';
-import 'package:forja_api/api/subtitle_api.dart';
-import 'package:forja_streaming/forja_streaming.dart';
-import 'package:forja_api/api/stream_extractor.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_api/api/trakt_service.dart';
-import 'package:forja_api/api/simkl_service.dart';
-import 'package:forja_api/api/site111477_service.dart';
-import 'package:forja_streaming/src/site111477_proxy.dart' as site111477_proxy;
-import 'package:forja_api/api/arabic_service.dart';
-import 'package:forja_api/api/stremio_service.dart';
-import 'package:forja_api/api/track_auto_select.dart';
-import 'package:forja_api/api/debrid_api.dart';
-import 'package:forja_api/api/torrent_api.dart';
-import 'package:forja_api/api/torrent_filter.dart';
-import 'package:forja_api/api/tmdb_service.dart';
-import 'package:forja_api/api/introdb_service.dart';
+import 'package:rust/rust.dart';
+import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
+import 'package:rust/rust.dart' as site111477_proxy;
+import 'package:forja/shared/extractors/arabic_service.dart';
+import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/player_screen.dart';
-import 'package:forja_api/services/pip_service.dart';
+import 'package:forja/shared/services/pip_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GLASSY WIDGET PRIMITIVES  (MPVEx-style frosted black glass)
@@ -442,6 +431,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   late final Player _player;
   late final VideoController _controller;
   bool _disposed = false;
+  int _fallbackGen = 0;
   bool _historySaved = false;
   bool _hasError = false;
   String _errorMessage = '';
@@ -623,8 +613,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   @override
   void dispose() {
-    // ── Save watch history before anything else ───────────────────────────
     _saveWatchHistory();
+
+    _fallbackGen++;
+    WebStreamrService().cancelPending();
+    VidsrcExtractor.cancelPending();
+    NuvioService.instance.cancelPending();
 
     _disposed = true;
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
@@ -921,20 +915,20 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       return;
     }
 
+    final chainGen = _fallbackGen;
     final providerKeys = widget.providers!.keys.toList();
     int currentIndex = providerKeys.indexOf(_currentProvider ?? '');
     
-    // Try the next provider in the list
     for (int i = currentIndex + 1; i < providerKeys.length; i++) {
+      if (_fallbackAborted(chainGen)) return;
       final nextKey = providerKeys[i];
       debugPrint('[Player] Auto-falling back to provider: $nextKey');
       
-      final success = await _silentSwitchProvider(nextKey);
+      final success = await _silentSwitchProvider(nextKey, chainGen: chainGen);
       if (success) return;
     }
 
-    // If we're here, everything failed
-    if (mounted) {
+    if (mounted && !_fallbackAborted(chainGen)) {
       setState(() {
         _hasError = true;
         _errorMessage = 'Could not find any working stream from any provider.';
@@ -942,8 +936,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
   }
 
+  bool _fallbackAborted(int chainGen) =>
+      !mounted || _disposed || chainGen != _fallbackGen;
+
   /// Switches provider without showing full error UI on failure, returns success
-  Future<bool> _silentSwitchProvider(String newProvider) async {
+  Future<bool> _silentSwitchProvider(String newProvider, {int? chainGen}) async {
+    final gen = chainGen ?? _fallbackGen;
+    if (_fallbackAborted(gen)) return false;
     try {
       final provider = widget.providers![newProvider];
       String? streamUrl;
@@ -965,6 +964,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               : null;
           hits = await svc.findMovieSources(title: widget.movie!.title, year: year);
         }
+        if (_fallbackAborted(gen)) return false;
         if (hits.isNotEmpty) {
           if (site111477_proxy.is111477ProxyRunning) {
             await site111477_proxy.stop111477Proxy();
@@ -981,6 +981,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return false;
         if (webStreamrSources.isNotEmpty) {
           streamUrl = webStreamrSources.first.url;
           sources = webStreamrSources;
@@ -992,7 +993,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           isMovie: widget.movie!.mediaType == 'movie',
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
+          isCancelled: () => _fallbackAborted(gen),
         );
+        if (_fallbackAborted(gen)) return false;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -1006,6 +1009,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return false;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -1020,6 +1024,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return false;
         if (results.isNotEmpty) {
           final first = results.first;
           streamUrl = first.url;
@@ -1048,7 +1053,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
         
         final extractor = StreamExtractor();
-        final result = await extractor.extract(providerUrl);
+        final result = await extractor.extract(
+          providerUrl,
+          isCancelled: () => _fallbackAborted(gen),
+        );
+        if (_fallbackAborted(gen)) return false;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -1056,6 +1065,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
       }
       
+      if (_fallbackAborted(gen)) return false;
       if (streamUrl != null && streamUrl.isNotEmpty) {
         final currentPos = _positionNotifier.value;
         // Reset any stale mpv referrer set by the previous provider/quality
@@ -1065,6 +1075,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           await (_player.platform as NativePlayer).setProperty('referrer', ref);
         }
         await _player.open(Media(streamUrl, httpHeaders: headers));
+        if (_fallbackAborted(gen)) return false;
         if (currentPos.inSeconds > 0) await _player.seek(currentPos);
         _detectHlsQualities(streamUrl, headers);
         
@@ -2754,28 +2765,17 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           final useDebrid = await settings.useDebridForStreams();
           final debridService = await settings.getDebridService();
 
-          if (useDebrid && debridService != 'None') {
-            final debrid = DebridApi();
-            final files = await debrid.resolveByService(
-              debridService,
-              magnetLink,
-              season: nextSeason,
-              episode: nextEpisode,
-            );
-            if (files.isNotEmpty) {
-              fileIndex = 0;
-              streamUrl = files.first.downloadUrl;
-            }
-          } else {
-            streamUrl = await TorrentStreamService().streamTorrent(
-              magnetLink,
-              season: nextSeason,
-              episode: nextEpisode,
-            );
-            if (streamUrl != null) {
-              final idx = Uri.parse(streamUrl).queryParameters['index'];
-              if (idx != null) fileIndex = int.tryParse(idx);
-            }
+          final playback = await resolveMagnetForPlayback(
+            magnet: magnetLink,
+            useDebrid: useDebrid,
+            debridService: debridService,
+            localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+            season: nextSeason,
+            episode: nextEpisode,
+          );
+          if (playback != null) {
+            streamUrl = playback.url;
+            fileIndex = playback.fileIndex;
           }
           activeProvider = 'torrent';
         }
@@ -2786,14 +2786,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         final query = '${widget.movie!.title} S${s}E$e';
         debugPrint('[NextEp] Searching torrents: $query');
 
-        final torrentApi = TorrentApi();
-        final results = await torrentApi.searchTorrents(query);
-        final filtered = await TorrentFilter.filterTorrentsAsync(
-          results,
+        final results = (await Engine.searchTorrents(query))
+            .map(TorrentResult.fromJson)
+            .toList();
+        final filtered = (await Engine.filterTorrents(
+          results.map((e) => e.toJson()).toList(),
           widget.movie!.title,
           requiredSeason: nextSeason,
           requiredEpisode: nextEpisode,
-        );
+        )).map(TorrentResult.fromJson).toList();
 
         if (filtered.isEmpty) throw Exception('No torrents found for S${s}E$e');
 
@@ -2805,28 +2806,17 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         final useDebrid = await settings.useDebridForStreams();
         final debridService = await settings.getDebridService();
 
-        if (useDebrid && debridService != 'None') {
-          final debrid = DebridApi();
-          final files = await debrid.resolveByService(
-            debridService,
-            magnetLink,
-            season: nextSeason,
-            episode: nextEpisode,
-          );
-          if (files.isNotEmpty) {
-            fileIndex = 0;
-            streamUrl = files.first.downloadUrl;
-          }
-        } else {
-          streamUrl = await TorrentStreamService().streamTorrent(
-            magnetLink,
-            season: nextSeason,
-            episode: nextEpisode,
-          );
-          if (streamUrl != null) {
-            final idx = Uri.parse(streamUrl).queryParameters['index'];
-            if (idx != null) fileIndex = int.tryParse(idx);
-          }
+        final playback = await resolveMagnetForPlayback(
+          magnet: magnetLink,
+          useDebrid: useDebrid,
+          debridService: debridService,
+          localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+          season: nextSeason,
+          episode: nextEpisode,
+        );
+        if (playback != null) {
+          streamUrl = playback.url;
+          fileIndex = playback.fileIndex;
         }
       } else if (isWebStreamr) {
         // ── WebStreamr: fetch next episode streams ────────────────────
@@ -3027,7 +3017,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   Future<void> _switchProvider(String newProvider) async {
     if (_isSwitchingProvider) return;
-    
+
+    final gen = ++_fallbackGen;
+    WebStreamrService().cancelPending();
+    VidsrcExtractor.cancelPending();
+    NuvioService.instance.cancelPending();
+
     setState(() => _isSwitchingProvider = true);
     
     final currentPos = _positionNotifier.value;
@@ -3060,6 +3055,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               : null;
           hits = await svc.findMovieSources(title: widget.movie!.title, year: year);
         }
+        if (_fallbackAborted(gen)) return;
         if (hits.isNotEmpty) {
           if (site111477_proxy.is111477ProxyRunning) {
             await site111477_proxy.stop111477Proxy();
@@ -3080,6 +3076,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           streamUrl = webStreamrSources.first.url;
           sources = webStreamrSources;
         }
+        if (_fallbackAborted(gen)) return;
       } else if (newProvider == 'videasy' && widget.movie != null) {
         final ve = VideasyExtractor(onLog: (m) => debugPrint(m));
         final result = await ve.extract(
@@ -3087,7 +3084,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           isMovie: widget.movie!.mediaType == 'movie',
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
+          isCancelled: () => _fallbackAborted(gen),
         );
+        if (_fallbackAborted(gen)) return;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -3101,6 +3100,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -3115,6 +3115,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        if (_fallbackAborted(gen)) return;
         if (results.isNotEmpty) {
           final first = results.first;
           streamUrl = first.url;
@@ -3143,7 +3144,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
         
         final extractor = StreamExtractor();
-        final result = await extractor.extract(providerUrl);
+        final result = await extractor.extract(
+          providerUrl,
+          isCancelled: () => _fallbackAborted(gen),
+        );
+        if (_fallbackAborted(gen)) return;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -3151,6 +3156,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
       }
       
+      if (_fallbackAborted(gen)) return;
       if (streamUrl != null && streamUrl.isNotEmpty) {
         // Reset any stale mpv referrer set by the previous provider/quality
         // selection — then re-apply from the new headers if present.
@@ -3161,6 +3167,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         await _player.open(
           Media(streamUrl, httpHeaders: headers),
         );
+        if (_fallbackAborted(gen)) return;
         
         if (currentPos.inSeconds > 0) {
           await _player.seek(currentPos);
@@ -3183,7 +3190,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           ));
         }
       } else {
-        if (mounted) {
+        if (mounted && !_fallbackAborted(gen)) {
           messenger.showSnackBar(SnackBar(
             content: Text('Failed to extract from ${provider['name']}'),
             duration: const Duration(seconds: 2),
@@ -3191,7 +3198,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !_fallbackAborted(gen)) {
         messenger.showSnackBar(SnackBar(
           content: Text('Error switching provider: $e'),
           duration: const Duration(seconds: 2),
@@ -3593,8 +3600,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                 ]);
               },
             ),
-            // Show sources button for providers with multiple sources
-            if (_currentSources != null && _currentSources!.length > 1) ...[
+            if (_currentSources != null && _currentSources!.isNotEmpty) ...[
               const SizedBox(width: 8),
               GlassIconButton(
                 icon: Icons.video_library_outlined,

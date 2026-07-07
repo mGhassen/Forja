@@ -1,0 +1,21 @@
+[package]
+name = "proxy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+axum = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true, features = ["stream"] }
+thiserror = { workspace = true }
+futures-util = "0.3"
+urlencoding = "2"
+regex = { workspace = true }
+url = { workspace = true }
+utils = { path = "../utils" }
+aes = { workspace = true }
+ctr = { workspace = true }
+base64 = { workspace = true }

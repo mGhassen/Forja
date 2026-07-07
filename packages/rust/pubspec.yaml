@@ -1,0 +1,28 @@
+name: rust
+description: Dart FFI bindings to the Forja Rust engine
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  ffi: ^2.1.4
+  flutter:
+    sdk: flutter
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  shared_preferences: ^2.5.2
+  flutter_secure_storage: ^9.2.4
+  html: ^0.15.4
+  http: ^1.6.0
+  crypto: ^3.0.6
+  flutter_inappwebview: ^6.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

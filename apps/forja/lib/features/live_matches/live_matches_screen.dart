@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
@@ -12,59 +12,6 @@ class _Sport {
   final String id;
   final String name;
   const _Sport({required this.id, required this.name});
-}
-
-class _PpvStream {
-  final int id;
-  final String name;
-  final String tag;
-  final String? poster;
-  final String uriName;
-  final int startsAt;
-  final int endsAt;
-  final bool alwaysLive;
-  final String category;
-  final String? iframe;
-  final bool allowPastStreams;
-
-  const _PpvStream({
-    required this.id,
-    required this.name,
-    required this.tag,
-    this.poster,
-    required this.uriName,
-    required this.startsAt,
-    required this.endsAt,
-    required this.alwaysLive,
-    required this.category,
-    this.iframe,
-    required this.allowPastStreams,
-  });
-
-  factory _PpvStream.fromJson(Map<String, dynamic> j) => _PpvStream(
-        id:              (j['id'] as num?)?.toInt() ?? 0,
-        name:            (j['name'] ?? '').toString(),
-        tag:             (j['tag'] ?? '').toString(),
-        poster:          j['poster'] as String?,
-        uriName:         (j['uri_name'] ?? '').toString(),
-        startsAt:        (j['starts_at'] as num?)?.toInt() ?? 0,
-        endsAt:          (j['ends_at'] as num?)?.toInt() ?? 0,
-        alwaysLive:      (j['always_live'] as num?)?.toInt() == 1,
-        category:        (j['category_name'] ?? '').toString(),
-        iframe:          j['iframe'] as String?,
-        allowPastStreams: (j['allowpaststreams'] as num?)?.toInt() == 1,
-      );
-
-  String get timeLabel {
-    if (alwaysLive) return '🔴 Always Live';
-    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    if (now >= startsAt && now <= endsAt) return '🔴 Live Now';
-    if (startsAt > now) {
-      final dt = DateTime.fromMillisecondsSinceEpoch(startsAt * 1000);
-      return '⏰ ${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}';
-    }
-    return '';
-  }
 }
 
 class _CdnChannel {
@@ -246,22 +193,6 @@ Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
   }
 }
 
-Future<List<_PpvStream>> _fetchPpvStreams() async {
-  final resp = await http.get(Uri.parse('https://old.ppv.to/api/streams'), headers: _ua)
-      .timeout(const Duration(seconds: 12));
-  if (resp.statusCode != 200) return [];
-  final body = jsonDecode(resp.body) as Map<String, dynamic>;
-  final categories = (body['streams'] as List? ?? []);
-  final result = <_PpvStream>[];
-  for (final cat in categories) {
-    final streams = (cat['streams'] as List? ?? []);
-    for (final s in streams) {
-      try { result.add(_PpvStream.fromJson(s as Map<String, dynamic>)); } catch (_) {}
-    }
-  }
-  return result;
-}
-
 Future<List<_CdnChannel>> _fetchCdnChannels() async {
   final resp = await http.get(Uri.parse('https://api.cdn-live.tv/api/v1/channels/?user=cdnlivetv&plan=free'), headers: _ua)
       .timeout(const Duration(seconds: 12));
@@ -312,9 +243,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   String _sportFilter = 'all';
 
   TabController? _tabController;
-  _DataProvider _provider = _DataProvider.damiTv;
+  final _DataProvider _provider = _DataProvider.damiTv;
   List<_DamiTvStream> _damiTvStreams = [];
-  List<_PpvStream> _ppvStreams = [];
   List<_CdnChannel> _cdnChannels = [];
   List<_CdnSportEvent> _cdnSports = [];
   bool _cdnShowChannels = true; // true = channels, false = sports
@@ -329,10 +259,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     setState(() { _loading = true; _error = null; _sportFilter = 'all'; });
     if (_provider == _DataProvider.damiTv) {
       await _loadDamiTv();
-      return;
-    }
-    if (_provider == _DataProvider.ppv) {
-      await _loadPpv();
       return;
     }
     if (_provider == _DataProvider.cdnLive) {
@@ -356,40 +282,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         setState(() {
           _tabController = null;
           _damiTvStreams = streams;
-          _sports = cats;
-          _loading = false;
-        });
-        oldCtrl?.dispose();
-        final newCtrl = TabController(length: cats.length + 1, vsync: this);
-        newCtrl.addListener(() {
-          if (!newCtrl.indexIsChanging) {
-            final idx = newCtrl.index;
-            setState(() => _sportFilter = idx == 0 ? 'all' : cats[idx - 1].id);
-          }
-        });
-        if (mounted) setState(() => _tabController = newCtrl);
-      }
-    } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
-    }
-  }
-
-  Future<void> _loadPpv() async {
-    try {
-      final streams = await _fetchPpvStreams();
-      // Build category tabs from unique categories in streams
-      final seenCats = <String>{};
-      final cats = <_Sport>[];
-      for (final s in streams) {
-        if (s.category.isNotEmpty && seenCats.add(s.category)) {
-          cats.add(_Sport(id: s.category, name: s.category));
-        }
-      }
-      if (mounted) {
-        final oldCtrl = _tabController;
-        setState(() {
-          _tabController = null;
-          _ppvStreams = streams;
           _sports = cats;
           _loading = false;
         });
@@ -450,10 +342,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     }
   }
 
-  List<_PpvStream> get _filteredPpv => _sportFilter == 'all'
-      ? _ppvStreams
-      : _ppvStreams.where((s) => s.category == _sportFilter).toList();
-
   List<_DamiTvStream> get _filteredDamiTv => _sportFilter == 'all'
       ? _damiTvStreams
       : _damiTvStreams.where((s) => s.categoryName == _sportFilter).toList();
@@ -468,27 +356,20 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: AppTheme.backgroundDecoration,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            _buildProviderBar(),
-            if (_tabController != null && _sports.isNotEmpty) _buildSportTabs(),
-            const SizedBox(height: 4),
-            Expanded(child: _buildBody()),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader(),
+        if (_tabController != null && _sports.isNotEmpty) _buildSportTabs(),
+        const SizedBox(height: 4),
+        Expanded(child: _buildBody()),
+      ],
     );
   }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 48, 24, 12),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
       child: Row(
         children: [
           const Icon(Icons.sports_soccer_rounded, color: AppTheme.primaryColor, size: 28),
@@ -508,39 +389,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     );
   }
 
-  Widget _buildProviderBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _ModeChip(
-              label: '📺 Dami TV',
-              active: _provider == _DataProvider.damiTv,
-              onTap: () {
-                if (_provider == _DataProvider.damiTv) return;
-                setState(() { _provider = _DataProvider.damiTv; });
-                _load();
-              },
-            ),
-            const SizedBox(width: 8),
-            _ModeChip(
-              label: '🎬 PPV.to',
-              active: _provider == _DataProvider.ppv,
-              onTap: () {
-                if (_provider == _DataProvider.ppv) return;
-                setState(() { _provider = _DataProvider.ppv; });
-                _load();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
- 
   Widget _buildSportTabs() {
     final tabs = [
       const Tab(text: 'All'),
@@ -582,7 +430,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       );
     }
     if (_provider == _DataProvider.damiTv) return _buildDamiTvBody();
-    if (_provider == _DataProvider.ppv) return _buildPpvBody();
     if (_provider == _DataProvider.cdnLive) return _buildCdnBody();
 
     return const SizedBox.shrink();
@@ -616,39 +463,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         itemBuilder: (context, i) => _DamiTvMatchCard(
           stream: streams[i],
           onTap: () => _openDamiTvStream(streams[i]),
-        ),
-      );
-    });
-  }
-
-  Widget _buildPpvBody() {
-    final streams = _filteredPpv;
-    if (streams.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.sports_rounded, color: Colors.white24, size: 64),
-            SizedBox(height: 16),
-            Text('No streams available', style: TextStyle(color: Colors.white38, fontSize: 16)),
-          ],
-        ),
-      );
-    }
-    return LayoutBuilder(builder: (context, constraints) {
-      final crossCount = (constraints.maxWidth / 300).floor().clamp(1, 6);
-      return GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossCount,
-          mainAxisExtent: 200,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: streams.length,
-        itemBuilder: (context, i) => _PpvMatchCard(
-          stream: streams[i],
-          onTap: () => _openPpvStream(streams[i]),
         ),
       );
     });
@@ -798,23 +612,9 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       ),
     );
   }
-
-  void _openPpvStream(_PpvStream s) {
-    if (s.iframe == null || s.iframe!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stream not yet available for this event')),
-      );
-      return;
-    }
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => _PpvPlayerScreen(stream: s),
-    ));
-  }
-
-  // End of screen state
 }
 
-enum _DataProvider { damiTv, ppv, cdnLive }
+enum _DataProvider { damiTv, cdnLive }
 
 // ─── Chips ────────────────────────────────────────────────────────────────────
 
@@ -885,265 +685,6 @@ class _TeamBadge extends StatelessWidget {
     );
   }
 }
-
-// ─── PPV Match Card ───────────────────────────────────────────────────────────
-
-class _PpvMatchCard extends StatefulWidget {
-  final _PpvStream stream;
-  final VoidCallback onTap;
-  const _PpvMatchCard({required this.stream, required this.onTap});
-
-  @override
-  State<_PpvMatchCard> createState() => _PpvMatchCardState();
-}
-
-class _PpvMatchCardState extends State<_PpvMatchCard> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = widget.stream;
-    final hasIframe = s.iframe != null && s.iframe!.isNotEmpty;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: _hovered ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
-            border: Border.all(
-              color: _hovered ? AppTheme.primaryColor.withValues(alpha: 0.6) : Colors.white12,
-              width: 1.5,
-            ),
-            boxShadow: _hovered
-                ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.25), blurRadius: 16, spreadRadius: 2)]
-                : null,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Stack(
-              children: [
-                // poster background
-                if (s.poster != null && s.poster!.isNotEmpty)
-                  Positioned.fill(
-                    child: CachedNetworkImage(
-                      imageUrl: s.poster!,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) => const SizedBox.shrink(),
-                    ),
-                  ),
-                // dark gradient overlay
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.45),
-                          Colors.black.withValues(alpha: 0.90),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // content
-                Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        s.name,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                      if (s.tag.isNotEmpty) ...[  
-                        const SizedBox(height: 6),
-                        Text(s.tag,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white54, fontSize: 10.5)),
-                      ],
-                    ],
-                  ),
-                ),
-                // time label top-right
-                if (s.timeLabel.isNotEmpty)
-                  Positioned(
-                    top: 10, right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: s.timeLabel.contains('Live') ? Colors.red.shade700 : Colors.black54,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(s.timeLabel,
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                // category top-left
-                Positioned(
-                  top: 10, left: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(s.category.toUpperCase(),
-                        style: const TextStyle(color: Colors.white60, fontSize: 9, letterSpacing: 0.8)),
-                  ),
-                ),
-                // no iframe warning bottom
-                if (!hasIframe)
-                  Positioned(
-                    bottom: 8, left: 0, right: 0,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text('Not yet available',
-                            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ),
-                // play overlay on hover
-                if (_hovered && hasIframe)
-                  Positioned.fill(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.85),
-                            shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── PPV WebView Player ───────────────────────────────────────────────────────
-
-class _PpvPlayerScreen extends StatefulWidget {
-  final _PpvStream stream;
-  const _PpvPlayerScreen({required this.stream});
-
-  @override
-  State<_PpvPlayerScreen> createState() => _PpvPlayerScreenState();
-}
-
-class _PpvPlayerScreenState extends State<_PpvPlayerScreen> {
-  bool _loading = true;
-  bool _isFullscreen = false;
-
-  void _enterFullscreen() async {
-    setState(() => _isFullscreen = true);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-    ]);
-  }
-
-  void _exitFullscreen() async {
-    setState(() => _isFullscreen = false);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    await SystemChrome.setPreferredOrientations([]);
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setPreferredOrientations([]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final embedUrl = widget.stream.iframe!;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: _isFullscreen ? null : AppBar(
-        backgroundColor: Colors.black,
-        title: Text(widget.stream.name,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                    color: Colors.teal.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.teal)),
-                child: const Text('PPV.to', style: TextStyle(color: Colors.teal, fontSize: 10, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(embedUrl)),
-            initialSettings: InAppWebViewSettings(
-              mediaPlaybackRequiresUserGesture: false,
-              allowsInlineMediaPlayback: true,
-              javaScriptEnabled: true,
-              disableDefaultErrorPage: true,
-              supportMultipleWindows: false,
-            ),
-            onLoadStart: (_, _) => setState(() => _loading = true),
-            onLoadStop:  (_, _) => setState(() => _loading = false),
-            onEnterFullscreen: (_) => _enterFullscreen(),
-            onExitFullscreen:  (_) => _exitFullscreen(),
-            shouldOverrideUrlLoading: (ctrl, action) async {
-              final url = action.request.url?.toString() ?? '';
-              final embedHost = Uri.tryParse(embedUrl)?.host ?? '';
-              if (embedHost.isNotEmpty && !url.contains(embedHost)) {
-                http.get(Uri.parse(url), headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                      'AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/122.0.0.0 Safari/537.36',
-                  'Referer': embedUrl,
-                }).catchError((_) => http.Response('', 200));
-                return NavigationActionPolicy.CANCEL;
-              }
-              return NavigationActionPolicy.ALLOW;
-            },
-          ),
-          if (_loading)
-            const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
-        ],
-      ),
-    );
-  }
-}
-
- 
 
 // ─── CDN Channel Card ─────────────────────────────────────────────────────────
 

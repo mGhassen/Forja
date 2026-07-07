@@ -1,11 +1,9 @@
 import 'dart:ui';
-import 'package:forja_api/services/my_list_service.dart';
+import 'package:rust/rust.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_core/models/movie.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -489,13 +487,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with AutomaticKeepAlive
     final width = MediaQuery.of(context).size.width;
     final crossAxisCount = width > 1200 ? 6 : (width > 900 ? 5 : (width > 600 ? 4 : 3));
 
-    return Scaffold(
-      backgroundColor: AppTheme.bgDark,
-      body: Column(
-        children: [
-          // Filter Bar
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             color: AppTheme.bgCard,
             child: Row(
               children: [
@@ -561,8 +556,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with AutomaticKeepAlive
               ],
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'comic_details_screen.dart';
 import 'comic_reader_screen.dart';
-import 'package:forja_api/api/comics_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/comics/catalog/comics_service.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class ComicsScreen extends StatefulWidget {
   final String? initialSearch;
@@ -161,42 +161,36 @@ class _ComicsScreenState extends State<ComicsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 24),
-            _buildHeader(),
-            _buildSearchBar(),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  if (_isShowingLiked) {
-                    await _fetchLikedComics();
-                  } else if (_currentSearchQuery.isNotEmpty) {
-                    await _searchComics(_currentSearchQuery);
-                  } else {
-                    await _fetchComics();
-                  }
-                },
-                color: AppTheme.primaryColor,
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    children: [
-                      if (_history.isNotEmpty && !_isShowingLiked && _currentSearchQuery.isEmpty) _buildHistoryCarousel(),
-                      _buildBody(),
-                    ],
-                  ),
-                ),
+    return Column(
+      children: [
+        _buildHeader(),
+        _buildSearchBar(),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              if (_isShowingLiked) {
+                await _fetchLikedComics();
+              } else if (_currentSearchQuery.isNotEmpty) {
+                await _searchComics(_currentSearchQuery);
+              } else {
+                await _fetchComics();
+              }
+            },
+            color: AppTheme.primaryColor,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  if (_history.isNotEmpty && !_isShowingLiked && _currentSearchQuery.isEmpty) _buildHistoryCarousel(),
+                  _buildBody(),
+                ],
               ),
             ),
-            if (!_isShowingLiked && _currentSearchQuery.isEmpty) _buildPagination(),
-          ],
+          ),
         ),
-      ),
+        if (!_isShowingLiked && _currentSearchQuery.isEmpty) _buildPagination(),
+      ],
     );
   }
 

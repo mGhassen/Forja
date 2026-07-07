@@ -1,26 +1,24 @@
 import 'dart:async';
-import 'package:forja_api/services/my_list_service.dart';
+import 'package:rust/rust.dart';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_api/api/bestsimilar_scraper.dart';
-import 'package:forja_storage/forja_storage.dart';
-import 'package:forja_api/api/stremio_service.dart';
-import 'package:forja_api/api/stream_extractor.dart';
-import 'package:forja_streaming/forja_streaming.dart';
-import 'package:forja_api/api/amri_extractor.dart';
-import 'package:forja_api/api/debrid_api.dart';
-import 'package:forja_api/api/trakt_service.dart';
-import 'package:forja_api/api/simkl_service.dart';
-import 'package:forja_core/models/movie.dart';
+import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
+import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:forja/shared/extractors/amri_extractor.dart';
+import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/app/boot_cache.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'stremio_catalog_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -69,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   Future<List<Movie>>? _becauseFuture;
   int _becausePoolSize = 0; // unique in-progress shows; controls shuffle button
   StreamSubscription<List<Map<String, dynamic>>>? _historySeedSub;
+  VoidCallback? _splashDismissedListener;
 
   // Mood/genre filter state
   String _selectedMood = 'mind';
@@ -92,39 +91,73 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   void initState() {
     super.initState();
-    _trendingFuture = _api.getTrending().then((movies) {
-      _fetchHeroLogos(movies.take(5).toList());
-      // Pick tonight's randomized recommendation from a deeper pool
-      if (movies.length > 6 && mounted) {
-        final pool = movies.skip(3).toList();
-        setState(() => _tonightsPick = pool[math.Random().nextInt(pool.length)]);
-      }
-      // Prime ambient color for the first hero
-      if (movies.isNotEmpty) _extractAmbientFor(movies.first);
-      return movies;
-    });
-    _popularFuture = _api.getPopular();
-    _topRatedFuture = _api.getTopRated();
-    _nowPlayingFuture = _api.getNowPlaying();
+    _trendingFuture = _tmdbFuture(
+      BootCache.trending,
+      _api.getTrending,
+      onLoaded: (movies) {
+        _fetchHeroLogos(movies.take(5).toList());
+        if (movies.length > 6 && mounted) {
+          final pool = movies.skip(3).toList();
+          setState(() => _tonightsPick = pool[math.Random().nextInt(pool.length)]);
+        }
+        if (movies.isNotEmpty) _extractAmbientFor(movies.first);
+      },
+    );
+    _popularFuture = _tmdbFuture(BootCache.popular, _api.getPopular);
+    _topRatedFuture = _tmdbFuture(BootCache.topRated, _api.getTopRated);
+    _nowPlayingFuture = _tmdbFuture(BootCache.nowPlaying, _api.getNowPlaying);
     _moodFuture = _loadMoodMovies(_selectedMood);
-    
+
     _startHeroTimer();
     _loadStremioCatalogs();
     SettingsService.addonChangeNotifier.addListener(_onAddonsChanged);
 
-    // Trakt auto-sync (runs once per session, no-op if not logged in)
-    TraktService().fullSync();
-    // Simkl auto-sync (runs once per session, no-op if not logged in)
-    SimklService().fullSync();
+    _schedulePostSplashWork();
+  }
 
-    // Trakt personalized sections
-    _loadTraktRecommendations();
-    _loadTraktCalendar();
-    _loadTraktCalendarMovies();
+  Future<List<Movie>> _tmdbFuture(
+    List<Movie>? cached,
+    Future<List<Movie>> Function() fetch, {
+    void Function(List<Movie> movies)? onLoaded,
+  }) {
+    if (cached != null) {
+      if (onLoaded != null) onLoaded(cached);
+      return Future.value(cached);
+    }
+    return fetch().then((movies) {
+      onLoaded?.call(movies);
+      return movies;
+    });
+  }
 
-    // "Because you watched ___" — pick a random in-progress item once per
-    // app session. If history isn't loaded yet, wait for the first event.
-    _initBecauseYouWatched();
+  void _schedulePostSplashWork() {
+    void run() {
+      TraktService().fullSync();
+      SimklService().fullSync();
+      _loadTraktRecommendations();
+      _loadTraktCalendar();
+      _loadTraktCalendarMovies();
+      _initBecauseYouWatched();
+    }
+
+    void schedule() {
+      Future<void>.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) run();
+      });
+    }
+
+    if (ShellBus.splashDismissed.value) {
+      schedule();
+      return;
+    }
+
+    _splashDismissedListener = () {
+      if (!ShellBus.splashDismissed.value) return;
+      ShellBus.splashDismissed.removeListener(_splashDismissedListener!);
+      _splashDismissedListener = null;
+      schedule();
+    };
+    ShellBus.splashDismissed.addListener(_splashDismissedListener!);
   }
 
   void _initBecauseYouWatched() {
@@ -449,6 +482,9 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   void dispose() {
     SettingsService.addonChangeNotifier.removeListener(_onAddonsChanged);
+    if (_splashDismissedListener != null) {
+      ShellBus.splashDismissed.removeListener(_splashDismissedListener!);
+    }
     _heroTimer?.cancel();
     _heroController.dispose();
     _historySeedSub?.cancel();
@@ -839,24 +875,19 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: AppTheme.bgDark,
-      body: Stack(
-        children: [
-          // ── Ambient backdrop: dynamic blobs of color extracted from current hero
-          if (!AppTheme.isLightMode)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: _AmbientBackdrop(
-                  primary: _ambientPrimary,
-                  secondary: _ambientSecondary,
-                ),
+    return Stack(
+      children: [
+        if (!AppTheme.isLightMode)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: _AmbientBackdrop(
+                primary: _ambientPrimary,
+                secondary: _ambientSecondary,
               ),
             ),
-          CustomScrollView(
-            cacheExtent: 500,
-            physics: const BouncingScrollPhysics(),
+          ),
+        CustomScrollView(
+            scrollCacheExtent: ScrollCacheExtent.pixels(500), physics: const BouncingScrollPhysics(),
             slivers: [
               // Hero
               SliverToBoxAdapter(
@@ -905,7 +936,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                         imdbId: item['imdbId'] as String?,
                       );
                       final isStreaming = await SettingsService().isStreamingModeEnabled();
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       Navigator.push(context, MaterialPageRoute(
                         builder: (_) => isStreaming
                             ? StreamingDetailsScreen(
@@ -1040,8 +1071,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -2272,32 +2302,19 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
         final debridService = await SettingsService().getDebridService();
         final useDebrid = useDebridSetting && debridService != 'None';
 
-        if (useDebrid) {
-          debugPrint('[Resume] Using debrid service: $debridService');
-          if (debridService == 'Real-Debrid') {
-             final files = await DebridApi().resolveRealDebrid(magnetLink,
-                 season: season, episode: episode);
-             if (files.isNotEmpty) {
-               // resolveRealDebrid now returns a single, pre-picked file.
-               streamUrl = files.first.downloadUrl;
-               fileIndex = 0;
-               debugPrint('[Resume] Picked: ${files.first.filename}');
-             }
-          } else if (debridService == 'TorBox') {
-             final files = await DebridApi().resolveTorBox(magnetLink,
-                 season: season, episode: episode);
-             if (files.isNotEmpty) {
-               streamUrl = files.first.downloadUrl;
-               fileIndex = 0;
-               debugPrint('[Resume] Picked: ${files.first.filename}');
-             }
-          } else {
-             throw Exception("No Debrid service configured");
-          }
-        } else {
-          // Local Torrent Engine
-          debugPrint('[Resume] Using local torrent engine');
-          streamUrl = await TorrentStreamService().streamTorrent(magnetLink, season: season, episode: episode, fileIdx: fileIndex);
+        final playback = await resolveMagnetForPlayback(
+          magnet: magnetLink,
+          useDebrid: useDebrid,
+          debridService: debridService,
+          localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+          season: season,
+          episode: episode,
+          fileIdx: fileIndex,
+        );
+        if (playback != null) {
+          streamUrl = playback.url;
+          fileIndex = playback.fileIndex ?? fileIndex;
+          debugPrint('[Resume] Resolved torrent playback URL');
         }
       } else if (method == 'trakt_import') {
         // Trakt-imported items have no stream source — find one automatically

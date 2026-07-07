@@ -7,10 +7,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:forja_api/api/anime_arabic_extractor.dart';
-import 'package:forja_api/api/anime_arabic_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/anime_arabic/catalog/anime_arabic_extractor.dart';
+import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimeArabicPlayerScreen extends StatefulWidget {
   final ArabicAnimeCard anime;

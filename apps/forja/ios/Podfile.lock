@@ -1,0 +1,51 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_inappwebview_ios (0.0.1):
+    - Flutter
+    - flutter_inappwebview_ios/Core (= 0.0.1)
+    - OrderedSet (~> 6.0.3)
+  - flutter_inappwebview_ios/Core (0.0.1):
+    - Flutter
+    - OrderedSet (~> 6.0.3)
+  - flutter_js (0.1.0):
+    - Flutter
+  - flutter_secure_storage (6.0.0):
+    - Flutter
+  - media_kit_video (0.0.1):
+    - Flutter
+  - OrderedSet (6.0.3)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
+  - flutter_js (from `.symlinks/plugins/flutter_js/ios`)
+  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
+  - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
+
+SPEC REPOS:
+  trunk:
+    - OrderedSet
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_inappwebview_ios:
+    :path: ".symlinks/plugins/flutter_inappwebview_ios/ios"
+  flutter_js:
+    :path: ".symlinks/plugins/flutter_js/ios"
+  flutter_secure_storage:
+    :path: ".symlinks/plugins/flutter_secure_storage/ios"
+  media_kit_video:
+    :path: ".symlinks/plugins/media_kit_video/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_inappwebview_ios: b89ba3482b96fb25e00c967aae065701b66e9b99
+  flutter_js: 867813c1830e1d9b2c5d547cdb6f61801e2f2145
+  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
+  media_kit_video: 1746e198cb697d1ffb734b1d05ec429d1fcd1474
+  OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
+
+PODFILE CHECKSUM: de96ca6a75ec45bfcbeb95b60688cc2663359e3a
+
+COCOAPODS: 1.16.2

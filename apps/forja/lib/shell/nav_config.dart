@@ -20,49 +20,166 @@ import 'package:forja/features/live_matches/live_matches_screen.dart';
 import 'package:forja/features/magnet/magnet_player_screen.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_screen.dart';
 
-/// Nav item metadata keyed by nav ID.
-const Map<String, Map<String, dynamic>> navMeta = {
-  'home':         {'icon': Icons.home_outlined,              'active': Icons.home,                    'label': 'Home'},
-  'discover':     {'icon': Icons.explore_outlined,            'active': Icons.explore,                 'label': 'Discover'},
-  'similar':      {'icon': Icons.auto_awesome_outlined, 'active': Icons.auto_awesome, 'label': 'Similar'},
-  'downloader':   {'icon': Icons.cloud_download_outlined, 'active': Icons.cloud_download, 'label': 'Media Downloader'},
-  'search':       {'icon': Icons.search,                      'active': Icons.search,                  'label': 'Search'},
-  'mylist':       {'icon': Icons.bookmark_outline,            'active': Icons.bookmark,                'label': 'My List'},
-  'magnet':       {'icon': Icons.link_rounded,                'active': Icons.link_rounded,            'label': 'Magnet'},
-  'live_matches': {'icon': Icons.sports_soccer_outlined,      'active': Icons.sports_soccer_rounded,   'label': 'Live Matches'},
-  'iptv':         {'icon': Icons.live_tv_outlined,            'active': Icons.live_tv,                 'label': 'IPTV'},
-  'audiobooks':   {'icon': Icons.menu_book_outlined,          'active': Icons.menu_book,               'label': 'Audiobooks'},
-  'books':        {'icon': Icons.import_contacts_rounded,     'active': Icons.import_contacts_rounded, 'label': 'Books'},
-  'music':        {'icon': Icons.music_note_outlined,         'active': Icons.music_note,              'label': 'Music'},
-  'comics':       {'icon': Icons.auto_stories_outlined,       'active': Icons.auto_stories,            'label': 'Comics'},
-  'manga':        {'icon': Icons.book_outlined,               'active': Icons.book,                    'label': 'Manga'},
-  'jellyfin':     {'icon': Icons.dns_outlined,                'active': Icons.dns_rounded,             'label': 'Jellyfin'},
-  'anime':        {'icon': Icons.play_circle_outline,         'active': Icons.play_circle_filled,      'label': 'Anime'},
-  'anime_arabic': {'icon': Icons.subtitles_outlined,           'active': Icons.subtitles,                'label': 'Anime Arabic'},
-  'asian_drama':  {'icon': Icons.theater_comedy_outlined,     'active': Icons.theater_comedy,          'label': 'Asian Drama'},
-  'arabic':       {'icon': Icons.movie_filter_outlined,       'active': Icons.movie_filter,            'label': 'Arabic'},
-  'settings':     {'icon': Icons.settings_outlined,           'active': Icons.settings,                'label': 'Settings'},
+class NavDestination {
+  const NavDestination({
+    required this.id,
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
+
+  final String id;
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+}
+
+/// Single source of nav item metadata keyed by nav ID.
+const Map<String, NavDestination> navDestinations = {
+  'home': NavDestination(
+    id: 'home',
+    icon: Icons.home_outlined,
+    activeIcon: Icons.home,
+    label: 'Home',
+  ),
+  'discover': NavDestination(
+    id: 'discover',
+    icon: Icons.explore_outlined,
+    activeIcon: Icons.explore,
+    label: 'Discover',
+  ),
+  'similar': NavDestination(
+    id: 'similar',
+    icon: Icons.auto_awesome_outlined,
+    activeIcon: Icons.auto_awesome,
+    label: 'Similar',
+  ),
+  'downloader': NavDestination(
+    id: 'downloader',
+    icon: Icons.cloud_download_outlined,
+    activeIcon: Icons.cloud_download,
+    label: 'Media Downloader',
+  ),
+  'search': NavDestination(
+    id: 'search',
+    icon: Icons.search,
+    activeIcon: Icons.search,
+    label: 'Search',
+  ),
+  'mylist': NavDestination(
+    id: 'mylist',
+    icon: Icons.bookmark_outline,
+    activeIcon: Icons.bookmark,
+    label: 'My List',
+  ),
+  'magnet': NavDestination(
+    id: 'magnet',
+    icon: Icons.link_rounded,
+    activeIcon: Icons.link_rounded,
+    label: 'Magnet',
+  ),
+  'live_matches': NavDestination(
+    id: 'live_matches',
+    icon: Icons.sports_soccer_outlined,
+    activeIcon: Icons.sports_soccer_rounded,
+    label: 'Live Matches',
+  ),
+  'iptv': NavDestination(
+    id: 'iptv',
+    icon: Icons.live_tv_outlined,
+    activeIcon: Icons.live_tv,
+    label: 'IPTV',
+  ),
+  'audiobooks': NavDestination(
+    id: 'audiobooks',
+    icon: Icons.menu_book_outlined,
+    activeIcon: Icons.menu_book,
+    label: 'Audiobooks',
+  ),
+  'books': NavDestination(
+    id: 'books',
+    icon: Icons.import_contacts_rounded,
+    activeIcon: Icons.import_contacts_rounded,
+    label: 'Books',
+  ),
+  'music': NavDestination(
+    id: 'music',
+    icon: Icons.music_note_outlined,
+    activeIcon: Icons.music_note,
+    label: 'Music',
+  ),
+  'comics': NavDestination(
+    id: 'comics',
+    icon: Icons.auto_stories_outlined,
+    activeIcon: Icons.auto_stories,
+    label: 'Comics',
+  ),
+  'manga': NavDestination(
+    id: 'manga',
+    icon: Icons.book_outlined,
+    activeIcon: Icons.book,
+    label: 'Manga',
+  ),
+  'jellyfin': NavDestination(
+    id: 'jellyfin',
+    icon: Icons.dns_outlined,
+    activeIcon: Icons.dns_rounded,
+    label: 'Jellyfin',
+  ),
+  'anime': NavDestination(
+    id: 'anime',
+    icon: Icons.play_circle_outline,
+    activeIcon: Icons.play_circle_filled,
+    label: 'Anime',
+  ),
+  'anime_arabic': NavDestination(
+    id: 'anime_arabic',
+    icon: Icons.subtitles_outlined,
+    activeIcon: Icons.subtitles,
+    label: 'Anime Arabic',
+  ),
+  'asian_drama': NavDestination(
+    id: 'asian_drama',
+    icon: Icons.theater_comedy_outlined,
+    activeIcon: Icons.theater_comedy,
+    label: 'Asian Drama',
+  ),
+  'arabic': NavDestination(
+    id: 'arabic',
+    icon: Icons.movie_filter_outlined,
+    activeIcon: Icons.movie_filter,
+    label: 'Arabic',
+  ),
+  'settings': NavDestination(
+    id: 'settings',
+    icon: Icons.settings_outlined,
+    activeIcon: Icons.settings,
+    label: 'Settings',
+  ),
 };
 
-Map<String, Widget> buildAllScreens() => {
-  'home':         const HomeScreen(),
-  'discover':     const DiscoverScreen(),
-  'similar':      const SimilarHubScreen(),
-  'downloader':   const MediaDownloaderScreen(),
-  'search':       const SearchScreen(),
-  'mylist':       const MyListScreen(),
-  'magnet':       const MagnetPlayerScreen(),
-  'live_matches': const LiveMatchesScreen(),
-  'iptv':         const IptvPtScreen(),
-  'audiobooks':   const AudiobookScreen(),
-  'books':        const BooksScreen(),
-  'music':        const MusicScreen(),
-  'comics':       ComicsScreen(initialSearch: null),
-  'manga':        MangaScreen(initialSearch: null),
-  'jellyfin':     const JellyfinScreen(),
-  'anime':        const AnimeScreen(),
-  'anime_arabic': const AnimeArabicScreen(),
-  'asian_drama':  const AsianDramaScreen(),
-  'arabic':       const ArabicScreen(),
-  'settings':     const SettingsScreen(),
+typedef TabBuilder = Widget Function();
+
+/// Lazy tab factories — widgets are created on first visit only.
+final Map<String, TabBuilder> navTabBuilders = {
+  'home': () => const HomeScreen(),
+  'discover': () => const DiscoverScreen(),
+  'similar': () => const SimilarHubScreen(),
+  'downloader': () => const MediaDownloaderScreen(),
+  'search': () => const SearchScreen(),
+  'mylist': () => const MyListScreen(),
+  'magnet': () => const MagnetPlayerScreen(),
+  'live_matches': () => const LiveMatchesScreen(),
+  'iptv': () => const IptvPtScreen(),
+  'audiobooks': () => const AudiobookScreen(),
+  'books': () => const BooksScreen(),
+  'music': () => const MusicScreen(),
+  'comics': () => ComicsScreen(initialSearch: null),
+  'manga': () => MangaScreen(initialSearch: null),
+  'jellyfin': () => const JellyfinScreen(),
+  'anime': () => const AnimeScreen(),
+  'anime_arabic': () => const AnimeArabicScreen(),
+  'asian_drama': () => const AsianDramaScreen(),
+  'arabic': () => const ArabicScreen(),
+  'settings': () => const SettingsScreen(),
 };

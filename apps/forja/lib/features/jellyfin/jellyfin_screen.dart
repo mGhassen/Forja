@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:forja_api/services/jellyfin_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/jellyfin/catalog/jellyfin_service.dart';
 import 'jellyfin_details_screen.dart';
 
 // ─── Jellyfin Palette ────────────────────────────────────────────────────────
@@ -604,10 +603,7 @@ class _JellyfinScreenState extends State<JellyfinScreen>
   Widget build(BuildContext context) {
     super.build(context);
     if (_isLoading) {
-      return Container(
-        decoration: AppTheme.backgroundDecoration,
-        child: const Center(child: CircularProgressIndicator(color: _jfBlue)),
-      );
+      return const Center(child: CircularProgressIndicator(color: _jfBlue));
     }
     if (!_isLoggedIn) return _buildWelcome();
     if (_selectedLibraryId != null) return _buildLibraryView();
@@ -617,10 +613,8 @@ class _JellyfinScreenState extends State<JellyfinScreen>
   // ─── Welcome ─────────────────────────────────────────────────────────────
 
   Widget _buildWelcome() {
-    return Container(
-      decoration: AppTheme.backgroundDecoration,
-      child: Center(
-        child: Padding(
+    return Center(
+      child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -694,16 +688,13 @@ class _JellyfinScreenState extends State<JellyfinScreen>
             ],
           ),
         ),
-      ),
     );
   }
 
   // ─── Home ────────────────────────────────────────────────────────────────
 
   Widget _buildHome() {
-    return Container(
-      decoration: AppTheme.backgroundDecoration,
-      child: RefreshIndicator(
+    return RefreshIndicator(
         color: _jfBlue,
         backgroundColor: _jfSurface,
         onRefresh: () async {
@@ -793,7 +784,6 @@ class _JellyfinScreenState extends State<JellyfinScreen>
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
-      ),
     );
   }
 
@@ -1342,12 +1332,10 @@ class _JellyfinScreenState extends State<JellyfinScreen>
   Widget _buildLibraryView() {
     final currentPage = _libraryPage + 1;
 
-    return Container(
-      decoration: AppTheme.backgroundDecoration,
-      child: Column(
-        children: [
-          // Header
-          SafeArea(
+    return Column(
+      children: [
+        // Header
+        SafeArea(
             bottom: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
@@ -1549,7 +1537,6 @@ class _JellyfinScreenState extends State<JellyfinScreen>
               ),
             ),
         ],
-      ),
     );
   }
 

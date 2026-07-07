@@ -9,14 +9,14 @@ import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:shimmer/shimmer.dart';
 
-import 'package:forja_api/api/anime_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_details_screen.dart';
 import 'anime_discover_screen.dart';
 import 'anime_player_screen.dart';
 import 'anime_search_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AnimeScreen extends StatefulWidget {
   const AnimeScreen({super.key});
@@ -182,9 +182,18 @@ class _AnimeScreenState extends State<AnimeScreen>
     }
   }
 
-  Future<List<AnimeCard>> _loadMood(String id) {
-    final mood = _moods.firstWhere((m) => m.id == id, orElse: () => _moods[0]);
-    return _service.browse(genre: mood.genre, sort: 'TRENDING_DESC', perPage: 20);
+  Future<List<AnimeCard>> _loadMood(String id) async {
+    try {
+      final mood = _moods.firstWhere((m) => m.id == id, orElse: () => _moods[0]);
+      return await _service.browse(
+        genre: mood.genre,
+        sort: 'TRENDING_DESC',
+        perPage: 20,
+      );
+    } catch (e) {
+      debugPrint('[AnimeScreen] mood load failed: $e');
+      return const [];
+    }
   }
 
   void _selectMood(String id) {
@@ -303,9 +312,7 @@ class _AnimeScreenState extends State<AnimeScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: _loading
+        return _loading
               ? _buildLoading()
               : _error != null
                   ? _buildError()
@@ -425,8 +432,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                           ),
                         ),
                       ],
-                    ),
-        );
+                    );
       },
     );
   }

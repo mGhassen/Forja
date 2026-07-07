@@ -1,15 +1,23 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja_core/models/movie.dart';
-import 'package:forja_api/api/tmdb_api.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:rust/rust.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class LoadingOverlay extends StatefulWidget {
   final Movie movie;
   final String? message;
+  final ValueNotifier<String>? messageNotifier;
+  final String? subtitle;
   final VoidCallback? onCancel;
-  const LoadingOverlay({super.key, required this.movie, this.message, this.onCancel});
+  const LoadingOverlay({
+    super.key,
+    required this.movie,
+    this.message,
+    this.messageNotifier,
+    this.subtitle,
+    this.onCancel,
+  });
 
   @override
   State<LoadingOverlay> createState() => _LoadingOverlayState();
@@ -18,10 +26,15 @@ class LoadingOverlay extends StatefulWidget {
 class _LoadingOverlayState extends State<LoadingOverlay> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  late String _message;
 
   @override
   void initState() {
     super.initState();
+    _message = widget.messageNotifier?.value ??
+        widget.message?.toUpperCase() ??
+        'STARTING STREAM';
+    widget.messageNotifier?.addListener(_onMessageChanged);
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -31,8 +44,16 @@ class _LoadingOverlayState extends State<LoadingOverlay> with SingleTickerProvid
     );
   }
 
+  void _onMessageChanged() {
+    final next = widget.messageNotifier?.value;
+    if (next != null && next != _message && mounted) {
+      setState(() => _message = next.toUpperCase());
+    }
+  }
+
   @override
   void dispose() {
+    widget.messageNotifier?.removeListener(_onMessageChanged);
     _controller.dispose();
     super.dispose();
   }
@@ -93,7 +114,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with SingleTickerProvid
                 const CircularProgressIndicator(color: AppTheme.primaryColor, strokeWidth: 3),
                 const SizedBox(height: 32),
                 Text(
-                  widget.message?.toUpperCase() ?? 'STARTING STREAM',
+                  _message,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 14,
@@ -102,6 +123,19 @@ class _LoadingOverlayState extends State<LoadingOverlay> with SingleTickerProvid
                     fontFamily: 'Poppins',
                   ),
                 ),
+                if (widget.subtitle != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.subtitle!.toUpperCase(),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 2,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                ],
                 if (widget.onCancel != null) ...[
                   const SizedBox(height: 24),
                   TextButton(

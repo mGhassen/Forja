@@ -6,10 +6,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:forja_api/api/kisskh_extractor.dart';
-import 'package:forja_api/api/kisskh_service.dart';
-import 'package:forja_storage/forja_storage.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_extractor.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class AsianDramaPlayerScreen extends StatefulWidget {
   final KdramaCard drama;
@@ -39,6 +39,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
   String _statusLine = '';
   bool _resolving = true;
   bool _failedAll = false;
+  bool _cancelled = false;
   int _subsFound = 0;
 
   late final AnimationController _pulseCtrl;
@@ -55,8 +56,9 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
 
   @override
   void dispose() {
+    _cancelled = true;
     _pulseCtrl.dispose();
-    _extractor.dispose();
+    unawaited(_extractor.cancel());
     super.dispose();
   }
 
@@ -67,6 +69,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
         dramaTitle: widget.drama.title,
         episodeId: widget.episode.id,
         episodeNumber: widget.episode.number,
+        isCancelled: () => _cancelled,
         onProgress: (phase, detail) {
           if (!mounted) return;
           setState(() {
