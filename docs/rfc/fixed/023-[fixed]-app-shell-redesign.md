@@ -1,10 +1,9 @@
 # RFC-023: App shell & navigation redesign
 
-**Status:** partial  
+**Status:** fixed  
 **Version:** v0.8.0  
-**Target version:** [0.8.1](../backlog/done/0.8.1-[done].md) *(shipped)*  
-**Scope (0.8.0):** **desktop only** — rail, immersive chrome, body-only tabs *(shipped — tag `v0.8.0`)*  
-**Scope (0.8.1):** **desktop only** — Home · Search · My List · Settings UX *(shipped)*  
+**Target version:** [0.8.1](../backlog/done/0.8.1-[done].md) *(core tabs shipped)*  
+**Scope:** **desktop only** — rail, immersive chrome, body-only tabs, core tab UX *(shipped — tags `v0.8.0`, `v0.8.1`)*  
 **Depends on:** RFC-001 (monorepo), RFC-011 (v1.0 MVP shell shipped)  
 **Area:** `apps/forja/lib/shell/`, `apps/forja/lib/shared/design/`
 
@@ -12,9 +11,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **15 / 19** acceptance · **0 / 1** mobile deferred |
-| **Current slice** | Mobile shell (R23-A11) — deferred |
-| **Backlog** | — |
+| **Progress** | **Complete · 5 / 5** components · **18 / 18** acceptance (desktop) |
+| **Backlog** | [0.8.0](../backlog/done/0.8.0-[done].md) · [0.8.1](../backlog/done/0.8.1-[done].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -46,10 +44,9 @@
 | 8 | R23-A08 | Automated shell tests (`shell_scaffold_test`, `shell_bus_test`, `main_screen_shell_test`) | ✅ |
 | 9 | R23-A09 | `flutter analyze` clean on touched files | ✅ |
 | 10 | R23-A10 | Desktop: rail, logo inset, tab switch, single background | ✅ |
-| 11 | R23-A11 | Mobile portrait: bottom nav scroll, safe area, tab switch | ⬜ *(deferred — not in 0.8.0 desktop scope)* |
-| 12 | R23-A12 | Settings → Navigation Bar: reorder/toggle persists | ✅ |
-| 13 | R23-A13 | `ShellBus.requestTab('search')` still switches tabs | ✅ |
-| 14 | R23-A14 | IPTV deep view + Music desktop — global nav hidden | ✅ |
+| 11 | R23-A12 | Settings → Navigation Bar: reorder/toggle persists | ✅ |
+| 12 | R23-A13 | `ShellBus.requestTab('search')` still switches tabs | ✅ |
+| 13 | R23-A14 | IPTV deep view + Music desktop — global nav hidden | ✅ |
 
 ---
 
@@ -57,11 +54,11 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 15 | R23-A15 | Home: shell-aligned desktop layout; no duplicate shell background | ✅ |
-| 16 | R23-A16 | Search: results body under shell search bar; desktop spacing | ✅ |
-| 17 | R23-A17 | My List: `ShellTabHeader`; no floating app-bar chrome | ✅ |
-| 18 | R23-A18 | Settings: spacing/typography aligned to `shell_tokens` | ✅ |
-| 19 | R23-A19 | Default nav Home · Search · My List · Settings | ✅ |
+| 14 | R23-A15 | Home: shell-aligned desktop layout; no duplicate shell background | ✅ |
+| 15 | R23-A16 | Search: results body under shell search bar; desktop spacing | ✅ |
+| 16 | R23-A17 | My List: `ShellTabHeader`; no floating app-bar chrome | ✅ |
+| 17 | R23-A18 | Settings: spacing/typography aligned to `shell_tokens` | ✅ |
+| 18 | R23-A19 | Default nav Home · Search · My List · Settings | ✅ |
 
 ---
 
@@ -86,9 +83,9 @@ Rework the primary app shell so menu, background, and body are owned once — no
 - Body-only tab widgets (no nested `Scaffold`)
 - Preserve existing contracts: `ShellBus`, navbar settings, lazy tab cache, `DesktopWindowChrome`, `AppRouter`
 
-## Non-goals (0.8.0)
+## Non-goals
 
-- **Mobile shell polish** — bottom nav safe area, portrait smoke (deferred)
+- **Mobile shell polish** — out of product scope (desktop-only)
 - GoRouter / deep-link routing overhaul
 - Player overlay (RFC-003) — separate backlog when scheduled
 - Home god-file decomposition (RFC-019)
@@ -103,11 +100,7 @@ R23-C01–C05 · R23-A01–A10 · R23-A12–A14 — ✅
 
 R23-A15–A19 — ✅
 
-### Slice 3 — mobile shell *(deferred)*
-
-R23-A11 — ⬜
-
-### Slice 4 — follow-on *(deferred)*
+### Slice 3 — follow-on *(deferred)*
 
 - RFC-003 player overlay, RFC-004/005 providers/casting — own backlog entries
 
@@ -125,4 +118,4 @@ R23-A11 — ⬜
 
 ## Related
 
-RFC-001, RFC-011, RFC-016 (lazy tabs — code in `main_screen.dart`, RFC still `[draft]` 0/5), RFC-018 (splash), RFC-019 (god files), [0.8.0 backlog](../backlog/done/0.8.0-[done].md), [0.8.1 backlog](../backlog/done/0.8.1-[done].md)
+RFC-001, RFC-011, [RFC-016](../016-[partial]-lazy-tab-mounting.md) (lazy mount 5/5), [RFC-024](../024-[partial]-tab-cache-eviction-stale.md) (eviction/stale), [RFC-025](../025-[draft]-flat-cinematic-shell.md) (flat cinematic UI), RFC-018 (splash), RFC-019 (god files), [0.8.0 backlog](../backlog/done/0.8.0-[done].md), [0.8.1 backlog](../backlog/done/0.8.1-[done].md)

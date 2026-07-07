@@ -74,7 +74,7 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 
 ### Status at a glance — required
 
-**RFC** (reference: [RFC-023](../../docs/rfc/023-[partial]-app-shell-redesign.md)):
+**RFC** (reference: [RFC-023](../../docs/rfc/fixed/023-[fixed]-app-shell-redesign.md)):
 
 ```markdown
 ## Status at a glance
@@ -106,7 +106,7 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 |--|--|
 | **Progress** | **14 / 15** shipped (desktop) |
 | **Blocks close** | Mobile shell smoke (B80-S12) — deferred |
-| **Backlog** | [RFC-023](../rfc/023-[partial]-app-shell-redesign.md) |
+| **Backlog** | [RFC-023](../rfc/fixed/023-[fixed]-app-shell-redesign.md) |
 ```
 
 ### Progress counts
@@ -121,6 +121,23 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 **One source of truth:** emoji task tables. No parallel checkbox lists.
 
 When any row changes: update glance **and** folder README **Progress** column in the **same turn**.
+
+### RFC / issue task history — append-only (mandatory)
+
+Once an RFC or issue is linked from an **active or done backlog** version, task rows are **historical records**. Never rewrite or delete them.
+
+| Rule | Detail |
+|------|--------|
+| **Never delete rows** | Do not remove acceptance/component/task table lines to “simplify” an RFC. |
+| **Never rewrite body** | Do not replace the whole RFC with a shorter summary. **Append** new sections/slices below existing content. |
+| **Frozen statuses** | Rows marked **🔄 in progress** or **✅ done** must **keep that status forever**. Do not revert to ⬜ or change the description. |
+| **New work → new rows** | New slices get **new IDs** (`R16-A06`, `R24-A01`, …) or a **child RFC** (e.g. RFC-024 for eviction). Do not renumber existing IDs. |
+| **New RFC instead of erase** | If scope diverges (eviction vs mount), add RFC-024 — do not overwrite RFC-016. |
+| **Version slip** | Move checklist lines to the next backlog file; RFC rows stay as-is with their frozen status. |
+
+**Wrong:** Replace RFC-016 acceptance table and mark 11/11 ✅ while per-tab rows vanish.
+
+**Right:** Restore RFC-016 mount rows (frozen ✅/⬜), add RFC-024 for eviction/stale, append per-tab rows R24-A11+ as ⬜ until shipped.
 
 ---
 
@@ -228,7 +245,7 @@ After `#` title + metadata block:
 4. **`## Acceptance (slice)`** — one section per target slice
 5. **`## Summary`** — then Goals / Problem / Contracts / Related
 
-**Reference:** [RFC-023](../../docs/rfc/023-[partial]-app-shell-redesign.md)
+**Reference:** [RFC-023](../../docs/rfc/fixed/023-[fixed]-app-shell-redesign.md)
 
 ---
 

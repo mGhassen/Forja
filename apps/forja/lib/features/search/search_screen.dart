@@ -25,6 +25,7 @@ class _SearchSection {
   }) : results = results ?? [];
 }
 
+/// Search tab — RFC-024 R24-A11: query-driven only; no ShellTabRefresh / auto stale refetch.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 

@@ -2,22 +2,22 @@
 
 **Version:** v0.8.x  
 **Status:** partial  
-**Target version:** [0.8.2](../backlog/done/0.8.2-[done].md) *(shipped)*  
-**Area:** `apps/forja/lib/shell/`, tab feature roots
+**Target version:** [0.5.1](../backlog/done/0.5.1-[done].md) slice (origin) · mount shipped in code  
+**Area:** `apps/forja/lib/shell/nav_config.dart`, `apps/forja/lib/shell/main_screen.dart`
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** acceptance |
-| **Current slice** | Busy-tab eviction guards — deferred |
-| **Backlog** | — |
+| **Progress** | **5 / 5** acceptance (mount) |
+| **Current slice** | Complete — eviction/stale in RFC-024 |
+| **Backlog** | — (mount); eviction/stale → [RFC-024](024-[partial]-tab-cache-eviction-stale.md) · [0.8.2](../backlog/0.8.2-[open].md) |
 
-**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
 ---
 
-## Acceptance (mount — shipped in code)
+## Acceptance (mount)
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
@@ -25,57 +25,116 @@
 | 2 | R16-A02 | First launch: only Home widget tree allocated | ✅ |
 | 3 | R16-A03 | Switch to tab: builds once; revisit keeps state until evicted | ✅ |
 | 4 | R16-A04 | All nav tabs + Settings still reachable | ✅ |
-
----
-
-## Acceptance (0.8.2 — eviction + stale)
-
-| # | ID | Description | Status |
-|--:|----|-------------|--------|
-| 5 | R16-A05 | LRU cap (`ShellTokens.maxMountedTabs`); evict oldest non-home, non-current | ✅ |
-| 6 | R16-A06 | Navbar hide removes tab from `_mountedTabIds` + `_tabCache` | ✅ |
-| 7 | R16-A07 | `ShellTabRefresh` mixin; re-select tab refreshes if past TTL | ✅ |
-| 8 | R16-A08 | App resume refreshes visible tab if stale | ✅ |
-| 9 | R16-A09 | Home: pull-to-refresh + TMDB/Stremio refetch | ✅ |
-| 10 | R16-A10 | Audiobooks: stale refresh on tab focus | ✅ |
-| 11 | R16-A11 | Tests: eviction + stale smoke | ✅ |
+| 5 | R16-A05 | `flutter analyze` clean; macOS smoke test all nav ids | ✅ |
 
 ---
 
 ## Summary
 
-Lazy-mount nav tabs on first visit. Cap mounted tabs with LRU eviction. Refresh stale data on re-select, app resume, and pull-to-refresh — without rebuilding unvisited tabs at launch.
+Stop constructing all 19 nav feature widgets at startup. Build each tab on first visit and cache it so `IndexedStack` keeps visited tab state without paying RAM for tabs the user never opens.
 
-## Problem (historical)
+Tab cache **eviction** and **stale refresh** are specified in [RFC-024](024-[partial]-tab-cache-eviction-stale.md) — do not conflate with this RFC.
 
-Eager `buildAllScreens()` constructed all 19 feature roots at startup. Current code uses `_tabCache` + `_mountedTabIds`, but cache never evicted and data never refreshed after first load.
+## Problem
+
+Today [`nav_config.dart`](../../apps/forja/lib/shell/nav_config.dart) previously used eager `buildAllScreens()` returning a `Map<String, Widget>` with every tab instantiated:
+
+```dart
+Map<String, Widget> buildAllScreens() => {
+  'home': const HomeScreen(),
+  'iptv': const IptvPtScreen(),
+  // ... 17 more
+};
+```
+
+[`main_screen.dart`](../../apps/forja/lib/shell/main_screen.dart) stored this map in `initState` and fed all children to `IndexedStack`.
+
+**Impact:**
+- High idle RAM (e.g. `HomeScreen` alone is ~4.8k lines of widget tree logic)
+- Slower first interactive frame — Dart builds 19 feature roots before user taps anything
+- Wasted work for users who only use Home + IPTV + Settings
+
+## Goals
+
+- Home-only session never allocates IPTV, Jellyfin, Magnet, or other unvisited tab widgets
+- Visited tabs preserve scroll position and in-memory state
+- No change to nav UX (same 19 tabs + Settings)
+
+## Non-goals
+
+- Removing tabs from the product
+- Lazy-loading engine packages (see RFC-017)
+- Replacing `IndexedStack` with off-screen route stack
+- Tab cache eviction or stale data refresh (see RFC-024)
 
 ## Design
 
-### Lazy mount *(shipped)*
+### Tab registry (factory map)
 
-- `navTabBuilders` in [`nav_config.dart`](../../apps/forja/lib/shell/nav_config.dart)
-- [`main_screen.dart`](../../apps/forja/lib/shell/main_screen.dart): `_tabCache`, `_mountedTabIds`, `ShellBody` + `IndexedStack`
+Replace eager widgets with builders:
 
-### LRU eviction *(0.8.2)*
+```dart
+typedef TabBuilder = Widget Function();
 
-- `ShellTokens.maxMountedTabs` (default 5)
-- Never evict `home` or currently selected tab
-- Evict immediately when tab hidden in navbar settings
-- `_tabLru` tracks visit order
+final Map<String, TabBuilder> navTabBuilders = {
+  'home': () => const HomeScreen(),
+  'iptv': () => const IptvPtScreen(),
+  // ...
+};
+```
 
-### Stale refresh *(0.8.2)*
+`navDestinations` (icons, labels) stays in [`nav_config.dart`](../../apps/forja/lib/shell/nav_config.dart).
 
-- [`shell_tab_refresh.dart`](../../apps/forja/lib/shell/shell_tab_refresh.dart) mixin
-- `MainScreen._refreshTabIfStale` on tab select + app resume
-- Per-tab TTL via `shellStaleAfter` (Home 15m, Audiobooks 10m)
-- Home `RefreshIndicator` for force refresh
+### Lazy cache in MainScreen
 
-## Non-goals (0.8.2)
+```dart
+final Map<String, Widget> _tabCache = {};
+final Set<String> _mountedTabIds = {'home'};
 
-- Busy-tab eviction guards (Music playing, IPTV player) — deferred
-- `ShellTabRefresh` on every tab — Home + Audiobooks first
+Widget _tabAt(String id) {
+  return _tabCache.putIfAbsent(id, () => navTabBuilders[id]!());
+}
+```
+
+`ShellBody` + `IndexedStack`: unvisited indices use `SizedBox.shrink()` until first selected, then swap to cached widget.
+
+### State preservation
+
+**Option A (recommended):** Wrap each cached tab in a `KeepAliveTab` wrapper:
+
+```dart
+class KeepAliveTab extends StatefulWidget {
+  final Widget child;
+  // AutomaticKeepAliveClientMixin → wantKeepAlive = true
+}
+```
+
+**Option B:** Accept re-init on revisit (simpler, worse UX) — document only if Option A is too heavy.
+
+Current code: tabs use `AutomaticKeepAliveClientMixin` where needed (e.g. Search); eviction in RFC-024 resets state on revisit after evict.
+
+### Settings tab
+
+Always build Settings on first open like other tabs — do not eager-load even though it is always in `_visibleIds`.
+
+## Files to change
+
+| File | Change |
+|------|--------|
+| [`nav_config.dart`](../../apps/forja/lib/shell/nav_config.dart) | `buildAllScreens()` → `navTabBuilders` map |
+| [`main_screen.dart`](../../apps/forja/lib/shell/main_screen.dart) | Lazy cache + `IndexedStack` builder |
+| New: `shell/keep_alive_tab.dart` | Optional wrapper widget |
+
+## Metrics
+
+| Metric | Today (est.) | Target |
+|--------|--------------|--------|
+| Widgets built at cold start | 19 feature roots | 1 (Home) + shell |
+| Idle RAM (macOS, Home only) | High | measurably lower |
+| Time to first Home interaction | dominated by all-tab build | no all-tab build |
+
+Measure with Flutter DevTools memory snapshot before/after; log `[MainScreen] Built tab: $id` in debug.
 
 ## Related
 
-RFC-011, RFC-017, RFC-023, [0.8.2 backlog](../backlog/0.8.2-[open].md)
+RFC-011, RFC-017 (defer engines — complementary), RFC-001 (shell owns nav), [RFC-024](024-[partial]-tab-cache-eviction-stale.md) (eviction + stale), [0.8.2 backlog](../backlog/0.8.2-[open].md)

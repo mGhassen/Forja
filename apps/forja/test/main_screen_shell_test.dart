@@ -203,4 +203,27 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
   });
+
+  testWidgets('lazy mount: each configured nav tab builds once (R16-A05 smoke)', (tester) async {
+    await SettingsService().setNavbarConfig([
+      'home',
+      'discover',
+      'similar',
+      'search',
+      'mylist',
+    ]);
+    await _pumpMainScreen(tester, size: const Size(1200, 800));
+
+    for (final label in ['Discover', 'Similar', 'Search', 'My List', 'Home']) {
+      await tester.tap(find.text(label).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.byType(ShellNavRail), findsOneWidget);
+    await tester.tap(find.text('Settings'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(ShellTabHeader), findsOneWidget);
+  });
 }

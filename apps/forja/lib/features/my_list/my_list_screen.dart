@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/src/shell_tab_header.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -13,16 +14,26 @@ class MyListScreen extends StatefulWidget {
   State<MyListScreen> createState() => _MyListScreenState();
 }
 
-class _MyListScreenState extends State<MyListScreen> {
+class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyListScreen> {
   final MyListService _myList = MyListService();
   final TmdbApi _api = TmdbApi();
   List<Map<String, dynamic>> _items = [];
+
+  @override
+  Duration get shellStaleAfter => ShellTokens.tabStaleDefault;
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {
+    if (!mounted) return;
+    setState(() => _items = _myList.items);
+  }
 
   @override
   void initState() {
     super.initState();
     _items = _myList.items;
     MyListService.changeNotifier.addListener(_onListChanged);
+    markShellTabFresh();
   }
 
   void _onListChanged() {

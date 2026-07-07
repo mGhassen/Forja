@@ -24,6 +24,7 @@ import 'package:forja/shared/design/src/shell_tab_header.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shell/nav_config.dart';
 
+/// Settings tab — RFC-024 R24-A13: local prefs only; no ShellTabRefresh / API stale policy.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 

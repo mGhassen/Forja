@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/features/audiobooks/audiobook_screen.dart';
 import 'package:forja/features/home/home_screen.dart';
+import 'package:forja/features/my_list/my_list_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -35,6 +36,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final GlobalKey<SearchScreenState> _searchKey = GlobalKey<SearchScreenState>();
   final GlobalKey<State<StatefulWidget>> _homeKey = GlobalKey<State<StatefulWidget>>();
   final GlobalKey<State<StatefulWidget>> _audiobooksKey = GlobalKey<State<StatefulWidget>>();
+  final GlobalKey<State<StatefulWidget>> _mylistKey = GlobalKey<State<StatefulWidget>>();
 
   final Map<String, Widget> _tabCache = {};
   final Set<String> _mountedTabIds = {'home'};
@@ -58,6 +60,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       }
       if (id == 'audiobooks') {
         return AudiobookScreen(key: _audiobooksKey);
+      }
+      if (id == 'mylist') {
+        return MyListScreen(key: _mylistKey);
       }
       return navTabBuilders[id]!();
     });
@@ -115,6 +120,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final GlobalKey<State<StatefulWidget>>? key = switch (id) {
       'home' => _homeKey,
       'audiobooks' => _audiobooksKey,
+      'mylist' => _mylistKey,
       _ => null,
     };
     final state = key?.currentState;
