@@ -3,10 +3,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/features/audiobooks/audiobook_screen.dart';
+import 'package:forja/features/home/home_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
@@ -30,9 +33,18 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Timer? _metricsSafety;
 
   final GlobalKey<SearchScreenState> _searchKey = GlobalKey<SearchScreenState>();
+  final GlobalKey<State<StatefulWidget>> _homeKey = GlobalKey<State<StatefulWidget>>();
+  final GlobalKey<State<StatefulWidget>> _audiobooksKey = GlobalKey<State<StatefulWidget>>();
+
   final Map<String, Widget> _tabCache = {};
   final Set<String> _mountedTabIds = {'home'};
+  final List<String> _tabLru = ['home'];
   List<String> _visibleIds = [...SettingsService.defaultVisibleNavIds, 'settings'];
+
+  String? get _currentTabId =>
+      _visibleIds.isEmpty || _selectedIndex >= _visibleIds.length
+          ? null
+          : _visibleIds[_selectedIndex];
 
   Widget _tabFor(String id) {
     assert(navTabBuilders.containsKey(id));
@@ -41,12 +53,74 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       if (id == 'search') {
         return SearchScreen(key: _searchKey);
       }
+      if (id == 'home') {
+        return HomeScreen(key: _homeKey);
+      }
+      if (id == 'audiobooks') {
+        return AudiobookScreen(key: _audiobooksKey);
+      }
       return navTabBuilders[id]!();
     });
     if (isNew && kDebugMode) {
       debugPrint('[MainScreen] Built tab: $id');
     }
     return tab;
+  }
+
+  void _touchTab(String id) {
+    _tabLru.remove(id);
+    _tabLru.add(id);
+  }
+
+  void _evictTab(String id) {
+    if (id == 'home') return;
+    final current = _currentTabId;
+    if (current != null && id == current) return;
+
+    if (!_mountedTabIds.contains(id)) return;
+
+    _mountedTabIds.remove(id);
+    _tabCache.remove(id);
+    _tabLru.remove(id);
+    if (kDebugMode) {
+      debugPrint('[MainScreen] Evicted tab: $id');
+    }
+  }
+
+  void _evictTabsNotInNavbar(Iterable<String> visible) {
+    final allowed = visible.toSet();
+    for (final id in List<String>.from(_mountedTabIds)) {
+      if (!allowed.contains(id)) {
+        _evictTab(id);
+      }
+    }
+  }
+
+  void _enforceTabCap() {
+    while (_mountedTabIds.length > ShellTokens.maxMountedTabs) {
+      final current = _currentTabId;
+      String? victim;
+      for (final id in _tabLru) {
+        if (id != 'home' && id != current) {
+          victim = id;
+          break;
+        }
+      }
+      if (victim == null) break;
+      _evictTab(victim);
+    }
+  }
+
+  void _refreshTabIfStale(String id, {bool force = false}) {
+    final GlobalKey<State<StatefulWidget>>? key = switch (id) {
+      'home' => _homeKey,
+      'audiobooks' => _audiobooksKey,
+      _ => null,
+    };
+    final state = key?.currentState;
+    if (state is ShellTabRefresh) {
+      unawaited(state.refreshIfStale(force: force));
+    }
   }
 
   Widget? _shellHeader() {
@@ -61,12 +135,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _mountedTabIds.add(id);
       _selectedIndex = index;
     });
+    _touchTab(id);
+    _enforceTabCap();
     _applyTabShellChrome(id);
     if (id == 'search') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() {});
       });
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refreshTabIfStale(id);
+    });
   }
 
   bool _musicUsesOwnSidebar(BuildContext context) {
@@ -138,6 +217,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       } else if (_selectedIndex >= _visibleIds.length) {
         _selectedIndex = 0;
       }
+      _evictTabsNotInNavbar(_visibleIds);
+      _enforceTabCap();
     });
   }
 
@@ -168,8 +249,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed && Platform.isAndroid) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    if (state == AppLifecycleState.resumed) {
+      final id = _currentTabId;
+      if (id != null) {
+        _refreshTabIfStale(id);
+      }
+      if (Platform.isAndroid) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      }
     }
   }
 

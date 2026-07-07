@@ -36,7 +36,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [013-[draft]-…](013-[draft]-v1.2-sync-lan-party.md) | v1.2 sync + LAN party | v1.2 | draft | 0/6 | v2 |
 | [014-[draft]-…](014-[draft]-v3-web-rust.md) | v3.0 web + Rust/WASM | v3.0 | draft | 0/5 | v3 |
 | [015-[partial]-…](015-[partial]-in-app-updates.md) | In-app updates | v1.0 / v1.1 | partial | 7/7 · 7/7 · 0/7 | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md) |
-| [016-[draft]-…](016-[draft]-lazy-tab-mounting.md) | Lazy tab mounting | v1.0.1 | draft | 0/5 | [0.5.1](../backlog/done/0.5.1-[done].md) slice |
+| [016-[partial]-…](016-[partial]-lazy-tab-mounting.md) | Lazy tab mounting + eviction | v0.8.x | partial | 11/11 · guards deferred | [0.8.2](../backlog/done/0.8.2-[done].md) |
 | [017-[draft]-…](017-[draft]-deferred-engine-boot.md) | Deferred engine boot | v1.0.1 | draft | 0/6 | [0.5.0](../backlog/done/0.5.0-[done].md) slice |
 | [018-[draft]-…](018-[draft]-startup-splash-home.md) | Splash + Home perf | v1.0.1 | draft | 0/5 | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) |
 | [019-[draft]-…](019-[draft]-god-file-decomposition.md) | God file splits | v1.1 | draft | 0/5 | [1.0.0](../backlog/1.0.0-[draft].md) |

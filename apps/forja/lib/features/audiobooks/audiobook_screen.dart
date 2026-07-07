@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/features/audiobooks/catalog/audiobook_service.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/audio/audiobook_player_service.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 import 'audiobook_player_screen.dart';
@@ -16,7 +18,8 @@ class AudiobookScreen extends StatefulWidget {
   State<AudiobookScreen> createState() => _AudiobookScreenState();
 }
 
-class _AudiobookScreenState extends State<AudiobookScreen> with WidgetsBindingObserver {
+class _AudiobookScreenState extends State<AudiobookScreen>
+    with WidgetsBindingObserver, ShellTabRefresh<AudiobookScreen> {
   final AudiobookService _service = AudiobookService();
   final AudiobookPlayerService _playerService = AudiobookPlayerService();
   final TextEditingController _searchController = TextEditingController();
@@ -31,12 +34,24 @@ class _AudiobookScreenState extends State<AudiobookScreen> with WidgetsBindingOb
   bool _showLiked = false;
 
   @override
+  Duration get shellStaleAfter => ShellTokens.tabStaleAudiobooks;
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {
+    _currentOffset = 0;
+    await _loadBooks();
+    await _loadHistory();
+    await _loadLikedBooks();
+  }
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadBooks();
     _loadHistory();
     _loadLikedBooks();
+    markShellTabFresh();
   }
 
   @override

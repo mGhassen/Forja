@@ -17,6 +17,7 @@ import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/app/boot_cache.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
@@ -28,7 +29,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with AutomaticKeepAliveClientMixin, ShellTabRefresh<HomeScreen> {
   final TmdbApi _api = TmdbApi();
   final StremioService _stremio = StremioService();
   final PageController _heroController = PageController();
@@ -90,6 +92,32 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   bool get wantKeepAlive => true;
 
   @override
+  Duration get shellStaleAfter => ShellTokens.tabStaleHome;
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) => _reloadHomeFeed();
+
+  Future<void> _reloadHomeFeed() async {
+    if (!mounted) return;
+    setState(() {
+      _trendingFuture = _api.getTrending().then((movies) {
+        _fetchHeroLogos(movies.take(5).toList());
+        if (movies.length > 6 && mounted) {
+          final pool = movies.skip(3).toList();
+          setState(() => _tonightsPick = pool[math.Random().nextInt(pool.length)]);
+        }
+        if (movies.isNotEmpty) _extractAmbientFor(movies.first);
+        return movies;
+      });
+      _popularFuture = _api.getPopular();
+      _topRatedFuture = _api.getTopRated();
+      _nowPlayingFuture = _api.getNowPlaying();
+      _moodFuture = _loadMoodMovies(_selectedMood);
+    });
+    await _loadStremioCatalogs();
+  }
+
+  @override
   void initState() {
     super.initState();
     _trendingFuture = _tmdbFuture(
@@ -114,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     SettingsService.addonChangeNotifier.addListener(_onAddonsChanged);
 
     _schedulePostSplashWork();
+    markShellTabFresh();
   }
 
   Future<List<Movie>> _tmdbFuture(
@@ -890,8 +919,14 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               ),
             ),
           ),
-        CustomScrollView(
-            scrollCacheExtent: ScrollCacheExtent.pixels(500), physics: const BouncingScrollPhysics(),
+        RefreshIndicator(
+          onRefresh: () => refreshIfStale(force: true),
+          color: AppTheme.primaryColor,
+          child: CustomScrollView(
+            scrollCacheExtent: ScrollCacheExtent.pixels(500),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             slivers: [
               // Hero
               SliverToBoxAdapter(
@@ -1075,6 +1110,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
+        ),
       ],
     );
 

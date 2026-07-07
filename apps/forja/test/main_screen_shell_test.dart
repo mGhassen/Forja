@@ -180,4 +180,27 @@ void main() {
 
     expect(find.byType(ShellNavRail), findsOneWidget);
   });
+
+  testWidgets('navbar hide evicts tab from mount set', (tester) async {
+    await SettingsService().setNavbarConfig(['home', 'search', 'mylist', 'discover']);
+    await _pumpMainScreen(tester, size: const Size(1200, 800));
+
+    await tester.tap(find.text('Discover'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await SettingsService().setNavbarConfig(['home', 'search', 'mylist']);
+    SettingsService.navbarChangeNotifier.value++;
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await SettingsService().setNavbarConfig(['home', 'search', 'mylist', 'discover']);
+    SettingsService.navbarChangeNotifier.value++;
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('Discover'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+  });
 }
