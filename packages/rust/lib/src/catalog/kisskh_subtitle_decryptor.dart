@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 
+import '../subtitle_http.dart';
 
+/// KissKh encrypted subtitle fetch + decrypt via `anime-core/subtitle/kisskh`.
+/// Temp file write stays in host (path_provider).
 class KissKhSubtitleDecryptor {
   static Future<String> decryptBody(String body, {String? sourceUrl}) =>
       runDecryptKisskhBody(body, sourceUrl: sourceUrl);
@@ -17,19 +20,14 @@ class KissKhSubtitleDecryptor {
     required String referer,
   }) async {
     try {
-      final res = await animeHttp('GET', url, headers: {
-        'User-Agent': userAgent,
-        'Referer': referer,
-        'Accept': '*/*',
-      }, timeoutSecs: 15, maxRetries: 0);
-      if (res.status != 200) {
-        debugPrint('[KissKhSub] HTTP ${res.status} for $url');
-        return null;
-      }
-      final body = res.body;
-      debugPrint('[KissKhSub] fetched ${body.length} chars from $url');
-      final ext = url.split('?').first.split('.').last.toLowerCase();
-      final decoded = (ext == 'srt') ? body : await decryptBody(body, sourceUrl: url);
+      final decoded = await subtitleRequest({
+        'action': 'kisskh_fetch_decrypt',
+        'url': url,
+        'user_agent': userAgent,
+        'referer': referer,
+      });
+      final text = decoded['text'] as String? ?? '';
+      if (text.isEmpty) return null;
 
       final tmp = await getTemporaryDirectory();
       final dir = Directory('${tmp.path}/kisskh_subs');
@@ -37,13 +35,11 @@ class KissKhSubtitleDecryptor {
 
       final safeLang = language.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
       final ts = DateTime.now().millisecondsSinceEpoch;
-      final isVtt = url.toLowerCase().contains('.vtt') ||
-          decoded.trimLeft().startsWith('WEBVTT');
+      final isVtt = decoded['is_vtt'] == true;
       final outExt = isVtt ? 'vtt' : 'srt';
-      final file =
-          File('${dir.path}/${episodeId}_${safeLang}_$ts.$outExt');
-      await file.writeAsString(decoded);
-      debugPrint('[KissKhSub] wrote ${file.path} (${decoded.length} chars)');
+      final file = File('${dir.path}/${episodeId}_${safeLang}_$ts.$outExt');
+      await file.writeAsString(text);
+      debugPrint('[KissKhSub] wrote ${file.path} (${text.length} chars)');
 
       return Uri.file(file.path).toString();
     } catch (e, st) {

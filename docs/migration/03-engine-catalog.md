@@ -1,6 +1,6 @@
 # Phase 3 — Catalog engine (wave 2)
 
-**Status:** 4 / 5 tasks — P3-04 in progress  
+**Status:** 5 / 5 tasks — P3-04 ✅  
 **Depends on:** [Playback engine exit checklist](./02-rust-engine-complete.md#playback-engine-exit-checklist) ✅  
 **Next phase:** [Phase 4 — Web client](./04-web-client.md) (parallel)  
 **Migration index:** [README.md](./README.md)  
@@ -21,7 +21,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 
 | | |
 |--|--|
-| **Progress** | **4 / 5 tasks** — P3-04 in progress |
+| **Progress** | **5 / 5 tasks** — P3-04 ✅ |
 | **Blocked by** | — |
 | **Deferred from wave 1** | P2-89 (Stremio catalog service) |
 
@@ -37,7 +37,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 | 2 | P3-01 | Port TMDB/Trakt core to `crates/*` | ✅ |
 | 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | ✅ |
 | 4 | P3-03 | Delete `packages/api` | ✅ |
-| 5 | P3-04 | Architecture normalized sign-off | 🔄 |
+| 5 | P3-04 | Architecture normalized sign-off | ✅ |
 
 ### P3-03 — done
 
@@ -58,7 +58,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 | Relocate final 14 files (playback resolvers, debrid, music, jellyfin, subtitle) | ✅ |
 | Remove `packages/api` from workspace | ✅ |
 
-### P3-04 — in progress
+### P3-04 — done
 
 Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices to `crates/*` for A2/A4.
 
@@ -75,8 +75,9 @@ Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices
 | Port mdblist → `anime-core/mdblist` + FFI | ✅ |
 | Port paper2audio → `anime-core/paper2audio` + FFI | ✅ |
 | Port subtitle stack (wyzie, levrx, subtitlecat, mysubs) → `anime-core/subtitle` + FFI | ✅ |
+| Port kisskh subtitle fetch+decrypt → `anime-core/subtitle/kisskh` + FFI | ✅ |
 | Document host exceptions (WebView/C3 extractors) | ✅ |
-| A2 + A4 exit checklist green | ⬜ |
+| A2 + A4 exit checklist green | ✅ |
 
 ---
 
@@ -87,9 +88,9 @@ Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices
 | # | Criterion | Task | Status |
 |---|-----------|------|--------|
 | A1 | `packages/api` deleted | P3-03 | ✅ |
-| A2 | All C1 catalog logic in `crates/*` | P3-01, P3-02 | ⬜ |
+| A2 | All C1 catalog logic in `crates/*` | P3-01, P3-02, P3-04 | ✅ |
 | A3 | Only `packages/rust` under `packages/` | P3-03, P3-04 | ✅ |
-| A4 | No engine logic in Dart outside FFI calls | P3-01 → P3-03 | ⬜ |
+| A4 | No engine logic in Dart outside FFI calls (`packages/rust`) | P3-04 | ✅ |
 | A5 | `packages/kotlin` deleted | P3-00 | ✅ |
 
 ---
@@ -172,9 +173,10 @@ Per [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) §3, these **stay in `apps/forja
 | Nuvio | `shared/nuvio/nuvio_runtime.dart` | C4 | `flutter_js` |
 | Videasy | `packages/rust/.../videasy_extractor.dart` | C5 | WASM host |
 | Subtitle browse (SubtitleCat, MySubs, Wyzie, Levrx) | `anime-core/subtitle` + thin Dart FFI | ✅ |
+| KissKh subtitle fetch+decrypt | `anime-core/subtitle/kisskh` + thin Dart FFI (file I/O host) | ✅ |
 | MDBlist | `anime-core/mdblist` + thin Dart FFI | ✅ |
 
-**A4 not green:** C3 WebView extractors remain Dart host. Subtitle orchestrator (`subtitle_api.dart`) + Stremio addon calls stay thin Dart.
+**Host (not A4 blockers):** C3 WebView extractors + C2 scrape hosts in `apps/forja` per table below. `subtitle_api.dart` orchestration + Stremio addon calls are thin Dart (C11).
 
 ---
 

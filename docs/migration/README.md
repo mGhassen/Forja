@@ -1,7 +1,7 @@
 # Forja global migration
 
-**Last updated:** 2026-07-06  
-**Current phase:** [Phase 3 — Catalog engine (wave 2)](./03-engine-catalog.md) — Phase 2 playback engine ✅  
+**Last updated:** 2026-07-07  
+**Current phase:** [Phase 4 — Web client](./04-web-client.md) — Phase 3 catalog engine ✅  
 **Boundary rules:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
 ---
@@ -12,7 +12,7 @@
 |---|-----|---------|
 | 1 | [01-rust-engine.md](./01-rust-engine.md) | ✅ Rust crates + FFI primitives |
 | 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | ✅ Playback engine → `crates/*` |
-| 3 | [03-engine-catalog.md](./03-engine-catalog.md) | 🔄 **Wave 2** — `packages/api` deleted ✅ P3-03; P3-04 consolidation 🔄 |
+| 3 | [03-engine-catalog.md](./03-engine-catalog.md) | ✅ **Wave 2** — catalog engine → `crates/*`; A2+A4 green |
 | 4 | [04-web-client.md](./04-web-client.md) | ⬜ WASM parallel |
 
 ---
