@@ -12,7 +12,7 @@ Tap **Audiobooks** in the navigation bar.
 
 ## What you can do
 
-- Search and browse catalog
+- Search and browse catalog from multiple sources (GoldenAudiobook, Audiozaic, AppAudiobooks, Audionest, ZAudiobooks, FullLength, HDAudiobooks, BigAudiobooks, and Tokybook when available)
 - Like audiobooks
 - Resume from listening history
 - Play in the audiobook player (chapters, speed, seek)

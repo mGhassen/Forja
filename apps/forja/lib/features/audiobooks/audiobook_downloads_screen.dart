@@ -417,6 +417,16 @@ class _AudiobookDownloadsScreenState extends State<AudiobookDownloadsScreen> {
         return 'GoldenAudiobook';
       case 'appaudiobooks':
         return 'AppAudiobooks';
+      case 'audionest':
+        return 'Audionest';
+      case 'zaudiobooks':
+        return 'ZAudiobooks';
+      case 'fulllengthaudiobooks':
+        return 'FullLength';
+      case 'hdaudiobooks':
+        return 'HDAudiobooks';
+      case 'bigaudiobooks':
+        return 'BigAudiobooks';
       case 'ezaudiobookforsoul':
         return 'EzAudiobookForSoul';
       default:

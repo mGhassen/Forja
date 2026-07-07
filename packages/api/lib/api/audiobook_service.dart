@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
+import 'package:api/api/audiobook_scrapers.dart';
 import 'package:api/playback/playback.dart';
 
 class Audiobook {
@@ -24,7 +25,17 @@ class Audiobook {
   });
 
   String get thumbUrl {
-    if (source == 'audiozaic' || source == 'goldenaudiobook' || source == 'appaudiobooks' || source == 'audionest' || source == 'paper2audio') return coverImage;
+    if (source == 'audiozaic' ||
+        source == 'goldenaudiobook' ||
+        source == 'appaudiobooks' ||
+        source == 'audionest' ||
+        source == 'paper2audio' ||
+        source == 'zaudiobooks' ||
+        source == 'fulllengthaudiobooks' ||
+        source == 'hdaudiobooks' ||
+        source == 'bigaudiobooks') {
+      return coverImage;
+    }
     return 'https://tokybook.com/images/$audioBookId';
   }
 
@@ -38,7 +49,15 @@ class Audiobook {
       title: json['title'] ?? '',
       coverImage: json['coverImage'] ?? '',
       source: source,
-      pageUrl: json['pageUrl'] ?? ((source == 'audiozaic' || source == 'goldenaudiobook') ? uuid : null),
+      pageUrl: json['pageUrl'] ??
+          ((source == 'audiozaic' ||
+                  source == 'goldenaudiobook' ||
+                  source == 'zaudiobooks' ||
+                  source == 'fulllengthaudiobooks' ||
+                  source == 'hdaudiobooks' ||
+                  source == 'bigaudiobooks')
+              ? uuid
+              : null),
     );
   }
 
@@ -65,6 +84,16 @@ class AudiobookChapter {
 
 class AudiobookService {
   static const String _baseUrl = 'https://tokybook.com/api/v1';
+  static const String _userAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+  static const Map<String, String> _goldenStreamHeaders = {
+    'Referer': 'https://goldenaudiobooks.com',
+    'Accept': '*/*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'identity;q=1, *;q=0',
+    'Range': 'bytes=0-',
+  };
   
   // Standard user identity for API calls
   Map<String, dynamic> _getUserIdentity() {
@@ -86,31 +115,132 @@ class AudiobookService {
   }
 
   Future<List<Audiobook>> getAudiobooks({int offset = 0, int limit = 12}) async {
-    try {
-      final payload = {
-        "offset": offset,
-        "limit": limit,
-        "typeFilter": "audiobook",
-        "slugIdFilter": null,
-        "userIdentity": _getUserIdentity()
-      };
+    return _browseAggregated(offset: offset, limit: limit);
+  }
 
-      final response = await http.post(
-        Uri.parse('$_baseUrl/search/audiobooks'),
-        headers: _getHeaders(),
-        body: json.encode(payload),
-      );
+  String _wpPageUrl(String base, int page) {
+    if (page <= 1) return base.endsWith('/') ? base : '$base/';
+    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    return '$root/page/$page/';
+  }
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List items = data['content'] ?? [];
-        return items.map((json) => Audiobook.fromJson(json)).toList();
+  Map<String, String> _htmlHeaders([String? referer]) {
+    return {
+      'User-Agent': _userAgent,
+      if (referer != null) 'Referer': referer,
+    };
+  }
+
+  String _slugFromUrl(String pageUrl) {
+    final uri = Uri.parse(pageUrl);
+    final pathSegments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    return pathSegments.isNotEmpty ? pathSegments.last : pageUrl.hashCode.toString();
+  }
+
+  Audiobook _audiobookFromHit(AudiobookBrowseHit hit, String source, String idPrefix) {
+    final slug = _slugFromUrl(hit.pageUrl);
+    return Audiobook(
+      uuid: hit.pageUrl,
+      audioBookId: '${idPrefix}_$slug',
+      dynamicSlugId: hit.pageUrl,
+      title: _cleanTitle(hit.title),
+      coverImage: hit.coverUrl,
+      source: source,
+      pageUrl: hit.pageUrl,
+    );
+  }
+
+  List<Audiobook> _dedupeAudiobooks(List<Audiobook> books) {
+    final unique = <String, Audiobook>{};
+    for (final book in books) {
+      final key = _normalizeTitle(book.title);
+      if (key.isNotEmpty && !unique.containsKey(key)) {
+        unique[key] = book;
       }
+    }
+    return unique.values.toList();
+  }
+
+  Future<List<Audiobook>> _browseAggregated({required int offset, required int limit}) async {
+    try {
+      final pageNum = (offset ~/ limit) + 1;
+      final results = await Future.wait([
+        _browseGoldenAudiobooks(pageNum),
+        _browseAudiozaic(pageNum),
+        _browseFulllength(pageNum),
+        _browseHdAudiobooks(pageNum),
+        _browseBigAudiobooks(pageNum),
+        _browseZaudiobooks(pageNum),
+      ]);
+      final merged = _dedupeAudiobooks(results.expand((r) => r).toList());
+      final page = merged.take(limit).toList();
+      debugPrint('[AudiobookService] browse page=$pageNum sources=${results.map((r) => r.length).toList()} merged=${merged.length} returning=${page.length}');
+      return page;
     } catch (e) {
-      debugPrint('AudiobookService Error (getAudiobooks): $e');
+      debugPrint('AudiobookService Error (_browseAggregated): $e');
     }
     return [];
   }
+
+  Future<List<Audiobook>> _fetchBrowsePage(
+    String url,
+    List<AudiobookBrowseHit> Function(String html) parse,
+    String source,
+    String idPrefix,
+  ) async {
+    try {
+      final response = await http.get(Uri.parse(url), headers: _htmlHeaders());
+      if (response.statusCode != 200) return [];
+      return parse(response.body)
+          .map((hit) => _audiobookFromHit(hit, source, idPrefix))
+          .toList();
+    } catch (e) {
+      debugPrint('AudiobookService Error (_fetchBrowsePage $source): $e');
+    }
+    return [];
+  }
+
+  Future<List<Audiobook>> _browseGoldenAudiobooks(int page) => _fetchBrowsePage(
+        _wpPageUrl('https://goldenaudiobooks.com', page),
+        parseGoldenBrowseFromHtml,
+        'goldenaudiobook',
+        'ga',
+      );
+
+  Future<List<Audiobook>> _browseAudiozaic(int page) => _fetchBrowsePage(
+        _wpPageUrl('https://audiozaic.com', page),
+        parseAudiozaicBrowseFromHtml,
+        'audiozaic',
+        'az',
+      );
+
+  Future<List<Audiobook>> _browseFulllength(int page) => _fetchBrowsePage(
+        _wpPageUrl('https://fulllengthaudiobooks.net', page),
+        parseFulllengthBrowseFromHtml,
+        'fulllengthaudiobooks',
+        'fl',
+      );
+
+  Future<List<Audiobook>> _browseHdAudiobooks(int page) => _fetchBrowsePage(
+        _wpPageUrl('https://hdaudiobooks.com', page),
+        parseHdBrowseFromHtml,
+        'hdaudiobooks',
+        'hd',
+      );
+
+  Future<List<Audiobook>> _browseBigAudiobooks(int page) => _fetchBrowsePage(
+        _wpPageUrl('https://bigaudiobooks.net', page),
+        parseBigBrowseFromHtml,
+        'bigaudiobooks',
+        'ba',
+      );
+
+  Future<List<Audiobook>> _browseZaudiobooks(int page) => _fetchBrowsePage(
+        _wpPageUrl('https://zaudiobooks.com', page),
+        parseZaudiobooksBrowseFromHtml,
+        'zaudiobooks',
+        'zb',
+      );
 
   String _cleanTitle(String title) {
     return title
@@ -145,56 +275,42 @@ class AudiobookService {
       final results = await Future.wait([
         _searchGoldenAudiobook(query),
         _searchAppAudiobooks(query),
-        _searchTokybook(query),
         _searchAudiozaic(query),
         _searchAudionest(query),
+        _searchZaudiobooks(query),
+        _searchFulllength(query),
+        _searchHdAudiobooks(query),
+        _searchBigAudiobooks(query),
       ]);
 
       final goldenResults = results[0];
       final appAudioResults = results[1];
-      final tokyResults = results[2];
-      final audiozaicResults = results[3];
-      final audionestResults = results[4];
+      final audiozaicResults = results[2];
+      final audionestResults = results[3];
+      final zaudiobooksResults = results[4];
+      final fulllengthResults = results[5];
+      final hdResults = results[6];
+      final bigResults = results[7];
       
       final Map<String, Audiobook> uniqueBooks = {};
       
-      // 1. Add Golden results first (Primary)
-      for (var book in goldenResults) {
-        final key = _normalizeTitle(book.title);
-        if (key.isNotEmpty) uniqueBooks[key] = book;
-      }
-      
-      // 2. Add AppAudiobooks results
-      for (var book in appAudioResults) {
-        final key = _normalizeTitle(book.title);
-        if (key.isNotEmpty && !uniqueBooks.containsKey(key)) {
-          uniqueBooks[key] = book;
-        }
-      }
-      
-      // 3. Add Tokybook results
-      for (var book in tokyResults) {
-        final key = _normalizeTitle(book.title);
-        if (key.isNotEmpty && !uniqueBooks.containsKey(key)) {
-          uniqueBooks[key] = book;
-        }
-      }
-      
-      // 4. Add Audiozaic results
-      for (var book in audiozaicResults) {
-        final key = _normalizeTitle(book.title);
-        if (key.isNotEmpty && !uniqueBooks.containsKey(key)) {
-          uniqueBooks[key] = book;
+      void addResults(List<Audiobook> books) {
+        for (var book in books) {
+          final key = _normalizeTitle(book.title);
+          if (key.isNotEmpty && !uniqueBooks.containsKey(key)) {
+            uniqueBooks[key] = book;
+          }
         }
       }
 
-      // 5. Add Audionest results
-      for (var book in audionestResults) {
-        final key = _normalizeTitle(book.title);
-        if (key.isNotEmpty && !uniqueBooks.containsKey(key)) {
-          uniqueBooks[key] = book;
-        }
-      }
+      addResults(goldenResults);
+      addResults(appAudioResults);
+      addResults(audiozaicResults);
+      addResults(audionestResults);
+      addResults(zaudiobooksResults);
+      addResults(fulllengthResults);
+      addResults(hdResults);
+      addResults(bigResults);
 
       // Sort by relevance to search query
       final queryNorm = query.toLowerCase().trim();
@@ -285,7 +401,7 @@ class AudiobookService {
 
   Future<List<Audiobook>> _searchGoldenAudiobook(String query) async {
     try {
-      final searchUrl = 'https://goldenaudiobook.net/?s=${Uri.encodeComponent(query)}';
+      final searchUrl = 'https://goldenaudiobooks.com/?s=${Uri.encodeComponent(query)}';
       final response = await http.get(Uri.parse(searchUrl), headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       });
@@ -349,6 +465,18 @@ class AudiobookService {
     }
     if (book.source == 'audionest') {
       return _getAudionestChapters(book);
+    }
+    if (book.source == 'zaudiobooks') {
+      return _getZaudiobooksChapters(book);
+    }
+    if (book.source == 'fulllengthaudiobooks') {
+      return _getFulllengthChapters(book);
+    }
+    if (book.source == 'hdaudiobooks') {
+      return _getHdAudiobooksChapters(book);
+    }
+    if (book.source == 'bigaudiobooks') {
+      return _getBigAudiobooksChapters(book);
     }
     return _getTokyChapters(book);
   }
@@ -429,8 +557,12 @@ class AudiobookService {
         
         if (streamUrl.isNotEmpty) {
           chapters.add(AudiobookChapter(
-            title: 'Part ${i + 1}', 
+            title: 'Part ${i + 1}',
             url: streamUrl,
+            headers: {
+              ..._goldenStreamHeaders,
+              'User-Agent': _userAgent,
+            },
           ));
         }
       }
@@ -514,6 +646,102 @@ class AudiobookService {
     }
     return [];
   }
+
+  Future<List<Audiobook>> _searchWpSite(
+    String searchUrl,
+    List<AudiobookBrowseHit> Function(String html) parse,
+    String source,
+    String idPrefix,
+  ) async {
+    try {
+      final response = await http.get(Uri.parse(searchUrl), headers: _htmlHeaders());
+      if (response.statusCode != 200) return [];
+      return parse(response.body)
+          .map((hit) => _audiobookFromHit(hit, source, idPrefix))
+          .toList();
+    } catch (e) {
+      debugPrint('AudiobookService Error (_searchWpSite $source): $e');
+    }
+    return [];
+  }
+
+  Future<List<Audiobook>> _searchZaudiobooks(String query) => _searchWpSite(
+        'https://zaudiobooks.com/?s=${Uri.encodeComponent(query)}',
+        parseZaudiobooksSearchFromHtml,
+        'zaudiobooks',
+        'zb',
+      );
+
+  Future<List<Audiobook>> _searchFulllength(String query) => _searchWpSite(
+        'https://fulllengthaudiobooks.net/?s=${Uri.encodeComponent(query)}',
+        parseFulllengthSearchFromHtml,
+        'fulllengthaudiobooks',
+        'fl',
+      );
+
+  Future<List<Audiobook>> _searchHdAudiobooks(String query) => _searchWpSite(
+        'https://hdaudiobooks.com/?s=${Uri.encodeComponent(query)}',
+        parseHdSearchFromHtml,
+        'hdaudiobooks',
+        'hd',
+      );
+
+  Future<List<Audiobook>> _searchBigAudiobooks(String query) => _searchWpSite(
+        'https://bigaudiobooks.net/?s=${Uri.encodeComponent(query)}',
+        parseBigSearchFromHtml,
+        'bigaudiobooks',
+        'ba',
+      );
+
+  List<AudiobookChapter> _chaptersFromHits(List<AudiobookChapterHit> hits) {
+    return hits
+        .map((hit) => AudiobookChapter(title: hit.title, url: hit.url))
+        .toList();
+  }
+
+  Future<List<AudiobookChapter>> _getPageChapters(
+    String? pageUrl, {
+    required List<AudiobookChapterHit> Function(String html) parse,
+    Map<String, String>? streamHeaders,
+  }) async {
+    try {
+      if (pageUrl == null || pageUrl.isEmpty) return [];
+      final pageRes = await http.get(Uri.parse(pageUrl), headers: _htmlHeaders(pageUrl));
+      if (pageRes.statusCode != 200) return [];
+      final hits = parse(pageRes.body);
+      if (streamHeaders == null) return _chaptersFromHits(hits);
+      return hits
+          .map((hit) => AudiobookChapter(
+                title: hit.title,
+                url: hit.url,
+                headers: streamHeaders,
+              ))
+          .toList();
+    } catch (e) {
+      debugPrint('AudiobookService Error (_getPageChapters): $e');
+    }
+    return [];
+  }
+
+  Future<List<AudiobookChapter>> _getZaudiobooksChapters(Audiobook book) =>
+      _getPageChapters(book.pageUrl, parse: parseZaudiobooksTracksFromHtml);
+
+  Future<List<AudiobookChapter>> _getFulllengthChapters(Audiobook book) =>
+      _getPageChapters(
+        book.pageUrl,
+        parse: (html) =>
+            parseMpegSourcesFromHtml(html, '.entry source[type="audio/mpeg"]'),
+      );
+
+  Future<List<AudiobookChapter>> _getHdAudiobooksChapters(Audiobook book) =>
+      _getPageChapters(book.pageUrl, parse: parseHdAudiobooksChaptersFromHtml);
+
+  Future<List<AudiobookChapter>> _getBigAudiobooksChapters(Audiobook book) =>
+      _getPageChapters(
+        book.pageUrl,
+        parse: (html) =>
+            parseMpegSourcesFromHtml(html, '.post-single source[type="audio/mpeg"]'),
+      );
 
   // --- AppAudiobooks.net ---
 

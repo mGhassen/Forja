@@ -509,7 +509,23 @@ class _AudiobookScreenState extends State<AudiobookScreen> with WidgetsBindingOb
               ],
             ),
             Positioned(
-              top: 8, right: 8,
+              left: 8,
+              bottom: 56,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _formatSource(book.source),
+                  style: const TextStyle(fontSize: 9, color: Colors.white70),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
               child: GestureDetector(
                 onTap: () async {
                   await _playerService.toggleLikeBook(book);
@@ -533,6 +549,31 @@ class _AudiobookScreenState extends State<AudiobookScreen> with WidgetsBindingOb
         ),
       ),
     );
+  }
+
+  String _formatSource(String? source) {
+    switch (source) {
+      case 'tokybook':
+        return 'Tokybook';
+      case 'audiozaic':
+        return 'Audiozaic';
+      case 'goldenaudiobook':
+        return 'Golden';
+      case 'appaudiobooks':
+        return 'AppAB';
+      case 'audionest':
+        return 'Audionest';
+      case 'zaudiobooks':
+        return 'ZAudio';
+      case 'fulllengthaudiobooks':
+        return 'FullLength';
+      case 'hdaudiobooks':
+        return 'HD';
+      case 'bigaudiobooks':
+        return 'Big';
+      default:
+        return source ?? '';
+    }
   }
 
   Widget _buildPagination() {
