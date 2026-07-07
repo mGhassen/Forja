@@ -35,6 +35,7 @@ jellyfin-core = { path = "../jellyfin-core" }
 anilist-core = { path = "../anilist-core" }
 manga-core = { path = "../manga-core" }
 anime-core = { path = "../anime-core" }
+indexer-core = { path = "../indexer-core" }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

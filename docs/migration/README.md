@@ -12,7 +12,7 @@
 |---|-----|---------|
 | 1 | [01-rust-engine.md](./01-rust-engine.md) | ✅ Rust crates + FFI primitives |
 | 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | ✅ Playback engine → `crates/*` |
-| 3 | [03-engine-catalog.md](./03-engine-catalog.md) | 🔄 **Wave 2: catalog engine → `crates/*`** — `packages/api` deleted ✅ P3-03; P3-04 sign-off ⬜ |
+| 3 | [03-engine-catalog.md](./03-engine-catalog.md) | 🔄 **Wave 2** — `packages/api` deleted ✅ P3-03; P3-04 consolidation 🔄 |
 | 4 | [04-web-client.md](./04-web-client.md) | ⬜ WASM parallel |
 
 ---

@@ -17,5 +17,6 @@ export 'src/models/book_result.dart';
 export 'src/webstreamr_settings.dart';
 export 'src/playback/playback.dart';
 export 'src/catalog/catalog.dart';
+export 'src/indexer_http.dart';
 export 'src/utils/episode_matcher.dart';
 export 'src/utils/hls_master_parser.dart';

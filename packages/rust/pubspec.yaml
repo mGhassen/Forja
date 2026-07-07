@@ -19,7 +19,6 @@ dependencies:
   crypto: ^3.0.6
   pointycastle: ^3.9.1
   flutter_inappwebview: ^6.1.5
-  xml: ^6.5.0
   youtube_explode_dart: ^3.0.5
 
 dev_dependencies:

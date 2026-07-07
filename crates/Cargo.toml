@@ -17,6 +17,7 @@ members = [
     "anilist-core",
     "manga-core",
     "anime-core",
+    "indexer-core",
 ]
 
 [workspace.package]

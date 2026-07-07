@@ -20,6 +20,7 @@ enum EngineJobKind {
   httpGet,
   httpPost,
   animeRequest,
+  indexerRequest,
   parseXtreamCategories,
   parseXtreamStreams,
   parseXtreamSeriesEpisodes,
@@ -202,6 +203,8 @@ String _dispatchJob(_WorkerJob job) {
       );
     case EngineJobKind.animeRequest:
       return rust.animeRequestJson(job.args['requestJson']! as String);
+    case EngineJobKind.indexerRequest:
+      return rust.indexerRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.parseXtreamCategories:
       return rust.parseXtreamCategoriesJson(job.args['json']! as String);
     case EngineJobKind.parseXtreamStreams:
