@@ -50,6 +50,22 @@ class ForjaLetterStyle {
   final double opacity;
 }
 
+class ForjaLogoHalo {
+  const ForjaLogoHalo({
+    required this.color,
+    required this.centerAlpha,
+    required this.midAlpha,
+    required this.blurSigma,
+    required this.glowSourceSize,
+  });
+
+  final Color color;
+  final double centerAlpha;
+  final double midAlpha;
+  final double blurSigma;
+  final double glowSourceSize;
+}
+
 Path _pathFromSvg(String data) {
   final path = Path();
   writeSvgPathDataToPath(data, _PathProxy(path));
@@ -94,31 +110,57 @@ class ForjaLogo extends StatelessWidget {
     required this.width,
     required this.height,
     required this.letterStyles,
+    this.halo,
   });
 
   final double width;
   final double height;
   final Map<ForjaLetter, ForjaLetterStyle> letterStyles;
+  final ForjaLogoHalo? halo;
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: CustomPaint(
-        size: Size(width, height),
-        painter: _ForjaLogoPainter(letterStyles: letterStyles),
+    return CustomPaint(
+      size: Size(width, height),
+      painter: _ForjaLogoPainter(
+        letterStyles: letterStyles,
+        halo: halo,
       ),
     );
   }
 }
 
 class _ForjaLogoPainter extends CustomPainter {
-  _ForjaLogoPainter({required this.letterStyles});
+  _ForjaLogoPainter({
+    required this.letterStyles,
+    this.halo,
+  });
 
   final Map<ForjaLetter, ForjaLetterStyle> letterStyles;
+  final ForjaLogoHalo? halo;
   static final _letters = _buildLetterData();
 
   @override
   void paint(Canvas canvas, Size size) {
+    final haloConfig = halo;
+    if (haloConfig != null &&
+        (haloConfig.centerAlpha > 0 || haloConfig.midAlpha > 0)) {
+      final center = Offset(size.width / 2, size.height / 2);
+      final radius = haloConfig.glowSourceSize / 2;
+      final haloRect = Rect.fromCircle(center: center, radius: radius);
+      final haloPaint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            haloConfig.color.withValues(alpha: haloConfig.centerAlpha),
+            haloConfig.color.withValues(alpha: haloConfig.midAlpha),
+            haloConfig.color.withValues(alpha: 0),
+          ],
+          stops: const [0.0, 0.55, 1.0],
+        ).createShader(haloRect)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, haloConfig.blurSigma);
+      canvas.drawCircle(center, radius, haloPaint);
+    }
+
     final fill = Paint()..style = PaintingStyle.fill;
 
     canvas.save();
@@ -138,6 +180,18 @@ class _ForjaLogoPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ForjaLogoPainter oldDelegate) {
+    if (oldDelegate.halo != halo) {
+      final a = oldDelegate.halo;
+      final b = halo;
+      if (a == null || b == null) return true;
+      if (a.color != b.color ||
+          a.centerAlpha != b.centerAlpha ||
+          a.midAlpha != b.midAlpha ||
+          a.blurSigma != b.blurSigma ||
+          a.glowSourceSize != b.glowSourceSize) {
+        return true;
+      }
+    }
     for (final letter in forjaLetterOrder) {
       final a = letterStyles[letter]!;
       final b = oldDelegate.letterStyles[letter]!;

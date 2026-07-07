@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/services/splash_sound.dart';
@@ -123,9 +122,8 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
     final introFade = Curves.easeOut.transform(_window(ms, 0, _fadeEndMs));
     final greenT = _window(ms, _greenStartMs, _greenEndMs);
 
-    final opacity = ms < _greenStartMs
-        ? 0.5 + introFade * 0.4
-        : (0.9 + greenT * 0.1);
+    final opacity = introFade *
+        (ms < _greenStartMs ? 0.5 + introFade * 0.4 : (0.9 + greenT * 0.1));
 
     return {
       for (var i = 0; i < forjaLetterOrder.length; i++)
@@ -151,17 +149,15 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
     final haloDiameter = widget.logoHeight * _haloScale;
     final blurSigma = haloDiameter * 0.14;
     final glowSourceSize = haloDiameter * 0.38;
-    final haloExtent = haloDiameter + blurSigma * 4;
+    final haloOverflow = haloDiameter + blurSigma * 4;
 
     return SizedBox(
       width: logoWidth,
       height: widget.logoHeight,
       child: OverflowBox(
+        maxWidth: haloOverflow,
+        maxHeight: haloOverflow,
         alignment: Alignment.center,
-        minWidth: haloExtent,
-        maxWidth: haloExtent,
-        minHeight: haloExtent,
-        maxHeight: haloExtent,
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
@@ -171,51 +167,24 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
                 Curves.easeOut.transform(_window(ms, 0, _fadeEndMs));
             final greenT = _window(ms, _greenStartMs, _greenEndMs);
             final bounce = 1 + math.sin(greenT * math.pi) * 0.035;
+            final haloCenterAlpha =
+                (widget.isLight ? 0.24 : 0.18) * introFade;
+            final haloMidAlpha = (widget.isLight ? 0.10 : 0.08) * introFade;
 
-            return Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                Opacity(
-                  opacity: introFade,
-                  child: ImageFiltered(
-                    imageFilter: ImageFilter.blur(
-                      sigmaX: blurSigma,
-                      sigmaY: blurSigma,
-                    ),
-                    child: Container(
-                      width: glowSourceSize,
-                      height: glowSourceSize,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            colors.base.withValues(
-                              alpha: widget.isLight ? 0.28 : 0.22,
-                            ),
-                            colors.base.withValues(
-                              alpha: widget.isLight ? 0.12 : 0.1,
-                            ),
-                            colors.base.withValues(alpha: 0),
-                          ],
-                          stops: const [0.0, 0.55, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
+            return Transform.scale(
+              scale: bounce,
+              child: ForjaLogo(
+                width: logoWidth,
+                height: widget.logoHeight,
+                letterStyles: _letterStyles(t, colors.base),
+                halo: ForjaLogoHalo(
+                  color: colors.base,
+                  centerAlpha: haloCenterAlpha,
+                  midAlpha: haloMidAlpha,
+                  blurSigma: blurSigma,
+                  glowSourceSize: glowSourceSize,
                 ),
-                Opacity(
-                  opacity: introFade,
-                  child: Transform.scale(
-                    scale: bounce,
-                    child: ForjaLogo(
-                      width: logoWidth,
-                      height: widget.logoHeight,
-                      letterStyles: _letterStyles(t, colors.base),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             );
           },
         ),
@@ -303,10 +272,14 @@ class SplashOverlayContent extends StatelessWidget {
             constraints.maxHeight * 0.38,
           );
           return Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              clipBehavior: Clip.none,
-              child: Column(
+            child: OverflowBox(
+              maxWidth: constraints.maxWidth,
+              maxHeight: constraints.maxHeight,
+              alignment: Alignment.center,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                clipBehavior: Clip.none,
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SplashLogoWithHalo(
@@ -330,6 +303,7 @@ class SplashOverlayContent extends StatelessWidget {
                   const SizedBox(height: 16),
                   SplashLoadingDots(color: logoColors.base),
                 ],
+                ),
               ),
             ),
           );

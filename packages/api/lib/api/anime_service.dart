@@ -13,6 +13,10 @@ import 'miruro_extractor.dart';
 
 class AnimeService {
   static const String _gql = 'https://graphql.anilist.co';
+  static const String _anikotoUa =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+  static final RegExp _megaPathIdRe = RegExp(r'/stream/s-2/(\d+)/');
   final HttpClient _client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
 
   // ─── GraphQL helper ─────────────────────────────────────────────
@@ -465,9 +469,9 @@ class AnimeService {
       final uri = Uri.parse(
           'https://anikototv.to/search?keyword=${Uri.encodeQueryComponent(query)}');
       final req = await _client.getUrl(uri);
-      req.headers.set('User-Agent',
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-      req.headers.set('Accept', 'text/html');
+      req.headers
+        ..set('User-Agent', _anikotoUa)
+        ..set('Accept', 'text/html');
       final res = await req.close();
       if (res.statusCode != 200) return const [];
       final html = await res.transform(utf8.decoder).join();
@@ -489,9 +493,9 @@ class AnimeService {
     try {
       final uri = Uri.parse('https://anikototv.to/watch/$slug');
       final req = await _client.getUrl(uri);
-      req.headers.set('User-Agent',
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-      req.headers.set('Accept', 'text/html');
+      req.headers
+        ..set('User-Agent', _anikotoUa)
+        ..set('Accept', 'text/html');
       final res = await req.close();
       if (res.statusCode != 200) return null;
       final html = await res.transform(utf8.decoder).join();
@@ -520,12 +524,23 @@ class AnimeService {
 
   Future<Map<String, dynamic>?> _anikotoGet(String path) async {
     final req = await _client.getUrl(Uri.parse('https://anikotoapi.site$path'));
-    req.headers.set('Accept', 'application/json');
+    req.headers
+      ..set('Accept', 'application/json')
+      ..set('User-Agent', _anikotoUa);
     final res = await req.close();
     final body = await res.transform(utf8.decoder).join();
+    if (res.statusCode != 200) {
+      debugPrint('[Anikoto] $path HTTP ${res.statusCode}');
+      return null;
+    }
     final j = jsonDecode(body);
-    if (j is Map) return j.cast<String, dynamic>();
-    return null;
+    if (j is! Map) return null;
+    final map = j.cast<String, dynamic>();
+    if (map['ok'] == false) {
+      debugPrint('[Anikoto] $path error: ${map['error'] ?? map['code']}');
+      return null;
+    }
+    return map;
   }
 
   Future<List<AnimeEpisode>> getEpisodes(AnimeCard anime) async {
@@ -630,35 +645,58 @@ class AnimeService {
     List<String> animeTitles = const [],
     bool isAdult = false,
   }) {
-    String? embedId;
+    AnikotoEpisode? anikotoEp;
     if (series != null) {
-      final ep = series.episodes
-          .where((e) => e.number == episode)
-          .cast<AnikotoEpisode?>()
-          .firstWhere((_) => true, orElse: () => null);
-      embedId = ep?.embedId;
+      for (final e in series.episodes) {
+        if (e.number == episode) {
+          anikotoEp = e;
+          break;
+        }
+      }
     }
+    final embedId = anikotoEp?.embedId;
 
     final all = <AnimeEmbed>[];
     if (embedId != null && embedId.isNotEmpty) {
-      all.addAll([
-        AnimeEmbed(
-          label: 'HD-1', server: 'megaplay', category: 'sub',
-          url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
-        ),
-        AnimeEmbed(
-          label: 'HD-2', server: 'vidwish', category: 'sub',
-          url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
-        ),
-        AnimeEmbed(
-          label: 'HD-1', server: 'megaplay', category: 'dub',
-          url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
-        ),
-        AnimeEmbed(
-          label: 'HD-2', server: 'vidwish', category: 'dub',
-          url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
-        ),
-      ]);
+      void addPair(String cat) {
+        final megaUrl = cat == 'sub'
+            ? anikotoEp?.embedUrlSub
+            : anikotoEp?.embedUrlDub;
+        final mega = megaUrl ??
+            _embed(
+              host: 'megaplay.buzz',
+              anilistId: anilistId,
+              episode: episode,
+              category: cat,
+              embedId: embedId,
+            );
+        final vid = _embed(
+          host: 'vidwish.live',
+          anilistId: anilistId,
+          episode: episode,
+          category: cat,
+          embedId: embedId,
+        );
+        if (mega != null) {
+          all.add(AnimeEmbed(
+            label: 'HD-1',
+            server: 'megaplay',
+            category: cat,
+            url: mega,
+          ));
+        }
+        if (vid != null) {
+          all.add(AnimeEmbed(
+            label: 'HD-2',
+            server: 'vidwish',
+            category: cat,
+            url: vid,
+          ));
+        }
+      }
+
+      addPair('sub');
+      addPair('dub');
     }
     // Miruro fallback — emit one embed per known provider per category. The
     // resolver fans them all out in parallel; whichever returns a stream
@@ -716,14 +754,57 @@ class AnimeService {
   /// direct page loads — extraction only works when this header is present.
   static const String embedReferer = 'https://www.enma.lol/';
 
-  /// Direct HTTP extractor for megaplay.buzz / vidwish.live embeds.
-  ///
-  /// Both providers expose the same internal API:
-  ///   1. GET /stream/s-2/{id}/{lang}     → HTML containing `data-id="..."`
-  ///   2. GET /stream/getSources?id={dataId} → JSON { sources:{file}, tracks:[] }
-  ///
-  /// No webview / JS execution required. Returns null on failure so callers
-  /// can fall back to the headless extractor.
+  /// megaplay / vidwish: GET /stream/getSources?id={id} → JSON stream.
+  /// The catalog id in `/stream/s-2/{id}/` works directly — no HTML scrape.
+  Future<AnimeStreamResult?> _fetchMegaSources({
+    required String origin,
+    required String embedPageUrl,
+    required String dataId,
+  }) async {
+    const ua =
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+    final apiUri = Uri.parse('$origin/stream/getSources?id=$dataId');
+    final apiReq = await _client.getUrl(apiUri);
+    apiReq.headers
+      ..set('Referer', embedPageUrl)
+      ..set('Origin', origin)
+      ..set('X-Requested-With', 'XMLHttpRequest')
+      ..set('User-Agent', ua)
+      ..set('Accept', 'application/json, text/plain, */*');
+    final apiRes = await apiReq.close();
+    if (apiRes.statusCode != 200) return null;
+    final body = await apiRes.transform(utf8.decoder).join();
+    final json = jsonDecode(body);
+    if (json is! Map) return null;
+    final file =
+        (json['sources'] is Map ? json['sources']['file'] : null) as String?;
+    if (file == null || file.isEmpty) return null;
+
+    final tracks = <AnimeTrack>[];
+    final rawTracks = json['tracks'];
+    if (rawTracks is List) {
+      for (final t in rawTracks) {
+        if (t is Map &&
+            t['file'] is String &&
+            ((t['kind'] ?? 'captions') == 'captions' ||
+                (t['kind'] ?? '') == 'subtitles')) {
+          tracks.add(AnimeTrack(
+            url: t['file'] as String,
+            label: (t['label'] as String?) ?? 'Unknown',
+            isDefault: t['default'] == true,
+          ));
+        }
+      }
+    }
+    return AnimeStreamResult(
+      url: file,
+      referer: '$origin/',
+      origin: origin,
+      tracks: tracks,
+    );
+  }
+
   Future<AnimeStreamResult?> extractDirect(AnimeEmbed embed) async {
     if (embed.server == 'miruro') {
       return _extractMiruro(embed);
@@ -740,82 +821,59 @@ class AnimeService {
     try {
       final embedUri = Uri.parse(embed.url);
       final origin = '${embedUri.scheme}://${embedUri.host}';
+      const ua =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-      // Step 1: fetch embed HTML to extract data-id
+      final pathId = _megaPathIdRe.firstMatch(embedUri.path)?.group(1);
+      final tried = <String>{};
+
+      Future<AnimeStreamResult?> tryId(String? id) async {
+        if (id == null || id.isEmpty || !tried.add(id)) return null;
+        return _fetchMegaSources(
+          origin: origin,
+          embedPageUrl: embed.url,
+          dataId: id,
+        );
+      }
+
+      var result = await tryId(pathId);
+      if (result != null) {
+        if (kDebugMode) {
+          debugPrint(
+              '[extractDirect] OK via path id=$pathId tracks=${result.tracks.length}');
+        }
+        return result;
+      }
+
+      // Fallback: scrape HTML for a different internal player id.
       final pageReq = await _client.getUrl(embedUri);
       pageReq.headers
         ..set('Referer', embedReferer)
-        ..set('User-Agent',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
+        ..set('User-Agent', ua)
         ..set('Accept',
             'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
       final pageRes = await pageReq.close();
-      if (pageRes.statusCode != 200) {
-        if (kDebugMode) {
-          debugPrint('[extractDirect] embed page HTTP ${pageRes.statusCode}');
-        }
-        return null;
-      }
-      final html = await pageRes.transform(utf8.decoder).join();
-      final m = RegExp(r'data-id\s*=\s*"(\d+)"').firstMatch(html);
-      if (m == null) {
-        if (kDebugMode) debugPrint('[extractDirect] data-id not found');
-        return null;
-      }
-      final dataId = m.group(1)!;
-
-      // Step 2: fetch sources JSON
-      final apiUri = Uri.parse('$origin/stream/getSources?id=$dataId');
-      final apiReq = await _client.getUrl(apiUri);
-      apiReq.headers
-        ..set('Referer', embed.url)
-        ..set('Origin', origin)
-        ..set('X-Requested-With', 'XMLHttpRequest')
-        ..set('User-Agent',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
-        ..set('Accept', 'application/json, text/plain, */*');
-      final apiRes = await apiReq.close();
-      if (apiRes.statusCode != 200) {
-        if (kDebugMode) {
-          debugPrint('[extractDirect] getSources HTTP ${apiRes.statusCode}');
-        }
-        return null;
-      }
-      final body = await apiRes.transform(utf8.decoder).join();
-      final json = jsonDecode(body);
-      final file = (json['sources'] is Map ? json['sources']['file'] : null)
-          as String?;
-      if (file == null || file.isEmpty) {
-        if (kDebugMode) debugPrint('[extractDirect] no sources.file');
-        return null;
-      }
-      final tracks = <AnimeTrack>[];
-      final rawTracks = json['tracks'];
-      if (rawTracks is List) {
-        for (final t in rawTracks) {
-          if (t is Map &&
-              t['file'] is String &&
-              ((t['kind'] ?? 'captions') == 'captions' ||
-                  (t['kind'] ?? '') == 'subtitles')) {
-            tracks.add(AnimeTrack(
-              url: t['file'] as String,
-              label: (t['label'] as String?) ?? 'Unknown',
-              isDefault: t['default'] == true,
-            ));
+      if (pageRes.statusCode == 200) {
+        final html = await pageRes.transform(utf8.decoder).join();
+        final htmlId =
+            RegExp(r'data-id\s*=\s*"(\d+)"').firstMatch(html)?.group(1);
+        result = await tryId(htmlId);
+        if (result != null) {
+          if (kDebugMode) {
+            debugPrint(
+                '[extractDirect] OK via html id=$htmlId tracks=${result.tracks.length}');
           }
+          return result;
         }
+      } else if (kDebugMode) {
+        debugPrint('[extractDirect] embed page HTTP ${pageRes.statusCode}');
       }
+
       if (kDebugMode) {
-        debugPrint('[extractDirect] OK file=$file tracks=${tracks.length}');
+        debugPrint('[extractDirect] no stream for ${embed.displayName}');
       }
-      return AnimeStreamResult(
-        url: file,
-        referer: '$origin/',
-        origin: origin,
-        tracks: tracks,
-      );
+      return null;
     } catch (e, st) {
       if (kDebugMode) debugPrint('[extractDirect] error: $e\n$st');
       return null;
@@ -1277,20 +1335,27 @@ class AnikotoEpisode {
   final int number;
   final String title;
   final String embedId; // episode_embed_id used by /stream/s-2/{id}/{lang}
+  final String? embedUrlSub;
+  final String? embedUrlDub;
 
   const AnikotoEpisode({
     required this.id,
     required this.number,
     required this.title,
     required this.embedId,
+    this.embedUrlSub,
+    this.embedUrlDub,
   });
 
   factory AnikotoEpisode.fromJson(Map<String, dynamic> j) {
+    final embedUrl = (j['embed_url'] as Map?)?.cast<String, dynamic>() ?? {};
     return AnikotoEpisode(
       id: (j['id'] ?? 0) as int,
       number: (j['number'] ?? 0) as int,
       title: (j['title'] ?? '') as String,
       embedId: (j['episode_embed_id'] ?? '').toString(),
+      embedUrlSub: (embedUrl['sub'] as String?)?.trim(),
+      embedUrlDub: (embedUrl['dub'] as String?)?.trim(),
     );
   }
 }

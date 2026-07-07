@@ -491,14 +491,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         ),
         if (_showOverlay)
           Positioned.fill(
-            child: RepaintBoundary(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _skipSplash,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: _buildSplashOverlay(),
-                ),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _skipSplash,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: _buildSplashOverlay(),
               ),
             ),
           ),

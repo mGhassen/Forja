@@ -116,6 +116,11 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     // URLs (much more reliable than the anilist-mapped /stream/ani/... ones).
     _series = await _service.resolveAnikoto(widget.anime);
     if (!mounted) return;
+    if (_series == null) {
+      debugPrint(
+          '[AnimePlayer] Anikoto catalog miss for ${widget.anime.displayTitle} '
+          '(anilist ${widget.anime.id})');
+    }
     _allEmbeds = _service.buildAllEmbeds(
       anilistId: widget.anime.id,
       episode: widget.episodeNumber,
@@ -205,7 +210,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     setState(() {
       _resolving = false;
       _failedAll = true;
-      _phase = 'No streams available';
+      _phase = _series == null && _currentPair.every((e) => e.server != 'megaplay' && e.server != 'vidwish')
+          ? 'Catalog lookup failed'
+          : 'No streams available';
       _statusLine = '';
     });
   }
