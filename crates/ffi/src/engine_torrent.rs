@@ -2,6 +2,13 @@ use torrent::TorrentEngine;
 use std::sync::{LazyLock, Mutex};
 
 static TORRENT: LazyLock<Mutex<TorrentEngine>> = LazyLock::new(|| Mutex::new(TorrentEngine::new()));
+static LAST_ENGINE_ERROR: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
+
+fn set_last_error(msg: &str) {
+    if let Ok(mut err) = LAST_ENGINE_ERROR.lock() {
+        *err = msg.to_string();
+    }
+}
 
 pub fn torrent_start(magnet: String) -> bool {
     TORRENT
@@ -32,11 +39,30 @@ pub fn torrent_status_json() -> String {
 }
 
 pub fn torrent_engine_start(preferred_port: u16) -> i32 {
-    TORRENT
+    let Ok(engine) = TORRENT.lock() else {
+        set_last_error("Engine lock poisoned");
+        return -1;
+    };
+    match engine.start_engine(preferred_port) {
+        Ok(port) => {
+            if let Ok(mut err) = LAST_ENGINE_ERROR.lock() {
+                err.clear();
+            }
+            port as i32
+        }
+        Err(msg) => {
+            set_last_error(&msg);
+            eprintln!("[torrent] engine start failed: {msg}");
+            -1
+        }
+    }
+}
+
+pub fn torrent_engine_last_error() -> String {
+    LAST_ENGINE_ERROR
         .lock()
-        .ok()
-        .and_then(|e| e.start_engine(preferred_port).ok().map(|p| p as i32))
-        .unwrap_or(-1)
+        .map(|e| e.clone())
+        .unwrap_or_default()
 }
 
 pub fn torrent_engine_port() -> u16 {

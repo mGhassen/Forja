@@ -23,8 +23,8 @@ import 'package:api/services/player_pool_service.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
 import 'package:forja/shell/main_screen.dart';
-import 'package:forja/features/search/search_screen.dart';
-import 'package:forja/features/discover/discover_screen.dart';
+import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/app/boot_cache.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -309,6 +309,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     _slideController.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
         setState(() => _showOverlay = false);
+        _notifySplashDismissed();
       }
     });
 
@@ -320,6 +321,42 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   void _skipSplash() {
     if (!mounted || !_showOverlay) return;
     setState(() => _showOverlay = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _notifySplashDismissed();
+    });
+  }
+
+  void _notifySplashDismissed() {
+    if (ShellBus.splashDismissed.value) return;
+    ShellBus.splashDismissed.value = true;
+    unawaited(_startPostSplashServices());
+  }
+
+  Future<void> _startPostSplashServices() async {
+    // Let the slide-away and first interactive frames finish before Rust/network burst.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+
+    final profile = PlatformPlayback.capabilities;
+    if (!profile.localTorrentEngine) return;
+
+    debugPrint('[Boot] Post-splash: Starting TorrentStream engine...');
+    final ok = await TorrentStreamService()
+        .start()
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('[Boot] Post-splash: TorrentStream timed out after 10s');
+            return false;
+          },
+        )
+        .catchError((e, st) {
+          debugPrint('[Boot] Post-splash: TorrentStream error: $e');
+          debugPrint('[Boot] Stack trace: $st');
+          return false;
+        });
+    debugPrint(
+      '[Boot] Post-splash: TorrentStream ${ok ? "✓ READY" : "✗ FAILED"}',
+    );
   }
 
   /// Called once the engine is ready AND the minimum splash time has
@@ -329,6 +366,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     if (!mounted || !_showOverlay || _slideController.isAnimating) return;
     if (_slideController.isCompleted) {
       setState(() => _showOverlay = false);
+      _notifySplashDismissed();
       return;
     }
     _slideController.forward();
@@ -364,34 +402,14 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       return;
     }
 
-    debugPrint('[Boot] Step 2: Initializing services in parallel...');
+    debugPrint('[Boot] Step 2: Initializing splash-critical services...');
     final api = TmdbApi();
-    
-    final profile = PlatformPlayback.capabilities;
-    debugPrint('[Boot]   - Playback profile: localTorrent=${profile.localTorrentEngine}');
-    if (profile.localTorrentEngine) {
-      debugPrint('[Boot]   - Starting TorrentStream engine...');
-    } else {
-      debugPrint('[Boot]   - Skipping TorrentStream (constrained profile)');
-    }
+
     debugPrint('[Boot]   - Starting LocalServer...');
     debugPrint('[Boot]   - Initializing MusicPlayer...');
     debugPrint('[Boot]   - Fetching TMDB data (trending, popular, top rated, now playing)...');
-    
+
     final results = await Future.wait([
-      profile.localTorrentEngine
-          ? TorrentStreamService().start().timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                debugPrint('[Boot] ⚠ TorrentStream startup timed out after 10s');
-                return false;
-              },
-            ).catchError((e, st) {
-              debugPrint('[Boot] ✗ TorrentStream error: $e');
-              debugPrint('[Boot] Stack trace: $st');
-              return false;
-            })
-          : Future.value(false),
       LocalServerService().start().catchError((e) {
         debugPrint('[Boot] ✗ LocalServer error: $e');
       }),
@@ -416,36 +434,32 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       }),
     ]);
 
+    final trendingList = results[2] as List<Movie>;
+    final popularList = results[3] as List<Movie>;
+    final topRatedList = results[4] as List<Movie>;
+    final nowPlayingList = results[5] as List<Movie>;
+
+    BootCache.setTmdb(
+      trendingList: trendingList,
+      popularList: popularList,
+      topRatedList: topRatedList,
+      nowPlayingList: nowPlayingList,
+    );
+
     debugPrint('[Boot] Step 3: Service initialization results:');
-    final torrentEngineReady = (results[0] as bool?) == true;
-    // LocalServer and MusicPlayer return void, just check if they completed without throwing
-    debugPrint('[Boot]   TorrentStream: ${torrentEngineReady ? "✓ READY" : "✗ FAILED"}');
     debugPrint('[Boot]   LocalServer: ✓ READY');
     debugPrint('[Boot]   MusicPlayer: ✓ READY');
-    
-    final trendingList = results[3] as List;
-    final popularList = results[4] as List;
-    final topRatedList = results[5] as List;
-    final nowPlayingList = results[6] as List;
-    
     debugPrint('[Boot]   TMDB Trending: ${trendingList.isNotEmpty ? "✓ ${trendingList.length} items" : "✗ Empty"}');
     debugPrint('[Boot]   TMDB Popular: ${popularList.isNotEmpty ? "✓ ${popularList.length} items" : "✗ Empty"}');
     debugPrint('[Boot]   TMDB Top Rated: ${topRatedList.isNotEmpty ? "✓ ${topRatedList.length} items" : "✗ Empty"}');
     debugPrint('[Boot]   TMDB Now Playing: ${nowPlayingList.isNotEmpty ? "✓ ${nowPlayingList.length} items" : "✗ Empty"}');
 
-    debugPrint('[Boot] Step 4: Pre-warming screens...');
-    // ignore: unused_local_variable
-    const warmupSearch = SearchScreen();
-    // ignore: unused_local_variable
-    const warmupDiscover = DiscoverScreen();
-    debugPrint('[Boot] ✓ Screens pre-warmed');
-
-    debugPrint('[Boot] Step 5: Waiting for minimum splash time so the '
+    debugPrint('[Boot] Step 4: Waiting for minimum splash time so the '
         'pre-built MainScreen / HomeScreen finishes its first paints...');
     await minSplashFuture;
 
     if (mounted) {
-      debugPrint('[Boot] Step 6: Dismissing splash overlay (MainScreen '
+      debugPrint('[Boot] Step 5: Dismissing splash overlay (MainScreen '
           'already mounted underneath)');
       _dismissSplash();
       debugPrint('═══════════════════════════════════════════════════════════');

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
@@ -28,11 +29,32 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Timer? _metricsDebounce;
   Timer? _metricsSafety;
 
-  /// All screens keyed by nav ID — created once, never recreated.
-  late final Map<String, Widget> _allScreens = buildAllScreens();
+  /// Tabs built on first visit; kept alive for IndexedStack state.
+  final Map<String, Widget> _tabCache = {};
+
+  /// Tab IDs whose widget has been instantiated at least once.
+  final Set<String> _mountedTabIds = {'home'};
 
   /// Currently visible nav IDs (always ends with 'settings').
   List<String> _visibleIds = [...SettingsService.allNavIds, 'settings'];
+
+  Widget _tabFor(String id) {
+    assert(navTabBuilders.containsKey(id));
+    final isNew = !_tabCache.containsKey(id);
+    final tab = _tabCache.putIfAbsent(id, () => navTabBuilders[id]!());
+    if (isNew && kDebugMode) {
+      debugPrint('[MainScreen] Built tab: $id');
+    }
+    return tab;
+  }
+
+  void _selectTab(int index) {
+    final id = _visibleIds[index];
+    setState(() {
+      _mountedTabIds.add(id);
+      _selectedIndex = index;
+    });
+  }
 
   @override
   void initState() {
@@ -131,29 +153,27 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final data = ShellBus.stremioSearchNotifier.value;
     if (data == null || (data['query'] ?? '').isEmpty) return;
     final idx = _visibleIds.indexOf('search');
-    if (idx != -1) setState(() => _selectedIndex = idx);
+    if (idx != -1) _selectTab(idx);
   }
 
   void _onRequestTab() {
     final id = ShellBus.requestTab.value;
     if (id == null) return;
     final idx = _visibleIds.indexOf(id);
-    if (idx != -1 && mounted) setState(() => _selectedIndex = idx);
+    if (idx != -1 && mounted) _selectTab(idx);
     ShellBus.requestTab.value = null;
   }
 
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
-  }
+  void _onItemTapped(int index) => _selectTab(index);
 
   void searchComics(String query) {
     final idx = _visibleIds.indexOf('comics');
-    if (idx != -1) setState(() => _selectedIndex = idx);
+    if (idx != -1) _selectTab(idx);
   }
 
   void searchManga(String query) {
     final idx = _visibleIds.indexOf('manga');
-    if (idx != -1) setState(() => _selectedIndex = idx);
+    if (idx != -1) _selectTab(idx);
   }
 
   @override
@@ -289,7 +309,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             Expanded(
               child: IndexedStack(
                 index: _selectedIndex,
-                children: _visibleIds.map((id) => _allScreens[id]!).toList(),
+                children: _visibleIds.map((id) {
+                  if (!_mountedTabIds.contains(id)) {
+                    return const SizedBox.shrink();
+                  }
+                  return _tabFor(id);
+                }).toList(),
               ),
             ),
           ],

@@ -401,6 +401,17 @@ fn torrent_engine_start(preferred_port: u32) -> i32 {
     }
 }
 
+fn torrent_engine_last_error() -> String {
+    #[cfg(feature = "torrent-engine")]
+    {
+        engine_torrent::torrent_engine_last_error()
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        "torrent-engine feature disabled".into()
+    }
+}
+
 fn torrent_engine_port() -> u32 {
     #[cfg(feature = "torrent-engine")]
     {

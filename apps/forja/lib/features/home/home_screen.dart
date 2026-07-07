@@ -21,6 +21,8 @@ import 'package:api/models/movie.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/app/boot_cache.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
@@ -71,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   Future<List<Movie>>? _becauseFuture;
   int _becausePoolSize = 0; // unique in-progress shows; controls shuffle button
   StreamSubscription<List<Map<String, dynamic>>>? _historySeedSub;
+  VoidCallback? _splashDismissedListener;
 
   // Mood/genre filter state
   String _selectedMood = 'mind';
@@ -94,39 +97,73 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   void initState() {
     super.initState();
-    _trendingFuture = _api.getTrending().then((movies) {
-      _fetchHeroLogos(movies.take(5).toList());
-      // Pick tonight's randomized recommendation from a deeper pool
-      if (movies.length > 6 && mounted) {
-        final pool = movies.skip(3).toList();
-        setState(() => _tonightsPick = pool[math.Random().nextInt(pool.length)]);
-      }
-      // Prime ambient color for the first hero
-      if (movies.isNotEmpty) _extractAmbientFor(movies.first);
-      return movies;
-    });
-    _popularFuture = _api.getPopular();
-    _topRatedFuture = _api.getTopRated();
-    _nowPlayingFuture = _api.getNowPlaying();
+    _trendingFuture = _tmdbFuture(
+      BootCache.trending,
+      _api.getTrending,
+      onLoaded: (movies) {
+        _fetchHeroLogos(movies.take(5).toList());
+        if (movies.length > 6 && mounted) {
+          final pool = movies.skip(3).toList();
+          setState(() => _tonightsPick = pool[math.Random().nextInt(pool.length)]);
+        }
+        if (movies.isNotEmpty) _extractAmbientFor(movies.first);
+      },
+    );
+    _popularFuture = _tmdbFuture(BootCache.popular, _api.getPopular);
+    _topRatedFuture = _tmdbFuture(BootCache.topRated, _api.getTopRated);
+    _nowPlayingFuture = _tmdbFuture(BootCache.nowPlaying, _api.getNowPlaying);
     _moodFuture = _loadMoodMovies(_selectedMood);
-    
+
     _startHeroTimer();
     _loadStremioCatalogs();
     SettingsService.addonChangeNotifier.addListener(_onAddonsChanged);
 
-    // Trakt auto-sync (runs once per session, no-op if not logged in)
-    TraktService().fullSync();
-    // Simkl auto-sync (runs once per session, no-op if not logged in)
-    SimklService().fullSync();
+    _schedulePostSplashWork();
+  }
 
-    // Trakt personalized sections
-    _loadTraktRecommendations();
-    _loadTraktCalendar();
-    _loadTraktCalendarMovies();
+  Future<List<Movie>> _tmdbFuture(
+    List<Movie>? cached,
+    Future<List<Movie>> Function() fetch, {
+    void Function(List<Movie> movies)? onLoaded,
+  }) {
+    if (cached != null) {
+      if (onLoaded != null) onLoaded(cached);
+      return Future.value(cached);
+    }
+    return fetch().then((movies) {
+      onLoaded?.call(movies);
+      return movies;
+    });
+  }
 
-    // "Because you watched ___" — pick a random in-progress item once per
-    // app session. If history isn't loaded yet, wait for the first event.
-    _initBecauseYouWatched();
+  void _schedulePostSplashWork() {
+    void run() {
+      TraktService().fullSync();
+      SimklService().fullSync();
+      _loadTraktRecommendations();
+      _loadTraktCalendar();
+      _loadTraktCalendarMovies();
+      _initBecauseYouWatched();
+    }
+
+    void schedule() {
+      Future<void>.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) run();
+      });
+    }
+
+    if (ShellBus.splashDismissed.value) {
+      schedule();
+      return;
+    }
+
+    _splashDismissedListener = () {
+      if (!ShellBus.splashDismissed.value) return;
+      ShellBus.splashDismissed.removeListener(_splashDismissedListener!);
+      _splashDismissedListener = null;
+      schedule();
+    };
+    ShellBus.splashDismissed.addListener(_splashDismissedListener!);
   }
 
   void _initBecauseYouWatched() {
@@ -451,6 +488,9 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   void dispose() {
     SettingsService.addonChangeNotifier.removeListener(_onAddonsChanged);
+    if (_splashDismissedListener != null) {
+      ShellBus.splashDismissed.removeListener(_splashDismissedListener!);
+    }
     _heroTimer?.cancel();
     _heroController.dispose();
     _historySeedSub?.cancel();

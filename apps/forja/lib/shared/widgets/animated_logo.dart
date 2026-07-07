@@ -65,14 +65,8 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: _totalMs),
-    );
-    _startSynced();
-  }
-
-  Future<void> _startSynced() async {
-    await SplashSound.instance.play();
-    if (!mounted) return;
-    _controller.forward();
+    )..forward();
+    SplashSound.instance.play();
   }
 
   List<(double time, int letterIndex)> _buildColorSchedule() {
@@ -157,28 +151,33 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
     final haloDiameter = widget.logoHeight * _haloScale;
     final blurSigma = haloDiameter * 0.14;
     final glowSourceSize = haloDiameter * 0.38;
+    final haloExtent = haloDiameter + blurSigma * 4;
 
     return SizedBox(
       width: logoWidth,
       height: widget.logoHeight,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          final t = _controller.value;
-          final ms = t * _totalMs;
-          final introFade = Curves.easeOut.transform(_window(ms, 0, _fadeEndMs));
-          final greenT = _window(ms, _greenStartMs, _greenEndMs);
-          final bounce = 1 + math.sin(greenT * math.pi) * 0.035;
+      child: OverflowBox(
+        alignment: Alignment.center,
+        minWidth: haloExtent,
+        maxWidth: haloExtent,
+        minHeight: haloExtent,
+        maxHeight: haloExtent,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            final t = _controller.value;
+            final ms = t * _totalMs;
+            final introFade =
+                Curves.easeOut.transform(_window(ms, 0, _fadeEndMs));
+            final greenT = _window(ms, _greenStartMs, _greenEndMs);
+            final bounce = 1 + math.sin(greenT * math.pi) * 0.035;
 
-          return Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              Opacity(
-                opacity: introFade,
-                child: OverflowBox(
-                  maxWidth: haloDiameter + blurSigma * 4,
-                  maxHeight: haloDiameter + blurSigma * 4,
+            return Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                Opacity(
+                  opacity: introFade,
                   child: ImageFiltered(
                     imageFilter: ImageFilter.blur(
                       sigmaX: blurSigma,
@@ -205,21 +204,21 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
                     ),
                   ),
                 ),
-              ),
-              Opacity(
-                opacity: introFade,
-                child: Transform.scale(
-                  scale: bounce,
-                  child: ForjaLogo(
-                    width: logoWidth,
-                    height: widget.logoHeight,
-                    letterStyles: _letterStyles(t, colors.base),
+                Opacity(
+                  opacity: introFade,
+                  child: Transform.scale(
+                    scale: bounce,
+                    child: ForjaLogo(
+                      width: logoWidth,
+                      height: widget.logoHeight,
+                      letterStyles: _letterStyles(t, colors.base),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }

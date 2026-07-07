@@ -85,7 +85,12 @@ class TorrentStreamService {
       RustLib.instance.torrentSetPeerLimit(connLimit);
       final port = RustLib.instance.torrentEngineStart(0);
       if (port <= 0) {
-        _log('Rust torrent engine failed to start');
+        final detail = RustLib.instance.torrentEngineLastError();
+        _log(
+          detail.isEmpty
+              ? 'Rust torrent engine failed to start'
+              : 'Rust torrent engine failed to start: $detail',
+        );
         _setState(EngineState.error);
         return false;
       }

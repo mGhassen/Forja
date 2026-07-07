@@ -12,6 +12,9 @@ class ShellBus {
   /// Switch nav tab from anywhere: `ShellBus.requestTab.value = 'home';`
   static final ValueNotifier<String?> requestTab = ValueNotifier<String?>(null);
 
+  /// True after the splash overlay is dismissed — defer heavy tab work until then.
+  static final ValueNotifier<bool> splashDismissed = ValueNotifier<bool>(false);
+
   static void openStremioSearch({required String query, required String addonBaseUrl}) {
     stremioSearchNotifier.value = null;
     stremioSearchNotifier.value = {'query': query, 'addonBaseUrl': addonBaseUrl};

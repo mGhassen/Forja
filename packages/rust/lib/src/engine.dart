@@ -484,6 +484,9 @@ class RustLib {
   int torrentEngineStart(int preferredPort) =>
       _native.ffi_torrent_engine_start(preferredPort);
 
+  String torrentEngineLastError() =>
+      _readString(_native.ffi_torrent_engine_last_error());
+
   int torrentEnginePort() => _native.ffi_torrent_engine_port();
 
   void torrentEngineStop() => _native.ffi_torrent_engine_stop();
@@ -857,6 +860,11 @@ final class _FfiNative {
               'ffi_torrent_engine_start',
             )
             .asFunction(),
+        ffi_torrent_engine_last_error = lib
+            .lookup<ffi.NativeFunction<_VersionNative>>(
+              'ffi_torrent_engine_last_error',
+            )
+            .asFunction(),
         ffi_torrent_engine_port = lib
             .lookup<ffi.NativeFunction<_ProxyPortNative>>(
               'ffi_torrent_engine_port',
@@ -1090,6 +1098,7 @@ final class _FfiNative {
   final bool Function() ffi_torrent_is_running;
   final ffi.Pointer<ffi.Char> Function() ffi_torrent_status_json;
   final int Function(int) ffi_torrent_engine_start;
+  final ffi.Pointer<ffi.Char> Function() ffi_torrent_engine_last_error;
   final int Function() ffi_torrent_engine_port;
   final void Function() ffi_torrent_engine_stop;
   final void Function(int) ffi_torrent_set_peer_limit;

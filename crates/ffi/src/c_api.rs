@@ -495,6 +495,11 @@ pub extern "C" fn ffi_torrent_engine_start(preferred_port: u16) -> i32 {
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_torrent_engine_last_error() -> *mut c_char {
+    to_c_string(crate::torrent_engine_last_error())
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_torrent_engine_port() -> u16 {
     crate::torrent_engine_port().min(u16::MAX as u32) as u16
 }
