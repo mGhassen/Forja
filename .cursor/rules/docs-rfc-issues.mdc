@@ -198,6 +198,17 @@ Ship incrementally from **one RFC per feature**. Use slices inside the spec, not
 3. Update the folder README index
 4. Grep old path in `docs/` and fix links
 
+## After code changes (mandatory — same turn)
+
+When you land or materially advance work tied to a backlog version or RFC, **do not stop at code**. Update docs in the **same turn**:
+
+1. **Backlog file** (`docs/backlog/X.Y.Z-[status].md`) — tick `## Shipped` checkboxes; rename tag if lifecycle moved (`draft` → `open` → `partial` → `done`)
+2. **RFC file** — `**Status:**`, `## Status at a glance` progress, component table status, acceptance `[x]`/`[ ]`
+3. **Overview indexes** — [RFC README](../../docs/rfc/README.md) **Progress** + **Status** columns; [backlog README](../../docs/backlog/README.md) **Active** table
+4. **Cross-links** — grep old filename slug (e.g. `0.8.0-[draft]`, `023-[draft]`) under `docs/` and fix
+
+Skip only when the change is unrelated to any version/RFC (pure refactor, typo, tooling).
+
 | Folder | Terminal folders | Terminal statuses |
 |--------|------------------|-------------------|
 | `backlog/` | `done/` · `canceled/` | `done` · `canceled` |

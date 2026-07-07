@@ -38,7 +38,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | File | Codename | Status |
 |------|----------|--------|
-| [0.8.0-[draft].md](0.8.0-[draft].md) | Sidi Bou Said | draft |
+| [0.8.0-[open].md](0.8.0-[open].md) | Sidi Bou Said | open |
 
 ## On hold
 
