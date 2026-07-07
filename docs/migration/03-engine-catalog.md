@@ -47,7 +47,7 @@ Full delete blocked: `apps/forja` still imports `package:api/` widely; models, p
 |------|--------|
 | Move `anime_http.dart` → `packages/rust/lib/src/catalog_http.dart` | ✅ |
 | Move shared DTOs (`Movie`, `StreamSource`, `TorrentResult`) → `packages/rust/lib/src/models/` | ✅ |
-| Move host services (`pip`, `external_player`, `player_pool`, `android_player_launcher`) → `apps/forja/lib/shared/services/` | ✅ |
+| Move host services (`pip`, `external_player`, `player_pool`, `android_player_launcher`, `app_updater`) → `apps/forja/lib/shared/services/` | ✅ |
 | Rewire `packages/api/lib/api/*` imports to `package:rust/rust.dart` | ✅ |
 | Relocate host slices to `apps/forja` | ⬜ |
 | Delete remaining Dart catalog slices after Rust port | ⬜ |

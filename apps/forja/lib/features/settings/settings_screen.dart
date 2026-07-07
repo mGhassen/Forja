@@ -19,7 +19,7 @@ import 'package:api/api/simkl_service.dart';
 import 'package:api/api/mdblist_service.dart';
 import 'package:api/services/jackett_service.dart';
 import 'package:api/services/prowlarr_service.dart';
-import 'package:api/services/app_updater_service.dart';
+import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
 import 'webstreamr_settings_screen.dart';

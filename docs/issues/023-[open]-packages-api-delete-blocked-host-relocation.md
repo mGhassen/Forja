@@ -21,6 +21,7 @@ Phase 3 task P3-03 cannot delete `packages/api` wholesale yet. Catalog HTTP was 
 | Deleted legacy bridge file | ~~`packages/api/lib/api/anime_http.dart`~~ |
 | Deleted legacy model files | ~~`packages/api/lib/models/*.dart`~~ (`api.dart` re-exports from `rust`) |
 | Host player services relocated | `pip_service`, `external_player_service`, `player_pool_service`, `android_player_launcher` → `apps/forja/lib/shared/services/` |
+| Host updater relocated | `app_updater_service` → `apps/forja/lib/shared/services/` |
 | Call sites import `package:rust/rust.dart` | `packages/api/lib/api/*` (26 files) |
 
 ## Blockers to full delete
@@ -28,7 +29,7 @@ Phase 3 task P3-03 cannot delete `packages/api` wholesale yet. Catalog HTTP was 
 1. **`apps/forja`** — 80+ `package:api/` imports (UI, providers, playback wiring).
 2. **Host slices still in `packages/api`:** `lib/services/`, `lib/playback/`, models, `my_list`, Jellyfin wrappers, extractors (C3 WebView).
 3. **Dart engine debt:** HTML parse / orchestration in `lib/api/*` (C2 should be Rust per `ENGINE_BOUNDARY.md`); thin FFI wrappers (e.g. `tmdb_api.dart`) still parse in Dart.
-4. **Remaining Dart HTTP** (deferred playback wave): `debrid_api.dart`, `site111477_service.dart`, `mega_proxy.dart`, `jackett_service.dart`, `prowlarr_service.dart`, `link_resolver.dart`, `app_updater_service.dart`, `youtube_audio_extractor.dart`, `videasy_extractor.dart`.
+4. **Remaining Dart HTTP in `packages/api`** (deferred playback wave): `debrid_api.dart`, `site111477_service.dart`, `mega_proxy.dart`, `jackett_service.dart`, `prowlarr_service.dart`, `link_resolver.dart`, `youtube_audio_extractor.dart`, `videasy_extractor.dart`.
 
 ## Acceptance criteria (P3-03 done)
 
