@@ -2,7 +2,15 @@
 
 **Version:** v1.0 engine phase (web/WASM deferred to v3.0)  
 **Status:** fixed — Phases 1–3 engine migration complete ([migration index](../../migration/README.md))  
+**Target version:** [0.1.0](../backlog/done/0.1.0-[done].md)–[0.6.2](../backlog/done/0.6.2-[done].md)  
 **Boundary:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete** (v1.0 engine) · **22 / 23** acceptance (WASM deferred → [RFC-014](../014-[draft]-v3-web-rust.md)) |
+| **Backlog** | [0.1.0](../backlog/done/0.1.0-[done].md)–[0.6.2](../backlog/done/0.6.2-[done].md) |
 
 ## Summary
 

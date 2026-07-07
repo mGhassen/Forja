@@ -1,7 +1,17 @@
 # RFC-020: Media details routing
 
 **Version:** v1.1  
-**Status:** draft
+**Status:** draft  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md)  
+**Area:** `features/home/details_screen.dart` → `features/media/`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 4** acceptance (v1.1 slice) |
+| **Current slice** | v1.1 — move details to `features/media/` |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
 ## Summary
 

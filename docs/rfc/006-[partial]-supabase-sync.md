@@ -1,11 +1,27 @@
 # RFC-006: Supabase settings sync
 
 **Version:** v1.2  
-**Status:** stub
+**Status:** stub  
+**Target version:** v2 (Diwan & mer)  
+**Area:** `apps/forja/lib/shared/sync/src/sync_service.dart`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 1** components · **0 / 4** acceptance (v1.2 slice) |
+| **Current slice** | v1.2 — optional auth + settings sync |
+| **Backlog** | v2 |
 
 ## Summary
 
 Optional account to backup and restore settings across devices. Offline-first — no auth required to use Forja.
+
+## Components
+
+| Piece | Path | Status |
+|-------|------|--------|
+| SyncService | `shared/sync/src/sync_service.dart` | Stub |
 
 ## Stub
 

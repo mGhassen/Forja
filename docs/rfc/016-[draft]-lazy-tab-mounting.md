@@ -1,7 +1,17 @@
 # RFC-016: Lazy tab mounting
 
 **Version:** v1.0.1  
-**Status:** draft
+**Status:** draft  
+**Target version:** [0.5.1](../backlog/done/0.5.1-[done].md) slice (deferred remainder)  
+**Area:** `apps/forja/lib/shell/nav_config.dart`, `apps/forja/lib/shell/main_screen.dart`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 5** acceptance (v1.0.1 slice) |
+| **Current slice** | v1.0.1 — lazy tab cache |
+| **Backlog** | [0.5.1](../backlog/done/0.5.1-[done].md) slice → deferred |
 
 ## Summary
 

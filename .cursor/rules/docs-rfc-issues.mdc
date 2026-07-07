@@ -87,6 +87,36 @@ Feature **specs** — numbered RFCs, not semver files.
 | `fixed` | `[fixed]` | `docs/rfc/fixed/` |
 | `canceled` | `[canceled]` | `docs/rfc/canceled/` — will not build |
 
+### Mandatory RFC body sections
+
+Every RFC body includes (in this order, after the `#` title):
+
+1. **Metadata block** — `**Version:**`, `**Status:**` (required); optional `**Target version:**`, `**Depends on:**`, `**Area:**` (key paths)
+2. **`## Status at a glance`** — same pattern as [migration phases](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md#status-at-a-glance):
+
+```markdown
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **4 / 6** components · **0 / 4** acceptance (v1.1 slice) |
+| **Current slice** | v1.1 — wire overlay + server grid |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+```
+
+3. **`## Summary`** — then existing Components / Acceptance / Related sections unchanged
+
+**Progress rules** (derived from existing tables/checkboxes — no duplicate task lists):
+
+- **Components table:** count `Shipped` rows / total rows
+- **Acceptance checkboxes:** count `[x]` / total for the **current target slice** (highest incomplete `## Acceptance (vX.Y)` or slice named in active backlog)
+- Shipped earlier slices: second metric OK — e.g. `3 / 3 acceptance (v1.0) · 0 / 3 (v1.1)`
+- **`[fixed]`:** `**Progress** | **Complete**` (+ final acceptance counts if useful)
+- **`[draft]` / stub-only:** `0 / N acceptance (spec)` or `Spec only — not scheduled`
+- **Meta/bundle RFCs** (012, 013): progress from meta acceptance checklist or child RFC links — no third task system
+
+When a slice ships or component status changes: update glance **and** [RFC README](../../docs/rfc/README.md) **Progress** column in the **same turn** as checkbox/table edits.
+
 ---
 
 ## Issues (`docs/issues/`)

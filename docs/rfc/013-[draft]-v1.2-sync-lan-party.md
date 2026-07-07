@@ -1,7 +1,17 @@
 # RFC-013: v1.2 — Sync, LAN companion, watch party
 
+**Version:** v1.2  
 **Status:** draft  
+**Target version:** v2 (Diwan & mer)  
 **Depends on:** RFC-012 (v1.1)
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 6** acceptance (v1.2 bundle) · child RFCs: [006](006-[partial]-supabase-sync.md) 0/1·0/4, [007](007-[draft]-lan-companion.md) 0/4, [008](008-[partial]-watch-party.md) 0/4 |
+| **Current slice** | v1.2 — sync + LAN remote + watch party |
+| **Backlog** | v2 |
 
 ## Goal
 

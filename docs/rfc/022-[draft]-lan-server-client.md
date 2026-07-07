@@ -2,8 +2,17 @@
 
 **Version:** post-v1.2 (after [RFC-013](013-[draft]-v1.2-sync-lan-party.md))  
 **Status:** draft  
+**Target version:** v2+  
 **Depends on:** [RFC-009 — Rust FFI](fixed/009-[fixed]-rust-ffi.md), [RFC-004 — Provider registry](004-[partial]-provider-registry.md), [issue 003 — playback profiles](../issues/fixed/003-[fixed]-stremio-platform-playback-model.md)  
 **Related:** [ARCHITECTURE.md](../ARCHITECTURE.md), [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md), [RFC-007 — LAN companion](007-[draft]-lan-companion.md) (remote control, orthogonal), [RFC-010 — Web client](010-[draft]-web-client.md)
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 12** acceptance (post-v1.2 slice) |
+| **Current slice** | post-v1.2 — LAN server/client + mDNS pairing |
+| **Backlog** | v2+ |
 
 ---
 

@@ -1,7 +1,17 @@
 # RFC-017: Deferred engine boot
 
 **Version:** v1.0.1  
-**Status:** draft
+**Status:** draft  
+**Target version:** [0.5.0](../backlog/done/0.5.0-[done].md) slice (deferred remainder)  
+**Area:** `apps/forja/lib/app/bootstrap.dart`, `apps/forja/lib/app/engine_registry.dart`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 6** acceptance (v1.0.1 slice) |
+| **Current slice** | v1.0.1 — lazy engine init |
+| **Backlog** | [0.5.0](../backlog/done/0.5.0-[done].md) slice → deferred |
 
 ## Summary
 

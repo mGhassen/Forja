@@ -1,7 +1,18 @@
 # RFC-010: Web client
 
 **Version:** v3.0  
-**Status:** draft
+**Status:** draft  
+**Target version:** v3  
+**Depends on:** RFC-009 (Rust/WASM)  
+**Area:** `apps/forja` web build or `apps/forja_web/`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 5** acceptance (v3.0 slice) |
+| **Current slice** | v3.0 — browser client + HLS playback |
+| **Backlog** | v3 |
 
 ## Summary
 

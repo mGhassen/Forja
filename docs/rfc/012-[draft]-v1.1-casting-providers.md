@@ -1,7 +1,17 @@
 # RFC-012: v1.1 — Casting + expanded providers
 
+**Version:** v1.1  
 **Status:** draft  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md)  
 **Depends on:** RFC-011 (v1.0)
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 8** acceptance (v1.1 bundle) · child RFCs: [003](003-[partial]-player-overlay.md) 4/6·0/4, [004](004-[partial]-provider-registry.md) 3/3·0/3, [005](005-[partial]-casting.md) 0/1·0/4 |
+| **Current slice** | v1.1 — overlay + providers + casting bundle |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
 ## Goal
 

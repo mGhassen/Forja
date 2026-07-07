@@ -1,7 +1,17 @@
 # RFC-014: v3.0 — Web client + Rust core
 
+**Version:** v3.0  
 **Status:** draft  
+**Target version:** v3  
 **Depends on:** RFC-013 (optional; v1.0 codebase sufficient to start Rust extraction)
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 5** acceptance (v3.0 bundle) |
+| **Current slice** | v3.0 — WASM + web client |
+| **Backlog** | v3 |
 
 ## Goal
 

@@ -38,7 +38,13 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | File | Codename | Status |
 |------|----------|--------|
-| [1.0.0-[draft].md](1.0.0-[draft].md) | Bab Souika | draft |
+| [0.8.0-[draft].md](0.8.0-[draft].md) | Sidi Bou Said | draft |
+
+## On hold
+
+| File | Codename | Note |
+|------|----------|------|
+| [1.0.0-[draft].md](1.0.0-[draft].md) | Bab Souika | Player overlay — after 0.8.x |
 
 ## Done — v0 master index
 

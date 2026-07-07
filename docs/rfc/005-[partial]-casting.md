@@ -1,11 +1,27 @@
 # RFC-005: Casting (AirPlay + Chromecast)
 
 **Version:** v1.1  
-**Status:** stub
+**Status:** stub  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md)  
+**Area:** `apps/forja/lib/shared/casting/src/casting_service.dart`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 1** components · **0 / 4** acceptance (v1.1 slice) |
+| **Current slice** | v1.1 — platform channels + player Cast button |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
 ## Summary
 
 Cast resolved VOD/IPTV streams to external devices. Native platform channels; independent of media_kit widget.
+
+## Components
+
+| Piece | Path | Status |
+|-------|------|--------|
+| CastingService | `shared/casting/src/casting_service.dart` | Stub |
 
 ## Stub
 

@@ -1,7 +1,16 @@
 # RFC-011: v1.0 — macOS MVP
 
+**Version:** v1.0  
 **Status:** fixed  
+**Target version:** [0.0.1](../backlog/done/0.0.1-[done].md)  
 **Platforms:** macOS primary; iOS/Android/Windows/Linux runners present
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete** (v1.0 MVP) · **13 / 14** acceptance (notarization → [RFC-021](../021-[draft]-release-ship-hygiene.md)) |
+| **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md) |
 
 ## Goal
 

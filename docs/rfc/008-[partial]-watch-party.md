@@ -1,7 +1,18 @@
 # RFC-008: Watch party
 
 **Version:** v1.2+  
-**Status:** stub — placeholder (disabled button in player)
+**Status:** stub — placeholder (disabled button in player)  
+**Target version:** v2 (Diwan & mer)  
+**Depends on:** RFC-007 (LAN WebSocket)  
+**Area:** player overlay Watch Party button (disabled)
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 4** acceptance (v1.2+ slice) |
+| **Current slice** | v1.2 — LAN-first group playback |
+| **Backlog** | v2 |
 
 ## Summary
 

@@ -1,7 +1,16 @@
 # RFC-021: Release and ship hygiene
 
 **Version:** v1.0 (ship gate)  
-**Status:** draft
+**Status:** draft  
+**Area:** CI, macOS notarization, repo root, branding assets
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 9** acceptance (v1.0 release gate) |
+| **Current slice** | v1.0 — notarized release + clean repo |
+| **Backlog** | — |
 
 ## Summary
 

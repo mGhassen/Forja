@@ -1,7 +1,15 @@
 # RFC-002: IPTV portal groups
 
 **Version:** v1.0  
-**Status:** fixed
+**Status:** fixed  
+**Target version:** [0.0.1](../backlog/done/0.0.1-[done].md)
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete** · **4 / 4** acceptance (v1.0) |
+| **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md) |
 
 ## Summary
 

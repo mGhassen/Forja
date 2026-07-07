@@ -1,7 +1,17 @@
 # RFC-018: Startup splash, Home stagger, deferred imports
 
 **Version:** v1.0.1  
-**Status:** draft
+**Status:** draft  
+**Target version:** [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) slices (deferred remainder)  
+**Area:** `apps/forja/lib/app/bootstrap.dart`, `apps/forja/lib/features/home/home_screen.dart`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 5** acceptance (v1.0.1 slice) |
+| **Current slice** | v1.0.1 — splash + Home stagger |
+| **Backlog** | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) → deferred |
 
 ## Summary
 

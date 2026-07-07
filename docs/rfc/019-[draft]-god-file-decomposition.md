@@ -1,7 +1,18 @@
 # RFC-019: God file decomposition
 
 **Version:** v1.1  
-**Status:** draft
+**Status:** draft  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md)  
+**Depends on:** RFC-011 (v1.0) — prerequisite for RFC-003  
+**Area:** `features/home/`, `features/settings/`, `shared/player/`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 5** acceptance (v1.1 slice) |
+| **Current slice** | v1.1 — split god files before overlay wiring |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
 ## Summary
 

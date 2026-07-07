@@ -1,7 +1,17 @@
 # RFC-007: LAN companion API
 
 **Version:** v1.2  
-**Status:** draft
+**Status:** draft  
+**Target version:** v2 (Diwan & mer)  
+**Area:** `packages/streaming/lib/src/local_server_service.dart`
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 4** acceptance (v1.2 slice) |
+| **Current slice** | v1.2 — LAN remote control API |
+| **Backlog** | v2 |
 
 ## Summary
 
