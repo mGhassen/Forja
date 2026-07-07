@@ -26,6 +26,8 @@ dropped        →  canceled/0.7.6-[canceled].md
 
 Inside each file: checklist of what ships (links to RFCs, issues). **The version is the file.**
 
+Partial RFC slices and version slip: see [Version ↔ RFC ↔ issue](../../.cursor/rules/docs-rfc-issues.mdc#version--rfc--issue-three-layers) in the rules.
+
 ## Active
 
 | File | Status |

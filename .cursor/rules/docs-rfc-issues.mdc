@@ -85,6 +85,60 @@ Workaround requires user permission per [honesty-and-completion.mdc](./honesty-a
 
 ---
 
+## Version ↔ RFC ↔ issue (three layers)
+
+| Layer | Owns | Slips how? |
+|-------|------|------------|
+| **Backlog** `0.7.6-[open].md` | Which items ship in which semver | Move item to next version file; close old version honestly |
+| **RFC** `003-[partial]-….md` | Feature spec + full acceptance | **Same file** — status changes only when implementation state changes |
+| **Issue** `018-[open]-….md` | Bug, debt, verifiable sub-work | **Same file** — `[fixed]` or `[canceled]` when done or abandoned |
+
+**Version assignment lives in backlog**, not in RFC/issue filenames. Optional in RFC/issue body: `**Target version:** 0.7.7`.
+
+### Version slip (item not done when release closes)
+
+1. Move old backlog → `done/X.Y.Z-[done].md` with **Shipped** and **Deferred → next version** sections
+2. Create/update next backlog (e.g. `0.7.7-[draft].md`) with deferred items
+3. RFC/issue stays `[partial]` / `[open]` / `[draft]` — do **not** `[fixed]` or `[canceled]` unless work is done or killed
+4. `[canceled]` on backlog = version dropped; `[canceled]` on RFC/issue = will never build/fix
+
+### Partial RFC shipped across versions — do not split
+
+Ship incrementally from **one RFC per feature**. Use slices inside the spec, not new RFC numbers.
+
+**Inside the RFC:**
+
+- Components table with per-piece status (`Shipped` / `Stub` / …)
+- `## Slices` or phased acceptance (`## Acceptance (v1.1)`) with checkboxes
+- When a slice ships: tick checkboxes, note `*(shipped 0.7.6)*` on those rows
+
+**In backlog:**
+
+- Checklist lines name the **slice**, not the whole RFC: `RFC-003: player shell (no overlay wiring)`
+- Next version lists remaining slice: `RFC-003: wire overlay + server grid`
+
+**RFC status:**
+
+- Stays `[partial]` until **all** acceptance for that RFC is met in code → then `[fixed]`
+- Do **not** rename to `[fixed]` because one slice shipped in a version
+- Backlog `[done]` can honestly list partial RFC slices as shipped
+
+### When to split vs nest
+
+| Situation | Action |
+|-----------|--------|
+| Same feature, shipped in chunks across versions | **One RFC** — slices/phases inside |
+| Different subsystem, independent ship/cancel | **Separate RFCs** (e.g. sync vs watch party) |
+| Release theme / milestone index | **Meta RFC** (e.g. v1.2 bundle) — links to child RFCs; spec stays in each child |
+| Concrete bug, test gap, debt with own fix | **Child issue** (parent links 019–022 pattern) |
+| “Ship this slice in 0.7.7” | **Backlog checklist line** linking to RFC section |
+
+**Do not** invent a global task numbering scheme (`RFC-003-T4`) unless explicitly requested. Migration P2-XX IDs stay in migration docs only.
+
+**Do not:** clone an RFC for the next version; put semver in RFC filenames; use `[canceled]` when you mean deferred to next version.
+
+---
+
 ## On status change
 
 1. Rename file (tag + move to terminal folder when `done` / `fixed` / `canceled`)
