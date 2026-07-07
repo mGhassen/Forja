@@ -13,6 +13,24 @@
 | **Current slice** | v1.0.1 — lazy engine init |
 | **Backlog** | [0.5.0](../backlog/done/0.5.0-[done].md) slice → deferred |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.0.1)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R17-A01 | Cold boot does not call `TorrentStreamService.start()` until magnet used | ⬜ |
+| 2 | R17-A02 | Cold boot does not call `LocalServerService.start()` until proxy needed | ⬜ |
+| 3 | R17-A03 | Offline boot completes without network engine calls | ⬜ |
+| 4 | R17-A04 | Magnet tab still works after deferral | ⬜ |
+| 5 | R17-A05 | IPTV / streaming playback still works after deferral | ⬜ |
+| 6 | R17-A06 | Debug log shows deferred init timing | ⬜ |
+
+---
+
+
 ## Summary
 
 Move heavy native and network engines off the critical boot path in [`bootstrap.dart`](../../apps/forja/lib/app/bootstrap.dart). Boot should reach Home quickly; pay for libtorrent, local proxy, and bulk TMDB only when the user needs them.
@@ -98,14 +116,6 @@ Errors: catch, log `[EngineRegistry] $id failed: $e`, surface once via `ShellBus
 | Feature entry points | Call `EngineRegistry.ensure` |
 | [`home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | Own TMDB prefetch (stagger per RFC-018) |
 
-## Acceptance
-
-- [ ] Cold boot does not call `TorrentStreamService.start()` until magnet/torrent used
-- [ ] Cold boot does not call `LocalServerService.start()` until stream needs proxy
-- [ ] Offline boot completes without network engine calls
-- [ ] Magnet tab still works after deferral
-- [ ] IPTV / streaming playback still works after deferral
-- [ ] Debug log shows deferred init timing
 
 ## Related
 

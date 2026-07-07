@@ -11,6 +11,11 @@
 | **Progress** | **Complete** · **4 / 4** acceptance (v1.0) |
 | **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+
 ## Summary
 
 Organize Xtream portals into color-coded groups with metadata (expiry, connections) persisted locally.
@@ -57,9 +62,3 @@ Feature code: `apps/forja/lib/features/iptv/`
 
 Portal credentials sync via RFC-006 (encrypted blob in Supabase).
 
-## Acceptance (v1.0)
-
-- [x] Create/rename/delete groups
-- [x] Assign portals to groups
-- [x] Portal meta displayed on dashboard
-- [x] M3U playlists alongside Xtream

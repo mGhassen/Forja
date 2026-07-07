@@ -13,6 +13,25 @@
 | **Current slice** | v1.1 — overlay + providers + casting bundle |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.1 bundle)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R12-A01 | Server grid visible; switch provider mid-playback | ⬜ |
+| 2 | R12-A02 | Active provider highlighted | ⬜ |
+| 3 | R12-A03 | ~15+ providers in registry; toggles in Settings | ⬜ |
+| 4 | R12-A04 | AirPlay macOS + iOS for VOD | ⬜ |
+| 5 | R12-A05 | Chromecast Android + iOS for VOD | ⬜ |
+| 6 | R12-A06 | Cast button hidden when unsupported | ⬜ |
+| 7 | R12-A07 | Native macOS PiP evaluated | ⬜ |
+| 8 | R12-A08 | In-app updates polished (RFC-015) | ⬜ |
+
+---
+
 ## Goal
 
 Polish the unified player UX (Cineby/Rive-style overlay with in-player server grid) and add native casting on mobile/desktop where supported.
@@ -58,16 +77,6 @@ Implement `CastingService` platform channels:
 VOD: cast resolved URL; use `LocalServerService` proxy when Referer required.  
 IPTV live: best-effort via HLS proxy transmux.
 
-## Acceptance checklist
-
-- [ ] Server grid visible in player; switch provider mid-playback without exit
-- [ ] Active provider highlighted (border + checkmark)
-- [ ] ~15+ providers in registry; toggles in Settings
-- [ ] AirPlay works on macOS + iOS for VOD
-- [ ] Chromecast works on Android + iOS for VOD
-- [ ] Cast button hidden when platform unsupported
-- [ ] Native macOS PiP evaluated (optional upgrade from simulated PiP)
-- [ ] In-app updates polished: skip version, SHA256 verify, macOS DMG (RFC-015)
 
 ## Related RFCs
 

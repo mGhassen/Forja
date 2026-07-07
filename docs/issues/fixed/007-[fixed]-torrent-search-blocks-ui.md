@@ -7,14 +7,19 @@
 **Area:** `packages/rust/lib/src/facade.dart`, player screens, `details_screen.dart`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
+## Status at a glance
 
-## Status summary
+| | |
+|--|--|
+| **Progress** | **1 / 2** code · **0 / 1** manual QA |
+| **Backlog** | [0.4.3](../backlog/done/0.4.3-[done].md) |
 
-| Layer | Status | Notes |
-|-------|--------|-------|
-| **Symptom** — UI thread blocks on search/filter/sort | **fixed** | facade → `EngineWorkerPool` |
-| **Root** — async parallel search in Rust | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
-| **Root** — per-search isolate spawn | **fixed** | `EngineWorkerPool` reuses 3 workers |
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+
 
 ## Root cause (before fix)
 

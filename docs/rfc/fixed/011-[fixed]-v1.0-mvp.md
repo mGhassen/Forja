@@ -12,6 +12,31 @@
 | **Progress** | **Complete** (v1.0 MVP) · **13 / 14** acceptance (notarization → [RFC-021](../021-[draft]-release-ship-hygiene.md)) |
 | **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.0)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R11-A01 | Feature-first layout under `apps/forja/lib/` | ✅ |
+| 2 | R11-A02 | 19 nav tabs + Settings in `nav_config.dart` | ✅ |
+| 3 | R11-A03 | 6 engine packages; no UI packages in `packages/` | ✅ |
+| 4 | R11-A04 | Root legacy app removed | ✅ |
+| 5 | R11-A05 | Platform folders under `apps/forja/` | ✅ |
+| 6 | R11-A06 | IPTV Xtream + M3U + portal groups (RFC-002) | ✅ |
+| 7 | R11-A07 | Stremio catalog + torrent playback | ✅ |
+| 8 | R11-A08 | ProviderRegistry core set (RFC-004) | ✅ |
+| 9 | R11-A09 | Unified desktop/mobile player (media_kit) | ✅ |
+| 10 | R11-A10 | PiP (simulated desktop + Android floating) | ✅ |
+| 11 | R11-A11 | Domain-split settings | ✅ |
+| 12 | R11-A12 | `flutter build macos --debug` succeeds | ✅ |
+| 13 | R11-A13 | macOS release build + notarization (CI) | ⬜ |
+| 14 | R11-A14 | In-app update check (RFC-015 partial) | ✅ |
+
+---
+
 ## Goal
 
 Ship Forja as a full cinema app with all PlayTorrio nav tabs, clean monorepo layout, and macOS release build.
@@ -48,23 +73,6 @@ Engine packages: `core`, `storage`, `api`, `streaming`, `webstreamr`, `scrapers`
 | Settings | `features/settings/` | storage |
 
 Player lives in `lib/shared/player/` (not a nav tab). Cross-feature navigation via `AppRouter`.
-
-## v1.0 acceptance checklist
-
-- [x] Feature-first layout under `apps/forja/lib/`
-- [x] 19 nav tabs + Settings in `shell/nav_config.dart`
-- [x] 6 engine packages; no UI packages in `packages/`
-- [x] Root legacy app removed (`lib/`, root platform folders)
-- [x] Platform folders under `apps/forja/{macos,ios,android,windows,linux}`
-- [x] IPTV Xtream + M3U + portal groups (RFC-002)
-- [x] Stremio catalog + torrent playback
-- [x] ProviderRegistry core set (RFC-004)
-- [x] Unified desktop/mobile player (media_kit)
-- [x] PiP (simulated desktop + Android floating)
-- [x] Domain-split settings
-- [x] `flutter build macos --debug` succeeds
-- [ ] macOS release build + notarization (CI: `.github/workflows/build.yml`)
-- [x] In-app update check (RFC-015 partial)
 
 ## Out of scope (deferred)
 

@@ -6,16 +6,27 @@
 **Area:** `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart`, `iptv_controller.dart`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
+## Status at a glance
 
-## Status summary
+| | |
+|--|--|
+| **Progress** | **Complete** |
+| **Backlog** | [0.4.5](../backlog/done/0.4.5-[done].md) |
 
-| Layer | Status | Notes |
-|-------|--------|-------|
-| **Root cause** — cursor parsing bug → infinite loop | **fixed** | logic fix, not isolate offload |
-| **Safety net** — empty-page exit, Stop button | **fixed** | `iptv_controller.dart` |
-| **UI freeze during scrape** | **fixed** (separate) | isolate offload — [004](004-[fixed]-sync-ffi-ui-thread-audit.md) |
 
-No open engine debt for this issue. This is a **real fix**, not a workaround.
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+## Fix
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | I14-F01 | IPTV Reddit catalog cursor loop fixed | ✅ |
+
+---
+
+
 
 ## Root cause (before fix)
 

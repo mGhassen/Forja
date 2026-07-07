@@ -12,6 +12,39 @@
 | **Progress** | **Complete** (v1.0 engine) · **22 / 23** acceptance (WASM deferred → [RFC-014](../014-[draft]-v3-web-rust.md)) |
 | **Backlog** | [0.1.0](../backlog/done/0.1.0-[done].md)–[0.6.2](../backlog/done/0.6.2-[done].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (engine)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R09-A01 | `crates/` workspace with `cargo test --workspace` green | ✅ |
+| 2 | R09-A02 | `ffi` C ABI round-trip (`ffi_add`) | ✅ |
+| 3 | R09-A03 | `packages/rust` parity test suite | ✅ |
+| 4 | R09-A04 | CI workflow `rust.yml` | ✅ |
+| 5 | R09-A05 | `Engine.init()` in app bootstrap | ✅ |
+| 6 | R09-A06 | M3U parse via FFI in IPTV path | ✅ |
+| 7 | R09-A07 | Provider URLs via FFI | ✅ |
+| 8 | R09-A08 | Dylib loads on macOS without env override | ✅ |
+| 9 | R09-A09 | Stremio URL helpers wired | ✅ |
+| 10 | R09-A10 | Scrapers HTML parse + dedup wired | ✅ |
+| 11 | R09-A11 | Full M3U golden parity (4 fixtures) | ✅ |
+| 12 | R09-A12 | Episode matcher golden parity | ✅ |
+| 13 | R09-A13 | Webstreamr Rust golden suite | ✅ |
+| 14 | R09-A14 | Webstreamr Dart FFI parity | ✅ |
+| 15 | R09-A15 | App engine smoke tests (13 tests in CI) | ✅ |
+| 16 | R09-A16 | Mobile release bundles Rust parsers | ✅ |
+| 17 | R09-A17 | Full parity suite (core paths) | ✅ |
+| 18 | R09-A18 | WASM smoke test (v3.0) | ⏭️ |
+| 19 | R09-A19 | Step 9: playback Dart engine deleted | ✅ |
+| 20 | R09-A20 | B2: `libtorrent_flutter` dropped — librqbit | ✅ |
+| 21 | R09-A21 | Device magnet E2E on iOS/Android (P2-14) | ✅ |
+
+---
+
+
 ## Summary
 
 Extract engine logic into Rust crates. Flutter consumes via C ABI (`ffi`) through `packages/rust`. ~~`packages/api`~~ deleted in P3-03; playback + catalog glue lives in `packages/rust/lib/src/`.
@@ -121,29 +154,6 @@ Parity rule: **Rust output must match Dart reference** for the same fixture befo
 - Replacing WebView extractors with Rust
 - Full libtorrent removed — librqbit on all platforms (P2-20 → P2-23)
 
-## Acceptance
-
-- [x] `crates/` workspace with `cargo test --workspace` green
-- [x] `ffi` C ABI round-trip (`ffi_add`)
-- [x] `packages/rust` parity test suite
-- [x] CI workflow `rust.yml`
-- [x] `Engine.init()` in app bootstrap
-- [x] M3U parse via FFI in IPTV path
-- [x] Provider URLs (vidlink, vixsrc, vidnest) via FFI
-- [x] Dylib loads on `flutter run -d macos` without env override
-- [x] Stremio URL helpers wired (`buildResourceUrl`, split, normalize)
-- [x] Scrapers HTML parse + dedup wired
-- [x] Full M3U golden parity (4 fixtures)
-- [x] Episode matcher golden parity (18 match + 3 pick cases)
-- [x] Webstreamr Rust golden suite (23 extractors · 21 sources)
-- [x] Webstreamr Dart FFI parity (21/23 extractors · 22/22 sources)
-- [x] App engine smoke tests (`apps/forja/test/engine_smoke_test.dart` — 13 tests in CI)
-- [x] Mobile release bundles Rust parsers (Android `buildRust=true` · iOS Release build phase)
-- [x] Full parity suite (core paths; lulustream/fastream stream-fetch documented gap)
-- [ ] WASM smoke test (v3.0)
-- [x] Step 9: playback Dart engine deleted (`streaming`/`storage`/`core`; parity in `packages/rust/test/`)
-- [x] B2: `libtorrent_flutter` dropped — librqbit via `crates/torrent` (P2-20 → P2-23)
-- [x] Device magnet E2E on iOS/Android (P2-14) — `mobile_magnet_e2e_test.dart` + CI `android-magnet-e2e`
 
 ## Related
 

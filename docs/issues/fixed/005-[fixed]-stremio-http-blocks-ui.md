@@ -7,14 +7,19 @@
 **Area:** `packages/api/lib/api/stremio_service.dart`, `crates/stremio-core`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
+## Status at a glance
 
-## Status summary
+| | |
+|--|--|
+| **Progress** | **1 / 2** code · **0 / 1** manual QA |
+| **Backlog** | [0.4.2](../backlog/done/0.4.2-[done].md) |
 
-| Layer | Status | Notes |
-|-------|--------|-------|
-| **Symptom** — UI thread blocks on addon HTTP | **fixed** | `runStremioHttpGet` → `EngineWorkerPool` |
-| **Root** — blocking HTTP in `stremio-core` | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
-| **Parse helpers** on UI thread | **OK** | CPU-only, small payloads after HTTP returns |
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+
 
 ## Root cause (before fix)
 

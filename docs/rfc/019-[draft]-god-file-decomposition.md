@@ -14,6 +14,23 @@
 | **Current slice** | v1.1 — split god files before overlay wiring |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.1)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R19-A01 | No file under `features/` or `shared/player/` exceeds ~1200 lines | ⬜ |
+| 2 | R19-A02 | `features/player/` deleted | ⬜ |
+| 3 | R19-A03 | Inline `_HoverScale` / `_MovieSection` removed from Home where shared widget fits | ⬜ |
+| 4 | R19-A04 | Settings domains in separate files | ⬜ |
+| 5 | R19-A05 | Player `controls/` folder with subtitle + quality extracted | ⬜ |
+
+---
+
+
 ## Summary
 
 Split oversized screens into focused files without behavior changes. Improves reviewability, testability, and parallel work — prerequisite for v1.1 player overlay work (RFC-003).
@@ -108,13 +125,6 @@ After each PR:
 - Manual smoke: affected tab + one unrelated tab
 - No new golden tests required unless extracting pure widgets
 
-## Acceptance
-
-- [ ] No file under `features/` or `shared/player/` exceeds ~1200 lines (except generated)
-- [ ] `features/player/` deleted
-- [ ] Inline `_HoverScale` / `_MovieSection` removed from Home where shared widget fits
-- [ ] Settings domains in separate files
-- [ ] Player `controls/` folder exists with at least subtitle + quality extracted
 
 ## Related
 

@@ -7,6 +7,26 @@
 **Reported:** 2026-07-06  
 **Fixed:** 2026-07-06  
 **Extends:** [015](015-[fixed]-rust-blocking-http-engine-debt.md)
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete** |
+| **Backlog** | [0.4.0](../backlog/done/0.4.0-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+## Fix
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | I16-F01 | Async job FFI hard cancel shipped | ✅ |
+
+---
+
 
 ## Summary
 

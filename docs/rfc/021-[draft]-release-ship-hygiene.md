@@ -8,9 +8,29 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 9** acceptance (v1.0 release gate) |
+| **Progress** | **0 / 8** acceptance (v1.0 release gate) |
 | **Current slice** | v1.0 — notarized release + clean repo |
 | **Backlog** | — |
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.0 release gate)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R21-A01 | Git working tree clean; no root legacy folders | ⬜ |
+| 2 | R21-A02 | `melos bootstrap` + `flutter analyze` on app + packages | ⬜ |
+| 3 | R21-A03 | `flutter build macos --release` succeeds locally | ⬜ |
+| 4 | R21-A04 | Notarized DMG installs on clean Mac | ⬜ |
+| 5 | R21-A05 | GitHub Release on tag with all platform assets | ⬜ |
+| 6 | R21-A06 | In-app update finds release (RFC-015) | ⬜ |
+| 7 | R21-A07 | Icon + splash show Forja branding | ⬜ |
+| 8 | R21-A08 | Jellyfin login works on macOS (keychain) | ⬜ |
+
+---
+
 
 ## Summary
 
@@ -125,16 +145,6 @@ Bundle id: `com.forja.app` (consistent across platforms).
 
 Document any change to title bar height in this RFC and both Swift + Dart constants.
 
-## 7. Release checklist (v1.0 gate)
-
-- [ ] Git working tree clean; no root legacy folders
-- [ ] `melos bootstrap` + `flutter analyze` on app + 6 packages
-- [ ] `flutter build macos --release` succeeds locally
-- [ ] Notarized DMG installs on clean Mac
-- [ ] GitHub Release on tag with all platform assets
-- [ ] In-app update finds release (RFC-015)
-- [ ] Icon + splash show Forja branding
-- [ ] Jellyfin login works on macOS (keychain)
 
 ## Related
 

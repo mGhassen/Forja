@@ -7,6 +7,18 @@
 **Area:** `apps/forja/lib/features/home/details_screen.dart`, `streaming_details_screen.dart`, `packages/api/lib/playback/webstreamr_service.dart`, player screens  
 **Reported:** 2026-07-07  
 **Related:** [009](fixed/009-[fixed]-post-migration-resilience-audit.md) (cancel UX shipped; races not QA’d)
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 3** acceptance |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 
@@ -38,11 +50,6 @@ Shipped in:
 
 Likely double-increment of generation on navigation + explicit cancel, or `cancelPending()` called on dispose when a new screen already started the next resolve.
 
-## Acceptance
-
-- [ ] Scenarios 1–6 pass on desktop (and mobile for player rows)
-- [ ] No scenario reproduces WebStreamr-class “list disappeared” without user cancel
-- [ ] If bug found: fix + regression test or documented workaround issue
 
 ## Related
 

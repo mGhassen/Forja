@@ -13,15 +13,23 @@
 | **Current slice** | v1.2 — optional auth + settings sync |
 | **Backlog** | v2 |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Components
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R06-C01 | SyncService (`sync_service.dart`) | ⬜ |
+
+---
+
+
 ## Summary
 
 Optional account to backup and restore settings across devices. Offline-first — no auth required to use Forja.
 
-## Components
-
-| Piece | Path | Status |
-|-------|------|--------|
-| SyncService | `shared/sync/src/sync_service.dart` | Stub |
 
 ## Stub
 
@@ -83,9 +91,3 @@ class SyncService {
 
 Use `supabase migration new <name>` — never create SQL files manually.
 
-## Acceptance (v1.2)
-
-- [ ] App works fully without account
-- [ ] Login restores settings on fresh install
-- [ ] IPTV passwords encrypted before upload
-- [ ] RLS enforced; user A cannot read user B

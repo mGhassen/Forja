@@ -14,6 +14,22 @@
 | **Current slice** | v1.2 — LAN-first group playback |
 | **Backlog** | v2 |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.2+)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R08-A01 | 2+ clients stay within ±2s on LAN | ⬜ |
+| 2 | R08-A02 | Host pause pauses all guests | ⬜ |
+| 3 | R08-A03 | Room closes when host leaves | ⬜ |
+| 4 | R08-A04 | Internet party scoped to Phase B if shipped | ⬜ |
+
+---
+
+
 ## Summary
 
 Synchronized group viewing: shared stream URL, playback position, and play/pause state.
@@ -55,12 +71,6 @@ Guests apply host state; drift correction every 5s or on pause.
 - Overlay: Watch Party button (currently disabled / "Coming soon")
 - Flow: Host → Create room → share code → guests Join → host picks title → all play
 
-## Acceptance (v1.2+)
-
-- [ ] 2+ clients stay within ±2s on LAN
-- [ ] Host pause pauses all guests
-- [ ] Room closes when host leaves
-- [ ] Internet party scoped to Phase B if shipped
 
 ## Related
 

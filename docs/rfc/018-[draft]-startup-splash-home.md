@@ -13,6 +13,23 @@
 | **Current slice** | v1.0.1 — splash + Home stagger |
 | **Backlog** | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) → deferred |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.0.1)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R18-A01 | No fixed minimum splash delay in bootstrap | ⬜ |
+| 2 | R18-A02 | Home shows hero/trending before secondary rails populate | ⬜ |
+| 3 | R18-A03 | Palette not run for off-screen posters in initial build | ⬜ |
+| 4 | R18-A04 | At least 3 features use deferred import | ⬜ |
+| 5 | R18-A05 | No regression in Home content after full load | ⬜ |
+
+---
+
+
 ## Summary
 
 Remove artificial splash delay, stagger Home API work after first frame, and optionally defer heavy feature libraries from initial Dart load.
@@ -117,13 +134,6 @@ Product flavor excluding `libtorrent_flutter`, `flutter_js`, and Magnet/Download
 | Home hero visible | first frame after tab mount |
 | TMDB requests at Home open | 1 (trending), not 4 |
 
-## Acceptance
-
-- [ ] No fixed minimum splash delay in bootstrap
-- [ ] Home shows hero/trending before secondary rails populate
-- [ ] Palette not run for off-screen posters in initial build
-- [ ] At least 3 features use deferred import; first open shows placeholder then screen
-- [ ] No regression in Home content after full load
 
 ## Related
 

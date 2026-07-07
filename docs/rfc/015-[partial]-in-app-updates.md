@@ -13,6 +13,61 @@
 | **Current slice** | v1.1 — skip version, SHA256, macOS DMG, CI assets |
 | **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md), [1.0.0](../backlog/1.0.0-[draft].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Components
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-C01 | Update checker (`app_updater_service.dart`) | ✅ |
+| 2 | R15-C02 | Update UI (`update_dialog.dart`) | ✅ |
+| 3 | R15-C03 | Startup check in MainScreen | ✅ |
+| 4 | R15-C04 | Manual check in Settings | ✅ |
+| 5 | R15-C05 | Android OTA (`ota_update`) | ✅ |
+| 6 | R15-C06 | macOS/iOS open download page | ✅ |
+| 7 | R15-C07 | Semver compare + GitHub API | ✅ |
+
+---
+
+## Acceptance (v1.0)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A01 | GitHub latest release check | ✅ |
+| 2 | R15-A02 | Semver compare vs `package_info_plus` | ✅ |
+| 3 | R15-A03 | Update dialog with release notes | ✅ |
+| 4 | R15-A04 | Android in-app OTA install | ✅ |
+| 5 | R15-A05 | macOS/iOS open download page | ✅ |
+| 6 | R15-A06 | Manual check in Settings | ✅ |
+| 7 | R15-A07 | Startup check in MainScreen | ✅ |
+
+---
+
+## Acceptance (v1.1)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A08 | `update_dismissed_version` — respect Later | ⬜ |
+| 2 | R15-A09 | Auto-check throttle (max once per 24h) | ⬜ |
+| 3 | R15-A10 | Windows/Linux download with in-dialog progress | ⬜ |
+| 4 | R15-A11 | macOS: download DMG to Downloads + open | ⬜ |
+| 5 | R15-A12 | SHA256 verification before install | ⬜ |
+| 6 | R15-A13 | Repo slug configurable / Forja-branded GitHub org | ⬜ |
+| 7 | R15-A14 | CI publishes correctly named assets on every `v*` tag | ⬜ |
+
+---
+
+## Acceptance (v1.2 optional)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A15 | Beta channel toggle | ⏭️ |
+| 2 | R15-A16 | Mandatory update support | ⏭️ |
+
+---
+
 ## Summary
 
 Forja checks GitHub Releases for a newer version, shows an in-app dialog with release notes, and installs or downloads per platform. No separate update server — releases are the source of truth.
@@ -50,15 +105,6 @@ Forja checks GitHub Releases for a newer version, shows an in-app dialog with re
               (tag vX.Y.Z + platform assets)
 ```
 
-## Components (current)
-
-| Piece | Path |
-|-------|------|
-| Update checker | `packages/api/lib/services/app_updater_service.dart` |
-| Update UI | `apps/forja/lib/shared/widgets/update_dialog.dart` |
-| Startup check | `apps/forja/lib/shell/main_screen.dart` → `_checkForUpdates()` |
-| Manual check | `apps/forja/lib/features/settings/settings_screen.dart` |
-| Android OTA | `ota_update` package + `AndroidManifest` provider |
 
 ## Update manifest (GitHub Releases)
 
@@ -161,29 +207,6 @@ GitHub Release created from tag with these assets attached. App updater matches 
 - Mandatory update flag in manifest for critical security fixes
 - macOS Sparkle framework alternative for signed delta updates
 
-## Acceptance
-
-**v1.0 (partial — done):**
-- [x] GitHub latest release check
-- [x] Semver compare vs `package_info_plus`
-- [x] Update dialog with release notes
-- [x] Android in-app OTA install
-- [x] macOS/iOS open download page
-- [x] Manual check in Settings
-- [x] Startup check in MainScreen
-
-**v1.1 (complete):**
-- [ ] `update_dismissed_version` — respect "Later"
-- [ ] Auto-check throttle (max once per 24h on startup)
-- [ ] Windows/Linux download with in-dialog progress (desktop path exists, polish)
-- [ ] macOS: download DMG to Downloads + open
-- [ ] SHA256 verification before install
-- [ ] Repo slug configurable / Forja-branded GitHub org
-- [ ] CI publishes correctly named assets on every `v*` tag
-
-**v1.2 (optional):**
-- [ ] Beta channel toggle
-- [ ] Mandatory update support
 
 ## Related
 

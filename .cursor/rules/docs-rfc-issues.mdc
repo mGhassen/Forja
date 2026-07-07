@@ -16,6 +16,114 @@ Update the folder README index and grep cross-links in the same turn as any rena
 
 ---
 
+## Progress tracker format (mandatory — all layers)
+
+**Same visual language as migration phases.** Every RFC, issue, backlog, and migration file uses this. Migration [Phase 2](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md) is the canonical reference.
+
+### Legend (required line immediately after glance table)
+
+```markdown
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+```
+
+Issues omit ⏭️ unless deferred work exists. Done backlogs: `✅ done · ⬜ not started`.
+
+### Task table shape (required)
+
+```markdown
+---
+
+## Components
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R23-C01 | Short description | ✅ |
+
+---
+
+## Acceptance (0.8.0)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R23-A01 | Short description | ⬜ |
+```
+
+Use `---` before and after each task section block.
+
+### Status column — only these emojis
+
+| Emoji | Meaning |
+|-------|---------|
+| ✅ | Done / shipped / verified in code |
+| 🔄 | Actively in progress (partial implementation) |
+| ⬜ | Not started or not verified (incl. manual QA not run) |
+| ⏭️ | Explicitly deferred to a later slice/version |
+
+**Forbidden in task tables:** `Shipped`, `Stub`, `done`, `- [x]`, `- [ ]`.
+
+### ID prefixes
+
+| Layer | Components | Acceptance / tasks | Backlog shipped |
+|-------|------------|--------------------|-----------------|
+| RFC NNN | `R{nnn}-C{nn}` | `R{nnn}-A{nn}` | — |
+| Issue NNN | `I{nnn}-T{nn}` (fix tasks) | `I{nnn}-A{nn}` | — |
+| Backlog X.Y.Z | — | — | `B{digits}-S{nn}` (0.8.0 → `B80-S01`) |
+| Migration | `P{n}-XX` (existing) | same | — |
+
+Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
+
+### Status at a glance — required
+
+**RFC** (reference: [RFC-023](../../docs/rfc/023-[partial]-app-shell-redesign.md)):
+
+```markdown
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **5 / 5** components · **9 / 14** acceptance (0.8.0) |
+| **Current slice** | Device smoke → close 0.8.0 |
+| **Backlog** | [0.8.0](../backlog/0.8.0-[open].md) |
+```
+
+**Issue** (reference: [018](../../docs/issues/018-[draft]-migration-playback-parity-unverified.md)):
+
+```markdown
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **3 / 13** verification |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+```
+
+**Backlog** (reference: [0.8.0](../../docs/backlog/0.8.0-[open].md)):
+
+```markdown
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **10 / 15** shipped |
+| **Blocks close** | Device smoke (B80-S11–S15) |
+| **Backlog** | [RFC-023](../rfc/023-[partial]-app-shell-redesign.md) |
+```
+
+### Progress counts
+
+- Count ✅ / 🔄 / ⬜ / ⏭️ rows in task tables for the **current slice**
+- **Glance `Progress` must match the tables** — never hand-waved aggregates
+- Multiple slices: `**7 / 7** acceptance (v1.0) · **0 / 7** acceptance (v1.1 slice)`
+- **`[fixed]` RFC:** `**Complete**` or `**Complete · 20/21** · 1 ⏭️ WASM`
+- **`[draft]` spec-only:** all acceptance rows ⬜ → `0 / N`
+- **Meta RFCs** (012, 013, 014): bundle acceptance table; may cite child RFC counts in **Current slice**
+
+**One source of truth:** emoji task tables. No parallel checkbox lists.
+
+When any row changes: update glance **and** folder README **Progress** column in the **same turn**.
+
+---
+
 ## Backlog (`docs/backlog/`)
 
 **One file per release version** (e.g. `0.7.6-[open].md`). The file body is that version's ship checklist.
@@ -61,10 +169,12 @@ Patch count is **not standardized** — never pad patches to match other arcs.
 
 Every backlog file body includes (use `—` when empty):
 
-1. **`## RFCs`** — link, slice shipped, status after this version
-2. **`## Issues`** — link, slice shipped, status after this version
-3. **`## Migration`** — phase link when a migration slice ships
-4. **`## Shipped`** — concrete checklist
+1. **`## Status at a glance`** — immediately after version intro (before RFCs/Issues)
+2. **`## Shipped`** — numbered emoji task table (`B*-S*` IDs). **Not** markdown checkboxes.
+3. **`## RFCs`** — link, slice shipped, status after this version
+4. **`## Issues`** — link, slice shipped, status after this version
+5. **`## Migration`** — phase link when a migration slice ships
+6. **`## Deferred → next version`** when items slip
 
 Update [RFC README](../../docs/rfc/README.md) and [issues README](../../docs/issues/README.md) **Backlog** column when a version ships.
 
@@ -87,35 +197,17 @@ Feature **specs** — numbered RFCs, not semver files.
 | `fixed` | `[fixed]` | `docs/rfc/fixed/` |
 | `canceled` | `[canceled]` | `docs/rfc/canceled/` — will not build |
 
-### Mandatory RFC body sections
+### Mandatory RFC body section order
 
-Every RFC body includes (in this order, after the `#` title):
+After `#` title + metadata block:
 
-1. **Metadata block** — `**Version:**`, `**Status:**` (required); optional `**Target version:**`, `**Depends on:**`, `**Area:**` (key paths)
-2. **`## Status at a glance`** — same pattern as [migration phases](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md#status-at-a-glance):
+1. **`## Status at a glance`**
+2. **`**Legend:**`**
+3. **`## Components`** — when buildable pieces exist (skip for spec-only drafts)
+4. **`## Acceptance (slice)`** — one section per target slice
+5. **`## Summary`** — then Goals / Problem / Contracts / Related
 
-```markdown
-## Status at a glance
-
-| | |
-|--|--|
-| **Progress** | **4 / 6** components · **0 / 4** acceptance (v1.1 slice) |
-| **Current slice** | v1.1 — wire overlay + server grid |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
-```
-
-3. **`## Summary`** — then existing Components / Acceptance / Related sections unchanged
-
-**Progress rules** (derived from existing tables/checkboxes — no duplicate task lists):
-
-- **Components table:** count `Shipped` rows / total rows
-- **Acceptance checkboxes:** count `[x]` / total for the **current target slice** (highest incomplete `## Acceptance (vX.Y)` or slice named in active backlog)
-- Shipped earlier slices: second metric OK — e.g. `3 / 3 acceptance (v1.0) · 0 / 3 (v1.1)`
-- **`[fixed]`:** `**Progress** | **Complete**` (+ final acceptance counts if useful)
-- **`[draft]` / stub-only:** `0 / N acceptance (spec)` or `Spec only — not scheduled`
-- **Meta/bundle RFCs** (012, 013): progress from meta acceptance checklist or child RFC links — no third task system
-
-When a slice ships or component status changes: update glance **and** [RFC README](../../docs/rfc/README.md) **Progress** column in the **same turn** as checkbox/table edits.
+**Reference:** [RFC-023](../../docs/rfc/023-[partial]-app-shell-redesign.md)
 
 ---
 
@@ -134,6 +226,19 @@ When a slice ships or component status changes: update glance **and** [RFC READM
 | `canceled` | `[canceled]` | `docs/issues/canceled/` — won't fix (document why) |
 
 Workaround requires user permission per [honesty-and-completion.mdc](./honesty-and-completion.mdc).
+
+### Mandatory issue body section order
+
+After metadata block:
+
+1. **`## Status at a glance`**
+2. **`**Legend:**`**
+3. **`## Acceptance`** / **`## Fix tasks`** — emoji task tables (`I*-A*`, `I*-T*`)
+4. **`## Summary`**, root cause, related links
+
+**Reference:** [002](../../docs/issues/002-[draft]-torrent-disk-cache-not-cleaned.md) · [018](../../docs/issues/018-[draft]-migration-playback-parity-unverified.md)
+
+Update [issues README](../../docs/issues/README.md) **Progress** column when rows change.
 
 ---
 
@@ -160,18 +265,17 @@ Ship incrementally from **one RFC per feature**. Use slices inside the spec, not
 
 **Inside the RFC:**
 
-- Components table with per-piece status (`Shipped` / `Stub` / …)
-- `## Slices` or phased acceptance (`## Acceptance (v1.1)`) with checkboxes
-- When a slice ships: tick checkboxes, note `*(shipped 0.7.6)*` on those rows
+- `## Components` + `## Acceptance (slice)` emoji task tables — flip row Status when code ships
+- Optional `## Slices` prose mapping ID ranges to ship batches
 
 **In backlog:**
 
-- Checklist lines name the **slice**, not the whole RFC: `RFC-003: player shell (no overlay wiring)`
-- Next version lists remaining slice: `RFC-003: wire overlay + server grid`
+- Shipped rows name slice + IDs: `RFC-023: ShellScaffold (R23-C02) ✅`
+- Deferred references open row IDs: `R23-A10–A14 device smoke`
 
 **RFC status:**
 
-- Stays `[partial]` until **all** acceptance for that RFC is met in code → then `[fixed]`
+- Stays `[partial]` until **all** acceptance rows ✅ for that RFC → then `[fixed]`
 - Do **not** rename to `[fixed]` because one slice shipped in a version
 - Backlog `[done]` can honestly list partial RFC slices as shipped
 
@@ -183,9 +287,9 @@ Ship incrementally from **one RFC per feature**. Use slices inside the spec, not
 | Different subsystem, independent ship/cancel | **Separate RFCs** (e.g. sync vs watch party) |
 | Release theme / milestone index | **Meta RFC** (e.g. v1.2 bundle) — links to child RFCs; spec stays in each child |
 | Concrete bug, test gap, debt with own fix | **Child issue** (parent links 019–022 pattern) |
-| “Ship this slice in 0.7.7” | **Backlog checklist line** linking to RFC section |
+| “Ship this slice in 0.7.7” | **Backlog Shipped row** linking to RFC/issue ID |
 
-**Do not** invent a global task numbering scheme (`RFC-003-T4`) unless explicitly requested. Migration P2-XX IDs stay in migration docs only.
+**Do not** invent IDs outside the prefixes in [Progress tracker format](#progress-tracker-format-mandatory--all-layers). Migration `P2-XX` IDs stay in migration docs only.
 
 **Do not:** clone an RFC for the next version; put semver in RFC filenames; use `[canceled]` when you mean deferred to next version.
 
@@ -202,10 +306,13 @@ Ship incrementally from **one RFC per feature**. Use slices inside the spec, not
 
 When you land or materially advance work tied to a backlog version or RFC, **do not stop at code**. Update docs in the **same turn**:
 
-1. **Backlog file** (`docs/backlog/X.Y.Z-[status].md`) — tick `## Shipped` checkboxes; rename tag if lifecycle moved (`draft` → `open` → `partial` → `done`)
-2. **RFC file** — `**Status:**`, `## Status at a glance` progress, component table status, acceptance `[x]`/`[ ]`
-3. **Overview indexes** — [RFC README](../../docs/rfc/README.md) **Progress** + **Status** columns; [backlog README](../../docs/backlog/README.md) **Active** table
-4. **Cross-links** — grep old filename slug (e.g. `0.8.0-[draft]`, `023-[draft]`) under `docs/` and fix
+1. **Backlog** — flip `B*-S*` rows; update glance; rename tag if lifecycle moved
+2. **RFC** — flip `R*-C*` / `R*-A*` rows; update glance; `**Status:**` if terminal
+3. **Issue** — flip `I*-A*` / `I*-T*` rows; update glance; filename tag if terminal
+4. **Indexes** — RFC README **Progress**; issues README **Progress**; backlog README **Active**
+5. **Cross-links** — grep old filename slug under `docs/` and fix
+
+**Forbidden:** code shipped with task rows still ⬜; aggregate-only glance with no item table; checkbox lists parallel to emoji tables.
 
 Skip only when the change is unrelated to any version/RFC (pure refactor, typo, tooling).
 
@@ -218,7 +325,7 @@ Skip only when the change is unrelated to any version/RFC (pure refactor, typo, 
 
 ## Migration (`docs/migration/`)
 
-Engine migration phases — numbered `01`–`03`, not RFCs.
+Engine migration phases — numbered `01`–`03`, not RFCs. Same [Progress tracker format](#progress-tracker-format-mandatory--all-layers).
 
 ### Filename tags
 

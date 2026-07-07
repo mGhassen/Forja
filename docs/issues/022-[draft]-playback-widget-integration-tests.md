@@ -7,6 +7,18 @@
 **Area:** `apps/forja/test/`, `packages/rust/test/`  
 **Reported:** 2026-07-07  
 **Deferred from:** [009](fixed/009-[fixed]-post-migration-resilience-audit.md) acceptance (“widget/integration tests — not started”)
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 3** acceptance |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 
@@ -29,11 +41,6 @@ Regressions like [017](fixed/017-[fixed]-webstreamr-stream-choice-button-missing
 
 Use `flutter_test` + dependency injection or test doubles — avoid live network in CI.
 
-## Acceptance
-
-- [ ] At least one widget test for streaming details → player source handoff
-- [ ] At least one widget test for single-source player button visibility
-- [ ] CI runs them in `melos` / default `flutter test` for `apps/forja`
 
 ## Related
 

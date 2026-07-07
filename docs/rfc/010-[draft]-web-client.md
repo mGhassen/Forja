@@ -14,6 +14,23 @@
 | **Current slice** | v3.0 — browser client + HLS playback |
 | **Backlog** | v3 |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v3.0)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R10-A01 | `flutter build web` succeeds | ⬜ |
+| 2 | R10-A02 | Play HLS trailer from details screen | ⬜ |
+| 3 | R10-A03 | IPTV M3U import works via WASM parser | ⬜ |
+| 4 | R10-A04 | Magnet/torrent tabs hidden or show "desktop only" | ⬜ |
+| 5 | R10-A05 | Optional Supabase login (RFC-006) | ⬜ |
+
+---
+
+
 ## Summary
 
 Browser-based Forja: browse, details, HLS playback. Shares Rust WASM core (RFC-009) where possible.
@@ -57,13 +74,6 @@ Browser
 - Tree-shake unused features (magnet, downloader) via conditional imports or flavor
 - Target initial bundle < 15 MB gzipped (stretch)
 
-## Acceptance (v3.0)
-
-- [ ] `flutter build web` succeeds
-- [ ] Play HLS trailer from details screen
-- [ ] IPTV M3U import works via WASM parser
-- [ ] Magnet/torrent tabs hidden or show "desktop only"
-- [ ] Optional Supabase login (RFC-006)
 
 ## Related
 

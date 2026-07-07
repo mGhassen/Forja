@@ -14,6 +14,41 @@
 | **Current slice** | post-v1.2 — LAN server/client + mDNS pairing |
 | **Backlog** | v2+ |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Components
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R22-C01 | LAN WebSocket server (reuse RFC-007 infra) | ✅ |
+| 2 | R22-C02 | Pairing + token auth | ✅ |
+| 3 | R22-C03 | Proxy relay for engine resolve | ✅ |
+| 4 | R22-C04 | mDNS discovery | ⬜ |
+| 5 | R22-C05 | Constrained client profile | ⬜ |
+| 6 | R22-C06 | HDR passthrough relay | ⬜ |
+| 7 | R22-C07 | Range seek over LAN | ⬜ |
+
+---
+
+## Acceptance (v1.2+)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R22-A01 | Server announces over mDNS; client discovers with no typed IP | ⬜ |
+| 2 | R22-A02 | mDNS-blocked: manual address entry pairs successfully | ⬜ |
+| 3 | R22-A03 | First-time pair with one-time code issues token; code rejected on reuse | ⬜ |
+| 4 | R22-A04 | Paired client reconnects across sessions without code prompt | ⬜ |
+| 5 | R22-A05 | Revoking a device forces re-pairing | ⬜ |
+| 6 | R22-A06 | Direct URL source plays on every client with server offline | ⬜ |
+| 7 | R22-A07 | Proxy-gated source: desktop fetches and relays; client plays | ⬜ |
+| 8 | R22-A08 | Torrent: desktop serves; Android TV with local-torrent plays locally | ⬜ |
+| 9 | R22-A09 | Debrid path plays direct without server when configured | ⬜ |
+| 10 | R22-A10 | Relayed 4K HDR / Dolby stream reaches capable client without re-encode | ⬜ |
+| 11 | R22-A11 | Range seeking works on file-based playback over LAN | ⬜ |
+| 12 | R22-A12 | `constrained` profile: no librqbit; hash streams show clear unavailable state | ⬜ |
+
 ---
 
 ## 1. Summary
@@ -266,20 +301,6 @@ No research-grade problems. This RFC adds LAN plumbing on top of existing engine
 
 ---
 
-## 14. Acceptance criteria
-
-- [ ] Server announces over mDNS; client discovers with no typed IP.
-- [ ] mDNS-blocked network: manual address entry pairs successfully.
-- [ ] First-time pair with one-time code issues token; code rejected on reuse.
-- [ ] Paired client reconnects across sessions without code prompt.
-- [ ] Revoking a device forces re-pairing.
-- [ ] Direct URL source plays on every client with server offline.
-- [ ] Proxy-gated / engine resolve source: desktop fetches and relays; client plays.
-- [ ] Torrent: desktop serves to constrained client; Android TV with local-torrent setting plays locally.
-- [ ] Debrid path still plays direct without server when configured.
-- [ ] Relayed 4K HDR / Dolby stream reaches capable client without re-encode.
-- [ ] Range seeking works on file-based playback over LAN.
-- [ ] `constrained` profile: no librqbit start; hash streams without debrid/server show clear unavailable state.
 
 ---
 

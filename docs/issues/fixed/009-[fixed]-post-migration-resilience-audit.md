@@ -6,6 +6,19 @@
 **Area:** `apps/forja`, `packages/api`  
 **Reported:** 2026-07-06
 
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **3 / 5** code · **0 / 2** QA/tests |
+| **Backlog** | [0.4.4](../backlog/done/0.4.4-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+
 ## Summary
 
 Wave 1 migration verified **functional parity** (Rust goldens, happy-path smoke). It did **not** systematically test behavior under failure: dead networks, timeouts, empty scrapes, mid-flight cancel.
@@ -53,13 +66,5 @@ Code reviewed 2026-07-06. **Manual device QA not run** — rows marked "needs QA
 1. Checklist per flow — **table above** (manual QA still open on most rows)
 2. Automated widget/integration tests — **not started**
 3. Standard pattern: gen-token + Stop/Cancel — **shipped** for listed flows
-
-## Acceptance
-
-- [x] Host cancel pattern documented (symptom layer + [015](015-[fixed]-rust-blocking-http-engine-debt.md) Rust abort)
-- [x] Details / streaming / player / IPTV escape hatches in code
-- [x] Root cancel-abort in Rust ([015](015-[fixed]-rust-blocking-http-engine-debt.md))
-- [ ] Manual QA pass on checklist rows marked "needs QA"
-- [ ] Widget/integration tests with mocked slow FFI
 
 **Close 009:** code shipped. Optional: manual device QA + widget tests with mocked slow FFI.

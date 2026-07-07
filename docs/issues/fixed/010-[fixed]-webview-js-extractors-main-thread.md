@@ -5,6 +5,18 @@
 **Status:** fixed (2026-07-06) — timeout + cancel on slow paths; inventory in ENGINE_BOUNDARY R8  
 **Area:** `apps/forja`, `packages/api` (WebView extractors, Nuvio `flutter_js`, Videasy WASM host)  
 **Reported:** 2026-07-06
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete · 3 / 3** |
+| **Backlog** | [0.4.3](../backlog/done/0.4.3-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 

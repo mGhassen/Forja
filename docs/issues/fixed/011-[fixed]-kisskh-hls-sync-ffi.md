@@ -7,14 +7,19 @@
 **Area:** `kisskh_subtitle_decryptor.dart`, `hls_master_parser.dart`, `facade.dart`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
+## Status at a glance
 
-## Status summary
+| | |
+|--|--|
+| **Progress** | **Complete · 2 / 2** |
+| **Backlog** | [0.4.3](../backlog/done/0.4.3-[done].md) |
 
-| Layer | Status | Notes |
-|-------|--------|-------|
-| **Symptom** — main isolate blocks on large parse/decrypt | **fixed** | `EngineWorkerPool` typed runners |
-| **Root** — per-call isolate spawn for parse | **fixed** | pooled workers ([engine_worker.dart](../../packages/rust/lib/src/engine_worker.dart)) |
-| **`decodeXtreamText`** on UI thread | **waived** | tiny base64 decode — `iptv_network.dart:277` |
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+
 
 ## Workaround (shipped — 2026-07-06)
 

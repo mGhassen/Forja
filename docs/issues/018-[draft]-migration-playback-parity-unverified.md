@@ -6,6 +6,45 @@
 **Area:** `feat/rust-migratiom` vs `main`, `crates/*`, `packages/api/lib/playback/`, `apps/forja/lib/features/home/`, player  
 **Reported:** 2026-07-07  
 **Audit:** [migration parity audit](../../.cursor/plans/migration_parity_audit_0743c02b.plan.md)
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 13** verification (3 auto · 10 manual) |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+## Automated gates
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | I18-T01 | `cargo test --workspace` | ✅ |
+| 2 | I18-T02 | `flutter test test/parity/` (156 passed) | ✅ |
+| 3 | I18-T03 | `check_sync_ffi.sh` + engine smoke (13 passed) | ✅ |
+
+---
+
+## Manual matrix (vs main)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | I18-M01 | WebStreamr movie Enola Holmes 3 | ⬜ |
+| 2 | I18-M02 | WebStreamr TV series S01E01 | ⬜ |
+| 3 | I18-M03 | WebStreamr cancel → retry | ⬜ |
+| 4 | I18-M04 | Torrent search same title | ⬜ |
+| 5 | I18-M05 | Stremio addon Torrentio | ⬜ |
+| 6 | I18-M06 | Vidsrc known embed | ⬜ |
+| 7 | I18-M07 | Provider race auto-probe | ⬜ |
+| 8 | I18-M08 | Player sources list not empty | ⬜ |
+| 9 | I18-M09 | Home resume row | ⬜ |
+| 10 | I18-M10 | Magnet E2E playback | ⬜ |
+
+---
+
 
 ## Summary
 
@@ -84,11 +123,6 @@ cd packages/rust && flutter test test/parity/
 | [022](022-[draft]-playback-widget-integration-tests.md) | No widget tests with mocked slow FFI |
 | [002](002-[draft]-torrent-disk-cache-not-cleaned.md) | Torrent disk cache (pre-existing, not parity) |
 
-## Acceptance
-
-- [ ] Side-by-side matrix rows 1–10 executed; results recorded (pass/fail per row)
-- [ ] Any mismatch filed as child bug issue or linked to existing fix
-- [ ] Branch can be described as “playback parity with main verified” only when matrix passes
 
 ## If this file is deleted
 

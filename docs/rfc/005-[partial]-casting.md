@@ -13,15 +13,23 @@
 | **Current slice** | v1.1 — platform channels + player Cast button |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Components
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R05-C01 | CastingService (`casting_service.dart`) | ⬜ |
+
+---
+
+
 ## Summary
 
 Cast resolved VOD/IPTV streams to external devices. Native platform channels; independent of media_kit widget.
 
-## Components
-
-| Piece | Path | Status |
-|-------|------|--------|
-| CastingService | `shared/casting/src/casting_service.dart` | Stub |
 
 ## Stub
 
@@ -65,9 +73,3 @@ PlayerScreen → CastingService → AirPlay route
 3. Player overlay: Cast button when `isAirPlayAvailable || isChromecastAvailable`
 4. Pass active stream URL + headers from player state
 
-## Acceptance (v1.1)
-
-- [ ] AirPlay picker on macOS + iOS for VOD
-- [ ] Chromecast on Android + iOS for VOD
-- [ ] Stop casting on player exit
-- [ ] IPTV live casting documented as best-effort

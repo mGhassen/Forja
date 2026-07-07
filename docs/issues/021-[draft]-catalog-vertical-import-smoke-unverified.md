@@ -6,6 +6,18 @@
 **Parent:** [018](018-[draft]-migration-playback-parity-unverified.md)  
 **Area:** `apps/forja/lib/features/`, `packages/rust/lib/src/catalog/`  
 **Reported:** 2026-07-07
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 3** acceptance |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 
@@ -40,11 +52,6 @@ Also spot-check: **Discover**, **Search**, **Settings** (non-playback sections).
 - `forja_core/models` → `packages/rust/lib/src/models/`
 - Error handling added in some screens (e.g. `anime_screen` mood load returns `[]` on catch) — behavior change vs main on network failure
 
-## Acceptance
-
-- [ ] Each vertical row: list loads without import/runtime error
-- [ ] At least one item opens detail and play/read path
-- [ ] Failures filed as separate bugs with screen + stack trace
 
 ## Automated checks (2026-07-07)
 

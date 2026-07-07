@@ -7,6 +7,18 @@
 **Area:** `packages/rust`, `packages/api`, `apps/forja`, `crates/*`  
 **Reported:** 2026-07-06  
 **Fixed:** 2026-07-06 (engine root: [015](015-[fixed]-rust-blocking-http-engine-debt.md))
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete · 4 / 4** |
+| **Backlog** | [0.4.1](../backlog/done/0.4.1-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 

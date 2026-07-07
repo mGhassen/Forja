@@ -5,8 +5,18 @@
 **Severity:** Medium  
 **Phase:** [P3-03](../migration/fixed/03-[fixed]-engine-catalog.md)  
 **Related:** [021 catalog vertical smoke](../021-[draft]-catalog-vertical-import-smoke-unverified.md)
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete · 4 / 4** |
+| **Backlog** | [0.3.2](../backlog/done/0.3.2-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
 ---
+
 
 ## Summary
 
@@ -24,14 +34,6 @@
 | Package removed | ~~`packages/api/`~~; dropped from `apps/forja` + `packages/rust` pubspecs |
 | FFI check script | `scripts/check_sync_ffi.sh` — no longer scans `packages/api` |
 
-## Acceptance criteria (P3-03)
-
-- [x] Relocate host-appropriate code to `apps/forja` / `packages/rust`.
-- [x] Remove `packages/api` from workspace (melos `packages/**` no longer includes it).
-- [x] `rg 'package:api/'` → zero outside docs/history.
-- [x] Exit checklist **A1** (`packages/api` deleted) and **A3** (only `packages/rust` under `packages/`) — see [03-engine-catalog.md](../migration/fixed/03-[fixed]-engine-catalog.md).
-
-**Not in scope (P3-04):** **A2** (all C1 catalog in `crates/*`) and **A4** (no Dart engine logic outside FFI) remain open — Dart HTTP/orchestration now lives under `apps/forja/lib/shared/playback/` and catalog verticals in `apps/forja`.
 
 ## Verify
 

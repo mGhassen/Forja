@@ -13,6 +13,22 @@
 | **Current slice** | v1.1 — move details to `features/media/` |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.1)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R20-A01 | No details screens under `features/home/` | ⬜ |
+| 2 | R20-A02 | `AppRouter` sole importer of media screens from outside `features/media/` | ⬜ |
+| 3 | R20-A03 | Discover, Search, My List, Similar open details correctly | ⬜ |
+| 4 | R20-A04 | Torrent + Stremio + streaming paths unchanged functionally | ⬜ |
+
+---
+
+
 ## Summary
 
 Move app-wide media detail routes out of `features/home/` into a dedicated `features/media/` module. Navigation stays centralized in [`AppRouter`](../../apps/forja/lib/shell/app_router.dart).
@@ -99,12 +115,6 @@ forja://tv/tmdb/67890/1/3
 
 Handler in `app/bootstrap.dart` or `shell/deep_link_handler.dart` → `AppRouter.openDetails`. Not required for this RFC.
 
-## Acceptance
-
-- [ ] No `details_screen` or `streaming_details_screen` under `features/home/`
-- [ ] `AppRouter` is sole importer of media screens from outside `features/media/`
-- [ ] Discover, Search, My List, Similar still open details correctly
-- [ ] Torrent + Stremio + streaming paths unchanged functionally
 
 ## Related
 

@@ -13,6 +13,23 @@
 | **Current slice** | v1.2 — sync + LAN remote + watch party |
 | **Backlog** | v2 |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.2 bundle)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R13-A01 | Sign up / sign in optional; offline-first unchanged | ⬜ |
+| 2 | R13-A02 | IPTV credentials encrypted before upload | ⬜ |
+| 3 | R13-A03 | Settings restore on new device after login | ⬜ |
+| 4 | R13-A04 | LAN companion pairs and controls playback | ⬜ |
+| 5 | R13-A05 | Watch party works on same Wi-Fi (2+ clients) | ⬜ |
+| 6 | R13-A06 | Internet watch party scoped separately if Phase B | ⬜ |
+
+---
+
 ## Goal
 
 Optional cloud account for settings portability, LAN remote control, and synchronized group playback.
@@ -70,14 +87,6 @@ Player overlay: enable Watch Party button (currently placeholder).
 
 **Host controls:** play/pause/seek; guests follow within ±2s tolerance.
 
-## Acceptance checklist
-
-- [ ] Sign up / sign in optional; offline-first unchanged
-- [ ] IPTV credentials encrypted before upload
-- [ ] Settings restore on new device after login
-- [ ] LAN companion pairs and controls playback
-- [ ] Watch party works on same Wi-Fi (2+ clients)
-- [ ] Internet watch party scoped separately if Phase B ships
 
 ## Related RFCs
 

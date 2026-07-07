@@ -6,6 +6,18 @@
 **Parent:** [018](018-[draft]-migration-playback-parity-unverified.md)  
 **Area:** `packages/rust/test/parity/`, `packages/api/lib/playback/webstreamr_service.dart`, `packages/rust/lib/src/engine_jobs.dart`  
 **Reported:** 2026-07-07
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 3** acceptance |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 
@@ -29,11 +41,6 @@ Test was written to validate Rust resolver output quickly; it does not exercise 
 cd packages/rust && flutter test test/parity/webstreamr_service_e2e_test.dart --tags live
 ```
 
-## Acceptance
-
-- [ ] Live test goes through `WebStreamrService.getStreams()` (or `runWebstreamrGetStreamsJson` at minimum)
-- [ ] Enola Holmes 3 (`tt32278481`) passes on branch with same threshold as Rust-only test
-- [ ] Documented in [018](018-[draft]-migration-playback-parity-unverified.md) matrix row 1
 
 ## Related
 

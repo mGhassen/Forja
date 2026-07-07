@@ -6,6 +6,32 @@
 **Area:** `crates/torrent`, `packages/api/lib/playback/torrent_stream_service.dart`, `apps/forja` (player, settings, bootstrap)  
 **Reported:** 2026-07-06
 
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **0 / 6** fix tasks |
+| **Backlog** | — |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+## Fix tasks
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | I02-T01 | Rust: `stop()` uses `session.delete(id, true)` | ⬜ |
+| 2 | I02-T02 | Rust: `stop_engine()` purges `{temp}/torrent` | ⬜ |
+| 3 | I02-T03 | Rust: `only_files` for selected video index | ⬜ |
+| 4 | I02-T04 | Dart: `removeTorrent()` triggers delete-with-files | ⬜ |
+| 5 | I02-T05 | Dart: `cleanup()` purges torrent temp dir | ⬜ |
+| 6 | I02-T06 | Wire or remove dead RAM/Disk cache settings UI | ⬜ |
+
+---
+
+
 ## Summary
 
 Torrent playback via librqbit writes downloaded pieces to a persistent directory under the system temp folder (`{temp}/torrent`). Closing the player or switching films only pauses or forgets the torrent in the session — **files are never deleted**. Repeated viewing accumulates gigabytes of orphaned data. Settings expose a RAM/Disk cache toggle that is not wired to the Rust engine.

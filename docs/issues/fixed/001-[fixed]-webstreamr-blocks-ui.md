@@ -7,14 +7,39 @@
 **Root fix:** [015](015-[fixed]-rust-blocking-http-engine-debt.md)  
 **Area:** `packages/api/lib/playback/webstreamr_service.dart`, `packages/rust/lib/src/isolate_runner.dart`, `crates/webstreamr`  
 **Reported:** 2026-07-06
+## Status at a glance
 
-## Status summary
+| | |
+|--|--|
+| **Progress** | **Complete** · symptom ✅ · root ✅ |
+| **Backlog** | [0.4.2](../backlog/done/0.4.2-[done].md) |
 
-| Layer | Status | Notes |
-|-------|--------|-------|
-| **Symptom** — UI thread blocks during resolve | **fixed** | `EngineWorkerPool` (3 workers) + typed job runners |
-| **Root** — blocking HTTP, sequential 21 sources in Rust | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
-| **Cancel** — abort in-flight Rust work | **fixed** | `Engine.cancelPendingResolve()` → `engine_cancel_pending` FFI |
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+## Layers
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | I01-L01 | Symptom — UI thread blocks during resolve | ✅ |
+| 2 | I01-L02 | Root — blocking HTTP, sequential sources in Rust | ✅ |
+| 3 | I01-L03 | Cancel — abort in-flight Rust work | ✅ |
+
+---
+
+## Root fix ([015](015-[fixed]-rust-blocking-http-engine-debt.md))
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | I01-R01 | `crates/webstreamr`: async HTTP, parallel resolve, early exit | ✅ |
+| 2 | I01-R02 | Cancel token into Rust resolver | ✅ |
+| 3 | I01-R03 | `EngineWorkerPool` (3 persistent workers) | ✅ |
+
+---
+
+
 
 ## Root cause (before fix)
 
@@ -39,9 +64,6 @@ final raw = await runWebstreamrGetStreamsJson(jsonEncode(request));
 
 ## Root fix (shipped — [015](015-[fixed]-rust-blocking-http-engine-debt.md))
 
-- [x] `crates/webstreamr`: async HTTP, parallel source resolve, early exit
-- [x] Cancel token into Rust resolver ([009](009-[fixed]-post-migration-resilience-audit.md))
-- [x] Optional: job API to reduce isolate spawn churn — `EngineWorkerPool` (pool size 3)
 
 ## If this file is deleted
 

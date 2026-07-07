@@ -13,6 +13,23 @@
 | **Current slice** | v1.0.1 — lazy tab cache |
 | **Backlog** | [0.5.1](../backlog/done/0.5.1-[done].md) slice → deferred |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.0.1)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R16-A01 | `buildAllScreens()` removed or deprecated | ⬜ |
+| 2 | R16-A02 | First launch: only Home widget tree allocated | ⬜ |
+| 3 | R16-A03 | Switch to IPTV: builds once; revisit keeps scroll/state | ⬜ |
+| 4 | R16-A04 | All 19 tabs + Settings still reachable | ⬜ |
+| 5 | R16-A05 | `flutter analyze` clean; macOS smoke test all nav ids | ⬜ |
+
+---
+
+
 ## Summary
 
 Stop constructing all 19 nav feature widgets at startup. Build each tab on first visit and cache it so `IndexedStack` keeps visited tab state without paying RAM for tabs the user never opens.
@@ -114,13 +131,6 @@ Always build Settings on first open like other tabs — do not eager-load even t
 
 Measure with Flutter DevTools memory snapshot before/after; log `[MainScreen] Built tab: $id` in debug.
 
-## Acceptance
-
-- [ ] `buildAllScreens()` removed or deprecated
-- [ ] First launch: only Home widget tree allocated (verify in DevTools)
-- [ ] Switch to IPTV: IPTV builds once; revisiting IPTV keeps scroll/state
-- [ ] All 19 tabs + Settings still reachable
-- [ ] `flutter analyze` clean; macOS smoke test all nav ids
 
 ## Related
 

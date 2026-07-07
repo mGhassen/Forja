@@ -13,6 +13,22 @@
 | **Current slice** | v3.0 — WASM + web client |
 | **Backlog** | v3 |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v3.0 bundle)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R14-A01 | Rust crates compile; unit tests for IPTV + provider resolution | ⬜ |
+| 2 | R14-A02 | Flutter macOS uses FFI for at least one hot path | ⬜ |
+| 3 | R14-A03 | Web app loads browse + plays HLS stream | ⬜ |
+| 4 | R14-A04 | No libtorrent in web bundle | ⬜ |
+| 5 | R14-A05 | Optional Supabase sync on web (RFC-006) | ⬜ |
+
+---
+
 ## Goal
 
 Browser-based Forja with shared logic in Rust (native FFI + WASM), HLS-only playback, optional cloud sync backend.
@@ -57,13 +73,6 @@ Shared WASM module from Rust crates for IPTV parse + provider templates.
 - `packages/scrapers` — may stay Dart or move scrape logic to Rust incrementally
 - Feature folders unchanged; platform gates via `kIsWeb` / `Platform.is*`
 
-## Acceptance checklist
-
-- [ ] Rust crates compile; unit tests for IPTV + provider resolution
-- [ ] Flutter macOS uses FFI for at least one hot path (proof)
-- [ ] Web app loads browse + plays HLS stream
-- [ ] No libtorrent in web bundle
-- [ ] Optional Supabase sync works on web (RFC-006)
 
 ## Related RFCs
 

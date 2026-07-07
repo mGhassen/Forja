@@ -13,6 +13,30 @@
 | **Current slice** | v1.1 — in-player switch + provider expansion |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.0)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R04-A01 | Registry with core providers | ✅ |
+| 2 | R04-A02 | Resolver tries enabled providers in order | ✅ |
+| 3 | R04-A03 | Settings persist order + enabled state | ✅ |
+
+---
+
+## Acceptance (v1.1)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R04-A04 | In-player switch via ServerGrid (RFC-003) | ⬜ |
+| 2 | R04-A05 | Expanded provider list | ⬜ |
+| 3 | R04-A06 | `last_used_provider_id` remembered per title | ⬜ |
+
+---
+
 ## Summary
 
 Pluggable web stream providers with user-configurable order and mid-playback switching.
@@ -69,15 +93,3 @@ UI: Settings → Streaming providers (reorder + toggles)
 | PrimeSrc, VidSrc.wtf | | add |
 
 Stremio addon streams are separate from built-in provider grid (torrent/debrid path).
-
-## Acceptance
-
-**v1.0:**
-- [x] Registry with core providers
-- [x] Resolver tries enabled providers in order
-- [x] Settings persist order + enabled state
-
-**v1.1:**
-- [ ] In-player switch via ServerGrid (RFC-003)
-- [ ] Expanded provider list
-- [ ] `last_used_provider_id` remembered per title

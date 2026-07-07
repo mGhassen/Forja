@@ -6,6 +6,18 @@
 **Area:** `packages/api/lib/api/site111477_service.dart`, `crates/proxy/src/seek111477.rs`  
 **Reported:** 2026-07-06  
 **Tracked:** P2-92 known gap (closed)
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete · 2 / 2** |
+| **Backlog** | [0.4.5](../backlog/done/0.4.5-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 

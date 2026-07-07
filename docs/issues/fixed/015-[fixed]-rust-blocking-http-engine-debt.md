@@ -8,6 +8,18 @@
 **Fixed:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)  
 **Related:** [009](009-[fixed]-post-migration-resilience-audit.md) (cancel-abort UX)
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete · 6 / 6** |
+| **Backlog** | [0.4.4](../backlog/done/0.4.4-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 
@@ -22,14 +34,6 @@ Dart `Isolate.run` remains required (R5) — it is not a substitute for async Ru
 3. **Cancellable jobs** — `utils::engine_cancel`: generation counter + per-thread `enter_job()`; `engine_cancel_pending()` FFI; checked in fetcher, resolver, stremio HTTP. Dart `cancelPending()` calls `Engine.cancelPendingResolve()`.
 4. **Deferred (optional):** ~~async job/poll FFI~~ — shipped as Dart-side `EngineWorkerPool`.
 
-## Acceptance
-
-- [x] `webstreamr` uses async HTTP (`fetcher.rs`)
-- [x] `webstreamr` primary sources resolve in parallel with early exit (`resolver.rs`)
-- [x] `stremio-core` uses shared async HTTP client + runtime
-- [x] Cancel from host aborts in-flight resolve in Rust (`engine_cancel.rs`, `engine_cancel_pending` FFI, Dart wiring)
-- [x] [RFC-009](../rfc/fixed/009-[fixed]-rust-ffi.md) threading section updated
-- [x] Profile: long resolve no longer spawns new isolate per call — `EngineWorkerPool` (3 persistent workers)
 
 ## Verify
 

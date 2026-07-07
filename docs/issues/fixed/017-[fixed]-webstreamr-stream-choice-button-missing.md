@@ -5,6 +5,18 @@
 **Status:** fixed (2026-07-07)  
 **Area:** `apps/forja/lib/shared/player/player/`, `packages/api/lib/playback/webstreamr_service.dart`, `apps/forja/lib/features/home/streaming_details_screen.dart`, `crates/webstreamr/src/resolver.rs`  
 **Reported:** 2026-07-07
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete · 4 / 4** |
+| **Backlog** | [0.4.5](../backlog/done/0.4.5-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 
@@ -12,13 +24,6 @@ In **Direct streaming mode**, when playback started via **WebStreamr**, the play
 
 The button was **not deleted** — it was gated on `_currentSources.length > 1`.
 
-## Status summary
-
-| Layer | Status | Notes |
-|-------|--------|-------|
-| **Symptom** — sources button hidden in player | **fixed** | Show when `_currentSources.isNotEmpty` (desktop + mobile) |
-| **Root** — HDHub4u hubdrive→hubcloud chain broken in Rust | **fixed** | Hubdrive regex matched first `<link href>` on page; default User-Agent added |
-| **Root** — other parity gaps | **fixed** | Country pre-filter; ytId → YouTube URL in Dart; resolve logging |
 
 ## Root cause (before fix)
 
@@ -59,12 +64,6 @@ cd packages/rust && flutter test test/parity/webstreamr_service_parse_test.dart
 
 Console during play: `[WebStreamrService] resolved N streams for …` and `[StreamingDetails] webstreamr pushing N sources`.
 
-## Acceptance criteria
-
-- [x] With WebStreamr returning **≥1** source, player shows `video_library` button.
-- [x] Debug logs report resolved count and skip reasons during extraction.
-- [x] Rust country pre-filter + ytId mapping shipped with unit tests.
-- [x] Live multi-source title: Enola Holmes 3 (`tt32278481`) resolves **10** streams incl. HDHub4u 2160p/1080p (matches PlayTorrio).
 
 ## Related
 

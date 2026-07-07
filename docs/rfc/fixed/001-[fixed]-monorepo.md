@@ -11,6 +11,11 @@
 | **Progress** | **Complete** · **4 / 4** acceptance (v1.0) |
 | **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+
 ## Summary
 
 Forja is a melos monorepo: one Flutter app, six engine packages, feature folders per nav tab.
@@ -57,9 +62,3 @@ No circular deps: `storage` must not depend on `api`.
 - Settings via `SettingsService`, `ProviderSettingsRepo`, `IptvSettingsRepo`
 - Persistence in `storage`; network in `api`
 
-## Acceptance (v1.0)
-
-- [x] Exactly 6 packages under `packages/`
-- [x] No UI packages in `packages/`
-- [x] `AppRouter` + `ShellBus` extracted from MainScreen
-- [x] Player in `shared/player/`, not a nav feature

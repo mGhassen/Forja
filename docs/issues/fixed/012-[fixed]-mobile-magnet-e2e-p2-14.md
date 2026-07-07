@@ -6,6 +6,18 @@
 **Area:** `crates/torrent`, `crates/ffi`, iOS/Android CI  
 **Reported:** 2026-07-06  
 **Tracked:** P2-14 ([Phase 2 task](../migration/fixed/02-[fixed]-rust-engine-complete.md))
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete · 3 / 3** |
+| **Backlog** | [0.4.5](../backlog/done/0.4.5-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 

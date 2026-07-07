@@ -7,14 +7,19 @@
 **Area:** `packages/api/lib/playback/vidsrc_extractor.dart`, `videasy_extractor.dart`, `crates/stream-core`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
+## Status at a glance
 
-## Status summary
+| | |
+|--|--|
+| **Progress** | **1 / 2** code · **0 / 1** manual QA |
+| **Backlog** | [0.4.2](../backlog/done/0.4.2-[done].md) |
 
-| Layer | Status | Notes |
-|-------|--------|-------|
-| **Symptom** — UI thread blocks during resolve/decrypt | **fixed** | `EngineWorkerPool` typed runners |
-| **Root** — multi-page resolve in Rust (`webstreamr` vidsrc) | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
-| **Cancel** — abort in-flight resolve | **fixed** | [015](015-[fixed]-rust-blocking-http-engine-debt.md) |
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+
 
 ## Root cause (before fix)
 

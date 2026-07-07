@@ -14,20 +14,39 @@
 | **Current slice** | v1.1 — wire overlay + server grid |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Components
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R03-C01 | Player entry (`player_screen.dart`) | ✅ |
+| 2 | R03-C02 | Desktop player | ✅ |
+| 3 | R03-C03 | Mobile player | ✅ |
+| 4 | R03-C04 | Overlay panel (`player_overlay.dart`) | ⬜ |
+| 5 | R03-C05 | Server grid (`server_grid.dart`) | ⬜ |
+| 6 | R03-C06 | Navigation (`openPlayer()`) | ✅ |
+
+---
+
+## Acceptance (v1.1)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R03-A01 | Overlay visible on tap / auto-hide timer | ⬜ |
+| 2 | R03-A02 | Server grid switches provider without leaving player | ⬜ |
+| 3 | R03-A03 | Watch Party button shows "Coming soon" | ⬜ |
+| 4 | R03-A04 | PiP + Cast buttons platform-gated | ⬜ |
+
+---
+
+
 ## Summary
 
 Unified player chrome with quick actions and in-player provider switching (Cineby/Rive-style).
 
-## Components
-
-| Piece | Path | Status |
-|-------|------|--------|
-| Player entry | `apps/forja/lib/shared/player/player_screen.dart` | Shipped |
-| Desktop player | `shared/player/player/desktop_player_screen.dart` | Shipped |
-| Mobile player | `shared/player/player/mobile_player_screen.dart` | Shipped |
-| Overlay panel | `shared/design/src/player_overlay.dart` | Stub |
-| Server grid | `shared/design/src/server_grid.dart` | Stub |
-| Navigation | `shell/app_router.dart` → `openPlayer()` | Shipped |
 
 ## Overlay controls
 
@@ -67,9 +86,3 @@ Tap card → `StreamResolver.switchProvider(id)` → re-extract → resume at sa
 2. Pass active provider id from `StreamResolver`
 3. On select → call resolver → update `PlayerScreen` stream URL in place
 
-## Acceptance (v1.1)
-
-- [ ] Overlay visible on tap / auto-hide timer
-- [ ] Server grid switches provider without leaving player
-- [ ] Watch Party button shows "Coming soon"
-- [ ] PiP + Cast buttons platform-gated

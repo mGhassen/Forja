@@ -13,6 +13,21 @@
 | **Current slice** | v1.2 — LAN remote control API |
 | **Backlog** | v2 |
 
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Acceptance (v1.2)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R07-A01 | Pair from second device on same network | ⬜ |
+| 2 | R07-A02 | Play/pause/seek remote control works | ⬜ |
+| 3 | R07-A03 | Server stops when disabled in settings | ⬜ |
+| 4 | R07-A04 | No exposure when feature off | ⬜ |
+
+---
+
 ## Summary
 
 Extend the local HTTP server so a paired phone/browser can remote-control playback on a TV/desktop Forja instance.
@@ -53,10 +68,3 @@ Events: `state`, `position`, `provider_changed` (host → clients).
 ## UI
 
 Settings → Remote → Enable LAN companion → show QR + code.
-
-## Acceptance (v1.2)
-
-- [ ] Pair from second device on same network
-- [ ] Play/pause/seek remote control works
-- [ ] Server stops when disabled in settings
-- [ ] No exposure when feature off

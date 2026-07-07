@@ -6,6 +6,18 @@
 **Area:** `apps/forja`, `packages/api`, `crates/torrent`  
 **Reported:** 2026-07-06  
 **Fixed:** 2026-07-06
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete · 7 / 7** |
+| **Backlog** | [0.2.0](../backlog/done/0.2.0-[done].md) |
+
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
 
 ## Summary
 
@@ -34,15 +46,6 @@ Forja now follows Stremio's **platform-constrained playback model** via a shared
 
 Unchanged on desktop: direct streaming mode remains WebStreamr-first (`streaming_details_screen.dart` default source `'forja'`). Stremio hash playback on desktop details screen is unchanged.
 
-## Acceptance
-
-- [x] `PlaybackProfile` defined; `desktop` and `constrained` profiles implemented
-- [x] Single `resolveStremioStream()` used by `details_screen` and `streaming_details_screen`
-- [x] On `constrained`: `infoHash` streams without debrid show clear message, not torrent spinner
-- [x] On `constrained`: torrent engine does not start; torrent UI hidden
-- [x] On `desktop`/`android`: behavior unchanged (url direct, infoHash → librqbit or debrid)
-- [x] RFC-010 web build uses `constrained` profile without duplicating guards
-- [x] Docs: `docs/features/sources/stremio-addons.md` notes platform limits for hash-based addons
 
 ## Future (out of scope)
 
