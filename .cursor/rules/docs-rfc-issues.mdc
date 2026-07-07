@@ -1,12 +1,12 @@
 ---
-description: RFC, issue, and version backlog doc naming and status lifecycle
-globs: docs/rfc/**,docs/issues/**,docs/backlog/**,docs/migration/**
+description: RFC, issue, version backlog, migration, and feature user-guide doc lifecycle
+globs: docs/rfc/**,docs/issues/**,docs/backlog/**,docs/migration/**,docs/features/**
 alwaysApply: true
 ---
 
 # RFC, issue, and version backlog doc management
 
-Indexes: [RFC](../../docs/rfc/README.md) · [issues](../../docs/issues/README.md) · [backlog](../../docs/backlog/README.md)
+Indexes: [RFC](../../docs/rfc/README.md) · [issues](../../docs/issues/README.md) · [backlog](../../docs/backlog/README.md) · [features (user guide)](../../docs/features/README.md)
 
 ## Golden rule
 
@@ -242,6 +242,48 @@ Update [issues README](../../docs/issues/README.md) **Progress** column when row
 
 ---
 
+## Feature user guides (`docs/features/`)
+
+**User-facing docs** — what the app does and how to use it. Not progress trackers (those stay in RFC/backlog/issue).
+
+Index: [features/README.md](../../docs/features/README.md) · Template: [TEMPLATE.md](../../docs/features/TEMPLATE.md)
+
+### When to update (mandatory — same turn as code)
+
+Update the matching feature doc **whenever user-visible behavior changes** — not only when an RFC ships.
+
+| Code change | Update |
+|-------------|--------|
+| Nav tab added/removed/renamed, shell chrome, default tabs | [getting-started/navigation.md](../../docs/features/getting-started/navigation.md) · [settings/navigation-bar.md](../../docs/features/settings/navigation-bar.md) |
+| Settings screen: new toggle, moved section, renamed label | Matching `docs/features/settings/*.md` |
+| Player controls, PiP, subtitles, speed, next episode | Matching `docs/features/playback/*.md` |
+| Scraper/source/provider behavior users configure or see | `docs/features/scrapers/*` · `docs/features/sources/*` |
+| Tab feature UX (`apps/forja/lib/features/<name>/`) | Matching `docs/features/**/<name>.md` (or add one) |
+| Platform limits (torrent hidden, constrained profile) | Affected feature doc + [platforms.md](../../docs/features/getting-started/platforms.md) if cross-cutting |
+| Feature ships (was stub / coming soon) | Move doc out of `coming-soon/`; add to [features README](../../docs/features/README.md) |
+| Feature removed or permanently disabled | Update doc honestly or move to coming-soon with “removed” note — do not describe dead UI |
+
+### What to keep accurate
+
+Each feature file ([TEMPLATE.md](../../docs/features/TEMPLATE.md)) must reflect **current** app behavior:
+
+- **How to open it** — nav path, settings path, entry points (must match live UI)
+- **What you can do** — actions the user can actually perform today
+- **Setup** — keys, OAuth, URLs the settings screen still uses
+- **Tips / Related** — cross-links still valid
+
+**Read the code or run the UI before editing.** Do not copy from RFCs or stale docs — code is source of truth ([honesty-and-completion.mdc](./honesty-and-completion.mdc)).
+
+### New or renamed features
+
+1. Create or rename `docs/features/<category>/<slug>.md` from [TEMPLATE.md](../../docs/features/TEMPLATE.md)
+2. Add link in [features/README.md](../../docs/features/README.md) (and **I want to…** table if user-facing)
+3. Grep `docs/features/` for old slug/path and fix cross-links
+
+RFC/issue/backlog track **ship status**; feature docs track **how it works for users**. Both update in the same turn when behavior changes.
+
+---
+
 ## Version ↔ RFC ↔ issue (three layers)
 
 | Layer | Owns | Slips how? |
@@ -252,7 +294,33 @@ Update [issues README](../../docs/issues/README.md) **Progress** column when row
 
 **Version assignment lives in backlog**, not in RFC/issue filenames. Optional in RFC/issue body: `**Target version:** 0.7.7`.
 
-### Version slip (item not done when release closes)
+### Active backlog — scope big work before coding
+
+When the **active open/partial backlog** is in context (e.g. [0.8.0-[open].md](../../docs/backlog/0.8.0-[open].md)) or the user is clearly shipping that version arc, and they ask for something **substantial** — **create or extend docs first**, then implement. Do not jump straight to code without a tracked spec.
+
+**Substantial = needs an RFC or issue:**
+
+| Kind | Create | Examples |
+|------|--------|----------|
+| **RFC** | New `docs/rfc/NNN-[draft\|planned\|open\|partial]-….md` | New feature subsystem, multi-component architectural change, new acceptance slice that does not fit an existing RFC |
+| **Issue** | New `docs/issues/NNN-[draft\|open]-….md` | Concrete bug, engine debt, test gap, verifiable sub-work with its own fix |
+| **Extend existing** | Add rows to **existing** RFC/issue tables | Fits current RFC-023 scope → add `R23-A*` / `B80-S*` rows; do **not** clone a new RFC number |
+
+**Same turn — mandatory checklist when creating:**
+
+1. **Pick next free number** — grep `docs/rfc/` and `docs/issues/` for highest NNN; use NNN+1
+2. **Create the file** — full mandatory format ([Progress tracker](#progress-tracker-format-mandatory--all-layers), glance, legend, emoji task tables). New RFCs start `[draft]` or `[planned]`; new issues `[draft]` until work starts → `[open]`
+3. **Wire into active backlog** — add row to `## RFCs` or `## Issues` (slice + status after ship); add ⬜ row(s) to `## Shipped` with IDs linking to the new spec
+4. **Update indexes** — [RFC README](../../docs/rfc/README.md) and/or [issues README](../../docs/issues/README.md); [backlog README](../../docs/backlog/README.md) if version scope changed
+5. **Link back** — RFC/issue `**Target version:**` → active backlog file; backlog glance **Blocks close** / deferred if out of scope for this ship
+
+**If the ask is too big for the current version:** still create the RFC/issue, add to backlog `## Deferred → later X.Y.x` or create/next patch `[draft].md` — do not silently cram unrelated work into the open version without a backlog line.
+
+**If the ask is small** (one file, obvious fix inside an existing RFC slice): extend that RFC’s task table + backlog Shipped row — no new RFC/issue file.
+
+**Do not wait** for the user to say “create the RFC” — if the work is big and untracked, file the doc and backlog entry in the **same turn** as you start (or before) implementation.
+
+---
 
 1. Move old backlog → `done/X.Y.Z-[done].md` with **Shipped** and **Deferred → next version** sections
 2. Create/update next backlog (e.g. `0.7.7-[draft].md`) with deferred items
@@ -304,17 +372,18 @@ Ship incrementally from **one RFC per feature**. Use slices inside the spec, not
 
 ## After code changes (mandatory — same turn)
 
-When you land or materially advance work tied to a backlog version or RFC, **do not stop at code**. Update docs in the **same turn**:
+When you land or materially advance work tied to a backlog version, RFC, or **user-visible feature**, **do not stop at code**. Update docs in the **same turn**:
 
 1. **Backlog** — flip `B*-S*` rows; update glance; rename tag if lifecycle moved
 2. **RFC** — flip `R*-C*` / `R*-A*` rows; update glance; `**Status:**` if terminal
 3. **Issue** — flip `I*-A*` / `I*-T*` rows; update glance; filename tag if terminal
-4. **Indexes** — RFC README **Progress**; issues README **Progress**; backlog README **Active**
-5. **Cross-links** — grep old filename slug under `docs/` and fix
+4. **Feature user guide** — update matching `docs/features/**/*.md` so How to open / What you can do / Setup match the code you just changed (see [Feature user guides](#feature-user-guides-docsfeatures))
+5. **Indexes** — RFC README **Progress**; issues README **Progress**; backlog README **Active**; features README when adding/removing pages
+6. **Cross-links** — grep old filename slug under `docs/` and fix
 
-**Forbidden:** code shipped with task rows still ⬜; aggregate-only glance with no item table; checkbox lists parallel to emoji tables.
+**Forbidden:** code shipped with task rows still ⬜; aggregate-only glance with no item table; checkbox lists parallel to emoji tables; feature docs describing UI that no longer exists.
 
-Skip only when the change is unrelated to any version/RFC (pure refactor, typo, tooling).
+Skip RFC/backlog/issue updates only when the change is unrelated to any version/RFC (pure refactor, typo, tooling). **Still update feature docs** if user-visible behavior changed.
 
 | Folder | Terminal folders | Terminal statuses |
 |--------|------------------|-------------------|
