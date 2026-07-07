@@ -150,11 +150,32 @@ Pattern: `{semver}-[{status}].md` — e.g. `0.7.6-[draft].md`
 plan version   →  0.7.6-[draft].md
 start release  →  0.7.6-[open].md
 in progress    →  0.7.6-[partial].md
-shipped        →  done/0.7.6-[done].md
+shipped        →  done/0.7.6-[done].md  +  git tag v0.7.6  +  push tag
 dropped        →  canceled/0.7.6-[canceled].md
 ```
 
-### Semver (major · minor · patch)
+### Close version — git tag (mandatory)
+
+When a backlog version is **finished** (all in-scope `B*-S*` rows ✅, or remaining work moved to **Deferred → next version** honestly):
+
+1. Move `X.Y.Z-[open|partial].md` → `done/X.Y.Z-[done].md`; body `**Status:** done`
+2. Complete doc updates (RFC/issue rows, indexes, cross-links) in the **same turn**
+3. **Create and push an annotated git tag** on the commit that ships the version:
+
+```bash
+git tag -a vX.Y.Z -m "X.Y.Z — {codename if any}"
+git push origin vX.Y.Z
+```
+
+- **Tag name:** `v` + backlog semver — e.g. backlog `0.8.0` → tag `v0.8.0` (matches [RFC-015](../../docs/rfc/015-[partial]-in-app-updates.md) GitHub Releases / `AppUpdaterService`)
+- **Tag target:** HEAD (or the merge commit the user specifies) after ship docs are committed — tag **after** the closing commit, not before
+- **Do not** tag `[draft]` or in-progress `[open]` versions — only terminal **`[done]`** close
+- **Do not** force-push tags; if `vX.Y.Z` already exists, stop and tell the user — do not retag silently
+- If the user has not asked to commit yet: commit ship docs first (or ask), then tag and push
+
+**Forbidden:** moving backlog to `done/` without pushing `vX.Y.Z` when the version is declared shipped (unless push is blocked — say so explicitly).
+
+---
 
 | Level | Semver | Codename? | When to bump |
 |-------|--------|-----------|--------------|
@@ -369,6 +390,7 @@ Ship incrementally from **one RFC per feature**. Use slices inside the spec, not
 2. Update `**Status:**` in body
 3. Update the folder README index
 4. Grep old path in `docs/` and fix links
+5. **Backlog → `[done]`:** create and push git tag `vX.Y.Z` — see [Close version — git tag](#close-version--git-tag-mandatory)
 
 ## After code changes (mandatory — same turn)
 
