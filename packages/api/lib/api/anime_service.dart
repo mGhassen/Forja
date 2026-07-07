@@ -4,6 +4,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'allanime_extractor.dart';
@@ -12,7 +13,6 @@ import 'hentaini_extractor.dart';
 import 'miruro_extractor.dart';
 
 class AnimeService {
-  static const String _gql = 'https://graphql.anilist.co';
   static const String _anikotoUa =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
@@ -21,13 +21,15 @@ class AnimeService {
 
   // ─── GraphQL helper ─────────────────────────────────────────────
   Future<dynamic> _query(String query, [Map<String, dynamic>? vars]) async {
-    final req = await _client.postUrl(Uri.parse(_gql));
-    req.headers.contentType = ContentType.json;
-    req.headers.set('Accept', 'application/json');
-    req.write(jsonEncode({'query': query, 'variables': vars ?? {}}));
-    final res = await req.close();
-    final body = await res.transform(utf8.decoder).join();
-    final data = jsonDecode(body);
+    final raw = RustLib.instance.anilistQueryJson(
+      query,
+      variablesJson: jsonEncode(vars ?? {}),
+    );
+    final decoded = jsonDecode(raw);
+    if (decoded is Map<String, dynamic> && decoded['error'] != null) {
+      throw Exception(decoded['error']);
+    }
+    final data = decoded as Map<String, dynamic>;
     if (data['errors'] != null) {
       throw Exception('AniList: ${data['errors']}');
     }

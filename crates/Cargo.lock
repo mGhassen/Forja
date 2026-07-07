@@ -44,6 +44,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "anilist-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "stremio-core",
+]
+
+[[package]]
 name = "anstyle"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -954,8 +963,10 @@ checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 name = "ffi"
 version = "0.1.0"
 dependencies = [
+ "anilist-core",
  "iptv-core",
  "jellyfin-core",
+ "manga-core",
  "proxy",
  "scrapers",
  "serde",
@@ -2084,6 +2095,15 @@ name = "mac"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
+
+[[package]]
+name = "manga-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "stremio-core",
+]
 
 [[package]]
 name = "markup5ever"

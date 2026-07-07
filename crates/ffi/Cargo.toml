@@ -32,6 +32,8 @@ storage = { path = "../storage" }
 tmdb-core = { path = "../tmdb-core" }
 trakt-core = { path = "../trakt-core" }
 jellyfin-core = { path = "../jellyfin-core" }
+anilist-core = { path = "../anilist-core" }
+manga-core = { path = "../manga-core" }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -303,6 +303,31 @@ class RustLib {
         return _readString(_native.ffi_jellyfin_request_json(ptr));
       });
 
+  String anilistQueryJson(
+    String query, {
+    String variablesJson = '{}',
+  }) =>
+      using((arena) {
+        final qPtr = query.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final vPtr =
+            variablesJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_anilist_query_json(qPtr, vPtr));
+      });
+
+  String mangaFetchHtml(
+    String url, {
+    String headersJson = '{}',
+    int timeoutSecs = 15,
+  }) =>
+      using((arena) {
+        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final hdrPtr =
+            headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.ffi_manga_fetch_html(urlPtr, hdrPtr, timeoutSecs),
+        );
+      });
+
   String parseKnabenHtmlJson(String html) => using((arena) {
         final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_parse_knaben_html_json(ptr));
@@ -762,6 +787,16 @@ final class _FfiNative {
               'ffi_jellyfin_request_json',
             )
             .asFunction(),
+        ffi_anilist_query_json = lib
+            .lookup<ffi.NativeFunction<_AnilistQueryNative>>(
+              'ffi_anilist_query_json',
+            )
+            .asFunction(),
+        ffi_manga_fetch_html = lib
+            .lookup<ffi.NativeFunction<_MangaFetchNative>>(
+              'ffi_manga_fetch_html',
+            )
+            .asFunction(),
         ffi_parse_knaben_html_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_parse_knaben_html_json',
@@ -1045,6 +1080,15 @@ final class _FfiNative {
       ffi_trakt_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_jellyfin_request_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) ffi_anilist_query_json;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+    int,
+  ) ffi_manga_fetch_html;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_parse_knaben_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
@@ -1172,6 +1216,15 @@ typedef _StringInOutNative =
 typedef _StremioHttpGetNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
   ffi.Uint64,
+);
+typedef _AnilistQueryNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Pointer<ffi.Char>,
+);
+typedef _MangaFetchNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Pointer<ffi.Char>,
+  ffi.Pointer<ffi.Char>,
+  ffi.Int,
 );
 typedef _HttpGetNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,

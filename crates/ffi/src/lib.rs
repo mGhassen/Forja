@@ -235,6 +235,16 @@ fn jellyfin_request_json(request_json: String) -> String {
     jellyfin_core::request_json(&request_json)
 }
 
+fn anilist_query_json(query: String, variables_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    anilist_core::query_json(&query, &variables_json)
+}
+
+fn manga_fetch_html(url: String, headers_json: String, timeout_secs: u64) -> String {
+    utils::engine_cancel::enter_job();
+    manga_core::fetch_html(&url, &headers_json, timeout_secs)
+}
+
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {
     build_resource_url(&addon_url, &resource_path)
 }

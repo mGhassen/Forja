@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -131,8 +131,6 @@ class MangaService {
   static const String _userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-  final http.Client _client = http.Client();
-
   Map<String, String> get _headers => {
         'User-Agent': _userAgent,
         'Accept':
@@ -141,11 +139,17 @@ class MangaService {
       };
 
   Future<String> _fetchHtml(String url) async {
-    final response = await _client.get(Uri.parse(url), headers: _headers);
-    if (response.statusCode != 200) {
-      throw Exception('HTTP ${response.statusCode} for $url');
+    final raw = RustLib.instance.mangaFetchHtml(
+      url,
+      headersJson: jsonEncode(_headers),
+    );
+    if (raw.startsWith('{') && raw.contains('"error"')) {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      if (decoded['error'] != null) {
+        throw Exception(decoded['error']);
+      }
     }
-    return response.body;
+    return raw;
   }
 
   String? _extractSeriesId(String url) {

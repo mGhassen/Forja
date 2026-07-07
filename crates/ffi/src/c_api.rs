@@ -316,6 +316,30 @@ pub unsafe extern "C" fn ffi_jellyfin_request_json(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_anilist_query_json(
+    query: *const c_char,
+    variables_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::anilist_query_json(
+        from_c_str(query),
+        from_c_str(variables_json),
+    ))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_manga_fetch_html(
+    url: *const c_char,
+    headers_json: *const c_char,
+    timeout_secs: u64,
+) -> *mut c_char {
+    to_c_string(crate::manga_fetch_html(
+        from_c_str(url),
+        from_c_str(headers_json),
+        timeout_secs,
+    ))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_parse_knaben_html_json(html: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_knaben_html_json(from_c_str(html)))
 }
