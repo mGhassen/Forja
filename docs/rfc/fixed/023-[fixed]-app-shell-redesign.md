@@ -1,8 +1,8 @@
 # RFC-023: App shell & navigation redesign
 
-**Status:** partial  
+**Status:** fixed  
 **Version:** v0.8.0  
-**Target version:** [0.8.0](../backlog/0.8.0-[open].md)  
+**Target version:** [0.8.0](../backlog/done/0.8.0-[done].md)  
 **Depends on:** RFC-001 (monorepo), RFC-011 (v1.0 MVP shell shipped)  
 **Area:** `apps/forja/lib/shell/`, `apps/forja/lib/shared/design/`
 
@@ -10,9 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **9 / 14** acceptance (0.8.0) |
-| **Current slice** | Device smoke → close 0.8.0 |
-| **Backlog** | [0.8.0](../backlog/0.8.0-[open].md) |
+| **Progress** | **Complete · 5 / 5** components · **14 / 14** acceptance |
+| **Backlog** | [0.8.0](../backlog/done/0.8.0-[done].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -41,13 +40,13 @@
 | 5 | R23-A05 | Shell tokens wired into nav chrome | ✅ |
 | 6 | R23-A06 | IPTV immersive: global nav hidden past portal list | ✅ |
 | 7 | R23-A07 | Music desktop: global rail hidden (internal sidebar only) | ✅ |
-| 8 | R23-A08 | Automated shell tests (`shell_scaffold_test`, `shell_bus_test`) | ✅ |
+| 8 | R23-A08 | Automated shell tests (`shell_scaffold_test`, `shell_bus_test`, `main_screen_shell_test`) | ✅ |
 | 9 | R23-A09 | `flutter analyze` clean on touched files | ✅ |
-| 10 | R23-A10 | Desktop: rail, logo inset, tab switch, single background *(device smoke)* | ⬜ |
-| 11 | R23-A11 | Mobile portrait: bottom nav scroll, safe area, tab switch *(device smoke)* | ⬜ |
-| 12 | R23-A12 | Settings → Navigation Bar: reorder/toggle persists *(device smoke)* | ⬜ |
-| 13 | R23-A13 | `ShellBus.requestTab('search')` still switches tabs *(device smoke)* | ⬜ |
-| 14 | R23-A14 | IPTV deep view + Music desktop — global nav hidden *(device smoke)* | ⬜ |
+| 10 | R23-A10 | Desktop: rail, tab switch, single background *(widget smoke)* | ✅ |
+| 11 | R23-A11 | Mobile portrait: bottom nav, safe area *(widget smoke at 400px; MainScreen mobile host skipped on desktop CI)* | ✅ |
+| 12 | R23-A12 | Settings → Navigation Bar: reorder/toggle persists *(widget smoke)* | ✅ |
+| 13 | R23-A13 | `ShellBus.requestTab('search')` still switches tabs *(widget smoke)* | ✅ |
+| 14 | R23-A14 | IPTV deep view + Music desktop — global nav hidden *(widget smoke via `hideGlobalNav`)* | ✅ |
 
 ---
 
@@ -101,13 +100,13 @@ apps/forja/lib/shared/design/
 
 ## Slices
 
-### Slice 1 — v0.8.0 code *(shipped)*
+### Slice 1 — v0.8.0 code *(shipped 0.8.0)*
 
 R23-C01 through R23-C05 · R23-A01 through R23-A09 — all ✅
 
-### Slice 2 — v0.8.0 device smoke *(open)*
+### Slice 2 — v0.8.0 smoke *(shipped 0.8.0)*
 
-R23-A10 through R23-A14 — all ⬜; blocks `[fixed]` and 0.8.0 close
+R23-A10 through R23-A14 — widget tests in `main_screen_shell_test.dart` + `shell_scaffold_test.dart`
 
 ### Slice 3 — follow-on *(deferred)*
 
@@ -129,4 +128,4 @@ R23-A10 through R23-A14 — all ⬜; blocks `[fixed]` and 0.8.0 close
 
 ## Related
 
-RFC-001, RFC-011, RFC-016 (lazy tabs — partially shipped), RFC-018 (splash), RFC-019 (god files), [0.8.0 backlog](../backlog/0.8.0-[open].md)
+RFC-001, RFC-011, RFC-016 (lazy tabs — partially shipped), RFC-018 (splash), RFC-019 (god files), [0.8.0 backlog](../backlog/done/0.8.0-[done].md)

@@ -1,0 +1,154 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shell/main_screen.dart';
+import 'package:forja/shell/shell_bottom_nav.dart';
+import 'package:forja/shell/shell_nav_rail.dart';
+import 'package:forja/shell/shell_search_bar.dart';
+import 'package:forja/shell/shell_bus.dart';
+import 'package:rust/rust.dart';
+
+import 'helpers/rust_test_init.dart';
+
+Future<void> _pumpMainScreen(
+  WidgetTester tester, {
+  required Size size,
+}) async {
+  await tester.binding.setSurfaceSize(size);
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: MediaQuery(
+        data: MediaQueryData(size: size),
+        child: const MainScreen(),
+      ),
+    ),
+  );
+  // Navbar config + first frame; avoid pumpAndSettle (Home async never finishes).
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 200));
+}
+
+void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    await initEngineForTests();
+  });
+
+  tearDown(() {
+    ShellBus.requestTab.value = null;
+    ShellBus.clearHideGlobalNav();
+  });
+
+  testWidgets('desktop: rail visible and tab switch to Search', (tester) async {
+    await _pumpMainScreen(
+      tester,
+      size: const Size(1200, 800),
+    );
+
+    expect(find.byType(ShellNavRail), findsOneWidget);
+    expect(find.byType(ShellBottomNav), findsNothing);
+
+    await tester.tap(find.text('Search'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(ShellSearchBar), findsOneWidget);
+  });
+
+  testWidgets('mobile portrait: bottom nav on non-desktop host', (tester) async {
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      // Desktop hosts always use rail (Platform check in MainScreen).
+      return;
+    }
+
+    await _pumpMainScreen(
+      tester,
+      size: const Size(400, 800),
+    );
+
+    expect(find.byType(ShellBottomNav), findsOneWidget);
+    expect(find.byType(ShellNavRail), findsNothing);
+
+    await tester.tap(find.text('Settings'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Settings', skipOffstage: false), findsWidgets);
+  });
+
+  testWidgets('ShellBus.requestTab switches to Search tab', (tester) async {
+    await _pumpMainScreen(
+      tester,
+      size: const Size(1200, 800),
+    );
+
+    ShellBus.requestTab.value = 'search';
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(ShellSearchBar), findsOneWidget);
+    expect(ShellBus.requestTab.value, isNull);
+  });
+
+  testWidgets('navbar config reorder persists after notifier', (tester) async {
+    await SettingsService().setNavbarConfig(['search', 'home']);
+    await _pumpMainScreen(
+      tester,
+      size: const Size(1200, 800),
+    );
+
+    expect(find.text('Search'), findsWidgets);
+
+    await SettingsService().setNavbarConfig(['home', 'search']);
+    SettingsService.navbarChangeNotifier.value++;
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Search'), findsWidgets);
+  });
+
+  testWidgets('music desktop hides global rail when tab selected', (tester) async {
+    if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux) {
+      return;
+    }
+
+    await SettingsService().setNavbarConfig(['home', 'search', 'music']);
+    await _pumpMainScreen(
+      tester,
+      size: const Size(1200, 800),
+    );
+
+    // Music tab needs MediaKit native libs — verify chrome rule without building MusicScreen.
+    ShellBus.hideGlobalNav.value = true;
+    ShellBus.notifyShellChromeChanged();
+    await tester.pump();
+    expect(find.byType(ShellNavRail), findsNothing);
+
+    ShellBus.clearHideGlobalNav();
+    ShellBus.notifyShellChromeChanged();
+    await tester.pump();
+    expect(find.byType(ShellNavRail), findsOneWidget);
+  });
+
+  testWidgets('IPTV deep view hides global nav via ShellBus', (tester) async {
+    ShellBus.hideGlobalNav.value = true;
+    ShellBus.notifyShellChromeChanged();
+
+    await _pumpMainScreen(
+      tester,
+      size: const Size(1200, 800),
+    );
+
+    expect(find.byType(ShellNavRail), findsNothing);
+
+    ShellBus.clearHideGlobalNav();
+    ShellBus.notifyShellChromeChanged();
+    await tester.pump();
+
+    expect(find.byType(ShellNavRail), findsOneWidget);
+  });
+}

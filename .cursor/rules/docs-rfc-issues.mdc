@@ -74,16 +74,15 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 
 ### Status at a glance — required
 
-**RFC** (reference: [RFC-023](../../docs/rfc/023-[partial]-app-shell-redesign.md)):
+**RFC** (reference: [RFC-023](../../docs/rfc/fixed/023-[fixed]-app-shell-redesign.md)):
 
 ```markdown
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **9 / 14** acceptance (0.8.0) |
-| **Current slice** | Device smoke → close 0.8.0 |
-| **Backlog** | [0.8.0](../backlog/0.8.0-[open].md) |
+| **Progress** | **Complete · 5 / 5** components · **14 / 14** acceptance |
+| **Backlog** | [0.8.0](../backlog/done/0.8.0-[done].md) |
 ```
 
 **Issue** (reference: [018](../../docs/issues/018-[draft]-migration-playback-parity-unverified.md)):
@@ -97,16 +96,16 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 | **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 ```
 
-**Backlog** (reference: [0.8.0](../../docs/backlog/0.8.0-[open].md)):
+**Backlog** (reference: [0.8.0](../../docs/backlog/done/0.8.0-[done].md)):
 
 ```markdown
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **10 / 15** shipped |
-| **Blocks close** | Device smoke (B80-S11–S15) |
-| **Backlog** | [RFC-023](../rfc/023-[partial]-app-shell-redesign.md) |
+| **Progress** | **15 / 15** shipped |
+| **Status** | done |
+| **Backlog** | [RFC-023](../rfc/fixed/023-[fixed]-app-shell-redesign.md) |
 ```
 
 ### Progress counts
@@ -228,7 +227,7 @@ After `#` title + metadata block:
 4. **`## Acceptance (slice)`** — one section per target slice
 5. **`## Summary`** — then Goals / Problem / Contracts / Related
 
-**Reference:** [RFC-023](../../docs/rfc/023-[partial]-app-shell-redesign.md)
+**Reference:** [RFC-023](../../docs/rfc/fixed/023-[fixed]-app-shell-redesign.md)
 
 ---
 
@@ -317,7 +316,7 @@ RFC/issue/backlog track **ship status**; feature docs track **how it works for u
 
 ### Active backlog — scope big work before coding
 
-When the **active open/partial backlog** is in context (e.g. [0.8.0-[open].md](../../docs/backlog/0.8.0-[open].md)) or the user is clearly shipping that version arc, and they ask for something **substantial** — **create or extend docs first**, then implement. Do not jump straight to code without a tracked spec.
+When the **active open/partial backlog** is in context (e.g. next `[open].md` under `docs/backlog/`) or the user is clearly shipping that version arc, and they ask for something **substantial** — **create or extend docs first**, then implement. Do not jump straight to code without a tracked spec.
 
 **Substantial = needs an RFC or issue:**
 
