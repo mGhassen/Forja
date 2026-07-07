@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:api/playback/playback.dart';
+import 'package:forja/shared/playback/playback.dart';
 import 'package:rust/rust.dart';
 
 /// Settings UI for the local WebStreamr port — country toggles, MFP,

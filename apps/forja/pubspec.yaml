@@ -59,8 +59,6 @@ dependencies:
     git:
       url: https://github.com/AimesSoft/media-kit.git
       path: libs/macos/media_kit_libs_macos_video
-  api:
-    path: ../../packages/api
   rust:
     path: ../../packages/rust
 

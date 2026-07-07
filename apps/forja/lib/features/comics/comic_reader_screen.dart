@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:api/api/comics_service.dart';
-import 'package:api/api/comic_page_extractor.dart';
+import 'package:forja/features/comics/catalog/comics_service.dart';
+import 'package:forja/features/comics/catalog/comic_page_extractor.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class ComicReaderScreen extends StatefulWidget {

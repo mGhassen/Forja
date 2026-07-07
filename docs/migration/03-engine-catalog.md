@@ -1,6 +1,6 @@
 # Phase 3 — Catalog engine (wave 2)
 
-**Status:** 3 / 5 tasks — P3-03 in progress  
+**Status:** 4 / 5 tasks — P3-04 next  
 **Depends on:** [Playback engine exit checklist](./02-rust-engine-complete.md#playback-engine-exit-checklist) ✅  
 **Next phase:** [Phase 4 — Web client](./04-web-client.md) (parallel)  
 **Migration index:** [README.md](./README.md)  
@@ -13,7 +13,7 @@
 
 Catalog engine lives in `crates/*`. Delete `packages/api` and any remaining legacy engine under `packages/`.
 
-TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination as playback (`crates/*`), different wave. `packages/api` is legacy debt until deleted.
+TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination as playback (`crates/*`), different wave. ~~`packages/api`~~ **deleted** (P3-03 ✅); residual Dart engine debt lives in `apps/forja` until ported.
 
 ---
 
@@ -21,7 +21,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 
 | | |
 |--|--|
-| **Progress** | **3 / 5 tasks** — P3-03 in progress |
+| **Progress** | **4 / 5 tasks** — P3-04 sign-off |
 | **Blocked by** | — |
 | **Deferred from wave 1** | P2-89 (Stremio catalog service) |
 
@@ -36,12 +36,12 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 | 1 | P3-00 | Delete `packages/kotlin/` + `scripts/generate_kotlin_ffi.sh` references (Compose cancelled) | ✅ |
 | 2 | P3-01 | Port TMDB/Trakt core to `crates/*` | ✅ |
 | 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | ✅ |
-| 4 | P3-03 | Delete `packages/api` | 🔄 |
+| 4 | P3-03 | Delete `packages/api` | ✅ |
 | 5 | P3-04 | Architecture normalized sign-off | ⬜ |
 
-### P3-03 — incremental (not done)
+### P3-03 — done
 
-Full delete blocked: `apps/forja` still imports `package:api/` widely; models, playback glue, and Dart parsers remain. Track blockers in [023-[open]-packages-api-delete-blocked-host-relocation.md](../issues/023-[open]-packages-api-delete-blocked-host-relocation.md).
+`packages/api` deleted. Final relocation: playback/debrid/torrent services → `apps/forja/lib/shared/playback/`; `music_service` → `apps/forja/lib/shared/audio/`; `jellyfin_service` → `apps/forja/lib/features/jellyfin/catalog/`; `subtitle_api` → `packages/rust/lib/src/catalog/`. See [023-[fixed]-packages-api-delete-blocked-host-relocation.md](../issues/fixed/023-[fixed]-packages-api-delete-blocked-host-relocation.md).
 
 | Step | Status |
 |------|--------|
@@ -51,18 +51,12 @@ Full delete blocked: `apps/forja` still imports `package:api/` widely; models, p
 | Move `episode_watched_service` → `packages/rust` (Trakt/Simkl sync via host callback) | ✅ |
 | Move `my_list_service` + `book_progress_service` → `packages/rust`; `BookResult` → `packages/rust/lib/src/models/` | ✅ |
 | Consolidate tracker sync in `apps/forja/lib/shared/services/tracker_sync.dart` | ✅ |
-| Move playback glue (11 files) + `webstreamr_settings` → `packages/rust/lib/src/playback/`; `stremio_stream_resolver` stays in `api` (debrid) | ✅ |
-| Move catalog metadata services (`introdb`, `mdblist`, `subtitlecat`, `mysubs`, `tmdb_service`, `paper2audio`) → `packages/rust/lib/src/catalog/` | ✅ |
-| Move host utils (`track_auto_select`, `epub_cover`, `epub_splitter`) → `apps/forja` | ✅ |
-| Move music/audio host cluster (6 files) → `apps/forja/lib/shared/audio/` | ✅ |
-| Move `tmdb_api` + `kisskh_subtitle_decryptor` → `packages/rust/lib/src/catalog/` | ✅ |
-| Move Trakt/Simkl OAuth → `apps/forja/lib/shared/services/tracker/`; `stremio_service` → rust catalog | ✅ |
-| Move `audiobook_download_service` → `apps/forja/lib/shared/audio/` | ✅ |
-| Move catalog verticals to `apps/forja` (anime+kisskh+books+manga+bestsimilar, 10 files) | ✅ |
-| Rewire `packages/api/lib/api/*` imports to `package:rust/rust.dart` | ✅ |
-| Relocate host slices to `apps/forja` | ⬜ |
-| Delete remaining Dart catalog slices after Rust port | ⬜ |
-| Remove `packages/api` from workspace | ⬜ |
+| Move playback glue (11 files) + `webstreamr_settings` → `packages/rust/lib/src/playback/` | ✅ |
+| Move catalog metadata services → `packages/rust/lib/src/catalog/` | ✅ |
+| Move host utils + music/audio cluster → `apps/forja` | ✅ |
+| Move catalog verticals + extractors → `apps/forja` | ✅ |
+| Relocate final 14 files (playback resolvers, debrid, music, jellyfin, subtitle) | ✅ |
+| Remove `packages/api` from workspace | ✅ |
 
 ---
 
@@ -72,9 +66,9 @@ Full delete blocked: `apps/forja` still imports `package:api/` widely; models, p
 
 | # | Criterion | Task | Status |
 |---|-----------|------|--------|
-| A1 | `packages/api` deleted | P3-03 | ⬜ |
+| A1 | `packages/api` deleted | P3-03 | ✅ |
 | A2 | All C1 catalog logic in `crates/*` | P3-01, P3-02 | ⬜ |
-| A3 | Only `packages/rust` under `packages/` | P3-03, P3-04 | ⬜ |
+| A3 | Only `packages/rust` under `packages/` | P3-03, P3-04 | ✅ |
 | A4 | No engine logic in Dart outside FFI calls | P3-01 → P3-03 | ⬜ |
 | A5 | `packages/kotlin` deleted | P3-00 | ✅ |
 
@@ -123,7 +117,7 @@ flowchart LR
 | Audiobook (browse/search + downloads) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 | Paper2Audio | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 | Lyrics (LRCLIB) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Debrid / site111477 / mega_proxy | `packages/api` | deferred (playback wave) |
+| Debrid / site111477 / mega_proxy | ~~`packages/api`~~ | `apps/forja/lib/shared/playback/` (Dart — port to `crates/*` in P3-04+) |
 
 ### `packages/` after wave 2
 
@@ -131,8 +125,8 @@ flowchart LR
 |---------|---------|
 | `packages/rust` | Dart FFI bridge + parity tests (**permanent**) |
 | `packages/rust/lib/src/catalog_http.dart` | Shared catalog HTTP (`animeHttp` / `animeHttpBytes`) — moved from `packages/api` in P3-03 |
-| `packages/rust/lib/src/models/` | Shared DTOs (`Movie`, `StreamSource`, `TorrentResult`) — moved from `packages/api` in P3-03 |
-| `packages/api` | Legacy catalog + host glue — **delete in P3-03** ([023](../issues/023-[open]-packages-api-delete-blocked-host-relocation.md)) |
+| `packages/rust/lib/src/models/` | Shared DTOs (`Movie`, `StreamSource`, `TorrentResult`) — moved from ~~`packages/api`~~ in P3-03 |
+| `apps/forja/lib/shared/playback/` | Host playback orchestration (debrid, site111477, jackett, stremio resolver) — relocated from ~~`packages/api`~~ in P3-03 |
 
 ---
 
@@ -147,8 +141,8 @@ Engine (crates/* + libffi)
   → catalog: tmdb, trakt, jellyfin, vertical APIs
   → playback: stream resolve, torrent, proxy, storage (wave 1 ✅)
 
-packages/api/
-  → legacy catalog Dart — delete slice-by-slice during wave 2
+apps/forja/lib/shared/playback/
+  → residual Dart playback HTTP (debrid, site111477, jackett) — port to crates in P3-04+
 ```
 
 | **Engine (`crates/*`)** | **Host (`apps/forja`)** |
@@ -157,9 +151,9 @@ packages/api/
 | Vertical APIs (anime, manga, …) | OAuth flows, theme |
 | Stremio catalog (P2-89 → P3) | My list UX, navigation |
 
-**Anti-patterns:** Dart wrapper instead of delete · sync FFI on UI thread (use `Isolate.run`) · Pattern A FFI · new engine logic in Dart
+**Allowed:** `Isolate.run` for long FFI · no **new** Dart engine logic in host
 
-**Allowed:** legacy `packages/api` reads during wave 2 — no new Dart engine logic · `Isolate.run` for long FFI
+**Anti-patterns:** sync FFI on UI thread · Pattern A FFI · new engine logic in Dart
 
 ---
 

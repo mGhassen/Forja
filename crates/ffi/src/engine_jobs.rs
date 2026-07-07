@@ -33,6 +33,7 @@ pub enum JobKind {
     HttpGet = 5,
     HttpPost = 6,
     IptvProbeStream = 7,
+    TorrentStream = 8,
 }
 
 pub fn submit(kind: u32, payload_json: String) -> u64 {
@@ -182,6 +183,22 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
             .await
             .map_err(|e| e.to_string())?
         }
+        k if k == JobKind::TorrentStream as u32 => {
+            let req: TorrentStreamReq =
+                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let token = utils::engine_cancel::cancellation_token();
+            tokio::task::spawn_blocking(move || {
+                utils::engine_cancel::attach_job_token(token);
+                Ok(crate::engine_torrent::torrent_stream_json(
+                    req.magnet,
+                    req.season,
+                    req.episode,
+                    req.file_idx,
+                ))
+            })
+            .await
+            .map_err(|e| e.to_string())?
+        }
         _ => Err(format!("unknown job kind {kind}")),
     }
 }
@@ -222,4 +239,12 @@ struct HttpPostReq {
 struct ProbeReq {
     url: String,
     timeout_secs: u64,
+}
+
+#[derive(serde::Deserialize)]
+struct TorrentStreamReq {
+    magnet: String,
+    season: i32,
+    episode: i32,
+    file_idx: i32,
 }

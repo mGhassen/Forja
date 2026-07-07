@@ -12,6 +12,7 @@ abstract final class EngineAsyncJob {
   static const httpGet = 5;
   static const httpPost = 6;
   static const iptvProbeStream = 7;
+  static const torrentStream = 8;
 }
 
 /// Non-blocking long I/O via Rust tokio runtime; main isolate polls for result.

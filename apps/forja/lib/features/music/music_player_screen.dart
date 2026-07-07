@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
-import 'package:api/api/music_service.dart';
+import 'package:forja/shared/audio/music_service.dart';
 import 'package:forja/shared/audio/music_storage_service.dart';
 import 'package:forja/shared/audio/music_downloader_service.dart';
 import 'package:forja/shared/audio/lyrics_service.dart';

@@ -12,7 +12,7 @@
 |---|-----|---------|
 | 1 | [01-rust-engine.md](./01-rust-engine.md) | ✅ Rust crates + FFI primitives |
 | 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | ✅ Playback engine → `crates/*` |
-| 3 | [03-engine-catalog.md](./03-engine-catalog.md) | 🔄 **Wave 2: catalog engine → `crates/*`; delete `packages/api`** (kotlin ✅ P3-00) |
+| 3 | [03-engine-catalog.md](./03-engine-catalog.md) | 🔄 **Wave 2: catalog engine → `crates/*`** — `packages/api` deleted ✅ P3-03; P3-04 sign-off ⬜ |
 | 4 | [04-web-client.md](./04-web-client.md) | ⬜ WASM parallel |
 
 ---
@@ -25,7 +25,7 @@
 | **Host** | `apps/forja` | UI + platform (C3–C6, C10, C12, host C11 UX) |
 | **FFI bridge** | `packages/rust` | Loader + parity tests only |
 
-Legacy engine in `packages/api` must port to `crates/*` — not a permanent tier. (`streaming`/`storage`/`core` deleted wave 1.)
+Residual Dart engine in `apps/forja` (playback HTTP, catalog verticals) must port to `crates/*` — not a permanent tier. (`packages/api`, `streaming`/`storage`/`core` deleted.)
 
 ---
 
@@ -44,7 +44,8 @@ There is no “Dart wrapper calling Rust” for engine code — delete the Dart 
 | Package | Role | Fate |
 |---------|------|------|
 | **`packages/rust`** | Dart FFI loader + parity tests | **Permanent** |
-| **`packages/api`** | Legacy catalog engine | Delete wave 2 (Phase 3) |
+| **`packages/rust`** | Dart FFI bridge | Permanent |
+| ~~`packages/api`~~ | ~~Legacy catalog engine~~ | Deleted P3-03 ✅ |
 | **`packages/{storage,core,streaming}`** | Legacy playback engine | ✅ deleted (wave 1) |
 
 ### Legacy package deletion

@@ -23,7 +23,7 @@ while IFS= read -r line; do
   echo "  $line"
   violations=1
 done < <(
-  rg 'RustLib\.instance\.' "$ROOT/apps/forja/lib" "$ROOT/packages/api/lib" \
+  rg 'RustLib\.instance\.' "$ROOT/apps/forja/lib" \
     --glob '*.dart' \
     --glob '!**/*_test.dart' \
     2>/dev/null | sort -u || true

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
+import '../engine_jobs.dart';
 import 'playback_profile.dart';
 import 'torrent_engine_backend.dart';
 
@@ -155,11 +156,14 @@ class TorrentStreamService {
     if (!RustLib.isInitialized) return null;
 
     try {
-      final json = RustLib.instance.torrentStreamJson(
-        magnetLink,
-        season: season,
-        episode: episode,
-        fileIdx: fileIdx,
+      final json = await EngineJobs.run(
+        EngineAsyncJob.torrentStream,
+        {
+          'magnet': magnetLink,
+          'season': season ?? -1,
+          'episode': episode ?? -1,
+          'file_idx': fileIdx ?? -1,
+        },
       );
       final parsed = jsonDecode(json) as Map<String, dynamic>;
       if (parsed.containsKey('error')) return null;

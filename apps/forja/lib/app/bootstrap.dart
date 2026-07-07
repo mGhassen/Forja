@@ -13,7 +13,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/audio/audio_handler.dart';
 import 'package:forja/shared/audio/audiobook_player_service.dart';
 import 'package:rust/rust.dart';
-import 'package:api/playback/playback.dart';
+import 'package:forja/shared/playback/playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:rust/rust.dart' as site111477_proxy;

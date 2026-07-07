@@ -56,9 +56,9 @@ Rename the file when status changes. **Filename tag and `**Status:**` in the iss
 | [020-[open]-…](020-[open]-cancel-gen-token-discard-unverified.md) | Gen-token cancel may discard valid results (unverified) | P2 | Medium | open |
 | [021-[open]-…](021-[open]-catalog-vertical-import-smoke-unverified.md) | Catalog vertical import migration smoke unverified | P3 | Low | open |
 | [022-[open]-…](022-[open]-playback-widget-integration-tests.md) | No widget/integration tests for playback cancel | P3 | Low | open |
-| [023-[open]-…](023-[open]-packages-api-delete-blocked-host-relocation.md) | `packages/api` delete blocked — host relocation | P2 | Medium | open |
+| [023-[fixed]-…](fixed/023-[fixed]-packages-api-delete-blocked-host-relocation.md) | `packages/api` deleted — host relocation | P2 | Medium | fixed |
 
-**Migration parity (open):** [018](018-[open]-migration-playback-parity-unverified.md) parent → [019](019-[open]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[open]-playback-widget-integration-tests.md). **Catalog delete:** [023](023-[open]-packages-api-delete-blocked-host-relocation.md).
+**Migration parity (open):** [018](018-[open]-migration-playback-parity-unverified.md) parent → [019](019-[open]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[open]-playback-widget-integration-tests.md). **Catalog delete:** [023](fixed/023-[fixed]-packages-api-delete-blocked-host-relocation.md) ✅.
 
 **Sync FFI stack:** [001](001-[fixed]-webstreamr-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md), [011](011-[fixed]-kisskh-hls-sync-ffi.md), [015](015-[fixed]-rust-blocking-http-engine-debt.md), [016](016-[fixed]-async-job-ffi-hard-cancel.md) — **fixed**. Parent [004](004-[fixed]-sync-ffi-ui-thread-audit.md) **fixed**.
 

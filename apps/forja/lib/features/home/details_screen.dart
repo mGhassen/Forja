@@ -5,11 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:rust/rust.dart';
-import 'package:api/playback/playback.dart';
+import 'package:forja/shared/playback/playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:api/services/jackett_service.dart';
-import 'package:api/services/prowlarr_service.dart';
-import 'package:api/services/link_resolver.dart';
+import 'package:forja/shared/playback/jackett_service.dart';
+import 'package:forja/shared/playback/prowlarr_service.dart';
+import 'package:forja/shared/playback/link_resolver.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
@@ -1627,6 +1627,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       builder: (_) => LoadingOverlay(
         movie: _movie,
         message: loadingMessage,
+        subtitle: playbackSourceHint(
+          useDebrid: useDebrid,
+          debridService: debridService,
+        ),
         onCancel: () {
           _streamCancelled = true;
           Navigator.of(context).pop();
@@ -1731,10 +1735,20 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (!mounted) return;
 
     _streamCancelled = false;
+    final overlayMessage = ValueNotifier<String>(
+      playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
+    );
+    final sourceHint = playbackSourceHint(
+      useDebrid: useDebrid,
+      debridService: debridService,
+    );
     showDialog(context: context, barrierDismissible: false, barrierColor: Colors.black,
-      builder: (_) => LoadingOverlay(movie: _movie,
-        message: useDebrid && debridService != 'None' ? 'Resolving with $debridService...' : 'Starting Torrent Engine...',
-        onCancel: () { _streamCancelled = true; Navigator.of(context).pop(); }));
+      builder: (_) => LoadingOverlay(
+        movie: _movie,
+        messageNotifier: overlayMessage,
+        subtitle: sourceHint,
+        onCancel: () { _streamCancelled = true; Navigator.of(context).pop(); },
+      ));
 
     String? url;
     String? magnetLink = result.magnet;
@@ -1770,10 +1784,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (!mounted || _streamCancelled) return;
         if (Navigator.canPop(context)) Navigator.pop(context);
         showDialog(context: context, barrierDismissible: false, barrierColor: Colors.black,
-          builder: (_) => LoadingOverlay(movie: _movie,
-            message: useDebrid && debridService != 'None' ? 'Resolving with $debridService...' : 'Starting Torrent Engine...',
-            onCancel: () { _streamCancelled = true; Navigator.of(context).pop(); }));
+          builder: (_) => LoadingOverlay(
+            movie: _movie,
+            messageNotifier: overlayMessage,
+            subtitle: sourceHint,
+            onCancel: () { _streamCancelled = true; Navigator.of(context).pop(); },
+          ));
       }
+
+      overlayMessage.value = playbackResolveLabel(
+        useDebrid: useDebrid,
+        debridService: debridService,
+      );
 
       final isTv = _movie.mediaType == 'tv';
       final playback = await resolveMagnetForPlayback(
@@ -1788,6 +1810,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       if (playback != null) {
         url = playback.url;
         resolvedFileIndex = playback.fileIndex;
+        debugPrint('[Torrent] Playing via ${playback.sourceLabel}');
       }
     } catch (e) {
       debugPrint('Stream error: $e');
@@ -1799,6 +1822,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           SnackBar(content: Text(message)),
         );
       }
+    } finally {
+      overlayMessage.dispose();
     }
 
     if (!mounted || _streamCancelled) return;
