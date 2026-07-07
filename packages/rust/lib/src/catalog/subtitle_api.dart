@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 
@@ -127,101 +126,34 @@ class SubtitleApi {
     yield* controller.stream;
   }
 
-  // ── Wyzie ──────────────────────────────────────────────────────────────────
-
   static Future<List<Map<String, dynamic>>> _fetchWyzie(int tmdbId, int? season, int? episode) async {
     try {
-      const wyzieKey = 'wyzie-0321082ab89b43b9834233ee524cc725';
-      String url = 'https://sub.wyzie.io/search?id=$tmdbId&key=$wyzieKey';
-      if (season != null && episode != null) {
-        url += '&season=$season&episode=$episode';
-      }
-
-      final response = await animeHttp('GET', url);
-      if (response.status == 200) {
-        final List<dynamic> data = json.decode(response.body);
-
-        // Count how many entries share the same display/language name
-        final Map<String, int> totals = {};
-        for (final s in data) {
-          final name = (s['display'] ?? s['language'] ?? 'Unknown').toString();
-          totals[name] = (totals[name] ?? 0) + 1;
-        }
-
-        // Rebuild with numbered display + source suffix
-        final Map<String, int> seen = {};
-        return data.map((s) {
-          final entry = Map<String, dynamic>.from(s as Map);
-          final name = (entry['display'] ?? entry['language'] ?? 'Unknown').toString();
-          seen[name] = (seen[name] ?? 0) + 1;
-          final n = seen[name]!;
-          entry['display'] = totals[name]! > 1 ? '$name $n - wyzie' : '$name 1 - wyzie';
-          entry['sourceName'] = 'wyzie';
-          // Append API key to download URLs as well
-          if (entry['url'] != null) {
-            final dlUrl = entry['url'].toString();
-            if (dlUrl.contains('wyzie.io') || dlUrl.contains('wyzie.ru')) {
-              entry['url'] = '$dlUrl${dlUrl.contains('?') ? '&' : '?'}key=$wyzieKey';
-            }
-          }
-          return entry;
-        }).toList();
-      }
+      return await subtitleEntries({
+        'action': 'wyzie_fetch',
+        'tmdb_id': tmdbId,
+        if (season != null) 'season': season,
+        if (episode != null) 'episode': episode,
+      });
     } catch (e) {
       debugPrint('Wyzie error: $e');
+      return [];
     }
-    return [];
   }
 
   // ── Levrx ──────────────────────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> _fetchLevrx(int tmdbId, int? season, int? episode) async {
     try {
-      // Shows: ?id=tmdbId/season/episode  |  Movies: ?id=tmdbId
-      final idParam = (season != null && episode != null)
-          ? '$tmdbId/$season/$episode'
-          : '$tmdbId';
-      final uri = Uri.parse('https://api.levrx.de/search?id=$idParam');
-
-      final response = await animeHttp('GET', uri.toString());
-      if (response.status == 200) {
-        final data = json.decode(response.body) as Map<String, dynamic>;
-        final subtitles = data['subtitles'] as List<dynamic>? ?? [];
-        final result = <Map<String, dynamic>>[];
-
-        for (final sub in subtitles) {
-          final category = (sub['category'] as String? ?? 'Unknown');
-          final urls = (sub['urls'] as List<dynamic>? ?? []).cast<String>();
-          for (var i = 0; i < urls.length; i++) {
-            result.add({
-              'url': urls[i],
-              'display': '$category ${i + 1} - levrx',
-              'language': _levrxLanguageCode(category),
-              'sourceName': 'levrx',
-            });
-          }
-        }
-        return result;
-      }
+      return await subtitleEntries({
+        'action': 'levrx_fetch',
+        'tmdb_id': tmdbId,
+        if (season != null) 'season': season,
+        if (episode != null) 'episode': episode,
+      });
     } catch (e) {
       debugPrint('Levrx error: $e');
+      return [];
     }
-    return [];
-  }
-
-  static String _levrxLanguageCode(String category) {
-    const map = {
-      'Arabic': 'ar', 'Brazilian': 'pt-BR', 'Bulgarian': 'bg',
-      'Chinese': 'zh', 'Czech': 'cs', 'Danish': 'da', 'Dutch': 'nl',
-      'English': 'en', 'Finnish': 'fi', 'French': 'fr', 'German': 'de',
-      'Greek': 'el', 'Hebrew': 'he', 'Hungarian': 'hu', 'Indonesian': 'id',
-      'Italian': 'it', 'Japanese': 'ja', 'Korean': 'ko', 'Norwegian': 'no',
-      'Persian': 'fa', 'Polish': 'pl', 'Portuguese': 'pt', 'Romanian': 'ro',
-      'Russian': 'ru', 'Serbian': 'sr', 'Slovak': 'sk', 'Spanish': 'es',
-      'Swedish': 'sv', 'Thai': 'th', 'Turkish': 'tr', 'Ukrainian': 'uk',
-      'Vietnamese': 'vi',
-    };
-    return map[category] ?? category.toLowerCase().substring(0, category.length.clamp(2, 2));
   }
 
   // ── SubtitleCat ────────────────────────────────────────────────────────────

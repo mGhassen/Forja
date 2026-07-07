@@ -1,0 +1,62 @@
+use serde_json::{json, Value};
+
+use crate::http;
+
+const WYZIE_KEY: &str = "wyzie-0321082ab89b43b9834233ee524cc725";
+
+pub fn fetch(tmdb_id: i64, season: Option<i32>, episode: Option<i32>) -> Result<Vec<Value>, String> {
+    let mut url = format!("https://sub.wyzie.io/search?id={tmdb_id}&key={WYZIE_KEY}");
+    if let (Some(s), Some(e)) = (season, episode) {
+        url.push_str(&format!("&season={s}&episode={e}"));
+    }
+    let resp = http::fetch_with_retries("GET", &url, &Default::default(), None, None, false, 15, 0)?;
+    if resp.status != 200 {
+        return Err(format!("wyzie HTTP {}", resp.status));
+    }
+    let data: Vec<Value> = serde_json::from_str(&resp.body).map_err(|e| e.to_string())?;
+    let mut totals = std::collections::HashMap::new();
+    for s in &data {
+        let name = display_name(s);
+        *totals.entry(name).or_insert(0) += 1;
+    }
+    let mut seen = std::collections::HashMap::new();
+    let mut out = Vec::new();
+    for s in data {
+        let name = display_name(&s);
+        let n = seen.entry(name.clone()).or_insert(0);
+        *n += 1;
+        let display = if totals.get(&name).copied().unwrap_or(0) > 1 {
+            format!("{} {n} - wyzie", name)
+        } else {
+            format!("{} 1 - wyzie", name)
+        };
+        let mut entry = match s {
+            Value::Object(map) => map,
+            _ => continue,
+        };
+        if let Some(url) = entry.get("url").and_then(|v| v.as_str()) {
+            let dl = if url.contains("wyzie.io") || url.contains("wyzie.ru") {
+                if url.contains('?') {
+                    format!("{url}&key={WYZIE_KEY}")
+                } else {
+                    format!("{url}?key={WYZIE_KEY}")
+                }
+            } else {
+                url.to_string()
+            };
+            entry.insert("url".into(), json!(dl));
+        }
+        entry.insert("display".into(), json!(display));
+        entry.insert("sourceName".into(), json!("wyzie"));
+        out.push(Value::Object(entry));
+    }
+    Ok(out)
+}
+
+fn display_name(s: &Value) -> String {
+    s.get("display")
+        .or_else(|| s.get("language"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("Unknown")
+        .to_string()
+}

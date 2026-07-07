@@ -4,12 +4,14 @@ mod lyrics;
 mod mdblist;
 mod metadata;
 mod paper2audio;
+mod subtitle;
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
 pub use http::AnimeHttpResponse;
 pub use metadata::metadata_request_json;
+pub use subtitle::subtitle_request_json;
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub struct AnimeRequest {

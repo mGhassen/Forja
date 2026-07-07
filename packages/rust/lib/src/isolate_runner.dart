@@ -97,6 +97,12 @@ Future<String> runMetadataRequestJson(String requestJson) =>
       {'requestJson': requestJson},
     );
 
+Future<String> runSubtitleRequestJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.subtitleRequest,
+      {'requestJson': requestJson},
+    );
+
 Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
     EngineJobs.run(
       EngineAsyncJob.iptvProbeStream,

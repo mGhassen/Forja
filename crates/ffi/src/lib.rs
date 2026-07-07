@@ -272,6 +272,11 @@ fn metadata_request_json(request_json: String) -> String {
     anime_core::metadata_request_json(&request_json)
 }
 
+fn subtitle_request_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    anime_core::subtitle_request_json(&request_json)
+}
+
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {
     build_resource_url(&addon_url, &resource_path)
 }

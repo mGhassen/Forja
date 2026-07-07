@@ -26,6 +26,7 @@ enum EngineJobKind {
   megaResolve,
   musicRequest,
   metadataRequest,
+  subtitleRequest,
   parseXtreamCategories,
   parseXtreamStreams,
   parseXtreamSeriesEpisodes,
@@ -220,6 +221,8 @@ String _dispatchJob(_WorkerJob job) {
       return rust.musicRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.metadataRequest:
       return rust.metadataRequestJson(job.args['requestJson']! as String);
+    case EngineJobKind.subtitleRequest:
+      return rust.subtitleRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.parseXtreamCategories:
       return rust.parseXtreamCategoriesJson(job.args['json']! as String);
     case EngineJobKind.parseXtreamStreams:
