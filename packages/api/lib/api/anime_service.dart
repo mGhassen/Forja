@@ -2,10 +2,10 @@
 // Replaces the old miruro/animerealms stack. UI clone of enma.lol.
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'anime_http.dart';
 
 import 'allanime_extractor.dart';
 import 'watchhentai_extractor.dart';
@@ -17,7 +17,6 @@ class AnimeService {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
   static final RegExp _megaPathIdRe = RegExp(r'/stream/s-2/(\d+)/');
-  final HttpClient _client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
 
   // ─── GraphQL helper ─────────────────────────────────────────────
   Future<dynamic> _query(String query, [Map<String, dynamic>? vars]) async {
@@ -468,16 +467,14 @@ class AnimeService {
   // Scrape https://anikototv.to/search?keyword=… for unique watch slugs.
   Future<List<String>> _anikotoSearchSlugs(String query) async {
     try {
-      final uri = Uri.parse(
-          'https://anikototv.to/search?keyword=${Uri.encodeQueryComponent(query)}');
-      final req = await _client.getUrl(uri);
-      req.headers
-        ..set('User-Agent', _anikotoUa)
-        ..set('Accept', 'text/html');
-      final res = await req.close();
-      if (res.statusCode != 200) return const [];
-      final html = await res.transform(utf8.decoder).join();
-      final matches = RegExp(r'/watch/([a-z0-9-]+)').allMatches(html);
+      final url =
+          'https://anikototv.to/search?keyword=${Uri.encodeQueryComponent(query)}';
+      final res = await animeHttp('GET', url, headers: {
+        'User-Agent': _anikotoUa,
+        'Accept': 'text/html',
+      });
+      if (res.status != 200) return const [];
+      final matches = RegExp(r'/watch/([a-z0-9-]+)').allMatches(res.body);
       final seen = <String>{};
       for (final m in matches) {
         final slug = m.group(1)!;
@@ -493,15 +490,12 @@ class AnimeService {
   // Lift the anikoto numeric series ID from a /watch/{slug} HTML page.
   Future<int?> _anikotoIdFromSlug(String slug) async {
     try {
-      final uri = Uri.parse('https://anikototv.to/watch/$slug');
-      final req = await _client.getUrl(uri);
-      req.headers
-        ..set('User-Agent', _anikotoUa)
-        ..set('Accept', 'text/html');
-      final res = await req.close();
-      if (res.statusCode != 200) return null;
-      final html = await res.transform(utf8.decoder).join();
-      final m = RegExp(r'data-id="(\d+)"').firstMatch(html);
+      final res = await animeHttp('GET', 'https://anikototv.to/watch/$slug', headers: {
+        'User-Agent': _anikotoUa,
+        'Accept': 'text/html',
+      });
+      if (res.status != 200) return null;
+      final m = RegExp(r'data-id="(\d+)"').firstMatch(res.body);
       if (m == null) return null;
       return int.tryParse(m.group(1)!);
     } catch (e) {
@@ -525,17 +519,20 @@ class AnimeService {
   }
 
   Future<Map<String, dynamic>?> _anikotoGet(String path) async {
-    final req = await _client.getUrl(Uri.parse('https://anikotoapi.site$path'));
-    req.headers
-      ..set('Accept', 'application/json')
-      ..set('User-Agent', _anikotoUa);
-    final res = await req.close();
-    final body = await res.transform(utf8.decoder).join();
-    if (res.statusCode != 200) {
-      debugPrint('[Anikoto] $path HTTP ${res.statusCode}');
+    final res = await animeHttp(
+      'GET',
+      'https://anikotoapi.site$path',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': _anikotoUa,
+      },
+      maxRetries: 0,
+    );
+    if (res.status != 200) {
+      debugPrint('[Anikoto] $path HTTP ${res.status}');
       return null;
     }
-    final j = jsonDecode(body);
+    final j = jsonDecode(res.body);
     if (j is! Map) return null;
     final map = j.cast<String, dynamic>();
     if (map['ok'] == false) {
@@ -766,18 +763,16 @@ class AnimeService {
     const ua =
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
         '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
-    final apiUri = Uri.parse('$origin/stream/getSources?id=$dataId');
-    final apiReq = await _client.getUrl(apiUri);
-    apiReq.headers
-      ..set('Referer', embedPageUrl)
-      ..set('Origin', origin)
-      ..set('X-Requested-With', 'XMLHttpRequest')
-      ..set('User-Agent', ua)
-      ..set('Accept', 'application/json, text/plain, */*');
-    final apiRes = await apiReq.close();
-    if (apiRes.statusCode != 200) return null;
-    final body = await apiRes.transform(utf8.decoder).join();
-    final json = jsonDecode(body);
+    final apiUrl = '$origin/stream/getSources?id=$dataId';
+    final apiRes = await animeHttp('GET', apiUrl, headers: {
+      'Referer': embedPageUrl,
+      'Origin': origin,
+      'X-Requested-With': 'XMLHttpRequest',
+      'User-Agent': ua,
+      'Accept': 'application/json, text/plain, */*',
+    }, maxRetries: 0);
+    if (apiRes.status != 200) return null;
+    final json = jsonDecode(apiRes.body);
     if (json is! Map) return null;
     final file =
         (json['sources'] is Map ? json['sources']['file'] : null) as String?;
@@ -849,17 +844,15 @@ class AnimeService {
       }
 
       // Fallback: scrape HTML for a different internal player id.
-      final pageReq = await _client.getUrl(embedUri);
-      pageReq.headers
-        ..set('Referer', embedReferer)
-        ..set('User-Agent', ua)
-        ..set('Accept',
-            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
-      final pageRes = await pageReq.close();
-      if (pageRes.statusCode == 200) {
-        final html = await pageRes.transform(utf8.decoder).join();
+      final pageRes = await animeHttp('GET', embed.url, headers: {
+        'Referer': embedReferer,
+        'User-Agent': ua,
+        'Accept':
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      }, maxRetries: 0);
+      if (pageRes.status == 200) {
         final htmlId =
-            RegExp(r'data-id\s*=\s*"(\d+)"').firstMatch(html)?.group(1);
+            RegExp(r'data-id\s*=\s*"(\d+)"').firstMatch(pageRes.body)?.group(1);
         result = await tryId(htmlId);
         if (result != null) {
           if (kDebugMode) {
@@ -869,7 +862,7 @@ class AnimeService {
           return result;
         }
       } else if (kDebugMode) {
-        debugPrint('[extractDirect] embed page HTTP ${pageRes.statusCode}');
+        debugPrint('[extractDirect] embed page HTTP ${pageRes.status}');
       }
 
       if (kDebugMode) {

@@ -16,6 +16,7 @@ members = [
     "jellyfin-core",
     "anilist-core",
     "manga-core",
+    "anime-core",
 ]
 
 [workspace.package]

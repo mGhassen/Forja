@@ -53,6 +53,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "anime-core"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "utils",
+]
+
+[[package]]
 name = "anstyle"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -964,6 +975,7 @@ name = "ffi"
 version = "0.1.0"
 dependencies = [
  "anilist-core",
+ "anime-core",
  "iptv-core",
  "jellyfin-core",
  "manga-core",

@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
+
+import 'anime_http.dart';
 
 /// Extractor for hentaini.com.
 ///
@@ -54,28 +55,20 @@ class HentainiExtractor {
     'side', 'part', 'arc', 'chapter', 'vol', 'volume',
   };
 
-  final HttpClient _http = HttpClient()
-    ..userAgent = _ua
-    ..connectionTimeout = const Duration(seconds: 15);
-
-  void _setHeaders(HttpClientRequest req, {String? referer, bool json = false}) {
-    req.headers.set('User-Agent', _ua);
-    req.headers.set('Accept', json ? 'application/json' : '*/*');
-    req.headers.set('Accept-Language', 'en-US,en;q=0.9');
-    if (referer != null) req.headers.set('Referer', referer);
-  }
-
   Future<String?> _get(String url, {String? referer, bool json = false}) async {
     try {
-      final req = await _http.getUrl(Uri.parse(url));
-      _setHeaders(req, referer: referer, json: json);
-      final resp = await req.close().timeout(const Duration(seconds: 25));
-      if (resp.statusCode != 200) {
-        debugPrint('[Hentaini] $url HTTP ${resp.statusCode}');
-        await resp.drain<void>();
+      final headers = <String, String>{
+        'User-Agent': _ua,
+        'Accept': json ? 'application/json' : '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        if (referer != null) 'Referer': referer,
+      };
+      final resp = await animeHttp('GET', url, headers: headers, timeoutSecs: 25);
+      if (resp.status != 200) {
+        debugPrint('[Hentaini] $url HTTP ${resp.status}');
         return null;
       }
-      return await resp.transform(const Utf8Decoder()).join();
+      return resp.body;
     } catch (e) {
       debugPrint('[Hentaini] GET $url error: $e');
       return null;
@@ -310,7 +303,5 @@ class HentainiExtractor {
     );
   }
 
-  void dispose() {
-    _http.close(force: true);
-  }
+  void dispose() {}
 }

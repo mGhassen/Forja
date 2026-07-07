@@ -84,9 +84,9 @@ flowchart LR
 |----------|------------------|--------------|
 | TMDB | `packages/api` | `crates/tmdb-core` ✅ |
 | Trakt | `packages/api` | `crates/trakt-core` ✅ |
-| Jellyfin | `packages/api` | `crates/jellyfin-core` 🔄 |
-| Anime (AniList) | `packages/api` | `crates/anilist-core` 🔄 |
-| Manga (WeebCentral fetch) | `packages/api` | `crates/manga-core` 🔄 |
+| Jellyfin | `packages/api` | `crates/jellyfin-core` ✅ |
+| Anime (AniList + HTTP) | `packages/api` | `crates/anilist-core` + `crates/anime-core` 🔄 |
+| Manga (WeebCentral fetch) | `packages/api` | `crates/manga-core` ✅ |
 | Arabic, music, … | `packages/api` | `crates/*` |
 
 ### `packages/` after wave 2
@@ -130,7 +130,7 @@ packages/api/
 ```bash
 ./scripts/build_rust.sh
 cd crates && cargo test --workspace
-cd packages/rust && flutter test test/parity/tmdb_test.dart test/parity/trakt_test.dart test/parity/jellyfin_test.dart test/parity/anilist_manga_test.dart
+cd packages/rust && flutter test test/parity/tmdb_test.dart test/parity/trakt_test.dart test/parity/jellyfin_test.dart test/parity/anilist_manga_test.dart test/parity/anime_test.dart
 
 # After each vertical port — grep for deleted Dart slice:
 rg "packages/api/lib/api/<vertical>" apps/forja packages/rust

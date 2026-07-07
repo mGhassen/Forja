@@ -1,7 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 
 /// Peak logo scale during green snap (see animated_logo bounce curve).
-const splashTakAt = Duration(milliseconds: 4250);
+const splashTakAt = Duration(milliseconds: 4000);
 
 class SplashSound {
   SplashSound._();

@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:pointycastle/export.dart' as pc;
+
+import 'anime_http.dart';
 
 /// Direct extractor for the allanime.day / allmanga.to API.
 ///
@@ -50,9 +51,6 @@ class AllAnimeExtractor {
 
   static const String _searchGql =
       'query(\$search: SearchInput \$limit: Int \$page: Int \$translationType: VaildTranslationTypeEnumType \$countryOrigin: VaildCountryOriginEnumType) { shows(search: \$search limit: \$limit page: \$page translationType: \$translationType countryOrigin: \$countryOrigin) { edges { _id name englishName availableEpisodes __typename } } }';
-
-  final HttpClient _client = HttpClient()
-    ..connectionTimeout = const Duration(seconds: 15);
 
   final Map<String, Future<String?>> _showIdCache = {};
   final Map<String, Future<List<Map<String, dynamic>>>> _sourcesCache = {};
@@ -128,24 +126,22 @@ class AllAnimeExtractor {
             'sha256Hash': _episodeQueryHash,
           }
         });
-        final url = Uri.parse(
-            '$_api?variables=${Uri.encodeQueryComponent(vars)}&extensions=${Uri.encodeQueryComponent(ext)}');
+        final url =
+            '$_api?variables=${Uri.encodeQueryComponent(vars)}&extensions=${Uri.encodeQueryComponent(ext)}';
 
-        final req = await _client.getUrl(url);
-        req.headers
-          ..set('User-Agent', _agent)
-          ..set('Referer', _ytChan)
-          ..set('Origin', _ytChan)
-          ..set('Accept', 'application/json, text/plain, */*');
-        final res = await req.close();
-        if (res.statusCode != 200) {
+        final res = await animeHttp('GET', url, headers: {
+          'User-Agent': _agent,
+          'Referer': _ytChan,
+          'Origin': _ytChan,
+          'Accept': 'application/json, text/plain, */*',
+        }, maxRetries: 0);
+        if (res.status != 200) {
           if (kDebugMode) {
-            debugPrint('[AllAnime] episode HTTP ${res.statusCode}');
+            debugPrint('[AllAnime] episode HTTP ${res.status}');
           }
           return const [];
         }
-        final body = await res.transform(utf8.decoder).join();
-        final json = jsonDecode(body);
+        final json = jsonDecode(res.body);
 
         final blob = (json['data']?['tobeparsed']) as String?;
         Map<String, dynamic>? episodeData;
@@ -240,21 +236,17 @@ class AllAnimeExtractor {
     if (p.contains('/clock?') && !p.contains('/clock.json?')) {
       p = p.replaceFirst('/clock?', '/clock.json?');
     }
-    final uri = p.startsWith('http')
-        ? Uri.parse(p)
-        : Uri.parse('$_clockHost$p');
+    final uri = p.startsWith('http') ? p : '$_clockHost$p';
 
     try {
-      final req = await _client.getUrl(uri);
-      req.headers
-        ..set('User-Agent', _agent)
-        ..set('Referer', '$_refr/')
-        ..set('Origin', _refr)
-        ..set('Accept', 'application/json, text/plain, */*');
-      final res = await req.close();
-      if (res.statusCode != 200) return null;
-      final body = await res.transform(utf8.decoder).join();
-      final json = jsonDecode(body);
+      final res = await animeHttp('GET', uri, headers: {
+        'User-Agent': _agent,
+        'Referer': '$_refr/',
+        'Origin': _refr,
+        'Accept': 'application/json, text/plain, */*',
+      }, maxRetries: 0);
+      if (res.status != 200) return null;
+      final json = jsonDecode(res.body);
       final links = (json is Map ? json['links'] as List? : null) ?? const [];
       if (links.isEmpty) return null;
 
@@ -342,23 +334,20 @@ class AllAnimeExtractor {
 
   Future<dynamic> _post(String url, String body,
       {required String refr}) async {
-    final req = await _client.postUrl(Uri.parse(url));
-    req.headers
-      ..set('User-Agent', _agent)
-      ..set('Referer', refr)
-      ..set('Origin', refr)
-      ..set('Content-Type', 'application/json')
-      ..set('Accept', 'application/json, text/plain, */*');
-    req.add(utf8.encode(body));
-    final res = await req.close();
-    if (res.statusCode != 200) {
+    final res = await animeHttp('POST', url, headers: {
+      'User-Agent': _agent,
+      'Referer': refr,
+      'Origin': refr,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/plain, */*',
+    }, body: body, maxRetries: 0);
+    if (res.status != 200) {
       if (kDebugMode) {
-        debugPrint('[AllAnime] POST $url HTTP ${res.statusCode}');
+        debugPrint('[AllAnime] POST $url HTTP ${res.status}');
       }
       return null;
     }
-    final txt = await res.transform(utf8.decoder).join();
-    return jsonDecode(txt);
+    return jsonDecode(res.body);
   }
 }
 

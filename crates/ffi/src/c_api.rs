@@ -340,6 +340,13 @@ pub unsafe extern "C" fn ffi_manga_fetch_html(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_anime_request_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::anime_request_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_parse_knaben_html_json(html: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_knaben_html_json(from_c_str(html)))
 }

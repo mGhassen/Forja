@@ -336,10 +336,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     // Let the slide-away and first interactive frames finish before Rust/network burst.
     await Future<void>.delayed(const Duration(milliseconds: 400));
 
-    unawaited(BootCache.prefetchDiscover().catchError((e) {
-      debugPrint('[Boot] Discover prefetch failed (non-fatal): $e');
-    }));
-
     final profile = PlatformPlayback.capabilities;
     if (!profile.localTorrentEngine) return;
 

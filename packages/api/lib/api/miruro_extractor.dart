@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show gzip, zlib;
 
 import 'package:flutter/foundation.dart';
+
+import 'anime_http.dart';
 
 /// Direct extractor for the miruro.tv "secure pipe" API.
 class MiruroExtractor {
@@ -30,9 +32,6 @@ class MiruroExtractor {
         .map((m) => int.parse(m.group(0)!, radix: 16))
         .toList(),
   );
-
-  final HttpClient _client = HttpClient()
-    ..connectionTimeout = const Duration(seconds: 15);
 
   /// Cache of in-flight / completed `episodes?anilistId=…` lookups so all
   /// parallel per-provider extracts share a single network call.
@@ -156,25 +155,23 @@ class MiruroExtractor {
         base64Url.encode(utf8.encode(payload)).replaceAll('=', '');
     final uri = Uri.parse('$_baseUrl/api/secure/pipe?e=$encoded');
 
-    final req = await _client.getUrl(uri);
-    req.headers
-      ..set('User-Agent',
+    final res = await animeHttp('GET', uri.toString(), headers: {
+      'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-          '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
-      ..set('Referer', '$_baseUrl/')
-      ..set('Origin', _baseUrl)
-      ..set('Accept', 'application/json, text/plain, */*');
-    final res = await req.close();
-    if (res.statusCode != 200) {
+          '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Referer': '$_baseUrl/',
+      'Origin': _baseUrl,
+      'Accept': 'application/json, text/plain, */*',
+    }, maxRetries: 0);
+    if (res.status != 200) {
       if (kDebugMode) {
-        debugPrint('[Miruro] $path HTTP ${res.statusCode}');
+        debugPrint('[Miruro] $path HTTP ${res.status}');
       }
       return null;
     }
-    final bytes = await consolidateHttpClientResponseBytes(res);
-    final body = utf8.decode(bytes);
+    final body = res.body;
 
-    final xObf = res.headers.value('x-obfuscated');
+    final xObf = res.headers['x-obfuscated'];
     if (xObf == null || xObf.isEmpty) {
       return jsonDecode(body);
     }

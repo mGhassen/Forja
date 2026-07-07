@@ -245,6 +245,11 @@ fn manga_fetch_html(url: String, headers_json: String, timeout_secs: u64) -> Str
     manga_core::fetch_html(&url, &headers_json, timeout_secs)
 }
 
+fn anime_request_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    anime_core::request_json(&request_json)
+}
+
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {
     build_resource_url(&addon_url, &resource_path)
 }
