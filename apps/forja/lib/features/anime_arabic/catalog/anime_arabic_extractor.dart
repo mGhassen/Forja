@@ -29,7 +29,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'package:rust/rust.dart';
-import 'package:forja/shared/playback/mega_proxy.dart';
 import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 
 /// One server slug + the iframe URL the page would have embedded.

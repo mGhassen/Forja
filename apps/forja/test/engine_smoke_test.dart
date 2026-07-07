@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/playback/playback.dart';
 
 import 'helpers/rust_test_init.dart';
 import 'helpers/torrent_e2e.dart';

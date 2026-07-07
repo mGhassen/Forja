@@ -8,3 +8,5 @@ export 'stremio_service.dart';
 export 'tmdb_api.dart';
 export 'tmdb_service.dart';
 export 'subtitle_api.dart';
+export 'music_service.dart';
+export 'youtube_audio_extractor.dart';

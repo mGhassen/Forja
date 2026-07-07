@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'youtube_audio_extractor.dart';
-
-import 'package:rust/rust.dart';
+import '../catalog_http.dart';
 
 class _CachedUrl {
   final String url;

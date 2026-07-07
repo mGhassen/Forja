@@ -9,7 +9,6 @@ import 'package:palette_generator/palette_generator.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
-import 'package:forja/shared/playback/playback.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';

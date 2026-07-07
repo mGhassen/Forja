@@ -1,6 +1,6 @@
 # Phase 3 — Catalog engine (wave 2)
 
-**Status:** 4 / 5 tasks — P3-04 next  
+**Status:** 4 / 5 tasks — P3-04 in progress  
 **Depends on:** [Playback engine exit checklist](./02-rust-engine-complete.md#playback-engine-exit-checklist) ✅  
 **Next phase:** [Phase 4 — Web client](./04-web-client.md) (parallel)  
 **Migration index:** [README.md](./README.md)  
@@ -21,7 +21,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 
 | | |
 |--|--|
-| **Progress** | **4 / 5 tasks** — P3-04 sign-off |
+| **Progress** | **4 / 5 tasks** — P3-04 in progress |
 | **Blocked by** | — |
 | **Deferred from wave 1** | P2-89 (Stremio catalog service) |
 
@@ -37,7 +37,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 | 2 | P3-01 | Port TMDB/Trakt core to `crates/*` | ✅ |
 | 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | ✅ |
 | 4 | P3-03 | Delete `packages/api` | ✅ |
-| 5 | P3-04 | Architecture normalized sign-off | ⬜ |
+| 5 | P3-04 | Architecture normalized sign-off | 🔄 |
 
 ### P3-03 — done
 
@@ -57,6 +57,18 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 | Move catalog verticals + extractors → `apps/forja` | ✅ |
 | Relocate final 14 files (playback resolvers, debrid, music, jellyfin, subtitle) | ✅ |
 | Remove `packages/api` from workspace | ✅ |
+
+### P3-04 — in progress
+
+Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices to `crates/*` for A2/A4.
+
+| Step | Status |
+|------|--------|
+| Move playback Dart from `apps/forja/lib/shared/playback/` → `packages/rust/lib/src/playback/` | ✅ |
+| Move `music_service` + `youtube_audio_extractor` → `packages/rust/lib/src/catalog/` | ✅ |
+| Port debrid / site111477 / jackett / prowlarr to `crates/*` | ⬜ |
+| Port catalog vertical extractors (WebView/HTML) to `crates/*` or document host exceptions | ⬜ |
+| A2 + A4 exit checklist green | ⬜ |
 
 ---
 
@@ -101,23 +113,22 @@ flowchart LR
 
 | Vertical | Current location | Target crate |
 |----------|------------------|--------------|
-| TMDB | `packages/api` | `crates/tmdb-core` ✅ |
-| Trakt | `packages/api` | `crates/trakt-core` ✅ |
-| Jellyfin | `packages/api` | `crates/jellyfin-core` ✅ |
-| Anime (AniList + HTTP) | `packages/api` | `crates/anilist-core` + `crates/anime-core` ✅ |
-| KissKh metadata | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Arabic (Larozaa/DimaToon/Brstej) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Books (LibGen) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Comics (RCO) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Music (Deezer + downloads) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Manga (WeebCentral fetch) | `packages/api` | `crates/manga-core` ✅ |
-| Anime Arabic (AnimeSlayer) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Subtitles/metadata (Wyzie, Levrx, SubtitleCat, Mysubs, MDBlist, Simkl, IntroDB) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Comics (RCO.ru) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Audiobook (browse/search + downloads) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Paper2Audio | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Lyrics (LRCLIB) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Debrid / site111477 / mega_proxy | ~~`packages/api`~~ | `apps/forja/lib/shared/playback/` (Dart — port to `crates/*` in P3-04+) |
+| TMDB | `packages/rust` (FFI) | `crates/tmdb-core` ✅ |
+| Trakt | `apps/forja` (OAuth) + `crates/trakt-core` | `crates/trakt-core` ✅ |
+| Jellyfin | `apps/forja/features/jellyfin/catalog/` (FFI) | `crates/jellyfin-core` ✅ |
+| Anime (AniList + HTTP) | `apps/forja/features/anime/catalog/` + `crates/anilist-core` | ✅ |
+| KissKh metadata | `apps/forja/features/asian_drama/catalog/` | `crates/anime-core` ✅ |
+| Arabic (Larozaa/DimaToon/Brstej) | `apps/forja/shared/extractors/` | `crates/anime-core` ✅ |
+| Books (LibGen) | `apps/forja/features/books/catalog/` | `crates/anime-core` ✅ |
+| Comics (RCO) | `apps/forja/features/comics/catalog/` | `crates/anime-core` ✅ |
+| Manga (WeebCentral fetch) | `apps/forja/features/manga/catalog/` | `crates/manga-core` ✅ |
+| Anime Arabic (AnimeSlayer) | `apps/forja/features/anime_arabic/catalog/` | `crates/anime-core` ✅ |
+| Subtitles/metadata | `packages/rust/lib/src/catalog/` | `crates/anime-core` ✅ |
+| Audiobook (browse/search) | `apps/forja/features/audiobooks/catalog/` | `crates/anime-core` ✅ |
+| Paper2Audio | `packages/rust/lib/src/catalog/` | `crates/anime-core` ✅ |
+| Lyrics (LRCLIB) | `apps/forja/shared/audio/lyrics_service.dart` | `crates/anime-core` ✅ |
+| Debrid / site111477 / jackett / prowlarr | `packages/rust/lib/src/playback/` | port to `crates/*` ⬜ |
+| Music (Deezer search) | `packages/rust/lib/src/catalog/music_service.dart` | port to `crates/*` ⬜ |
 
 ### `packages/` after wave 2
 
@@ -126,7 +137,8 @@ flowchart LR
 | `packages/rust` | Dart FFI bridge + parity tests (**permanent**) |
 | `packages/rust/lib/src/catalog_http.dart` | Shared catalog HTTP (`animeHttp` / `animeHttpBytes`) — moved from `packages/api` in P3-03 |
 | `packages/rust/lib/src/models/` | Shared DTOs (`Movie`, `StreamSource`, `TorrentResult`) — moved from ~~`packages/api`~~ in P3-03 |
-| `apps/forja/lib/shared/playback/` | Host playback orchestration (debrid, site111477, jackett, stremio resolver) — relocated from ~~`packages/api`~~ in P3-03 |
+| `packages/rust/lib/src/playback/` | Playback orchestration (debrid, site111477, jackett, stremio resolver) — consolidated P3-04 |
+| `packages/rust/lib/src/catalog/` | Catalog metadata + `music_service`, `subtitle_api` |
 
 ---
 
@@ -141,8 +153,8 @@ Engine (crates/* + libffi)
   → catalog: tmdb, trakt, jellyfin, vertical APIs
   → playback: stream resolve, torrent, proxy, storage (wave 1 ✅)
 
-apps/forja/lib/shared/playback/
-  → residual Dart playback HTTP (debrid, site111477, jackett) — port to crates in P3-04+
+packages/rust/lib/src/playback/
+  → residual Dart playback HTTP (debrid, site111477, jackett) — port to crates (P3-04)
 ```
 
 | **Engine (`crates/*`)** | **Host (`apps/forja`)** |

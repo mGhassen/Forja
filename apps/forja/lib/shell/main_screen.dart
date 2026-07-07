@@ -8,7 +8,6 @@ import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
-import 'package:forja/shared/playback/playback.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:forja/shared/theme/app_theme.dart';
