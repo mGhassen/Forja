@@ -36,6 +36,7 @@ namespace forja {
     string manga_fetch_html(string url, string headers_json, u64 timeout_secs);
     string anime_request_json(string request_json);
     string indexer_request_json(string request_json);
+    string debrid_request_json(string request_json);
     string parse_knaben_html_json(string html);
     string parse_tpb_html_json(string html);
     string parse_uindex_html_json(string html);

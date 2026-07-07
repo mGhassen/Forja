@@ -255,6 +255,11 @@ fn indexer_request_json(request_json: String) -> String {
     indexer_core::request_json(&request_json)
 }
 
+fn debrid_request_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    debrid_core::request_json(&request_json)
+}
+
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {
     build_resource_url(&addon_url, &resource_path)
 }

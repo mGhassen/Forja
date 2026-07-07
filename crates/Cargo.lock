@@ -818,6 +818,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "092966b41edc516079bdf31ec78a2e0588d1d0c08f78b91d8307215928642b2b"
 
 [[package]]
+name = "debrid-core"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "utils",
+]
+
+[[package]]
 name = "deranged"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -977,6 +988,7 @@ version = "0.1.0"
 dependencies = [
  "anilist-core",
  "anime-core",
+ "debrid-core",
  "indexer-core",
  "iptv-core",
  "jellyfin-core",
