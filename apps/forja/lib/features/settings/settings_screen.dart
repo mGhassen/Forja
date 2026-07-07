@@ -21,6 +21,7 @@ import 'splash_preview_screen.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/src/shell_tab_header.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shell/nav_config.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -381,14 +382,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         interactive: true,
         child: SingleChildScrollView(
           controller: _scrollController,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          padding: const EdgeInsets.fromLTRB(
+            ShellTokens.bodyHorizontalPadding,
+            0,
+            ShellTokens.bodyHorizontalPadding,
+            12,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const ShellTabHeader(
-                title: 'Settings',
-                padding: EdgeInsets.only(top: 16, bottom: 12),
-              ),
+              const ShellTabHeader(title: 'Settings'),
 
                     // ── Backup & Restore ──
                     _buildExpandableSection(
@@ -812,12 +815,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     final isExpanded = _expandedSections.contains(id);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: ShellTokens.settingsSectionBottomSpacing),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: isExpanded ? 0.04 : 0.02),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(ShellTokens.settingsSectionRadius),
           border: Border.all(
             color: isExpanded
                 ? AppTheme.current.primaryColor.withValues(alpha: 0.2)
@@ -828,7 +831,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             // Header (always visible, tappable)
             InkWell(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(ShellTokens.settingsSectionRadius),
               onTap: () {
                 setState(() {
                   if (isExpanded) {
@@ -849,7 +852,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title,
                         style: TextStyle(
                           color: isExpanded ? Colors.white : Colors.white70,
-                          fontSize: 15,
+                          fontSize: ShellTokens.settingsSectionTitleSize,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

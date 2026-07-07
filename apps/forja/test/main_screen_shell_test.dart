@@ -7,6 +7,7 @@ import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shared/design/src/shell_tab_header.dart';
 import 'package:rust/rust.dart';
 
 import 'helpers/rust_test_init.dart';
@@ -109,6 +110,34 @@ void main() {
 
     expect(find.text('Home'), findsWidgets);
     expect(find.text('Search'), findsWidgets);
+  });
+
+  testWidgets('desktop core tabs switch without duplicate shell chrome', (tester) async {
+    await SettingsService().setNavbarConfig(['home', 'search', 'mylist']);
+    await _pumpMainScreen(
+      tester,
+      size: const Size(1200, 800),
+    );
+
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('My List'), findsWidgets);
+    expect(find.byType(ShellNavRail), findsOneWidget);
+
+    await tester.tap(find.text('Search'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(ShellSearchBar), findsOneWidget);
+
+    await tester.tap(find.text('My List'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(ShellTabHeader), findsOneWidget);
+
+    await tester.tap(find.text('Settings'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(ShellTabHeader), findsOneWidget);
+    expect(find.byType(ShellNavRail), findsOneWidget);
   });
 
   testWidgets('music desktop hides global rail when tab selected', (tester) async {

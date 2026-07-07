@@ -270,10 +270,11 @@ class SettingsService {
   static const String _navbarConfigKey = 'navbar_config';
   static const String _navbarKnownIdsKey = 'navbar_known_ids';
   static const String _navbarShell080Key = 'navbar_shell_080';
+  static const String _navbarShell081Key = 'navbar_shell_081';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
-  /// Default visible tabs for the 0.8 shell rework (settings appended in MainScreen).
-  static const List<String> defaultVisibleNavIds = ['home', 'search'];
+  /// Default visible tabs (settings appended in MainScreen).
+  static const List<String> defaultVisibleNavIds = ['home', 'search', 'mylist'];
 
   static const List<String> allNavIds = [
     'home',
@@ -299,10 +300,25 @@ class SettingsService {
 
   Future<List<String>> getNavbarConfig() async {
     if (!await kvHasKey(_navbarShell080Key)) {
-      await kvSetStringList(_navbarConfigKey, List.from(defaultVisibleNavIds));
+      await kvSetStringList(_navbarConfigKey, const ['home', 'search']);
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
       await kvSetString(_navbarShell080Key, '1');
-      return List.from(defaultVisibleNavIds);
+    }
+    if (!await kvHasKey(_navbarShell081Key)) {
+      final raw = await kvHasKey(_navbarConfigKey)
+          ? await kvGetStringList(_navbarConfigKey, fallback: const [])
+          : List<String>.from(defaultVisibleNavIds);
+      final updated = raw.where((id) => allNavIds.contains(id)).toList();
+      if (!updated.contains('mylist')) {
+        final searchIdx = updated.indexOf('search');
+        if (searchIdx >= 0) {
+          updated.insert(searchIdx + 1, 'mylist');
+        } else {
+          updated.add('mylist');
+        }
+      }
+      await kvSetStringList(_navbarConfigKey, updated);
+      await kvSetString(_navbarShell081Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

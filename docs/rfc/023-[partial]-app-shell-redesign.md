@@ -2,9 +2,9 @@
 
 **Status:** partial  
 **Version:** v0.8.0  
-**Target version:** [0.8.1](../backlog/0.8.1-[open].md)  
+**Target version:** [0.8.1](../backlog/done/0.8.1-[done].md) *(shipped)*  
 **Scope (0.8.0):** **desktop only** — rail, immersive chrome, body-only tabs *(shipped — tag `v0.8.0`)*  
-**Scope (0.8.1):** **desktop only** — Home · Search · My List · Settings UX  
+**Scope (0.8.1):** **desktop only** — Home · Search · My List · Settings UX *(shipped)*  
 **Depends on:** RFC-001 (monorepo), RFC-011 (v1.0 MVP shell shipped)  
 **Area:** `apps/forja/lib/shell/`, `apps/forja/lib/shared/design/`
 
@@ -12,9 +12,9 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **10 / 14** acceptance (0.8.0) · **0 / 5** acceptance (0.8.1) · **0 / 1** mobile deferred |
-| **Current slice** | 0.8.1 — Home · Search · My List · Settings (desktop) |
-| **Backlog** | [0.8.1](../backlog/0.8.1-[open].md) |
+| **Progress** | **5 / 5** components · **15 / 19** acceptance · **0 / 1** mobile deferred |
+| **Current slice** | Mobile shell (R23-A11) — deferred |
+| **Backlog** | — |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -57,11 +57,11 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 15 | R23-A15 | Home: shell-aligned desktop layout; no duplicate shell background | ⬜ |
-| 16 | R23-A16 | Search: results body under shell search bar; desktop spacing | ⬜ |
-| 17 | R23-A17 | My List: `ShellTabHeader`; no floating app-bar chrome | ⬜ |
-| 18 | R23-A18 | Settings: spacing/typography aligned to `shell_tokens` | ⬜ |
-| 19 | R23-A19 | Default nav Home · Search · My List · Settings | ⬜ |
+| 15 | R23-A15 | Home: shell-aligned desktop layout; no duplicate shell background | ✅ |
+| 16 | R23-A16 | Search: results body under shell search bar; desktop spacing | ✅ |
+| 17 | R23-A17 | My List: `ShellTabHeader`; no floating app-bar chrome | ✅ |
+| 18 | R23-A18 | Settings: spacing/typography aligned to `shell_tokens` | ✅ |
+| 19 | R23-A19 | Default nav Home · Search · My List · Settings | ✅ |
 
 ---
 
@@ -99,9 +99,9 @@ Rework the primary app shell so menu, background, and body are owned once — no
 
 R23-C01–C05 · R23-A01–A10 · R23-A12–A14 — ✅
 
-### Slice 2 — v0.8.1 core tabs *(open)*
+### Slice 2 — v0.8.1 core tabs *(shipped 0.8.1)*
 
-R23-A15–A19 — Home · Search · My List · Settings desktop UX
+R23-A15–A19 — ✅
 
 ### Slice 3 — mobile shell *(deferred)*
 
@@ -125,4 +125,4 @@ R23-A11 — ⬜
 
 ## Related
 
-RFC-001, RFC-011, RFC-016 (lazy tabs — code in `main_screen.dart`, RFC still `[draft]` 0/5), RFC-018 (splash), RFC-019 (god files), [0.8.0 backlog](../backlog/done/0.8.0-[done].md), [0.8.1 backlog](../backlog/0.8.1-[open].md)
+RFC-001, RFC-011, RFC-016 (lazy tabs — code in `main_screen.dart`, RFC still `[draft]` 0/5), RFC-018 (splash), RFC-019 (god files), [0.8.0 backlog](../backlog/done/0.8.0-[done].md), [0.8.1 backlog](../backlog/done/0.8.1-[done].md)

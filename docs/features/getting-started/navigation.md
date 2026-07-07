@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tabs:** Home, Search, and Settings. On desktop you get a side rail; on phone and tablet, a bottom navigation bar. You can hide, show, and reorder additional tabs in Settings.
+Forja uses a tab-based shell. **Default tabs:** Home, Search, My List, and Settings. On desktop you get a side rail; on phone and tablet, a bottom navigation bar. You can hide, show, and reorder additional tabs in Settings.
 
 ## How to open it
 

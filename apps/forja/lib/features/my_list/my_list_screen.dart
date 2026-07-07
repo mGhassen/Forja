@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/design/src/shell_tab_header.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class MyListScreen extends StatefulWidget {
@@ -90,58 +92,58 @@ class _MyListScreenState extends State<MyListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth > 900;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isDesktop = screenWidth > ShellTokens.musicDesktopBreakpoint;
     final crossAxisCount = isDesktop ? 6 : (screenWidth > 600 ? 4 : 3);
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        SliverAppBar(
-          floating: true,
-          snap: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Row(
-              children: [
-                const Icon(Icons.bookmark, color: AppTheme.primaryColor),
-                const SizedBox(width: 8),
-                const Text('My List', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(width: 12),
-                Text(
-                  '${_items.length} items',
-                  style: const TextStyle(color: Colors.white38, fontSize: 14, fontWeight: FontWeight.normal),
-                ),
-              ],
-            ),
-          ),
-
-          // Empty state
-          if (_items.isEmpty)
-            SliverFillRemaining(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.bookmark_border, size: 80, color: Colors.white.withValues(alpha: 0.1)),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Your list is empty',
-                      style: TextStyle(color: Colors.white38, fontSize: 18),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Tap the + button on any movie or show to add it here',
-                      style: TextStyle(color: Colors.white24, fontSize: 13),
-                    ),
-                  ],
+        SliverToBoxAdapter(
+          child: ShellTabHeader(
+            title: 'My List',
+            actions: [
+              Text(
+                '${_items.length} items',
+                style: const TextStyle(
+                  color: Colors.white38,
+                  fontSize: 14,
+                  fontWeight: FontWeight.normal,
                 ),
               ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverGrid(
+            ],
+          ),
+        ),
+        if (_items.isEmpty)
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.bookmark_border, size: 80, color: Colors.white.withValues(alpha: 0.1)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Your list is empty',
+                    style: TextStyle(color: Colors.white38, fontSize: 18),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap the + button on any movie or show to add it here',
+                    style: TextStyle(color: Colors.white24, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              ShellTokens.bodyHorizontalPadding,
+              0,
+              ShellTokens.bodyHorizontalPadding,
+              ShellTokens.bodyHorizontalPadding,
+            ),
+            sliver: SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
                   mainAxisSpacing: 12,

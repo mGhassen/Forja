@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 /// A single result section that streams in dynamically.
@@ -321,77 +322,87 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 
   Widget _buildBody() {
-    if (_query.isEmpty) return _buildEmpty();
-    if (_sections.isEmpty && _isSearching) {
-      return Center(child: CircularProgressIndicator(color: AppTheme.current.primaryColor));
-    }
-    if (_sections.isEmpty && !_isSearching) return _buildEmpty();
+    final width = MediaQuery.sizeOf(context).width;
+    final isDesktop = width > ShellTokens.musicDesktopBreakpoint;
+    final bottomPad = isDesktop ? 24.0 : ShellTokens.bottomNavHeight;
 
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 80),
-      itemCount: _sections.length + (_isSearching ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index >= _sections.length) {
-          // Loading indicator at the bottom while more results are coming
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24))),
-          );
-        }
-        final section = _sections[index];
-        return _buildSliderSection(section);
-      },
+    Widget body;
+    if (_query.isEmpty) {
+      body = _buildEmpty();
+    } else if (_sections.isEmpty && _isSearching) {
+      body = Center(child: CircularProgressIndicator(color: AppTheme.current.primaryColor));
+    } else if (_sections.isEmpty && !_isSearching) {
+      body = _buildEmpty();
+    } else {
+      body = ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.only(bottom: bottomPad),
+        itemCount: _sections.length + (_isSearching ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index >= _sections.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24))),
+            );
+          }
+          final section = _sections[index];
+          return _buildSliderSection(section);
+        },
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: ShellTokens.bodyHorizontalPadding),
+      child: body,
     );
   }
 
   Widget _buildSliderSection(_SearchSection section) {
-    final cardWidth = MediaQuery.of(context).size.width > 600 ? 140.0 : 120.0;
+    final width = MediaQuery.sizeOf(context).width;
+    final isDesktop = width > ShellTokens.musicDesktopBreakpoint;
+    final cardWidth = isDesktop
+        ? ShellTokens.searchCardWidthDesktop
+        : ShellTokens.searchCardWidthCompact;
     final cardHeight = cardWidth * 1.5;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.only(top: ShellTokens.sectionTopSpacing),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                if (section.icon != null && section.icon!.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: CachedNetworkImage(
-                      imageUrl: section.icon!,
-                      width: 20, height: 20,
-                      errorWidget: (_, _, _) => const Icon(Icons.extension, size: 16, color: Colors.white38),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ] else if (section.isTmdb) ...[
-                  const Icon(Icons.movie, size: 18, color: Colors.amber),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  section.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
+          Row(
+            children: [
+              if (section.icon != null && section.icon!.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: CachedNetworkImage(
+                    imageUrl: section.icon!,
+                    width: 20, height: 20,
+                    errorWidget: (_, _, _) => const Icon(Icons.extension, size: 16, color: Colors.white38),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  '${section.results.length}',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 13),
-                ),
+              ] else if (section.isTmdb) ...[
+                const Icon(Icons.movie, size: 18, color: Colors.amber),
+                const SizedBox(width: 8),
               ],
-            ),
+              Text(
+                section.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${section.results.length}',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 13),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
-          // Horizontal slider with scroll arrows
           _ScrollableSlider(
             height: cardHeight + 32,
             itemCount: section.results.length,

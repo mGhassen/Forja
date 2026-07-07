@@ -19,6 +19,7 @@ import 'package:forja/app/boot_cache.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -875,7 +876,10 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Stack(
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+
+    final content = Stack(
       children: [
         if (!AppTheme.isLightMode)
           Positioned.fill(
@@ -1072,6 +1076,16 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
             ],
           ),
       ],
+    );
+
+    if (!isDesktop) return content;
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: ShellTokens.bodyMaxWidthDesktop),
+        child: content,
+      ),
     );
   }
 

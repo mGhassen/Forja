@@ -21,9 +21,17 @@ abstract final class ShellTokens {
   static const double shellGlowCenterLeft = 180;
 
   static const double bodyHorizontalPadding = 20;
+  static const double bodyMaxWidthDesktop = 1600;
   static const double tabHeaderTopPadding = 16;
   static const double tabHeaderBottomPadding = 12;
   static const double tabHeaderFontSize = 32;
+
+  static const double sectionTopSpacing = 20;
+  static const double searchCardWidthDesktop = 140;
+  static const double searchCardWidthCompact = 120;
+  static const double settingsSectionBottomSpacing = 8;
+  static const double settingsSectionTitleSize = 15;
+  static const double settingsSectionRadius = 14;
 
   static const Duration navSelectionAnimation = Duration(milliseconds: 200);
   static const double navSelectionBorderRadius = 16;

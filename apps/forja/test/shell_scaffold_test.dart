@@ -4,6 +4,7 @@ import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_scaffold.dart';
+import 'package:rust/rust.dart';
 
 void main() {
   const visibleIds = ['home', 'search', 'settings'];
@@ -103,6 +104,8 @@ void main() {
   test('navDestinations includes default shell tabs', () {
     expect(navDestinations.containsKey('home'), isTrue);
     expect(navDestinations.containsKey('search'), isTrue);
+    expect(navDestinations.containsKey('mylist'), isTrue);
     expect(navDestinations.containsKey('settings'), isTrue);
+    expect(SettingsService.defaultVisibleNavIds, ['home', 'search', 'mylist']);
   });
 }
