@@ -317,7 +317,7 @@ RFC/issue/backlog track **ship status**; feature docs track **how it works for u
 
 ### Active backlog — scope big work before coding
 
-When the **active open/partial backlog** is in context (e.g. [0.8.0-[partial].md](../../docs/backlog/0.8.0-[partial].md)) or the user is clearly shipping that version arc, and they ask for something **substantial** — **create or extend docs first**, then implement. Do not jump straight to code without a tracked spec.
+When the **active open/partial backlog** is in context (e.g. [0.8.1-[open].md](../../docs/backlog/0.8.1-[open].md)) or the user is clearly shipping that version arc, and they ask for something **substantial** — **create or extend docs first**, then implement. Do not jump straight to code without a tracked spec.
 
 **Substantial = needs an RFC or issue:**
 
