@@ -487,13 +487,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with AutomaticKeepAlive
     final width = MediaQuery.of(context).size.width;
     final crossAxisCount = width > 1200 ? 6 : (width > 900 ? 5 : (width > 600 ? 4 : 3));
 
-    return Scaffold(
-      backgroundColor: AppTheme.bgDark,
-      body: Column(
-        children: [
-          // Filter Bar
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             color: AppTheme.bgCard,
             child: Row(
               children: [
@@ -559,8 +556,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with AutomaticKeepAlive
               ],
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

@@ -134,14 +134,10 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
   // ── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: AppTheme.backgroundDecoration,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
                   const Icon(Icons.link_rounded, color: AppTheme.accentColor, size: 28),
@@ -379,8 +375,6 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
                 ),
               ),
           ],
-        ),
-      ),
     );
   }
 }

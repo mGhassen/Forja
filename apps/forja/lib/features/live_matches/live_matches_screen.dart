@@ -356,26 +356,20 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: AppTheme.backgroundDecoration,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            if (_tabController != null && _sports.isNotEmpty) _buildSportTabs(),
-            const SizedBox(height: 4),
-            Expanded(child: _buildBody()),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader(),
+        if (_tabController != null && _sports.isNotEmpty) _buildSportTabs(),
+        const SizedBox(height: 4),
+        Expanded(child: _buildBody()),
+      ],
     );
   }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 48, 24, 12),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
       child: Row(
         children: [
           const Icon(Icons.sports_soccer_rounded, color: AppTheme.primaryColor, size: 28),

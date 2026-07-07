@@ -259,9 +259,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: _loading
+        return _loading
               ? Center(
                   child: CircularProgressIndicator(
                     color: AppTheme.primaryColor,
@@ -381,8 +379,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                           ),
                         ),
                       ],
-                    ),
-        );
+                    );
       },
     );
   }

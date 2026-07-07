@@ -20,6 +20,8 @@ import 'webstreamr_settings_screen.dart';
 import 'splash_preview_screen.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/src/shell_tab_header.dart';
+import 'package:forja/shell/nav_config.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -372,29 +374,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: AppTheme.backgroundDecoration,
-        child: SafeArea(
-          child: Scrollbar(
-            controller: _scrollController,
-            thumbVisibility: true,
-            interactive: true,
-            // Plain SingleChildScrollView + Column instead of CustomScrollView
-            // / SliverList: every child's height is laid out up-front so the
-            // total scroll extent (and therefore the scrollbar thumb size)
-            // stays stable instead of jumping when heavy items like the
-            // ReorderableListView-based provider order get measured lazily.
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16, bottom: 12),
-                    child: Text('Settings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 32, fontFamily: 'Poppins')),
-                  ),
+    return SafeArea(
+      child: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        interactive: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const ShellTabHeader(
+                title: 'Settings',
+                padding: EdgeInsets.only(top: 16, bottom: 12),
+              ),
 
                     // ── Backup & Restore ──
                     _buildExpandableSection(
@@ -763,11 +757,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 100),
                   ],
+                ),
               ),
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -1080,28 +1072,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Navbar Configuration
   // ═══════════════════════════════════════════════════════════════════════════
 
-  static const Map<String, Map<String, dynamic>> _navMeta = {
-    'home':         {'icon': Icons.home,                       'label': 'Home'},
-    'discover':     {'icon': Icons.explore,                    'label': 'Discover'},
-    'similar':      {'icon': Icons.auto_awesome,               'label': 'Similar'},
-    'downloader':   {'icon': Icons.cloud_download,             'label': 'Media Downloader'},
-    'search':       {'icon': Icons.search,                     'label': 'Search'},
-    'mylist':       {'icon': Icons.bookmark,                   'label': 'My List'},
-    'magnet':       {'icon': Icons.link_rounded,               'label': 'Magnet'},
-    'live_matches': {'icon': Icons.sports_soccer_rounded,      'label': 'Live Matches'},
-    'iptv':         {'icon': Icons.live_tv,                    'label': 'IPTV'},
-    'audiobooks':   {'icon': Icons.menu_book,                  'label': 'Audiobooks'},
-    'books':        {'icon': Icons.import_contacts_rounded,    'label': 'Books'},
-    'music':        {'icon': Icons.music_note,                 'label': 'Music'},
-    'comics':       {'icon': Icons.auto_stories,               'label': 'Comics'},
-    'manga':        {'icon': Icons.book,                       'label': 'Manga'},
-    'jellyfin':     {'icon': Icons.dns_rounded,                'label': 'Jellyfin'},
-    'anime':        {'icon': Icons.play_circle_filled,         'label': 'Anime'},
-    'anime_arabic': {'icon': Icons.subtitles,                  'label': 'Anime Arabic'},
-    'asian_drama':  {'icon': Icons.theater_comedy,             'label': 'Asian Drama'},
-    'arabic':       {'icon': Icons.movie_filter,               'label': 'Arabic'},
-  };
-
   void _saveNavbarConfig() {
     final visible = _navbarOrder.where((id) => _navbarVisible.contains(id)).toList();
     _settings.setNavbarConfig(visible);
@@ -1138,7 +1108,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           },
           itemBuilder: (context, index) {
             final id = _navbarOrder[index];
-            final meta = _navMeta[id]!;
+            final dest = navDestinations[id]!;
             final isVisible = _navbarVisible.contains(id);
 
             return Container(
@@ -1152,12 +1122,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               child: ListTile(
                 leading: Icon(
-                  meta['icon'] as IconData,
+                  dest.activeIcon,
                   color: isVisible ? Colors.white : Colors.white24,
                   size: 22,
                 ),
                 title: Text(
-                  meta['label'] as String,
+                  dest.label,
                   style: TextStyle(
                     color: isVisible ? Colors.white : Colors.white38,
                     fontSize: 14,

@@ -174,14 +174,7 @@ class _MusicScreenState extends State<MusicScreen> with WidgetsBindingObserver, 
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: AppTheme.effectiveBackground,
-        child: SafeArea(
-          child: _isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
-        ),
-      ),
-    );
+    return _isDesktop ? _buildDesktopLayout() : _buildMobileLayout();
   }
 
   // ─────────────────────────────────────────────

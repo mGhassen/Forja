@@ -204,45 +204,39 @@ class _ArabicScreenState extends State<ArabicScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: Stack(
+    return Stack(
+      children: [
+        Column(
           children: [
-            Column(
-              children: [
-                const SizedBox(height: 24),
-                _buildHeader(),
-                _buildSearchBar(),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      if (_isShowingLiked) {
-                        await _fetchLiked();
-                      } else {
-                        await _fetchShows();
-                      }
-                    },
-                    color: AppTheme.primaryColor,
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: _buildBody(),
-                    ),
-                  ),
+            _buildHeader(),
+            _buildSearchBar(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  if (_isShowingLiked) {
+                    await _fetchLiked();
+                  } else {
+                    await _fetchShows();
+                  }
+                },
+                color: AppTheme.primaryColor,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: _buildBody(),
                 ),
-                if (!_isShowingLiked) _buildPagination(),
-              ],
-            ),
-            if (_isCategoryDropdownOpen)
-              GestureDetector(
-                onTap: () => setState(() => _isCategoryDropdownOpen = false),
-                child: Container(color: Colors.black.withValues(alpha: 0.5)),
               ),
-            if (_isCategoryDropdownOpen) _buildCategoryDropdown(),
+            ),
+            if (!_isShowingLiked) _buildPagination(),
           ],
         ),
-      ),
+        if (_isCategoryDropdownOpen)
+          GestureDetector(
+            onTap: () => setState(() => _isCategoryDropdownOpen = false),
+            child: Container(color: Colors.black.withValues(alpha: 0.5)),
+          ),
+        if (_isCategoryDropdownOpen) _buildCategoryDropdown(),
+      ],
     );
   }
 

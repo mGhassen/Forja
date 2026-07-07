@@ -159,17 +159,12 @@ class _BooksScreenState extends State<BooksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: AppTheme.backgroundDecoration,
-      child: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildSearchBar(),
-            Expanded(child: _buildBody()),
-          ],
-        ),
-      ),
+    return Column(
+      children: [
+        _buildHeader(),
+        _buildSearchBar(),
+        Expanded(child: _buildBody()),
+      ],
     );
   }
 

@@ -203,36 +203,30 @@ class _AudiobookScreenState extends State<AudiobookScreen> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 24),
-            _buildHeader(),
-            _buildSearchBar(),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  await _loadBooks();
-                  await _loadHistory();
-                },
-                color: AppTheme.primaryColor,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    children: [
-                      if (!_isSearching && _history.isNotEmpty) _buildHistoryCarousel(),
-                      _buildBody(),
-                    ],
-                  ),
-                ),
+    return Column(
+      children: [
+        _buildHeader(),
+        _buildSearchBar(),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await _loadBooks();
+              await _loadHistory();
+            },
+            color: AppTheme.primaryColor,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  if (!_isSearching && _history.isNotEmpty) _buildHistoryCarousel(),
+                  _buildBody(),
+                ],
               ),
             ),
-            if (!_isSearching) _buildPagination(),
-          ],
+          ),
         ),
-      ),
+        if (!_isSearching) _buildPagination(),
+      ],
     );
   }
 

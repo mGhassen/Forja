@@ -264,10 +264,8 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
   @override
   Widget build(BuildContext context) {
     final showLinks = _selected != null;
-    return Scaffold(
-      backgroundColor: const Color(0xFF141414),
-      body: Stack(
-        children: [
+    return Stack(
+      children: [
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _blobCtrl,
@@ -291,12 +289,11 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
               ),
             ),
           ),
-          SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: AnimatedSwitcher(
+          Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 320),
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
@@ -317,9 +314,7 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
                 ),
               ],
             ),
-          ),
         ],
-      ),
     );
   }
 

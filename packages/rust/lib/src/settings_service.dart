@@ -269,7 +269,11 @@ class SettingsService {
 
   static const String _navbarConfigKey = 'navbar_config';
   static const String _navbarKnownIdsKey = 'navbar_known_ids';
+  static const String _navbarShell080Key = 'navbar_shell_080';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
+
+  /// Default visible tabs for the 0.8 shell rework (settings appended in MainScreen).
+  static const List<String> defaultVisibleNavIds = ['home', 'search'];
 
   static const List<String> allNavIds = [
     'home',
@@ -294,9 +298,15 @@ class SettingsService {
   ];
 
   Future<List<String>> getNavbarConfig() async {
+    if (!await kvHasKey(_navbarShell080Key)) {
+      await kvSetStringList(_navbarConfigKey, List.from(defaultVisibleNavIds));
+      await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
+      await kvSetString(_navbarShell080Key, '1');
+      return List.from(defaultVisibleNavIds);
+    }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
-      return List.from(allNavIds);
+      return List.from(defaultVisibleNavIds);
     }
     final raw =
         await kvGetStringList(_navbarConfigKey, fallback: const []);

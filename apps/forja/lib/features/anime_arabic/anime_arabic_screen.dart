@@ -269,9 +269,7 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: _loading
+        return _loading
               ? Center(
                   child: CircularProgressIndicator(
                     color: AppTheme.primaryColor,
@@ -404,8 +402,7 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
                           ),
                         ),
                       ],
-                    ),
-        );
+                    );
       },
     );
   }

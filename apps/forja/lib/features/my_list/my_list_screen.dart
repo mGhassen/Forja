@@ -94,17 +94,15 @@ class _MyListScreenState extends State<MyListScreen> {
     final isDesktop = screenWidth > 900;
     final crossAxisCount = isDesktop ? 6 : (screenWidth > 600 ? 4 : 3);
 
-    return Scaffold(
-      backgroundColor: AppTheme.bgDark,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // App bar
-          SliverAppBar(
-            floating: true,
-            snap: true,
-            backgroundColor: AppTheme.bgDark,
-            title: Row(
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverAppBar(
+          floating: true,
+          snap: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Row(
               children: [
                 const Icon(Icons.bookmark, color: AppTheme.primaryColor),
                 const SizedBox(width: 8),
@@ -200,7 +198,6 @@ class _MyListScreenState extends State<MyListScreen> {
               ),
             ),
         ],
-      ),
     );
   }
 }

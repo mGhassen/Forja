@@ -1,0 +1,26 @@
+/// Layout constants for the app shell nav chrome.
+abstract final class ShellTokens {
+  static const double bottomNavHeight = 80;
+  static const double bottomNavItemWidth = 100;
+  static const double bottomNavIconPaddingH = 20;
+  static const double bottomNavIconPaddingV = 4;
+  static const double bottomNavLabelSize = 11;
+  static const double bottomNavFadeWidth = 40;
+
+  static const double navRailLogoWidth = 48;
+  static const double navRailLogoBottomPadding = 24;
+  static const double navRailLogoTopPaddingDesktopMac = 8;
+  static const double navRailLogoTopPaddingDefault = 24;
+
+  static const double shellGlowTopRight = 280;
+  static const double shellGlowBottomLeft = 220;
+  static const double shellGlowCenterLeft = 180;
+
+  static const double bodyHorizontalPadding = 20;
+  static const double tabHeaderTopPadding = 16;
+  static const double tabHeaderBottomPadding = 12;
+  static const double tabHeaderFontSize = 32;
+
+  static const Duration navSelectionAnimation = Duration(milliseconds: 200);
+  static const double navSelectionBorderRadius = 16;
+}

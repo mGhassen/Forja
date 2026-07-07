@@ -875,22 +875,18 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: AppTheme.bgDark,
-      body: Stack(
-        children: [
-          // ── Ambient backdrop: dynamic blobs of color extracted from current hero
-          if (!AppTheme.isLightMode)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: _AmbientBackdrop(
-                  primary: _ambientPrimary,
-                  secondary: _ambientSecondary,
-                ),
+    return Stack(
+      children: [
+        if (!AppTheme.isLightMode)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: _AmbientBackdrop(
+                primary: _ambientPrimary,
+                secondary: _ambientSecondary,
               ),
             ),
-          CustomScrollView(
+          ),
+        CustomScrollView(
             scrollCacheExtent: ScrollCacheExtent.pixels(500), physics: const BouncingScrollPhysics(),
             slivers: [
               // Hero
@@ -1075,8 +1071,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
-        ],
-      ),
+      ],
     );
   }
 

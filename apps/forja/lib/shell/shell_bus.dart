@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 /// Shell-level event bus — decouples features from [MainScreen].
 class ShellBus {
@@ -14,6 +15,13 @@ class ShellBus {
 
   /// True after the splash overlay is dismissed — defer heavy tab work until then.
   static final ValueNotifier<bool> splashDismissed = ValueNotifier<bool>(false);
+
+  /// Bumps when shell chrome (e.g. search bar) needs a rebuild.
+  static final ValueNotifier<int> shellChromeRevision = ValueNotifier<int>(0);
+
+  static void notifyShellChromeChanged() {
+    shellChromeRevision.value++;
+  }
 
   static void openStremioSearch({required String query, required String addonBaseUrl}) {
     stremioSearchNotifier.value = null;

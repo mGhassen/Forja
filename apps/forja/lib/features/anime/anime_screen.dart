@@ -312,9 +312,7 @@ class _AnimeScreenState extends State<AnimeScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: _loading
+        return _loading
               ? _buildLoading()
               : _error != null
                   ? _buildError()
@@ -434,8 +432,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                           ),
                         ),
                       ],
-                    ),
-        );
+                    );
       },
     );
   }

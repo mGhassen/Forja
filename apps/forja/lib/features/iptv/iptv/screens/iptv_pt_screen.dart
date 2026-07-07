@@ -50,30 +50,18 @@ class _IptvPtScreenState extends State<IptvPtScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF141414),
-      body: PopScope(
-        canPop: _ctrl.view == IptvView.portalList,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _ctrl.back();
-        },
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF141414), Color(0xFF141414), Color(0xFF141414)],
-            ),
-          ),
-          child: AnimatedBuilder(
-            animation: _ctrl,
-            builder: (_, _) => AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: KeyedSubtree(
-                key: ValueKey(_ctrl.view),
-                child: _buildView(context),
-              ),
-            ),
+    return PopScope(
+      canPop: _ctrl.view == IptvView.portalList,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _ctrl.back();
+      },
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (_, _) => AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: KeyedSubtree(
+            key: ValueKey(_ctrl.view),
+            child: _buildView(context),
           ),
         ),
       ),

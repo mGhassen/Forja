@@ -190,10 +190,8 @@ class _SimilarHubScreenState extends State<SimilarHubScreen>
   @override
   Widget build(BuildContext context) {
     final showResults = _query.isNotEmpty;
-    return Scaffold(
-      backgroundColor: const Color(0xFF141414),
-      body: Stack(
-        children: [
+    return Stack(
+      children: [
           // Liquid background blobs.
           Positioned.fill(
             child: AnimatedBuilder(
@@ -219,11 +217,10 @@ class _SimilarHubScreenState extends State<SimilarHubScreen>
               ),
             ),
           ),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1400),
-                child: CustomScrollView(
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1400),
+              child: CustomScrollView(
                   physics: const BouncingScrollPhysics(
                       parent: AlwaysScrollableScrollPhysics()),
                   slivers: [
@@ -271,9 +268,7 @@ class _SimilarHubScreenState extends State<SimilarHubScreen>
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 

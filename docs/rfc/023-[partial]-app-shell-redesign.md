@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 5** components · **5 / 9** acceptance (0.8.0 slice) |
-| **Current slice** | 0.8.0 — shell extraction + body-only Home/Settings |
+| **Progress** | **5 / 5** components · **6 / 9** acceptance (0.8.0 slice) |
+| **Current slice** | 0.8.0 — all nav tabs body-only; slice 2 = IPTV/Music polish |
 | **Backlog** | [0.8.0](../backlog/0.8.0-[open].md) |
 
 ## Summary
@@ -40,8 +40,8 @@ Rework the primary app shell so menu, background, and body are owned once — no
 - GoRouter / deep-link routing overhaul
 - IPTV immersive mode (hide global nav) — slice 2
 - Music double-sidebar resolution — slice 2
-- Full 19-tab migration — 0.8.1+ patches
-- Player overlay (RFC-003) — resumes in 1.0.0 after 0.8.x
+- Full 19-tab migration — **done in 0.8.0** (all nav tab roots body-only)
+- Player overlay (RFC-003) — separate RFC/backlog when scheduled
 - Home god-file decomposition (RFC-019)
 
 ## Target layout
@@ -71,18 +71,17 @@ apps/forja/lib/shared/design/
 | `NavDestination` | Typed registry; remove settings `_navMeta` duplicate | Shipped |
 | `ShellScaffold` / `ShellNavRail` / `ShellBottomNav` / `ShellBody` | Extract from `MainScreen` | Shipped |
 | `shell_tokens.dart` | Wire spacing into nav chrome | Shipped |
-| Home + Settings | Body-only proof tabs | Shipped |
-| Other 17 tabs | Keep nested `Scaffold` until 0.8.x patches | Stub |
+| Home + Settings + Search | Body-only; Search uses `ShellSearchBar` in shell | Shipped |
+| All other nav tabs | Body-only (no nested shell `Scaffold`) | Shipped *(0.8.0)* |
 
 ### Slice 2 — v0.8.x patches
 
-- Migrate remaining tabs to body-only
-- IPTV immersive mode rules
+- IPTV immersive mode rules (hide global nav)
 - Music internal sidebar vs global shell
 
-### Slice 3 — v1.0.0 resumes
+### Slice 3 — follow-on (when scheduled)
 
-- RFC-003 player overlay, RFC-004/005 providers/casting (see [1.0.0 backlog](../backlog/1.0.0-[draft].md))
+- RFC-003 player overlay, RFC-004/005 providers/casting — own backlog entries
 
 ## Contracts (must not break)
 
@@ -101,7 +100,8 @@ apps/forja/lib/shared/design/
 
 - [x] `NavDestination` typed; settings uses shared registry (no `_navMeta`)
 - [x] `ShellScaffold` + extracted nav widgets; `MainScreen` slimmed
-- [x] Home + Settings body-only (no nested `Scaffold`)
+- [x] Home + Settings + Search body-only (no nested `Scaffold`); Search bar in shell
+- [x] All nav tab roots body-only
 - [x] Shell tokens wired into nav chrome
 - [ ] Desktop: rail, logo inset, tab switch, single background on Home/Settings
 - [ ] Mobile portrait: bottom nav scroll, safe area, tab switch
