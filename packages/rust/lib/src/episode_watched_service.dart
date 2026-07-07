@@ -1,22 +1,30 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:api/api/trakt_service.dart';
-import 'package:api/api/simkl_service.dart';
+
+typedef EpisodeWatchedSyncHandler = void Function(
+  int tmdbId,
+  int season,
+  int episode,
+  bool watched,
+);
 
 /// Lightweight service to track which episodes the user has manually
 /// marked as "done watching". Persisted via SharedPreferences so the
 /// state is shared across *all* detail screens (torrent & streaming).
 ///
-/// Syncs to Trakt and Simkl when toggling watched state.
+/// Optional [syncHandler] pushes changes to Trakt/Simkl — register from
+/// the host app so this package stays free of `packages/api` imports.
 class EpisodeWatchedService {
   static final EpisodeWatchedService _instance = EpisodeWatchedService._();
   factory EpisodeWatchedService() => _instance;
   EpisodeWatchedService._();
 
+  EpisodeWatchedSyncHandler? syncHandler;
+
   static const String _key = 'episodes_watched';
 
-  // In-memory cache: "tmdbId_S{season}_E{episode}" → true
   Map<String, bool>? _cache;
 
   Future<Map<String, bool>> _load() async {
@@ -47,7 +55,9 @@ class EpisodeWatchedService {
 
   Future<Set<String>> getWatchedSet(int tmdbId) async {
     final map = await _load();
-    return map.keys.where((k) => k.startsWith('${tmdbId}_') && map[k] == true).toSet();
+    return map.keys
+        .where((k) => k.startsWith('${tmdbId}_') && map[k] == true)
+        .toSet();
   }
 
   Future<void> toggle(int tmdbId, int season, int episode) async {
@@ -57,35 +67,45 @@ class EpisodeWatchedService {
     map[id] = !current;
     await _save();
     debugPrint('[EpisodeWatched] ${!current ? "Marked" : "Unmarked"} $id');
-    // Sync to tracking services in background
     _syncEpisodeState(tmdbId, season, episode, !current);
   }
 
-  Future<void> setWatched(int tmdbId, int season, int episode, bool watched) async {
+  Future<void> setWatched(
+    int tmdbId,
+    int season,
+    int episode,
+    bool watched,
+  ) async {
     final map = await _load();
     final id = _id(tmdbId, season, episode);
     map[id] = watched;
     await _save();
-    // Sync to tracking services in background
     _syncEpisodeState(tmdbId, season, episode, watched);
   }
 
-  /// Set watched without triggering external sync (used during import).
-  Future<void> setWatchedLocal(int tmdbId, int season, int episode, bool watched) async {
+  Future<void> setWatchedLocal(
+    int tmdbId,
+    int season,
+    int episode,
+    bool watched,
+  ) async {
     final map = await _load();
     final id = _id(tmdbId, season, episode);
     map[id] = watched;
     await _save();
   }
 
-  /// Set watched with a timestamp, without triggering external sync (used during import).
   Future<void> setWatchedLocalWithTimestamp(
-      int tmdbId, int season, int episode, bool watched, String? watchedAt) async {
+    int tmdbId,
+    int season,
+    int episode,
+    bool watched,
+    String? watchedAt,
+  ) async {
     final map = await _load();
     final id = _id(tmdbId, season, episode);
     map[id] = watched;
     await _save();
-    // Store timestamp separately
     if (watchedAt != null && watched) {
       await _saveTimestamp(id, watchedAt);
     }
@@ -119,65 +139,11 @@ class EpisodeWatchedService {
     return map[_id(tmdbId, season, episode)];
   }
 
-  /// Get all stored timestamps. Used by Trakt export for deduplication.
   Future<Map<String, String>> getAllTimestamps() async {
     return await _loadTimestamps();
   }
 
-  // ── Sync to Trakt & Simkl ──────────────────────────────────────────────
   void _syncEpisodeState(int tmdbId, int season, int episode, bool watched) {
-    // Trakt
-    TraktService().isLoggedIn().then((loggedIn) {
-      if (!loggedIn) return;
-      if (watched) {
-        TraktService().addToHistory(
-          tmdbId: tmdbId,
-          mediaType: 'tv',
-          season: season,
-          episode: episode,
-        );
-      } else {
-        TraktService().removeFromHistory(
-          tmdbId: tmdbId,
-          mediaType: 'tv',
-          season: season,
-          episode: episode,
-        );
-      }
-    });
-
-    // Simkl
-    SimklService().isLoggedIn().then((loggedIn) {
-      if (!loggedIn) return;
-      if (watched) {
-        SimklService().addToHistory(shows: [
-          {
-            'ids': {'tmdb': tmdbId},
-            'seasons': [
-              {
-                'number': season,
-                'episodes': [
-                  {'number': episode}
-                ]
-              }
-            ]
-          }
-        ]);
-      } else {
-        SimklService().removeFromHistory(shows: [
-          {
-            'ids': {'tmdb': tmdbId},
-            'seasons': [
-              {
-                'number': season,
-                'episodes': [
-                  {'number': episode}
-                ]
-              }
-            ]
-          }
-        ]);
-      }
-    });
+    syncHandler?.call(tmdbId, season, episode, watched);
   }
 }

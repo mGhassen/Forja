@@ -22,6 +22,7 @@ Phase 3 task P3-03 cannot delete `packages/api` wholesale yet. Catalog HTTP was 
 | Deleted legacy model files | ~~`packages/api/lib/models/*.dart`~~ (`api.dart` re-exports from `rust`) |
 | Host player services relocated | `pip_service`, `external_player_service`, `player_pool_service`, `android_player_launcher` → `apps/forja/lib/shared/services/` |
 | Host updater relocated | `app_updater_service` → `apps/forja/lib/shared/services/` |
+| Episode watched relocated | `episode_watched_service` → `packages/rust`; sync in `apps/forja/lib/shared/services/episode_watched_sync.dart` |
 | Call sites import `package:rust/rust.dart` | `packages/api/lib/api/*` (26 files) |
 
 ## Blockers to full delete

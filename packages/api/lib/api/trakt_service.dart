@@ -5,7 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rust/rust.dart';
 import 'package:api/services/my_list_service.dart';
-import 'package:api/services/episode_watched_service.dart';
 
 /// Full Trakt.tv integration — OAuth device-code auth, watchlist sync,
 /// scrobble, playback progress, and two-way import/export.

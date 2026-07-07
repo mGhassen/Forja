@@ -18,6 +18,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:api/api/music_player_service.dart';
 import 'package:api/playback/site111477_proxy.dart' as site111477_proxy;
+import 'package:forja/shared/services/episode_watched_sync.dart';
 import 'package:forja/shared/services/player_pool_service.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
@@ -31,6 +32,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
+  EpisodeWatchedService().syncHandler = syncEpisodeWatchedToTrackers;
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
 

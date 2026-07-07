@@ -7,6 +7,7 @@ export 'src/engine_jobs.dart';
 export 'src/engine_worker.dart';
 export 'src/isolate_runner.dart';
 export 'src/catalog_http.dart';
+export 'src/episode_watched_service.dart';
 export 'src/models/movie.dart';
 export 'src/models/stream_source.dart';
 export 'src/models/torrent_result.dart';

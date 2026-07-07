@@ -5,7 +5,6 @@ import 'package:rust/rust.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:api/services/my_list_service.dart';
-import 'package:api/services/episode_watched_service.dart';
 
 /// Full Simkl integration — PIN-based auth, watchlist sync,
 /// scrobble, history, ratings, and two-way import/export.
