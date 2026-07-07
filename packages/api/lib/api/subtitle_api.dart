@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:api/playback/playback.dart';
 import 'package:rust/rust.dart';
 import 'mysubs_service.dart';
 import 'stremio_service.dart';

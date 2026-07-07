@@ -3,7 +3,6 @@ import 'package:rust/rust.dart';
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
 import 'package:api/api/audiobook_scrapers.dart';
-import 'package:api/playback/playback.dart';
 
 class Audiobook {
   final String uuid;

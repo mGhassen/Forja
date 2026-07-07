@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
 import 'package:rust/rust.dart';
 import 'comics_service.dart';
-import 'package:api/playback/playback.dart';
 
 /// Scraper for readcomicsonline.ru — used as a secondary comics source
 /// alongside readcomiconline.li.

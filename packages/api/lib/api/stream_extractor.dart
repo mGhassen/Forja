@@ -4,11 +4,8 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
-import 'package:api/playback/extracted_media.dart';
 import 'amri_extractor.dart';
 import 'tmdb_service.dart';
-
-export 'package:api/playback/extracted_media.dart';
 
 class StreamExtractor {
   HeadlessInAppWebView? _headlessWebView;

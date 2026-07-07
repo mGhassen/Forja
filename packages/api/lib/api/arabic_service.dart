@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:api/playback/playback.dart';
+import 'package:rust/rust.dart';
 import 'package:rust/rust.dart';
 import 'stream_extractor.dart';
 

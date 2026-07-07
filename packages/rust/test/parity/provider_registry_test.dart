@@ -2,7 +2,7 @@ import 'dart:io';
 
 import '../helpers/rust_engine.dart';
 import 'package:rust/rust.dart';
-import 'package:api/playback/provider_registry.dart';
+import 'package:rust/rust.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

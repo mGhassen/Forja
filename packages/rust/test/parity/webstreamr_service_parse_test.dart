@@ -1,4 +1,4 @@
-import 'package:api/playback/webstreamr_service.dart';
+import 'package:rust/rust.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

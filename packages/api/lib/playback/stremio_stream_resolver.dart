@@ -1,6 +1,4 @@
 import 'package:api/api/debrid_api.dart';
-import 'package:api/playback/playback_profile.dart';
-import 'package:api/playback/torrent_stream_service.dart';
 import 'package:rust/rust.dart';
 
 enum StremioPlaybackError {

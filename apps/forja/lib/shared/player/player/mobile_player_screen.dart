@@ -25,7 +25,7 @@ import 'package:api/playback/playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:api/api/stream_extractor.dart';
 import 'package:api/api/site111477_service.dart';
-import 'package:api/playback/site111477_proxy.dart' as site111477_proxy;
+import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:api/api/arabic_service.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:api/api/track_auto_select.dart';
