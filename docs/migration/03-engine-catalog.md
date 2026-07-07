@@ -73,6 +73,7 @@ Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices
 | Port music_service → `crates/music-core` + FFI | ✅ |
 | Port lyrics + introdb → `anime-core/metadata` + FFI | ✅ |
 | Port mdblist → `anime-core/mdblist` + FFI | ✅ |
+| Port paper2audio → `anime-core/paper2audio` + FFI | ✅ |
 | Document host exceptions (WebView/C3 extractors) | ✅ |
 | A2 + A4 exit checklist green | ⬜ |
 
@@ -131,7 +132,7 @@ flowchart LR
 | Anime Arabic (AnimeSlayer) | `apps/forja/features/anime_arabic/catalog/` | `crates/anime-core` ✅ |
 | Subtitles/metadata | `packages/rust/lib/src/catalog/` | `crates/anime-core` ✅ |
 | Audiobook (browse/search) | `apps/forja/features/audiobooks/catalog/` | `crates/anime-core` ✅ |
-| Paper2Audio | `packages/rust/lib/src/catalog/` | `crates/anime-core` ✅ |
+| Paper2Audio | `anime-core/paper2audio` + thin Dart FFI | ✅ |
 | Lyrics (LRCLIB) | `anime-core` metadata + thin Dart FFI | ✅ |
 | IntroDB skip timestamps | `anime-core` metadata + thin Dart FFI | ✅ |
 | Debrid (RD/TorBox/AD/PM/DL) | `crates/debrid-core` + thin Dart FFI | ✅ |
@@ -172,7 +173,7 @@ Per [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) §3, these **stay in `apps/forja
 | Subtitle browse (SubtitleCat, MySubs, …) | `packages/rust/lib/src/catalog/*_service.dart` | C2 | Fetch via `animeHttp`; parse still Dart |
 | MDBlist | `anime-core/mdblist` + thin Dart FFI | ✅ |
 
-**A4 not green:** subtitle/paper2audio/mysubs still parse in Dart. C3 extractors are permanent host exceptions.
+**A4 not green:** subtitle/mysubs still parse in Dart. C3 extractors are permanent host exceptions.
 
 ---
 

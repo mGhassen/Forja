@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{introdb, lyrics, mdblist};
+use crate::{introdb, lyrics, mdblist, paper2audio};
 
 #[derive(Debug, Deserialize)]
 struct MetadataRequest {
@@ -28,6 +28,14 @@ struct MetadataRequest {
     list_id: i64,
     #[serde(default)]
     media_type: String,
+    #[serde(default)]
+    file_name: String,
+    #[serde(default)]
+    voice_id: String,
+    #[serde(default)]
+    run_id: String,
+    #[serde(default)]
+    epub_base64: String,
 }
 
 pub fn metadata_request_json(request_json: &str) -> String {
@@ -120,6 +128,24 @@ pub fn metadata_request_json(request_json: &str) -> String {
                 Err(e) => json!({ "error": e }).to_string(),
             }
         }
+        "p2a_upload" => match paper2audio::upload_base64(
+            &req.file_name,
+            &req.voice_id,
+            &req.epub_base64,
+        ) {
+            Ok(resp) => serde_json::to_string(&json!({ "run_id": resp.run_id }))
+                .unwrap_or_else(|_| "{}".into()),
+            Err(e) => json!({ "error": e }).to_string(),
+        },
+        "p2a_check_status" => match paper2audio::check_status(&req.run_id) {
+            Ok(resp) => serde_json::to_string(&json!({
+                "status": resp.status,
+                "progress": resp.progress,
+                "download_url": resp.download_url,
+            }))
+            .unwrap_or_else(|_| "{}".into()),
+            Err(e) => json!({ "error": e }).to_string(),
+        },
         other => json!({ "error": format!("unknown action: {other}") }).to_string(),
     }
 }

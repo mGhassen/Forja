@@ -3,6 +3,7 @@ mod introdb;
 mod lyrics;
 mod mdblist;
 mod metadata;
+mod paper2audio;
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};

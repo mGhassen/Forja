@@ -22,4 +22,12 @@ void main() {
     final map = jsonDecode(raw) as Map<String, dynamic>;
     expect(map['error'], isNotNull);
   });
+
+  test('metadataRequestJson rejects p2a upload without epub', () {
+    final raw = RustLib.instance.metadataRequestJson(
+      '{"action":"p2a_upload","file_name":"a.epub","voice_id":"af_heart"}',
+    );
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    expect(map['error'], isNotNull);
+  });
 }
