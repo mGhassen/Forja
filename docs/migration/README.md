@@ -10,11 +10,11 @@ Every phase file has a status tag in the filename matching `**Status:**` in the 
 
 ## Phases
 
-| # | File | Summary |
-|---|------|---------|
-| 1 | [01-[fixed]-…](fixed/01-[fixed]-rust-engine.md) | Rust crates + FFI primitives |
-| 2 | [02-[fixed]-…](fixed/02-[fixed]-rust-engine-complete.md) | Playback engine → `crates/*` |
-| 3 | [03-[fixed]-…](fixed/03-[fixed]-engine-catalog.md) | Catalog engine → `crates/*` |
+| # | File | Summary | Backlog |
+|---|------|---------|---------|
+| 1 | [01-[fixed]-…](fixed/01-[fixed]-rust-engine.md) | Rust crates + FFI primitives | [0.1.0](../backlog/done/0.1.0-[done].md)–[0.1.7](../backlog/done/0.1.7-[done].md) |
+| 2 | [02-[fixed]-…](fixed/02-[fixed]-rust-engine-complete.md) | Playback engine → `crates/*` | [0.2.0](../backlog/done/0.2.0-[done].md)–[0.2.1](../backlog/done/0.2.1-[done].md) |
+| 3 | [03-[fixed]-…](fixed/03-[fixed]-engine-catalog.md) | Catalog engine → `crates/*` | [0.3.0](../backlog/done/0.3.0-[done].md)–[0.3.3](../backlog/done/0.3.3-[done].md) |
 
 Web client is **not** migration — [RFC-010](../rfc/010-[draft]-web-client.md) / [RFC-014](../rfc/014-[draft]-v3-web-rust.md).
 

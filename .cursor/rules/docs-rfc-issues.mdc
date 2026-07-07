@@ -46,6 +46,28 @@ shipped        →  done/0.7.6-[done].md
 dropped        →  canceled/0.7.6-[canceled].md
 ```
 
+### Semver (major · minor · patch)
+
+| Level | Semver | Codename? | When to bump |
+|-------|--------|-----------|--------------|
+| **Major era** | `0.x.x`, `1.x.x`, … | **Theme only** (Tunisia category for the whole era) | New product chapter — e.g. v0 engine, v1 player UX, v2 sync |
+| **Minor** | `X.Y.0` | **One codename** per minor open | New arc inside the major era |
+| **Patch** | `X.Y.Z` (Z ≥ 1) | **None** — version number only | Next real ship batch inside the arc |
+| **Origin** | `0.0.1` | One codename (first ship) | — |
+
+Patch count is **not standardized** — never pad patches to match other arcs.
+
+### Mandatory backlog file sections
+
+Every backlog file body includes (use `—` when empty):
+
+1. **`## RFCs`** — link, slice shipped, status after this version
+2. **`## Issues`** — link, slice shipped, status after this version
+3. **`## Migration`** — phase link when a migration slice ships
+4. **`## Shipped`** — concrete checklist
+
+Update [RFC README](../../docs/rfc/README.md) and [issues README](../../docs/issues/README.md) **Backlog** column when a version ships.
+
 ---
 
 ## RFCs (`docs/rfc/`)
