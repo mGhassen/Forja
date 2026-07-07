@@ -12,7 +12,7 @@
 | | |
 |--|--|
 | **Progress** | **0 / 3** acceptance |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
 
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started

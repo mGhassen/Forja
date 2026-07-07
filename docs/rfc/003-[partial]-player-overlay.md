@@ -2,7 +2,7 @@
 
 **Version:** v1.1 (wire stubs)  
 **Status:** partial — player shipped; overlay stubs not wired  
-**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md)  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[open].md)  
 **Depends on:** RFC-011 (v1.0 player shell)  
 **Area:** `apps/forja/lib/shared/player/`, `shared/design/src/player_overlay.dart`, `shared/design/src/server_grid.dart`
 
@@ -12,7 +12,7 @@
 |--|--|
 | **Progress** | **4 / 6** components · **0 / 4** acceptance (v1.1 slice) |
 | **Current slice** | v1.1 — wire overlay + server grid |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

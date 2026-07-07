@@ -15,7 +15,7 @@ One file **per release version**. Specs live in [RFCs](../rfc/README.md); each f
 Filename = `{semver}-[{status}].md`. Tag matches `**Status:**` in the body.
 
 ```
-plan     →  1.0.0-[draft].md
+plan     →  1.0.0-[open].md
 shipping →  1.0.0-[open].md
 shipped  →  done/1.0.0-[done].md
 dropped  →  canceled/1.0.0-[canceled].md
@@ -38,7 +38,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | File | Codename | Status |
 |------|----------|--------|
-| [1.0.0-[draft].md](1.0.0-[draft].md) | Bab Souika | draft |
+| [1.0.0-[open].md](1.0.0-[open].md) | Bab Souika | open |
 
 ## Done — v0 master index
 
@@ -80,7 +80,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | Version | Codename | RFCs | Issues | Migration |
 |---------|----------|------|--------|-----------|
-| [1.0.0](1.0.0-[draft].md) | Bab Souika | 025†, 003†, 012†, 019†, 020† | 018–022 | — |
+| [1.0.0](1.0.0-[open].md) | Bab Souika | 025†, 003†, 012†, 019†, 020† | 018–022 | — |
 
 † = slice only; RFC/issue may stay `[partial]` or `[draft]` until fully done.
 

@@ -118,4 +118,4 @@ R23-A15–A19 — ✅
 
 ## Related
 
-RFC-001, RFC-011, [RFC-016](../016-[partial]-lazy-tab-mounting.md) (lazy mount 5/5), [RFC-024](../024-[partial]-tab-cache-eviction-stale.md) (eviction/stale), [RFC-025](../025-[draft]-flat-cinematic-shell.md) (flat cinematic UI), RFC-018 (splash), RFC-019 (god files), [0.8.0 backlog](../backlog/done/0.8.0-[done].md), [0.8.1 backlog](../backlog/done/0.8.1-[done].md)
+RFC-001, RFC-011, [RFC-016](../016-[partial]-lazy-tab-mounting.md) (lazy mount 5/5), [RFC-024](../024-[partial]-tab-cache-eviction-stale.md) (eviction/stale), [RFC-025](../025-[open]-flat-cinematic-shell.md) (flat cinematic UI), RFC-018 (splash), RFC-019 (god files), [0.8.0 backlog](../backlog/done/0.8.0-[done].md), [0.8.1 backlog](../backlog/done/0.8.1-[done].md)

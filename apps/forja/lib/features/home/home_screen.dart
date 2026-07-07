@@ -1137,7 +1137,413 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildDesktopHeroCarousel(List<Movie> movies) {
+    final heroMovie = movies[_heroIndex];
+    final height = math.max(
+      ShellTokens.heroMinHeightDesktop,
+      MediaQuery.sizeOf(context).height * 0.55,
+    );
+
+    return SizedBox(
+      height: height,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 1,
+            child: ColoredBox(
+              color: AppTheme.bgDark,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 48, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildHeroTitleBlock(heroMovie, isLandscape: false),
+                    _buildHeroMetaRow(heroMovie),
+                    if (heroMovie.overview.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: Text(
+                          heroMovie.overview,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            fontSize: 13.5,
+                            height: 1.5,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ),
+                    _buildHeroActionRow(heroMovie, flat: true),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PageView.builder(
+                  controller: _heroController,
+                  itemCount: movies.length,
+                  onPageChanged: (i) {
+                    setState(() => _heroIndex = i);
+                    _extractAmbientFor(movies[i]);
+                  },
+                  itemBuilder: (context, index) {
+                    final movie = movies[index];
+                    return CachedNetworkImage(
+                      imageUrl: movie.backdropPath.isNotEmpty
+                          ? TmdbApi.getBackdropUrl(movie.backdropPath)
+                          : TmdbApi.getImageUrl(movie.posterPath),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.centerRight,
+                      placeholder: (c, u) => Container(color: AppTheme.bgCard),
+                    );
+                  },
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            AppTheme.bgDark,
+                            AppTheme.bgDark.withValues(alpha: 0.85),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.12, 0.45],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 20,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(
+                        movies.length,
+                        (i) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeOutCubic,
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          width: i == _heroIndex ? 8 : 6,
+                          height: i == _heroIndex ? 24 : 6,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            color: i == _heroIndex
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.25),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 8,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_heroController.hasClients && _heroIndex > 0) {
+                          _heroController.animateToPage(
+                            _heroIndex - 1,
+                            duration: const Duration(milliseconds: 600),
+                            curve: Curves.easeOutCubic,
+                          );
+                        }
+                      },
+                      child: _buildFlatArrow(icon: Icons.arrow_back_ios_new_rounded),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 48,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_heroController.hasClients &&
+                            _heroIndex < movies.length - 1) {
+                          _heroController.animateToPage(
+                            _heroIndex + 1,
+                            duration: const Duration(milliseconds: 600),
+                            curve: Curves.easeOutCubic,
+                          );
+                        }
+                      },
+                      child: _buildFlatArrow(icon: Icons.arrow_forward_ios_rounded),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroTitleBlock(Movie heroMovie, {required bool isLandscape}) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 600),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.08),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: _heroLogos.containsKey(heroMovie.id) &&
+              _heroLogos[heroMovie.id]!.isNotEmpty
+          ? Padding(
+              key: ValueKey('logo_${heroMovie.id}'),
+              padding: const EdgeInsets.only(bottom: 14),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isLandscape
+                      ? 420
+                      : MediaQuery.of(context).size.width * 0.75,
+                  maxHeight: isLandscape ? 140 : 110,
+                ),
+                child: CachedNetworkImage(
+                  imageUrl: _heroLogos[heroMovie.id]!,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerLeft,
+                  placeholder: (_, _) => const SizedBox.shrink(),
+                  errorWidget: (_, _, _) =>
+                      _buildHeroTitle(heroMovie, isLandscape),
+                ),
+              ),
+            )
+          : Padding(
+              key: ValueKey('title_${heroMovie.id}'),
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _buildHeroTitle(heroMovie, isLandscape),
+            ),
+    );
+  }
+
+  Widget _buildHeroMetaRow(Movie heroMovie) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                const SizedBox(width: 4),
+                Text(
+                  heroMovie.voteAverage.toStringAsFixed(1),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (heroMovie.releaseDate.isNotEmpty)
+            Text(
+              heroMovie.releaseDate.split('-').first,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          if (heroMovie.mediaType == 'tv')
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'SERIES',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white60,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+          if (heroMovie.genres.isNotEmpty)
+            Text(
+              heroMovie.genres.take(3).join('  ·  '),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.45),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroActionRow(Movie heroMovie, {required bool flat}) {
+    return Row(
+      children: [
+        Flexible(
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            child: InkWell(
+              onTap: () => _openDetails(heroMovie),
+              borderRadius: BorderRadius.circular(28),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_arrow_rounded, color: Colors.black, size: 26),
+                    SizedBox(width: 6),
+                    Text(
+                      'Play',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: flat
+              ? Material(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(28),
+                  child: InkWell(
+                    onTap: () => _openDetails(heroMovie),
+                    borderRadius: BorderRadius.circular(28),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            color: Colors.white.withValues(alpha: 0.85),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'More Info',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : _buildFrostedPill(
+                  onTap: () => _openDetails(heroMovie),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: Colors.white.withValues(alpha: 0.85),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'More Info',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+        ),
+        const SizedBox(width: 12),
+        flat
+            ? Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: _MyListButton.movie(movie: heroMovie),
+              )
+            : _buildFrostedCircle(child: _MyListButton.movie(movie: heroMovie)),
+      ],
+    );
+  }
+
+  Widget _buildFlatArrow({required IconData icon}) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Icon(icon, color: Colors.white.withValues(alpha: 0.7), size: 18),
+    );
+  }
+
   Widget _buildHeroCarousel(List<Movie> movies) {
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    if (isDesktop) return _buildDesktopHeroCarousel(movies);
+
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final height = isLandscape ? MediaQuery.of(context).size.height * 0.65 : MediaQuery.of(context).size.height * 0.82;
     final heroMovie = movies[_heroIndex];

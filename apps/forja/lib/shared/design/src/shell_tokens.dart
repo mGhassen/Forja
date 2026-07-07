@@ -7,6 +7,10 @@ abstract final class ShellTokens {
   static const double bottomNavLabelSize = 11;
   static const double bottomNavFadeWidth = 40;
 
+  static const double navRailCollapsedWidth = 56;
+  static const double navRailExpandedWidth = 220;
+  static const Duration navRailExpandDuration = Duration(milliseconds: 200);
+
   static const double navRailLogoWidth = 48;
   static const double navRailLogoBottomPadding = 24;
   static const double navRailLogoTopPaddingDesktopMac = 8;
@@ -16,9 +20,9 @@ abstract final class ShellTokens {
   static const double musicDesktopSidebarWidth = 260;
   static const double musicDesktopBreakpoint = 900;
 
-  static const double shellGlowTopRight = 280;
-  static const double shellGlowBottomLeft = 220;
-  static const double shellGlowCenterLeft = 180;
+  static const double heroImageWidthFraction = 2 / 3;
+  static const double heroTextWidthFraction = 1 / 3;
+  static const double heroMinHeightDesktop = 480;
 
   static const double bodyHorizontalPadding = 20;
   static const double bodyMaxWidthDesktop = 1600;

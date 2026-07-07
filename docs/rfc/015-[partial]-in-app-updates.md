@@ -2,7 +2,7 @@
 
 **Version:** v1.0 (partial) / v1.1 (complete)  
 **Status:** partial — GitHub check + dialog shipped; platform install paths uneven  
-**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md) (v1.1 polish slice)  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[open].md) (v1.1 polish slice)  
 **Area:** `packages/api/lib/services/app_updater_service.dart`, `apps/forja/lib/shared/widgets/update_dialog.dart`
 
 ## Status at a glance
@@ -11,7 +11,7 @@
 |--|--|
 | **Progress** | **7 / 7** acceptance (v1.0) · **0 / 7** acceptance (v1.1 slice) |
 | **Current slice** | v1.1 — skip version, SHA256, macOS DMG, CI assets |
-| **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md), [1.0.0](../backlog/1.0.0-[draft].md) |
+| **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md), [1.0.0](../backlog/1.0.0-[open].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

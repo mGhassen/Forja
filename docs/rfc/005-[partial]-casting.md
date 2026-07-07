@@ -2,7 +2,7 @@
 
 **Version:** v1.1  
 **Status:** stub  
-**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md)  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[open].md)  
 **Area:** `apps/forja/lib/shared/casting/src/casting_service.dart`
 
 ## Status at a glance
@@ -11,7 +11,7 @@
 |--|--|
 | **Progress** | **0 / 1** components · **0 / 4** acceptance (v1.1 slice) |
 | **Current slice** | v1.1 — platform channels + player Cast button |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

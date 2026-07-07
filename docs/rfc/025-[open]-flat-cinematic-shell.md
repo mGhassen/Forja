@@ -1,8 +1,8 @@
 # RFC-025: Flat cinematic shell & Home hero
 
-**Status:** draft  
+**Status:** open  
 **Version:** v1.0.0  
-**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md)  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[open].md)  
 **Scope (slice 1):** **desktop only** — hover-expand rail, flat shell bg, Home hero layout  
 **Depends on:** [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) (shell structure shipped), [RFC-016](016-[partial]-lazy-tab-mounting.md) (lazy tabs)  
 **Area:** `apps/forja/lib/shell/`, `apps/forja/lib/features/home/`, `apps/forja/lib/shared/design/`
@@ -11,9 +11,9 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 4** components · **0 / 12** acceptance (desktop slice 1) · **0 / 3** deferred |
-| **Current slice** | Desktop — flat shell rail + Home hero |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+| **Progress** | **4 / 4** components · **11 / 12** acceptance (desktop slice 1) · **0 / 3** deferred |
+| **Current slice** | Desktop — flat shell rail + Home hero (shipping) |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,10 +23,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R25-C01 | `ShellNavRail` → hover-expand overlay rail (icon-only collapsed; labels overlay body) | ⬜ |
-| 2 | R25-C02 | `ShellScaffold` layout: `Stack` full-bleed body; remove `_ambientGlows`; unified `bgDark` | ⬜ |
-| 3 | R25-C03 | `shell_tokens.dart`: rail collapsed/expanded widths, hero layout ratios, gradient stops | ⬜ |
-| 4 | R25-C04 | Home hero: 2/3-right backdrop + left text panel (extract `home_hero.dart` optional) | ⬜ |
+| 1 | R25-C01 | `ShellNavRail` → hover-expand overlay rail (icon-only collapsed; labels overlay body) | ✅ |
+| 2 | R25-C02 | `ShellScaffold` layout: `Stack` full-bleed body; remove `_ambientGlows`; unified `bgDark` | ✅ |
+| 3 | R25-C03 | `shell_tokens.dart`: rail collapsed/expanded widths, hero layout ratios, gradient stops | ✅ |
+| 4 | R25-C04 | Home hero: 2/3-right backdrop + left text panel (extract `home_hero.dart` optional) | ✅ |
 
 ---
 
@@ -34,18 +34,18 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R25-A01 | Collapsed rail ~icon width; no permanent labels; same `bgDark` as body (no separate rail tint) | ⬜ |
-| 2 | R25-A02 | Hover rail expands with animated width; labels render **over** body content (z-index), not pushing layout | ⬜ |
-| 3 | R25-A03 | Shell ambient glows removed (`_ambientGlows` deleted; `shellGlow*` tokens unused) | ⬜ |
-| 4 | R25-A04 | `ShellBottomNav` unchanged in slice 1 (mobile deferred) | ⬜ |
-| 5 | R25-A05 | Contracts preserved: `ShellBus`, navbar settings, lazy tabs, `hideGlobalNav`, IPTV/Music hide rules | ⬜ |
-| 6 | R25-A06 | Backdrop image occupies **right ~2/3** of hero; left ~1/3 is text/metadata on solid dark | ⬜ |
-| 7 | R25-A07 | Black horizontal gradient overlay: opaque `bgDark` left → transparent into image (readable title/synopsis) | ⬜ |
-| 8 | R25-A08 | Hero carousel indicators on **right edge** (vertical dots on desktop) — replace bottom horizontal bars | ⬜ |
-| 9 | R25-A09 | All Home hero `BackdropFilter` / frosted-glass helpers removed; flat solid pills/circles/arrows | ⬜ |
-| 10 | R25-A10 | No primary-color radial “ambient tint” on hero; no glow box-shadows on Play / indicators | ⬜ |
-| 11 | R25-A11 | Widget tests: rail collapsed width, hover expand, glow absent; hero layout smoke (desktop width) | ⬜ |
-| 12 | R25-A12 | `flutter analyze` clean on touched files | ⬜ |
+| 1 | R25-A01 | Collapsed rail ~icon width; no permanent labels; same `bgDark` as body (no separate rail tint) | ✅ |
+| 2 | R25-A02 | Hover rail expands with animated width; labels render **over** body content (z-index), not pushing layout | ✅ |
+| 3 | R25-A03 | Shell ambient glows removed (`_ambientGlows` deleted; `shellGlow*` tokens unused) | ✅ |
+| 4 | R25-A04 | `ShellBottomNav` unchanged in slice 1 (mobile deferred) | ✅ |
+| 5 | R25-A05 | Contracts preserved: `ShellBus`, navbar settings, lazy tabs, `hideGlobalNav`, IPTV/Music hide rules | ✅ |
+| 6 | R25-A06 | Backdrop image occupies **right ~2/3** of hero; left ~1/3 is text/metadata on solid dark | ✅ |
+| 7 | R25-A07 | Black horizontal gradient overlay: opaque `bgDark` left → transparent into image (readable title/synopsis) | ✅ |
+| 8 | R25-A08 | Hero carousel indicators on **right edge** (vertical dots on desktop) — replace bottom horizontal bars | ✅ |
+| 9 | R25-A09 | All Home hero `BackdropFilter` / frosted-glass helpers removed; flat solid pills/circles/arrows | ✅ |
+| 10 | R25-A10 | No primary-color radial “ambient tint” on hero; no glow box-shadows on Play / indicators | ✅ |
+| 11 | R25-A11 | Widget tests: rail collapsed width, hover expand, glow absent; hero layout smoke (desktop width) | 🔄 |
+| 12 | R25-A12 | `flutter analyze` clean on touched files | ✅ |
 
 ---
 
@@ -177,4 +177,4 @@ R25-A13–A15
 
 ## Related
 
-[RFC-023](fixed/023-[fixed]-app-shell-redesign.md), [RFC-024](024-[partial]-tab-cache-eviction-stale.md), [RFC-016](016-[partial]-lazy-tab-mounting.md), [RFC-019](019-[draft]-god-file-decomposition.md), [1.0.0 backlog](../backlog/1.0.0-[draft].md)
+[RFC-023](fixed/023-[fixed]-app-shell-redesign.md), [RFC-024](024-[partial]-tab-cache-eviction-stale.md), [RFC-016](016-[partial]-lazy-tab-mounting.md), [RFC-019](019-[draft]-god-file-decomposition.md), [1.0.0 backlog](../backlog/1.0.0-[open].md)

@@ -2,7 +2,7 @@
 
 **Version:** v1.1  
 **Status:** draft  
-**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[draft].md)  
+**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[open].md)  
 **Depends on:** RFC-011 (v1.0) — prerequisite for RFC-003  
 **Area:** `features/home/`, `features/settings/`, `shared/player/`
 
@@ -12,7 +12,7 @@
 |--|--|
 | **Progress** | **0 / 5** acceptance (v1.1 slice) |
 | **Current slice** | v1.1 — split god files before overlay wiring |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
+| **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -128,4 +128,4 @@ After each PR:
 
 ## Related
 
-RFC-020 (media folder move), RFC-003 (player overlay), RFC-001 (feature boundaries), [RFC-025](025-[draft]-flat-cinematic-shell.md) (optional `home_hero.dart` extract)
+RFC-020 (media folder move), RFC-003 (player overlay), RFC-001 (feature boundaries), [RFC-025](025-[open]-flat-cinematic-shell.md) (optional `home_hero.dart` extract)

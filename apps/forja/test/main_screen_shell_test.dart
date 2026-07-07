@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/main_screen.dart';
+import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_search_bar.dart';
@@ -27,9 +28,18 @@ Future<void> _pumpMainScreen(
       ),
     ),
   );
-  // Navbar config + first frame; avoid pumpAndSettle (Home async never finishes).
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 200));
+}
+
+Future<void> _tapNavId(WidgetTester tester, String navId) async {
+  final dest = navDestinations[navId]!;
+  final icons = find.byIcon(dest.icon);
+  if (icons.evaluate().isNotEmpty) {
+    await tester.tap(icons.first);
+    return;
+  }
+  await tester.tap(find.byIcon(dest.activeIcon).first);
 }
 
 void main() {
@@ -52,7 +62,7 @@ void main() {
     expect(find.byType(ShellNavRail), findsOneWidget);
     expect(find.byType(ShellBottomNav), findsNothing);
 
-    await tester.tap(find.text('Search'));
+    await _tapNavId(tester, 'search');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -61,7 +71,6 @@ void main() {
 
   testWidgets('mobile portrait: bottom nav on non-desktop host', (tester) async {
     if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-      // Desktop hosts always use rail (Platform check in MainScreen).
       return;
     }
 
@@ -101,15 +110,19 @@ void main() {
       size: const Size(1200, 800),
     );
 
-    expect(find.text('Search'), findsWidgets);
+    expect(find.byIcon(Icons.search), findsWidgets);
 
     await SettingsService().setNavbarConfig(['home', 'search']);
     SettingsService.navbarChangeNotifier.value++;
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('Home'), findsWidgets);
-    expect(find.text('Search'), findsWidgets);
+    expect(
+      find.byIcon(Icons.home).evaluate().isNotEmpty ||
+          find.byIcon(Icons.home_outlined).evaluate().isNotEmpty,
+      isTrue,
+    );
+    expect(find.byIcon(Icons.search), findsWidgets);
   });
 
   testWidgets('desktop core tabs switch without duplicate shell chrome', (tester) async {
@@ -119,21 +132,21 @@ void main() {
       size: const Size(1200, 800),
     );
 
-    expect(find.text('Home'), findsWidgets);
-    expect(find.text('My List'), findsWidgets);
+    expect(find.byIcon(Icons.home), findsWidgets);
+    expect(find.byIcon(Icons.bookmark_outline), findsWidgets);
     expect(find.byType(ShellNavRail), findsOneWidget);
 
-    await tester.tap(find.text('Search'));
+    await _tapNavId(tester, 'search');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(ShellSearchBar), findsOneWidget);
 
-    await tester.tap(find.text('My List'));
+    await _tapNavId(tester, 'mylist');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(ShellTabHeader), findsOneWidget);
 
-    await tester.tap(find.text('Settings'));
+    await _tapNavId(tester, 'settings');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(ShellTabHeader), findsOneWidget);
@@ -151,7 +164,6 @@ void main() {
       size: const Size(1200, 800),
     );
 
-    // Music tab needs MediaKit native libs — verify chrome rule without building MusicScreen.
     ShellBus.hideGlobalNav.value = true;
     ShellBus.notifyShellChromeChanged();
     await tester.pump();
@@ -185,7 +197,7 @@ void main() {
     await SettingsService().setNavbarConfig(['home', 'search', 'mylist', 'discover']);
     await _pumpMainScreen(tester, size: const Size(1200, 800));
 
-    await tester.tap(find.text('Discover'));
+    await _tapNavId(tester, 'discover');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -199,7 +211,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    await tester.tap(find.text('Discover'));
+    await _tapNavId(tester, 'discover');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
   });
@@ -214,14 +226,14 @@ void main() {
     ]);
     await _pumpMainScreen(tester, size: const Size(1200, 800));
 
-    for (final label in ['Discover', 'Similar', 'Search', 'My List', 'Home']) {
-      await tester.tap(find.text(label).first);
+    for (final id in ['discover', 'similar', 'search', 'mylist', 'home']) {
+      await _tapNavId(tester, id);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
     }
 
     expect(find.byType(ShellNavRail), findsOneWidget);
-    await tester.tap(find.text('Settings'));
+    await _tapNavId(tester, 'settings');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(ShellTabHeader), findsOneWidget);
