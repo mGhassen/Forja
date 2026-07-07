@@ -13,7 +13,7 @@ final class AppVersion {
 
   Future<String> get version async => (await load()).version;
 
-  Future<String> label({String prefix = 'Forja v'}) async =>
+  Future<String> label({String prefix = 'v'}) async =>
       '$prefix${await version}';
 }
 
@@ -21,7 +21,7 @@ class AppVersionLabel extends StatelessWidget {
   const AppVersionLabel({
     super.key,
     this.style,
-    this.prefix = 'Forja v',
+    this.prefix = 'v.',
   });
 
   final TextStyle? style;
