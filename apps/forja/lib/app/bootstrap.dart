@@ -18,7 +18,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:api/api/music_player_service.dart';
 import 'package:api/playback/site111477_proxy.dart' as site111477_proxy;
-import 'package:api/services/player_pool_service.dart';
+import 'package:forja/shared/services/player_pool_service.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
 import 'package:forja/shell/main_screen.dart';

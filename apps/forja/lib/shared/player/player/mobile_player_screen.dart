@@ -35,7 +35,7 @@ import 'package:api/api/introdb_service.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'menus.dart';
-import 'package:api/services/pip_service.dart';
+import 'package:forja/shared/services/pip_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GLASS PRIMITIVES  (mobile — press feedback only, no hover)

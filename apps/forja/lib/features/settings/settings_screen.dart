@@ -12,7 +12,7 @@ import 'package:api/playback/playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:api/api/track_auto_select.dart';
-import 'package:api/services/external_player_service.dart';
+import 'package:forja/shared/services/external_player_service.dart';
 import 'package:api/api/debrid_api.dart';
 import 'package:api/api/trakt_service.dart';
 import 'package:api/api/simkl_service.dart';

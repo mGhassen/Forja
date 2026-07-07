@@ -21,7 +21,7 @@ class AppVersionLabel extends StatelessWidget {
   const AppVersionLabel({
     super.key,
     this.style,
-    this.prefix = 'v.',
+    this.prefix = 'v',
   });
 
   final TextStyle? style;

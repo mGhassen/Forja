@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:api/services/external_player_service.dart';
+import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';
 import 'package:forja/shared/player/player/desktop_player_screen.dart';
 

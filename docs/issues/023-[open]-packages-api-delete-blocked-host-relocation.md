@@ -20,6 +20,7 @@ Phase 3 task P3-03 cannot delete `packages/api` wholesale yet. Catalog HTTP was 
 | Shared catalog/playback DTOs moved out of `packages/api` | `packages/rust/lib/src/models/` (`Movie`, `StreamSource`, `StreamResult`, `TorrentResult`) |
 | Deleted legacy bridge file | ~~`packages/api/lib/api/anime_http.dart`~~ |
 | Deleted legacy model files | ~~`packages/api/lib/models/*.dart`~~ (`api.dart` re-exports from `rust`) |
+| Host player services relocated | `pip_service`, `external_player_service`, `player_pool_service`, `android_player_launcher` → `apps/forja/lib/shared/services/` |
 | Call sites import `package:rust/rust.dart` | `packages/api/lib/api/*` (26 files) |
 
 ## Blockers to full delete

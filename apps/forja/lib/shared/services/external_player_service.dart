@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'android_player_launcher.dart';
+import 'package:forja/shared/services/android_player_launcher.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  EXTERNAL PLAYER SERVICE

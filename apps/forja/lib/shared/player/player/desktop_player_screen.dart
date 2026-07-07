@@ -35,7 +35,7 @@ import 'package:api/api/debrid_api.dart';
 import 'package:api/api/tmdb_service.dart';
 import 'package:api/api/introdb_service.dart';
 import 'package:forja/shared/player/player_screen.dart';
-import 'package:api/services/pip_service.dart';
+import 'package:forja/shared/services/pip_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GLASSY WIDGET PRIMITIVES  (MPVEx-style frosted black glass)
