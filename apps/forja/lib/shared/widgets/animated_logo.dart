@@ -64,8 +64,14 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: _totalMs),
-    )..forward();
-    SplashSound.instance.play();
+    );
+    _startSynced();
+  }
+
+  Future<void> _startSynced() async {
+    await SplashSound.instance.play();
+    if (!mounted) return;
+    _controller.forward();
   }
 
   List<(double time, int letterIndex)> _buildColorSchedule() {
