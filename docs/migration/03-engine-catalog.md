@@ -70,6 +70,7 @@ Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices
 | Port debrid (5 providers) → `crates/debrid-core` + FFI | ✅ |
 | Port site111477 index scrape → `crates/proxy/index111477` + FFI | ✅ |
 | Port mega_proxy → `crates/proxy/mega` + FFI | ✅ |
+| Port music_service → `crates/music-core` + FFI | ✅ |
 | Port catalog vertical extractors (WebView/HTML) to `crates/*` or document host exceptions | ⬜ |
 | A2 + A4 exit checklist green | ⬜ |
 
@@ -135,7 +136,7 @@ flowchart LR
 | Site111477 seek proxy | `crates/proxy/seek111477` + `site111477_proxy.dart` | ✅ |
 | mega_proxy | `crates/proxy/mega` + thin Dart FFI | ✅ |
 | Jackett / Prowlarr / link resolver | `crates/indexer-core` + thin Dart FFI | ✅ |
-| Music (Deezer search) | `packages/rust/lib/src/catalog/music_service.dart` | port to `crates/*` ⬜ |
+| Music (Deezer + YouTube InnerTube) | `crates/music-core` + thin Dart FFI | ✅ |
 
 ### `packages/` after wave 2
 
@@ -148,7 +149,8 @@ flowchart LR
 | `crates/proxy` | Local proxy + site111477 index/seek + mega decrypt proxy |
 | `crates/indexer-core` | Jackett + Prowlarr + link resolve (P3-04) |
 | `crates/debrid-core` | Debrid resolve — 5 providers (P3-04) |
-| `packages/rust/lib/src/catalog/` | Catalog metadata + `music_service`, `subtitle_api` |
+| `packages/rust/lib/src/catalog/` | Catalog metadata + thin `music_service`, `subtitle_api` |
+| `crates/music-core` | Deezer catalog + YouTube InnerTube audio (P3-04) |
 
 ---
 
@@ -164,7 +166,9 @@ Engine (crates/* + libffi)
   → playback: stream resolve, torrent, proxy, storage (wave 1 ✅)
 
 packages/rust/lib/src/playback/
-  → thin FFI wrappers; residual Dart: music_service (P3-04)
+  → thin FFI wrappers (P3-04 playback ✅)
+packages/rust/lib/src/catalog/
+  → thin music_service FFI; catalog vertical extractors remain in apps/forja (P3-04)
 ```
 
 | **Engine (`crates/*`)** | **Host (`apps/forja`)** |

@@ -37,6 +37,7 @@ manga-core = { path = "../manga-core" }
 anime-core = { path = "../anime-core" }
 indexer-core = { path = "../indexer-core" }
 debrid-core = { path = "../debrid-core" }
+music-core = { path = "../music-core" }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

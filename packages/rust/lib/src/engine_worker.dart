@@ -24,6 +24,7 @@ enum EngineJobKind {
   debridRequest,
   site111477IndexRequest,
   megaResolve,
+  musicRequest,
   parseXtreamCategories,
   parseXtreamStreams,
   parseXtreamSeriesEpisodes,
@@ -214,6 +215,8 @@ String _dispatchJob(_WorkerJob job) {
       return rust.site111477IndexRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.megaResolve:
       return rust.megaResolveJson(job.args['embedUrl']! as String);
+    case EngineJobKind.musicRequest:
+      return rust.musicRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.parseXtreamCategories:
       return rust.parseXtreamCategoriesJson(job.args['json']! as String);
     case EngineJobKind.parseXtreamStreams:

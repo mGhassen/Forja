@@ -19,6 +19,7 @@ members = [
     "anime-core",
     "indexer-core",
     "debrid-core",
+    "music-core",
 ]
 
 [workspace.package]

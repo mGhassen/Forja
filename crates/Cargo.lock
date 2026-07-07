@@ -1002,6 +1002,7 @@ dependencies = [
  "iptv-core",
  "jellyfin-core",
  "manga-core",
+ "music-core",
  "proxy",
  "scrapers",
  "serde",
@@ -2261,6 +2262,20 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "music-core"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+ "urlencoding",
+ "utils",
 ]
 
 [[package]]

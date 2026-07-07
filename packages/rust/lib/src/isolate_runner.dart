@@ -85,6 +85,12 @@ Future<String> runMegaResolveJson(String embedUrl) => EngineWorkerPool.run(
       {'embedUrl': embedUrl},
     );
 
+Future<String> runMusicRequestJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.musicRequest,
+      {'requestJson': requestJson},
+    );
+
 Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
     EngineJobs.run(
       EngineAsyncJob.iptvProbeStream,

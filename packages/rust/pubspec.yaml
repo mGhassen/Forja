@@ -18,7 +18,6 @@ dependencies:
   http: ^1.6.0
   crypto: ^3.0.6
   flutter_inappwebview: ^6.1.5
-  youtube_explode_dart: ^3.0.5
 
 dev_dependencies:
   flutter_test:

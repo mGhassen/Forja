@@ -1,10 +1,9 @@
 import 'dart:io';
 import 'dart:collection';
 import 'package:flutter/foundation.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:rust/rust.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/audio/music_storage_service.dart';
 import 'package:forja/shared/audio/lyrics_service.dart';
@@ -82,11 +81,9 @@ class MusicDownloaderService {
       final videoId = await _musicService.getYoutubeVideoId(track.title, track.artist);
       if (videoId == null) throw Exception('No YouTube match found');
 
-      // 3. Get manifest
-      final manifest = await _musicService.getYoutubeManifest(videoId);
-      if (manifest == null) throw Exception('Failed to get manifest');
-      
-      final streamInfo = manifest.audioOnly.withHighestBitrate();
+      // 3. Resolve stream URL
+      final streamUrl = await _musicService.getYoutubeStreamUrl(videoId);
+      if (streamUrl == null) throw Exception('Failed to get stream URL');
 
       // 4. Prepare Directory
       Directory? dir;
@@ -111,9 +108,12 @@ class MusicDownloaderService {
       final file = File('${dir.path}/$cleanName.mp3');
       
       // 5. Download Stream
-      final stream = _musicService.yt.videos.streamsClient.get(streamInfo);
+      final response = await http.Client().send(http.Request('GET', Uri.parse(streamUrl)));
+      if (response.statusCode != 200) {
+        throw Exception('Download failed (${response.statusCode})');
+      }
       final fileStream = file.openWrite();
-      await stream.pipe(fileStream);
+      await response.stream.pipe(fileStream);
       await fileStream.flush();
       await fileStream.close();
 
