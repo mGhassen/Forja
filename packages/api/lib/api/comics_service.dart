@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:api/playback/playback.dart';
+import 'anime_http.dart';
 import 'comic_page_extractor.dart';
 import 'readcomicsonline_scraper.dart';
 
@@ -86,15 +86,15 @@ class ComicDetails {
 class ComicsService {
   static const String _baseUrl = 'https://rcostation.xyz';
   static const String _likedKey = 'liked_comics';
+  static const String _ua =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
   Future<List<Comic>> getComics({int page = 1}) async {
     try {
       final url = '$_baseUrl/ComicList?page=$page';
-      final response = await http.get(Uri.parse(url), headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      });
+      final response = await animeHttp('GET', url, headers: {'User-Agent': _ua});
 
-      if (response.statusCode == 200) {
+      if (response.status == 200) {
         return _parseComics(response.body);
       }
     } catch (e) {
@@ -126,16 +126,17 @@ class ComicsService {
   Future<List<Comic>> _searchRco(String query) async {
     try {
       final url = '$_baseUrl/Search/Comic';
-      final response = await http.post(
-        Uri.parse(url),
+      final response = await animeHttp(
+        'POST',
+        url,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'User-Agent': _ua,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: 'keyword=$query',
       );
 
-      if (response.statusCode == 200) {
+      if (response.status == 200) {
         return _parseComics(response.body);
       }
     } catch (e) {
@@ -157,11 +158,9 @@ class ComicsService {
         url += url.contains('?') ? '&s=s2' : '?s=s2';
       }
       
-      final response = await http.get(Uri.parse(url), headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      });
+      final response = await animeHttp('GET', url, headers: {'User-Agent': _ua});
 
-      if (response.statusCode != 200) return null;
+      if (response.status != 200) return null;
 
       final document = hp.parse(response.body);
       final infoParas = document.querySelectorAll('.barContent p');
@@ -246,12 +245,10 @@ class ComicsService {
       // Pure HTTP scrape — the headless WebView was crashing the app on Windows
       // when running the page's heavily-obfuscated JS. We replicate the site's
       // decoder (beau/baeu from rguard.min.js) directly in Dart.
-      final response = await http.get(Uri.parse(url), headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      });
+      final response = await animeHttp('GET', url, headers: {'User-Agent': _ua});
 
-      if (response.statusCode != 200) {
-        throw Exception('Chapter page returned HTTP ${response.statusCode}');
+      if (response.status != 200) {
+        throw Exception('Chapter page returned HTTP ${response.status}');
       }
 
       final html = response.body;

@@ -26,11 +26,13 @@ import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/app/boot_cache.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
+import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
+  unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
 
   // Configure InAppWebView (Android only — not supported on iOS)

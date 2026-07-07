@@ -1,6 +1,7 @@
-import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as hp;
 import 'package:flutter/foundation.dart';
+
+import 'anime_http.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
@@ -101,8 +102,6 @@ class BookEditionDetails {
 class BooksService {
   static const String _base = 'https://libgen.li';
 
-  static final _client = http.Client();
-
   static const Map<String, String> _headers = {
     'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -123,9 +122,9 @@ class BooksService {
       );
       debugPrint('[LibGen] search: $url');
 
-      final response = await _client.get(url, headers: _headers);
-      if (response.statusCode != 200) {
-        debugPrint('[LibGen] search HTTP ${response.statusCode}');
+      final response = await animeHttp('GET', url.toString(), headers: _headers);
+      if (response.status != 200) {
+        debugPrint('[LibGen] search HTTP ${response.status}');
         return [];
       }
 
@@ -224,8 +223,8 @@ class BooksService {
       final url = Uri.parse('$_base/edition.php?id=$editionId');
       debugPrint('[LibGen] edition: $url');
 
-      final response = await _client.get(url, headers: _headers);
-      if (response.statusCode != 200) return null;
+      final response = await animeHttp('GET', url.toString(), headers: _headers);
+      if (response.status != 200) return null;
 
       final document = hp.parse(response.body);
 
@@ -281,8 +280,8 @@ class BooksService {
       final adsUrl = Uri.parse('$_base/ads.php?md5=$md5');
       debugPrint('[LibGen] ads page: $adsUrl');
 
-      final response = await _client.get(adsUrl, headers: _headers);
-      if (response.statusCode != 200) return null;
+      final response = await animeHttp('GET', adsUrl.toString(), headers: _headers);
+      if (response.status != 200) return null;
 
       final document = hp.parse(response.body);
 

@@ -24,6 +24,7 @@ import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
 import 'webstreamr_settings_screen.dart';
 import 'splash_preview_screen.dart';
+import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -756,10 +757,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
 
                     const SizedBox(height: 40),
-                    const Center(
-                      child: Text(
-                        'Forja v0.7.2',
-                        style: TextStyle(color: Colors.white24, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold),
+                    Center(
+                      child: AppVersionLabel(
+                        style: const TextStyle(
+                          color: Colors.white24,
+                          fontSize: 12,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 100),

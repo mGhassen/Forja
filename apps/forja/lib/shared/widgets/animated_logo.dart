@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/forja_logo.dart';
@@ -40,11 +41,11 @@ class SplashLogoWithHalo extends StatefulWidget {
 
 class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
     with SingleTickerProviderStateMixin {
-  static const _totalMs = 8000;
+  static const _totalMs = 8500;
   static const _fadeEndMs = 800;
   static const _cycleEndMs = 3500;
   static const _greenStartMs = 3500;
-  static const _greenEndMs = 5250;
+  static const _greenEndMs = 6500;
 
   static const _palette = [
     Color(0xFF22D3EE),
@@ -302,6 +303,15 @@ class SplashOverlayContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   SplashLoadingDots(color: logoColors.base),
+                  const SizedBox(height: 12),
+                  AppVersionLabel(
+                    style: TextStyle(
+                      fontSize: 11,
+                      letterSpacing: 2,
+                      color: logoColors.base.withValues(alpha: 0.5),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
                 ),
               ),

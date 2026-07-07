@@ -6,6 +6,7 @@ typedef AnimeHttpResult = ({
   int status,
   String body,
   Map<String, String> headers,
+  String finalUrl,
 });
 
 Future<AnimeHttpResult> animeHttp(
@@ -37,5 +38,6 @@ Future<AnimeHttpResult> animeHttp(
     status: decoded['status'] as int,
     body: decoded['body'] as String? ?? '',
     headers: hdrs,
+    finalUrl: decoded['final_url'] as String? ?? '',
   );
 }

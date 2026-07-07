@@ -41,6 +41,7 @@ dependencies:
   audio_service: ^0.18.17
   audioplayers: ^6.5.0
   connectivity_plus: 7.0.0
+  package_info_plus: ^9.0.0
   media_kit:
     git:
       url: https://github.com/AimesSoft/media-kit.git

@@ -9,6 +9,7 @@ pub struct AnimeHttpResponse {
     pub status: u16,
     pub body: String,
     pub headers: std::collections::HashMap<String, String>,
+    pub final_url: String,
 }
 
 static RUNTIME: LazyLock<Runtime> =
@@ -17,7 +18,7 @@ static RUNTIME: LazyLock<Runtime> =
 fn client(timeout: Duration) -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .timeout(timeout)
-        .redirect(reqwest::redirect::Policy::limited(8))
+        .redirect(reqwest::redirect::Policy::limited(15))
         .build()
         .map_err(|e| e.to_string())
 }
@@ -51,6 +52,7 @@ async fn fetch_once(
 
     let resp = req.send().await.map_err(|e| e.to_string())?;
     let status = resp.status().as_u16();
+    let final_url = resp.url().to_string();
     let mut headers = std::collections::HashMap::new();
     for (name, value) in resp.headers() {
         if let Ok(v) = value.to_str() {
@@ -66,6 +68,7 @@ async fn fetch_once(
         status,
         body,
         headers,
+        final_url,
     })
 }
 

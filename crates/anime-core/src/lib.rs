@@ -28,6 +28,8 @@ pub struct AnimeResponse {
     pub body: String,
     #[serde(default)]
     pub headers: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    pub final_url: String,
 }
 
 pub fn request_json(request_json: &str) -> String {
@@ -58,6 +60,7 @@ pub fn request_json(request_json: &str) -> String {
             status: resp.status,
             body: resp.body,
             headers: resp.headers,
+            final_url: resp.final_url,
         })
         .unwrap_or_else(|_| "{}".into()),
         Err(e) => serde_json::json!({ "error": e }).to_string(),

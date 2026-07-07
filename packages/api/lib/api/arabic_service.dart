@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:api/playback/playback.dart';
+import 'anime_http.dart';
 import 'stream_extractor.dart';
 
 // ── Dynamic base URL ───────────────────────────────────────────────────────
@@ -57,18 +57,14 @@ Future<void> _refreshBaseUrl() async {
   ];
   for (final boot in bootstraps) {
     try {
-      final req = http.Request('GET', Uri.parse(boot))
-        ..followRedirects = true
-        ..maxRedirects = 15
-        ..headers['User-Agent'] =
+      final res = await animeHttp('GET', boot, headers: {
+        'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
-      final streamed = await http.Client().send(req).timeout(
-            const Duration(seconds: 10),
-          );
-      // Drain (we only care about the final URL).
-      await streamed.stream.drain<void>();
-      final finalUri = streamed.request?.url ?? Uri.parse(boot);
+            '(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+      }, timeoutSecs: 10, maxRetries: 0);
+      final finalUri = res.finalUrl.isNotEmpty
+          ? Uri.parse(res.finalUrl)
+          : Uri.parse(boot);
       final resolved = '${finalUri.scheme}://${finalUri.host}';
       // Sanity check: must look like a real laroza host.
       if (!resolved.startsWith('http') ||
@@ -220,13 +216,25 @@ class ArabicService {
   static const String _userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-  final http.Client _client = http.Client();
-
   Map<String, String> get _headers => {
         'User-Agent': _userAgent,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'ar,en;q=0.9',
       };
+
+  void _adoptOriginFromUrl(String url) {
+    final finalUri = Uri.tryParse(url);
+    if (finalUri == null) return;
+    final newOrigin = '${finalUri.scheme}://${finalUri.host}';
+    if (newOrigin != _baseUrl) {
+      _baseUrl = newOrigin;
+      debugPrint('[ArabicService] base auto-updated from response: $_baseUrl');
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString(_baseUrlPrefsKey, newOrigin);
+      }).catchError((_) {});
+      _baseUrlResolvedAt = DateTime.now();
+    }
+  }
 
   Future<String> _fetchHtml(String url) async {
     return _fetchHtmlImpl(url, allowReresolve: true);
@@ -234,32 +242,20 @@ class ArabicService {
 
   Future<String> _fetchHtmlImpl(String url, {required bool allowReresolve}) async {
     try {
-      final req = http.Request('GET', Uri.parse(url))
-        ..followRedirects = true
-        ..maxRedirects = 15
-        ..headers.addAll(_headers);
-      final streamed = await _client.send(req).timeout(const Duration(seconds: 20));
-      final body = await streamed.stream.bytesToString();
-      if (streamed.statusCode != 200) {
-        throw Exception('HTTP ${streamed.statusCode} for $url');
+      final res = await animeHttp(
+        'GET',
+        url,
+        headers: _headers,
+        timeoutSecs: 20,
+        maxRetries: 0,
+      );
+      if (res.status != 200) {
+        throw Exception('HTTP ${res.status} for $url');
       }
-      // If the request ended on a different origin than _baseUrl, the
-      // host has rotated — adopt the new origin and persist it so the
-      // next call goes there directly.
-      final finalUri = streamed.request?.url;
-      if (finalUri != null) {
-        final newOrigin = '${finalUri.scheme}://${finalUri.host}';
-        if (newOrigin != _baseUrl) {
-          _baseUrl = newOrigin;
-          debugPrint('[ArabicService] base auto-updated from response: $_baseUrl');
-          try {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(_baseUrlPrefsKey, newOrigin);
-          } catch (_) {}
-          _baseUrlResolvedAt = DateTime.now();
-        }
-      }
-      return body;
+      _adoptOriginFromUrl(
+        res.finalUrl.isNotEmpty ? res.finalUrl : url,
+      );
+      return res.body;
     } catch (e) {
       // Redirect-loop / dead-host / timeout → re-resolve from the bootstrap
       // and retry the request once on the freshly-resolved origin.
@@ -702,12 +698,12 @@ class ArabicService {
   /// Returns the stream URL or null if the server can't be cracked this way.
   Future<String?> tryExtractDirectUrl(String embedUrl) async {
     try {
-      final response = await _client.get(Uri.parse(embedUrl), headers: {
+      final res = await animeHttp('GET', embedUrl, headers: {
         ..._headers,
         'Referer': '$_baseUrl/',
-      });
-      if (response.statusCode != 200) return null;
-      final html = response.body;
+      }, maxRetries: 0);
+      if (res.status != 200) return null;
+      final html = res.body;
 
       // 1. Try PACKER unpacking: eval(function(p,a,c,k,e,d){...}('...',N,N,'...'
       final packed = RegExp(
@@ -862,15 +858,17 @@ class ArabicService {
   /// Search dima-toon.com via its AJAX endpoint.
   Future<List<ArabicShow>> searchDimaToon(String query) async {
     try {
-      final res = await http.post(
-        Uri.parse('$_dimaToonBase/wp-admin/admin-ajax.php'),
+      final res = await animeHttp(
+        'POST',
+        '$_dimaToonBase/wp-admin/admin-ajax.php',
         headers: {
           'User-Agent': _userAgent,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: 'action=cartoon_search_action&term=${Uri.encodeComponent(query)}',
+        maxRetries: 0,
       );
-      if (res.statusCode != 200) return [];
+      if (res.status != 200) return [];
       final doc = html_parser.parse(res.body);
       final items = doc.querySelectorAll('.search-result-item');
       final results = <ArabicShow>[];
@@ -973,11 +971,11 @@ class ArabicService {
   static const _brstejBase = 'https://hd1.brstej.com';
 
   Future<String> _fetchBrstej(String url) async {
-    final response = await _client.get(Uri.parse(url), headers: _headers);
-    if (response.statusCode != 200) {
-      throw Exception('HTTP ${response.statusCode} for $url');
+    final res = await animeHttp('GET', url, headers: _headers, maxRetries: 0);
+    if (res.status != 200) {
+      throw Exception('HTTP ${res.status} for $url');
     }
-    return response.body;
+    return res.body;
   }
 
   Future<List<ArabicShow>> browseBrstej({int page = 1}) async {
@@ -1056,11 +1054,11 @@ class ArabicService {
           videoId.startsWith('watch:') ? videoId.substring(6) : videoId;
       final url = '$_brstejBase/play.php?vid=$vid';
       debugPrint('[Brstej] Servers: $url');
-      final res = await _client.get(Uri.parse(url), headers: {
+      final res = await animeHttp('GET', url, headers: {
         ..._headers,
         'Referer': '$_brstejBase/watch.php?vid=$vid',
-      });
-      if (res.statusCode != 200) return [];
+      }, maxRetries: 0);
+      if (res.status != 200) return [];
       return _parseBrstejServers(res.body);
     } catch (e) {
       debugPrint('[Brstej] Servers error: $e');
