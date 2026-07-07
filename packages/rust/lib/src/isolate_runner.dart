@@ -80,6 +80,11 @@ Future<String> runSite111477IndexRequestJson(String requestJson) =>
       {'requestJson': requestJson},
     );
 
+Future<String> runMegaResolveJson(String embedUrl) => EngineWorkerPool.run(
+      EngineJobKind.megaResolve,
+      {'embedUrl': embedUrl},
+    );
+
 Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
     EngineJobs.run(
       EngineAsyncJob.iptvProbeStream,

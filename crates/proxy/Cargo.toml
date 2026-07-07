@@ -16,3 +16,6 @@ urlencoding = "2"
 regex = { workspace = true }
 url = { workspace = true }
 utils = { path = "../utils" }
+aes = { workspace = true }
+ctr = { workspace = true }
+base64 = { workspace = true }
