@@ -3632,8 +3632,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                 ]);
               },
             ),
-            // Show sources button for providers with multiple sources
-            if (_currentSources != null && _currentSources!.length > 1) ...[
+            if (_currentSources != null && _currentSources!.isNotEmpty) ...[
               const SizedBox(width: 8),
               GlassIconButton(
                 icon: Icons.video_library_outlined,

@@ -50,6 +50,7 @@ Rename the file when status changes. **Filename tag and `**Status:**` in the iss
 | [014-[fixed]-…](014-[fixed]-iptv-reddit-catalog-cursor-loop.md) | IPTV Reddit catalog cursor infinite loop | P1 | High | fixed |
 | [015-[fixed]-…](015-[fixed]-rust-blocking-http-engine-debt.md) | Rust blocking HTTP / sync resolve engine debt | P2 | Medium | fixed |
 | [016-[fixed]-…](016-[fixed]-async-job-ffi-hard-cancel.md) | Async job FFI + hard HTTP cancel | P2 | Medium | fixed |
+| [017-[fixed]-…](fixed/017-[fixed]-webstreamr-stream-choice-button-missing.md) | WebStreamr stream-choice button missing in player | P2 | Medium | fixed |
 
 **Sync FFI stack:** [001](001-[fixed]-webstreamr-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md), [011](011-[fixed]-kisskh-hls-sync-ffi.md), [015](015-[fixed]-rust-blocking-http-engine-debt.md), [016](016-[fixed]-async-job-ffi-hard-cancel.md) — **fixed**. Parent [004](004-[fixed]-sync-ffi-ui-thread-audit.md) **fixed**.
 

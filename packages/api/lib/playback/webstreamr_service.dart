@@ -58,12 +58,26 @@ class WebStreamrService {
         return [];
       }
 
+      final idLabel = imdbId.isNotEmpty ? imdbId : 'tmdb:$tmdbId';
       final out = <StreamSource>[];
+      var skipped = 0;
       for (final item in streams) {
-        if (item is! Map) continue;
+        if (item is! Map) {
+          skipped++;
+          debugPrint('[WebStreamrService] skip: non-map entry');
+          continue;
+        }
         final s = Map<String, dynamic>.from(item);
-        final url = (s['url'] ?? s['externalUrl']) as String?;
-        if (url == null || url.isEmpty) continue;
+        final url = resolveStreamUrl(s);
+        if (url == null || url.isEmpty) {
+          skipped++;
+          final ytId = s['ytId'];
+          debugPrint(
+            '[WebStreamrService] skip: no playable url'
+            '${ytId != null ? ' (ytId=$ytId)' : ''}',
+          );
+          continue;
+        }
 
         final name = (s['name'] ?? '') as String;
         final title = (s['title'] ?? '') as String;
@@ -95,6 +109,10 @@ class WebStreamrService {
           headers: headers,
         ));
       }
+      debugPrint(
+        '[WebStreamrService] resolved ${out.length} streams for $idLabel'
+        ' (${streams.length} raw, $skipped skipped)',
+      );
       return out;
     } catch (e, st) {
       debugPrint('[WebStreamrService] Exception: $e\n$st');
@@ -161,5 +179,19 @@ class WebStreamrService {
     }
 
     return req;
+  }
+
+  /// Maps Rust stream JSON to a playable URL (direct, external, or YouTube).
+  @visibleForTesting
+  static String? resolveStreamUrl(Map<String, dynamic> s) {
+    final url = s['url'] as String?;
+    if (url != null && url.isNotEmpty) return url;
+    final external = s['externalUrl'] as String?;
+    if (external != null && external.isNotEmpty) return external;
+    final ytId = s['ytId'] as String?;
+    if (ytId != null && ytId.isNotEmpty) {
+      return 'https://www.youtube.com/watch?v=$ytId';
+    }
+    return null;
   }
 }

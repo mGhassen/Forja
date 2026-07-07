@@ -139,6 +139,12 @@ fn compare_results(a: &UrlResult, b: &UrlResult) -> std::cmp::Ordering {
     a.label.cmp(&b.label)
 }
 
+fn source_country_enabled(def: &SourceDef, config: &Config) -> bool {
+    def.country_codes
+        .iter()
+        .any(|cc| config::country_enabled(config, cc))
+}
+
 pub fn resolve_streams(request: &StreamsRequest) -> Vec<serde_json::Value> {
     let config = if request.config.is_empty() {
         config::default_config()
@@ -186,6 +192,9 @@ pub fn resolve_streams(request: &StreamsRequest) -> Vec<serde_json::Value> {
         if !def.content_types.contains(&request.media_type) {
             continue;
         }
+        if !source_country_enabled(def, &config) {
+            continue;
+        }
         if def.use_only_with_max_urls_found.is_some() {
             skipped_fallback.push(def);
             continue;
@@ -219,6 +228,9 @@ pub fn resolve_streams(request: &StreamsRequest) -> Vec<serde_json::Value> {
     for fb in skipped_fallback {
         if utils::engine_cancel::is_requested() {
             break;
+        }
+        if !source_country_enabled(fb, &config) {
+            continue;
         }
         let count = url_results.iter().filter(|r| {
             r.meta
@@ -391,5 +403,21 @@ mod tests {
         });
         // Will fail network on extractors but should parse request
         let _: StreamsRequest = serde_json::from_value(req_json).unwrap();
+    }
+
+    #[test]
+    fn source_country_enabled_matches_config() {
+        let mut de_only = config::default_config();
+        de_only.clear();
+        de_only.insert("multi".into(), "on".into());
+        de_only.insert("de".into(), "on".into());
+
+        let kinoger = source_by_id("kinoger").unwrap();
+        let frenchcloud = source_by_id("frenchcloud").unwrap();
+        let vidsrc = source_by_id("vidsrc").unwrap();
+
+        assert!(source_country_enabled(kinoger, &de_only));
+        assert!(source_country_enabled(vidsrc, &de_only));
+        assert!(!source_country_enabled(frenchcloud, &de_only));
     }
 }

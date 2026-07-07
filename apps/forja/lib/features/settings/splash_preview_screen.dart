@@ -17,7 +17,7 @@ class _SplashPreviewScreenState extends State<SplashPreviewScreen> {
   @override
   void initState() {
     super.initState();
-    _autoDismissTimer = Timer(const Duration(seconds: 10), () {
+    _autoDismissTimer = Timer(const Duration(seconds: 9), () {
       if (mounted) Navigator.of(context).pop();
     });
   }

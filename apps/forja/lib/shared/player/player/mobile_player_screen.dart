@@ -3925,8 +3925,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                   ]);
                 },
               ),
-              // Show sources button for providers with multiple sources
-              if (_currentSources != null && _currentSources!.length > 1) ...[
+              if (_currentSources != null && _currentSources!.isNotEmpty) ...[
                 SizedBox(width: gap),
                 _GlassIconButton(
                   icon: Icons.video_library_outlined,

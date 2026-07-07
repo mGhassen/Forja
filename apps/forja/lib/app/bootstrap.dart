@@ -278,7 +278,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   /// HomeScreen build, layout, paint and prefetch in the background. That
   /// way, when the overlay slides away, the first frames of the real UI are
   /// already warm and scrolling is smooth instead of janky.
-  static const Duration _minSplashDuration = Duration(seconds: 10);
+  static const Duration _minSplashDuration = Duration(seconds: 8);
 
   /// Built once and kept alive in the widget tree behind the splash overlay
   /// so its element (and all child State objects) survive the transition
@@ -308,7 +308,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       }
     });
 
-    _initEngine();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initEngine();
+    });
   }
 
   void _skipSplash() {
@@ -471,12 +473,14 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         ),
         if (_showOverlay)
           Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _skipSplash,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: _buildSplashOverlay(),
+            child: RepaintBoundary(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _skipSplash,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: _buildSplashOverlay(),
+                ),
               ),
             ),
           ),

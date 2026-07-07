@@ -12,10 +12,13 @@ pub struct FetchConfig {
     pub timeout: Duration,
 }
 
+pub const DEFAULT_USER_AGENT: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 impl Default for FetchConfig {
     fn default() -> Self {
         Self {
-            headers: HashMap::new(),
+            headers: HashMap::from([("User-Agent".into(), DEFAULT_USER_AGENT.into())]),
             timeout: Duration::from_secs(20),
         }
     }
@@ -28,12 +31,16 @@ static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
         .redirect(reqwest::redirect::Policy::limited(10))
+        .user_agent(DEFAULT_USER_AGENT)
         .build()
         .expect("webstreamr http client")
 });
 
 fn client_for(config: &FetchConfig) -> Result<reqwest::Client, String> {
-    if config.timeout == Duration::from_secs(20) && config.headers.is_empty() {
+    if config.timeout == Duration::from_secs(20)
+        && config.headers.len() == 1
+        && config.headers.get("User-Agent").map(String::as_str) == Some(DEFAULT_USER_AGENT)
+    {
         return Ok(CLIENT.clone());
     }
     reqwest::Client::builder()

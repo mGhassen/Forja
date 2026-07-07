@@ -462,6 +462,10 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
       );
       if (_extractionCancelled || wsSources.isEmpty) return false;
       if (!mounted) return false;
+      debugPrint(
+        '[StreamingDetails] webstreamr pushing ${wsSources.length} sources'
+        ' for ${_movie.imdbId ?? _movie.id}',
+      );
       final first = wsSources.first;
       pushPlayer(
         streamUrl: first.url,
