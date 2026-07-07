@@ -635,6 +635,13 @@ pub unsafe extern "C" fn ffi_seek111477_purge_cache_json(cache_dir: *const c_cha
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_site111477_index_request_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::site111477_index_request_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_storage_open(path: *const c_char) -> *mut c_char {
     to_c_string(crate::storage_open(from_c_str(path)))
 }

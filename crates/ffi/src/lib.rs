@@ -585,6 +585,18 @@ fn seek111477_purge_cache_json(cache_dir: String) -> String {
     }
 }
 
+fn site111477_index_request_json(json: String) -> String {
+    #[cfg(feature = "local-proxy")]
+    {
+        proxy::index111477::request_json_blocking(&json)
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        let _ = json;
+        r#"{"error":"local_proxy_unavailable"}"#.into()
+    }
+}
+
 fn storage_open(path: String) -> String {
     match storage::open(&path) {
         Ok(()) => r#"{"ok":true}"#.into(),

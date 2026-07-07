@@ -74,6 +74,12 @@ Future<String> runDebridRequestJson(String requestJson) =>
       {'requestJson': requestJson},
     );
 
+Future<String> runSite111477IndexRequestJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.site111477IndexRequest,
+      {'requestJson': requestJson},
+    );
+
 Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
     EngineJobs.run(
       EngineAsyncJob.iptvProbeStream,

@@ -68,7 +68,8 @@ Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices
 | Move `music_service` + `youtube_audio_extractor` → `packages/rust/lib/src/catalog/` | ✅ |
 | Port jackett / prowlarr / link_resolver → `crates/indexer-core` + FFI | ✅ |
 | Port debrid (5 providers) → `crates/debrid-core` + FFI | ✅ |
-| Port site111477 / mega_proxy to `crates/*` | ⬜ |
+| Port site111477 index scrape → `crates/proxy/index111477` + FFI | ✅ |
+| Port mega_proxy → `crates/*` | ⬜ |
 | Port catalog vertical extractors (WebView/HTML) to `crates/*` or document host exceptions | ⬜ |
 | A2 + A4 exit checklist green | ⬜ |
 
@@ -130,7 +131,9 @@ flowchart LR
 | Paper2Audio | `packages/rust/lib/src/catalog/` | `crates/anime-core` ✅ |
 | Lyrics (LRCLIB) | `apps/forja/shared/audio/lyrics_service.dart` | `crates/anime-core` ✅ |
 | Debrid (RD/TorBox/AD/PM/DL) | `crates/debrid-core` + thin Dart FFI | ✅ |
-| Site111477 / mega_proxy | `packages/rust/lib/src/playback/` | port to `crates/*` ⬜ |
+| Site111477 index scrape | `crates/proxy/index111477` + thin Dart FFI | ✅ |
+| Site111477 seek proxy | `crates/proxy/seek111477` + `site111477_proxy.dart` | ✅ |
+| mega_proxy | `packages/rust/lib/src/playback/mega_proxy.dart` | port to `crates/*` ⬜ |
 | Jackett / Prowlarr / link resolver | `crates/indexer-core` + thin Dart FFI | ✅ |
 | Music (Deezer search) | `packages/rust/lib/src/catalog/music_service.dart` | port to `crates/*` ⬜ |
 
@@ -141,7 +144,8 @@ flowchart LR
 | `packages/rust` | Dart FFI bridge + parity tests (**permanent**) |
 | `packages/rust/lib/src/catalog_http.dart` | Shared catalog HTTP (`animeHttp` / `animeHttpBytes`) — moved from `packages/api` in P3-03 |
 | `packages/rust/lib/src/models/` | Shared DTOs (`Movie`, `StreamSource`, `TorrentResult`) — moved from ~~`packages/api`~~ in P3-03 |
-| `packages/rust/lib/src/playback/` | Thin FFI + residual Dart: site111477, mega_proxy |
+| `packages/rust/lib/src/playback/` | Thin FFI + residual Dart: mega_proxy |
+| `crates/proxy` | Local proxy + site111477 index scrape + seek playback proxy |
 | `crates/indexer-core` | Jackett + Prowlarr + link resolve (P3-04) |
 | `crates/debrid-core` | Debrid resolve — 5 providers (P3-04) |
 | `packages/rust/lib/src/catalog/` | Catalog metadata + `music_service`, `subtitle_api` |
@@ -160,7 +164,7 @@ Engine (crates/* + libffi)
   → playback: stream resolve, torrent, proxy, storage (wave 1 ✅)
 
 packages/rust/lib/src/playback/
-  → residual Dart playback HTTP (debrid, site111477, jackett) — port to crates (P3-04)
+  → residual Dart playback HTTP (mega_proxy, music) — port to crates (P3-04)
 ```
 
 | **Engine (`crates/*`)** | **Host (`apps/forja`)** |
