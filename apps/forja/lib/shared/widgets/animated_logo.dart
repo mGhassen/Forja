@@ -44,7 +44,7 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
   static const _fadeEndMs = 800;
   static const _cycleEndMs = 3500;
   static const _greenStartMs = 3500;
-  static const _greenEndMs = 5000;
+  static const _greenEndMs = 5250;
 
   static const _palette = [
     Color(0xFF22D3EE),

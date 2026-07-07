@@ -85,8 +85,11 @@ flowchart LR
 | TMDB | `packages/api` | `crates/tmdb-core` ✅ |
 | Trakt | `packages/api` | `crates/trakt-core` ✅ |
 | Jellyfin | `packages/api` | `crates/jellyfin-core` ✅ |
-| Anime (AniList + HTTP) | `packages/api` | `crates/anilist-core` + `crates/anime-core` 🔄 |
+| Anime (AniList + HTTP) | `packages/api` | `crates/anilist-core` + `crates/anime-core` ✅ |
+| KissKh metadata | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
+| Music (Deezer API) | `packages/api` | `crates/anime-core` (shared HTTP) 🔄 |
 | Manga (WeebCentral fetch) | `packages/api` | `crates/manga-core` ✅ |
+| Anime Arabic (AnimeSlayer) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 | Arabic, music, … | `packages/api` | `crates/*` |
 
 ### `packages/` after wave 2

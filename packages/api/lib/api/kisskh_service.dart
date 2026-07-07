@@ -6,10 +6,11 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'anime_http.dart';
 
 class KissKhService {
   static const String baseUrl = 'https://kisskh.co';
@@ -30,23 +31,18 @@ class KissKhService {
         return cached.body;
       }
     }
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 15);
-    try {
-      final req = await client.getUrl(Uri.parse(url));
-      req.headers.set('User-Agent', _userAgent);
-      req.headers.set('Accept', 'application/json,text/plain,*/*');
-      req.headers.set('Referer', '$baseUrl/');
-      req.followRedirects = true;
-      final res = await req.close();
-      final body = await res.transform(utf8.decoder).join();
-      if (useCache) {
-        _httpCache[url] = _CacheEntry(body, DateTime.now().add(_cacheTtl));
-      }
-      return body;
-    } finally {
-      client.close(force: true);
+    final res = await animeHttp('GET', url, headers: {
+      'User-Agent': _userAgent,
+      'Accept': 'application/json,text/plain,*/*',
+      'Referer': '$baseUrl/',
+    });
+    if (res.status >= 400) {
+      throw Exception('GET $url → ${res.status}');
     }
+    if (useCache) {
+      _httpCache[url] = _CacheEntry(res.body, DateTime.now().add(_cacheTtl));
+    }
+    return res.body;
   }
 
   List<KdramaCard> _parseCardList(String body) {

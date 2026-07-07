@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:api/services/youtube_audio_extractor.dart';
+
+import 'anime_http.dart';
 
 class _CachedUrl {
   final String url;
@@ -142,8 +143,8 @@ class MusicService {
   Future<List<MusicTrack>> searchTracks(String query) => _withRetry(() async {
     final targetUri = Uri.https('api.deezer.com', '/search', {'q': query});
     
-    final response = await http.get(targetUri);
-    if (response.statusCode == 200) {
+    final response = await animeHttp('GET', targetUri.toString());
+    if (response.status == 200) {
       final data = json.decode(response.body);
       final items = data['data'] as List;
       return items.map((item) => MusicTrack.fromJson(item)).toList();
@@ -157,8 +158,8 @@ class MusicService {
       'limit': limit.toString(),
     });
     
-    final response = await http.get(targetUri);
-    if (response.statusCode == 200) {
+    final response = await animeHttp('GET', targetUri.toString());
+    if (response.status == 200) {
       final data = json.decode(response.body);
       final items = data['data'] as List;
       return items.map((item) => MusicTrack.fromJson(item)).toList();
@@ -169,8 +170,8 @@ class MusicService {
   Future<List<MusicAlbum>> searchAlbums(String query) => _withRetry(() async {
     final targetUri = Uri.https('api.deezer.com', '/search/album', {'q': query});
     
-    final response = await http.get(targetUri);
-    if (response.statusCode == 200) {
+    final response = await animeHttp('GET', targetUri.toString());
+    if (response.status == 200) {
       final data = json.decode(response.body);
       final albums = data['data'] as List;
       return albums.map((item) => MusicAlbum.fromJson(item)).toList();
@@ -181,8 +182,8 @@ class MusicService {
   Future<List<MusicTrack>> getAlbumTracks(String albumId) => _withRetry(() async {
     final targetUrl = 'https://api.deezer.com/album/$albumId';
     
-    final albumResponse = await http.get(Uri.parse(targetUrl));
-    if (albumResponse.statusCode == 200) {
+    final albumResponse = await animeHttp('GET', targetUrl);
+    if (albumResponse.status == 200) {
       final albumData = json.decode(albumResponse.body);
       final items = albumData['tracks']['data'] as List;
       
@@ -203,8 +204,8 @@ class MusicService {
   Future<List<MusicTrack>> getRelatedTracks(String trackId) => _withRetry(() async {
     final targetUrl = 'https://api.deezer.com/track/$trackId/related';
     
-    final response = await http.get(Uri.parse(targetUrl));
-    if (response.statusCode == 200) {
+    final response = await animeHttp('GET', targetUrl);
+    if (response.status == 200) {
       final data = json.decode(response.body);
       final items = data['data'];
       if (items is List) {

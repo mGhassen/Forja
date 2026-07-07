@@ -25,13 +25,13 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
 import 'package:api/models/stream_source.dart';
 import 'package:api/services/mega_proxy.dart';
 import 'anime_arabic_service.dart';
+import 'anime_http.dart';
 
 /// One server slug + the iframe URL the page would have embedded.
 class ArabicResolvedServer {
@@ -147,10 +147,6 @@ class AnimeArabicExtractor {
     Duration timeout = const Duration(seconds: 25),
     void Function(String phase, String detail)? onProgress,
   }) async {
-    final client = HttpClient()
-      ..userAgent = _userAgent
-      ..connectionTimeout = const Duration(seconds: 15);
-
     try {
       // 0. Parse pe (last hyphen seg of pathname) and hash (URL fragment).
       final watchPath = episode.watchPath; // e.g. /e/some-slug-XYZ#tok
@@ -170,7 +166,7 @@ class AnimeArabicExtractor {
 
       // 1. Flare config (cached).
       final flare =
-          await _getFlare(client, timeout: timeout, onProgress: onProgress);
+          await _getFlare(timeout: timeout, onProgress: onProgress);
       if (flare == null) return const [];
       final apiFirst = flare.$1;
       final apiSec = flare.$2;
@@ -186,7 +182,6 @@ class AnimeArabicExtractor {
       String boolStr = _fallbackBool;
       try {
         final pageHtml = await _get(
-          client,
           '${AnimeArabicService.baseUrl}$path',
         ).timeout(timeout);
         String? pluck(String key) {
@@ -212,7 +207,6 @@ class AnimeArabicExtractor {
       // 2. First call.
       onProgress?.call('discover', 'Handshake…');
       final r1 = await _post(
-        client,
         apiFirst,
         body: 'pe=${Uri.encodeComponent(pe)}'
             '&hash=${Uri.encodeComponent(frag)}',
@@ -253,7 +247,7 @@ class AnimeArabicExtractor {
           .map((e) =>
               '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
           .join('&');
-      final r2 = await _post(client, apiSec, body: secEncoded).timeout(timeout);
+      final r2 = await _post(apiSec, body: secEncoded).timeout(timeout);
       Map<String, dynamic> j2;
       try {
         j2 = jsonDecode(r2) as Map<String, dynamic>;
@@ -318,8 +312,6 @@ class AnimeArabicExtractor {
       debugPrint('[ArabicExtractor] discoverServers error: $e\n$st');
       onProgress?.call('error', 'Discover failed: $e');
       return const [];
-    } finally {
-      client.close(force: true);
     }
   }
 
@@ -423,12 +415,8 @@ class AnimeArabicExtractor {
       }
     }
 
-    final client = HttpClient()
-      ..userAgent = _userAgent
-      ..connectionTimeout = const Duration(seconds: 12);
     try {
       final html = await _get(
-        client,
         server.iframeUrl,
         headers: {
           'Referer': '${AnimeArabicService.baseUrl}/',
@@ -439,8 +427,6 @@ class AnimeArabicExtractor {
     } catch (e) {
       debugPrint('[ArabicExtractor] scrape ${server.name} failed: $e');
       return const [];
-    } finally {
-      client.close(force: true);
     }
   }
 
@@ -501,8 +487,7 @@ class AnimeArabicExtractor {
   // ────────────────────────────────────────────────────────────────────
   // Helpers — flare config cache + low-level HTTP
   // ────────────────────────────────────────────────────────────────────
-  Future<(String, String)?> _getFlare(
-    HttpClient client, {
+  Future<(String, String)?> _getFlare({
     required Duration timeout,
     void Function(String phase, String detail)? onProgress,
   }) async {
@@ -514,7 +499,7 @@ class AnimeArabicExtractor {
       return (_cachedApiFirst!, _cachedApiSec!);
     }
     try {
-      final raw = await _get(client, _flareUrl, headers: {
+      final raw = await _get(_flareUrl, headers: {
         'Referer': '${AnimeArabicService.baseUrl}/',
         'Accept': 'application/json,*/*',
       }).timeout(timeout);
@@ -536,42 +521,44 @@ class AnimeArabicExtractor {
   }
 
   Future<String> _get(
-    HttpClient client,
     String url, {
     Map<String, String>? headers,
   }) async {
-    final req = await client.getUrl(Uri.parse(url));
-    req.headers.set(HttpHeaders.userAgentHeader, _userAgent);
-    if (headers != null) headers.forEach(req.headers.set);
-    final res = await req.close();
-    if (res.statusCode >= 400) {
-      throw HttpException('GET $url → ${res.statusCode}');
+    final hdrs = <String, String>{
+      'User-Agent': _userAgent,
+      ...?headers,
+    };
+    final res = await animeHttp('GET', url, headers: hdrs, maxRetries: 0);
+    if (res.status >= 400) {
+      throw Exception('GET $url → ${res.status}');
     }
-    return res.transform(utf8.decoder).join();
+    return res.body;
   }
 
   Future<String> _post(
-    HttpClient client,
     String url, {
     required String body,
     Map<String, String>? headers,
   }) async {
-    final req = await client.postUrl(Uri.parse(url));
-    req.headers.set(HttpHeaders.userAgentHeader, _userAgent);
-    req.headers.set(HttpHeaders.contentTypeHeader,
-        'application/x-www-form-urlencoded; charset=UTF-8');
-    req.headers.set('Origin', AnimeArabicService.baseUrl);
-    req.headers.set('Referer', '${AnimeArabicService.baseUrl}/');
-    req.headers
-        .set(HttpHeaders.acceptHeader, 'application/json, text/plain, */*');
-    if (headers != null) headers.forEach(req.headers.set);
-    req.write(body);
-    final res = await req.close();
-    if (res.statusCode >= 400) {
-      final err = await res.transform(utf8.decoder).join();
-      throw HttpException('POST $url → ${res.statusCode}\n$err');
+    final hdrs = <String, String>{
+      'User-Agent': _userAgent,
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'Origin': AnimeArabicService.baseUrl,
+      'Referer': '${AnimeArabicService.baseUrl}/',
+      'Accept': 'application/json, text/plain, */*',
+      ...?headers,
+    };
+    final res = await animeHttp(
+      'POST',
+      url,
+      headers: hdrs,
+      body: body,
+      maxRetries: 0,
+    );
+    if (res.status >= 400) {
+      throw Exception('POST $url → ${res.status}\n${res.body}');
     }
-    return res.transform(utf8.decoder).join();
+    return res.body;
   }
 
   // ────────────────────────────────────────────────────────────────────

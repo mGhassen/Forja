@@ -1,9 +1,10 @@
-import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show Directory, File;
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
+
+import 'anime_http.dart';
 
 class KissKhSubtitleDecryptor {
   static Future<String> decryptBody(String body, {String? sourceUrl}) =>
@@ -16,19 +17,17 @@ class KissKhSubtitleDecryptor {
     required String userAgent,
     required String referer,
   }) async {
-    HttpClient? client;
     try {
-      client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
-      final req = await client.getUrl(Uri.parse(url));
-      req.headers.set('User-Agent', userAgent);
-      req.headers.set('Referer', referer);
-      req.headers.set('Accept', '*/*');
-      final res = await req.close().timeout(const Duration(seconds: 15));
-      if (res.statusCode != 200) {
-        debugPrint('[KissKhSub] HTTP ${res.statusCode} for $url');
+      final res = await animeHttp('GET', url, headers: {
+        'User-Agent': userAgent,
+        'Referer': referer,
+        'Accept': '*/*',
+      }, timeoutSecs: 15, maxRetries: 0);
+      if (res.status != 200) {
+        debugPrint('[KissKhSub] HTTP ${res.status} for $url');
         return null;
       }
-      final body = await res.transform(utf8.decoder).join();
+      final body = res.body;
       debugPrint('[KissKhSub] fetched ${body.length} chars from $url');
       final ext = url.split('?').first.split('.').last.toLowerCase();
       final decoded = (ext == 'srt') ? body : await decryptBody(body, sourceUrl: url);
@@ -51,10 +50,6 @@ class KissKhSubtitleDecryptor {
     } catch (e, st) {
       debugPrint('[KissKhSub] decrypt failed for $url: $e\n$st');
       return null;
-    } finally {
-      try {
-        client?.close(force: true);
-      } catch (_) {}
     }
   }
 }
