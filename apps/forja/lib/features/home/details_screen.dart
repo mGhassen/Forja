@@ -15,7 +15,6 @@ import 'package:api/services/prowlarr_service.dart';
 import 'package:api/services/link_resolver.dart';
 import 'package:api/api/trakt_service.dart';
 import 'package:api/api/simkl_service.dart';
-import 'package:api/api/mdblist_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/player/player_screen.dart';

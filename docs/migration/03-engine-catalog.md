@@ -52,6 +52,8 @@ Full delete blocked: `apps/forja` still imports `package:api/` widely; models, p
 | Move `my_list_service` + `book_progress_service` → `packages/rust`; `BookResult` → `packages/rust/lib/src/models/` | ✅ |
 | Consolidate tracker sync in `apps/forja/lib/shared/services/tracker_sync.dart` | ✅ |
 | Move playback glue (11 files) + `webstreamr_settings` → `packages/rust/lib/src/playback/`; `stremio_stream_resolver` stays in `api` (debrid) | ✅ |
+| Move catalog metadata services (`introdb`, `mdblist`, `subtitlecat`, `mysubs`, `tmdb_service`, `paper2audio`) → `packages/rust/lib/src/catalog/` | ✅ |
+| Move host utils (`track_auto_select`, `epub_cover`, `epub_splitter`) → `apps/forja` | ✅ |
 | Rewire `packages/api/lib/api/*` imports to `package:rust/rust.dart` | ✅ |
 | Relocate host slices to `apps/forja` | ⬜ |
 | Delete remaining Dart catalog slices after Rust port | ⬜ |

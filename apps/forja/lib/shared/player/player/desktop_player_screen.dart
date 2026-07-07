@@ -30,10 +30,8 @@ import 'package:api/api/site111477_service.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:api/api/arabic_service.dart';
 import 'package:api/api/stremio_service.dart';
-import 'package:api/api/track_auto_select.dart';
+import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:api/api/debrid_api.dart';
-import 'package:api/api/tmdb_service.dart';
-import 'package:api/api/introdb_service.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/services/pip_service.dart';
 
