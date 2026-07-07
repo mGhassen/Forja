@@ -22,13 +22,14 @@ Phase 3 task P3-03 cannot delete `packages/api` wholesale yet. Catalog HTTP was 
 | Deleted legacy model files | ~~`packages/api/lib/models/*.dart`~~ (`api.dart` re-exports from `rust`) |
 | Host player services relocated | `pip_service`, `external_player_service`, `player_pool_service`, `android_player_launcher` → `apps/forja/lib/shared/services/` |
 | Host updater relocated | `app_updater_service` → `apps/forja/lib/shared/services/` |
-| Episode watched relocated | `episode_watched_service` → `packages/rust`; sync in `apps/forja/lib/shared/services/episode_watched_sync.dart` |
+| Episode watched relocated | `episode_watched_service` → `packages/rust`; sync in `tracker_sync.dart` |
+| My list + book progress relocated | `my_list_service`, `book_progress_service`, `BookResult` → `packages/rust` |
 | Call sites import `package:rust/rust.dart` | `packages/api/lib/api/*` (26 files) |
 
 ## Blockers to full delete
 
 1. **`apps/forja`** — 80+ `package:api/` imports (UI, providers, playback wiring).
-2. **Host slices still in `packages/api`:** `lib/services/`, `lib/playback/`, models, `my_list`, Jellyfin wrappers, extractors (C3 WebView).
+2. **Host slices still in `packages/api`:** `lib/services/` (6 engine services), `lib/playback/`, models, extractors (C3 WebView).
 3. **Dart engine debt:** HTML parse / orchestration in `lib/api/*` (C2 should be Rust per `ENGINE_BOUNDARY.md`); thin FFI wrappers (e.g. `tmdb_api.dart`) still parse in Dart.
 4. **Remaining Dart HTTP in `packages/api`** (deferred playback wave): `debrid_api.dart`, `site111477_service.dart`, `mega_proxy.dart`, `jackett_service.dart`, `prowlarr_service.dart`, `link_resolver.dart`, `youtube_audio_extractor.dart`, `videasy_extractor.dart`.
 

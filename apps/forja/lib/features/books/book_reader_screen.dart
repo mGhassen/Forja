@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:api/services/book_progress_service.dart';
+import 'package:rust/rust.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +8,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:archive/archive.dart';
 import 'package:xml/xml.dart';
 
-import 'package:api/api/books_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class BookReaderScreen extends StatefulWidget {

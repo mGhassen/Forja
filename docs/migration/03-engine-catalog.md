@@ -49,6 +49,8 @@ Full delete blocked: `apps/forja` still imports `package:api/` widely; models, p
 | Move shared DTOs (`Movie`, `StreamSource`, `TorrentResult`) → `packages/rust/lib/src/models/` | ✅ |
 | Move host services (`pip`, `external_player`, `player_pool`, `android_player_launcher`, `app_updater`) → `apps/forja/lib/shared/services/` | ✅ |
 | Move `episode_watched_service` → `packages/rust` (Trakt/Simkl sync via host callback) | ✅ |
+| Move `my_list_service` + `book_progress_service` → `packages/rust`; `BookResult` → `packages/rust/lib/src/models/` | ✅ |
+| Consolidate tracker sync in `apps/forja/lib/shared/services/tracker_sync.dart` | ✅ |
 | Rewire `packages/api/lib/api/*` imports to `package:rust/rust.dart` | ✅ |
 | Relocate host slices to `apps/forja` | ⬜ |
 | Delete remaining Dart catalog slices after Rust port | ⬜ |
