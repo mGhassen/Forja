@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'music_service.dart';
 
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 
 class LyricLine {
   final Duration startTime;

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 
 /// Voice option exposed in the picker. IDs match paper2audio.com (kokoro voices).
 class Paper2AudioVoice {

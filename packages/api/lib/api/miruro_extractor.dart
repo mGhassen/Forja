@@ -4,7 +4,7 @@ import 'dart:io' show gzip, zlib;
 
 import 'package:flutter/foundation.dart';
 
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 
 /// Direct extractor for the miruro.tv "secure pipe" API.
 class MiruroExtractor {

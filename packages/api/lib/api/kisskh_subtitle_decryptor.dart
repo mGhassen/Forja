@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 
-import 'anime_http.dart';
 
 class KissKhSubtitleDecryptor {
   static Future<String> decryptBody(String body, {String? sourceUrl}) =>

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 
 class IntroDbTimestamp {
   final int? startMs;

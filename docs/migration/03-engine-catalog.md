@@ -1,6 +1,6 @@
 # Phase 3 — Catalog engine (wave 2)
 
-**Status:** 2 / 5 tasks — P3-02 next  
+**Status:** 3 / 5 tasks — P3-03 in progress  
 **Depends on:** [Playback engine exit checklist](./02-rust-engine-complete.md#playback-engine-exit-checklist) ✅  
 **Next phase:** [Phase 4 — Web client](./04-web-client.md) (parallel)  
 **Migration index:** [README.md](./README.md)  
@@ -21,7 +21,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 
 | | |
 |--|--|
-| **Progress** | **3 / 5 tasks** — P3-03 next |
+| **Progress** | **3 / 5 tasks** — P3-03 in progress |
 | **Blocked by** | — |
 | **Deferred from wave 1** | P2-89 (Stremio catalog service) |
 
@@ -36,8 +36,20 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 | 1 | P3-00 | Delete `packages/kotlin/` + `scripts/generate_kotlin_ffi.sh` references (Compose cancelled) | ✅ |
 | 2 | P3-01 | Port TMDB/Trakt core to `crates/*` | ✅ |
 | 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | ✅ |
-| 4 | P3-03 | Delete `packages/api` | ⬜ |
+| 4 | P3-03 | Delete `packages/api` | 🔄 |
 | 5 | P3-04 | Architecture normalized sign-off | ⬜ |
+
+### P3-03 — incremental (not done)
+
+Full delete blocked: `apps/forja` still imports `package:api/` widely; models, playback glue, and Dart parsers remain. Track blockers in [023-[open]-packages-api-delete-blocked-host-relocation.md](../issues/023-[open]-packages-api-delete-blocked-host-relocation.md).
+
+| Step | Status |
+|------|--------|
+| Move `anime_http.dart` → `packages/rust/lib/src/catalog_http.dart` | ✅ |
+| Rewire `packages/api/lib/api/*` imports to `package:rust/rust.dart` | ✅ |
+| Relocate host slices to `apps/forja` | ⬜ |
+| Delete remaining Dart catalog slices after Rust port | ⬜ |
+| Remove `packages/api` from workspace | ⬜ |
 
 ---
 
@@ -105,7 +117,8 @@ flowchart LR
 | Package | Purpose |
 |---------|---------|
 | `packages/rust` | Dart FFI bridge + parity tests (**permanent**) |
-| `packages/api` | Legacy catalog engine — **delete in P3-03** |
+| `packages/rust/lib/src/catalog_http.dart` | Shared catalog HTTP (`animeHttp` / `animeHttpBytes`) — moved from `packages/api` in P3-03 |
+| `packages/api` | Legacy catalog + host glue — **delete in P3-03** ([023](../issues/023-[open]-packages-api-delete-blocked-host-relocation.md)) |
 
 ---
 

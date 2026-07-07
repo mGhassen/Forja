@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'anime_http.dart';
 
 import 'allanime_extractor.dart';
 import 'watchhentai_extractor.dart';

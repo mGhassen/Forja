@@ -15,7 +15,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as html_parser;
 
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 
 class BSAutocompleteHit {
   final int id;

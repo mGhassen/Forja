@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 
 /// MDBlist integration — API-key auth, ratings aggregation, list management.
 /// Register at https://mdblist.com/ to get an API key.

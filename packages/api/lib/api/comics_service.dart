@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:api/playback/playback.dart';
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 import 'comic_page_extractor.dart';
 import 'readcomicsonline_scraper.dart';
 

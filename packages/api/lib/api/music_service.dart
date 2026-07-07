@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:api/services/youtube_audio_extractor.dart';
 
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 
 class _CachedUrl {
   final String url;

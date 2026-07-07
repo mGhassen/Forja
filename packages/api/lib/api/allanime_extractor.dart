@@ -5,7 +5,7 @@ import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:pointycastle/export.dart' as pc;
 
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 
 /// Direct extractor for the allanime.day / allmanga.to API.
 ///

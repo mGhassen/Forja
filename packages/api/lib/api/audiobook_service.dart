@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
 import 'package:api/api/audiobook_scrapers.dart';

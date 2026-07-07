@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 import 'music_service.dart';
 import 'music_storage_service.dart';
 import 'lyrics_service.dart';

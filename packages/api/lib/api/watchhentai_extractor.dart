@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 
 /// Extractor for watchhentai.net.
 ///

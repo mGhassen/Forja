@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
-import 'anime_http.dart';
+import 'package:rust/rust.dart';
 import 'comics_service.dart';
 import 'package:api/playback/playback.dart';
 
