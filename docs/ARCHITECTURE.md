@@ -70,7 +70,6 @@ Forja/
 ├── apps/forja/          Flutter product (permanent host)
 ├── packages/
 │   ├── rust/            Dart FFI bridge + host prefs (permanent)
-│   ├── kotlin/          UniFFI POC (delete wave 2)
 │   └── api/             Legacy catalog engine + lib/playback/ (wave 2 deletes catalog)
 ├── crates/              Rust engine workspace
 ├── docs/                Architecture, migration, RFCs
@@ -81,7 +80,6 @@ Forja/
 |------|------|------|
 | `apps/forja` | Flutter UI + platform host | **Permanent** |
 | `packages/rust` | Dart FFI bridge + parity tests | **Permanent** |
-| `packages/kotlin` | UniFFI POC (Compose cancelled) | Delete wave 2 |
 | `packages/{core,storage,streaming}` | Legacy playback engine | **Deleted** (wave 1) |
 | `packages/api` | Legacy catalog engine | Delete wave 2 |
 | `crates/*` | Rust engine | **Permanent** |
@@ -200,7 +198,7 @@ Two FFI paths load the same `libffi` artifact:
 | Path | Contract | Consumer | Status |
 |------|----------|----------|--------|
 | **C ABI** | `crates/ffi/src/c_api.rs` — `#[no_mangle] extern "C" ffi_*` | `packages/rust` (`RustLib` + `Engine`) | **Active** |
-| **UniFFI** | `crates/ffi/src/forja.udl` — POC only | `packages/kotlin/generated/` | Delete wave 2 (P3-00) |
+| **UniFFI** | `crates/ffi/src/forja.udl` — scaffold only | — | **Deleted** (P3-00) |
 
 Dart does **not** use UniFFI. The C ABI and UDL must be kept in sync manually.
 
@@ -426,7 +424,6 @@ The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
 | `./scripts/build_rust_mobile.sh ios` | `apps/forja/ios/Runner/Frameworks/libffi.dylib` |
 | `./scripts/build_rust_mobile.sh android` | `apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so` |
 | `./scripts/build_macos.sh` | `apps/forja/build/macos/.../forja.app` |
-| `./scripts/generate_kotlin_ffi.sh` | `packages/kotlin/generated/` |
 
 | Melos command | What |
 |---------------|------|
@@ -477,7 +474,7 @@ See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGI
 
 ### Wave 2 — catalog engine (Phase 3)
 
-`packages/api` verticals → `crates/*`; delete `packages/api` and `packages/kotlin`.
+`packages/api` verticals → `crates/*`; delete `packages/api`.
 
 ### Wave 1 exit gate
 

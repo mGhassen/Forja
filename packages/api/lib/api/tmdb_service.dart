@@ -1,32 +1,23 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
+import 'package:rust/rust.dart';
 
 class TmdbService {
-  static const String apiKey = 'c3515fdc674ea2bd7b514f4bc3616a4a';
-  static const String baseUrl = 'https://api.themoviedb.org/3';
+  Future<Map<String, dynamic>> _fetchMap(String resourcePath) async {
+    final raw = RustLib.instance.tmdbGetJson(resourcePath);
+    final decoded = jsonDecode(raw);
+    if (decoded is Map<String, dynamic> && decoded['error'] != null) {
+      throw Exception(decoded['error']);
+    }
+    return decoded as Map<String, dynamic>;
+  }
 
   Future<Map<String, dynamic>> getMovieDetails(String tmdbId) async {
-    final url = '$baseUrl/movie/$tmdbId?api_key=$apiKey';
-    
-    final response = await http.get(Uri.parse(url));
-    
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to fetch movie details: ${response.statusCode}');
-    }
+    return _fetchMap('movie/$tmdbId');
   }
 
   Future<Map<String, dynamic>> getTvShowDetails(String tmdbId) async {
-    final url = '$baseUrl/tv/$tmdbId?api_key=$apiKey';
-    
-    final response = await http.get(Uri.parse(url));
-    
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to fetch TV show details: ${response.statusCode}');
-    }
+    return _fetchMap('tv/$tmdbId');
   }
 
   String getMovieTitle(Map<String, dynamic> movieData) {
@@ -48,13 +39,7 @@ class TmdbService {
   /// Fetches season details including all episodes for a given TV show season.
   /// Returns the TMDB season object with an 'episodes' list.
   Future<Map<String, dynamic>> getTvSeasonDetails(int tvId, int seasonNumber) async {
-    final url = '$baseUrl/tv/$tvId/season/$seasonNumber?api_key=$apiKey';
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to fetch season details: ${response.statusCode}');
-    }
+    return _fetchMap('tv/$tvId/season/$seasonNumber');
   }
 
   /// Returns the total number of seasons for a TV show.

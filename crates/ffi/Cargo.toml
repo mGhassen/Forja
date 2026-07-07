@@ -29,6 +29,7 @@ scrapers = { path = "../scrapers" }
 torrent = { path = "../torrent", optional = true }
 proxy = { path = "../proxy", optional = true }
 storage = { path = "../storage" }
+tmdb-core = { path = "../tmdb-core" }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -1,18 +1,19 @@
 # Phase 3 — Catalog engine (wave 2)
 
-**Status:** Future (blocked on wave 1)  
-**Depends on:** [Playback engine exit checklist](./02-rust-engine-complete.md#playback-engine-exit-checklist)  
+**Status:** 1 / 5 tasks — P3-01 in progress  
+**Depends on:** [Playback engine exit checklist](./02-rust-engine-complete.md#playback-engine-exit-checklist) ✅  
 **Next phase:** [Phase 4 — Web client](./04-web-client.md) (parallel)  
 **Migration index:** [README.md](./README.md)  
-**Boundary:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
+**Boundary:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)  
+**Spec:** [RFC-009](../rfc/009-rust-ffi.md)
 
 ---
 
 ## Goal
 
-Normalize **catalog engine** — same rules as webstreamr/torrent (engine → `crates/*`), different wave.
+Catalog engine lives in `crates/*`. Delete `packages/api` and any remaining legacy engine under `packages/`.
 
-TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — not a separate layer from playback. `packages/api` is legacy debt until deleted.
+TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination as playback (`crates/*`), different wave. `packages/api` is legacy debt until deleted.
 
 ---
 
@@ -20,50 +21,53 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — not a separate la
 
 | | |
 |--|--|
-| **Progress** | **0 / 5 tasks (0%)** |
-| **Blocked by** | [Playback engine exit checklist](./02-rust-engine-complete.md#playback-engine-exit-checklist) |
+| **Progress** | **1 / 5 tasks** — P3-01 in progress |
+| **Blocked by** | — |
+| **Deferred from wave 1** | P2-89 (Stremio catalog service) |
 
-**Legend:** ✅ done · ⬜ not started
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
-### Task tracker
+---
 
-| ID | What |
-|----|------|
-| **P3-00** | Delete `packages/kotlin/` + `scripts/generate_kotlin_ffi.sh` references (Compose cancelled) |
-| **P3-01** | Port TMDB/Trakt core to `crates/*` |
-| **P3-02** | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) |
-| **P3-03** | Delete `packages/api` |
-| **P3-04** | Architecture normalized sign-off |
+## Tasks
 
-### Exit checklist {#exit-checklist}
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | P3-00 | Delete `packages/kotlin/` + `scripts/generate_kotlin_ffi.sh` references (Compose cancelled) | ✅ |
+| 2 | P3-01 | Port TMDB/Trakt core to `crates/*` | 🔄 |
+| 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | ⬜ |
+| 4 | P3-03 | Delete `packages/api` | ⬜ |
+| 5 | P3-04 | Architecture normalized sign-off | ⬜ |
+
+---
+
+## Catalog engine exit checklist {#exit-checklist}
 
 **Architecture fully normalized when all rows are ✅.**
 
-| # | Criterion | |
-|---|-----------|---|
-| A1 | `packages/api` deleted | ⬜ |
-| A2 | All C1 catalog logic in `crates/*` | ⬜ |
-| A3 | Only `packages/rust` under `packages/` | ⬜ |
-| A4 | No engine logic in Dart outside FFI calls | ⬜ |
-| A5 | `packages/kotlin` deleted (P3-00) | ⬜ |
+| # | Criterion | Task | Status |
+|---|-----------|------|--------|
+| A1 | `packages/api` deleted | P3-03 | ⬜ |
+| A2 | All C1 catalog logic in `crates/*` | P3-01, P3-02 | ⬜ |
+| A3 | Only `packages/rust` under `packages/` | P3-03, P3-04 | ⬜ |
+| A4 | No engine logic in Dart outside FFI calls | P3-01 → P3-03 | ⬜ |
+| A5 | `packages/kotlin` deleted | P3-00 | ✅ |
 
 ---
 
 ## Migration rule
 
-Same as wave 1:
-
-1. Port vertical to `crates/<vertical>/` or shared catalog crate.
-2. Add FFI in `crates/ffi` (Pattern B).
-3. Wire `apps/forja` to `ForjaEngine.*`.
-4. Delete Dart slice from `packages/api`.
-5. Rust tests + parity where applicable.
+| Step | Action |
+|------|--------|
+| 1 | Port vertical to `crates/<vertical>/` or shared catalog crate |
+| 2 | Add FFI in `crates/ffi` (fetch+parse, Pattern B) |
+| 3 | Wire `apps/forja` to `ForjaEngine.*` |
+| 4 | **Delete the Dart slice** — directory, pubspec deps, imports |
+| 5 | Rust tests + Dart parity in `packages/rust/test/parity/` where applicable |
 
 **No new engine logic in Dart** during wave 2.
 
----
-
-## Port order (suggested)
+### Port order (suggested)
 
 ```mermaid
 flowchart LR
@@ -78,14 +82,60 @@ flowchart LR
 
 | Vertical | Current location | Target crate |
 |----------|------------------|--------------|
-| TMDB / Trakt | `packages/api` | `crates/*` (TBD) |
+| TMDB | `packages/api` | `crates/tmdb-core` 🔄 |
+| Trakt | `packages/api` | `crates/*` (TBD) |
 | Jellyfin | `packages/api` | `crates/*` |
 | Anime, manga, music, Arabic | `packages/api` | `crates/*` per vertical |
+
+### `packages/` after wave 2
+
+| Package | Purpose |
+|---------|---------|
+| `packages/rust` | Dart FFI bridge + parity tests (**permanent**) |
+| `packages/api` | Legacy catalog engine — **delete in P3-03** |
+
+---
+
+## Architecture
+
+```
+UI (apps/forja — Flutter permanent host)
+  → widgets, navigation, OAuth, secure storage
+  → calls ForjaEngine / RustLib for catalog paths
+
+Engine (crates/* + libffi)
+  → catalog: tmdb, trakt, jellyfin, vertical APIs
+  → playback: stream resolve, torrent, proxy, storage (wave 1 ✅)
+
+packages/api/
+  → legacy catalog Dart — delete slice-by-slice during wave 2
+```
+
+| **Engine (`crates/*`)** | **Host (`apps/forja`)** |
+|-------------------------|-------------------------|
+| TMDB/Trakt/Jellyfin fetch+parse | Browse UI, details screens |
+| Vertical APIs (anime, manga, …) | OAuth flows, theme |
+| Stremio catalog (P2-89 → P3) | My list UX, navigation |
+
+**Anti-patterns:** Dart wrapper instead of delete · sync FFI on UI thread (use `Isolate.run`) · Pattern A FFI · new engine logic in Dart
+
+**Allowed:** legacy `packages/api` reads during wave 2 — no new Dart engine logic · `Isolate.run` for long FFI
+
+---
+
+## Quick health check
+
+```bash
+./scripts/build_rust.sh
+cd crates && cargo test --workspace
+cd packages/rust && flutter test test/parity/tmdb_test.dart
+
+# After each vertical port — grep for deleted Dart slice:
+rg "packages/api/lib/api/<vertical>" apps/forja packages/rust
+```
 
 ---
 
 ## Related
 
-- [Phase 2 playback](./02-rust-engine-complete.md)
-- [ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md)
-- [RFC-009](../rfc/009-rust-ffi.md)
+- [Phase 2 playback](./02-rust-engine-complete.md) · [Phase 4 web](./04-web-client.md) · [ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) · [RFC-009](../rfc/009-rust-ffi.md)

@@ -39,9 +39,8 @@ Forja/
 │   ├── lib/features/        One folder per nav tab
 │   └── lib/shared/          Player, widgets, casting/sync stubs
 ├── packages/
-│   ├── api/                 Catalog + lib/playback/ (catalog deleted wave 2)
 │   ├── rust/                FFI bridge, SettingsService, parity tests (permanent)
-│   └── kotlin/              UniFFI POC (delete wave 2)
+│   └── api/                 Catalog + lib/playback/ (catalog ports wave 2)
 ├── crates/                  Rust engine — ffi, utils, webstreamr, scrapers, torrent, proxy, catalog, …
 ├── docs/migration/          Phases 1–4
 ├── docs/rfc/                Design specs

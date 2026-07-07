@@ -11,6 +11,7 @@ members = [
     "torrent",
     "proxy",
     "storage",
+    "tmdb-core",
 ]
 
 [workspace.package]

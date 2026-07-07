@@ -17,7 +17,7 @@ Read [ENGINE_BOUNDARY.md](../../docs/ENGINE_BOUNDARY.md) first.
 Only `packages/rust` survives under `packages/` long-term (FFI bridge).
 
 **Wave 1 deletes:** `streaming`, `storage`, `core` (playback engine).
-**Wave 2 deletes:** `packages/api`, `packages/kotlin` (catalog engine + cancelled Compose POC).
+**Wave 2 deletes:** `packages/api` (catalog engine). `packages/kotlin` deleted P3-00 ✅.
 
 ## Wave 1 exit gate
 

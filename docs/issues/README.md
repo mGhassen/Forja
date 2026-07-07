@@ -51,6 +51,13 @@ Rename the file when status changes. **Filename tag and `**Status:**` in the iss
 | [015-[fixed]-…](015-[fixed]-rust-blocking-http-engine-debt.md) | Rust blocking HTTP / sync resolve engine debt | P2 | Medium | fixed |
 | [016-[fixed]-…](016-[fixed]-async-job-ffi-hard-cancel.md) | Async job FFI + hard HTTP cancel | P2 | Medium | fixed |
 | [017-[fixed]-…](fixed/017-[fixed]-webstreamr-stream-choice-button-missing.md) | WebStreamr stream-choice button missing in player | P2 | Medium | fixed |
+| [018-[open]-…](018-[open]-migration-playback-parity-unverified.md) | Wave 1 playback parity vs main unverified | P1 | High | open |
+| [019-[open]-…](019-[open]-webstreamr-enginejobs-e2e-test-gap.md) | WebStreamr live E2E bypasses EngineJobs app path | P2 | Medium | open |
+| [020-[open]-…](020-[open]-cancel-gen-token-discard-unverified.md) | Gen-token cancel may discard valid results (unverified) | P2 | Medium | open |
+| [021-[open]-…](021-[open]-catalog-vertical-import-smoke-unverified.md) | Catalog vertical import migration smoke unverified | P3 | Low | open |
+| [022-[open]-…](022-[open]-playback-widget-integration-tests.md) | No widget/integration tests for playback cancel | P3 | Low | open |
+
+**Migration parity (open):** [018](018-[open]-migration-playback-parity-unverified.md) parent → [019](019-[open]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[open]-playback-widget-integration-tests.md).
 
 **Sync FFI stack:** [001](001-[fixed]-webstreamr-blocks-ui.md)–[007](007-[fixed]-torrent-search-blocks-ui.md), [011](011-[fixed]-kisskh-hls-sync-ffi.md), [015](015-[fixed]-rust-blocking-http-engine-debt.md), [016](016-[fixed]-async-job-ffi-hard-cancel.md) — **fixed**. Parent [004](004-[fixed]-sync-ffi-ui-thread-audit.md) **fixed**.
 

@@ -39,7 +39,7 @@ Migration is sequenced in **two waves** (playback, then catalog) — scheduling 
 
 **Webstreamr:** Lives in `crates/webstreamr` because C2 scrape + C7 proxy + playback pipeline = **engine** — same rule as TMDB (C1). Long FFI via [EngineWorkerPool](../packages/rust/lib/src/engine_worker.dart) ([001](issues/001-[fixed]-webstreamr-blocks-ui.md), [015](issues/015-[fixed]-rust-blocking-http-engine-debt.md)).
 
-**Compose / kotlin:** Cancelled. Delete `packages/kotlin` in wave 2 (P3-00).
+**Compose / kotlin UI:** Cancelled. `packages/kotlin` deleted (P3-00 ✅).
 
 ---
 
@@ -143,7 +143,6 @@ The Rust proxy receives a **resolved file URL** only. Cloudflare backoff is not 
 |---------|------|
 | `packages/rust` | **Permanent** FFI bridge — no engine logic |
 | `packages/api` | Legacy engine — delete wave 2 when verticals live in `crates/*` |
-| `packages/kotlin` | **Delete** (P3-00) — Compose cancelled |
 | `streaming`, `storage`, `core`, `webstreamr`, `scrapers` | Legacy engine — delete wave 1 |
 
 **Normalized end state:** only `packages/rust` under `packages/`.
@@ -159,7 +158,7 @@ The Rust proxy receives a **resolved file URL** only. Cloudflare backoff is not 
 | `core` | 1 — after P2-90 |
 | `api` (playback slices) | 1 — P2-89 |
 | `api` (catalog verticals) | 2 — Phase 3 (P3-01 → P3-03) |
-| `kotlin` | 2 — P3-00 |
+| `kotlin` | 2 — ✅ deleted (P3-00) |
 
 ---
 

@@ -12,7 +12,7 @@
 |---|-----|---------|
 | 1 | [01-rust-engine.md](./01-rust-engine.md) | ✅ Rust crates + FFI primitives |
 | 2 | [02-rust-engine-complete.md](./02-rust-engine-complete.md) | ✅ Playback engine → `crates/*` |
-| 3 | [03-engine-catalog.md](./03-engine-catalog.md) | 🔄 **Wave 2: catalog engine → `crates/*`; delete `packages/api` + `kotlin`** |
+| 3 | [03-engine-catalog.md](./03-engine-catalog.md) | 🔄 **Wave 2: catalog engine → `crates/*`; delete `packages/api`** (kotlin ✅ P3-00) |
 | 4 | [04-web-client.md](./04-web-client.md) | ⬜ WASM parallel |
 
 ---
@@ -45,7 +45,6 @@ There is no “Dart wrapper calling Rust” for engine code — delete the Dart 
 |---------|------|------|
 | **`packages/rust`** | Dart FFI loader + parity tests | **Permanent** |
 | **`packages/api`** | Legacy catalog engine | Delete wave 2 (Phase 3) |
-| **`packages/kotlin`** | UniFFI POC (Compose cancelled) | Delete P3-00 |
 | **`packages/{storage,core,streaming}`** | Legacy playback engine | ✅ deleted (wave 1) |
 
 ### Legacy package deletion
@@ -58,7 +57,7 @@ There is no “Dart wrapper calling Rust” for engine code — delete the Dart 
 | `api` (playback slices) | 1 — P2-89 |
 | `api` (catalog verticals) | 2 — Phase 3 |
 | `webstreamr`, `scrapers` | ✅ deleted — logic in `crates/*` |
-| `kotlin` | 2 — P3-00 |
+| `kotlin` | 2 — ✅ deleted (P3-00) |
 
 ### Per engine port workflow
 
