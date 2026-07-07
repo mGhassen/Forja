@@ -2,13 +2,15 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 use std::time::Duration;
 
+use base64::Engine;
 use tokio::runtime::Runtime;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnimeHttpResponse {
     pub status: u16,
     pub body: String,
-    pub headers: std::collections::HashMap<String, String>,
+    pub body_base64: String,
+    pub headers: HashMap<String, String>,
     pub final_url: String,
 }
 
@@ -28,6 +30,8 @@ async fn fetch_once(
     url: &str,
     headers: &HashMap<String, String>,
     body: Option<&str>,
+    body_bytes: Option<&[u8]>,
+    response_binary: bool,
     timeout: Duration,
 ) -> Result<AnimeHttpResponse, String> {
     let url = url.trim();
@@ -46,28 +50,42 @@ async fn fetch_once(
     for (k, v) in headers {
         req = req.header(k.as_str(), v.as_str());
     }
-    if let Some(body) = body {
+    if let Some(bytes) = body_bytes {
+        req = req.body(bytes.to_vec());
+    } else if let Some(body) = body {
         req = req.body(body.to_string());
     }
 
     let resp = req.send().await.map_err(|e| e.to_string())?;
     let status = resp.status().as_u16();
     let final_url = resp.url().to_string();
-    let mut headers = std::collections::HashMap::new();
+    let mut resp_headers = HashMap::new();
     for (name, value) in resp.headers() {
         if let Ok(v) = value.to_str() {
-            headers.insert(name.as_str().to_ascii_lowercase(), v.to_string());
+            resp_headers.insert(name.as_str().to_ascii_lowercase(), v.to_string());
         }
     }
-    let body = if method == "HEAD" {
-        String::new()
+
+    let (body, body_base64) = if method == "HEAD" {
+        (String::new(), String::new())
+    } else if response_binary {
+        let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+        (
+            String::new(),
+            base64::engine::general_purpose::STANDARD.encode(bytes),
+        )
     } else {
-        resp.text().await.map_err(|e| e.to_string())?
+        (
+            resp.text().await.map_err(|e| e.to_string())?,
+            String::new(),
+        )
     };
+
     Ok(AnimeHttpResponse {
         status,
         body,
-        headers,
+        body_base64,
+        headers: resp_headers,
         final_url,
     })
 }
@@ -77,6 +95,8 @@ pub fn fetch_with_retries(
     url: &str,
     headers: &HashMap<String, String>,
     body: Option<&str>,
+    body_bytes: Option<&[u8]>,
+    response_binary: bool,
     timeout_secs: u64,
     max_retries: u32,
 ) -> Result<AnimeHttpResponse, String> {
@@ -90,7 +110,17 @@ pub fn fetch_with_retries(
                     let delay = Duration::from_millis(300 * (1u64 << (attempt - 1)));
                     tokio::time::sleep(delay).await;
                 }
-                match fetch_once(method, url, headers, body, timeout).await {
+                match fetch_once(
+                    method,
+                    url,
+                    headers,
+                    body,
+                    body_bytes,
+                    response_binary,
+                    timeout,
+                )
+                .await
+                {
                     Ok(resp) => return Ok(resp),
                     Err(e) => last_error = e,
                 }

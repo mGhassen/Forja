@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:http/http.dart' as http;
+import 'anime_http.dart';
 import 'music_service.dart';
 import 'music_storage_service.dart';
 import 'lyrics_service.dart';
@@ -120,10 +120,10 @@ class MusicDownloaderService {
       // 6. Download Cover Art
       String localCoverPath = track.cover;
       try {
-        final coverRes = await http.get(Uri.parse(track.cover));
-        if (coverRes.statusCode == 200) {
+        final coverBytes = await animeHttpBytes(track.cover, maxRetries: 0);
+        if (coverBytes.isNotEmpty) {
           final coverFile = File('${dir.path}/$cleanName.jpg');
-          await coverFile.writeAsBytes(coverRes.bodyBytes);
+          await coverFile.writeAsBytes(coverBytes);
           localCoverPath = coverFile.path;
         }
       } catch (e) {

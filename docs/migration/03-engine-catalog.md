@@ -21,7 +21,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 
 | | |
 |--|--|
-| **Progress** | **2 / 5 tasks** — P3-02 next |
+| **Progress** | **3 / 5 tasks** — P3-03 next |
 | **Blocked by** | — |
 | **Deferred from wave 1** | P2-89 (Stremio catalog service) |
 
@@ -35,7 +35,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 |--:|----|-------------|--------|
 | 1 | P3-00 | Delete `packages/kotlin/` + `scripts/generate_kotlin_ffi.sh` references (Compose cancelled) | ✅ |
 | 2 | P3-01 | Port TMDB/Trakt core to `crates/*` | ✅ |
-| 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | 🔄 |
+| 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | ✅ |
 | 4 | P3-03 | Delete `packages/api` | ⬜ |
 | 5 | P3-04 | Architecture normalized sign-off | ⬜ |
 
@@ -90,12 +90,15 @@ flowchart LR
 | Arabic (Larozaa/DimaToon/Brstej) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 | Books (LibGen) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 | Comics (RCO) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Music (Deezer API) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
+| Music (Deezer + downloads) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 | Manga (WeebCentral fetch) | `packages/api` | `crates/manga-core` ✅ |
 | Anime Arabic (AnimeSlayer) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Audiobook (browse/search) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 | Subtitles/metadata (Wyzie, Levrx, SubtitleCat, Mysubs, MDBlist, Simkl, IntroDB) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 | Comics (RCO.ru) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
+| Audiobook (browse/search + downloads) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
+| Paper2Audio | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
+| Lyrics (LRCLIB) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
+| Debrid / site111477 / mega_proxy | `packages/api` | deferred (playback wave) |
 
 ### `packages/` after wave 2
 

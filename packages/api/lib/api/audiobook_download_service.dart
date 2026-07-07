@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'anime_http.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'audiobook_service.dart';
@@ -426,12 +426,12 @@ class AudiobookDownloadService {
   Future<void> _downloadCover(
       String primaryUrl, String fallbackUrl, String savePath) async {
     try {
-      final response = await http.get(Uri.parse(primaryUrl), headers: {
+      final bytes = await animeHttpBytes(primaryUrl, headers: {
         'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       });
-      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-        await File(savePath).writeAsBytes(response.bodyBytes);
+      if (bytes.isNotEmpty) {
+        await File(savePath).writeAsBytes(bytes);
         return;
       }
     } catch (_) {}
@@ -439,12 +439,12 @@ class AudiobookDownloadService {
     // Try fallback
     try {
       if (fallbackUrl.isNotEmpty && fallbackUrl != primaryUrl) {
-        final response = await http.get(Uri.parse(fallbackUrl), headers: {
+        final bytes = await animeHttpBytes(fallbackUrl, headers: {
           'User-Agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         });
-        if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-          await File(savePath).writeAsBytes(response.bodyBytes);
+        if (bytes.isNotEmpty) {
+          await File(savePath).writeAsBytes(bytes);
         }
       }
     } catch (_) {}
@@ -474,15 +474,16 @@ class AudiobookDownloadService {
 
   Future<Uint8List?> _downloadDirectChapter(AudiobookChapter chapter) async {
     try {
-      final response = await http.get(
-        Uri.parse(chapter.url),
+      final bytes = await animeHttpBytes(
+        chapter.url,
         headers: chapter.headers ?? {
           'User-Agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
+        timeoutSecs: 120,
       );
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
+      if (bytes.isNotEmpty) {
+        return bytes;
       }
     } catch (e) {
       debugPrint('[AudiobookDownload] Direct download error: $e');
@@ -494,8 +495,8 @@ class AudiobookDownloadService {
     try {
       // The chapter URL is a proxy URL pointing to an M3U8
       // Fetch the M3U8 playlist
-      final m3u8Response = await http.get(Uri.parse(chapter.url));
-      if (m3u8Response.statusCode != 200) return null;
+      final m3u8Response = await animeHttp('GET', chapter.url, maxRetries: 0);
+      if (m3u8Response.status != 200) return null;
 
       final m3u8Content = m3u8Response.body;
       final lines = m3u8Content.split('\n');
@@ -511,9 +512,9 @@ class AudiobookDownloadService {
       final BytesBuilder builder = BytesBuilder(copy: false);
 
       for (final segmentUrl in segmentUrls) {
-        final segResponse = await http.get(Uri.parse(segmentUrl));
-        if (segResponse.statusCode == 200) {
-          builder.add(segResponse.bodyBytes);
+        final segBytes = await animeHttpBytes(segmentUrl, timeoutSecs: 60);
+        if (segBytes.isNotEmpty) {
+          builder.add(segBytes);
         }
       }
 

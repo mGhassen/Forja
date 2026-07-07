@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'music_service.dart';
+
+import 'anime_http.dart';
 
 class LyricLine {
   final Duration startTime;
@@ -37,8 +38,8 @@ class LyricsService {
         'duration': durationSeconds.toString(),
       });
 
-      final response = await http.get(uri);
-      if (response.statusCode == 200) {
+      final response = await animeHttp('GET', uri.toString(), maxRetries: 0);
+      if (response.status == 200) {
         final data = json.decode(response.body);
         final String? syncedLyrics = data['syncedLyrics'];
         if (syncedLyrics != null && syncedLyrics.isNotEmpty) {

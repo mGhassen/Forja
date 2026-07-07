@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'anime_http.dart';
 
 /// Voice option exposed in the picker. IDs match paper2audio.com (kokoro voices).
 class Paper2AudioVoice {
@@ -133,18 +134,19 @@ class Paper2AudioService {
 
   Future<String> _getAuthToken() async {
     final email = '${_uuid()}@mailinator.com';
-    final resp = await http.post(
-      Uri.parse(
-          'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$_firebaseKey'),
+    final resp = await animeHttp(
+      'POST',
+      'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$_firebaseKey',
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'email': email,
         'password': 'TestPassword123!',
         'returnSecureToken': true,
       }),
+      maxRetries: 0,
     );
-    if (resp.statusCode >= 400) {
-      throw Exception('Auth failed: ${resp.statusCode} ${resp.body}');
+    if (resp.status >= 400) {
+      throw Exception('Auth failed: ${resp.status} ${resp.body}');
     }
     final data = jsonDecode(resp.body) as Map<String, dynamic>;
     final token = data['idToken'] as String?;
@@ -186,17 +188,20 @@ class Paper2AudioService {
       'tertiaryVoice': 'af_alloy',
     });
 
-    final resp = await http.post(
-      uri,
+    final resp = await animeHttp(
+      'POST',
+      uri.toString(),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/epub+zip',
       },
-      body: bytes,
+      bodyBytes: bytes,
+      timeoutSecs: 120,
+      maxRetries: 0,
     );
 
-    if (resp.statusCode >= 400) {
-      throw Exception('Upload failed: ${resp.statusCode} ${resp.body}');
+    if (resp.status >= 400) {
+      throw Exception('Upload failed: ${resp.status} ${resp.body}');
     }
     final data = jsonDecode(resp.body) as Map<String, dynamic>;
     final runId = data['runId'] as String?;
@@ -223,12 +228,14 @@ class Paper2AudioService {
     final job = jobs.value[idx];
 
     try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/batchCheckStatus'),
+      final resp = await animeHttp(
+        'POST',
+        '$_baseUrl/batchCheckStatus',
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'runIds': [runId]}),
+        maxRetries: 0,
       );
-      if (resp.statusCode >= 400) {
+      if (resp.status >= 400) {
         return job;
       }
       final body = jsonDecode(resp.body);
