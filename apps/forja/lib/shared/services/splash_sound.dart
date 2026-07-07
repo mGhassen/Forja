@@ -22,7 +22,7 @@ class SplashSound {
     try {
       _player ??= AudioPlayer();
       await _player!.setReleaseMode(ReleaseMode.stop);
-      await _player!.setVolume(0.4);
+      await _player!.setVolume(0.8);
       await _player!.setSource(_source);
     } catch (_) {}
   }
