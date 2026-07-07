@@ -56,6 +56,9 @@ Full delete blocked: `apps/forja` still imports `package:api/` widely; models, p
 | Move host utils (`track_auto_select`, `epub_cover`, `epub_splitter`) → `apps/forja` | ✅ |
 | Move music/audio host cluster (6 files) → `apps/forja/lib/shared/audio/` | ✅ |
 | Move `tmdb_api` + `kisskh_subtitle_decryptor` → `packages/rust/lib/src/catalog/` | ✅ |
+| Move Trakt/Simkl OAuth → `apps/forja/lib/shared/services/tracker/`; `stremio_service` → rust catalog | ✅ |
+| Move `audiobook_download_service` → `apps/forja/lib/shared/audio/` | ✅ |
+| Move catalog verticals to `apps/forja` (anime+kisskh+books+manga+bestsimilar, 10 files) | ✅ |
 | Rewire `packages/api/lib/api/*` imports to `package:rust/rust.dart` | ✅ |
 | Relocate host slices to `apps/forja` | ⬜ |
 | Delete remaining Dart catalog slices after Rust port | ⬜ |

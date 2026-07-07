@@ -7,13 +7,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:rust/rust.dart';
 import 'package:api/playback/playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:api/api/debrid_api.dart';
-import 'package:api/api/stremio_service.dart';
 import 'package:api/services/jackett_service.dart';
 import 'package:api/services/prowlarr_service.dart';
 import 'package:api/services/link_resolver.dart';
-import 'package:api/api/trakt_service.dart';
-import 'package:api/api/simkl_service.dart';
+import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/player/player_screen.dart';
@@ -1777,33 +1775,30 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             onCancel: () { _streamCancelled = true; Navigator.of(context).pop(); }));
       }
 
-      if (useDebrid && debridService != 'None') {
-        final debrid = DebridApi();
-        final isTv = _movie.mediaType == 'tv';
-        final files = await debrid.resolveByService(
-          debridService,
-          magnetLink,
-          season: isTv ? _selectedSeason : null,
-          episode: isTv ? _selectedEpisode : null,
-        );
-        if (_streamCancelled) return;
-        if (files.isNotEmpty) {
-          resolvedFileIndex = 0;
-          url = files.first.downloadUrl;
-        }
-      } else {
-        url = await TorrentStreamService().streamTorrent(magnetLink,
-          season: _movie.mediaType == 'tv' ? _selectedSeason : null,
-          episode: _movie.mediaType == 'tv' ? _selectedEpisode : null);
-        if (_streamCancelled) return;
-        if (url != null) {
-          final idx = Uri.parse(url).queryParameters['index'];
-          if (idx != null) resolvedFileIndex = int.tryParse(idx);
-        }
+      final isTv = _movie.mediaType == 'tv';
+      final playback = await resolveMagnetForPlayback(
+        magnet: magnetLink,
+        useDebrid: useDebrid,
+        debridService: debridService,
+        localTorrentEngine: _playbackProfile.localTorrentEngine,
+        season: isTv ? _selectedSeason : null,
+        episode: isTv ? _selectedEpisode : null,
+      );
+      if (_streamCancelled) return;
+      if (playback != null) {
+        url = playback.url;
+        resolvedFileIndex = playback.fileIndex;
       }
     } catch (e) {
       debugPrint('Stream error: $e');
-      if (mounted && !_streamCancelled) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted && !_streamCancelled) {
+        final message = e is DebridAuthException
+            ? e.toString()
+            : debridUserMessage(e, debridService);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
     }
 
     if (!mounted || _streamCancelled) return;

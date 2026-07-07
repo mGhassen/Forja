@@ -24,14 +24,12 @@ import 'package:api/api/subtitle_api.dart';
 import 'package:api/playback/playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:api/api/stream_extractor.dart';
-import 'package:api/api/trakt_service.dart';
-import 'package:api/api/simkl_service.dart';
+import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:api/api/site111477_service.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:api/api/arabic_service.dart';
-import 'package:api/api/stremio_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
-import 'package:api/api/debrid_api.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/services/pip_service.dart';
 
@@ -2770,28 +2768,17 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           final useDebrid = await settings.useDebridForStreams();
           final debridService = await settings.getDebridService();
 
-          if (useDebrid && debridService != 'None') {
-            final debrid = DebridApi();
-            final files = await debrid.resolveByService(
-              debridService,
-              magnetLink,
-              season: nextSeason,
-              episode: nextEpisode,
-            );
-            if (files.isNotEmpty) {
-              fileIndex = 0;
-              streamUrl = files.first.downloadUrl;
-            }
-          } else {
-            streamUrl = await TorrentStreamService().streamTorrent(
-              magnetLink,
-              season: nextSeason,
-              episode: nextEpisode,
-            );
-            if (streamUrl != null) {
-              final idx = Uri.parse(streamUrl).queryParameters['index'];
-              if (idx != null) fileIndex = int.tryParse(idx);
-            }
+          final playback = await resolveMagnetForPlayback(
+            magnet: magnetLink,
+            useDebrid: useDebrid,
+            debridService: debridService,
+            localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+            season: nextSeason,
+            episode: nextEpisode,
+          );
+          if (playback != null) {
+            streamUrl = playback.url;
+            fileIndex = playback.fileIndex;
           }
           activeProvider = 'torrent';
         }
@@ -2822,28 +2809,17 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         final useDebrid = await settings.useDebridForStreams();
         final debridService = await settings.getDebridService();
 
-        if (useDebrid && debridService != 'None') {
-          final debrid = DebridApi();
-          final files = await debrid.resolveByService(
-            debridService,
-            magnetLink,
-            season: nextSeason,
-            episode: nextEpisode,
-          );
-          if (files.isNotEmpty) {
-            fileIndex = 0;
-            streamUrl = files.first.downloadUrl;
-          }
-        } else {
-          streamUrl = await TorrentStreamService().streamTorrent(
-            magnetLink,
-            season: nextSeason,
-            episode: nextEpisode,
-          );
-          if (streamUrl != null) {
-            final idx = Uri.parse(streamUrl).queryParameters['index'];
-            if (idx != null) fileIndex = int.tryParse(idx);
-          }
+        final playback = await resolveMagnetForPlayback(
+          magnet: magnetLink,
+          useDebrid: useDebrid,
+          debridService: debridService,
+          localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+          season: nextSeason,
+          episode: nextEpisode,
+        );
+        if (playback != null) {
+          streamUrl = playback.url;
+          fileIndex = playback.fileIndex;
         }
       } else if (isWebStreamr) {
         // ── WebStreamr: fetch next episode streams ────────────────────

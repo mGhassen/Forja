@@ -1,5 +1,5 @@
-import 'package:api/api/simkl_service.dart';
-import 'package:api/api/trakt_service.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
+import 'package:forja/shared/services/tracker/trakt_service.dart';
 
 void syncEpisodeWatchedToTrackers(
   int tmdbId,

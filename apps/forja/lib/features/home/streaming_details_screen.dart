@@ -5,7 +5,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 import 'package:api/api/stream_extractor.dart';
-import 'package:api/api/stremio_service.dart';
 import 'package:api/playback/playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:api/api/site111477_service.dart';

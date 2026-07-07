@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:api/api/stremio_service.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

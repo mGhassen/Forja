@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'audiobook_service.dart';
+import 'package:api/api/audiobook_service.dart';
 
 class AudiobookDownloadProgress {
   final String audioBookId;

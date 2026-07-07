@@ -24,7 +24,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:rust/rust.dart';
-import 'kisskh_service.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 
 class KissKhStream {
   final String url;

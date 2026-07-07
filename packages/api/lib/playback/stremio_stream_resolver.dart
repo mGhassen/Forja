@@ -1,4 +1,5 @@
 import 'package:api/api/debrid_api.dart';
+import 'package:api/playback/torrent_playback_resolver.dart';
 import 'package:rust/rust.dart';
 
 enum StremioPlaybackError {
@@ -181,60 +182,47 @@ Future<StremioResolveOutcome> resolveStremioStream({
   );
 
   try {
-    if (useDebrid && debridService != 'None') {
-      final debrid = DebridApi();
-      final files = await debrid.resolveByService(
-        debridService,
-        magnet,
-        season: season,
-        episode: episode,
+    final result = await resolveMagnetForPlayback(
+      magnet: magnet,
+      useDebrid: useDebrid,
+      debridService: debridService,
+      localTorrentEngine: profile.localTorrentEngine,
+      season: season,
+      episode: episode,
+    );
+    if (isCancelled?.call() == true) {
+      return StremioResolveFailure(
+        error: StremioPlaybackError.cancelled,
+        message: '',
       );
-      if (isCancelled?.call() == true) {
-        return StremioResolveFailure(
-          error: StremioPlaybackError.cancelled,
-          message: '',
-        );
-      }
-      if (files.isNotEmpty) {
-        return StremioPlayable(
-          streamUrl: files.first.downloadUrl,
-          magnetLink: magnet,
-          fileIndex: 0,
-          loadingMessage: loadingMessage,
-        );
-      }
-    } else if (!profile.localTorrentEngine) {
+    }
+    if (result != null) {
+      return StremioPlayable(
+        streamUrl: result.url,
+        magnetLink: magnet,
+        fileIndex: result.fileIndex,
+        loadingMessage: loadingMessage,
+      );
+    }
+    if (!profile.localTorrentEngine) {
       return StremioResolveFailure(
         error: StremioPlaybackError.engineUnavailable,
         message: stremioPlaybackErrorMessage(
           StremioPlaybackError.engineUnavailable,
         ),
       );
-    } else {
-      final url = await TorrentStreamService().streamTorrent(
-        magnet,
-        season: season,
-        episode: episode,
-      );
-      if (isCancelled?.call() == true) {
-        return StremioResolveFailure(
-          error: StremioPlaybackError.cancelled,
-          message: '',
-        );
-      }
-      if (url != null && url.isNotEmpty) {
-        int? fileIndex;
-        final idx = Uri.parse(url).queryParameters['index'];
-        if (idx != null) fileIndex = int.tryParse(idx);
-        return StremioPlayable(
-          streamUrl: url,
-          magnetLink: magnet,
-          fileIndex: fileIndex,
-          loadingMessage: loadingMessage,
-        );
-      }
     }
-  } catch (_) {}
+  } catch (e) {
+    final message = e is DebridAuthException
+        ? e.toString()
+        : debridUserMessage(e, debridService);
+    return StremioResolveFailure(
+      error: e is DebridAuthException
+          ? StremioPlaybackError.requiresDebrid
+          : StremioPlaybackError.resolveFailed,
+      message: message,
+    );
+  }
 
   return StremioResolveFailure(
     error: StremioPlaybackError.resolveFailed,

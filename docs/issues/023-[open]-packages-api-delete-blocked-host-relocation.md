@@ -29,12 +29,15 @@ Phase 3 task P3-03 cannot delete `packages/api` wholesale yet. Catalog HTTP was 
 | Host player/audiobook utils | `track_auto_select`, `epub_cover`, `epub_splitter` → `apps/forja` |
 | Music/audio host cluster | `audio_handler`, `music_player_service`, `audiobook_player_service`, `music_storage`, `music_downloader`, `lyrics_service` → `apps/forja/lib/shared/audio/` |
 | TMDB API + KissKh subtitle decrypt | `tmdb_api`, `kisskh_subtitle_decryptor` → `packages/rust/lib/src/catalog/` |
+| Trakt/Simkl + Stremio catalog | OAuth services → `forja/shared/services/tracker/`; `stremio_service` → rust catalog |
+| Audiobook downloads | `audiobook_download_service` → `forja/shared/audio/` |
+| Catalog verticals in host | anime (5), kisskh (2), books, manga, bestsimilar → `apps/forja/features/*/catalog/` + `shared/catalog/` |
 | Call sites import `package:rust/rust.dart` | `packages/api/lib/api/*` (26 files) |
 
 ## Blockers to full delete
 
 1. **`apps/forja`** — 80+ `package:api/` imports (UI, providers, playback wiring).
-2. **Host slices still in `packages/api`:** `lib/api/*` catalog parsers, `lib/services/` (6 engine services), `lib/playback/stremio_stream_resolver.dart` (debrid-coupled), extractors (C3 WebView).
+2. **Host slices still in `packages/api`:** 24 Dart files — arabic, comics, audiobook, music, playback, extractors, engine services.
 3. **Dart engine debt:** HTML parse / orchestration in `lib/api/*` (C2 should be Rust per `ENGINE_BOUNDARY.md`); thin FFI wrappers (e.g. `tmdb_api.dart`) still parse in Dart.
 4. **Remaining Dart HTTP in `packages/api`** (deferred playback wave): `debrid_api.dart`, `site111477_service.dart`, `mega_proxy.dart`, `jackett_service.dart`, `prowlarr_service.dart`, `link_resolver.dart`, `youtube_audio_extractor.dart`, `videasy_extractor.dart`.
 

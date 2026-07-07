@@ -7,14 +7,12 @@ import 'package:flutter/rendering.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:api/api/bestsimilar_scraper.dart';
-import 'package:api/api/stremio_service.dart';
+import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:api/api/stream_extractor.dart';
 import 'package:api/playback/playback.dart';
 import 'package:api/api/amri_extractor.dart';
-import 'package:api/api/debrid_api.dart';
-import 'package:api/api/trakt_service.dart';
-import 'package:api/api/simkl_service.dart';
+import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
@@ -2310,32 +2308,19 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
         final debridService = await SettingsService().getDebridService();
         final useDebrid = useDebridSetting && debridService != 'None';
 
-        if (useDebrid) {
-          debugPrint('[Resume] Using debrid service: $debridService');
-          if (debridService == 'Real-Debrid') {
-             final files = await DebridApi().resolveRealDebrid(magnetLink,
-                 season: season, episode: episode);
-             if (files.isNotEmpty) {
-               // resolveRealDebrid now returns a single, pre-picked file.
-               streamUrl = files.first.downloadUrl;
-               fileIndex = 0;
-               debugPrint('[Resume] Picked: ${files.first.filename}');
-             }
-          } else if (debridService == 'TorBox') {
-             final files = await DebridApi().resolveTorBox(magnetLink,
-                 season: season, episode: episode);
-             if (files.isNotEmpty) {
-               streamUrl = files.first.downloadUrl;
-               fileIndex = 0;
-               debugPrint('[Resume] Picked: ${files.first.filename}');
-             }
-          } else {
-             throw Exception("No Debrid service configured");
-          }
-        } else {
-          // Local Torrent Engine
-          debugPrint('[Resume] Using local torrent engine');
-          streamUrl = await TorrentStreamService().streamTorrent(magnetLink, season: season, episode: episode, fileIdx: fileIndex);
+        final playback = await resolveMagnetForPlayback(
+          magnet: magnetLink,
+          useDebrid: useDebrid,
+          debridService: debridService,
+          localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+          season: season,
+          episode: episode,
+          fileIdx: fileIndex,
+        );
+        if (playback != null) {
+          streamUrl = playback.url;
+          fileIndex = playback.fileIndex ?? fileIndex;
+          debugPrint('[Resume] Resolved torrent playback URL');
         }
       } else if (method == 'trakt_import') {
         // Trakt-imported items have no stream source — find one automatically

@@ -6,10 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'allanime_extractor.dart';
-import 'watchhentai_extractor.dart';
-import 'hentaini_extractor.dart';
-import 'miruro_extractor.dart';
+import 'package:forja/features/anime/catalog/allanime_extractor.dart';
+import 'package:forja/features/anime/catalog/watchhentai_extractor.dart';
+import 'package:forja/features/anime/catalog/hentaini_extractor.dart';
+import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 
 class AnimeService {
   static const String _anikotoUa =

@@ -9,4 +9,3 @@ export 'package:rust/rust.dart'
         BookProgressService,
         MyListService,
         EpisodeWatchedService;
-export 'api/stremio_service.dart';

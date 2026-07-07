@@ -6,7 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:api/api/anime_service.dart';
+import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:api/api/stream_extractor.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/player/player_screen.dart';

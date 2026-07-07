@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
-import 'stremio_service.dart';
 
 class SubtitleApi {
   // Legacy method for backward compatibility if needed

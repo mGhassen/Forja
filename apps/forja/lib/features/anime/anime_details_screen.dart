@@ -5,7 +5,7 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import 'package:api/api/anime_service.dart';
+import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'anime_player_screen.dart';
