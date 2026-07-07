@@ -56,19 +56,23 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
   ];
 
   late final AnimationController _controller;
-  late final SplashSound _splashSound;
   late final List<(double time, int letterIndex)> _colorChanges;
 
   @override
   void initState() {
     super.initState();
     _colorChanges = _buildColorSchedule();
-    _splashSound = SplashSound();
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: _totalMs),
-    )..forward();
-    _splashSound.play();
+    );
+    _startSynced();
+  }
+
+  Future<void> _startSynced() async {
+    await SplashSound.instance.play();
+    if (!mounted) return;
+    _controller.forward();
   }
 
   List<(double time, int letterIndex)> _buildColorSchedule() {
@@ -143,7 +147,6 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
   @override
   void dispose() {
     _controller.dispose();
-    _splashSound.dispose();
     super.dispose();
   }
 

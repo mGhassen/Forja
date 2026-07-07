@@ -26,6 +26,7 @@ import 'package:forja/shell/main_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
+import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
@@ -136,6 +137,9 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   unawaited(NuvioService.instance.refreshAllInstalled().catchError((e) {
     debugPrint('[Boot] Nuvio refresh failed (non-fatal): $e');
   }));
+  debugPrint('[Boot] Preloading splash sound...');
+  await SplashSound.instance.preload();
+  debugPrint('[Boot] Splash sound ready');
   debugPrint('[Boot] All init complete — launching app');
 
   runApp(App(title: title));
