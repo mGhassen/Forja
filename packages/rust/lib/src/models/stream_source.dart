@@ -3,14 +3,14 @@ class StreamSource {
   final String title;
   final String type;
   final Map<String, String>? headers;
-  
+
   StreamSource({
     required this.url,
     required this.title,
     required this.type,
     this.headers,
   });
-  
+
   factory StreamSource.fromJson(Map<String, dynamic> json) {
     return StreamSource(
       url: json['url'] ?? json['file'] ?? json['src'] ?? '',
@@ -26,7 +26,7 @@ class StreamResult {
   final bool isRateLimited;
   final String? primaryUrl;
   final Map<String, String>? headers;
-  
+
   StreamResult({
     required this.sources,
     required this.provider,
@@ -34,6 +34,6 @@ class StreamResult {
     this.primaryUrl,
     this.headers,
   });
-  
+
   String get url => primaryUrl ?? (sources.isNotEmpty ? sources.first.url : '');
 }

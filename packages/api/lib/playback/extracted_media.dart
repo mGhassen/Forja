@@ -1,4 +1,4 @@
-import 'package:api/models/stream_source.dart';
+import 'package:rust/rust.dart';
 
 class ExtractedMedia {
   const ExtractedMedia({

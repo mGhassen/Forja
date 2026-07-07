@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:api/models/movie.dart';
 import 'package:rust/rust.dart';
 
 class TmdbApi {

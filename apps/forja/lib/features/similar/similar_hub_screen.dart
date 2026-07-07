@@ -18,7 +18,7 @@ import 'package:flutter/material.dart';
 
 import 'package:api/api/bestsimilar_scraper.dart';
 import 'package:api/api/tmdb_api.dart';
-import 'package:api/models/movie.dart';
+import 'package:rust/rust.dart';
 import 'similar_results_screen.dart';
 
 enum _MediaFilter { all, movies, tv }

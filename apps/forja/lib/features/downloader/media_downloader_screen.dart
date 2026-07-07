@@ -13,7 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:api/api/site111477_service.dart';
 import 'package:api/api/tmdb_api.dart';
-import 'package:api/models/movie.dart';
+import 'package:rust/rust.dart';
 
 class MediaDownloaderScreen extends StatefulWidget {
   const MediaDownloaderScreen({super.key});

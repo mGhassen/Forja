@@ -1,4 +1,4 @@
-import 'package:api/models/movie.dart';
+import 'package:rust/rust.dart';
 
 /// TMDB lists fetched once during splash; consumed by [HomeScreen].
 class BootCache {

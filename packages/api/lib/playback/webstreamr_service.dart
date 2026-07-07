@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'package:api/api/webstreamr_settings.dart';
-import 'package:api/models/stream_source.dart';
 import 'package:rust/rust.dart';
 
 import 'local_server_service.dart';

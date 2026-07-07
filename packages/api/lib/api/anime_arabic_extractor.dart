@@ -28,10 +28,9 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:api/models/stream_source.dart';
+import 'package:rust/rust.dart';
 import 'package:api/services/mega_proxy.dart';
 import 'anime_arabic_service.dart';
-import 'package:rust/rust.dart';
 
 /// One server slug + the iframe URL the page would have embedded.
 class ArabicResolvedServer {

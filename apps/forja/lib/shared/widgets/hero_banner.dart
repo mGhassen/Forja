@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:api/models/movie.dart';
+import 'package:rust/rust.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/utils/extensions.dart';

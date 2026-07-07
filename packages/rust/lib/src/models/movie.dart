@@ -32,7 +32,6 @@ class Movie {
   });
 
   factory Movie.fromJson(Map<String, dynamic> json, {String? mediaType}) {
-    // TMDB uses imdb_id for movies, but for TV it might be in external_ids
     String? imdbId = json['imdb_id'];
     if (imdbId == null && json['external_ids'] != null) {
       imdbId = json['external_ids']['imdb_id'];
@@ -44,7 +43,7 @@ class Movie {
       title: json['title'] ?? json['name'] ?? 'Unknown',
       posterPath: json['poster_path'] ?? '',
       backdropPath: json['backdrop_path'] ?? '',
-      logoPath: '', 
+      logoPath: '',
       voteAverage: (json['vote_average'] as num?)?.toDouble() ?? 0.0,
       releaseDate: json['release_date'] ?? json['first_air_date'] ?? '',
       overview: json['overview'] ?? '',

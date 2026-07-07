@@ -46,6 +46,7 @@ Full delete blocked: `apps/forja` still imports `package:api/` widely; models, p
 | Step | Status |
 |------|--------|
 | Move `anime_http.dart` → `packages/rust/lib/src/catalog_http.dart` | ✅ |
+| Move shared DTOs (`Movie`, `StreamSource`, `TorrentResult`) → `packages/rust/lib/src/models/` | ✅ |
 | Rewire `packages/api/lib/api/*` imports to `package:rust/rust.dart` | ✅ |
 | Relocate host slices to `apps/forja` | ⬜ |
 | Delete remaining Dart catalog slices after Rust port | ⬜ |
@@ -118,6 +119,7 @@ flowchart LR
 |---------|---------|
 | `packages/rust` | Dart FFI bridge + parity tests (**permanent**) |
 | `packages/rust/lib/src/catalog_http.dart` | Shared catalog HTTP (`animeHttp` / `animeHttpBytes`) — moved from `packages/api` in P3-03 |
+| `packages/rust/lib/src/models/` | Shared DTOs (`Movie`, `StreamSource`, `TorrentResult`) — moved from `packages/api` in P3-03 |
 | `packages/api` | Legacy catalog + host glue — **delete in P3-03** ([023](../issues/023-[open]-packages-api-delete-blocked-host-relocation.md)) |
 
 ---

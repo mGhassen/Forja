@@ -1,6 +1,5 @@
-export 'models/stream_source.dart';
-export 'models/torrent_result.dart';
-export 'models/movie.dart';
+export 'package:rust/rust.dart'
+    show Movie, StreamSource, StreamResult, TorrentResult;
 export 'api/tmdb_api.dart';
 export 'api/stremio_service.dart';
 export 'api/music_player_service.dart';

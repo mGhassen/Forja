@@ -11,7 +11,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:api/models/stream_source.dart';
+import 'package:rust/rust.dart';
 
 class Site111477Match {
   final String fileUrl;        // absolute https URL to the .mkv/.mp4

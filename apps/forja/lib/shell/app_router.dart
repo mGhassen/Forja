@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:api/models/movie.dart';
-import 'package:api/models/stream_source.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';

@@ -17,7 +17,9 @@ Phase 3 task P3-03 cannot delete `packages/api` wholesale yet. Catalog HTTP was 
 | Change | Location |
 |--------|----------|
 | Catalog HTTP FFI bridge moved out of `packages/api` | `packages/rust/lib/src/catalog_http.dart` (`animeHttp`, `animeHttpBytes`) |
+| Shared catalog/playback DTOs moved out of `packages/api` | `packages/rust/lib/src/models/` (`Movie`, `StreamSource`, `StreamResult`, `TorrentResult`) |
 | Deleted legacy bridge file | ~~`packages/api/lib/api/anime_http.dart`~~ |
+| Deleted legacy model files | ~~`packages/api/lib/models/*.dart`~~ (`api.dart` re-exports from `rust`) |
 | Call sites import `package:rust/rust.dart` | `packages/api/lib/api/*` (26 files) |
 
 ## Blockers to full delete

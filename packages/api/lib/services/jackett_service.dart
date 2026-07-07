@@ -1,6 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
-import 'package:api/models/torrent_result.dart';
+import 'package:rust/rust.dart';
 
 /// Result of a Jackett connection test
 class ConnectionTestResult {

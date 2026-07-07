@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:api/models/torrent_result.dart';
+import 'package:rust/rust.dart';
 
 /// A tag defined in Prowlarr
 class ProwlarrTag {
