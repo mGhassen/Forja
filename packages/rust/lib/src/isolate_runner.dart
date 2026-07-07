@@ -56,6 +56,12 @@ Future<String> runHttpPostJson(
       },
     );
 
+Future<String> runAnimeRequestJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.animeRequest,
+      {'requestJson': requestJson},
+    );
+
 Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
     EngineJobs.run(
       EngineAsyncJob.iptvProbeStream,

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'anime_http.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:api/services/my_list_service.dart';
@@ -41,14 +41,11 @@ class SimklService {
   /// Returns {"user_code": "ABCD1234", "verification_url": "https://simkl.com/pin/ABCD1234", "expires_in": 900, "interval": 5}
   Future<Map<String, dynamic>?> requestPin() async {
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/oauth/pin?client_id=$_clientId&redirect='),
-        headers: _publicHeaders,
-      );
-      if (resp.statusCode == 200) {
+      final resp = await animeHttp('GET', '$_baseUrl/oauth/pin?client_id=$_clientId&redirect=', headers: _publicHeaders, maxRetries: 0);
+      if (resp.status == 200) {
         return json.decode(resp.body) as Map<String, dynamic>;
       }
-      debugPrint('[Simkl] Request PIN failed: ${resp.statusCode} ${resp.body}');
+      debugPrint('[Simkl] Request PIN failed: ${resp.status} ${resp.body}');
     } catch (e) {
       debugPrint('[Simkl] Request PIN error: $e');
     }
@@ -59,13 +56,13 @@ class SimklService {
   /// Returns the access token string or null if not ready/failed.
   Future<String?> pollForToken(String userCode) async {
     try {
-      final resp = await http.get(
-        Uri.parse(
-          '$_baseUrl/oauth/pin/$userCode?client_id=$_clientId',
-        ),
+      final resp = await animeHttp(
+        'GET',
+        '$_baseUrl/oauth/pin/$userCode?client_id=$_clientId',
         headers: _publicHeaders,
+        maxRetries: 0,
       );
-      if (resp.statusCode == 200) {
+      if (resp.status == 200) {
         final data = json.decode(resp.body);
         final result = data['result'];
         if (result == 'OK' && data['access_token'] != null) {
@@ -114,11 +111,8 @@ class SimklService {
     if (token == null) return null;
 
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/users/settings'),
-        headers: _authHeaders(token),
-      );
-      if (resp.statusCode == 200) {
+      final resp = await animeHttp('GET', '$_baseUrl/users/settings', headers: _authHeaders(token), maxRetries: 0);
+      if (resp.status == 200) {
         final data = json.decode(resp.body);
         return data['user'] as Map<String, dynamic>?;
       }
@@ -138,12 +132,9 @@ class SimklService {
     if (token == null) return null;
 
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/sync/activities'),
-        headers: _authHeaders(token),
-      );
-      _handleUnauthorized(resp.statusCode);
-      if (resp.statusCode == 200) {
+      final resp = await animeHttp('GET', '$_baseUrl/sync/activities', headers: _authHeaders(token), maxRetries: 0);
+      _handleUnauthorized(resp.status);
+      if (resp.status == 200) {
         return json.decode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
@@ -173,13 +164,9 @@ class SimklService {
     if (body.isEmpty) return false;
 
     try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/sync/add-to-list'),
-        headers: _authHeaders(token),
-        body: json.encode(body),
-      );
-      debugPrint('[Simkl] Add to list: ${resp.statusCode}');
-      return resp.statusCode == 200 || resp.statusCode == 201;
+      final resp = await animeHttp('POST', '$_baseUrl/sync/add-to-list', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      debugPrint('[Simkl] Add to list: ${resp.status}');
+      return resp.status == 200 || resp.status == 201;
     } catch (e) {
       debugPrint('[Simkl] Add to list error: $e');
       return false;
@@ -202,12 +189,8 @@ class SimklService {
     if (body.isEmpty) return false;
 
     try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/sync/remove-from-list'),
-        headers: _authHeaders(token),
-        body: json.encode(body),
-      );
-      return resp.statusCode == 200;
+      final resp = await animeHttp('POST', '$_baseUrl/sync/remove-from-list', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      return resp.status == 200;
     } catch (e) {
       debugPrint('[Simkl] Remove from list error: $e');
       return false;
@@ -276,12 +259,8 @@ class SimklService {
     if (body.isEmpty) return false;
 
     try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/sync/history'),
-        headers: _authHeaders(token),
-        body: json.encode(body),
-      );
-      return resp.statusCode == 200 || resp.statusCode == 201;
+      final resp = await animeHttp('POST', '$_baseUrl/sync/history', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      return resp.status == 200 || resp.status == 201;
     } catch (e) {
       debugPrint('[Simkl] Add to history error: $e');
       return false;
@@ -302,12 +281,8 @@ class SimklService {
     if (body.isEmpty) return false;
 
     try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/sync/history/remove'),
-        headers: _authHeaders(token),
-        body: json.encode(body),
-      );
-      return resp.statusCode == 200;
+      final resp = await animeHttp('POST', '$_baseUrl/sync/history/remove', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      return resp.status == 200;
     } catch (e) {
       debugPrint('[Simkl] Remove from history error: $e');
       return false;
@@ -324,11 +299,8 @@ class SimklService {
     if (token == null) return [];
 
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/sync/ratings'),
-        headers: _authHeaders(token),
-      );
-      if (resp.statusCode == 200) {
+      final resp = await animeHttp('GET', '$_baseUrl/sync/ratings', headers: _authHeaders(token), maxRetries: 0);
+      if (resp.status == 200) {
         final data = json.decode(resp.body);
         if (data is List) return data.cast<Map<String, dynamic>>();
       }
@@ -356,16 +328,18 @@ class SimklService {
 
     final type = (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
     try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/sync/ratings'),
+      final resp = await animeHttp(
+        'POST',
+        '$_baseUrl/sync/ratings',
         headers: _authHeaders(token),
         body: json.encode({
           type: [
             {'ids': ids, 'rating': rating}
           ]
         }),
+        maxRetries: 0,
       );
-      return resp.statusCode == 200 || resp.statusCode == 201;
+      return resp.status == 200 || resp.status == 201;
     } catch (e) {
       debugPrint('[Simkl] Add rating error: $e');
       return false;
@@ -388,16 +362,18 @@ class SimklService {
 
     final type = (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
     try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/sync/ratings/remove'),
+      final resp = await animeHttp(
+        'POST',
+        '$_baseUrl/sync/ratings/remove',
         headers: _authHeaders(token),
         body: json.encode({
           type: [
             {'ids': ids}
           ]
         }),
+        maxRetries: 0,
       );
-      return resp.statusCode == 200;
+      return resp.status == 200;
     } catch (e) {
       debugPrint('[Simkl] Remove rating error: $e');
       return false;
@@ -447,11 +423,8 @@ class SimklService {
     int imported = 0;
     for (final type in ['movies', 'shows']) {
       try {
-        final resp = await http.get(
-          Uri.parse('$_baseUrl/sync/all-items/$type/plantowatch'),
-          headers: _authHeaders(token),
-        );
-        if (resp.statusCode != 200) continue;
+        final resp = await animeHttp('GET', '$_baseUrl/sync/all-items/$type/plantowatch', headers: _authHeaders(token), maxRetries: 0);
+        if (resp.status != 200) continue;
 
         final data = json.decode(resp.body);
         final List items = data is List
@@ -588,11 +561,8 @@ class SimklService {
 
     int imported = 0;
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/sync/all-items/shows/completed'),
-        headers: _authHeaders(token),
-      );
-      if (resp.statusCode != 200) return 0;
+      final resp = await animeHttp('GET', '$_baseUrl/sync/all-items/shows/completed', headers: _authHeaders(token), maxRetries: 0);
+      if (resp.status != 200) return 0;
 
       final data = json.decode(resp.body);
       final List shows = data is List
@@ -728,14 +698,10 @@ class SimklService {
     }
 
     try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/scrobble/$action'),
-        headers: _authHeaders(token),
-        body: json.encode(body),
-      );
-      _handleUnauthorized(resp.statusCode);
-      debugPrint('[Simkl] Scrobble $action (tmdb:$tmdbId): ${resp.statusCode}');
-      return resp.statusCode == 200 || resp.statusCode == 201;
+      final resp = await animeHttp('POST', '$_baseUrl/scrobble/$action', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      _handleUnauthorized(resp.status);
+      debugPrint('[Simkl] Scrobble $action (tmdb:$tmdbId): ${resp.status}');
+      return resp.status == 200 || resp.status == 201;
     } catch (e) {
       debugPrint('[Simkl] Scrobble $action error: $e');
       return false;

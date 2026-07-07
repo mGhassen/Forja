@@ -14,7 +14,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as html_parser;
-import 'package:http/http.dart' as http;
+
+import 'anime_http.dart';
 
 class BSAutocompleteHit {
   final int id;
@@ -147,13 +148,13 @@ class BestSimilarScraper {
     final uri = Uri.parse(
         '$baseUrl/site/autocomplete?term=${Uri.encodeQueryComponent(q)}');
     try {
-      final res = await http.get(uri, headers: {
+      final res = await animeHttp('GET', uri.toString(), headers: {
         'User-Agent': _ua,
         'Accept': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
         'Referer': '$baseUrl/',
-      }).timeout(const Duration(seconds: 8));
-      if (res.statusCode != 200) return const [];
+      }, timeoutSecs: 8);
+      if (res.status != 200) return const [];
       final data = jsonDecode(res.body);
       if (data is! Map) return const [];
       final movies = data['movie'];
@@ -230,13 +231,13 @@ class BestSimilarScraper {
     if (cached != null) return cached;
     final uri = Uri.parse('$baseUrl/movies/$slug');
     try {
-      final res = await http.get(uri, headers: {
+      final res = await animeHttp('GET', uri.toString(), headers: {
         'User-Agent': _ua,
         'Accept': 'text/html,application/xhtml+xml',
         'Referer': '$baseUrl/',
-      }).timeout(const Duration(seconds: 15));
-      if (res.statusCode != 200) {
-        debugPrint('[BestSimilar] details HTTP ${res.statusCode} for $slug');
+      }, timeoutSecs: 15);
+      if (res.status != 200) {
+        debugPrint('[BestSimilar] details HTTP ${res.status} for $slug');
         return null;
       }
       final parsed = await compute(_parseDetailsHtml, _ParseInput(

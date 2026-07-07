@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'anime_http.dart';
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
 import 'package:api/api/audiobook_scrapers.dart';
@@ -189,8 +189,8 @@ class AudiobookService {
     String idPrefix,
   ) async {
     try {
-      final response = await http.get(Uri.parse(url), headers: _htmlHeaders());
-      if (response.statusCode != 200) return [];
+      final response = await animeHttp('GET', url, headers: _htmlHeaders(), maxRetries: 0);
+      if (response.status != 200) return [];
       return parse(response.body)
           .map((hit) => _audiobookFromHit(hit, source, idPrefix))
           .toList();
@@ -332,13 +332,9 @@ class AudiobookService {
         "userIdentity": _getUserIdentity()
       };
 
-      final response = await http.post(
-        Uri.parse('$_baseUrl/search/instant'),
-        headers: _getHeaders(),
-        body: json.encode(payload),
-      );
+      final response = await animeHttp('POST', '$_baseUrl/search/instant', headers: _getHeaders(), body: json.encode(payload), maxRetries: 0);
 
-      if (response.statusCode == 200) {
+      if (response.status == 200) {
         final data = json.decode(response.body);
         final List items = data['content'] ?? [];
         return items.map((json) => Audiobook.fromJson(json)).toList();
@@ -352,11 +348,11 @@ class AudiobookService {
   Future<List<Audiobook>> _searchAudiozaic(String query) async {
     try {
       final searchUrl = 'https://audiozaic.com/?s=${Uri.encodeComponent(query)}';
-      final response = await http.get(Uri.parse(searchUrl), headers: {
+      final response = await animeHttp('GET', searchUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      });
+      }, maxRetries: 0);
 
-      if (response.statusCode != 200) return [];
+      if (response.status != 200) return [];
 
       final document = hp.parse(response.body);
       final articles = document.querySelectorAll('article.vce-post');
@@ -402,11 +398,11 @@ class AudiobookService {
   Future<List<Audiobook>> _searchGoldenAudiobook(String query) async {
     try {
       final searchUrl = 'https://goldenaudiobooks.com/?s=${Uri.encodeComponent(query)}';
-      final response = await http.get(Uri.parse(searchUrl), headers: {
+      final response = await animeHttp('GET', searchUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      });
+      }, maxRetries: 0);
 
-      if (response.statusCode != 200) return [];
+      if (response.status != 200) return [];
 
       final document = hp.parse(response.body);
       final articles = document.querySelectorAll('li.ilovewp-post');
@@ -489,8 +485,8 @@ class AudiobookService {
         "userIdentity": _getUserIdentity()
       };
 
-      final detailsRes = await http.post(Uri.parse('$_baseUrl/search/post-details'), headers: _getHeaders(), body: json.encode(detailsPayload));
-      if (detailsRes.statusCode != 200) return [];
+      final detailsRes = await animeHttp('POST', '$_baseUrl/search/post-details', headers: _getHeaders(), body: json.encode(detailsPayload), maxRetries: 0);
+      if (detailsRes.status != 200) return [];
 
       final detailsData = json.decode(detailsRes.body);
       final String? token = detailsData['postDetailToken'];
@@ -503,8 +499,8 @@ class AudiobookService {
         "userIdentity": _getUserIdentity()
       };
 
-      final playlistRes = await http.post(Uri.parse('$_baseUrl/playlist'), headers: _getHeaders(), body: json.encode(playlistPayload));
-      if (playlistRes.statusCode != 200) return [];
+      final playlistRes = await animeHttp('POST', '$_baseUrl/playlist', headers: _getHeaders(), body: json.encode(playlistPayload), maxRetries: 0);
+      if (playlistRes.status != 200) return [];
 
       final data = json.decode(playlistRes.body);
       final String streamToken = data['streamToken'] ?? '';
@@ -542,10 +538,10 @@ class AudiobookService {
     try {
       if (book.pageUrl == null) return [];
 
-      final pageRes = await http.get(Uri.parse(book.pageUrl!), headers: {
+      final pageRes = await animeHttp('GET', book.pageUrl!, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      });
-      if (pageRes.statusCode != 200) return [];
+      }, maxRetries: 0);
+      if (pageRes.status != 200) return [];
 
       final document = hp.parse(pageRes.body);
       final audios = document.querySelectorAll('audio.wp-audio-shortcode');
@@ -578,10 +574,10 @@ class AudiobookService {
       if (book.pageUrl == null) return [];
 
       // 1. Fetch book page to get actual cover and listen link
-      final pageRes = await http.get(Uri.parse(book.pageUrl!), headers: {
+      final pageRes = await animeHttp('GET', book.pageUrl!, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      });
-      if (pageRes.statusCode != 200) return [];
+      }, maxRetries: 0);
+      if (pageRes.status != 200) return [];
 
       final document = hp.parse(pageRes.body);
       
@@ -609,11 +605,11 @@ class AudiobookService {
       }
 
       // 2. Fetch the file-audio page
-      final audioPageRes = await http.get(Uri.parse(listenUrl), headers: {
+      final audioPageRes = await animeHttp('GET', listenUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Referer': book.pageUrl!,
-      });
-      if (audioPageRes.statusCode != 200) return [];
+      }, maxRetries: 0);
+      if (audioPageRes.status != 200) return [];
 
       final audioDoc = hp.parse(audioPageRes.body);
       final tracks = audioDoc.querySelectorAll('div.track');
@@ -654,8 +650,8 @@ class AudiobookService {
     String idPrefix,
   ) async {
     try {
-      final response = await http.get(Uri.parse(searchUrl), headers: _htmlHeaders());
-      if (response.statusCode != 200) return [];
+      final response = await animeHttp('GET', searchUrl, headers: _htmlHeaders(), maxRetries: 0);
+      if (response.status != 200) return [];
       return parse(response.body)
           .map((hit) => _audiobookFromHit(hit, source, idPrefix))
           .toList();
@@ -706,8 +702,8 @@ class AudiobookService {
   }) async {
     try {
       if (pageUrl == null || pageUrl.isEmpty) return [];
-      final pageRes = await http.get(Uri.parse(pageUrl), headers: _htmlHeaders(pageUrl));
-      if (pageRes.statusCode != 200) return [];
+      final pageRes = await animeHttp('GET', pageUrl, headers: _htmlHeaders(pageUrl), maxRetries: 0);
+      if (pageRes.status != 200) return [];
       final hits = parse(pageRes.body);
       if (streamHeaders == null) return _chaptersFromHits(hits);
       return hits
@@ -750,12 +746,12 @@ class AudiobookService {
       final searchUrl =
           'https://appaudiobooks.com/?s=${Uri.encodeComponent(query)}';
 
-      final response = await http.get(Uri.parse(searchUrl), headers: {
+      final response = await animeHttp('GET', searchUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Referer': 'https://appaudiobooks.com/',
-      });
+      }, maxRetries: 0);
 
-      if (response.statusCode != 200) return [];
+      if (response.status != 200) return [];
 
       final document = hp.parse(response.body);
       // Standard WordPress search results: each post has <h2 class="entry-title"><a href="...">Title</a></h2>
@@ -816,10 +812,10 @@ class AudiobookService {
 
   Future<String> _fetchAppAudiobookCover(String pageUrl) async {
     try {
-      final res = await http.get(Uri.parse(pageUrl), headers: {
+      final res = await animeHttp('GET', pageUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      });
-      if (res.statusCode != 200) return '';
+      }, maxRetries: 0);
+      if (res.status != 200) return '';
       final doc = hp.parse(res.body);
       final img = doc.querySelector('.wp-caption img') ?? doc.querySelector('.entry img');
       return img?.attributes['src'] ?? '';
@@ -831,10 +827,10 @@ class AudiobookService {
     try {
       if (book.pageUrl == null) return [];
 
-      final pageRes = await http.get(Uri.parse(book.pageUrl!), headers: {
+      final pageRes = await animeHttp('GET', book.pageUrl!, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      });
-      if (pageRes.statusCode != 200) return [];
+      }, maxRetries: 0);
+      if (pageRes.status != 200) return [];
 
       final document = hp.parse(pageRes.body);
       final audios = document.querySelectorAll('audio.wp-audio-shortcode');
@@ -890,15 +886,11 @@ class AudiobookService {
       return _audionestIdToken;
     }
     try {
-      final res = await http.post(
-        Uri.parse(
-            'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$_audionestFirebaseApiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'returnSecureToken': true}),
-      );
-      if (res.statusCode != 200) {
+      final res = await animeHttp('POST', 
+            'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$_audionestFirebaseApiKey', headers: {'Content-Type': 'application/json'}, body: json.encode({'returnSecureToken': true}), maxRetries: 0);
+      if (res.status != 200) {
         debugPrint(
-            'AudiobookService Error (audionest signUp): ${res.statusCode} ${res.body}');
+            'AudiobookService Error (audionest signUp): ${res.status} ${res.body}');
         return null;
       }
       final data = json.decode(res.body) as Map<String, dynamic>;
@@ -916,15 +908,17 @@ class AudiobookService {
 
   Future<List<Audiobook>> _searchAudionest(String query) async {
     try {
-      final res = await http.post(
-        Uri.parse('$_audionestMeiliBase/indexes/trackfiles/search'),
+      final res = await animeHttp(
+        'POST',
+        '$_audionestMeiliBase/indexes/trackfiles/search',
         headers: {
           'Authorization': 'Bearer $_audionestMeiliKey',
           'Content-Type': 'application/json',
         },
         body: json.encode({'q': query, 'limit': 30}),
+        maxRetries: 0,
       );
-      if (res.statusCode != 200) return [];
+      if (res.status != 200) return [];
       final data = json.decode(res.body) as Map<String, dynamic>;
       final hits = (data['hits'] as List?) ?? const [];
 
@@ -957,15 +951,17 @@ class AudiobookService {
     return [];
   }
 
-  Future<http.Response> _audionestFirestoreQuery(
+  Future<AnimeHttpResult> _audionestFirestoreQuery(
       String body, String token) async {
-    return http.post(
-      Uri.parse('$_audionestFirestoreBase:runQuery'),
+    return animeHttp(
+      'POST',
+      '$_audionestFirestoreBase:runQuery',
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
       body: body,
+      maxRetries: 0,
     );
   }
 
@@ -994,13 +990,13 @@ class AudiobookService {
       if (token == null) return [];
 
       var res = await _audionestFirestoreQuery(reqBody, token);
-      if (res.statusCode == 401 || res.statusCode == 403) {
+      if (res.status == 401 || res.status == 403) {
         // Token rejected — force a fresh anonymous sign-in and retry once.
         token = await _audionestEnsureToken(force: true);
         if (token == null) return [];
         res = await _audionestFirestoreQuery(reqBody, token);
       }
-      if (res.statusCode != 200) return [];
+      if (res.status != 200) return [];
 
       // runQuery returns a JSON array of {document: {...}} entries.
       final decoded = json.decode(res.body);

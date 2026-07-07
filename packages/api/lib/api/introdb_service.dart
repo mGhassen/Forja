@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
+import 'anime_http.dart';
 
 class IntroDbTimestamp {
   final int? startMs;
@@ -116,11 +117,9 @@ class IntroDbService {
         },
       );
 
-      final response = await http.get(uri).timeout(
-        const Duration(seconds: 8),
-      );
+      final response = await animeHttp('GET', uri.toString(), timeoutSecs: 8);
 
-      if (response.statusCode == 200) {
+      if (response.status == 200) {
         final json = jsonDecode(response.body);
         if (json is Map<String, dynamic>) {
           return IntroDbResponse.fromJson(json);
@@ -148,11 +147,9 @@ class IntroDbService {
         },
       );
 
-      final response = await http.get(uri).timeout(
-        const Duration(seconds: 8),
-      );
+      final response = await animeHttp('GET', uri.toString(), timeoutSecs: 8);
 
-      if (response.statusCode == 200) {
+      if (response.status == 200) {
         final json = jsonDecode(response.body);
         if (json is Map<String, dynamic>) {
           return _parseFallbackResponse(json);

@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import 'anime_http.dart';
 
 /// MDBlist integration — API-key auth, ratings aggregation, list management.
 /// Register at https://mdblist.com/ to get an API key.
@@ -61,13 +62,15 @@ class MdblistService {
     if (apiKey == null) return null;
 
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/user?apikey=$apiKey'),
+      final resp = await animeHttp(
+        'GET',
+        '$_baseUrl/user?apikey=$apiKey',
+        maxRetries: 0,
       );
-      if (resp.statusCode == 200) {
+      if (resp.status == 200) {
         return json.decode(resp.body) as Map<String, dynamic>;
       }
-      debugPrint('[MDBlist] User info failed: ${resp.statusCode}');
+      debugPrint('[MDBlist] User info failed: ${resp.status}');
     } catch (e) {
       debugPrint('[MDBlist] User info error: $e');
     }
@@ -85,10 +88,12 @@ class MdblistService {
     if (apiKey == null) return null;
 
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/?apikey=$apiKey&i=$imdbId'),
+      final resp = await animeHttp(
+        'GET',
+        '$_baseUrl/?apikey=$apiKey&i=$imdbId',
+        maxRetries: 0,
       );
-      if (resp.statusCode == 200) {
+      if (resp.status == 200) {
         return json.decode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
@@ -104,10 +109,12 @@ class MdblistService {
 
     final type = (mediaType == 'tv' || mediaType == 'series') ? 'show' : 'movie';
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/?apikey=$apiKey&tm=$tmdbId&m=$type'),
+      final resp = await animeHttp(
+        'GET',
+        '$_baseUrl/?apikey=$apiKey&tm=$tmdbId&m=$type',
+        maxRetries: 0,
       );
-      if (resp.statusCode == 200) {
+      if (resp.status == 200) {
         return json.decode(resp.body) as Map<String, dynamic>;
       }
     } catch (e) {
@@ -126,10 +133,12 @@ class MdblistService {
     if (apiKey == null) return [];
 
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/lists/user?apikey=$apiKey'),
+      final resp = await animeHttp(
+        'GET',
+        '$_baseUrl/lists/user?apikey=$apiKey',
+        maxRetries: 0,
       );
-      if (resp.statusCode == 200) {
+      if (resp.status == 200) {
         final data = json.decode(resp.body);
         if (data is List) return data.cast<Map<String, dynamic>>();
       }
@@ -145,10 +154,12 @@ class MdblistService {
     if (apiKey == null) return [];
 
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/lists/$listId/items?apikey=$apiKey'),
+      final resp = await animeHttp(
+        'GET',
+        '$_baseUrl/lists/$listId/items?apikey=$apiKey',
+        maxRetries: 0,
       );
-      if (resp.statusCode == 200) {
+      if (resp.status == 200) {
         final data = json.decode(resp.body);
         if (data is List) return data.cast<Map<String, dynamic>>();
       }
@@ -177,12 +188,14 @@ class MdblistService {
     }
 
     try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/lists/$listId/items/remove?apikey=$apiKey'),
+      final resp = await animeHttp(
+        'POST',
+        '$_baseUrl/lists/$listId/items/remove?apikey=$apiKey',
         headers: {'Content-Type': 'application/json'},
         body: json.encode([body]),
+        maxRetries: 0,
       );
-      return resp.statusCode == 200;
+      return resp.status == 200;
     } catch (e) {
       debugPrint('[MDBlist] Remove from list error: $e');
       return false;
@@ -199,10 +212,12 @@ class MdblistService {
     if (apiKey == null) return [];
 
     try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/lists/top?apikey=$apiKey'),
+      final resp = await animeHttp(
+        'GET',
+        '$_baseUrl/lists/top?apikey=$apiKey',
+        maxRetries: 0,
       );
-      if (resp.statusCode == 200) {
+      if (resp.status == 200) {
         final data = json.decode(resp.body);
         if (data is List) return data.cast<Map<String, dynamic>>();
       }

@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show HttpException;
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'anime_http.dart';
 
 /// SubtitleCat scraper.
 ///
@@ -191,9 +190,9 @@ class SubtitleCatService {
         .replace(queryParameters: {'search': query})
         .toString();
 
-    final res = await http.get(Uri.parse(url), headers: _hdrs);
-    if (res.statusCode != 200) {
-      throw HttpException('search ${res.statusCode}');
+    final res = await animeHttp('GET', url, headers: _hdrs, maxRetries: 0);
+    if (res.status != 200) {
+      throw Exception('search ${res.status}');
     }
     final hits = _parseSearchResults(res.body);
     _searchCache[query] = hits;
@@ -225,9 +224,9 @@ class SubtitleCatService {
     final cached = _detailCache[detailUrl];
     if (cached != null) return cached;
 
-    final res = await http.get(Uri.parse(detailUrl), headers: _hdrs);
-    if (res.statusCode != 200) {
-      throw HttpException('detail ${res.statusCode}');
+    final res = await animeHttp('GET', detailUrl, headers: _hdrs, maxRetries: 0);
+    if (res.status != 200) {
+      throw Exception('detail ${res.status}');
     }
     final parsed = _parseDetailPage(res.body);
     _detailCache[detailUrl] = parsed;
@@ -306,13 +305,13 @@ class SubtitleCatService {
     required String origUrl,
     required String targetLang,
   }) async {
-    final res = await http.get(Uri.parse(origUrl), headers: _hdrs);
-    if (res.statusCode != 200) {
-      throw HttpException('orig ${res.statusCode}');
+    final res = await animeHttp('GET', origUrl, headers: _hdrs, maxRetries: 0);
+    if (res.status != 200) {
+      throw Exception('orig ${res.status}');
     }
     // SubtitleCat serves SRT as latin-1 / utf-8 mixed; let the bytes become
     // a String using utf8 with malformed-allowed for safety.
-    final body = utf8.decode(res.bodyBytes, allowMalformed: true);
+    final body = res.body;
 
     final srcLines = const LineSplitter().convert(body);
     final translated = List<String>.filled(srcLines.length, '');
@@ -435,14 +434,14 @@ class SubtitleCatService {
       'q': text,
     });
 
-    final res = await http.get(uri, headers: const {
+    final res = await animeHttp('GET', uri.toString(), headers: const {
       'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-          '(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
       'Accept': '*/*',
-    });
-    if (res.statusCode != 200) {
-      throw HttpException('gtx ${res.statusCode}');
+    }, maxRetries: 0);
+    if (res.status != 200) {
+      throw Exception('gtx ${res.status}');
     }
     // Response: [[["translated\n",...],...], null, "en"]
     final dynamic root = json.decode(res.body);

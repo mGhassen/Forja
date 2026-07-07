@@ -25,7 +25,7 @@ Future<AnimeHttpResult> animeHttp(
     'max_retries': maxRetries,
     if (body != null) 'body': body,
   };
-  final raw = RustLib.instance.animeRequestJson(jsonEncode(payload));
+  final raw = await runAnimeRequestJson(jsonEncode(payload));
   final decoded = jsonDecode(raw) as Map<String, dynamic>;
   if (decoded['error'] != null) {
     throw Exception(decoded['error']);

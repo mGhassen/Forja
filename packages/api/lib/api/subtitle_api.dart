@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:api/playback/playback.dart';
+import 'anime_http.dart';
 import 'mysubs_service.dart';
 import 'package:rust/rust.dart';
 import 'stremio_service.dart';
@@ -142,8 +142,8 @@ class SubtitleApi {
         url += '&season=$season&episode=$episode';
       }
 
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
+      final response = await animeHttp('GET', url);
+      if (response.status == 200) {
         final List<dynamic> data = json.decode(response.body);
 
         // Count how many entries share the same display/language name
@@ -188,8 +188,8 @@ class SubtitleApi {
           : '$tmdbId';
       final uri = Uri.parse('https://api.levrx.de/search?id=$idParam');
 
-      final response = await http.get(uri);
-      if (response.statusCode == 200) {
+      final response = await animeHttp('GET', uri.toString());
+      if (response.status == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
         final subtitles = data['subtitles'] as List<dynamic>? ?? [];
         final result = <Map<String, dynamic>>[];

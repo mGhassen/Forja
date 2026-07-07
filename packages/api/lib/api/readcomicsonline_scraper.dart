@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as hp;
+import 'anime_http.dart';
 import 'comics_service.dart';
 import 'package:api/playback/playback.dart';
 
@@ -40,8 +40,8 @@ class ReadComicsOnlineScraper {
     try {
       final uri = Uri.parse('$baseUrl/search')
           .replace(queryParameters: {'query': query});
-      final res = await http.get(uri, headers: {'User-Agent': _ua});
-      if (res.statusCode != 200) return [];
+      final res = await animeHttp('GET', uri.toString(), headers: {'User-Agent': _ua});
+      if (res.status != 200) return [];
 
       final body = json.decode(res.body);
       final suggestions = (body is Map && body['suggestions'] is List)
@@ -74,8 +74,8 @@ class ReadComicsOnlineScraper {
   /// Detail page: extracts metadata + full chapter list.
   static Future<ComicDetails?> getComicDetails(Comic comic) async {
     try {
-      final res = await http.get(Uri.parse(comic.url), headers: {'User-Agent': _ua});
-      if (res.statusCode != 200) return null;
+      final res = await animeHttp('GET', comic.url, headers: {'User-Agent': _ua});
+      if (res.status != 200) return null;
 
       final doc = hp.parse(res.body);
 
@@ -164,9 +164,9 @@ class ReadComicsOnlineScraper {
   /// Chapter pages: parses <img data-src="..."> from the reader page and
   /// wraps each URL with the local comic-proxy.
   static Future<List<String>> getChapterPages(String chapterUrl) async {
-    final res = await http.get(Uri.parse(chapterUrl), headers: {'User-Agent': _ua});
-    if (res.statusCode != 200) {
-      throw Exception('Chapter page returned HTTP ${res.statusCode}');
+    final res = await animeHttp('GET', chapterUrl, headers: {'User-Agent': _ua});
+    if (res.status != 200) {
+      throw Exception('Chapter page returned HTTP ${res.status}');
     }
 
     // The site renders <img data-src=' https://...jpg '> (note surrounding

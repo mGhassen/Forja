@@ -93,7 +93,9 @@ flowchart LR
 | Music (Deezer API) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 | Manga (WeebCentral fetch) | `packages/api` | `crates/manga-core` ✅ |
 | Anime Arabic (AnimeSlayer) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
-| Audiobook, subtitles, metadata APIs, … | `packages/api` | `crates/*` |
+| Audiobook (browse/search) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
+| Subtitles/metadata (Wyzie, Levrx, SubtitleCat, Mysubs, MDBlist, Simkl, IntroDB) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
+| Comics (RCO.ru) | `packages/api` | `crates/anime-core` (shared HTTP) ✅ |
 
 ### `packages/` after wave 2
 

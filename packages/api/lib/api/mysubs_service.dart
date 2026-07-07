@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+
+import 'anime_http.dart';
 
 /// Subtitle source: my-subs.co (HTML scraper).
 ///
@@ -94,9 +95,8 @@ class MysubsService {
   }) async {
     final searchUrl =
         '$_base/search.php?key=${Uri.encodeQueryComponent(title)}';
-    final res = await http.get(Uri.parse(searchUrl), headers: _headers)
-        .timeout(const Duration(seconds: 15));
-    if (res.statusCode != 200) return null;
+    final res = await animeHttp('GET', searchUrl, headers: _headers, timeoutSecs: 15);
+    if (res.status != 200) return null;
     final html = res.body;
 
     if (isSeries) {
@@ -152,9 +152,8 @@ class MysubsService {
   // ── 3: scrape versions page for (gateUrl, language, release) ──────────────
 
   Future<List<Map<String, dynamic>>> _scrapeVersionsPage(String path) async {
-    final res = await http.get(Uri.parse('$_base$path'), headers: _headers)
-        .timeout(const Duration(seconds: 15));
-    if (res.statusCode != 200) return [];
+    final res = await animeHttp('GET', '$_base$path', headers: _headers, timeoutSecs: 15);
+    if (res.status != 200) return [];
     final html = res.body;
 
     // Index every "Version: <i>NAME</i>" header so each download row can be
@@ -219,10 +218,8 @@ class MysubsService {
   Future<Map<String, dynamic>?> _resolveGate(Map<String, dynamic> entry) async {
     try {
       final gate = entry['gate'] as String;
-      final res = await http
-          .get(Uri.parse('$_base$gate'), headers: _headers)
-          .timeout(const Duration(seconds: 12));
-      if (res.statusCode != 200) return null;
+      final res = await animeHttp('GET', '$_base$gate', headers: _headers, timeoutSecs: 12);
+      if (res.status != 200) return null;
       final m = RegExp(r'REAL_URL\s*=\s*"((?:\\/|/)[^"]+)"')
           .firstMatch(res.body);
       if (m == null) return null;
