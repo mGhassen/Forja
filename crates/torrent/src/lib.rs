@@ -9,7 +9,9 @@ use axum::{
 use utils::{episode_matcher, torrent_filter};
 use futures_util::TryStreamExt;
 use librqbit::api::{Api, TorrentDetailsResponseFile, TorrentIdOrHash};
-use librqbit::{AddTorrent, AddTorrentOptions, AddTorrentResponse, Session, SessionOptions};
+use librqbit::{
+    AddTorrent, AddTorrentOptions, AddTorrentResponse, DhtSessionConfig, Session, SessionOptions,
+};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -112,6 +114,21 @@ impl TorrentEngine {
         std::env::temp_dir().join("torrent")
     }
 
+    /// librqbit defaults persist DHT under `~/Library/Caches/com.rqbit.dht`, which
+    /// fails in the macOS app sandbox. Keep DHT in-memory and disable LSD multicast.
+    fn session_options(peer_limit: usize) -> SessionOptions {
+        SessionOptions {
+            peer_limit: Some(peer_limit),
+            dht: Some(DhtSessionConfig {
+                persistence: None,
+                ..Default::default()
+            }),
+            disable_local_service_discovery: true,
+            ipv4_only: true,
+            ..Default::default()
+        }
+    }
+
     pub fn set_peer_limit(&self, limit: u32) {
         let clamped = limit.clamp(5, 200) as usize;
         if let Ok(mut inner) = self.inner.lock() {
@@ -129,11 +146,10 @@ impl TorrentEngine {
                 inner.peer_limit
             };
             std::fs::create_dir_all(Self::download_dir()).map_err(|e| e.to_string())?;
-            let opts = SessionOptions {
-                peer_limit: Some(peer_limit),
-                ..Default::default()
-            };
-            let session = Session::new_with_opts(Self::download_dir(), opts)
+            let session = Session::new_with_opts(
+                Self::download_dir(),
+                Self::session_options(peer_limit),
+            )
                 .await
                 .map_err(|e| e.to_string())?;
             let api = Api::new(session.clone(), None);
@@ -652,5 +668,15 @@ mod tests {
     fn extracts_info_hash_from_magnet() {
         let magnet = "magnet:?xt=urn:btih:abc123def456&dn=test";
         assert_eq!(extract_info_hash(magnet).as_deref(), Some("abc123def456"));
+    }
+
+    #[test]
+    fn engine_starts_on_loopback() {
+        let engine = TorrentEngine::new();
+        let port = engine.start_engine(0).expect("start_engine");
+        assert!(port > 0);
+        assert_eq!(engine.engine_port(), port);
+        engine.stop_engine();
+        assert_eq!(engine.engine_port(), 0);
     }
 }
