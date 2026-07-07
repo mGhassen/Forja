@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rust/rust.dart';
 import 'package:api/playback/playback.dart';
 
@@ -213,6 +214,31 @@ class JellyfinService {
   static const String _activeAccountKey = 'jellyfin_active_account';
   static const _secureStorage = FlutterSecureStorage();
 
+  // macOS sandboxed Keychain needs signing + keychain-access-groups; use prefs
+  // instead (same tradeoff as DebridApi).
+  Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
+
+  Future<String?> _readStorage(String key) async {
+    if (Platform.isMacOS) return (await _prefs).getString(key);
+    return _secureStorage.read(key: key);
+  }
+
+  Future<void> _writeStorage(String key, String value) async {
+    if (Platform.isMacOS) {
+      await (await _prefs).setString(key, value);
+      return;
+    }
+    await _secureStorage.write(key: key, value: value);
+  }
+
+  Future<void> _deleteStorage(String key) async {
+    if (Platform.isMacOS) {
+      await (await _prefs).remove(key);
+      return;
+    }
+    await _secureStorage.delete(key: key);
+  }
+
   // In-memory cache — keyed by URL string, values are _CacheEntry<dynamic>.
   final Map<String, _CacheEntry<dynamic>> _cache = {};
   static const _maxCacheEntries = 200;
@@ -311,12 +337,12 @@ class JellyfinService {
   /// Ensures a persistent deviceId exists. Called lazily on first use.
   Future<void> _ensureDeviceId() async {
     if (_deviceId.isNotEmpty) return;
-    final stored = await _secureStorage.read(key: _deviceIdKey);
+    final stored = await _readStorage(_deviceIdKey);
     if (stored != null && stored.isNotEmpty) {
       _deviceId = stored;
     } else {
       _deviceId = 'forja_${DateTime.now().millisecondsSinceEpoch}';
-      await _secureStorage.write(key: _deviceIdKey, value: _deviceId);
+      await _writeStorage(_deviceIdKey, _deviceId);
     }
   }
 
@@ -370,27 +396,27 @@ class JellyfinService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Future<List<JellyfinAccount>> getSavedAccounts() async {
-    final raw = await _secureStorage.read(key: _accountsKey);
+    final raw = await _readStorage(_accountsKey);
     if (raw == null || raw.isEmpty) return [];
     final list = json.decode(raw) as List<dynamic>;
     return list.map((s) => JellyfinAccount.fromJson(s as Map<String, dynamic>)).toList();
   }
 
   Future<void> _saveAccounts(List<JellyfinAccount> accounts) async {
-    await _secureStorage.write(
-      key: _accountsKey,
-      value: json.encode(accounts.map((a) => a.toJson()).toList()),
+    await _writeStorage(
+      _accountsKey,
+      json.encode(accounts.map((a) => a.toJson()).toList()),
     );
   }
 
   Future<void> _setActiveIndex(int index) async {
-    await _secureStorage.write(key: _activeAccountKey, value: '$index');
+    await _writeStorage(_activeAccountKey, '$index');
   }
 
   Future<bool> loadSavedSession() async {
     await _ensureDeviceId();
     final accounts = await getSavedAccounts();
-    final idxStr = await _secureStorage.read(key: _activeAccountKey);
+    final idxStr = await _readStorage(_activeAccountKey);
     final idx = idxStr != null ? int.tryParse(idxStr) ?? -1 : -1;
     if (idx >= 0 && idx < accounts.length) {
       _activeAccount = accounts[idx];
@@ -461,7 +487,7 @@ class JellyfinService {
   Future<void> logout() async {
     _activeAccount = null;
     clearCache();
-    await _secureStorage.delete(key: _activeAccountKey);
+    await _deleteStorage(_activeAccountKey);
   }
 
   Future<void> removeAccount(int index) async {

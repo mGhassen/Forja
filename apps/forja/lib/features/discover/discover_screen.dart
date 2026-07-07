@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:api/api/tmdb_api.dart';
 import 'package:api/models/movie.dart';
+import 'package:forja/app/boot_cache.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
@@ -21,6 +22,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with AutomaticKeepAlive
   // State
   List<Movie> _movies = [];
   bool _isLoading = false;
+  bool _fetchInFlight = false;
+  bool _skippedInitialFetch = false;
   int _currentPage = 1;
   
   // Filters
@@ -75,40 +78,89 @@ class _DiscoverScreenState extends State<DiscoverScreen> with AutomaticKeepAlive
   @override
   void initState() {
     super.initState();
-    _loadGenres();
-    _loadData();
+    _hydrateFromCache();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadGenres();
+      _loadData();
+    });
   }
 
-  Future<void> _loadGenres() async {
-    try {
-      final mGenres = await _api.getMovieGenres();
-      final tGenres = await _api.getTvGenres();
-      
-      final Set<String> names = {};
-      
-      for (var g in mGenres) {
+  void _hydrateFromCache() {
+    final cachedMovies = BootCache.discoverMoviesPage1;
+    if (cachedMovies != null) {
+      _movies = cachedMovies;
+    } else {
+      _isLoading = true;
+    }
+    _applyGenreMaps(BootCache.movieGenres, BootCache.tvGenres);
+  }
+
+  void _applyGenreMaps(
+    List<Map<String, dynamic>>? mGenres,
+    List<Map<String, dynamic>>? tGenres,
+  ) {
+    if (mGenres == null && tGenres == null) return;
+
+    final names = <String>{};
+    if (mGenres != null) {
+      for (final g in mGenres) {
         _movieGenreMap[g['name']] = g['id'];
-        names.add(g['name']);
+        names.add(g['name'] as String);
       }
-      for (var g in tGenres) {
+    }
+    if (tGenres != null) {
+      for (final g in tGenres) {
         _tvGenreMap[g['name']] = g['id'];
-        names.add(g['name']);
+        names.add(g['name'] as String);
       }
-      
+    }
+    _allGenreNames = names.toList()..sort();
+  }
+
+  bool get _isDefaultDiscoverQuery =>
+      _currentPage == 1 &&
+      _selectedType == 'Movies' &&
+      _selectedGenreNames.isEmpty &&
+      _selectedYears.isEmpty &&
+      _minRating == 0 &&
+      _selectedLanguage == null;
+
+  Future<void> _loadGenres() async {
+    if (_movieGenreMap.isNotEmpty && _tvGenreMap.isNotEmpty) return;
+
+    try {
+      final mGenres = BootCache.movieGenres ?? await _api.getMovieGenres();
+      final tGenres = BootCache.tvGenres ?? await _api.getTvGenres();
+      BootCache.movieGenres ??= mGenres;
+      BootCache.tvGenres ??= tGenres;
+
       if (mounted) {
-        setState(() {
-          _allGenreNames = names.toList()..sort();
-        });
+        setState(() => _applyGenreMaps(mGenres, tGenres));
       }
     } catch (e) {
-      debugPrint("Error loading genres: $e");
+      debugPrint('Error loading genres: $e');
     }
   }
 
   Future<void> _loadData() async {
-    if (_isLoading) return;
-    setState(() => _isLoading = true);
-    
+    if (_fetchInFlight) return;
+
+    if (!_skippedInitialFetch &&
+        _isDefaultDiscoverQuery &&
+        BootCache.discoverMoviesPage1 != null) {
+      _skippedInitialFetch = true;
+      if (_movies.isEmpty) {
+        setState(() => _movies = BootCache.discoverMoviesPage1!);
+      }
+      if (_isLoading) setState(() => _isLoading = false);
+      return;
+    }
+    _skippedInitialFetch = true;
+
+    _fetchInFlight = true;
+    if (!_isLoading) setState(() => _isLoading = true);
+
     try {
       List<Movie> results = [];
       
@@ -163,8 +215,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with AutomaticKeepAlive
         }
       }
     } catch (e) {
-      debugPrint("Error loading discover: $e");
+      debugPrint('Error loading discover: $e');
       if (mounted) setState(() => _isLoading = false);
+    } finally {
+      _fetchInFlight = false;
     }
   }
 
