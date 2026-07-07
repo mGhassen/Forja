@@ -71,7 +71,8 @@ Consolidate residual Dart engine into `packages/rust`; port direct-`http` slices
 | Port site111477 index scrape → `crates/proxy/index111477` + FFI | ✅ |
 | Port mega_proxy → `crates/proxy/mega` + FFI | ✅ |
 | Port music_service → `crates/music-core` + FFI | ✅ |
-| Port catalog vertical extractors (WebView/HTML) to `crates/*` or document host exceptions | ⬜ |
+| Port lyrics + introdb → `anime-core/metadata` + FFI | ✅ |
+| Document host exceptions (WebView/C3 extractors) | ✅ |
 | A2 + A4 exit checklist green | ⬜ |
 
 ---
@@ -130,7 +131,8 @@ flowchart LR
 | Subtitles/metadata | `packages/rust/lib/src/catalog/` | `crates/anime-core` ✅ |
 | Audiobook (browse/search) | `apps/forja/features/audiobooks/catalog/` | `crates/anime-core` ✅ |
 | Paper2Audio | `packages/rust/lib/src/catalog/` | `crates/anime-core` ✅ |
-| Lyrics (LRCLIB) | `apps/forja/shared/audio/lyrics_service.dart` | `crates/anime-core` ✅ |
+| Lyrics (LRCLIB) | `anime-core` metadata + thin Dart FFI | ✅ |
+| IntroDB skip timestamps | `anime-core` metadata + thin Dart FFI | ✅ |
 | Debrid (RD/TorBox/AD/PM/DL) | `crates/debrid-core` + thin Dart FFI | ✅ |
 | Site111477 index scrape | `crates/proxy/index111477` + thin Dart FFI | ✅ |
 | Site111477 seek proxy | `crates/proxy/seek111477` + `site111477_proxy.dart` | ✅ |
@@ -151,6 +153,24 @@ flowchart LR
 | `crates/debrid-core` | Debrid resolve — 5 providers (P3-04) |
 | `packages/rust/lib/src/catalog/` | Catalog metadata + thin `music_service`, `subtitle_api` |
 | `crates/music-core` | Deezer catalog + YouTube InnerTube audio (P3-04) |
+
+---
+
+## Host exceptions (C3–C5) — documented, not ported
+
+Per [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) §3, these **stay in `apps/forja`** (WebView / JS / WASM hosts). HTTP fetch uses `animeHttp` → `anime-core`; parse/orchestration in Dart is host-side until ported.
+
+| Area | Files | Class | Notes |
+|------|-------|-------|-------|
+| KissKh WebView | `asian_drama/catalog/kisskh_extractor.dart` | C3 | WebView embed sniff |
+| Allanime / Miruro / Hentaini | `anime/catalog/*_extractor.dart` | C2+C3 | HTML parse in Dart; HTTP via FFI |
+| Arabic verticals | `shared/extractors/arabic_service.dart` | C2 | Multi-site scrape in Dart |
+| Anime Arabic | `anime_arabic/catalog/anime_arabic_extractor.dart` | C2+C3 | Mega Rust; iframe scrape Dart |
+| Nuvio | `shared/nuvio/nuvio_runtime.dart` | C4 | `flutter_js` |
+| Videasy | `packages/rust/.../videasy_extractor.dart` | C5 | WASM host |
+| Subtitle browse | `packages/rust/lib/src/catalog/*_service.dart` | C2 | Fetch via `animeHttp`; parse still Dart |
+
+**A4 not green:** subtitle/mdblist/paper2audio/mysubs still parse in Dart. C3 extractors are permanent host exceptions.
 
 ---
 

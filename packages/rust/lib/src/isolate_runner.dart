@@ -91,6 +91,12 @@ Future<String> runMusicRequestJson(String requestJson) =>
       {'requestJson': requestJson},
     );
 
+Future<String> runMetadataRequestJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.metadataRequest,
+      {'requestJson': requestJson},
+    );
+
 Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
     EngineJobs.run(
       EngineAsyncJob.iptvProbeStream,

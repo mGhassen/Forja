@@ -358,6 +358,11 @@ class RustLib {
         return _readString(_native.ffi_music_request_json(ptr));
       });
 
+  String metadataRequestJson(String requestJson) => using((arena) {
+        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_metadata_request_json(ptr));
+      });
+
   String parseKnabenHtmlJson(String html) => using((arena) {
         final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_parse_knaben_html_json(ptr));
@@ -857,6 +862,11 @@ final class _FfiNative {
               'ffi_music_request_json',
             )
             .asFunction(),
+        ffi_metadata_request_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_metadata_request_json',
+            )
+            .asFunction(),
         ffi_parse_knaben_html_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_parse_knaben_html_json',
@@ -1161,6 +1171,8 @@ final class _FfiNative {
       ffi_mega_resolve_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_music_request_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_metadata_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_parse_knaben_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

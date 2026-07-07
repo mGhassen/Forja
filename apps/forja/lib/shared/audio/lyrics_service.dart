@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:rust/rust.dart';
-
 import 'package:rust/rust.dart';
 
 class LyricLine {
@@ -13,14 +12,14 @@ class LyricLine {
   LyricLine({required this.startTime, required this.text});
 
   Map<String, dynamic> toJson() => {
-    'startTimeMs': startTime.inMilliseconds,
-    'text': text,
-  };
+        'startTimeMs': startTime.inMilliseconds,
+        'text': text,
+      };
 
   factory LyricLine.fromJson(Map<String, dynamic> json) => LyricLine(
-    startTime: Duration(milliseconds: json['startTimeMs']),
-    text: json['text'],
-  );
+        startTime: Duration(milliseconds: json['startTimeMs'] as int),
+        text: json['text'] as String,
+      );
 }
 
 class LyricsService {
@@ -31,55 +30,30 @@ class LyricsService {
     required int durationSeconds,
   }) async {
     try {
-      final uri = Uri.https('lrclib.net', '/api/get', {
+      final decoded = await metadataRequest({
+        'action': 'synced_lyrics',
         'track_name': trackName,
         'artist_name': artistName,
         'album_name': albumName,
-        'duration': durationSeconds.toString(),
+        'duration_seconds': durationSeconds,
       });
-
-      final response = await animeHttp('GET', uri.toString(), maxRetries: 0);
-      if (response.status == 200) {
-        final data = json.decode(response.body);
-        final String? syncedLyrics = data['syncedLyrics'];
-        if (syncedLyrics != null && syncedLyrics.isNotEmpty) {
-          debugPrint('LyricsService: Received synced lyrics (${syncedLyrics.length} chars)');
-          return _parseLrc(syncedLyrics);
-        }
-      }
+      final lines = decoded['lines'] as List<dynamic>? ?? [];
+      if (lines.isEmpty) return null;
+      return lines
+          .map(
+            (e) => LyricLine(
+              startTime: Duration(
+                milliseconds: (e['start_time_ms'] as num?)?.toInt() ?? 0,
+              ),
+              text: e['text'] as String? ?? '',
+            ),
+          )
+          .where((l) => l.text.isNotEmpty)
+          .toList();
     } catch (e) {
       debugPrint('LyricsService: Error fetching lyrics: $e');
+      return null;
     }
-    return null;
-  }
-
-  List<LyricLine> _parseLrc(String lrcContent) {
-    final List<LyricLine> lines = [];
-    final RegExp regExp = RegExp(r'\[(\d+):(\d+(?:\.\d+)?)\](.*)');
-
-    for (var line in lrcContent.split('\n')) {
-      final match = regExp.firstMatch(line.trim());
-      if (match != null) {
-        try {
-          final int minutes = int.parse(match.group(1)!);
-          final double seconds = double.parse(match.group(2)!);
-          final String text = match.group(3)!.trim();
-
-          if (text.isNotEmpty) {
-            final duration = Duration(
-              minutes: minutes,
-              seconds: seconds.toInt(),
-              milliseconds: ((seconds % 1) * 1000).toInt(),
-            );
-            lines.add(LyricLine(startTime: duration, text: text));
-          }
-        } catch (e) {
-          // Skip malformed lines
-        }
-      }
-    }
-    debugPrint('LyricsService: Parsed ${lines.length} lines');
-    return lines;
   }
 
   Future<void> saveLyrics(MusicTrack track, List<LyricLine> lyrics) async {
@@ -101,9 +75,11 @@ class LyricsService {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/lyrics/${track.id}.json');
       if (await file.exists()) {
-        final String content = await file.readAsString();
-        final List data = json.decode(content);
-        return data.map((item) => LyricLine.fromJson(item)).toList();
+        final content = await file.readAsString();
+        final list = json.decode(content) as List;
+        return list
+            .map((item) => LyricLine.fromJson(item as Map<String, dynamic>))
+            .toList();
       }
     } catch (e) {
       debugPrint('LyricsService: Error reading local lyrics: $e');

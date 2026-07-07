@@ -57,10 +57,12 @@ name = "anime-core"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
  "tokio",
+ "urlencoding",
  "utils",
 ]
 

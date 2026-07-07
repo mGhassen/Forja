@@ -1,9 +1,13 @@
 mod http;
+mod introdb;
+mod lyrics;
+mod metadata;
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
 pub use http::AnimeHttpResponse;
+pub use metadata::metadata_request_json;
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub struct AnimeRequest {
