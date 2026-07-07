@@ -19,8 +19,19 @@ class ShellBus {
   /// Bumps when shell chrome (e.g. search bar) needs a rebuild.
   static final ValueNotifier<int> shellChromeRevision = ValueNotifier<int>(0);
 
+  /// When true, shell hides global rail / bottom nav (IPTV deep views, Music desktop).
+  static final ValueNotifier<bool> hideGlobalNav = ValueNotifier<bool>(false);
+
   static void notifyShellChromeChanged() {
     shellChromeRevision.value++;
+  }
+
+  /// IPTV / Music call when leaving the tab; [MainScreen] also resets on tab switch.
+  static void clearHideGlobalNav() {
+    if (hideGlobalNav.value) {
+      hideGlobalNav.value = false;
+      notifyShellChromeChanged();
+    }
   }
 
   static void openStremioSearch({required String query, required String addonBaseUrl}) {

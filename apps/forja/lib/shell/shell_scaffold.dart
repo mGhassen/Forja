@@ -16,6 +16,7 @@ class ShellScaffold extends StatelessWidget {
     required this.onDestinationSelected,
     required this.tabFor,
     this.shellHeader,
+    this.hideGlobalNav = false,
   });
 
   final bool useNavRail;
@@ -26,6 +27,7 @@ class ShellScaffold extends StatelessWidget {
   final ValueChanged<int> onDestinationSelected;
   final Widget Function(String id) tabFor;
   final Widget? shellHeader;
+  final bool hideGlobalNav;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +38,7 @@ class ShellScaffold extends StatelessWidget {
           if (!AppTheme.isLightMode) ..._ambientGlows(context),
           Row(
             children: [
-              if (useNavRail)
+              if (useNavRail && !hideGlobalNav)
                 ShellNavRail(
                   visibleIds: visibleIds,
                   selectedIndex: selectedIndex,
@@ -62,7 +64,7 @@ class ShellScaffold extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: useNavRail
+      bottomNavigationBar: useNavRail || hideGlobalNav
           ? null
           : ShellBottomNav(
               visibleIds: visibleIds,

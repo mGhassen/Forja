@@ -12,6 +12,10 @@ abstract final class ShellTokens {
   static const double navRailLogoTopPaddingDesktopMac = 8;
   static const double navRailLogoTopPaddingDefault = 24;
 
+  /// Music desktop sidebar width — global rail hidden when Music tab uses this.
+  static const double musicDesktopSidebarWidth = 260;
+  static const double musicDesktopBreakpoint = 900;
+
   static const double shellGlowTopRight = 280;
   static const double shellGlowBottomLeft = 220;
   static const double shellGlowCenterLeft = 180;

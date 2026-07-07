@@ -7,6 +7,7 @@ import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -60,11 +61,28 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _mountedTabIds.add(id);
       _selectedIndex = index;
     });
+    _applyTabShellChrome(id);
     if (id == 'search') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() {});
       });
     }
+  }
+
+  bool _musicUsesOwnSidebar(BuildContext context) {
+    if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
+      return false;
+    }
+    return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+  }
+
+  void _applyTabShellChrome(String tabId) {
+    if (tabId == 'music') {
+      ShellBus.hideGlobalNav.value = _musicUsesOwnSidebar(context);
+    } else if (tabId != 'iptv') {
+      ShellBus.hideGlobalNav.value = false;
+    }
+    ShellBus.notifyShellChromeChanged();
   }
 
   @override
@@ -74,6 +92,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.stremioSearchNotifier.addListener(_onStremioSearch);
     ShellBus.requestTab.addListener(_onRequestTab);
     ShellBus.shellChromeRevision.addListener(_onShellChromeChanged);
+    ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
     SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
 
     _loadNavbarConfig();
@@ -133,6 +152,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
+    if (_visibleIds.isNotEmpty && _selectedIndex < _visibleIds.length) {
+      _applyTabShellChrome(_visibleIds[_selectedIndex]);
+    }
     _metricsDebounce?.cancel();
     _metricsDebounce = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) setState(() {});
@@ -184,6 +206,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.stremioSearchNotifier.removeListener(_onStremioSearch);
     ShellBus.requestTab.removeListener(_onRequestTab);
     ShellBus.shellChromeRevision.removeListener(_onShellChromeChanged);
+    ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
+    ShellBus.clearHideGlobalNav();
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
     super.dispose();
   }
@@ -204,6 +228,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         onDestinationSelected: _selectTab,
         tabFor: _tabFor,
         shellHeader: _shellHeader(),
+        hideGlobalNav: ShellBus.hideGlobalNav.value,
       ),
     );
   }

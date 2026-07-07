@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
@@ -36,11 +37,21 @@ class _IptvPtScreenState extends State<IptvPtScreen> {
   void initState() {
     super.initState();
     _ctrl = IptvController();
+    _ctrl.addListener(_syncShellNav);
     _ctrl.init();
+  }
+
+  void _syncShellNav() {
+    final hide = _ctrl.view != IptvView.portalList;
+    if (ShellBus.hideGlobalNav.value != hide) {
+      ShellBus.hideGlobalNav.value = hide;
+      ShellBus.notifyShellChromeChanged();
+    }
   }
 
   @override
   void dispose() {
+    _ctrl.removeListener(_syncShellNav);
     _ctrl.dispose();
     super.dispose();
   }
@@ -50,18 +61,24 @@ class _IptvPtScreenState extends State<IptvPtScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: _ctrl.view == IptvView.portalList,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _ctrl.back();
+    return VisibilityDetector(
+      key: const Key('iptv_pt_screen'),
+      onVisibilityChanged: (info) {
+        if (info.visibleFraction > 0) _syncShellNav();
       },
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (_, _) => AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          child: KeyedSubtree(
-            key: ValueKey(_ctrl.view),
-            child: _buildView(context),
+      child: PopScope(
+        canPop: _ctrl.view == IptvView.portalList,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _ctrl.back();
+        },
+        child: AnimatedBuilder(
+          animation: _ctrl,
+          builder: (_, _) => AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: KeyedSubtree(
+              key: ValueKey(_ctrl.view),
+              child: _buildView(context),
+            ),
           ),
         ),
       ),

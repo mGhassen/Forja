@@ -10,6 +10,7 @@ import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shared/audio/music_storage_service.dart';
 import 'package:forja/shared/audio/music_downloader_service.dart';
 import 'music_player_screen.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class MusicScreen extends StatefulWidget {
@@ -55,7 +56,9 @@ class _MusicScreenState extends State<MusicScreen> with WidgetsBindingObserver, 
     return 'Late Night Vibes';
   }
 
-  bool get _isDesktop => (Platform.isWindows || Platform.isLinux || Platform.isMacOS) && MediaQuery.of(context).size.width > 900;
+  bool get _isDesktop =>
+      (Platform.isWindows || Platform.isLinux || Platform.isMacOS) &&
+      MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
 
   @override
   void initState() {
@@ -219,7 +222,7 @@ class _MusicScreenState extends State<MusicScreen> with WidgetsBindingObserver, 
 
   Widget _buildDesktopSidebar() {
     return Container(
-      width: 260,
+      width: ShellTokens.musicDesktopSidebarWidth,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.025),
         border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.06))),
