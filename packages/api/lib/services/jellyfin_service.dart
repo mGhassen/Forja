@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 import 'package:api/playback/playback.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -194,6 +194,12 @@ class _CacheEntry<T> {
   bool get isValid => DateTime.now().isBefore(expires);
 }
 
+class _HttpResponse {
+  final int statusCode;
+  final String body;
+  const _HttpResponse({required this.statusCode, required this.body});
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Service
 // ═════════════════════════════════════════════════════════════════════════════
@@ -238,112 +244,54 @@ class JellyfinService {
 
   // ─── HTTP Client ─────────────────────────────────────────────────────────
 
-  late final HttpClient _ioClient = () {
-    final client = HttpClient();
-    client.badCertificateCallback = (cert, host, port) => true;
-    client.connectionTimeout = const Duration(seconds: 30);
-    client.idleTimeout = const Duration(seconds: 30);
-    return client;
-  }();
-
-  /// Core HTTP request method.
-  /// - Follows redirects (301/302/307/308) manually.
-  /// - Retries on transient network errors with exponential backoff.
-  Future<http.Response> _request(
+  Future<_HttpResponse> _request(
     String method,
-    Uri uri, {
-    Map<String, String>? headers,
+    String urlOrPath, {
     String? body,
     Duration timeout = const Duration(seconds: 30),
     int maxRetries = 2,
   }) async {
-    Exception? lastError;
-
-    for (var attempt = 0; attempt <= maxRetries; attempt++) {
-      if (attempt > 0) {
-        final delay = Duration(milliseconds: 300 * (1 << (attempt - 1)));
-        debugPrint('[Jellyfin] Retry $attempt after ${delay.inMilliseconds}ms');
-        await Future.delayed(delay);
-      }
-
-      try {
-        return await _doRequest(method, uri, headers: headers, body: body, timeout: timeout);
-      } on SocketException catch (e) {
-        lastError = e;
-        debugPrint('[Jellyfin] Network error (attempt $attempt): $e');
-      } on HttpException catch (e) {
-        lastError = e;
-        debugPrint('[Jellyfin] HTTP error (attempt $attempt): $e');
-      } on TimeoutException catch (e) {
-        lastError = e as Exception;
-        debugPrint('[Jellyfin] Timeout (attempt $attempt): $e');
-      } on HandshakeException catch (e) {
-        lastError = e;
-        debugPrint('[Jellyfin] TLS error (attempt $attempt): $e');
-      }
+    if (_base.isEmpty) {
+      throw Exception('No active Jellyfin server');
     }
 
-    throw lastError ?? Exception('Request failed after retries');
-  }
+    final payload = <String, dynamic>{
+      'base_url': _base,
+      'method': method,
+      'path': urlOrPath,
+      'authorization': authHeaderValue,
+      'timeout_secs': timeout.inSeconds,
+      'max_retries': maxRetries,
+      if (body != null) 'body': body,
+    };
 
-  Future<http.Response> _doRequest(
-    String method,
-    Uri uri, {
-    Map<String, String>? headers,
-    String? body,
-    Duration timeout = const Duration(seconds: 30),
-  }) async {
-    var currentUri = uri;
-    const maxRedirects = 5;
-
-    for (var i = 0; i <= maxRedirects; i++) {
-      final ioReq = await _ioClient.openUrl(method, currentUri).timeout(timeout);
-      ioReq.followRedirects = false;
-
-      headers?.forEach((k, v) => ioReq.headers.set(k, v));
-
-      if (body != null && (method == 'POST' || method == 'PUT')) {
-        ioReq.write(body);
-      }
-
-      final ioResp = await ioReq.close().timeout(timeout);
-      final statusCode = ioResp.statusCode;
-
-      if (statusCode >= 300 && statusCode < 400) {
-        final location = ioResp.headers.value('location');
-        if (location == null) break;
-        await ioResp.drain<void>();
-        currentUri = Uri.parse(location);
-        continue;
-      }
-
-      final respBody = await ioResp.transform(utf8.decoder).join();
-      final respHeaders = <String, String>{};
-      ioResp.headers.forEach((name, values) {
-        respHeaders[name] = values.join(', ');
-      });
-
-      return http.Response(respBody, statusCode, headers: respHeaders);
+    final raw = RustLib.instance.jellyfinRequestJson(json.encode(payload));
+    final decoded = json.decode(raw) as Map<String, dynamic>;
+    if (decoded['error'] != null) {
+      throw Exception(decoded['error']);
     }
 
-    throw Exception('Too many redirects');
+    return _HttpResponse(
+      statusCode: decoded['status'] as int,
+      body: decoded['body'] as String? ?? '',
+    );
   }
 
-  Future<http.Response> _get(Uri uri, {Map<String, String>? headers, Duration timeout = const Duration(seconds: 30)}) =>
-      _request('GET', uri, headers: headers, timeout: timeout);
+  Future<_HttpResponse> _get(String urlOrPath, {Duration timeout = const Duration(seconds: 30)}) =>
+      _request('GET', urlOrPath, timeout: timeout);
 
-  Future<http.Response> _post(Uri uri, {Map<String, String>? headers, String? body, Duration timeout = const Duration(seconds: 30)}) =>
-      _request('POST', uri, headers: headers, body: body, timeout: timeout, maxRetries: 0);
+  Future<_HttpResponse> _post(String urlOrPath, {String? body, Duration timeout = const Duration(seconds: 30)}) =>
+      _request('POST', urlOrPath, body: body, timeout: timeout, maxRetries: 0);
 
-  Future<http.Response> _delete(Uri uri, {Map<String, String>? headers, Duration timeout = const Duration(seconds: 30)}) =>
-      _request('DELETE', uri, headers: headers, timeout: timeout, maxRetries: 0);
+  Future<_HttpResponse> _delete(String urlOrPath, {Duration timeout = const Duration(seconds: 30)}) =>
+      _request('DELETE', urlOrPath, timeout: timeout, maxRetries: 0);
 
   /// Cached GET — returns parsed JSON (already decoded) from cache or network.
   Future<dynamic> _cachedGet(String url, {Duration ttl = _mediumTtl}) async {
     final cached = _getFromCache<dynamic>(url);
     if (cached != null) return cached;
 
-    final resp = await _get(Uri.parse(url), headers: _authHeaders);
+    final resp = await _get(url);
     if (resp.statusCode != 200) throw Exception('GET $url failed (${resp.statusCode})');
 
     final data = json.decode(resp.body);
@@ -449,9 +397,7 @@ class JellyfinService {
       clearCache();
       if (_activeAccount!.accessToken != null) {
         try {
-          final resp = await _get(
-              Uri.parse('$_base/Users/Me'),
-              headers: _authHeaders);
+          final resp = await _get('/Users/Me');
           if (resp.statusCode == 200) {
             debugPrint('[Jellyfin] Restored session for ${_activeAccount!.username}');
             return true;
@@ -482,11 +428,7 @@ class JellyfinService {
     );
     clearCache();
 
-    final resp = await _post(
-      Uri.parse('$_base/Users/AuthenticateByName'),
-      headers: _authHeaders,
-      body: json.encode({'Username': username, 'Pw': password}),
-    );
+    final resp = await _post('$_base/Users/AuthenticateByName', body: json.encode({'Username': username, 'Pw': password}));
 
     if (resp.statusCode != 200) {
       _activeAccount = null;
@@ -542,7 +484,7 @@ class JellyfinService {
     final cached = _getFromCache<List<JellyfinItem>>(cacheKey);
     if (cached != null) return cached;
 
-    final resp = await _get(Uri.parse('$_base/UserViews?userId=$_userId'), headers: _authHeaders);
+    final resp = await _get('$_base/UserViews?userId=$_userId');
     if (resp.statusCode != 200) throw Exception('Failed to fetch libraries');
     final items = _parseItems(json.decode(resp.body));
     _putInCache(cacheKey, items, _longTtl);
@@ -619,7 +561,7 @@ class JellyfinService {
     // Use a longer timeout when fetching all items (no limit) — large
     // libraries can take the server a while to serialize.
     final timeout = limit == null ? const Duration(seconds: 60) : const Duration(seconds: 30);
-    final resp = await _get(Uri.parse(url), headers: _authHeaders, timeout: timeout);
+    final resp = await _get(url, timeout: timeout);
     if (resp.statusCode != 200) throw Exception('Failed to fetch items: ${resp.statusCode}');
     final data = json.decode(resp.body) as Map<String, dynamic>;
     final items = _parseItems(data);
@@ -923,12 +865,9 @@ class JellyfinService {
   Future<Map<String, String>?> getPlaybackInfo(String itemId,
       {int startTimeTicks = 0, bool forceTranscode = false}) async {
     try {
-      final resp = await _post(
-        Uri.parse('$_base/Items/$itemId/PlaybackInfo?userId=$_userId'
+      final resp = await _post('$_base/Items/$itemId/PlaybackInfo?userId=$_userId'
             '&StartTimeTicks=$startTimeTicks&isPlayback=true&autoOpenLiveStream=true'
-            '&maxStreamingBitrate=150000000'),
-        headers: _authHeaders,
-        body: json.encode({
+            '&maxStreamingBitrate=150000000', body: json.encode({
           'DeviceProfile': _buildDeviceProfile(),
           'UserId': _userId,
           'EnableDirectPlay': !forceTranscode,
@@ -936,8 +875,7 @@ class JellyfinService {
           'EnableTranscoding': true,
           'AllowVideoStreamCopy': true,
           'AllowAudioStreamCopy': true,
-        }),
-      );
+        }));
 
       if (resp.statusCode != 200) {
         debugPrint('[Jellyfin] PlaybackInfo error: ${resp.statusCode}');
@@ -1175,8 +1113,7 @@ class JellyfinService {
 
   Future<bool> _validateStreamUrl(String url) async {
     try {
-      final resp = await _request('HEAD', Uri.parse(url),
-          headers: _authHeaders, timeout: const Duration(seconds: 8), maxRetries: 0);
+      final resp = await _request('HEAD', url, timeout: const Duration(seconds: 8), maxRetries: 0);
       if (resp.statusCode >= 400) {
         debugPrint('[Jellyfin] Stream validation failed: ${resp.statusCode}');
         return false;
@@ -1220,18 +1157,14 @@ class JellyfinService {
 
   Future<void> reportPlaybackStart(String itemId) async {
     try {
-      await _post(
-        Uri.parse('$_base/Sessions/Playing'),
-        headers: _authHeaders,
-        body: json.encode({
+      await _post('$_base/Sessions/Playing', body: json.encode({
           'ItemId': itemId,
           'MediaSourceId': _lastMediaSourceId.isNotEmpty ? _lastMediaSourceId : itemId,
           'PlaySessionId': _lastPlaySessionId,
           'PlayMethod': _lastPlayMethod,
           'CanSeek': true,
           'RepeatMode': 'RepeatNone',
-        }),
-      );
+        }));
     } catch (e) {
       debugPrint('[Jellyfin] Report start error: $e');
     }
@@ -1239,10 +1172,7 @@ class JellyfinService {
 
   Future<void> reportPlaybackProgress(String itemId, int positionTicks, {bool isPaused = false}) async {
     try {
-      await _post(
-        Uri.parse('$_base/Sessions/Playing/Progress'),
-        headers: _authHeaders,
-        body: json.encode({
+      await _post('$_base/Sessions/Playing/Progress', body: json.encode({
           'ItemId': itemId,
           'MediaSourceId': _lastMediaSourceId.isNotEmpty ? _lastMediaSourceId : itemId,
           'PlaySessionId': _lastPlaySessionId,
@@ -1251,8 +1181,7 @@ class JellyfinService {
           'PlayMethod': _lastPlayMethod,
           'RepeatMode': 'RepeatNone',
           'CanSeek': true,
-        }),
-      );
+        }));
     } catch (e) {
       debugPrint('[Jellyfin] Report progress error: $e');
     }
@@ -1260,17 +1189,13 @@ class JellyfinService {
 
   Future<void> reportPlaybackStopped(String itemId, int positionTicks) async {
     try {
-      await _post(
-        Uri.parse('$_base/Sessions/Playing/Stopped'),
-        headers: _authHeaders,
-        body: json.encode({
+      await _post('$_base/Sessions/Playing/Stopped', body: json.encode({
           'ItemId': itemId,
           'MediaSourceId': _lastMediaSourceId.isNotEmpty ? _lastMediaSourceId : itemId,
           'PlaySessionId': _lastPlaySessionId,
           'PositionTicks': positionTicks,
           'PlayMethod': _lastPlayMethod,
-        }),
-      );
+        }));
     } catch (e) {
       debugPrint('[Jellyfin] Report stop error: $e');
     }
@@ -1278,7 +1203,7 @@ class JellyfinService {
 
   Future<void> markPlayed(String itemId) async {
     try {
-      await _post(Uri.parse('$_base/UserPlayedItems/$itemId?userId=$_userId'), headers: _authHeaders);
+      await _post('$_base/UserPlayedItems/$itemId?userId=$_userId');
       _invalidateItem(itemId);
     } catch (e) {
       debugPrint('[Jellyfin] Mark played error: $e');
@@ -1287,7 +1212,7 @@ class JellyfinService {
 
   Future<void> markUnplayed(String itemId) async {
     try {
-      await _delete(Uri.parse('$_base/UserPlayedItems/$itemId?userId=$_userId'), headers: _authHeaders);
+      await _delete('$_base/UserPlayedItems/$itemId?userId=$_userId');
       _invalidateItem(itemId);
     } catch (e) {
       debugPrint('[Jellyfin] Mark unplayed error: $e');
@@ -1297,9 +1222,9 @@ class JellyfinService {
   Future<void> toggleFavorite(String itemId, bool isFavorite) async {
     try {
       if (isFavorite) {
-        await _delete(Uri.parse('$_base/UserFavoriteItems/$itemId?userId=$_userId'), headers: _authHeaders);
+        await _delete('$_base/UserFavoriteItems/$itemId?userId=$_userId');
       } else {
-        await _post(Uri.parse('$_base/UserFavoriteItems/$itemId?userId=$_userId'), headers: _authHeaders);
+        await _post('$_base/UserFavoriteItems/$itemId?userId=$_userId');
       }
       _invalidateItem(itemId);
     } catch (e) {

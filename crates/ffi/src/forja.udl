@@ -31,6 +31,7 @@ namespace forja {
     string stremio_http_get_json(string url, u64 timeout_secs);
     string tmdb_get_json(string resource_path, u64 timeout_secs);
     string trakt_request_json(string request_json);
+    string jellyfin_request_json(string request_json);
     string parse_knaben_html_json(string html);
     string parse_tpb_html_json(string html);
     string parse_uindex_html_json(string html);

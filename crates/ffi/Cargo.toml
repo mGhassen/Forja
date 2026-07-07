@@ -31,6 +31,7 @@ proxy = { path = "../proxy", optional = true }
 storage = { path = "../storage" }
 tmdb-core = { path = "../tmdb-core" }
 trakt-core = { path = "../trakt-core" }
+jellyfin-core = { path = "../jellyfin-core" }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

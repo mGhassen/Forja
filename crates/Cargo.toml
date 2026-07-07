@@ -13,6 +13,7 @@ members = [
     "storage",
     "tmdb-core",
     "trakt-core",
+    "jellyfin-core",
 ]
 
 [workspace.package]

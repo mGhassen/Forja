@@ -230,6 +230,11 @@ fn trakt_request_json(request_json: String) -> String {
     trakt_core::request_json(&request_json)
 }
 
+fn jellyfin_request_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    jellyfin_core::request_json(&request_json)
+}
+
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {
     build_resource_url(&addon_url, &resource_path)
 }

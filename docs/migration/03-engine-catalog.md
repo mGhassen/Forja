@@ -35,7 +35,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 |--:|----|-------------|--------|
 | 1 | P3-00 | Delete `packages/kotlin/` + `scripts/generate_kotlin_ffi.sh` references (Compose cancelled) | ✅ |
 | 2 | P3-01 | Port TMDB/Trakt core to `crates/*` | ✅ |
-| 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | ⬜ |
+| 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | 🔄 |
 | 4 | P3-03 | Delete `packages/api` | ⬜ |
 | 5 | P3-04 | Architecture normalized sign-off | ⬜ |
 
@@ -84,7 +84,7 @@ flowchart LR
 |----------|------------------|--------------|
 | TMDB | `packages/api` | `crates/tmdb-core` ✅ |
 | Trakt | `packages/api` | `crates/trakt-core` ✅ |
-| Jellyfin | `packages/api` | `crates/*` |
+| Jellyfin | `packages/api` | `crates/jellyfin-core` 🔄 |
 | Anime, manga, music, Arabic | `packages/api` | `crates/*` per vertical |
 
 ### `packages/` after wave 2
@@ -128,7 +128,7 @@ packages/api/
 ```bash
 ./scripts/build_rust.sh
 cd crates && cargo test --workspace
-cd packages/rust && flutter test test/parity/tmdb_test.dart test/parity/trakt_test.dart
+cd packages/rust && flutter test test/parity/tmdb_test.dart test/parity/trakt_test.dart test/parity/jellyfin_test.dart
 
 # After each vertical port — grep for deleted Dart slice:
 rg "packages/api/lib/api/<vertical>" apps/forja packages/rust
