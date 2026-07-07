@@ -12,6 +12,7 @@ members = [
     "proxy",
     "storage",
     "tmdb-core",
+    "trakt-core",
 ]
 
 [workspace.package]

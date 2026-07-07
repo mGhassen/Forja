@@ -293,6 +293,11 @@ class RustLib {
         return _readString(_native.ffi_tmdb_get_json(ptr, timeoutSecs));
       });
 
+  String traktRequestJson(String requestJson) => using((arena) {
+        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_trakt_request_json(ptr));
+      });
+
   String parseKnabenHtmlJson(String html) => using((arena) {
         final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_parse_knaben_html_json(ptr));
@@ -739,6 +744,11 @@ final class _FfiNative {
               'ffi_tmdb_get_json',
             )
             .asFunction(),
+        ffi_trakt_request_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_trakt_request_json',
+            )
+            .asFunction(),
         ffi_parse_knaben_html_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_parse_knaben_html_json',
@@ -1013,6 +1023,8 @@ final class _FfiNative {
       ffi_iptv_probe_stream_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
       ffi_tmdb_get_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_trakt_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_parse_knaben_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

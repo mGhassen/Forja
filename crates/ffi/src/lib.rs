@@ -225,6 +225,11 @@ fn tmdb_get_json(resource_path: String, timeout_secs: u64) -> String {
     tmdb_core::get_json(&resource_path, timeout_secs)
 }
 
+fn trakt_request_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    trakt_core::request_json(&request_json)
+}
+
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {
     build_resource_url(&addon_url, &resource_path)
 }

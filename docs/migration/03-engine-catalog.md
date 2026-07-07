@@ -1,6 +1,6 @@
 # Phase 3 — Catalog engine (wave 2)
 
-**Status:** 1 / 5 tasks — P3-01 in progress  
+**Status:** 2 / 5 tasks — P3-02 next  
 **Depends on:** [Playback engine exit checklist](./02-rust-engine-complete.md#playback-engine-exit-checklist) ✅  
 **Next phase:** [Phase 4 — Web client](./04-web-client.md) (parallel)  
 **Migration index:** [README.md](./README.md)  
@@ -21,7 +21,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 
 | | |
 |--|--|
-| **Progress** | **1 / 5 tasks** — P3-01 in progress |
+| **Progress** | **2 / 5 tasks** — P3-02 next |
 | **Blocked by** | — |
 | **Deferred from wave 1** | P2-89 (Stremio catalog service) |
 
@@ -34,7 +34,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | P3-00 | Delete `packages/kotlin/` + `scripts/generate_kotlin_ffi.sh` references (Compose cancelled) | ✅ |
-| 2 | P3-01 | Port TMDB/Trakt core to `crates/*` | 🔄 |
+| 2 | P3-01 | Port TMDB/Trakt core to `crates/*` | ✅ |
 | 3 | P3-02 | Port verticals incrementally (anime, manga, jellyfin, music, Arabic, …) | ⬜ |
 | 4 | P3-03 | Delete `packages/api` | ⬜ |
 | 5 | P3-04 | Architecture normalized sign-off | ⬜ |
@@ -82,8 +82,8 @@ flowchart LR
 
 | Vertical | Current location | Target crate |
 |----------|------------------|--------------|
-| TMDB | `packages/api` | `crates/tmdb-core` 🔄 |
-| Trakt | `packages/api` | `crates/*` (TBD) |
+| TMDB | `packages/api` | `crates/tmdb-core` ✅ |
+| Trakt | `packages/api` | `crates/trakt-core` ✅ |
 | Jellyfin | `packages/api` | `crates/*` |
 | Anime, manga, music, Arabic | `packages/api` | `crates/*` per vertical |
 
@@ -128,7 +128,7 @@ packages/api/
 ```bash
 ./scripts/build_rust.sh
 cd crates && cargo test --workspace
-cd packages/rust && flutter test test/parity/tmdb_test.dart
+cd packages/rust && flutter test test/parity/tmdb_test.dart test/parity/trakt_test.dart
 
 # After each vertical port — grep for deleted Dart slice:
 rg "packages/api/lib/api/<vertical>" apps/forja packages/rust
