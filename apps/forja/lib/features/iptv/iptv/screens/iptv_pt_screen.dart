@@ -8,6 +8,8 @@ import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
@@ -30,15 +32,28 @@ class IptvPtScreen extends StatefulWidget {
   State<IptvPtScreen> createState() => _IptvPtScreenState();
 }
 
-class _IptvPtScreenState extends State<IptvPtScreen> {
+class _IptvPtScreenState extends State<IptvPtScreen> with ShellTabRefresh<IptvPtScreen> {
   late final IptvController _ctrl;
+
+  @override
+  Duration get shellStaleAfter => ShellTokens.tabStaleIptv;
+
+  @override
+  bool get shellBlocksEviction => _ctrl.view != IptvView.portalList;
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {
+    await _ctrl.init();
+  }
 
   @override
   void initState() {
     super.initState();
     _ctrl = IptvController();
     _ctrl.addListener(_syncShellNav);
-    _ctrl.init();
+    _ctrl.init().then((_) {
+      if (mounted) markShellTabFresh();
+    });
   }
 
   void _syncShellNav() {

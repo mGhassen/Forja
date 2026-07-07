@@ -11,7 +11,7 @@
 |--|--|
 | **Progress** | **5 / 5** acceptance (mount) |
 | **Current slice** | Complete — eviction/stale in RFC-024 |
-| **Backlog** | — (mount); eviction/stale → [RFC-024](024-[partial]-tab-cache-eviction-stale.md) · [0.8.2](../backlog/0.8.2-[open].md) |
+| **Backlog** | — (mount); eviction/stale → [RFC-024](024-[partial]-tab-cache-eviction-stale.md) · [0.8.2](../backlog/done/0.8.2-[done].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -137,4 +137,4 @@ Measure with Flutter DevTools memory snapshot before/after; log `[MainScreen] Bu
 
 ## Related
 
-RFC-011, RFC-017 (defer engines — complementary), RFC-001 (shell owns nav), [RFC-024](024-[partial]-tab-cache-eviction-stale.md) (eviction + stale), [0.8.2 backlog](../backlog/0.8.2-[open].md)
+RFC-011, RFC-017 (defer engines — complementary), RFC-001 (shell owns nav), [RFC-024](024-[partial]-tab-cache-eviction-stale.md) (eviction + stale), [0.8.2 backlog](../backlog/done/0.8.2-[done].md)

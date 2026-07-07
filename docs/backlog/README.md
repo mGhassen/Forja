@@ -38,7 +38,6 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | File | Codename | Status |
 |------|----------|--------|
-| [0.8.2-[open].md](0.8.2-[open].md) | — | open |
 | [1.0.0-[draft].md](1.0.0-[draft].md) | Bab Souika | draft |
 
 ## Done — v0 master index
@@ -75,7 +74,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | [0.7.0](done/0.7.0-[done].md) | Halfaouine | — | — | index |
 | [0.8.0](done/0.8.0-[done].md) | Sidi Bou Said | 023† | — | — |
 | [0.8.1](done/0.8.1-[done].md) | — | 023† | — | — |
-| [0.8.2](0.8.2-[open].md) | — | 016†, 024 | — | — |
+| [0.8.2](done/0.8.2-[done].md) | — | 016†, 024 | — | — |
 
 ## Active — v1
 

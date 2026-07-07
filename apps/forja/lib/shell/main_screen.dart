@@ -4,9 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/features/audiobooks/audiobook_screen.dart';
+import 'package:forja/features/discover/discover_screen.dart';
 import 'package:forja/features/home/home_screen.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_pt_screen.dart';
+import 'package:forja/features/jellyfin/jellyfin_screen.dart';
+import 'package:forja/features/music/music_screen.dart';
 import 'package:forja/features/my_list/my_list_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
+import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_scaffold.dart';
@@ -34,9 +39,32 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Timer? _metricsSafety;
 
   final GlobalKey<SearchScreenState> _searchKey = GlobalKey<SearchScreenState>();
-  final GlobalKey<State<StatefulWidget>> _homeKey = GlobalKey<State<StatefulWidget>>();
-  final GlobalKey<State<StatefulWidget>> _audiobooksKey = GlobalKey<State<StatefulWidget>>();
-  final GlobalKey<State<StatefulWidget>> _mylistKey = GlobalKey<State<StatefulWidget>>();
+  final Map<String, GlobalKey<State<StatefulWidget>>> _tabKeys = {
+    'home': GlobalKey<State<StatefulWidget>>(),
+    'audiobooks': GlobalKey<State<StatefulWidget>>(),
+    'mylist': GlobalKey<State<StatefulWidget>>(),
+    'discover': GlobalKey<State<StatefulWidget>>(),
+    'iptv': GlobalKey<State<StatefulWidget>>(),
+    'music': GlobalKey<State<StatefulWidget>>(),
+    'jellyfin': GlobalKey<State<StatefulWidget>>(),
+  };
+
+  GlobalKey<State<StatefulWidget>>? _keyForTab(String id) {
+    if (id == 'search') return null;
+    return _tabKeys[id];
+  }
+
+  ShellTabRefresh? _refreshStateFor(String id) {
+    final state = id == 'search'
+        ? _searchKey.currentState
+        : _keyForTab(id)?.currentState;
+    return state is ShellTabRefresh ? state : null;
+  }
+
+  bool _tabBlocksEviction(String id) {
+    if (id == 'music' && MusicPlayerService().isPlaying.value) return true;
+    return _refreshStateFor(id)?.shellBlocksEviction ?? false;
+  }
 
   final Map<String, Widget> _tabCache = {};
   final Set<String> _mountedTabIds = {'home'};
@@ -55,16 +83,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       if (id == 'search') {
         return SearchScreen(key: _searchKey);
       }
-      if (id == 'home') {
-        return HomeScreen(key: _homeKey);
-      }
-      if (id == 'audiobooks') {
-        return AudiobookScreen(key: _audiobooksKey);
-      }
-      if (id == 'mylist') {
-        return MyListScreen(key: _mylistKey);
-      }
-      return navTabBuilders[id]!();
+      final key = _keyForTab(id);
+      return switch (id) {
+        'home' => HomeScreen(key: key),
+        'audiobooks' => AudiobookScreen(key: key),
+        'mylist' => MyListScreen(key: key),
+        'discover' => DiscoverScreen(key: key),
+        'iptv' => IptvPtScreen(key: key),
+        'music' => MusicScreen(key: key),
+        'jellyfin' => JellyfinScreen(key: key),
+        _ => navTabBuilders[id]!(),
+      };
     });
     if (isNew && kDebugMode) {
       debugPrint('[MainScreen] Built tab: $id');
@@ -106,7 +135,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       final current = _currentTabId;
       String? victim;
       for (final id in _tabLru) {
-        if (id != 'home' && id != current) {
+        if (id != 'home' && id != current && !_tabBlocksEviction(id)) {
           victim = id;
           break;
         }
@@ -117,15 +146,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   void _refreshTabIfStale(String id, {bool force = false}) {
-    final GlobalKey<State<StatefulWidget>>? key = switch (id) {
-      'home' => _homeKey,
-      'audiobooks' => _audiobooksKey,
-      'mylist' => _mylistKey,
-      _ => null,
-    };
-    final state = key?.currentState;
-    if (state is ShellTabRefresh) {
-      unawaited(state.refreshIfStale(force: force));
+    final refresh = _refreshStateFor(id);
+    if (refresh != null) {
+      unawaited(refresh.refreshIfStale(force: force));
     }
   }
 

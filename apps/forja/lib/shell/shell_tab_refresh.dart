@@ -12,6 +12,9 @@ mixin ShellTabRefresh<T extends StatefulWidget> on State<T> {
   /// Fetch fresh data. Called when stale or [force] is true.
   Future<void> onShellTabRefresh({required bool force});
 
+  /// When true, [MainScreen] skips LRU eviction for this tab (e.g. playback active).
+  bool get shellBlocksEviction => false;
+
   void markShellTabFresh() {
     _lastShellRefreshAt = DateTime.now();
   }

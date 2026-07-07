@@ -2,7 +2,7 @@
 
 **Version:** v0.8.x  
 **Status:** partial  
-**Target version:** [0.8.2](../backlog/0.8.2-[open].md)  
+**Target version:** [0.8.2](../backlog/done/0.8.2-[done].md) *(shipped)*  
 **Depends on:** [RFC-016](016-[partial]-lazy-tab-mounting.md) (lazy mount)  
 **Area:** `apps/forja/lib/shell/`, tab feature roots
 
@@ -10,9 +10,9 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 16** acceptance · **0 / 1** busy guards deferred |
-| **Current slice** | Per-tab stale refresh (screen-by-screen) |
-| **Backlog** | [0.8.2](../backlog/0.8.2-[open].md) |
+| **Progress** | **15 / 16** acceptance · **1** deferred |
+| **Current slice** | R24-A04 global busy registry — deferred |
+| **Backlog** | — |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -49,9 +49,9 @@
 | 11 | R24-A11 | Search | Query-driven only — no auto stale refetch | ✅ |
 | 12 | R24-A12 | My List | Event-driven via `MyListService`; optional focus refresh | ✅ |
 | 13 | R24-A13 | Settings | Local prefs only — no API stale policy | ✅ |
-| 14 | R24-A14 | IPTV / Discover | `ShellTabRefresh` + busy guard before evict | ⬜ |
-| 15 | R24-A15 | Music | `ShellTabRefresh` + busy guard (playback) | ⬜ |
-| 16 | R24-A16 | Jellyfin | `ShellTabRefresh` on focus | ⬜ |
+| 14 | R24-A14 | IPTV / Discover | `ShellTabRefresh` + IPTV `shellBlocksEviction` when deep | ✅ |
+| 15 | R24-A15 | Music | `ShellTabRefresh` + playback eviction guard | ✅ |
+| 16 | R24-A16 | Jellyfin | `ShellTabRefresh` on focus | ✅ |
 
 ---
 
@@ -88,7 +88,7 @@ After RFC-016 mount shipped, `_mountedTabIds` only grew and `_tabCache` never cl
 | Search | — | No (query-driven) |
 | My List | event | Optional on focus |
 | Settings | — | No |
-| IPTV / Music / Jellyfin | TBD | Yes when implemented |
+| IPTV / Music / Jellyfin | 10–15m | Yes |
 
 ## Non-goals
 
@@ -98,4 +98,4 @@ After RFC-016 mount shipped, `_mountedTabIds` only grew and `_tabCache` never cl
 
 ## Related
 
-RFC-016, RFC-023, RFC-018 (Home stagger), [0.8.2 backlog](../backlog/0.8.2-[open].md)
+RFC-016, RFC-023, RFC-018 (Home stagger), [0.8.2 backlog](../backlog/done/0.8.2-[done].md)

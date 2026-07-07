@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/features/jellyfin/catalog/jellyfin_service.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'jellyfin_details_screen.dart';
 
 // ─── Jellyfin Palette ────────────────────────────────────────────────────────
@@ -60,7 +62,7 @@ class JellyfinScreen extends StatefulWidget {
 }
 
 class _JellyfinScreenState extends State<JellyfinScreen>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, ShellTabRefresh<JellyfinScreen> {
   final JellyfinService _jf = JellyfinService();
 
   bool _isLoading = true;
@@ -114,9 +116,24 @@ class _JellyfinScreenState extends State<JellyfinScreen>
   bool get wantKeepAlive => true;
 
   @override
+  Duration get shellStaleAfter => ShellTokens.tabStaleJellyfin;
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {
+    if (_isLoggedIn) {
+      await _loadHomeData();
+      if (mounted) setState(() {});
+    } else {
+      await _init();
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
-    _init();
+    _init().then((_) {
+      if (mounted) markShellTabFresh();
+    });
   }
 
   @override

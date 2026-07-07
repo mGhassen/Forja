@@ -22,6 +22,24 @@ class _StaleProbeState extends State<_StaleProbe> with ShellTabRefresh<_StalePro
   }
 
   @override
+  bool get shellBlocksEviction => true;
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+class _EvictProbe extends StatefulWidget {
+  const _EvictProbe();
+
+  @override
+  State<_EvictProbe> createState() => _EvictProbeState();
+}
+
+class _EvictProbeState extends State<_EvictProbe> with ShellTabRefresh<_EvictProbe> {
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {}
+
+  @override
   Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
@@ -38,5 +56,18 @@ void main() {
   test('ShellTokens maxMountedTabs is defined', () {
     expect(ShellTokens.maxMountedTabs, greaterThanOrEqualTo(3));
     expect(ShellTokens.tabStaleDefault.inMinutes, 15);
+    expect(ShellTokens.tabStaleIptv.inMinutes, 10);
+  });
+
+  testWidgets('ShellTabRefresh shellBlocksEviction defaults false', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: _EvictProbe()));
+    final state = tester.state<_EvictProbeState>(find.byType(_EvictProbe));
+    expect(state.shellBlocksEviction, isFalse);
+  });
+
+  testWidgets('ShellTabRefresh shellBlocksEviction can override', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: _StaleProbe()));
+    final state = tester.state<_StaleProbeState>(find.byType(_StaleProbe));
+    expect(state.shellBlocksEviction, isTrue);
   });
 }

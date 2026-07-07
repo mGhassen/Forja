@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shared/audio/music_storage_service.dart';
 import 'package:forja/shared/audio/music_downloader_service.dart';
@@ -22,7 +23,8 @@ class MusicScreen extends StatefulWidget {
 
 enum MusicView { main, playlists, albums, liked, downloaded, search, playlistDetail, albumDetail }
 
-class _MusicScreenState extends State<MusicScreen> with WidgetsBindingObserver, TickerProviderStateMixin {
+class _MusicScreenState extends State<MusicScreen>
+    with WidgetsBindingObserver, TickerProviderStateMixin, ShellTabRefresh<MusicScreen> {
   final MusicService _musicService = MusicService();
   final MusicPlayerService _playerService = MusicPlayerService();
   final MusicStorageService _storageService = MusicStorageService();
@@ -61,11 +63,25 @@ class _MusicScreenState extends State<MusicScreen> with WidgetsBindingObserver, 
       MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
 
   @override
+  Duration get shellStaleAfter => ShellTokens.tabStaleMusic;
+
+  @override
+  bool get shellBlocksEviction => _playerService.isPlaying.value;
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {
+    _currentMusicOffset = 0;
+    await _loadUserData();
+    await _loadTrendingTracks();
+  }
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     _loadTrendingTracks();
+    markShellTabFresh();
   }
 
   @override

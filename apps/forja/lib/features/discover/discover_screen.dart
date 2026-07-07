@@ -3,6 +3,8 @@ import 'package:rust/rust.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class DiscoverScreen extends StatefulWidget {
@@ -12,7 +14,8 @@ class DiscoverScreen extends StatefulWidget {
   State<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
-class _DiscoverScreenState extends State<DiscoverScreen> with AutomaticKeepAliveClientMixin {
+class _DiscoverScreenState extends State<DiscoverScreen>
+    with AutomaticKeepAliveClientMixin, ShellTabRefresh<DiscoverScreen> {
   final TmdbApi _api = TmdbApi();
   final ScrollController _scrollController = ScrollController();
   
@@ -71,10 +74,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> with AutomaticKeepAlive
   bool get wantKeepAlive => true;
 
   @override
+  Duration get shellStaleAfter => ShellTokens.tabStaleDiscover;
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {
+    _currentPage = 1;
+    await _loadData();
+  }
+
+  @override
   void initState() {
     super.initState();
     _loadGenres();
     _loadData();
+    markShellTabFresh();
   }
 
   Future<void> _loadGenres() async {
