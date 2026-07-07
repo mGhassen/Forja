@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:rust/rust.dart';
-import 'package:api/api/tmdb_api.dart';
 import 'package:api/playback/playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:api/api/debrid_api.dart';

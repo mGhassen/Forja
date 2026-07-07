@@ -1,6 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:media_kit/media_kit.dart' as mk;
-import 'music_player_service.dart';
+import 'package:forja/shared/audio/music_player_service.dart';
 
 enum AudioPlayerType { music, audiobook }
 

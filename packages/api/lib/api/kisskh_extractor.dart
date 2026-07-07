@@ -25,7 +25,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:rust/rust.dart';
 import 'kisskh_service.dart';
-import 'kisskh_subtitle_decryptor.dart';
 
 class KissKhStream {
   final String url;

@@ -7,7 +7,6 @@ import 'package:flutter/rendering.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:api/api/tmdb_api.dart';
 import 'package:api/api/bestsimilar_scraper.dart';
 import 'package:api/api/stremio_service.dart';
 import 'package:api/api/stream_extractor.dart';

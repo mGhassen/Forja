@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'music_service.dart';
+import 'package:api/api/music_service.dart';
 
 class MusicPlaylist {
   final String name;

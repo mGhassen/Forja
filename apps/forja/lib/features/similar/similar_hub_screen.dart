@@ -17,7 +17,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:api/api/bestsimilar_scraper.dart';
-import 'package:api/api/tmdb_api.dart';
 import 'package:rust/rust.dart';
 import 'similar_results_screen.dart';
 

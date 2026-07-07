@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:api/api/audiobook_service.dart';
-import 'package:api/api/audiobook_player_service.dart';
+import 'package:forja/shared/audio/audiobook_player_service.dart';
 import 'package:api/api/audiobook_download_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

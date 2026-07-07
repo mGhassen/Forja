@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'music_service.dart';
+import 'package:api/api/music_service.dart';
 
 import 'package:rust/rust.dart';
 

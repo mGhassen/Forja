@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:api/api/trakt_service.dart';
 import 'package:rust/rust.dart';
-import 'package:api/api/tmdb_api.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

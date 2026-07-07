@@ -27,6 +27,8 @@ Phase 3 task P3-03 cannot delete `packages/api` wholesale yet. Catalog HTTP was 
 | Playback glue relocated | 11 playback modules + `webstreamr_settings` → `packages/rust`; `stremio_stream_resolver` remains in `api` (needs `debrid_api`) |
 | Catalog metadata relocated | `introdb`, `mdblist`, `subtitlecat`, `mysubs`, `tmdb_service`, `paper2audio` → `packages/rust/lib/src/catalog/` |
 | Host player/audiobook utils | `track_auto_select`, `epub_cover`, `epub_splitter` → `apps/forja` |
+| Music/audio host cluster | `audio_handler`, `music_player_service`, `audiobook_player_service`, `music_storage`, `music_downloader`, `lyrics_service` → `apps/forja/lib/shared/audio/` |
+| TMDB API + KissKh subtitle decrypt | `tmdb_api`, `kisskh_subtitle_decryptor` → `packages/rust/lib/src/catalog/` |
 | Call sites import `package:rust/rust.dart` | `packages/api/lib/api/*` (26 files) |
 
 ## Blockers to full delete

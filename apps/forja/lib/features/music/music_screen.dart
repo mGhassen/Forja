@@ -6,9 +6,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:api/api/music_service.dart';
-import 'package:api/api/music_player_service.dart';
-import 'package:api/api/music_storage_service.dart';
-import 'package:api/api/music_downloader_service.dart';
+import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:forja/shared/audio/music_storage_service.dart';
+import 'package:forja/shared/audio/music_downloader_service.dart';
 import 'music_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 

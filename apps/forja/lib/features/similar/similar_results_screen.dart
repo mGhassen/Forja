@@ -17,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'package:api/api/bestsimilar_scraper.dart';
-import 'package:api/api/tmdb_api.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
 

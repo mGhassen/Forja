@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'audiobook_service.dart';
-import 'audio_handler.dart';
+import 'package:api/api/audiobook_service.dart';
+import 'package:forja/shared/audio/audio_handler.dart';
 
 class AudiobookPlayerService {
   static final AudiobookPlayerService _instance = AudiobookPlayerService._internal();

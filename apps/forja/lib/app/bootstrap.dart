@@ -10,13 +10,12 @@ import 'package:audio_service/audio_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:api/api/audio_handler.dart';
-import 'package:api/api/audiobook_player_service.dart';
+import 'package:forja/shared/audio/audio_handler.dart';
+import 'package:forja/shared/audio/audiobook_player_service.dart';
 import 'package:rust/rust.dart';
 import 'package:api/playback/playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:api/api/tmdb_api.dart';
-import 'package:api/api/music_player_service.dart';
+import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/services/tracker_sync.dart';
 import 'package:forja/shared/services/player_pool_service.dart';

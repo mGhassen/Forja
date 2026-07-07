@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:rust/rust.dart';
 import 'package:api/api/audiobook_service.dart';
-import 'package:api/api/music_player_service.dart';
+import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shared/utils/epub_splitter.dart';
 import 'package:forja/shared/utils/epub_cover.dart';
 import 'audiobook_player_screen.dart';
