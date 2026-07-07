@@ -4,7 +4,7 @@ Canonical rules for what lives in **Rust engine (`crates/*`)**, **Flutter host (
 
 **Status:** Locked (2026-07-06). Grounded in [INVENTORY.md](INVENTORY.md).
 
-**Migration execution:** [migration/README.md](migration/README.md) · [Wave 1 — playback](./migration/02-rust-engine-complete.md) · [Wave 2 — catalog](./migration/03-engine-catalog.md)
+**Migration execution:** [migration/README.md](migration/README.md) · [Wave 1 — playback](./migration/fixed/02-[fixed]-rust-engine-complete.md) · [Wave 2 — catalog](./migration/fixed/03-[fixed]-engine-catalog.md)
 
 ---
 
@@ -181,4 +181,4 @@ The Rust proxy receives a **resolved file URL** only. Cloudflare backoff is not 
 | [INVENTORY.md](INVENTORY.md) | As-built facts |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Target architecture |
 | [migration/README.md](migration/README.md) | Phase plan |
-| [RFC-009](rfc/009-rust-ffi.md) | FFI spec |
+| [RFC-009](rfc/fixed/009-[fixed]-rust-ffi.md) | FFI spec |

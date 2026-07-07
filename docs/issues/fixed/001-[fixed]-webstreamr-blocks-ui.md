@@ -2,7 +2,7 @@
 
 **Priority:** P1  
 **Severity:** High  
-**Tracked:** P2-91 ([Phase 2 task](../migration/02-rust-engine-complete.md))  
+**Tracked:** P2-91 ([Phase 2 task](../migration/fixed/02-[fixed]-rust-engine-complete.md))  
 **Status:** fixed (2026-07-06) — [EngineWorkerPool](../../packages/rust/lib/src/engine_worker.dart) + async Rust ([015](015-[fixed]-rust-blocking-http-engine-debt.md))  
 **Root fix:** [015](015-[fixed]-rust-blocking-http-engine-debt.md)  
 **Area:** `packages/api/lib/playback/webstreamr_service.dart`, `packages/rust/lib/src/isolate_runner.dart`, `crates/webstreamr`  

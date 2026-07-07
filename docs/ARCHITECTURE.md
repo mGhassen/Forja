@@ -2,9 +2,9 @@
 
 Technical architecture reference for the Forja engine and monorepo.
 
-**Status:** v1.0 shipped on macOS. **Phase 2 playback complete** — [Phase 3 catalog](migration/03-engine-catalog.md) active.
+**Status:** v1.0 shipped on macOS. **Phases 1–3 engine migration complete** — [migration index](migration/README.md).
 
-**Companion docs:** [DEVELOPMENT.md](DEVELOPMENT.md) (build/run) · [features/README.md](features/README.md) (user guide) · [INVENTORY.md](INVENTORY.md) (as-built facts) · [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) (boundary decisions) · [migration/README.md](migration/README.md) (phases) · [RFC-009](rfc/009-rust-ffi.md) (FFI spec)
+**Companion docs:** [DEVELOPMENT.md](DEVELOPMENT.md) (build/run) · [features/README.md](features/README.md) (user guide) · [INVENTORY.md](INVENTORY.md) (as-built facts) · [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) (boundary decisions) · [migration/README.md](migration/README.md) (phases) · [RFC-009](rfc/fixed/009-[fixed]-rust-ffi.md) (FFI spec)
 
 ---
 
@@ -18,10 +18,9 @@ Forja is a **GPL-2.0 melos monorepo**: one cross-platform Flutter product (`apps
 
 | Concern | Owner |
 |---------|-------|
-| Engine (playback, catalog, storage, proxy, scrape) | `crates/*` |
-| Legacy engine (`packages/api`, etc.) | Transitional — port to `crates/*` |
-| WebView, Nuvio, WASM, player, OAuth | Host (`apps/forja`) |
-| Widgets, navigation, theme | Host (`apps/forja`) |
+| Engine (playback, catalog APIs, storage, proxy, scrape) | `crates/*` |
+| C2 vertical scrape + C3–C5 hosts (WebView, Nuvio, WASM) | `apps/forja` (until ported) |
+| Widgets, navigation, theme, OAuth | Host (`apps/forja`) |
 | FFI bridge | `packages/rust` (permanent) |
 
 ### Target end-state
@@ -49,10 +48,9 @@ Normalized end state: only `packages/rust` under `packages/`. All engine logic i
 ```
 ┌─────────────────────────────────────┐
 │  apps/forja — widgets, nav, player  │
+│  C2/C3 vertical hosts, OAuth        │
 ├─────────────────────────────────────┤
-│  packages/{api, rust}               │  ← api catalog transitional (wave 2)
-├─────────────────────────────────────┤
-│  packages/rust — Engine FFI    │
+│  packages/rust — FFI + thin glue    │
 ├─────────────────────────────────────┤
 │  libffi — c_api + stateful engines  │
 ├─────────────────────────────────────┤
@@ -69,8 +67,7 @@ Normalized end state: only `packages/rust` under `packages/`. All engine logic i
 Forja/
 ├── apps/forja/          Flutter product (permanent host)
 ├── packages/
-│   ├── rust/            Dart FFI bridge + host prefs (permanent)
-│   └── api/             Legacy catalog engine + lib/playback/ (wave 2 deletes catalog)
+│   └── rust/            Dart FFI bridge + thin glue (permanent)
 ├── crates/              Rust engine workspace
 ├── docs/                Architecture, migration, RFCs
 └── scripts/             build_rust.sh, build_rust_mobile.sh, …
@@ -80,19 +77,18 @@ Forja/
 |------|------|------|
 | `apps/forja` | Flutter UI + platform host | **Permanent** |
 | `packages/rust` | Dart FFI bridge + parity tests | **Permanent** |
+| ~~`packages/api`~~ | ~~Legacy catalog engine~~ | **Deleted** (P3-03) |
 | `packages/{core,storage,streaming}` | Legacy playback engine | **Deleted** (wave 1) |
-| `packages/api` | Legacy catalog engine | Delete wave 2 |
 | `crates/*` | Rust engine | **Permanent** |
 
 ### Dependency rules
 
-From [RFC-001](rfc/001-monorepo.md):
+From [RFC-001](rfc/fixed/001-[fixed]-monorepo.md):
 
 ```
-apps/forja → packages/* only
-packages/* → never import apps/forja
-api → rust
-apps/forja → api, rust (Nuvio host in app)
+apps/forja → packages/rust only
+packages/rust → never import apps/forja
+apps/forja → rust (Nuvio host in app)
 ```
 
 Cross-feature navigation uses `shell/app_router.dart` and `shell/shell_bus.dart` — features must not import other features' screens directly.
@@ -330,7 +326,7 @@ flowchart TD
 
 ### 4.3 Provider registry resolve
 
-From [RFC-004](rfc/004-provider-registry.md). Registry: `packages/api/lib/playback/provider_registry.dart`.
+From [RFC-004](rfc/004-[partial]-provider-registry.md). Registry: [`packages/rust/lib/src/playback/provider_registry.dart`](../packages/rust/lib/src/playback/provider_registry.dart).
 
 ```mermaid
 flowchart TD
@@ -371,20 +367,20 @@ See [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md). All engine logic targets `crates/*
 
 | Package | Wave | Status |
 |---------|------|--------|
-| `packages/streaming` | 1 | **Deleted** — playback in `api/lib/playback/`, Nuvio in app |
+| `packages/streaming` | 1 | **Deleted** — playback in `packages/rust/lib/src/playback/` |
 | `packages/storage` | 1 | **Deleted** — prefs in `packages/rust` |
-| `packages/core` | 1 | **Deleted** — DTOs in `api/models/` |
-| `packages/api` | 2 | Catalog + playback glue — catalog port wave 2 |
+| `packages/core` | 1 | **Deleted** — DTOs in `packages/rust/lib/src/models/` |
+| ~~`packages/api`~~ | 2 | **Deleted** (P3-03) |
 
-Deleted (engine in Rust): `packages/scrapers`, `packages/webstreamr`, legacy `packages/forja_*`, `streaming`, `storage`, `core`.
+Deleted (engine in Rust): `packages/scrapers`, `packages/webstreamr`, legacy `packages/forja_*`, `streaming`, `storage`, `core`, `api`.
 
-### Package dependency graph (post wave 1)
+### Package dependency graph (normalized)
 
 ```mermaid
 flowchart BT
-  rust[rust]
-  api[api] --> rust
-  app["apps/forja"] --> api & rust
+  rust[packages/rust]
+  app["apps/forja"] --> rust
+  rust --> crates[crates/*]
 ```
 
 ### What survives in `packages/` (normalized)
@@ -463,26 +459,26 @@ Parity rule: Rust output must match Dart reference for the same fixture before s
 
 ## 8. Migration delta (engine lens)
 
-See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md).
+See [02-rust-engine-complete.md](migration/fixed/02-[fixed]-rust-engine-complete.md) and [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md).
 
 ### Wave 1 — playback engine (Phase 2)
 
 | Status | Items |
 |--------|-------|
-| Done | scrapers, webstreamr, forja_*, torrent filter, HLS proxy, *Backend removed, streaming/storage/core delete, Stremio/IPTV HTTP, proxy consolidate |
-| Open | IPTV catalog scraper (wave 2) |
+| Done | scrapers, webstreamr, forja_*, torrent filter, HLS proxy, *Backend removed, streaming/storage/core/api delete, Stremio/IPTV HTTP, proxy consolidate, P3-04 catalog ports |
+| Open | C2 vertical hosts in `apps/forja`; P2-89 Stremio catalog orchestration |
 
-### Wave 2 — catalog engine (Phase 3)
+### Wave 2 — catalog engine (Phase 3) — complete
 
-`packages/api` verticals → `crates/*`; delete `packages/api`.
+See [03-engine-catalog.md](migration/fixed/03-[fixed]-engine-catalog.md). C2 vertical scrape remains in host until ported.
 
 ### Wave 1 exit gate
 
-[Playback engine exit checklist](migration/02-rust-engine-complete.md#playback-engine-exit-checklist) — app shippable; starts wave 2.
+[Playback engine exit checklist](migration/fixed/02-[fixed]-rust-engine-complete.md#playback-engine-exit-checklist) — app shippable; starts wave 2.
 
 ### Architecture complete
 
-[03-engine-catalog.md exit checklist](migration/03-engine-catalog.md#exit-checklist) — only `packages/rust` remains.
+[03-engine-catalog.md exit checklist](migration/fixed/03-[fixed]-engine-catalog.md#exit-checklist) — only `packages/rust` remains.
 
 ---
 
@@ -512,8 +508,8 @@ See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGI
 ### Allowed
 
 - Host provider race + loading/cancel UX
-- Legacy `packages/api` during wave 2 only — no new Dart engine logic
-- `Isolate.run` for long FFI calls
+- C2/C3 vertical hosts in `apps/forja` — no new Dart engine logic outside host boundary
+- `EngineWorkerPool` / `isolate_runner` for long FFI calls
 
 ---
 
@@ -525,9 +521,9 @@ See [02-rust-engine-complete.md](migration/02-rust-engine-complete.md) and [ENGI
 | [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary (locked) |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Build, run, melos scripts |
 | [crates/README.md](../crates/README.md) | Rust build, NDK, iOS patch |
-| [migration/README.md](migration/README.md) | Migration phases 1–4 |
-| [migration/02-rust-engine-complete.md](migration/02-rust-engine-complete.md) | Active phase task tracker |
-| [rfc/001-monorepo.md](rfc/001-monorepo.md) | Monorepo layout, dependency rules |
-| [rfc/004-provider-registry.md](rfc/004-provider-registry.md) | Stream provider registry |
-| [rfc/009-rust-ffi.md](rfc/009-rust-ffi.md) | Rust FFI spec |
-| [rfc/011-v1.0-mvp.md](rfc/011-v1.0-mvp.md) | v1.0 scope |
+| [migration/README.md](migration/README.md) | Migration phases 1–3 (`fixed/`) |
+| [migration/fixed/02-[fixed]-rust-engine-complete.md](migration/fixed/02-[fixed]-rust-engine-complete.md) | Playback wave 1 (complete) |
+| [rfc/fixed/001-[fixed]-monorepo.md](rfc/fixed/001-[fixed]-monorepo.md) | Monorepo layout, dependency rules |
+| [rfc/004-[partial]-provider-registry.md](rfc/004-[partial]-provider-registry.md) | Stream provider registry |
+| [rfc/fixed/009-[fixed]-rust-ffi.md](rfc/fixed/009-[fixed]-rust-ffi.md) | Rust FFI spec |
+| [rfc/fixed/011-[fixed]-v1.0-mvp.md](rfc/fixed/011-[fixed]-v1.0-mvp.md) | v1.0 scope |

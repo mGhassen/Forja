@@ -4,7 +4,7 @@ import 'package:rust/rust.dart';
 
 class TmdbService {
   Future<Map<String, dynamic>> _fetchMap(String resourcePath) async {
-    final raw = RustLib.instance.tmdbGetJson(resourcePath);
+    final raw = await runTmdbGetJson(resourcePath);
     final decoded = jsonDecode(raw);
     if (decoded is Map<String, dynamic> && decoded['error'] != null) {
       throw Exception(decoded['error']);

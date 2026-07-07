@@ -2,7 +2,7 @@
 
 Technical guide for building, running, and contributing to Forja.
 
-**Status:** v1.0 shipped on macOS. Phase 2 playback complete — [Phase 3 catalog](migration/03-engine-catalog.md) active.
+**Status:** v1.0 shipped on macOS. Engine migration complete — [migration/README.md](migration/README.md) (Phases 1–3 ✅).
 
 ---
 
@@ -42,8 +42,10 @@ Forja/
 │   ├── rust/                FFI bridge, SettingsService, parity tests (permanent)
 │   └── api/                 Catalog + lib/playback/ (catalog ports wave 2)
 ├── crates/                  Rust engine — ffi, utils, webstreamr, scrapers, torrent, proxy, catalog, …
-├── docs/migration/          Phases 1–4
-├── docs/rfc/                Design specs
+├── docs/migration/          Engine migration (`fixed/` · `canceled/`)
+├── docs/rfc/                RFC specs (`[draft]` / `[open]` / `[partial]` / `fixed/`)
+├── docs/backlog/              One file per version (`0.7.6-[open].md` / `done/` / `canceled/`)
+├── docs/issues/             Bugs and follow-ups (`[draft]` / `[open]` / `fixed/`)
 └── scripts/                 build_rust.sh, build_rust_mobile.sh, build_macos.sh
 ```
 
@@ -177,5 +179,5 @@ Agent rules: [`.cursor/rules/rust-migration.mdc`](../.cursor/rules/rust-migratio
 | [crates/README.md](../crates/README.md) | Rust crates, NDK, iOS patch |
 | [migration/README.md](migration/README.md) | Migration phases 1–5 |
 | [rfc/README.md](rfc/README.md) | RFC index |
-| [rfc/009-rust-ffi.md](rfc/009-rust-ffi.md) | Engine FFI spec |
-| [rfc/011-v1.0-mvp.md](rfc/011-v1.0-mvp.md) | v1.0 scope & checklist |
+| [rfc/fixed/009-[fixed]-rust-ffi.md](rfc/fixed/009-[fixed]-rust-ffi.md) | Engine FFI spec |
+| [rfc/fixed/011-[fixed]-v1.0-mvp.md](rfc/fixed/011-[fixed]-v1.0-mvp.md) | v1.0 scope & checklist |

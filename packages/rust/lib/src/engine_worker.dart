@@ -27,6 +27,11 @@ enum EngineJobKind {
   musicRequest,
   metadataRequest,
   subtitleRequest,
+  tmdbGet,
+  traktRequest,
+  anilistQuery,
+  mangaFetchHtml,
+  jellyfinRequest,
   parseXtreamCategories,
   parseXtreamStreams,
   parseXtreamSeriesEpisodes,
@@ -223,6 +228,26 @@ String _dispatchJob(_WorkerJob job) {
       return rust.metadataRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.subtitleRequest:
       return rust.subtitleRequestJson(job.args['requestJson']! as String);
+    case EngineJobKind.tmdbGet:
+      return rust.tmdbGetJson(
+        job.args['resourcePath']! as String,
+        timeoutSecs: job.args['timeoutSecs']! as int,
+      );
+    case EngineJobKind.traktRequest:
+      return rust.traktRequestJson(job.args['requestJson']! as String);
+    case EngineJobKind.anilistQuery:
+      return rust.anilistQueryJson(
+        job.args['query']! as String,
+        variablesJson: job.args['variablesJson']! as String,
+      );
+    case EngineJobKind.mangaFetchHtml:
+      return rust.mangaFetchHtml(
+        job.args['url']! as String,
+        headersJson: job.args['headersJson']! as String,
+        timeoutSecs: job.args['timeoutSecs']! as int,
+      );
+    case EngineJobKind.jellyfinRequest:
+      return rust.jellyfinRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.parseXtreamCategories:
       return rust.parseXtreamCategoriesJson(job.args['json']! as String);
     case EngineJobKind.parseXtreamStreams:

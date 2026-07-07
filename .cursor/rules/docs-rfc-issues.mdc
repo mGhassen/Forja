@@ -1,0 +1,120 @@
+---
+description: RFC, issue, and version backlog doc naming and status lifecycle
+globs: docs/rfc/**,docs/issues/**,docs/backlog/**,docs/migration/**
+alwaysApply: true
+---
+
+# RFC, issue, and version backlog doc management
+
+Indexes: [RFC](../../docs/rfc/README.md) · [issues](../../docs/issues/README.md) · [backlog](../../docs/backlog/README.md)
+
+## Golden rule
+
+**Every doc has a status tag in the filename. Tag must match `**Status:**` in the body.**
+
+Update the folder README index and grep cross-links in the same turn as any rename.
+
+---
+
+## Backlog (`docs/backlog/`)
+
+**One file per release version** (e.g. `0.7.6-[open].md`). The file body is that version's ship checklist.
+
+### Filename tags
+
+`[draft]` · `[open]` · `[partial]` · `[done]` (in `done/`) · `[canceled]` (in `canceled/`)
+
+Pattern: `{semver}-[{status}].md` — e.g. `0.7.6-[draft].md`
+
+### Body `**Status:**` ↔ filename
+
+| Body status | Filename | Location |
+|-------------|----------|----------|
+| `draft` | `X.Y.Z-[draft].md` | Version scoped, not started |
+| `open` | `X.Y.Z-[open].md` | Actively shipping |
+| `partial` | `X.Y.Z-[partial].md` | Release in progress |
+| `done` | `X.Y.Z-[done].md` | `docs/backlog/done/` |
+| `canceled` | `X.Y.Z-[canceled].md` | `docs/backlog/canceled/` — version dropped, will not ship |
+
+### Lifecycle
+
+```
+plan version   →  0.7.6-[draft].md
+start release  →  0.7.6-[open].md
+in progress    →  0.7.6-[partial].md
+shipped        →  done/0.7.6-[done].md
+dropped        →  canceled/0.7.6-[canceled].md
+```
+
+---
+
+## RFCs (`docs/rfc/`)
+
+Feature **specs** — numbered RFCs, not semver files.
+
+### Filename tags
+
+`[draft]` · `[planned]` · `[open]` · `[partial]` · `[fixed]` (in `fixed/`) · `[canceled]` (in `canceled/`)
+
+| Body status | Filename tag | Location |
+|-------------|--------------|----------|
+| `draft` | `[draft]` | Spec exists; not scheduled |
+| `planned` | `[planned]` | You explicitly scheduled it |
+| `open` | `[open]` | Actively in progress |
+| `partial` / `stub` | `[partial]` | Code started, not shippable |
+| `fixed` | `[fixed]` | `docs/rfc/fixed/` |
+| `canceled` | `[canceled]` | `docs/rfc/canceled/` — will not build |
+
+---
+
+## Issues (`docs/issues/`)
+
+### Filename tags
+
+`[draft]` · `[open]` · `[workaround]` · `[fixed]` (in `fixed/`) · `[canceled]` (in `canceled/`)
+
+| Body status | Filename tag | Location |
+|-------------|--------------|----------|
+| `draft` | `[draft]` | Filed, not being worked |
+| `open` | `[open]` | Actively fixing |
+| `workaround` | `[workaround]` | Symptom fix only |
+| `fixed` | `[fixed]` | `docs/issues/fixed/` |
+| `canceled` | `[canceled]` | `docs/issues/canceled/` — won't fix (document why) |
+
+Workaround requires user permission per [honesty-and-completion.mdc](./honesty-and-completion.mdc).
+
+---
+
+## On status change
+
+1. Rename file (tag + move to terminal folder when `done` / `fixed` / `canceled`)
+2. Update `**Status:**` in body
+3. Update the folder README index
+4. Grep old path in `docs/` and fix links
+
+| Folder | Terminal folders | Terminal statuses |
+|--------|------------------|-------------------|
+| `backlog/` | `done/` · `canceled/` | `done` · `canceled` |
+| `rfc/` | `fixed/` · `canceled/` | `fixed` · `canceled` |
+| `issues/` | `fixed/` · `canceled/` | `fixed` · `canceled` |
+| `migration/` | `fixed/` · `canceled/` | `fixed` · `canceled` |
+
+## Migration (`docs/migration/`)
+
+Engine migration phases — numbered `01`–`03`, not RFCs.
+
+### Filename tags
+
+`[draft]` · `[open]` · `[partial]` · `[fixed]` (in `fixed/`) · `[canceled]` (in `canceled/`)
+
+Pattern: `NN-[{status}]-slug.md` — e.g. `01-[fixed]-rust-engine.md`
+
+| Body status | Filename | Location |
+|-------------|----------|----------|
+| `draft` | `NN-[draft]-….md` | Phase scoped, not started |
+| `open` | `NN-[open]-….md` | Actively migrating |
+| `partial` | `NN-[partial]-….md` | In progress |
+| `fixed` | `NN-[fixed]-….md` | `docs/migration/fixed/` |
+| `canceled` | `NN-[canceled]-….md` | `docs/migration/canceled/` |
+
+All current phases (1–3) are **`fixed`** in `fixed/`. Index: [migration/README.md](../../docs/migration/README.md).

@@ -1,6 +1,6 @@
 ---
 description: Rust engine migration — port engine to crates, Flutter permanent host
-globs: crates/**,packages/rust/**,docs/migration/**,docs/ENGINE_BOUNDARY.md,docs/rfc/009-rust-ffi.md
+globs: crates/**,packages/rust/**,docs/migration/**,docs/ENGINE_BOUNDARY.md,docs/rfc/fixed/009-[fixed]-rust-ffi.md
 alwaysApply: false
 ---
 
@@ -21,7 +21,7 @@ Only `packages/rust` survives under `packages/` long-term (FFI bridge).
 
 ## Wave 1 exit gate
 
-[Playback engine exit checklist](../../docs/migration/02-rust-engine-complete.md#playback-engine-exit-checklist) — app shippable; then start wave 2.
+[Playback engine exit checklist](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md#playback-engine-exit-checklist) — app shippable; then start wave 2.
 
 ## Mandatory per engine port
 
@@ -31,7 +31,7 @@ Only `packages/rust` survives under `packages/` long-term (FFI bridge).
 4. Wire `apps/forja` to `ForjaEngine.*`.
 5. **Delete the Dart slice** — directory, pubspec deps, imports.
 6. **Tests** — Rust unit/golden + Dart parity in `packages/rust/test/parity/`.
-7. Update [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md) or [03-engine-catalog.md](../../docs/migration/03-engine-catalog.md).
+7. Update phase doc in [migration/fixed/](../../docs/migration/fixed/) if tracking residual ports.
 8. Run `./scripts/build_rust.sh`, `cargo test --workspace`, `cd packages/rust && flutter test`.
 
 ## Never do
@@ -47,17 +47,17 @@ Only `packages/rust` survives under `packages/` long-term (FFI bridge).
 - Host orchestration for provider race UX (ENGINE_BOUNDARY R6)
 - Legacy `packages/api` during wave 2 — no new Dart engine logic
 - `Isolate.run` for long FFI calls
-- Nuvio, WebView, WASM, player on host permanently
+- Nuvio, WebView, player on host permanently
 
 ## Before coding
 
-1. Read [docs/migration/README.md](../../docs/migration/README.md).
-2. Active wave 1: [02-rust-engine-complete.md](../../docs/migration/02-rust-engine-complete.md).
-3. Wave 2: [03-engine-catalog.md](../../docs/migration/03-engine-catalog.md).
-4. Boundary: [ENGINE_BOUNDARY.md](../../docs/ENGINE_BOUNDARY.md).
+1. Read [docs/migration/README.md](../../docs/migration/README.md) — phases 1–3 **`fixed`**.
+2. Reference: [02-[fixed]-rust-engine-complete.md](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md) · [03-[fixed]-engine-catalog.md](../../docs/migration/fixed/03-[fixed]-engine-catalog.md).
+3. Boundary: [ENGINE_BOUNDARY.md](../../docs/ENGINE_BOUNDARY.md).
 
 ## Doc status
 
 - Flutter + Rust permanent — no UI framework migration.
 - Wave 1 = playback engine normalized.
 - Wave 2 = catalog engine normalized; only `packages/rust` remains.
+- Web client = v3.0 RFC work ([RFC-010](../../docs/rfc/010-[draft]-web-client.md)), not migration.

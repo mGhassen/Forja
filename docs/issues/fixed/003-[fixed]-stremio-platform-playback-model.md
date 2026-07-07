@@ -51,6 +51,6 @@ Unchanged on desktop: direct streaming mode remains WebStreamr-first (`streaming
 
 ## Related
 
-- [RFC-010](../rfc/010-web-client.md)
+- [RFC-010](../rfc/010-[draft]-web-client.md)
 - [Stremio addons](../features/sources/stremio-addons.md)
-- [002](002-[open]-torrent-disk-cache-not-cleaned.md) — torrent lifecycle (desktop profile only)
+- [002](002-[draft]-torrent-disk-cache-not-cleaned.md) — torrent lifecycle (desktop profile only)

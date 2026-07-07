@@ -290,7 +290,7 @@ class JellyfinService {
       if (body != null) 'body': body,
     };
 
-    final raw = RustLib.instance.jellyfinRequestJson(json.encode(payload));
+    final raw = await runJellyfinRequestJson(json.encode(payload));
     final decoded = json.decode(raw) as Map<String, dynamic>;
     if (decoded['error'] != null) {
       throw Exception(decoded['error']);

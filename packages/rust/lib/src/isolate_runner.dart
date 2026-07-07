@@ -103,6 +103,50 @@ Future<String> runSubtitleRequestJson(String requestJson) =>
       {'requestJson': requestJson},
     );
 
+Future<String> runTmdbGetJson(
+  String resourcePath, {
+  int timeoutSecs = 15,
+}) =>
+    EngineWorkerPool.run(
+      EngineJobKind.tmdbGet,
+      {'resourcePath': resourcePath, 'timeoutSecs': timeoutSecs},
+    );
+
+Future<String> runTraktRequestJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.traktRequest,
+      {'requestJson': requestJson},
+    );
+
+Future<String> runAnilistQueryJson(
+  String query, {
+  String variablesJson = '{}',
+}) =>
+    EngineWorkerPool.run(
+      EngineJobKind.anilistQuery,
+      {'query': query, 'variablesJson': variablesJson},
+    );
+
+Future<String> runMangaFetchHtml(
+  String url, {
+  String headersJson = '{}',
+  int timeoutSecs = 15,
+}) =>
+    EngineWorkerPool.run(
+      EngineJobKind.mangaFetchHtml,
+      {
+        'url': url,
+        'headersJson': headersJson,
+        'timeoutSecs': timeoutSecs,
+      },
+    );
+
+Future<String> runJellyfinRequestJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.jellyfinRequest,
+      {'requestJson': requestJson},
+    );
+
 Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
     EngineJobs.run(
       EngineAsyncJob.iptvProbeStream,

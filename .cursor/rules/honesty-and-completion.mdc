@@ -64,22 +64,59 @@ If you call something **fixed** without documenting the root fix, or delete/move
 
 ## Status must match reality
 
-| Situation | Filename tag | `**Status:**` in file | Action |
-|-----------|--------------|----------------------|--------|
-| Root cause fixed, verified in code | **`[fixed]`** | `fixed` | Rename file **and** update status line |
-| Symptom only (e.g. isolate offload; Rust still blocking) | **`[workaround]`** | `workaround` | Rename file **and** update status line; link **`[open]`** root issue |
-| Work started, not done | **`[open]`** | `open` | Never `[fixed]` or `[workaround]` until scope ships |
+See [docs-rfc-issues.mdc](./docs-rfc-issues.mdc) for full RFC vs issue lifecycle.
+
+### Issues
+
+| Body status | Filename tag |
+|-------------|--------------|
+| `draft` | `[draft]` |
+| `open` | `[open]` |
+| `workaround` | `[workaround]` |
+| `fixed` | `[fixed]` in `issues/fixed/` |
+| `canceled` | `[canceled]` in `issues/canceled/` |
+
+### RFCs
+
+| Body status | Filename tag |
+|-------------|--------------|
+| `draft` | `[draft]` |
+| `planned` | `[planned]` |
+| `open` | `[open]` |
+| `partial` / `stub` | `[partial]` |
+| `fixed` | `[fixed]` in `rfc/fixed/` |
+| `canceled` | `[canceled]` in `rfc/canceled/` |
+
+### Backlog (`docs/backlog/`)
+
+One file per version: `0.7.6-[draft].md` … `done/0.7.6-[done].md` · `canceled/0.7.6-[canceled].md`
+
+| Body status | Filename |
+|-------------|----------|
+| `draft` | `X.Y.Z-[draft].md` |
+| `open` | `X.Y.Z-[open].md` |
+| `partial` | `X.Y.Z-[partial].md` |
+| `done` | `X.Y.Z-[done].md` in `backlog/done/` |
+| `canceled` | `X.Y.Z-[canceled].md` in `backlog/canceled/` |
+
+### Migration (`docs/migration/`)
+
+| Body status | Filename |
+|-------------|----------|
+| `draft` | `NN-[draft]-….md` |
+| `open` | `NN-[open]-….md` |
+| `partial` | `NN-[partial]-….md` |
+| `fixed` | `NN-[fixed]-….md` in `migration/fixed/` |
+| `canceled` | `NN-[canceled]-….md` in `migration/canceled/` |
 
 ### Mandatory: filename tag + `**Status:**` together
 
-When issue status changes, update **all** of these in the **same turn** as the code/doc fix — not later, not in a follow-up summary:
+When status changes, update in the **same turn** as the code/doc fix:
 
-1. **Rename the file** — `git mv 'NNN-[old]-slug.md' 'NNN-[new]-slug.md'`
-2. **`**Status:**` line** at the top of the issue body — must match the filename tag (`open` / `workaround` / `fixed`)
-3. **`docs/issues/README.md` index** — Status column and link path
-4. **Cross-links** — grep `NNN-[open]-` / old slug in `docs/` and update references
-
-**Never** ship workaround or fixed code while the issue file still says `[open]` in the filename or `**Status:** open`. Updating prose inside the issue without renaming is **not** a status change.
+1. **Rename the file** — tag must match body; move to `fixed/` / `done/` / `canceled/` when terminal
+2. **`**Status:**` line** — must match filename tag
+3. **README index**
+4. **Cross-links** — grep old slug in `docs/`
 
 Example (wrong): code shipped, issue body says "workaround shipped", but file is still `009-[open]-….md` and `**Status:** open`.
 

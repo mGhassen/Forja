@@ -28,7 +28,7 @@ Dart `Isolate.run` remains required (R5) — it is not a substitute for async Ru
 - [x] `webstreamr` primary sources resolve in parallel with early exit (`resolver.rs`)
 - [x] `stremio-core` uses shared async HTTP client + runtime
 - [x] Cancel from host aborts in-flight resolve in Rust (`engine_cancel.rs`, `engine_cancel_pending` FFI, Dart wiring)
-- [x] [RFC-009](../rfc/009-rust-ffi.md) threading section updated
+- [x] [RFC-009](../rfc/fixed/009-[fixed]-rust-ffi.md) threading section updated
 - [x] Profile: long resolve no longer spawns new isolate per call — `EngineWorkerPool` (3 persistent workers)
 
 ## Verify

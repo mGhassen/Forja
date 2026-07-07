@@ -1395,7 +1395,7 @@ class TraktService {
       if (accessToken != null) 'access_token': accessToken,
       if (body != null) 'body': body,
     };
-    final raw = RustLib.instance.traktRequestJson(json.encode(payload));
+    final raw = await runTraktRequestJson(json.encode(payload));
     final decoded = json.decode(raw) as Map<String, dynamic>;
     if (decoded['error'] != null) {
       throw Exception(decoded['error']);
@@ -1541,7 +1541,7 @@ class TraktService {
   Future<Map<String, dynamic>> _fetchTmdbInfo(int tmdbId, String mediaType) async {
     try {
       final type = (mediaType == 'tv' || mediaType == 'series') ? 'tv' : 'movie';
-      final raw = RustLib.instance.tmdbGetJson('$type/$tmdbId');
+      final raw = await runTmdbGetJson('$type/$tmdbId');
       final data = json.decode(raw);
       if (data is Map<String, dynamic> && data['error'] == null) {
         final poster = data['poster_path']?.toString() ?? '';

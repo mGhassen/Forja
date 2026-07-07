@@ -2,7 +2,7 @@
 
 Workspace crates consumed by Flutter via `packages/rust` (FFI, transitional).
 
-**Migration:** [docs/migration/README.md](../docs/migration/README.md) · Phase 1: [01-rust-engine.md](../docs/migration/01-rust-engine.md) · **Active:** [02-rust-engine-complete.md](../docs/migration/02-rust-engine-complete.md)
+**Migration:** [docs/migration/README.md](../docs/migration/README.md) — complete (Phases 1–3) · [RFC-009](../docs/rfc/fixed/009-[fixed]-rust-ffi.md)
 
 ## Build
 

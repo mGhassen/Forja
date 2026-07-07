@@ -2,7 +2,7 @@
 
 **Priority:** P1  
 **Severity:** High  
-**Tracked:** P2-91 ([Phase 2 task](../migration/02-rust-engine-complete.md))  
+**Tracked:** P2-91 ([Phase 2 task](../migration/fixed/02-[fixed]-rust-engine-complete.md))  
 **Status:** fixed  
 **Area:** `packages/rust`, `packages/api`, `apps/forja`, `crates/*`  
 **Reported:** 2026-07-06  
@@ -24,7 +24,7 @@ Isolate offload remains required (R5). It is no longer masking blocking HTTP ins
 
 ## Rule
 
-From [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) and [RFC-009](../rfc/009-rust-ffi.md):
+From [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md) and [RFC-009](../rfc/fixed/009-[fixed]-rust-ffi.md):
 
 > Sync FFI on UI thread forbidden for calls expected to exceed ~50ms — use `Isolate.run` / `runRustIsolate`.
 

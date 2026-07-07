@@ -3,8 +3,8 @@
 **Status:** fixed  
 **Priority:** P2  
 **Severity:** Medium  
-**Phase:** [P3-03](../migration/03-engine-catalog.md)  
-**Related:** [021 catalog vertical smoke](../021-[open]-catalog-vertical-import-smoke-unverified.md)
+**Phase:** [P3-03](../migration/fixed/03-[fixed]-engine-catalog.md)  
+**Related:** [021 catalog vertical smoke](../021-[draft]-catalog-vertical-import-smoke-unverified.md)
 
 ---
 
@@ -29,7 +29,7 @@
 - [x] Relocate host-appropriate code to `apps/forja` / `packages/rust`.
 - [x] Remove `packages/api` from workspace (melos `packages/**` no longer includes it).
 - [x] `rg 'package:api/'` → zero outside docs/history.
-- [x] Exit checklist **A1** (`packages/api` deleted) and **A3** (only `packages/rust` under `packages/`) — see [03-engine-catalog.md](../migration/03-engine-catalog.md).
+- [x] Exit checklist **A1** (`packages/api` deleted) and **A3** (only `packages/rust` under `packages/`) — see [03-engine-catalog.md](../migration/fixed/03-[fixed]-engine-catalog.md).
 
 **Not in scope (P3-04):** **A2** (all C1 catalog in `crates/*`) and **A4** (no Dart engine logic outside FFI) remain open — Dart HTTP/orchestration now lives under `apps/forja/lib/shared/playback/` and catalog verticals in `apps/forja`.
 

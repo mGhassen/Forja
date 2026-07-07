@@ -4,33 +4,33 @@ Evidence-based snapshot of the codebase **as it exists today**. Facts and observ
 
 **Use with:** [ARCHITECTURE.md](ARCHITECTURE.md) (target design) · [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) (boundary decisions) · [migration/README.md](migration/README.md) (phase plan)
 
-**Last reviewed:** 2026-07-06
+**Last reviewed:** 2026-07-07
 
 ---
 
 ## 1. What the system actually is
 
-Forja is a **melos monorepo** shipping one Flutter desktop/mobile app with **~20 content verticals** (movies/TV, torrents, IPTV, anime, Arabic, manga, music, Jellyfin, etc.). Playback uses **media_kit**. A **Rust workspace** (`crates/`, 10 domain crates) ships as `libffi` and is loaded at runtime by `packages/rust`.
+Forja is a **melos monorepo** shipping one Flutter desktop/mobile app with **~20 content verticals** (movies/TV, torrents, IPTV, anime, Arabic, manga, music, Jellyfin, etc.). Playback uses **media_kit**. A **Rust workspace** (`crates/`) ships as `libffi` and is loaded at runtime by `packages/rust`.
 
 ### Dependency graph
 
 ```mermaid
 flowchart BT
   app["apps/forja\n~70 screens, bootstrap, player, Nuvio host"]
-  api["packages/api\ncatalog + lib/playback/"]
-  rustPkg["packages/rust\nFFI + SettingsService + KV"]
+  rustPkg["packages/rust\nFFI + thin glue + parity tests"]
   crates["crates/*\nRust engine"]
 
-  app --> api & rustPkg
-  api --> rustPkg
+  app --> rustPkg
   rustPkg --> crates
 ```
 
 ### Notable facts
 
-- **Legacy `packages/streaming`, `storage`, `core` deleted** (wave 1). Playback glue lives in `packages/api/lib/playback/`; Nuvio in `apps/forja/lib/shared/nuvio/`.
-- **IPTV catalog scraper** remains in [`iptv_network.dart`](../apps/forja/lib/features/iptv/iptv/data/iptv_network.dart) (~1.1k LOC) — orchestration + Reddit/GitHub portal discovery; HTTP/probe via Rust FFI.
-- **`apps/forja` calls Rust directly** in IPTV data, M3U fetch, bootstrap, and player paths; most playback goes through `api/playback` or `Engine` facade.
+- **`packages/api` deleted** (P3-03). Only `packages/rust` remains under `packages/`.
+- **Playback glue** in `packages/rust/lib/src/playback/`; Nuvio in `apps/forja/lib/shared/nuvio/`.
+- **IPTV catalog scraper** in [`iptv_network.dart`](../apps/forja/lib/features/iptv/iptv/data/iptv_network.dart) (~1.1k LOC) — orchestration + portal discovery; HTTP/probe via Rust FFI.
+- **Long catalog FFI** (TMDB, Trakt, Jellyfin, AniList, manga fetch) routes through `EngineWorkerPool` / `isolate_runner.dart`.
+- **C2 verticals** (books, comics, Arabic, etc.) still scrape/parse in `apps/forja` — documented host exceptions.
 
 ---
 
@@ -38,12 +38,11 @@ flowchart BT
 
 | Layer | LOC (approx) | Files | Role |
 |-------|-------------|-------|------|
-| `packages/api` | ~24k | 60+ | Catalog HTTP/scrapers + `lib/playback/` (torrent/proxy/extractors) |
-| `packages/rust` | ~2.5k | — | FFI bindings, facade, SettingsService, watch history, parity tests |
-| `crates/*` (Rust) | ~10k+ | 100+ `.rs` | Parsers, webstreamr, torrent, proxy, storage, iptv probe |
-| `apps/forja/lib` | large | 61+ feature files + shell/shared | UI, Nuvio host, IPTV catalog orchestration |
+| `packages/rust` | ~8k+ | 80+ | FFI bridge, thin playback/catalog glue, parity tests |
+| `crates/*` (Rust) | ~15k+ | 150+ `.rs` | Engine: webstreamr, torrent, proxy, catalog APIs, metadata |
+| `apps/forja/lib` | large | 61+ feature files + shell/shared | UI, C2/C3 vertical hosts, OAuth, player |
 
-**Rust is concentrated** in stream-resolution, torrent, and parsing paths. **Dart still owns** almost all metadata APIs (TMDB, Trakt, Jellyfin), vertical content (anime, Arabic, manga), and platform integration (players, OAuth, secure storage).
+**Rust owns** stream-resolution, torrent, P3-04 catalog APIs (debrid, music, subtitles, metadata), and C1 clients (TMDB, Trakt, Jellyfin, AniList fetch). **Dart still owns** C2 vertical scrape (books, comics, Arabic), WebView extractors, and platform integration.
 
 ---
 

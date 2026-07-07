@@ -1,6 +1,6 @@
 # Forja App
 
-Main Flutter product — permanent UI host. Engine: [Phase 2 playback wave](../../docs/migration/02-rust-engine-complete.md) · [Phase 3 catalog wave](../../docs/migration/03-engine-catalog.md).
+Main Flutter product — permanent UI host. Engine: [Phase 2 playback wave](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md) · [Phase 3 catalog wave](../../docs/migration/fixed/03-[fixed]-engine-catalog.md).
 
 ## Run (desktop)
 

@@ -6,7 +6,7 @@ class TmdbApi {
   static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 
   static Future<dynamic> _fetch(String resourcePath, {int timeoutSecs = 15}) async {
-    final raw = RustLib.instance.tmdbGetJson(resourcePath, timeoutSecs: timeoutSecs);
+    final raw = await runTmdbGetJson(resourcePath, timeoutSecs: timeoutSecs);
     final decoded = jsonDecode(raw);
     if (decoded is Map<String, dynamic> && decoded['error'] != null) {
       throw Exception(decoded['error']);

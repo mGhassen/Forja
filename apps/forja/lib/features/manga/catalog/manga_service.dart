@@ -139,7 +139,7 @@ class MangaService {
       };
 
   Future<String> _fetchHtml(String url) async {
-    final raw = RustLib.instance.mangaFetchHtml(
+    final raw = await runMangaFetchHtml(
       url,
       headersJson: jsonEncode(_headers),
     );

@@ -19,7 +19,7 @@ class AnimeService {
 
   // ─── GraphQL helper ─────────────────────────────────────────────
   Future<dynamic> _query(String query, [Map<String, dynamic>? vars]) async {
-    final raw = RustLib.instance.anilistQueryJson(
+    final raw = await runAnilistQueryJson(
       query,
       variablesJson: jsonEncode(vars ?? {}),
     );
