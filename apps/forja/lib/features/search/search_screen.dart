@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';
+import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -532,9 +533,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
               isDense: true,
               contentPadding: EdgeInsets.zero,
               suffixIcon: _query.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, color: ForjaShellColors.textSecondary),
-                      onPressed: () {
+                  ? ForjaPlainIcon(
+                      icon: Icons.clear,
+                      color: ForjaShellColors.textSecondary,
+                      onTap: () {
                         _controller.clear();
                         _onSearchChanged('');
                       },

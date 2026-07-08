@@ -22,6 +22,15 @@ import 'stremio_catalog_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart' hide AppTheme;
 
+double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
+  if (!compactTop) return ShellTokens.homeSectionTitleTop;
+  final isDesktop =
+      MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+  return isDesktop
+      ? ShellTokens.homeSectionTitleTopCompactDesktop
+      : ShellTokens.homeSectionTitleTopCompactMobile;
+}
+
 SliverToBoxAdapter _homeRowSliver(
   Widget section, {
   required bool isFirstAfterHero,
@@ -106,23 +115,76 @@ class _HomeScreenState extends State<HomeScreen>
   int _becausePoolSize = 0; // unique in-progress shows; controls shuffle button
   StreamSubscription<List<Map<String, dynamic>>>? _historySeedSub;
   VoidCallback? _splashDismissedListener;
-  VoidCallback? _homeCategoryListener;
   VoidCallback? _watchProviderListener;
 
   // Mood/genre filter state
   String _selectedMood = 'mind';
   Future<List<Movie>>? _moodFuture;
 
-  // Mood definitions (label, icon, tmdb genre IDs)
-  static const List<({String id, String label, IconData icon, List<int> genres})> _moods = [
-    (id: 'mind',     label: 'Mind-Bending',   icon: Icons.psychology_rounded,        genres: [878, 9648]),
-    (id: 'feel',     label: 'Feel-Good',      icon: Icons.wb_sunny_rounded,          genres: [35, 10751]),
-    (id: 'dark',     label: 'Dark Thrillers', icon: Icons.dark_mode_rounded,         genres: [53, 80]),
-    (id: 'romance',  label: 'Romance',        icon: Icons.favorite_rounded,          genres: [10749]),
-    (id: 'horror',   label: 'Horror',         icon: Icons.bedtime_rounded,           genres: [27]),
-    (id: 'action',   label: 'Action',         icon: Icons.local_fire_department_rounded, genres: [28, 12]),
-    (id: 'animated', label: 'Animated',       icon: Icons.brush_rounded,             genres: [16]),
-    (id: 'drama',    label: 'Drama',          icon: Icons.theaters_rounded,          genres: [18]),
+  // Mood definitions — movie and TV use different TMDB genre IDs.
+  static const List<({
+    String id,
+    String label,
+    IconData icon,
+    List<int> movieGenres,
+    List<int> tvGenres,
+  })> _moods = [
+    (
+      id: 'mind',
+      label: 'Mind-Bending',
+      icon: Icons.psychology_rounded,
+      movieGenres: [878, 9648],
+      tvGenres: [10765, 9648],
+    ),
+    (
+      id: 'feel',
+      label: 'Feel-Good',
+      icon: Icons.wb_sunny_rounded,
+      movieGenres: [35, 10751],
+      tvGenres: [35, 10751],
+    ),
+    (
+      id: 'dark',
+      label: 'Dark Thrillers',
+      icon: Icons.dark_mode_rounded,
+      movieGenres: [53, 80],
+      tvGenres: [80, 9648],
+    ),
+    (
+      id: 'romance',
+      label: 'Romance',
+      icon: Icons.favorite_rounded,
+      movieGenres: [10749],
+      tvGenres: [18],
+    ),
+    (
+      id: 'horror',
+      label: 'Horror',
+      icon: Icons.bedtime_rounded,
+      movieGenres: [27],
+      tvGenres: [10765, 9648],
+    ),
+    (
+      id: 'action',
+      label: 'Action',
+      icon: Icons.local_fire_department_rounded,
+      movieGenres: [28, 12],
+      tvGenres: [10759],
+    ),
+    (
+      id: 'animated',
+      label: 'Animated',
+      icon: Icons.brush_rounded,
+      movieGenres: [16],
+      tvGenres: [16],
+    ),
+    (
+      id: 'drama',
+      label: 'Drama',
+      icon: Icons.theaters_rounded,
+      movieGenres: [18],
+      tvGenres: [18],
+    ),
   ];
 
   @override
@@ -134,9 +196,46 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Future<void> onShellTabRefresh({required bool force}) => _reloadHomeFeed();
 
-  bool get _isTvHome => ShellBus.homeCategory.value == ShellHomeCategory.tvShows;
-
   int? get _watchProviderId => ShellBus.selectedWatchProviderId.value;
+
+  List<Movie> _interleaveMedia(List<Movie> movies, List<Movie> tv) {
+    final out = <Movie>[];
+    final seen = <String>{};
+    void add(Movie m) {
+      final key = '${m.mediaType}:${m.id}';
+      if (seen.add(key)) out.add(m);
+    }
+    final maxLen = math.max(movies.length, tv.length);
+    for (var i = 0; i < maxLen; i++) {
+      if (i < movies.length) add(movies[i]);
+      if (i < tv.length) add(tv[i]);
+    }
+    return out;
+  }
+
+  Future<List<Movie>> _fetchMixed(
+    Future<List<Movie>> Function() movieFetch,
+    Future<List<Movie>> Function() tvFetch, {
+    List<Movie>? movieCache,
+    void Function(List<Movie> movies)? onLoaded,
+  }) {
+    Future<List<Movie>> safeTv() =>
+        tvFetch().catchError((_) => <Movie>[]);
+
+    if (movieCache != null) {
+      return safeTv().then((tv) {
+        final merged = _interleaveMedia(movieCache, tv);
+        onLoaded?.call(merged);
+        return merged;
+      });
+    }
+    final safeMovie = movieFetch().catchError((_) => <Movie>[]);
+    return Future.wait([safeMovie, safeTv()]).then((results) {
+      final merged = _interleaveMedia(results[0], results[1]);
+      onLoaded?.call(merged);
+      return merged;
+    });
+  }
 
   ({String gte, String lte}) _currentMonthDateRange() {
     final now = DateTime.now();
@@ -151,81 +250,75 @@ class _HomeScreenState extends State<HomeScreen>
   Future<List<Movie>> _loadFeaturedThisMonth() {
     final range = _currentMonthDateRange();
     final providerId = _watchProviderId;
-    return _isTvHome
-        ? _api.discoverTvShows(
-            releaseDateGte: range.gte,
-            releaseDateLte: range.lte,
-            minRating: 6.0,
-            watchProviderId: providerId,
-            sortBy: 'popularity.desc',
-          )
-        : _api.discoverMovies(
-            releaseDateGte: range.gte,
-            releaseDateLte: range.lte,
-            minRating: 6.0,
-            watchProviderId: providerId,
-            sortBy: 'popularity.desc',
-          );
+    return _fetchMixed(
+      () => _api.discoverMovies(
+        releaseDateGte: range.gte,
+        releaseDateLte: range.lte,
+        minRating: 6.0,
+        watchProviderId: providerId,
+        sortBy: 'popularity.desc',
+      ),
+      () => _api.discoverTvShows(
+        releaseDateGte: range.gte,
+        releaseDateLte: range.lte,
+        minRating: 6.0,
+        watchProviderId: providerId,
+        sortBy: 'popularity.desc',
+      ),
+    );
   }
 
   void _resetHomeCategoryFeeds({bool useBootCache = false}) {
     final providerId = _watchProviderId;
-    final canUseBootCache = useBootCache && !_isTvHome && providerId == null;
+    final canUseBootCache = useBootCache && providerId == null;
 
     if (providerId != null) {
-      _trendingFuture = _tmdbFuture(
-        null,
-        () => _isTvHome
-            ? _api.discoverTvShows(watchProviderId: providerId)
-            : _api.discoverMovies(watchProviderId: providerId),
+      _trendingFuture = _fetchMixed(
+        () => _api.discoverMovies(watchProviderId: providerId),
+        () => _api.discoverTvShows(watchProviderId: providerId),
         onLoaded: (movies) => _fetchHeroLogos(movies.take(5).toList()),
       );
-      _popularFuture = _tmdbFuture(
-        null,
-        () => _isTvHome
-            ? _api.discoverTvShows(
-                watchProviderId: providerId,
-                sortBy: 'vote_average.desc',
-                minRating: 7,
-              )
-            : _api.discoverMovies(
-                watchProviderId: providerId,
-                sortBy: 'vote_average.desc',
-                minRating: 7,
-              ),
+      _popularFuture = _fetchMixed(
+        () => _api.discoverMovies(
+          watchProviderId: providerId,
+          sortBy: 'vote_average.desc',
+          minRating: 7,
+        ),
+        () => _api.discoverTvShows(
+          watchProviderId: providerId,
+          sortBy: 'vote_average.desc',
+          minRating: 7,
+        ),
       );
-      _nowPlayingFuture = _tmdbFuture(
-        null,
-        () => _isTvHome
-            ? _api.discoverTvShows(
-                watchProviderId: providerId,
-                sortBy: 'first_air_date.desc',
-              )
-            : _api.discoverMovies(
-                watchProviderId: providerId,
-                sortBy: 'primary_release_date.desc',
-              ),
+      _nowPlayingFuture = _fetchMixed(
+        () => _api.discoverMovies(
+          watchProviderId: providerId,
+          sortBy: 'primary_release_date.desc',
+        ),
+        () => _api.discoverTvShows(
+          watchProviderId: providerId,
+          sortBy: 'first_air_date.desc',
+        ),
       );
-      _featuredThisMonthFuture = _tmdbFuture(null, _loadFeaturedThisMonth);
+      _featuredThisMonthFuture = _loadFeaturedThisMonth();
     } else {
-      final trendingFetcher = _isTvHome ? _api.getTrendingTv : _api.getTrending;
-      final popularFetcher = _isTvHome ? _api.getPopularTv : _api.getPopular;
-      final latestFetcher = _isTvHome ? _api.getOnTheAir : _api.getNowPlaying;
-
-      _trendingFuture = _tmdbFuture(
-        canUseBootCache ? BootCache.trending : null,
-        trendingFetcher,
+      _trendingFuture = _fetchMixed(
+        _api.getTrending,
+        _api.getTrendingTv,
+        movieCache: canUseBootCache ? BootCache.trending : null,
         onLoaded: (movies) => _fetchHeroLogos(movies.take(5).toList()),
       );
-      _popularFuture = _tmdbFuture(
-        canUseBootCache ? BootCache.popular : null,
-        popularFetcher,
+      _popularFuture = _fetchMixed(
+        _api.getPopular,
+        _api.getPopularTv,
+        movieCache: canUseBootCache ? BootCache.popular : null,
       );
-      _nowPlayingFuture = _tmdbFuture(
-        canUseBootCache ? BootCache.nowPlaying : null,
-        latestFetcher,
+      _nowPlayingFuture = _fetchMixed(
+        _api.getNowPlaying,
+        _api.getOnTheAir,
+        movieCache: canUseBootCache ? BootCache.nowPlaying : null,
       );
-      _featuredThisMonthFuture = _tmdbFuture(null, _loadFeaturedThisMonth);
+      _featuredThisMonthFuture = _loadFeaturedThisMonth();
     }
     _moodFuture = _loadMoodMovies(_selectedMood);
     _heroIndex = 0;
@@ -238,11 +331,6 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) return;
     setState(() => _resetHomeCategoryFeeds());
     await _loadStremioCatalogs();
-  }
-
-  void _onHomeCategoryChanged() {
-    if (!mounted) return;
-    setState(() => _resetHomeCategoryFeeds());
   }
 
   void _onWatchProviderChanged() {
@@ -267,28 +355,11 @@ class _HomeScreenState extends State<HomeScreen>
     _startHeroTimer();
     _loadStremioCatalogs();
     SettingsService.addonChangeNotifier.addListener(_onAddonsChanged);
-    _homeCategoryListener = _onHomeCategoryChanged;
-    ShellBus.homeCategory.addListener(_homeCategoryListener!);
     _watchProviderListener = _onWatchProviderChanged;
     ShellBus.selectedWatchProviderId.addListener(_watchProviderListener!);
 
     _schedulePostSplashWork();
     markShellTabFresh();
-  }
-
-  Future<List<Movie>> _tmdbFuture(
-    List<Movie>? cached,
-    Future<List<Movie>> Function() fetch, {
-    void Function(List<Movie> movies)? onLoaded,
-  }) {
-    if (cached != null) {
-      if (onLoaded != null) onLoaded(cached);
-      return Future.value(cached);
-    }
-    return fetch().then((movies) {
-      onLoaded?.call(movies);
-      return movies;
-    });
   }
 
   void _schedulePostSplashWork() {
@@ -333,12 +404,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// Returns true if a seed was successfully picked. Filters to in-progress
-  /// items (between 2% and 90% watched) and picks one at random per session.
-  bool _pickBecauseSeed(List<Map<String, dynamic>> history) {
-    if (!mounted || history.isEmpty) return false;
-    // Group episodes by their parent show so The Vampire Diaries doesn't get
-    // picked 8 times because you watched 8 episodes of it.
+  /// Returns in-progress continue-watching items (2–90%), one per tmdbId.
+  List<Map<String, dynamic>> _inProgressPool(List<Map<String, dynamic>> history) {
     final byShow = <int, Map<String, dynamic>>{};
     for (final item in history) {
       final pos = (item['position'] as int?) ?? 0;
@@ -348,21 +415,57 @@ class _HomeScreenState extends State<HomeScreen>
       if (progress < 0.02 || progress >= 0.9) continue;
       final tmdbId = item['tmdbId'] as int?;
       if (tmdbId == null) continue;
-      // Keep the most-recently-updated entry per tmdbId
       final existing = byShow[tmdbId];
       final ts = (item['updatedAt'] as int?) ?? 0;
       final existingTs = (existing?['updatedAt'] as int?) ?? -1;
       if (ts > existingTs) byShow[tmdbId] = item;
     }
-    if (byShow.isEmpty) return false;
-    final pool = byShow.values.toList();
+    return byShow.values.toList();
+  }
+
+  String _seedMediaType(Map<String, dynamic> seed) {
+    final mediaType = (seed['mediaType'] as String?) ??
+        (seed['season'] != null ? 'tv' : 'movie');
+    return mediaType == 'tv' || mediaType == 'series' ? 'tv' : 'movie';
+  }
+
+  Map<String, dynamic>? _pickOppositeSeed(
+    List<Map<String, dynamic>> pool,
+    Map<String, dynamic> primary,
+  ) {
+    final wantOpposite = _seedMediaType(primary) == 'tv' ? 'movie' : 'tv';
+    final candidates =
+        pool.where((s) => _seedMediaType(s) == wantOpposite).toList();
+    if (candidates.isEmpty) return null;
+    return candidates[math.Random().nextInt(candidates.length)];
+  }
+
+  /// Returns true if a seed was successfully picked. Filters to in-progress
+  /// items (between 2% and 90% watched) and picks one at random per session.
+  bool _pickBecauseSeed(List<Map<String, dynamic>> history) {
+    if (!mounted || history.isEmpty) return false;
+    final pool = _inProgressPool(history);
+    if (pool.isEmpty) return false;
     final seed = pool[math.Random().nextInt(pool.length)];
+    final secondary = _pickOppositeSeed(pool, seed);
     setState(() {
       _becauseSeed = seed;
       _becausePoolSize = pool.length;
-      _becauseFuture = _loadBecauseRecs(seed);
+      _becauseFuture = _loadBecauseRecsMixed(seed, secondary);
     });
     return true;
+  }
+
+  Future<List<Movie>> _loadBecauseRecsMixed(
+    Map<String, dynamic> primary,
+    Map<String, dynamic>? secondary,
+  ) async {
+    if (secondary == null) return _loadBecauseRecs(primary);
+    final results = await Future.wait([
+      _loadBecauseRecs(primary),
+      _loadBecauseRecs(secondary),
+    ]);
+    return _interleaveMedia(results[0], results[1]);
   }
 
   Future<List<Movie>> _loadBecauseRecs(Map<String, dynamic> seed) async {
@@ -373,7 +476,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final mediaType = (seed['mediaType'] as String?) ??
         (seed['season'] != null ? 'tv' : 'movie');
-    final isTv = mediaType == 'tv';
+    final isTv = mediaType == 'tv' || mediaType == 'series';
+    final wantType = isTv ? 'tv' : 'movie';
     debugPrint('[BecauseYouWatched] seed="$title" isTv=$isTv');
 
     try {
@@ -423,6 +527,7 @@ class _HomeScreenState extends State<HomeScreen>
             } else if (ht.startsWith(it2) || it2.startsWith(ht)) {
               s += 2;
             }
+            if (h.mediaType == wantType) s += 3;
             if (it.year != null && h.releaseDate.length >= 4) {
               final hy = int.tryParse(h.releaseDate.substring(0, 4));
               if (hy == it.year) {
@@ -451,9 +556,10 @@ class _HomeScreenState extends State<HomeScreen>
       final ranked = resolved.whereType<MapEntry<int, Movie>>().toList()
         ..sort((a, b) => b.key.compareTo(a.key));
       final out = <Movie>[];
-      final seen = <int>{};
+      final seen = <String>{};
       for (final e in ranked) {
-        if (!seen.add(e.value.id)) continue;
+        final key = '${e.value.mediaType}:${e.value.id}';
+        if (!seen.add(key)) continue;
         out.add(e.value);
       }
       debugPrint('[BecauseYouWatched] tmdb-resolved=${out.length} (sorted by %)');
@@ -633,23 +739,19 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<List<Movie>> _loadMoodMovies(String moodId) async {
     final mood = _moods.firstWhere((m) => m.id == moodId, orElse: () => _moods.first);
-    try {
-      final providerId = _watchProviderId;
-      final results = _isTvHome
-          ? await _api.discoverTvShows(
-              genres: mood.genres,
-              minRating: 6.0,
-              watchProviderId: providerId,
-            )
-          : await _api.discoverMovies(
-              genres: mood.genres,
-              minRating: 6.0,
-              watchProviderId: providerId,
-            );
-      return results;
-    } catch (_) {
-      return [];
-    }
+    final providerId = _watchProviderId;
+    return _fetchMixed(
+      () => _api.discoverMovies(
+        genres: mood.movieGenres,
+        minRating: 6.0,
+        watchProviderId: providerId,
+      ),
+      () => _api.discoverTvShows(
+        genres: mood.tvGenres,
+        minRating: 6.0,
+        watchProviderId: providerId,
+      ),
+    ).catchError((_) => <Movie>[]);
   }
 
   void _selectMood(String moodId) {
@@ -691,9 +793,6 @@ class _HomeScreenState extends State<HomeScreen>
     SettingsService.addonChangeNotifier.removeListener(_onAddonsChanged);
     if (_splashDismissedListener != null) {
       ShellBus.splashDismissed.removeListener(_splashDismissedListener!);
-    }
-    if (_homeCategoryListener != null) {
-      ShellBus.homeCategory.removeListener(_homeCategoryListener!);
     }
     if (_watchProviderListener != null) {
       ShellBus.selectedWatchProviderId.removeListener(_watchProviderListener!);
@@ -894,7 +993,7 @@ class _HomeScreenState extends State<HomeScreen>
 
               if (!isDesktop)
                 _homeRowSliver(
-                  const _ContinueWatchingSection(),
+                  const _ContinueWatchingSection(compactTop: true),
                   isFirstAfterHero: true,
                 ),
 
@@ -925,13 +1024,14 @@ class _HomeScreenState extends State<HomeScreen>
                     title: 'Popular',
                     future: _popularFuture,
                     onMovieTap: _openDetails,
+                    showRank: true,
                   ),
                   isFirstAfterHero: false,
                 ),
 
               if (isDesktop)
                 _homeRowSliver(
-                  const _ContinueWatchingSection(),
+                  const _ContinueWatchingSection(compactTop: false),
                   isFirstAfterHero: false,
                 ),
 
@@ -943,6 +1043,7 @@ class _HomeScreenState extends State<HomeScreen>
                   onSelect: _selectMood,
                   future: _moodFuture,
                   onMovieTap: _openDetails,
+                  compactTop: false,
                 ),
                 isFirstAfterHero: false,
               ),
@@ -969,6 +1070,7 @@ class _HomeScreenState extends State<HomeScreen>
                     title: 'Popular',
                     future: _popularFuture,
                     onMovieTap: _openDetails,
+                    showRank: true,
                   ),
                   isFirstAfterHero: false,
                 ),
@@ -1032,9 +1134,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   double _continueWatchingSectionHeight(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    final topPadding = isDesktop ? 16.0 : 32.0;
+    final topPadding = _homeSectionTitleTop(context, compactTop: true);
     return topPadding + 30 + 16 + _HistoryCard.cardHeight(context);
   }
 
@@ -1207,8 +1307,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildDesktopHeroTextColumn(Movie heroMovie) {
     const overviewStyle = TextStyle(
-      fontSize: 15,
-      height: 1.5,
+      fontSize: 17,
+      height: 1.55,
       letterSpacing: 0.1,
     );
 
@@ -1227,7 +1327,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 18),
         SizedBox(
           height: ShellTokens.heroMetaSlotHeightDesktop,
           child: Align(
@@ -1235,23 +1335,24 @@ class _HomeScreenState extends State<HomeScreen>
             child: _buildHeroMetaRow(heroMovie, singleLine: true),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 18),
         SizedBox(
           height: ShellTokens.heroOverviewSlotHeightDesktop,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               heroMovie.overview.isNotEmpty ? heroMovie.overview : ' ',
-              maxLines: 3,
+              maxLines: 4,
               overflow: TextOverflow.ellipsis,
               style: overviewStyle.copyWith(
                 color: heroMovie.overview.isNotEmpty
-                    ? Colors.white.withValues(alpha: 0.55)
+                    ? Colors.white.withValues(alpha: 0.6)
                     : Colors.transparent,
               ),
             ),
           ),
         ),
+        const SizedBox(height: 8),
         _buildHeroActionRow(heroMovie, flat: true),
       ],
     );
@@ -1868,19 +1969,23 @@ class _MovieSection extends StatefulWidget {
   final Future<List<Movie>> future;
   final Function(Movie) onMovieTap;
   final bool compactTop;
+  final bool showRank;
 
   const _MovieSection({
     required this.title,
     required this.future,
     required this.onMovieTap,
     this.compactTop = false,
+    this.showRank = false,
   });
 
   static double sectionHeight(
     BuildContext context, {
     bool compactTop = false,
   }) {
-    final top = compactTop ? 16.0 : 36.0;
+    final top = compactTop
+        ? ShellTokens.homeSectionTitleTopCompactDesktop
+        : ShellTokens.homeSectionTitleTop;
     const headerRow = 28.0;
     const bottomGap = 16.0;
     return top + headerRow + bottomGap + _MovieCard.cardHeight(context);
@@ -1908,7 +2013,12 @@ class _MovieSectionState extends State<_MovieSection> {
           // Shimmer placeholder while loading
           if (snapshot.connectionState == ConnectionState.waiting) {
             final shimmerChild = Padding(
-                padding: EdgeInsets.only(top: widget.compactTop ? 16 : 32),
+                padding: EdgeInsets.only(
+                  top: _homeSectionTitleTop(
+                    context,
+                    compactTop: widget.compactTop,
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1944,7 +2054,10 @@ class _MovieSectionState extends State<_MovieSection> {
         }
         final movies = snapshot.data!;
         
-        final sectionTop = widget.compactTop ? 16.0 : 36.0;
+        final sectionTop = _homeSectionTitleTop(
+          context,
+          compactTop: widget.compactTop,
+        );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1962,10 +2075,12 @@ class _MovieSectionState extends State<_MovieSection> {
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 itemCount: movies.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                separatorBuilder: (_, _) =>
+                    SizedBox(width: widget.showRank ? 6 : 14),
                 itemBuilder: (context, index) => _MovieCard(
                   movie: movies[index],
                   onTap: () => widget.onMovieTap(movies[index]),
+                  rank: widget.showRank ? index + 1 : null,
                 ),
               ),
             ),
@@ -2031,10 +2146,12 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
 class _MovieCard extends StatelessWidget {
   final Movie movie;
   final VoidCallback onTap;
+  final int? rank;
 
   const _MovieCard({
     required this.movie,
     required this.onTap,
+    this.rank,
   });
 
   static double cardWidth(BuildContext context) {
@@ -2057,7 +2174,7 @@ class _MovieCard extends StatelessWidget {
     final cardHeight = _MovieCard.cardHeight(context);
     final imageUrl = movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '';
 
-    return FocusableControl(
+    final card = FocusableControl(
       onTap: onTap,
       borderRadius: 14,
       scaleOnFocus: 1.05,
@@ -2156,6 +2273,29 @@ class _MovieCard extends StatelessWidget {
         ),
       ),
     );
+
+    if (rank == null) return card;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          '$rank',
+          style: TextStyle(
+            fontSize: 120,
+            fontWeight: FontWeight.w900,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2
+              ..color = Colors.white.withValues(alpha: 0.1),
+            height: 0.85,
+            letterSpacing: -8,
+          ),
+        ),
+        card,
+      ],
+    );
   }
 }
 
@@ -2219,7 +2359,9 @@ Widget _buildRatingBadgeText(String rating) {
 }
 
 class _ContinueWatchingSection extends StatefulWidget {
-  const _ContinueWatchingSection();
+  final bool compactTop;
+
+  const _ContinueWatchingSection({this.compactTop = false});
 
   @override
   State<_ContinueWatchingSection> createState() => _ContinueWatchingSectionState();
@@ -2691,15 +2833,17 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
           if (seen.add(key)) history.add(item);
         }
 
-        final isDesktop =
-            MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+        final titleTop = _homeSectionTitleTop(
+          context,
+          compactTop: widget.compactTop,
+        );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ShellSectionTitle(
               title: 'Continue Watching',
-              padding: EdgeInsets.fromLTRB(24, isDesktop ? 16 : 32, 24, 16),
+              padding: EdgeInsets.fromLTRB(24, titleTop, 24, 16),
             ),
             SizedBox(
               height: _HistoryCard.cardHeight(context),
@@ -3251,11 +3395,18 @@ class _MyListButton extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _MoodSection extends StatefulWidget {
-  final List<({String id, String label, IconData icon, List<int> genres})> moods;
+  final List<({
+    String id,
+    String label,
+    IconData icon,
+    List<int> movieGenres,
+    List<int> tvGenres,
+  })> moods;
   final String selectedId;
   final ValueChanged<String> onSelect;
   final Future<List<Movie>>? future;
   final Function(Movie) onMovieTap;
+  final bool compactTop;
 
   const _MoodSection({
     required this.moods,
@@ -3263,6 +3414,7 @@ class _MoodSection extends StatefulWidget {
     required this.onSelect,
     required this.future,
     required this.onMovieTap,
+    this.compactTop = false,
   });
 
   @override
@@ -3285,14 +3437,16 @@ class _MoodSectionState extends State<_MoodSection> {
     final onSelect = widget.onSelect;
     final future = widget.future;
     final onMovieTap = widget.onMovieTap;
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    final titleTop = _homeSectionTitleTop(
+      context,
+      compactTop: widget.compactTop,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(24, isDesktop ? 12 : 36, 24, 12),
+          padding: EdgeInsets.fromLTRB(24, titleTop, 24, 12),
           child: const Text(
             "What's your mood?",
             style: ShellSectionTitle.titleStyle,

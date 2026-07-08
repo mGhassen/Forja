@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
@@ -48,9 +49,10 @@ class ShellSearchBar extends StatelessWidget {
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               prefixIcon: const Icon(Icons.search, color: Colors.white54),
               suffixIcon: query.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, color: Colors.white70),
-                      onPressed: onClear,
+                  ? ForjaPlainIcon(
+                      icon: Icons.clear,
+                      color: Colors.white70,
+                      onTap: onClear,
                     )
                   : null,
             ),

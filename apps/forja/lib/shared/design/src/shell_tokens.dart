@@ -77,10 +77,10 @@ abstract final class ShellTokens {
   }
 
   static const double heroTextColumnWidthDesktop = 480;
-  static const double heroTitleSlotHeightDesktop = 112;
-  static const double heroMetaSlotHeightDesktop = 36;
-  static const double heroOverviewSlotHeightDesktop = 84;
-  static const double heroLogoMaxHeightDesktop = 96;
+  static const double heroTitleSlotHeightDesktop = 144;
+  static const double heroMetaSlotHeightDesktop = 40;
+  static const double heroOverviewSlotHeightDesktop = 120;
+  static const double heroLogoMaxHeightDesktop = 128;
 
   /// Narrow right-edge vignette on flat cinematic body (desktop Home).
   static const double bodyRightGradientWidth = 88;
@@ -95,6 +95,11 @@ abstract final class ShellTokens {
 
   /// Vertical gap between Home content rows (not hero → first row).
   static const double homeRowSpacing = 24;
+
+  /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
+  static const double homeSectionTitleTop = 36;
+  static const double homeSectionTitleTopCompactDesktop = 16;
+  static const double homeSectionTitleTopCompactMobile = 32;
   static const double searchCardWidthDesktop = 140;
   static const double searchCardWidthCompact = 120;
 
