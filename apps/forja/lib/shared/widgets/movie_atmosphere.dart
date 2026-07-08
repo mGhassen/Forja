@@ -133,12 +133,6 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
           ),
         ),
 
-        // Blur layer
-        BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: widget.blurSigma, sigmaY: widget.blurSigma),
-          child: Container(color: Colors.transparent),
-        ),
-
         // Gradient overlay — strongly tinted with movie's dominant color
         Container(
           decoration: BoxDecoration(
@@ -153,36 +147,6 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
           ),
         ),
 
-        // Strong radial glow from top using vibrant color
-        if (colors != null) ...[
-          Container(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0, -0.7),
-                radius: 1.4,
-                colors: [
-                  colors.vibrant.withValues(alpha: 0.18),
-                  colors.vibrant.withValues(alpha: 0.04),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.4, 1.0],
-              ),
-            ),
-          ),
-          // Secondary accent glow from bottom-right
-          Container(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0.8, 0.9),
-                radius: 1.0,
-                colors: [
-                  colors.dominant.withValues(alpha: 0.10),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }

@@ -612,12 +612,7 @@ class _CompactFilterDialog extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: 380, maxHeight: maxHeight ?? 500),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: AppTheme.isLightMode
-              ? _buildDialogBody(context)
-              : BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                  child: _buildDialogBody(context),
-                ),
+          child: _buildDialogBody(context),
         ),
       ),
     );

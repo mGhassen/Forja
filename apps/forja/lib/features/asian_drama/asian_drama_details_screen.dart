@@ -237,10 +237,6 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
             placeholder: (_, _) => Container(color: AppTheme.bgCard),
             errorWidget: (_, _, _) => Container(color: AppTheme.bgCard),
           ),
-        BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-          child: Container(color: Colors.black.withValues(alpha: 0.15)),
-        ),
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
@@ -72,13 +71,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with SingleTickerProvid
             placeholder: (context, url) => Container(color: Colors.black),
             errorWidget: (context, url, error) => Container(color: Colors.black),
           ),
-          if (AppTheme.isLightMode)
-            Container(color: Colors.black.withValues(alpha: 0.8))
-          else
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(color: Colors.black.withValues(alpha: 0.6)),
+          Container(
+            color: Colors.black.withValues(
+              alpha: AppTheme.isLightMode ? 0.8 : 0.72,
             ),
+          ),
           
           // Logo/Title (Restored clear logo logic)
           Center(

@@ -187,20 +187,17 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> with WidgetsBindi
                 child: _buildCoverImage(track.cover),
               ),
               Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.5),
-                          const Color(0xFF141414).withValues(alpha: 0.85),
-                          const Color(0xFF141414),
-                        ],
-                        stops: const [0.0, 0.6, 1.0],
-                      ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.65),
+                        const Color(0xFF141414).withValues(alpha: 0.92),
+                        const Color(0xFF141414),
+                      ],
+                      stops: const [0.0, 0.6, 1.0],
                     ),
                   ),
                 ),

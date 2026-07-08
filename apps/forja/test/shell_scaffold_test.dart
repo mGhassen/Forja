@@ -18,7 +18,7 @@ void main() {
 
   setUp(() {
     ShellBus.homeCategory.value = null;
-    ShellBus.homeSelectedMoodId.value = 'mind';
+    ShellBus.homeSelectedGenreId.value = null;
     ShellBus.homeHeroHeight.value = 0;
     ShellBus.selectedWatchProviderId.value = null;
     ShellBus.requestTab.value = null;
@@ -119,6 +119,22 @@ void main() {
     expect(find.text('TV Shows'), findsOneWidget);
   });
 
+  testWidgets('HomeTopBar Categories menu sets genre filter', (tester) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(shellTopBar: const HomeTopBar()),
+      size: const Size(1200, 800),
+    );
+
+    await tester.tap(find.text('Categories'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Action'));
+    await tester.pumpAndSettle();
+
+    expect(ShellBus.homeSelectedGenreId.value, 'action');
+  });
+
   testWidgets('HomeTopBar Films tap toggles homeCategory filter', (tester) async {
     await pumpScaffold(
       tester,
@@ -149,6 +165,33 @@ void main() {
     final railFinder = find.byType(ShellNavRail);
     expect(tester.getSize(railFinder).width, ShellTokens.navRailWidth);
     expect(find.text('Search'), findsNothing);
+  });
+
+  testWidgets('ShellNavRail reveals label after sustained hover', (tester) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(),
+      size: const Size(1200, 800),
+    );
+
+    final searchIcon = find.byIcon(Icons.search);
+    expect(searchIcon, findsOneWidget);
+    expect(find.text('Search'), findsNothing);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(searchIcon));
+    await tester.pump();
+
+    await tester.pump(ShellTokens.navRailLabelRevealDelay);
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(ShellTokens.navRailLabelLetterInterval);
+    }
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search'), findsOneWidget);
   });
 
   testWidgets('ShellScaffold body is inset by fixed rail width', (tester) async {

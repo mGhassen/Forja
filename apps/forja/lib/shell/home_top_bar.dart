@@ -1,22 +1,15 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-const _homeMoodOptions = <({String id, String label})>[
-  (id: 'mind', label: 'Mind-Bending'),
-  (id: 'feel', label: 'Feel-Good'),
-  (id: 'dark', label: 'Dark Thrillers'),
-  (id: 'romance', label: 'Romance'),
-  (id: 'horror', label: 'Horror'),
-  (id: 'action', label: 'Action'),
-  (id: 'animated', label: 'Animated'),
-  (id: 'drama', label: 'Drama'),
-];
+/// Sentinel for the "All" entry in the categories popup menu.
+const _allGenresSentinel = '__all__';
 
 /// Films / TV Shows / Categories menu overlaid on the Home hero.
 class HomeTopBar extends StatefulWidget {
@@ -41,17 +34,22 @@ class _HomeTopBarState extends State<HomeTopBar> {
     final box = _categoriesKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
 
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final offset = box.localToGlobal(Offset.zero, ancestor: overlay);
+    final selectedId = ShellBus.homeSelectedGenreId.value;
+
     setState(() => _categoriesOpen = true);
-    final offset = box.localToGlobal(Offset.zero);
-    final selectedId = ShellBus.homeSelectedMoodId.value;
 
     final picked = await showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(
-        offset.dx,
-        offset.dy + box.size.height + 4,
-        offset.dx + box.size.width,
-        offset.dy + box.size.height + 4,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(
+          offset.dx,
+          offset.dy + box.size.height,
+          box.size.width,
+          0,
+        ),
+        Offset.zero & overlay.size,
       ),
       color: const Color(0xFF141414),
       elevation: 8,
@@ -59,18 +57,32 @@ class _HomeTopBarState extends State<HomeTopBar> {
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(color: ForjaShellColors.borderSubtle),
       ),
+      constraints: const BoxConstraints(minWidth: 180, maxHeight: 360),
       items: [
-        for (final mood in _homeMoodOptions)
+        PopupMenuItem<String>(
+          value: _allGenresSentinel,
+          child: Text(
+            'All',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: selectedId == null ? FontWeight.w600 : FontWeight.w500,
+              color: selectedId == null
+                  ? ForjaShellColors.textPrimary
+                  : ForjaShellColors.textSecondary,
+            ),
+          ),
+        ),
+        for (final genre in homeGenreCategories)
           PopupMenuItem<String>(
-            value: mood.id,
+            value: genre.id,
             child: Text(
-              mood.label,
+              genre.label,
               style: GoogleFonts.inter(
                 fontSize: 14,
-                fontWeight: mood.id == selectedId
+                fontWeight: genre.id == selectedId
                     ? FontWeight.w600
                     : FontWeight.w500,
-                color: mood.id == selectedId
+                color: genre.id == selectedId
                     ? ForjaShellColors.textPrimary
                     : ForjaShellColors.textSecondary,
               ),
@@ -81,17 +93,12 @@ class _HomeTopBarState extends State<HomeTopBar> {
 
     if (!mounted) return;
     setState(() => _categoriesOpen = false);
-    if (picked != null && picked != ShellBus.homeSelectedMoodId.value) {
-      ShellBus.homeSelectedMoodId.value = picked;
-    }
-  }
+    if (picked == null) return;
 
-  String _categoriesLabel(String moodId) {
-    if (moodId == 'mind') return 'Categories';
-    for (final mood in _homeMoodOptions) {
-      if (mood.id == moodId) return mood.label;
+    final next = picked == _allGenresSentinel ? null : picked;
+    if (next != ShellBus.homeSelectedGenreId.value) {
+      ShellBus.homeSelectedGenreId.value = next;
     }
-    return 'Categories';
   }
 
   @override
@@ -131,12 +138,13 @@ class _HomeTopBarState extends State<HomeTopBar> {
             child: ValueListenableBuilder<ShellHomeCategory?>(
               valueListenable: ShellBus.homeCategory,
               builder: (context, mediaFilter, _) {
-                return ValueListenableBuilder<String>(
-                  valueListenable: ShellBus.homeSelectedMoodId,
-                  builder: (context, moodId, _) {
-                    final categoriesLabel = _categoriesLabel(moodId);
+                return ValueListenableBuilder<String?>(
+                  valueListenable: ShellBus.homeSelectedGenreId,
+                  builder: (context, genreId, _) {
+                    final categoriesLabel =
+                        homeGenreLabel(genreId) ?? 'Categories';
                     final categoriesActive =
-                        _categoriesOpen || moodId != 'mind';
+                        _categoriesOpen || genreId != null;
 
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,

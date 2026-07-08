@@ -12,9 +12,9 @@ class ShellBus {
   static final ValueNotifier<ShellHomeCategory?> homeCategory =
       ValueNotifier<ShellHomeCategory?>(null);
 
-  /// Mood/genre row selection — synced with Home top-bar Categories menu.
-  static final ValueNotifier<String> homeSelectedMoodId =
-      ValueNotifier<String>('mind');
+  /// Genre filter for Home top-bar Categories menu (`null` = all genres).
+  static final ValueNotifier<String?> homeSelectedGenreId =
+      ValueNotifier<String?>(null);
 
   /// TMDB watch-provider filter for Home desktop top bar (`null` = all providers).
   static final ValueNotifier<int?> selectedWatchProviderId = ValueNotifier(null);

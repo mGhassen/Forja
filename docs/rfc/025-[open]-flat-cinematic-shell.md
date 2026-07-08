@@ -11,7 +11,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **37 / 39** acceptance (desktop slices 1–1.3) · **2 / 3** deferred |
+| **Progress** | **4 / 4** components · **37 / 37** acceptance (desktop slices 1–1.3) · deferred slice 2: **2 / 3** (A13–A14 ✅ · A15 ⏭️) |
 | **Current slice** | Desktop cinematic polish (1.3) + mobile flat nav |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
 
@@ -60,7 +60,7 @@
 | 20 | R25-A20 | Expanded rail transparent + body scrim gradient | ✅ |
 | 21 | R25-A21 | Right viewport gradient; full-width desktop body (no 1600 cap on Home) | ✅ |
 | 22 | R25-A22 | Hero: Watch Now ghost + square info/add buttons (40px) | ✅ |
-| 23 | R25-A23 | App-wide button theme + Home continue-watching/stats migrated | 🔄 |
+| 23 | R25-A23 | App-wide button theme + Home continue-watching/stats migrated | ✅ |
 | 24 | R25-A24 | Shell/nav typography Inter | ✅ |
 | 25 | R25-A25 | Widget tests updated | ✅ |
 
@@ -100,7 +100,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 13 | R25-A13 | Mobile bottom nav flat treatment (remove `BackdropFilter` in `shell_bottom_nav.dart`) | ✅ |
-| 14 | R25-A14 | App-wide blur/glow purge (Music, cards, player chrome) | ⏭️ |
+| 14 | R25-A14 | App-wide blur/glow purge (Music, cards, player chrome) | ✅ |
 | 15 | R25-A15 | Light-mode parity audit after flat dark default ships | ⏭️ |
 
 ---

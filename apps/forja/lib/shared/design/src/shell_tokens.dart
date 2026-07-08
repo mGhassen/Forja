@@ -10,7 +10,14 @@ abstract final class ShellTokens {
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
   static const double navRailIconSize = 30;
+  static const double navRailIconHoverScale = 1.14;
+  static const double navRailIconRevealedScale = 0.78;
+  static const double navRailLabelFontSize = 11;
   static const double navRailItemSpacing = 28;
+  static const Duration navRailLabelRevealDelay = Duration(milliseconds: 350);
+  static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
+  static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
+  static const Duration navRailLabelRevealAnimation = Duration(milliseconds: 520);
 
   static const double shellButtonHeight = 40;
   static const double shellButtonRadius = 6;
@@ -89,7 +96,7 @@ abstract final class ShellTokens {
   static const double heroTitleSlotHeightDesktop = 196;
   static const double heroMetaSlotHeightDesktop = 40;
   static const int heroOverviewMaxLinesDesktop = 5;
-  static const double heroOverviewFontSizeDesktop = 18;
+  static const double heroOverviewFontSizeDesktop = 17;
   static const double heroOverviewLineHeightDesktop = 1.55;
   static const double heroLogoMaxHeightDesktop = 180;
 

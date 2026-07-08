@@ -647,44 +647,6 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     );
   }
 
-  Widget _frostedPill({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Material(
-          color: Colors.white.withValues(alpha: 0.12),
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, color: Colors.white, size: 20),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   // ─── Continue Watching ────────────────────────────────────────
   Widget _buildContinueWatching() {
     return Padding(

@@ -316,19 +316,15 @@ class _SimilarHubScreenState extends State<SimilarHubScreen>
 
   Widget _buildSearchBar() => Padding(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.10), width: 1),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.10), width: 1),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
                 children: [
                   const Icon(Icons.search_rounded, color: Colors.white70),
                   const SizedBox(width: 10),
@@ -365,8 +361,6 @@ class _SimilarHubScreenState extends State<SimilarHubScreen>
                     ),
                 ],
               ),
-            ),
-          ),
         ),
       );
 
@@ -646,20 +640,15 @@ class _PosterCardState extends State<_PosterCard> {
                       Positioned.fill(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(
-                                sigmaX: 8, sigmaY: 8),
-                            child: Container(
-                              color: Colors.black
-                                  .withValues(alpha: 0.35),
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2.4,
-                                      color: Colors.white),
-                                ),
+                          child: Container(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    color: Colors.white),
                               ),
                             ),
                           ),

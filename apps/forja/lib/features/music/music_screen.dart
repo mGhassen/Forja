@@ -1089,20 +1089,15 @@ class _MusicScreenState extends State<MusicScreen>
               child: _buildCoverImage(coverUrl),
             ),
           Positioned.fill(
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.4),
-                        AppTheme.bgDark,
-                      ],
-                    ),
-                  ),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.55),
+                    AppTheme.bgDark,
+                  ],
                 ),
               ),
             ),
@@ -1561,19 +1556,14 @@ class _MusicScreenState extends State<MusicScreen>
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                   child: GestureDetector(
                     onTap: _openFullPlayer,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                        child: Container(
+                    child: Container(
                           height: 72,
                           decoration: BoxDecoration(
-                            color: AppTheme.bgCard.withValues(alpha: 0.92),
+                            color: AppTheme.bgCard.withValues(alpha: 0.96),
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
                             boxShadow: [
                               BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8)),
-                              BoxShadow(color: AppTheme.current.primaryColor.withValues(alpha: 0.08), blurRadius: 30),
                             ],
                           ),
                           child: Column(
@@ -1694,8 +1684,6 @@ class _MusicScreenState extends State<MusicScreen>
                       ),
                     ),
                   ),
-                ),
-              ),
             );
           },
         );

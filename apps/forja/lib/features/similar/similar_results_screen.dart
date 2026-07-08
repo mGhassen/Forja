@@ -10,7 +10,6 @@
 // based on the user's setting.
 
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -260,7 +259,7 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
             ),
           ),
           // Backdrop blur layer — parallax with scroll.
-          // Pre-blur via ImageFiltered so the image can never appear sharp
+// Pre-blurred via gradient scrim so text stays readable.
           // for a frame during fade-in.
           if (widget.seedBackdrop.isNotEmpty)
             Positioned(
@@ -272,20 +271,16 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    ImageFiltered(
-                      imageFilter:
-                          ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                      child: CachedNetworkImage(
-                        imageUrl:
-                            TmdbApi.getBackdropUrl(widget.seedBackdrop),
-                        fit: BoxFit.cover,
-                        fadeInDuration: const Duration(milliseconds: 500),
-                        placeholder: (_, _) =>
-                            Container(color: _ambient),
-                      ),
+                    CachedNetworkImage(
+                      imageUrl:
+                          TmdbApi.getBackdropUrl(widget.seedBackdrop),
+                      fit: BoxFit.cover,
+                      fadeInDuration: const Duration(milliseconds: 500),
+                      placeholder: (_, _) =>
+                          Container(color: _ambient),
                     ),
                     Container(
-                        color: Colors.black.withValues(alpha: 0.35)),
+                        color: Colors.black.withValues(alpha: 0.5)),
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -566,18 +561,14 @@ class _SimilarBigCard extends StatelessWidget {
             child: Stack(
               children: [
                 // Hazy backdrop using the (eventually) HD backdrop or poster.
-                // Pre-blurred via ImageFiltered so it never flashes sharp.
+                // Dimmed backdrop behind card content.
                 if (item.tmdbBackdropUrl != null)
                   Positioned.fill(
-                    child: Opacity(
+                      child: Opacity(
                       opacity: 0.32,
-                      child: ImageFiltered(
-                        imageFilter:
-                            ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-                        child: CachedNetworkImage(
-                          imageUrl: item.tmdbBackdropUrl!,
-                          fit: BoxFit.cover,
-                        ),
+                      child: CachedNetworkImage(
+                        imageUrl: item.tmdbBackdropUrl!,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
@@ -714,17 +705,14 @@ class _SimilarBigCard extends StatelessWidget {
                 ),
                 if (loading)
                   Positioned.fill(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                      child: Container(
-                        color: Colors.black.withValues(alpha: 0.25),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2.4, color: Colors.white),
-                          ),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.4, color: Colors.white),
                         ),
                       ),
                     ),
@@ -888,21 +876,16 @@ class _GlassButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Material(
-          color: Colors.white.withValues(alpha: 0.10),
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: SizedBox(
-              width: 40,
-              height: 40,
-              child: Icon(icon, color: Colors.white, size: 20),
-            ),
-          ),
+    return Material(
+      color: Colors.white.withValues(alpha: 0.10),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(icon, color: Colors.white, size: 20),
         ),
       ),
     );

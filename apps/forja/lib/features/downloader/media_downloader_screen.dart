@@ -396,20 +396,16 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.12),
-                width: 1,
-              ),
-            ),
-            child: Padding(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.12),
+            width: 1,
+          ),
+        ),
+        child: Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: 16, vertical: 4),
               child: Row(
@@ -461,8 +457,6 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 

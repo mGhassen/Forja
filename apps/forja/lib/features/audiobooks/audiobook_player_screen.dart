@@ -91,10 +91,7 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
               ),
             ),
             Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                child: Container(color: Colors.black.withValues(alpha: 0.4)),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.55)),
             ),
             const Positioned.fill(child: _NightSkyPainter()),
             

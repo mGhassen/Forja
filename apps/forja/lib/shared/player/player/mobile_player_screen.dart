@@ -33,18 +33,18 @@ import 'package:forja/shared/services/pip_service.dart';
 //  GLASS PRIMITIVES  (mobile — press feedback only, no hover)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── _SolidGlass ──────────────────────────────────────────────────────────────
+// ── _BlurGlass ──────────────────────────────────────────────────────────────
 // Used for ALL buttons/pills. No BackdropFilter — zero extra GPU layers.
 // Slightly higher base opacity (0.72) so it reads clearly on black without
 // needing blur to give it body.
-class _SolidGlass extends StatelessWidget {
+class _BlurGlass extends StatelessWidget {
   final Widget child;
   final double radius;
   final EdgeInsetsGeometry? padding;
   final Color? tint;
   final bool pressed;
 
-  const _SolidGlass({
+  const _BlurGlass({
     required this.child,
     this.radius = 12,
     this.padding,
@@ -83,43 +83,6 @@ class _SolidGlass extends StatelessWidget {
         ],
       ),
       child: child,
-    );
-  }
-}
-
-// ── _BlurGlass ───────────────────────────────────────────────────────────────
-// Used ONLY for large/decorative elements (title pill, play button, tooltip,
-// side indicators) — at most 2-3 on screen at once, so cost is acceptable.
-class _BlurGlass extends StatelessWidget {
-  final Widget child;
-  final double radius;
-  final EdgeInsetsGeometry? padding;
-
-  const _BlurGlass({
-    required this.child,
-    this.radius = 12,
-    this.padding,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1C1C1E).withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.16),
-              width: 0.8,
-            ),
-          ),
-          child: child,
-        ),
-      ),
     );
   }
 }
@@ -165,7 +128,7 @@ class _GlassIconButtonState extends State<_GlassIconButton> {
       child: AnimatedScale(
         scale: _pressed ? 0.86 : 1.0,
         duration: const Duration(milliseconds: 80),
-        child: _SolidGlass(                          // ← no blur
+        child: _BlurGlass(                          // ← no blur
           radius: widget.size / 2,
           tint: _tint,
           pressed: _pressed,
@@ -216,7 +179,7 @@ class _GlassPillButtonState extends State<_GlassPillButton> {
       child: AnimatedScale(
         scale: _pressed ? 0.88 : 1.0,
         duration: const Duration(milliseconds: 80),
-        child: _SolidGlass(                          // ← no blur
+        child: _BlurGlass(                          // ← no blur
           radius: 20,
           tint: widget.accent ?? const Color(0xFF1C1C1E),
           pressed: _pressed,

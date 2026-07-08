@@ -2,8 +2,6 @@
 // Backdrop blur + poster + chips + expandable synopsis + episode grid +
 // related rail. Bound to `AnimeArabicService` / `ArabicAnimeDetails`.
 
-import 'dart:ui';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -133,15 +131,12 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: CachedNetworkImage(
-              imageUrl: url,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              placeholder: (_, _) => Container(color: AppTheme.bgCard),
-              errorWidget: (_, _, _) => Container(color: AppTheme.bgCard),
-            ),
+          CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            placeholder: (_, _) => Container(color: AppTheme.bgCard),
+            errorWidget: (_, _, _) => Container(color: AppTheme.bgCard),
           ),
           DecoratedBox(
             decoration: BoxDecoration(
@@ -149,8 +144,8 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  AppTheme.bgDark.withValues(alpha: 0.35),
-                  AppTheme.bgDark.withValues(alpha: 0.65),
+                  AppTheme.bgDark.withValues(alpha: 0.5),
+                  AppTheme.bgDark.withValues(alpha: 0.78),
                   AppTheme.bgDark.withValues(alpha: 0.92),
                   AppTheme.bgDark,
                 ],
@@ -391,18 +386,15 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
   Widget _frostedIcon(IconData icon, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.all(8),
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Material(
-            color: Colors.black.withValues(alpha: 0.4),
-            child: InkWell(
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Icon(icon, color: Colors.white, size: 20),
-              ),
-            ),
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.55),
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, color: Colors.white, size: 20),
           ),
         ),
       ),

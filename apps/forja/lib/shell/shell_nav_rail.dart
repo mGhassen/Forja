@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ShellNavRail extends StatelessWidget {
   const ShellNavRail({
@@ -92,7 +94,89 @@ class _RailLogo extends StatelessWidget {
   }
 }
 
-class _ShellNavRailItem extends StatelessWidget {
+class _TypewriterLabel extends StatefulWidget {
+  const _TypewriterLabel({
+    required this.text,
+    required this.active,
+    required this.style,
+  });
+
+  final String text;
+  final bool active;
+  final TextStyle style;
+
+  @override
+  State<_TypewriterLabel> createState() => _TypewriterLabelState();
+}
+
+class _TypewriterLabelState extends State<_TypewriterLabel> {
+  int _visibleChars = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.active) _startTyping();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TypewriterLabel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) {
+      _startTyping();
+    } else if (!widget.active) {
+      _stopTyping(reset: true);
+    } else if (widget.active && widget.text != oldWidget.text) {
+      _startTyping();
+    }
+  }
+
+  void _startTyping() {
+    _stopTyping(reset: true);
+    if (widget.text.isEmpty) return;
+
+    _timer = Timer.periodic(ShellTokens.navRailLabelLetterInterval, (_) {
+      if (!mounted) return;
+      if (_visibleChars >= widget.text.length) {
+        _timer?.cancel();
+        return;
+      }
+      setState(() => _visibleChars++);
+    });
+  }
+
+  void _stopTyping({bool reset = false}) {
+    _timer?.cancel();
+    _timer = null;
+    if (reset && _visibleChars != 0) {
+      setState(() => _visibleChars = 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopTyping();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active && _visibleChars == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final end = _visibleChars.clamp(0, widget.text.length);
+    return Text(
+      widget.text.substring(0, end),
+      textAlign: TextAlign.center,
+      maxLines: 2,
+      overflow: TextOverflow.clip,
+      style: widget.style,
+    );
+  }
+}
+
+class _ShellNavRailItem extends StatefulWidget {
   const _ShellNavRailItem({
     required this.destination,
     required this.selected,
@@ -104,7 +188,64 @@ class _ShellNavRailItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
+}
+
+class _ShellNavRailItemState extends State<_ShellNavRailItem> {
+  bool _hover = false;
+  bool _pressed = false;
+  bool _revealed = false;
+  Timer? _revealTimer;
+
+  @override
+  void dispose() {
+    _revealTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onHoverEnter() {
+    setState(() => _hover = true);
+    _revealTimer?.cancel();
+    _revealTimer = Timer(ShellTokens.navRailLabelRevealDelay, () {
+      if (mounted && _hover) setState(() => _revealed = true);
+    });
+  }
+
+  void _onHoverExit() {
+    _revealTimer?.cancel();
+    setState(() {
+      _hover = false;
+      _pressed = false;
+      _revealed = false;
+    });
+  }
+
+  double get _iconScale {
+    if (_pressed) return 0.92;
+    if (_revealed) return ShellTokens.navRailIconRevealedScale;
+    if (_hover) return ShellTokens.navRailIconHoverScale;
+    return 1.0;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final iconColor = widget.selected
+        ? ForjaShellColors.iconActive
+        : _hover
+            ? ForjaShellColors.iconHover
+            : ForjaShellColors.iconMuted;
+    final labelColor = widget.selected
+        ? ForjaShellColors.textPrimary
+        : _hover
+            ? ForjaShellColors.textSecondary
+            : ForjaShellColors.iconMuted;
+    final labelStyle = GoogleFonts.inter(
+      color: labelColor,
+      fontSize: ShellTokens.navRailLabelFontSize,
+      fontWeight: FontWeight.w500,
+      height: 1.2,
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         vertical: ShellTokens.navRailItemSpacing / 2,
@@ -112,39 +253,66 @@ class _ShellNavRailItem extends StatelessWidget {
       child: SizedBox(
         width: ShellTokens.navRailWidth,
         child: Center(
-          child: ForjaInteractive(
-            onTap: onTap,
-            hoverScale: 1.08,
-            pressScale: 0.94,
-            builder: (hover, _) {
-              final iconColor = selected
-                  ? ForjaShellColors.iconActive
-                  : hover
-                      ? ForjaShellColors.iconHover
-                      : ForjaShellColors.iconMuted;
-              return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  selected ? destination.activeIcon : destination.icon,
-                  color: iconColor,
-                  size: ShellTokens.navRailIconSize,
+          child: MouseRegion(
+            onEnter: (_) => _onHoverEnter(),
+            onExit: (_) => _onHoverExit(),
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTapDown: (_) => setState(() => _pressed = true),
+              onTapUp: (_) => setState(() => _pressed = false),
+              onTapCancel: () => setState(() => _pressed = false),
+              onTap: widget.onTap,
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedSize(
+                duration: ShellTokens.navRailLabelRevealAnimation,
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedScale(
+                      scale: _iconScale,
+                      duration: ShellTokens.navRailIconScaleAnimation,
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        widget.selected
+                            ? widget.destination.activeIcon
+                            : widget.destination.icon,
+                        color: iconColor,
+                        size: ShellTokens.navRailIconSize,
+                      ),
+                    ),
+                    AnimatedSize(
+                      duration: ShellTokens.navRailLabelRevealAnimation,
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _revealed
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: _TypewriterLabel(
+                                text: widget.destination.label,
+                                active: _revealed,
+                                style: labelStyle,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: 6),
+                    AnimatedContainer(
+                      duration: ShellTokens.navSelectionAnimation,
+                      height: ShellTokens.shellNavUnderlineHeight,
+                      width: widget.selected ? 24 : 0,
+                      decoration: BoxDecoration(
+                        color: widget.selected
+                            ? ForjaShellColors.navUnderline
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                AnimatedContainer(
-                  duration: ShellTokens.navSelectionAnimation,
-                  height: ShellTokens.shellNavUnderlineHeight,
-                  width: selected ? 24 : 0,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? ForjaShellColors.navUnderline
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ],
-            );
-            },
+              ),
+            ),
           ),
         ),
       ),
