@@ -1787,11 +1787,22 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDesktopHeroImageGradients(Color shellBg) {
+  Widget _buildDesktopHeroImageGradients(
+    Color shellBg, {
+    required double imageStartFraction,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final height = constraints.maxHeight;
         final fadeEnd = ShellTokens.heroImageGradientFadeEndFraction;
+        final solidEnd = ShellTokens.heroImageGradientSolidEndFraction;
+        final strip = 1.0 - imageStartFraction;
+        final solidEndStop = imageStartFraction + strip * solidEnd;
+        final fadeMid1 = imageStartFraction +
+            strip * (solidEnd + (fadeEnd - solidEnd) * 0.31);
+        final fadeMid2 = imageStartFraction +
+            strip * (solidEnd + (fadeEnd - solidEnd) * 0.66);
+        final fadeEndStop = imageStartFraction + strip * fadeEnd;
 
         return Stack(
           fit: StackFit.expand,
@@ -1804,16 +1815,22 @@ class _HomeScreenState extends State<HomeScreen>
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
+                        Colors.transparent,
+                        Colors.transparent,
                         shellBg,
+                        if (solidEnd > 0) shellBg,
                         shellBg.withValues(alpha: 0.72),
                         shellBg.withValues(alpha: 0.28),
                         Colors.transparent,
                       ],
                       stops: [
                         0.0,
-                        fadeEnd * 0.31,
-                        fadeEnd * 0.66,
-                        fadeEnd,
+                        imageStartFraction,
+                        imageStartFraction,
+                        if (solidEnd > 0) solidEndStop,
+                        fadeMid1,
+                        fadeMid2,
+                        fadeEndStop,
                       ],
                     ),
                   ),
@@ -1939,39 +1956,37 @@ class _HomeScreenState extends State<HomeScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
+              ColoredBox(color: shellBg),
               Positioned(
                 left: imageLeft,
                 top: 0,
                 right: 0,
                 bottom: 0,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    PageView.builder(
-                      clipBehavior: Clip.hardEdge,
-                      controller: _heroController,
-                      itemCount: _heroLoopLength,
-                      onPageChanged: (i) => _onHeroPageChanged(i, movies),
-                      itemBuilder: (context, index) {
-                        final movie = movies[index % movies.length];
-                        return ColoredBox(
-                          color: shellBg,
-                          child: CachedNetworkImage(
-                            imageUrl: movie.backdropPath.isNotEmpty
-                                ? TmdbApi.getBackdropUrl(movie.backdropPath)
-                                : TmdbApi.getImageUrl(movie.posterPath),
-                            fit: BoxFit.cover,
-                            alignment: Alignment.centerRight,
-                            filterQuality: FilterQuality.medium,
-                            placeholder: (c, u) =>
-                                ColoredBox(color: shellBg),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildDesktopHeroImageGradients(shellBg),
-                  ],
+                child: PageView.builder(
+                  clipBehavior: Clip.hardEdge,
+                  controller: _heroController,
+                  itemCount: _heroLoopLength,
+                  onPageChanged: (i) => _onHeroPageChanged(i, movies),
+                  itemBuilder: (context, index) {
+                    final movie = movies[index % movies.length];
+                    return CachedNetworkImage(
+                      imageUrl: movie.backdropPath.isNotEmpty
+                          ? TmdbApi.getBackdropUrl(movie.backdropPath)
+                          : TmdbApi.getImageUrl(movie.posterPath),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.centerRight,
+                      filterQuality: FilterQuality.medium,
+                      placeholder: (c, u) => ColoredBox(color: shellBg),
+                      errorWidget: (c, u, e) => ColoredBox(color: shellBg),
+                    );
+                  },
                 ),
+              ),
+              _buildDesktopHeroImageGradients(
+                shellBg,
+                imageStartFraction: compact
+                    ? ShellTokens.heroImageStartFractionCompact
+                    : ShellTokens.heroImageStartFraction,
               ),
             ],
           ),

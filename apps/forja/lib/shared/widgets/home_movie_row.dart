@@ -54,7 +54,7 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
 
     final listPadding = widget.listPadding ??
         (useHomeInsets
-            ? EdgeInsets.symmetric(horizontal: homePad)
+            ? EdgeInsets.only(left: homePad)
             : widget.embedded
                 ? EdgeInsets.zero
                 : EdgeInsets.symmetric(horizontal: homePad));

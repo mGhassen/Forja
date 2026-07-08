@@ -90,7 +90,12 @@ abstract final class ShellTokens {
   static const double heroImageWidthFraction = 0.80;
   static const double heroTextWidthFraction = heroImageStartFraction;
 
-  /// Horizontal fade on the image strip: 0 → this fraction of image width
+  /// Opaque overlay band after the image starts (fraction of image-strip width).
+  /// Prefer [heroImageStartFraction] to widen the text column; non-zero values
+  /// can show a vertical edge where the flat overlay meets the fade.
+  static const double heroImageGradientSolidEndFraction = 0.0;
+
+  /// Horizontal fade on the image strip: solidEnd → this fraction of image width
   /// (shell bg → transparent). Was 0.58; ~46% of total hero width at 20% start.
   static const double heroImageGradientFadeEndFraction = 0.72;
   static const double heroHeightFractionDesktop = 0.72;
@@ -157,7 +162,6 @@ abstract final class ShellTokens {
   static const double homeSectionHorizontalPadding = 24;
 
   /// Media details — body below full-bleed hero (hero stays edge-to-edge).
-  static const double detailsHeroGradientSolidEndFraction = 0.12;
   static const double detailsHeroBodyOverlap = 120;
   static const double detailsHeroContentTopInset = 88;
   static const double detailsHeroDescriptionWidthFraction = 0.40;

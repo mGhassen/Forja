@@ -715,13 +715,6 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                   ),
                 ),
               ),
-            if (cinematicDesktop)
-              Positioned.fill(
-                child: _CinematicHeroBottomGradient(
-                  shellBg: shellBg,
-                  overlap: ShellTokens.detailsHeroBodyOverlap,
-                ),
-              ),
             if (!cinematicDesktop)
               Positioned(
                 left: 0,
@@ -848,34 +841,6 @@ class _HeroBottomFade extends StatelessWidget {
   }
 }
 
-class _CinematicHeroBottomGradient extends StatelessWidget {
-  const _CinematicHeroBottomGradient({
-    required this.shellBg,
-    this.overlap = 0,
-  });
-
-  final Color shellBg;
-  final double overlap;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return IgnorePointer(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: SizedBox(
-              height: constraints.maxHeight * 0.55 + overlap,
-              width: double.infinity,
-              child: _HeroBottomFade(shellBg: shellBg),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _CinematicHeroSideGradient extends StatelessWidget {
   const _CinematicHeroSideGradient({required this.shellBg});
 
@@ -884,7 +849,6 @@ class _CinematicHeroSideGradient extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fadeEnd = ShellTokens.heroImageGradientFadeEndFraction;
-    final solidEnd = ShellTokens.detailsHeroGradientSolidEndFraction;
 
     return IgnorePointer(
       child: DecoratedBox(
@@ -894,18 +858,14 @@ class _CinematicHeroSideGradient extends StatelessWidget {
             end: Alignment.centerRight,
             colors: [
               shellBg,
-              shellBg,
-              shellBg.withValues(alpha: 0.88),
-              shellBg.withValues(alpha: 0.52),
-              shellBg.withValues(alpha: 0.18),
+              shellBg.withValues(alpha: 0.72),
+              shellBg.withValues(alpha: 0.28),
               Colors.transparent,
             ],
             stops: [
               0.0,
-              solidEnd,
-              solidEnd + (fadeEnd - solidEnd) * 0.28,
-              solidEnd + (fadeEnd - solidEnd) * 0.58,
-              solidEnd + (fadeEnd - solidEnd) * 0.86,
+              fadeEnd * 0.31,
+              fadeEnd * 0.66,
               fadeEnd,
             ],
           ),

@@ -64,10 +64,12 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
         SizedBox(
           height: MediaDetailsCastSection._rowHeight,
           child: ListView.separated(
+            clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             padding: useHomeInsets
-                ? EdgeInsets.symmetric(horizontal: homePad)
+                ? EdgeInsets.only(left: homePad)
                 : EdgeInsets.zero,
             itemCount: widget.cast.length,
             separatorBuilder: (_, _) =>
