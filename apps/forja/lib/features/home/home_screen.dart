@@ -1221,6 +1221,7 @@ class _HomeScreenState extends State<HomeScreen>
             left: 20,
             top: topBarBleed + 24,
             right: 48,
+            bottom: 24,
             child: Align(
               alignment: Alignment.centerLeft,
               child: SizedBox(
@@ -1228,7 +1229,14 @@ class _HomeScreenState extends State<HomeScreen>
                   MediaQuery.sizeOf(context).width * 0.34,
                   ShellTokens.heroTextColumnWidthDesktop,
                 ),
-                child: _buildDesktopHeroTextColumn(heroMovie),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return _buildDesktopHeroTextColumn(
+                      heroMovie,
+                      areaHeight: constraints.maxHeight,
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -1245,11 +1253,10 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDesktopHeroGradients() {
+  Widget _buildDesktopHeroImageGradients(Color shellBg) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final height = constraints.maxHeight;
-        const leftOpaqueEnd = ShellTokens.heroTextWidthFraction;
 
         return Stack(
           fit: StackFit.expand,
@@ -1262,14 +1269,12 @@ class _HomeScreenState extends State<HomeScreen>
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        AppTheme.bgDark,
-                        AppTheme.bgDark,
-                        AppTheme.bgDark,
-                        AppTheme.bgDark.withValues(alpha: 0.72),
-                        AppTheme.bgDark.withValues(alpha: 0.28),
+                        shellBg,
+                        shellBg.withValues(alpha: 0.72),
+                        shellBg.withValues(alpha: 0.28),
                         Colors.transparent,
                       ],
-                      stops: const [0.0, 0.08, leftOpaqueEnd, 0.48, 0.60, 0.72],
+                      stops: const [0.0, 0.18, 0.38, 0.58],
                     ),
                   ),
                 ),
@@ -1288,10 +1293,10 @@ class _HomeScreenState extends State<HomeScreen>
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        AppTheme.bgDark.withValues(alpha: 0.45),
-                        AppTheme.bgDark.withValues(alpha: 0.82),
-                        AppTheme.bgDark,
-                        AppTheme.bgDark,
+                        shellBg.withValues(alpha: 0.45),
+                        shellBg.withValues(alpha: 0.82),
+                        shellBg,
+                        shellBg,
                       ],
                       stops: const [0.0, 0.35, 0.68, 0.92, 1.0],
                     ),
@@ -1305,11 +1310,32 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDesktopHeroTextColumn(Movie heroMovie) {
+  Widget _buildDesktopHeroTextColumn(
+    Movie heroMovie, {
+    required double areaHeight,
+  }) {
+    const overviewFontSize = 18.0;
+    const overviewLineHeight = 1.55;
     const overviewStyle = TextStyle(
-      fontSize: 18,
-      height: 1.55,
+      fontSize: overviewFontSize,
+      height: overviewLineHeight,
       letterSpacing: 0.1,
+    );
+
+    const sectionGaps = 20.0 + 20.0 + 12.0;
+    final reservedHeight = ShellTokens.heroTitleSlotHeightDesktop +
+        ShellTokens.heroMetaSlotHeightDesktop +
+        sectionGaps +
+        ShellTokens.shellButtonHeight;
+    final targetOverviewHeight =
+        areaHeight * ShellTokens.heroOverviewHeightFractionDesktop;
+    final overviewHeight = math.min(
+      targetOverviewHeight,
+      math.max(0.0, areaHeight - reservedHeight),
+    );
+    final overviewMaxLines = math.max(
+      1,
+      (overviewHeight / (overviewFontSize * overviewLineHeight)).floor(),
     );
 
     return Column(
@@ -1337,12 +1363,12 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         const SizedBox(height: 20),
         SizedBox(
-          height: ShellTokens.heroOverviewSlotHeightDesktop,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+          height: overviewHeight,
+          child: Align(
+            alignment: Alignment.topLeft,
             child: Text(
               heroMovie.overview.isNotEmpty ? heroMovie.overview : ' ',
-              maxLines: 4,
+              maxLines: overviewMaxLines,
               overflow: TextOverflow.ellipsis,
               style: overviewStyle.copyWith(
                 color: heroMovie.overview.isNotEmpty
@@ -1359,35 +1385,54 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildDesktopHeroBackdrop(List<Movie> movies) {
-    return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          PageView.builder(
-            clipBehavior: Clip.hardEdge,
-            controller: _heroController,
-            itemCount: _heroLoopLength,
-            onPageChanged: (i) => _onHeroPageChanged(i, movies),
-            itemBuilder: (context, index) {
-              final movie = movies[index % movies.length];
-              return ColoredBox(
-                color: AppTheme.bgDark,
-                child: CachedNetworkImage(
-                  imageUrl: movie.backdropPath.isNotEmpty
-                      ? TmdbApi.getBackdropUrl(movie.backdropPath)
-                      : TmdbApi.getImageUrl(movie.posterPath),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.centerRight,
-                  filterQuality: FilterQuality.medium,
-                  placeholder: (c, u) =>
-                      ColoredBox(color: AppTheme.bgDark),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final shellBg = Theme.of(context).scaffoldBackgroundColor;
+        final imageLeft =
+            constraints.maxWidth * ShellTokens.heroImageStartFraction;
+
+        return ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned(
+                left: imageLeft,
+                top: 0,
+                right: 0,
+                bottom: 0,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    PageView.builder(
+                      clipBehavior: Clip.hardEdge,
+                      controller: _heroController,
+                      itemCount: _heroLoopLength,
+                      onPageChanged: (i) => _onHeroPageChanged(i, movies),
+                      itemBuilder: (context, index) {
+                        final movie = movies[index % movies.length];
+                        return ColoredBox(
+                          color: shellBg,
+                          child: CachedNetworkImage(
+                            imageUrl: movie.backdropPath.isNotEmpty
+                                ? TmdbApi.getBackdropUrl(movie.backdropPath)
+                                : TmdbApi.getImageUrl(movie.posterPath),
+                            fit: BoxFit.cover,
+                            alignment: Alignment.centerRight,
+                            filterQuality: FilterQuality.medium,
+                            placeholder: (c, u) =>
+                                ColoredBox(color: shellBg),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildDesktopHeroImageGradients(shellBg),
+                  ],
                 ),
-              );
-            },
+              ),
+            ],
           ),
-          _buildDesktopHeroGradients(),
-        ],
-      ),
+        );
+      },
     );
   }
 

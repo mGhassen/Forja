@@ -46,8 +46,9 @@ abstract final class ShellTokens {
   static const double musicDesktopSidebarWidth = 260;
   static const double musicDesktopBreakpoint = 900;
 
-  static const double heroImageWidthFraction = 2 / 3;
-  static const double heroTextWidthFraction = 1 / 3;
+  static const double heroImageStartFraction = 0.20;
+  static const double heroImageWidthFraction = 0.80;
+  static const double heroTextWidthFraction = heroImageStartFraction;
   static const double heroHeightFractionDesktop = 0.72;
   static const double heroMoodHeaderOverlapFraction = 1 / 3;
 
@@ -79,7 +80,7 @@ abstract final class ShellTokens {
   static const double heroTextColumnWidthDesktop = 480;
   static const double heroTitleSlotHeightDesktop = 196;
   static const double heroMetaSlotHeightDesktop = 40;
-  static const double heroOverviewSlotHeightDesktop = 128;
+  static const double heroOverviewHeightFractionDesktop = 0.40;
   static const double heroLogoMaxHeightDesktop = 180;
 
   /// Narrow right-edge vignette on flat cinematic body (desktop Home).
