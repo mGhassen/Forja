@@ -247,6 +247,8 @@ class _HomeScreenState extends State<HomeScreen>
   late Future<List<Movie>> _popularFuture;
   late Future<List<Movie>> _featuredThisMonthFuture;
   late Future<List<Movie>> _nowPlayingFuture;
+
+  List<({String label, Future<List<Movie>> future})> _randomCategoryRows = [];
   
   Timer? _heroTimer;
   int _heroIndex = 0;
@@ -411,6 +413,45 @@ class _HomeScreenState extends State<HomeScreen>
       releaseDateLte: releaseDateLte,
     );
   }
+
+  Future<List<Movie>> _fetchCategoryRow(
+    ({String id, String label, List<int> movieGenres, List<int> tvGenres})
+        category,
+  ) {
+    final providerId = _watchProviderId;
+    return _fetchMediaFiltered(
+      movieFetch: () => _api.discoverMovies(
+        genres: category.movieGenres,
+        watchProviderId: providerId,
+      ),
+      tvFetch: () => _api.discoverTvShows(
+        genres: category.tvGenres,
+        watchProviderId: providerId,
+      ),
+    );
+  }
+
+  void _resetRandomCategoryRows() {
+    final pool = List.of(homeGenreCategories)..shuffle(math.Random());
+    _randomCategoryRows = pool.take(3).map((category) {
+      return (
+        label: category.label,
+        future: _fetchCategoryRow(category),
+      );
+    }).toList();
+  }
+
+  List<Widget> _randomCategoryRowSlivers() => [
+        for (final row in _randomCategoryRows)
+          _homeRowSliver(
+            _MovieSection(
+              title: row.label,
+              future: row.future,
+              onMovieTap: _openDetails,
+            ),
+            isFirstAfterHero: false,
+          ),
+      ];
 
   Future<List<Movie>> _fetchMediaFiltered({
     required Future<List<Movie>> Function() movieFetch,
@@ -643,6 +684,7 @@ class _HomeScreenState extends State<HomeScreen>
       _featuredThisMonthFuture = _loadFeaturedThisMonth();
     }
     _moodFuture = _loadMoodMovies(_selectedMood);
+    _resetRandomCategoryRows();
     _heroIndex = 0;
     if (_heroController.hasClients) {
       _heroController.jumpToPage(_heroLoopStart);
@@ -1413,6 +1455,8 @@ class _HomeScreenState extends State<HomeScreen>
                   isFirstAfterHero: false,
                 ),
 
+              if (isDesktop) ..._randomCategoryRowSlivers(),
+
               if (isDesktop)
                 _homeRowSliver(
                   const _ContinueWatchingSection(compactTop: false),
@@ -1458,6 +1502,8 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   isFirstAfterHero: false,
                 ),
+
+              if (!isDesktop) ..._randomCategoryRowSlivers(),
 
               // Stremio Addon Catalogs
               if (_stremioCatalogsLoading && _stremioCatalogs.isEmpty)
