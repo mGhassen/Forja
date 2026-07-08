@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:rust/rust.dart';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -1010,7 +1011,7 @@ class _HomeScreenState extends State<HomeScreen>
     final isDesktop =
         MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
     final topPadding = isDesktop ? 16.0 : 32.0;
-    return topPadding + 30 + 16 + _MovieCard.cardHeight(context);
+    return topPadding + 30 + 16 + _HistoryCard.cardHeight(context);
   }
 
   double _desktopHeroHeight(BuildContext context) {
@@ -2203,11 +2204,43 @@ class _ContinueWatchingSection extends StatefulWidget {
 class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
   final ScrollController _scrollController = ScrollController();
   String? _loadingItemId;
+  final Map<int, String> _resolvedBackdrops = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveMissingBackdrops(WatchHistoryService().current);
+  }
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _resolveMissingBackdrops(List<Map<String, dynamic>> items) async {
+    for (final item in items) {
+      final stored = item['backdropPath'] as String?;
+      if (stored != null && stored.isNotEmpty) continue;
+
+      final tmdbId = item['tmdbId'] as int?;
+      if (tmdbId == null || _resolvedBackdrops.containsKey(tmdbId)) continue;
+
+      final mediaType = item['mediaType']?.toString() ??
+          (item['season'] != null ? 'tv' : 'movie');
+      final type = (mediaType == 'tv' || mediaType == 'series') ? 'tv' : 'movie';
+
+      try {
+        final raw = await runTmdbGetJson('$type/$tmdbId');
+        final data = jsonDecode(raw);
+        if (data is Map<String, dynamic> && data['error'] == null) {
+          final backdrop = data['backdrop_path']?.toString() ?? '';
+          if (backdrop.isNotEmpty && mounted) {
+            setState(() => _resolvedBackdrops[tmdbId] = backdrop);
+          }
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> _resumePlayback(Map<String, dynamic> item) async {
@@ -2620,8 +2653,11 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
       initialData: WatchHistoryService().current,
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
-        // Deduplicate by tmdbId for shows — keep only the latest episode per show
         final raw = snapshot.data!;
+        if (_resolvedBackdrops.length < raw.length) {
+          _resolveMissingBackdrops(raw);
+        }
+        // Deduplicate by tmdbId for shows — keep only the latest episode per show
         final seen = <dynamic>{};
         final history = <Map<String, dynamic>>[];
         for (final item in raw) {
@@ -2642,7 +2678,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
               padding: EdgeInsets.fromLTRB(24, isDesktop ? 16 : 32, 24, 16),
             ),
             SizedBox(
-              height: _MovieCard.cardHeight(context),
+              height: _HistoryCard.cardHeight(context),
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _scrollController,
@@ -2656,6 +2692,8 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
                   final itemId = historyItem['uniqueId'] as String;
                   return _HistoryCard(
                     item: historyItem,
+                    resolvedBackdropPath:
+                        _resolvedBackdrops[historyItem['tmdbId'] as int?],
                     onTap: () => _resumePlayback(historyItem),
                     onRemove: () => _removeItem(historyItem),
                     onInfo: () => _openHistoryItemDetails(historyItem),
@@ -2673,6 +2711,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
 
 class _HistoryCard extends StatelessWidget {
   final Map<String, dynamic> item;
+  final String? resolvedBackdropPath;
   final VoidCallback onTap;
   final VoidCallback onRemove;
   final VoidCallback onInfo;
@@ -2680,15 +2719,36 @@ class _HistoryCard extends StatelessWidget {
 
   const _HistoryCard({
     required this.item,
+    this.resolvedBackdropPath,
     required this.onTap,
     required this.onRemove,
     required this.onInfo,
     this.isLoading = false,
   });
 
+  static double cardWidth(BuildContext context) {
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    return isDesktop
+        ? ShellTokens.shellContinueWatchingCardWidthDesktop
+        : ShellTokens.shellContinueWatchingCardWidthCompact;
+  }
+
+  static double cardHeight(BuildContext context) {
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    return isDesktop
+        ? ShellTokens.shellContinueWatchingCardHeightDesktop
+        : ShellTokens.shellContinueWatchingCardHeightCompact;
+  }
+
   @override
   Widget build(BuildContext context) {
     final posterPath = item['posterPath'] as String;
+    final storedBackdrop = item['backdropPath'] as String?;
+    final backdropPath = (storedBackdrop != null && storedBackdrop.isNotEmpty)
+        ? storedBackdrop
+        : resolvedBackdropPath;
     final title = item['title'] as String;
     final season = item['season'] as int?;
     final episode = item['episode'] as int?;
@@ -2699,16 +2759,17 @@ class _HistoryCard extends StatelessWidget {
     final progress = duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
     final remaining = duration > 0 ? Duration(milliseconds: duration - position) : Duration.zero;
     final remainingText = remaining.inMinutes > 0 ? '${remaining.inMinutes}m left' : '';
-    final imageUrl = posterPath.isNotEmpty
-        ? (posterPath.startsWith('http') ? posterPath : TmdbApi.getImageUrl(posterPath))
-        : '';
+    final imageUrl = _historyCardImageUrl(
+      backdropPath: backdropPath,
+      posterPath: posterPath,
+    );
     
     final subtitle = season != null 
         ? 'S$season E$episode${episodeTitle != null && episodeTitle.isNotEmpty ? ' • $episodeTitle' : ''}'
         : '';
 
-    final cardWidth = _MovieCard.cardWidth(context);
-    final cardHeight = _MovieCard.cardHeight(context);
+    final cardWidth = _HistoryCard.cardWidth(context);
+    final cardHeight = _HistoryCard.cardHeight(context);
 
     return FocusableControl(
       onTap: isLoading ? () {} : onTap,
@@ -2809,7 +2870,7 @@ class _HistoryCard extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, height: 1.2),
                         ),
@@ -2862,6 +2923,23 @@ class _HistoryCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _historyCardImageUrl({
+  String? backdropPath,
+  required String posterPath,
+}) {
+  if (backdropPath != null && backdropPath.isNotEmpty) {
+    return backdropPath.startsWith('http')
+        ? backdropPath
+        : TmdbApi.getBackdropUrl(backdropPath);
+  }
+  if (posterPath.isNotEmpty) {
+    return posterPath.startsWith('http')
+        ? posterPath
+        : TmdbApi.getImageUrl(posterPath);
+  }
+  return '';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

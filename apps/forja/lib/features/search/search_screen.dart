@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/features/search/search_keyboard.dart';
 import 'package:forja/features/search/search_provider_row.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
@@ -83,6 +82,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   int _focusedIndex = 0;
 
+  List<String> _trendingHelperTitles = [];
+
   @override
   bool get wantKeepAlive => true;
 
@@ -90,6 +91,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   void initState() {
     super.initState();
     _loadProviders();
+    _loadTrendingHelpers();
     ShellBus.stremioSearchNotifier.addListener(_onExternalSearch);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ShellBus.notifyShellChromeChanged();
@@ -116,6 +118,25 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     if (mounted) {
       setState(() => _addonProviders = providers.values.toList());
     }
+  }
+
+  Future<void> _loadTrendingHelpers() async {
+    try {
+      final movies = await _api.getTrending();
+      final shows = await _api.getTrendingTv();
+      final titles = <String>[];
+      for (final item in [...movies, ...shows]) {
+        if (item.title.isEmpty || titles.contains(item.title)) continue;
+        titles.add(item.title);
+        if (titles.length >= 12) break;
+      }
+      if (mounted) setState(() => _trendingHelperTitles = titles);
+    } catch (_) {}
+  }
+
+  void _applyHelperQuery(String title) {
+    _controller.text = title;
+    _onSearchChanged(title);
   }
 
   void _onExternalSearch() async {
@@ -387,17 +408,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     return results[index];
   }
 
-  void _appendCharacter(String char) {
-    _controller.text = _controller.text + char;
-    _onSearchChanged(_controller.text);
-  }
-
-  void _backspace() {
-    if (_controller.text.isEmpty) return;
-    _controller.text = _controller.text.substring(0, _controller.text.length - 1);
-    _onSearchChanged(_controller.text);
-  }
-
   void _openResult(_FlatSearchResult result) {
     if (result.isTmdb) {
       _openDetails(result.raw as Movie);
@@ -472,29 +482,30 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             ),
           ),
         ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: ShellTokens.searchLeftColumnWidth,
-              child: _buildKeyboardColumn(context, results),
-            ),
-            Expanded(
-              child: _buildResultsColumn(context, results, focused),
-            ),
-          ],
+        Padding(
+          padding: const EdgeInsets.all(ShellTokens.searchPageInset),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: ShellTokens.searchLeftColumnWidth,
+                child: _buildInputColumn(context, results),
+              ),
+              const SizedBox(width: ShellTokens.searchColumnGap),
+              Expanded(
+                child: _buildResultsColumn(context, results, focused),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildKeyboardColumn(BuildContext context, List<_FlatSearchResult> results) {
+  Widget _buildInputColumn(BuildContext context, List<_FlatSearchResult> results) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        ShellTokens.searchLeftColumnPadding,
-        ShellTokens.shellHeaderTopPadding,
-        ShellTokens.searchLeftColumnPadding,
-        24,
+      padding: const EdgeInsets.only(
+        right: ShellTokens.searchLeftColumnPadding,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -507,70 +518,126 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             },
           ),
           const SizedBox(height: 20),
-          Text(
-            _query.isEmpty ? 'Search' : _query,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+          TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            autofocus: true,
+            onChanged: _onSearchChanged,
+            style: const TextStyle(
               color: ForjaShellColors.textPrimary,
-              fontSize: _query.isEmpty ? 32 : ShellTokens.searchQueryFontSize,
+              fontSize: 32,
               fontWeight: FontWeight.w600,
-              height: 1.1,
+              height: 1.15,
             ),
-          ),
-          if (results.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 34,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: results.length.clamp(0, 8),
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final item = results[index];
-                  final selected = index == _focusedIndex;
-                  return GestureDetector(
-                    onTap: () => _setFocusedIndex(index),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: selected ? ForjaShellColors.chipSelectedBg : Colors.transparent,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: selected
-                              ? ForjaShellColors.chipSelectedBorder
-                              : Colors.white.withValues(alpha: 0.15),
-                        ),
-                      ),
-                      child: Text(
-                        item.title,
-                        style: TextStyle(
-                          color: selected
-                              ? ForjaShellColors.textPrimary
-                              : ForjaShellColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  );
-                },
+            cursorColor: ForjaShellColors.textPrimary,
+            decoration: InputDecoration(
+              hintText: 'Search movies, shows...',
+              hintStyle: TextStyle(
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
+                fontSize: 32,
+                fontWeight: FontWeight.w600,
               ),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              suffixIcon: _query.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, color: ForjaShellColors.textSecondary),
+                      onPressed: () {
+                        _controller.clear();
+                        _onSearchChanged('');
+                      },
+                    )
+                  : null,
             ),
-          ],
-          const Spacer(),
-          SearchKeyboard(
-            onCharacter: _appendCharacter,
-            onBackspace: _backspace,
-            onSubmit: () {
-              final item = _focusedResult;
-              if (item != null) {
-                _openResult(item);
-              }
-            },
           ),
+          const SizedBox(height: 16),
+          Expanded(child: _buildHelpersList(context, results)),
         ],
       ),
+    );
+  }
+
+  Widget _buildHelpersList(BuildContext context, List<_FlatSearchResult> results) {
+    final hasQuery = _query.trim().isNotEmpty;
+
+    if (hasQuery) {
+      if (results.isEmpty && _isSearching) {
+        return Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppTheme.current.primaryColor,
+            ),
+          ),
+        );
+      }
+      if (results.isEmpty) return const SizedBox.shrink();
+
+      return ListView.separated(
+        itemCount: results.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 2),
+        itemBuilder: (context, index) {
+          final item = results[index];
+          final selected = index == _focusedIndex;
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _setFocusedIndex(index),
+              onDoubleTap: () => _openResult(item),
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected
+                        ? ForjaShellColors.textPrimary
+                        : ForjaShellColors.textSecondary,
+                    fontSize: 15,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    if (_trendingHelperTitles.isEmpty) return const SizedBox.shrink();
+
+    return ListView.separated(
+      itemCount: _trendingHelperTitles.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 2),
+      itemBuilder: (context, index) {
+        final title = _trendingHelperTitles[index];
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _applyHelperQuery(title),
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 15,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -580,40 +647,50 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     _FlatSearchResult? focused,
   ) {
     if (_query.isEmpty) {
-      return _buildEmpty(hint: 'Type on the keyboard to search');
+      return Align(
+        alignment: Alignment.topLeft,
+        child: _buildEmpty(hint: 'Start typing to search'),
+      );
     }
     if (results.isEmpty && _isSearching) {
-      return Center(child: CircularProgressIndicator(color: AppTheme.current.primaryColor));
+      return Center(
+        child: CircularProgressIndicator(color: AppTheme.current.primaryColor),
+      );
     }
     if (results.isEmpty) {
-      return _buildEmpty(hint: 'No results found');
+      return Align(
+        alignment: Alignment.topLeft,
+        child: _buildEmpty(hint: 'No results found'),
+      );
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, ShellTokens.shellHeaderTopPadding, 24, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (focused != null) _buildResultDetail(focused),
-          const SizedBox(height: 24),
-          Expanded(
-            child: ListView.separated(
-              itemCount: results.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final item = results[index];
-                final selected = index == _focusedIndex;
-                return _SearchResultRow(
-                  result: item,
-                  selected: selected,
-                  onTap: () => _setFocusedIndex(index),
-                  onOpen: () => _openResult(item),
-                );
-              },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (focused != null) _buildResultDetail(focused),
+        const SizedBox(height: 24),
+        Expanded(
+          child: GridView.builder(
+            padding: EdgeInsets.zero,
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: _SearchFilmCard.cardWidth(context),
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 14,
+              childAspectRatio: 2 / 3,
             ),
+            itemCount: results.length,
+            itemBuilder: (context, index) {
+              final item = results[index];
+              return _SearchFilmCard(
+                result: item,
+                selected: index == _focusedIndex,
+                onTap: () => _setFocusedIndex(index),
+                onOpen: () => _openResult(item),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -860,8 +937,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 }
 
-class _SearchResultRow extends StatelessWidget {
-  const _SearchResultRow({
+class _SearchFilmCard extends StatelessWidget {
+  const _SearchFilmCard({
     required this.result,
     required this.selected,
     required this.onTap,
@@ -873,94 +950,148 @@ class _SearchResultRow extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onOpen;
 
+  static double cardWidth(BuildContext context) {
+    return MediaQuery.sizeOf(context).width > 900 ? 190.0 : 165.0;
+  }
+
+  static double cardHeight(BuildContext context) => cardWidth(context) * 1.5;
+
   @override
   Widget build(BuildContext context) {
+    final cardWidth = _SearchFilmCard.cardWidth(context);
+    final cardHeight = _SearchFilmCard.cardHeight(context);
+    final isDesktop = MediaQuery.sizeOf(context).width > 900;
+
     return FocusableControl(
       onTap: onTap,
-      borderRadius: 8,
-      child: Material(
-        color: selected
-            ? Colors.white.withValues(alpha: 0.08)
-            : Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: onTap,
-          onDoubleTap: onOpen,
-          borderRadius: BorderRadius.circular(8),
-          child: SizedBox(
-            height: ShellTokens.searchResultRowHeight,
-            child: Row(
+      borderRadius: 14,
+      scaleOnFocus: 1.05,
+      child: GestureDetector(
+        onDoubleTap: onOpen,
+        child: AnimatedContainer(
+          duration: ShellTokens.navSelectionAnimation,
+          width: cardWidth,
+          height: cardHeight,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: selected
+                ? Border.all(color: Colors.white, width: 2)
+                : null,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: selected ? 0.65 : 0.5),
+                blurRadius: selected ? 20 : 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: result.posterUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: result.posterUrl,
-                            fit: BoxFit.cover,
-                            errorWidget: (_, _, _) => _thumbFallback(),
-                          )
-                        : _thumbFallback(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        result.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: selected
-                              ? ForjaShellColors.textPrimary
-                              : ForjaShellColors.textSecondary,
-                          fontSize: 15,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                      ),
-                      if (result.year != null && result.year!.isNotEmpty)
-                        Text(
-                          result.year!,
-                          style: const TextStyle(
-                            color: ForjaShellColors.textSecondary,
-                            fontSize: 12,
+                ColoredBox(
+                  color: AppTheme.bgDark,
+                  child: result.posterUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: result.posterUrl,
+                          fit: BoxFit.cover,
+                          filterQuality: FilterQuality.medium,
+                          placeholder: (_, _) => ColoredBox(color: AppTheme.bgDark),
+                          errorWidget: (_, _, _) => Center(
+                            child: Text(
+                              result.title,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 10, color: Colors.white24),
+                            ),
+                          ),
+                        )
+                      : Center(
+                          child: Text(
+                            result.title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 10, color: Colors.white24),
                           ),
                         ),
-                    ],
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.7),
+                        Colors.black.withValues(alpha: 0.95),
+                      ],
+                      stops: const [0.0, 0.45, 0.8, 1.0],
+                    ),
                   ),
                 ),
                 if (result.rating != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Text(
-                      result.rating!.toStringAsFixed(1),
-                      style: const TextStyle(
-                        color: ForjaShellColors.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
+                          const SizedBox(width: 3),
+                          Text(
+                            result.rating!.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
+                Positioned(
+                  bottom: 10,
+                  left: 10,
+                  right: 10,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        result.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: isDesktop ? 14 : 13,
+                          height: 1.2,
+                        ),
+                      ),
+                      if (result.year != null && result.year!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          result.year!,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _thumbFallback() {
-    return ColoredBox(
-      color: ForjaShellColors.surfaceElevated,
-      child: Center(
-        child: Text(
-          result.title.isNotEmpty ? result.title[0].toUpperCase() : '?',
-          style: const TextStyle(color: ForjaShellColors.textSecondary),
         ),
       ),
     );

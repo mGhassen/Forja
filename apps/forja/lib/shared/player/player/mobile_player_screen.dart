@@ -835,6 +835,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         imdbId: widget.movie!.imdbId,
         title: widget.title,
         posterPath: widget.movie!.posterPath,
+        backdropPath: widget.movie!.backdropPath,
         method: method,
         sourceId: sourceId,
         position: pos,

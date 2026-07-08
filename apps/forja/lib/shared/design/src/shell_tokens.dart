@@ -54,8 +54,17 @@ abstract final class ShellTokens {
   /// Fraction of the second Home row visible below the first (desktop cinematic).
   static const double heroNextRowPeekFraction = 0.10;
 
-  /// Continue Watching section height on desktop (header + poster row).
-  static const double heroContinueWatchingHeightDesktop = 16 + 30 + 16 + 285;
+  /// Continue Watching horizontal card (16:9 landscape).
+  static const double shellContinueWatchingCardWidthDesktop = 280;
+  static const double shellContinueWatchingCardHeightDesktop =
+      shellContinueWatchingCardWidthDesktop * 9 / 16;
+  static const double shellContinueWatchingCardWidthCompact = 240;
+  static const double shellContinueWatchingCardHeightCompact =
+      shellContinueWatchingCardWidthCompact * 9 / 16;
+
+  /// Continue Watching section height on desktop (header + landscape row).
+  static const double heroContinueWatchingHeightDesktop =
+      16 + 30 + 16 + shellContinueWatchingCardHeightDesktop;
 
   /// Mood section header block before chips (padding + title row + padding).
   static const double heroMoodHeaderTopHeightDesktop = 36 + 44 + 12;
@@ -86,19 +95,16 @@ abstract final class ShellTokens {
   static const double searchCardWidthDesktop = 140;
   static const double searchCardWidthCompact = 120;
 
-  /// Netflix-style search: keyboard column on desktop.
+  /// Netflix-style search: input column on desktop.
+  static const double searchPageInset = 32;
+  static const double searchColumnGap = 32;
   static const double searchLeftColumnWidth = 420;
-  static const double searchLeftColumnPadding = 24;
-  static const double searchKeyboardKeyGap = 5;
-  static const double searchKeyboardKeyHeight = 40;
-  static const double searchKeyboardKeyRadius = 6;
+  static const double searchLeftColumnPadding = 16;
   static const double searchProviderRowHeight = 52;
   static const double searchProviderCardWidth = 88;
   static const double searchProviderCardHeight = 48;
-  static const double searchQueryFontSize = 42;
   static const double searchDetailPosterWidth = 120;
   static const double searchDetailPosterHeight = 180;
-  static const double searchResultRowHeight = 72;
   static const double settingsSectionBottomSpacing = 8;
   static const double settingsSectionTitleSize = 15;
   static const double settingsSectionRadius = 14;

@@ -534,6 +534,7 @@ class TraktService {
         // Fetch poster + runtime from TMDB
         final tmdbInfo = await _fetchTmdbInfo(tmdbId, mediaType);
         posterPath = tmdbInfo['poster'] as String;
+        final backdropPath = tmdbInfo['backdrop'] as String;
         final durationMs = tmdbInfo['runtimeMs'] as int;
 
         // Check if already in local history
@@ -552,6 +553,7 @@ class TraktService {
           imdbId: imdbId,
           title: title,
           posterPath: posterPath,
+          backdropPath: backdropPath.isNotEmpty ? backdropPath : null,
           method: 'trakt_import',
           sourceId: 'trakt',
           position: estimatedPositionMs,
@@ -1545,6 +1547,7 @@ class TraktService {
       final data = json.decode(raw);
       if (data is Map<String, dynamic> && data['error'] == null) {
         final poster = data['poster_path']?.toString() ?? '';
+        final backdrop = data['backdrop_path']?.toString() ?? '';
         // runtime in minutes → milliseconds
         int runtimeMs = 6000000; // fallback 100 min
         if (type == 'movie' && data['runtime'] is int && (data['runtime'] as int) > 0) {
@@ -1555,11 +1558,11 @@ class TraktService {
             runtimeMs = ((epRuntimes.first as int?) ?? 100) * 60000;
           }
         }
-        return {'poster': poster, 'runtimeMs': runtimeMs};
+        return {'poster': poster, 'backdrop': backdrop, 'runtimeMs': runtimeMs};
       }
     } catch (e) {
       debugPrint('[Trakt] TMDB info fetch failed for $tmdbId: $e');
     }
-    return {'poster': '', 'runtimeMs': 6000000};
+    return {'poster': '', 'backdrop': '', 'runtimeMs': 6000000};
   }
 }

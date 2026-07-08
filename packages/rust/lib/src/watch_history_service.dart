@@ -30,6 +30,7 @@ class WatchHistoryService {
     String? imdbId,
     required String title,
     required String posterPath,
+    String? backdropPath,
     required String method,
     required String sourceId,
     required int position,
@@ -55,6 +56,8 @@ class WatchHistoryService {
       'imdbId': imdbId,
       'title': title,
       'posterPath': posterPath,
+      if (backdropPath != null && backdropPath.isNotEmpty)
+        'backdropPath': backdropPath,
       'method': method,
       'sourceId': sourceId,
       'position': position,
