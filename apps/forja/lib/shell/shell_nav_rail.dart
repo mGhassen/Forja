@@ -105,9 +105,6 @@ class _ShellNavRailItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor =
-        selected ? ForjaShellColors.iconActive : ForjaShellColors.iconMuted;
-
     return Padding(
       padding: const EdgeInsets.symmetric(
         vertical: ShellTokens.navRailItemSpacing / 2,
@@ -119,7 +116,13 @@ class _ShellNavRailItem extends StatelessWidget {
             onTap: onTap,
             hoverScale: 1.08,
             pressScale: 0.94,
-            builder: (_, __) => Column(
+            builder: (hover, _) {
+              final iconColor = selected
+                  ? ForjaShellColors.iconActive
+                  : hover
+                      ? ForjaShellColors.iconHover
+                      : ForjaShellColors.iconMuted;
+              return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
@@ -134,13 +137,14 @@ class _ShellNavRailItem extends StatelessWidget {
                   width: selected ? 24 : 0,
                   decoration: BoxDecoration(
                     color: selected
-                        ? AppTheme.current.primaryColor
+                        ? ForjaShellColors.navUnderline
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ],
-            ),
+            );
+            },
           ),
         ),
       ),

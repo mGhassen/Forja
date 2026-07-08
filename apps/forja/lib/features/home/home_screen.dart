@@ -3554,7 +3554,7 @@ class _MyListButton extends StatelessWidget {
           child: Icon(
             inList ? Icons.bookmark_rounded : Icons.add_rounded,
             size: 20,
-            color: inList ? AppTheme.primaryColor : ForjaShellColors.iconMuted,
+            color: inList ? ForjaShellColors.iconActive : ForjaShellColors.iconMuted,
           ),
         );
       },

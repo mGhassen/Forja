@@ -140,24 +140,24 @@ class ForjaPlainIcon extends StatelessWidget {
   final double size;
   final Widget? child;
 
-  Color get _iconColor {
-    if (color != null) return color!;
-    if (AppTheme.isLightMode) return Colors.black54;
-    return ForjaShellColors.iconMuted;
-  }
-
   @override
   Widget build(BuildContext context) {
     final button = ForjaInteractive(
       onTap: onTap,
       builder: (hover, pressed) {
+        final resolved = color ??
+            (AppTheme.isLightMode
+                ? (hover ? Colors.black87 : Colors.black54)
+                : hover
+                    ? ForjaShellColors.iconHover
+                    : ForjaShellColors.iconMuted);
         return Padding(
           padding: const EdgeInsets.all(8),
           child: child ??
               Icon(
                 icon,
                 size: size,
-                color: _iconColor,
+                color: resolved,
               ),
         );
       },
@@ -213,6 +213,9 @@ class ForjaIconButton extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               onTap: onTap,
+              hoverColor: ForjaShellColors.inkHover,
+              splashColor: ForjaShellColors.inkSplash,
+              highlightColor: ForjaShellColors.inkSplash,
               borderRadius:
                   BorderRadius.circular(ShellTokens.shellButtonRadius),
               child: content,

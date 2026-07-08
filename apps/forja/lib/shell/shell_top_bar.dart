@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ShellTopBar extends StatelessWidget {
@@ -80,7 +79,7 @@ class _CategoryTab extends StatelessWidget {
           height: ShellTokens.shellNavUnderlineHeight,
           width: isActive ? 28 : 0,
           decoration: BoxDecoration(
-            color: isActive ? AppTheme.current.primaryColor : Colors.transparent,
+            color: isActive ? ForjaShellColors.navUnderline : Colors.transparent,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
