@@ -173,7 +173,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ShellNavRail), findsOneWidget);
-    expect(find.byIcon(Icons.search), findsOneWidget);
+    expect(
+      find.image(const AssetImage('assets/images/nav/search.png')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('ShellNavRail uses fixed width without hover expand', (tester) async {
@@ -195,7 +198,8 @@ void main() {
       size: const Size(1200, 800),
     );
 
-    final searchIcon = find.byIcon(Icons.search);
+    final searchIcon =
+        find.image(const AssetImage('assets/images/nav/search.png'));
     expect(searchIcon, findsOneWidget);
     expect(find.text('Search'), findsNothing);
 

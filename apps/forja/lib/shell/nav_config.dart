@@ -80,6 +80,7 @@ const Map<String, NavDestination> navDestinations = {
     icon: Icons.home_outlined,
     activeIcon: Icons.home,
     label: 'Home',
+    iconAsset: 'assets/images/nav/home.png',
   ),
   'discover': NavDestination(
     id: 'discover',
@@ -104,6 +105,7 @@ const Map<String, NavDestination> navDestinations = {
     icon: Icons.search,
     activeIcon: Icons.search,
     label: 'Search',
+    iconAsset: 'assets/images/nav/search.png',
   ),
   'mylist': NavDestination(
     id: 'mylist',
@@ -122,12 +124,14 @@ const Map<String, NavDestination> navDestinations = {
     icon: Icons.sports_soccer_outlined,
     activeIcon: Icons.sports_soccer_rounded,
     label: 'Live Matches',
+    iconAsset: 'assets/images/nav/live-matches.png',
   ),
   'iptv': NavDestination(
     id: 'iptv',
     icon: Icons.live_tv_outlined,
     activeIcon: Icons.live_tv,
     label: 'IPTV',
+    iconAsset: 'assets/images/nav/iptv.png',
   ),
   'audiobooks': NavDestination(
     id: 'audiobooks',

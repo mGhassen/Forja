@@ -35,7 +35,7 @@ Future<void> _pumpMainScreen(
 Future<void> _tapNavId(WidgetTester tester, String navId) async {
   final dest = navDestinations[navId]!;
   if (dest.iconAsset != null) {
-    await tester.tap(find.text(dest.label).first);
+    await tester.tap(find.image(AssetImage(dest.iconAsset!)).first);
     return;
   }
   final icons = find.byIcon(dest.icon);
@@ -116,7 +116,10 @@ void main() {
       size: const Size(1200, 800),
     );
 
-    expect(find.byIcon(Icons.search), findsWidgets);
+    expect(
+      find.image(const AssetImage('assets/images/nav/search.png')),
+      findsWidgets,
+    );
 
     await SettingsService().setNavbarConfig(['home', 'search']);
     SettingsService.navbarChangeNotifier.value++;
@@ -124,11 +127,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(
-      find.byIcon(Icons.home).evaluate().isNotEmpty ||
-          find.byIcon(Icons.home_outlined).evaluate().isNotEmpty,
-      isTrue,
+      find.image(const AssetImage('assets/images/nav/home.png')),
+      findsWidgets,
     );
-    expect(find.byIcon(Icons.search), findsWidgets);
+    expect(
+      find.image(const AssetImage('assets/images/nav/search.png')),
+      findsWidgets,
+    );
   });
 
   testWidgets('desktop core tabs switch without duplicate shell chrome', (tester) async {
@@ -138,7 +143,10 @@ void main() {
       size: const Size(1200, 800),
     );
 
-    expect(find.byIcon(Icons.home), findsWidgets);
+    expect(
+      find.image(const AssetImage('assets/images/nav/home.png')),
+      findsWidgets,
+    );
     expect(find.byIcon(Icons.bookmark_outline), findsWidgets);
     expect(find.byType(ShellNavRail), findsOneWidget);
 
