@@ -22,7 +22,6 @@ class HomeTopBar extends StatefulWidget {
 
 class _HomeTopBarState extends State<HomeTopBar> {
   final GlobalKey _categoriesKey = GlobalKey();
-  final math.Random _categoryRandom = math.Random();
   bool _categoriesOpen = false;
 
   void _toggleMediaFilter(ShellHomeCategory target) {
@@ -36,17 +35,6 @@ class _HomeTopBarState extends State<HomeTopBar> {
 
     final offset = box.localToGlobal(Offset.zero);
     final selectedId = ShellBus.homeSelectedGenreId.value;
-    final randomCategories = List.of(homeGenreCategories)..shuffle(_categoryRandom);
-    final menuCategories = randomCategories.take(3).toList();
-    if (selectedId != null) {
-      final selectedEntry = homeGenreCategories
-          .where((genre) => genre.id == selectedId)
-          .firstOrNull;
-      if (selectedEntry != null &&
-          !menuCategories.any((genre) => genre.id == selectedId)) {
-        menuCategories[menuCategories.length - 1] = selectedEntry;
-      }
-    }
 
     setState(() => _categoriesOpen = true);
 
@@ -82,7 +70,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           onTap: () =>
                               Navigator.of(context).pop(_allGenresSentinel),
                         ),
-                        for (final genre in menuCategories)
+                        for (final genre in homeGenreCategories)
                           _FlatMenuRow(
                             label: genre.label,
                             selected: genre.id == selectedId,
