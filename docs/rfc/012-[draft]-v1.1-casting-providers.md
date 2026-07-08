@@ -1,17 +1,14 @@
 # RFC-012: v1.1 — Casting + expanded providers
 
-**Version:** v1.1  
 **Status:** draft  
-**Target version:** [1.0.1](../backlog/1.0.1-[draft].md) (slipped from [1.0.0](done/1.0.0-[done].md))  
 **Depends on:** RFC-011 (v1.0)
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **0 / 8** acceptance (v1.1 bundle) · child RFCs: [003](003-[partial]-player-overlay.md) 4/6·0/4, [004](004-[partial]-provider-registry.md) 3/3·0/3, [005](005-[partial]-casting.md) 0/1·0/4 |
-| **Current slice** | v1.1 — overlay + providers + casting bundle |
-| **Backlog** | [1.0.1](../backlog/1.0.1-[draft].md) |
+| **Progress** | **0 / 8** acceptance (bundle) · child RFCs: [003](003-[partial]-player-overlay.md) 4/6·0/4, [004](004-[partial]-provider-registry.md) 3/3·0/3, [005](005-[partial]-casting.md) 0/1·0/4 |
+| **Current slice** | Overlay + providers + casting bundle — not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -80,8 +77,8 @@ IPTV live: best-effort via HLS proxy transmux.
 
 ## Related RFCs
 
-RFC-003, RFC-004 (expansion), RFC-005, RFC-015, [RFC-019](019-[draft]-god-file-decomposition.md) (god file splits), [RFC-020](020-[draft]-media-details-routing.md) (media details routing)
+RFC-003, RFC-004 (expansion), RFC-005, RFC-015, [RFC-019](019-[draft]-god-file-decomposition.md) (god file splits), [RFC-020](020-[draft]-media-details-routing.md) (media details routing), [RFC-026](026-[draft]-media-details-player-ux.md) (1.0.1 details + player UX)
 
 ## Prerequisites
 
-Complete [RFC-016](016-[partial]-lazy-tab-mounting.md)–[018](018-[draft]-startup-splash-home.md) (v1.0.1 performance) before or in parallel with overlay work. Player control extraction in RFC-019 unblocks RFC-003 wiring.
+Complete [RFC-016](016-[partial]-lazy-tab-mounting.md)–[018](018-[draft]-startup-splash-home.md) (performance) before or in parallel with overlay work. Player control extraction in [RFC-019](019-[draft]-god-file-decomposition.md) unblocks RFC-003 wiring.

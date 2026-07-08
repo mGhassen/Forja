@@ -74,6 +74,8 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 
 ### Status at a glance — required
 
+**Version scheduling is backlog-only.** Which semver ships an RFC or issue lives in `docs/backlog/` and the folder README **Backlog** column — **not** in RFC/issue bodies. When a version slips, update the backlog file and README; do not touch RFC/issue metadata for scheduling.
+
 **RFC** (reference: [RFC-023](../../docs/rfc/fixed/023-[fixed]-app-shell-redesign.md)):
 
 ```markdown
@@ -81,9 +83,8 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **10 / 14** acceptance (desktop 0.8.0) · **0 / 1** mobile deferred |
+| **Progress** | **5 / 5** components · **10 / 14** acceptance (desktop slice) · **0 / 1** mobile deferred |
 | **Current slice** | Desktop shipped — mobile bottom nav not started |
-| **Backlog** | [0.8.0](../backlog/0.8.0-[partial].md) |
 ```
 
 **Issue** (reference: [018](../../docs/issues/018-[draft]-migration-playback-parity-unverified.md)):
@@ -94,8 +95,9 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 | | |
 |--|--|
 | **Progress** | **3 / 13** verification |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[draft].md) |
 ```
+
+**Forbidden in RFC/issue bodies:** `**Target version:**`, `**Backlog**` row in glance, links to backlog files for ship scheduling.
 
 **Backlog** (reference: [0.8.0](../../docs/backlog/0.8.0-[partial].md)):
 
@@ -120,7 +122,7 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 
 **One source of truth:** emoji task tables. No parallel checkbox lists.
 
-When any row changes: update glance **and** folder README **Progress** column in the **same turn**.
+When any row changes: update RFC/issue glance **Progress** (and **Current slice** when relevant) **and** folder README **Progress** column in the **same turn**. Update backlog + README **Backlog** column when ship assignment changes — not the RFC/issue file.
 
 ### RFC / issue task history — append-only (mandatory)
 
@@ -133,7 +135,7 @@ Once an RFC or issue is linked from an **active or done backlog** version, task 
 | **Frozen statuses** | Rows marked **🔄 in progress** or **✅ done** must **keep that status forever**. Do not revert to ⬜ or change the description. |
 | **New work → new rows** | New slices get **new IDs** (`R16-A06`, `R24-A01`, …) or a **child RFC** (e.g. RFC-024 for eviction). Do not renumber existing IDs. |
 | **New RFC instead of erase** | If scope diverges (eviction vs mount), add RFC-024 — do not overwrite RFC-016. |
-| **Version slip** | Move checklist lines to the next backlog file; RFC rows stay as-is with their frozen status. |
+| **Version slip** | Move checklist lines to the next backlog file; update backlog + README **Backlog** column; RFC/issue task rows stay as-is with their frozen status |
 
 **Wrong:** Replace RFC-016 acceptance table and mark 11/11 ✅ while per-tab rows vanish.
 
@@ -239,10 +241,12 @@ Feature **specs** — numbered RFCs, not semver files.
 
 After `#` title + metadata block:
 
-1. **`## Status at a glance`**
+**Metadata block — allowed fields only:** `**Status:**`, `**Depends on:**`, `**Area:**`. Optional product-era label `**Version:**` (e.g. v1.1 theme) — **not** a backlog semver assignment.
+
+1. **`## Status at a glance`** — **Progress** + **Current slice** only (implementation state, not ship version)
 2. **`**Legend:**`**
 3. **`## Components`** — when buildable pieces exist (skip for spec-only drafts)
-4. **`## Acceptance (slice)`** — one section per target slice
+4. **`## Acceptance (slice)`** — name slices by work batch (e.g. desktop, mobile), not backlog semver
 5. **`## Summary`** — then Goals / Problem / Contracts / Related
 
 **Reference:** [RFC-023](../../docs/rfc/fixed/023-[fixed]-app-shell-redesign.md)
@@ -267,9 +271,9 @@ Workaround requires user permission per [honesty-and-completion.mdc](./honesty-a
 
 ### Mandatory issue body section order
 
-After metadata block:
+After metadata block (`**Status:**`, `**Priority:**`, `**Severity:**`, `**Area:**` — no `**Target version:**` or backlog links):
 
-1. **`## Status at a glance`**
+1. **`## Status at a glance`** — **Progress** only
 2. **`**Legend:**`**
 3. **`## Acceptance`** / **`## Fix tasks`** — emoji task tables (`I*-A*`, `I*-T*`)
 4. **`## Summary`**, root cause, related links
@@ -330,7 +334,7 @@ RFC/issue/backlog track **ship status**; feature docs track **how it works for u
 | **RFC** `003-[partial]-….md` | Feature spec + full acceptance | **Same file** — status changes only when implementation state changes |
 | **Issue** `018-[open]-….md` | Bug, debt, verifiable sub-work | **Same file** — `[fixed]` or `[canceled]` when done or abandoned |
 
-**Version assignment lives in backlog**, not in RFC/issue filenames. Optional in RFC/issue body: `**Target version:** 0.7.7`.
+**Version assignment lives in backlog and folder README indexes only** — never in RFC/issue filenames or bodies.
 
 ### Active backlog — scope big work before coding
 
@@ -349,8 +353,8 @@ When the **active open/partial backlog** is in context (e.g. [0.8.1-[open].md](.
 1. **Pick next free number** — grep `docs/rfc/` and `docs/issues/` for highest NNN; use NNN+1
 2. **Create the file** — full mandatory format ([Progress tracker](#progress-tracker-format-mandatory--all-layers), glance, legend, emoji task tables). New RFCs start `[draft]` or `[planned]`; new issues `[draft]` until work starts → `[open]`
 3. **Wire into active backlog** — add row to `## RFCs` or `## Issues` (slice + status after ship); add ⬜ row(s) to `## Shipped` with IDs linking to the new spec
-4. **Update indexes** — [RFC README](../../docs/rfc/README.md) and/or [issues README](../../docs/issues/README.md); [backlog README](../../docs/backlog/README.md) if version scope changed
-5. **Link back** — RFC/issue `**Target version:**` → active backlog file; backlog glance **Blocks close** / deferred if out of scope for this ship
+4. **Update indexes** — [RFC README](../../docs/rfc/README.md) and/or [issues README](../../docs/issues/README.md) **Backlog** column; [backlog README](../../docs/backlog/README.md) if version scope changed
+5. **Backlog only for scheduling** — do not add `**Target version:**` or backlog links to the RFC/issue body; backlog glance **Blocks close** / deferred if out of scope for this ship
 
 **If the ask is too big for the current version:** still create the RFC/issue, add to backlog `## Deferred → later X.Y.x` or create/next patch `[draft].md` — do not silently cram unrelated work into the open version without a backlog line.
 
@@ -414,8 +418,8 @@ Ship incrementally from **one RFC per feature**. Use slices inside the spec, not
 When you land or materially advance work tied to a backlog version, RFC, or **user-visible feature**, **do not stop at code**. Update docs in the **same turn**:
 
 1. **Backlog** — flip `B*-S*` rows; update glance; rename tag if lifecycle moved
-2. **RFC** — flip `R*-C*` / `R*-A*` rows; update glance; `**Status:**` if terminal
-3. **Issue** — flip `I*-A*` / `I*-T*` rows; update glance; filename tag if terminal
+2. **RFC** — flip `R*-C*` / `R*-A*` rows; update glance **Progress** / **Current slice**; `**Status:**` if terminal
+3. **Issue** — flip `I*-A*` / `I*-T*` rows; update glance **Progress**; filename tag if terminal
 4. **Feature user guide** — update matching `docs/features/**/*.md` so How to open / What you can do / Setup match the code you just changed (see [Feature user guides](#feature-user-guides-docsfeatures))
 5. **Indexes** — RFC README **Progress**; issues README **Progress**; backlog README **Active**; features README when adding/removing pages
 6. **Cross-links** — grep old filename slug under `docs/` and fix

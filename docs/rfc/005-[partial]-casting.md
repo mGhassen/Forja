@@ -1,17 +1,14 @@
 # RFC-005: Casting (AirPlay + Chromecast)
 
-**Version:** v1.1  
 **Status:** stub  
-**Target version:** [1.0.1](../backlog/1.0.1-[draft].md) (slipped from [1.0.0](done/1.0.0-[done].md))  
 **Area:** `apps/forja/lib/shared/casting/src/casting_service.dart`
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **0 / 1** components · **0 / 4** acceptance (v1.1 slice) |
-| **Current slice** | v1.1 — platform channels + player Cast button |
-| **Backlog** | [1.0.1](../backlog/1.0.1-[draft].md) |
+| **Progress** | **0 / 1** components · **0 / 4** acceptance |
+| **Current slice** | Platform channels + player Cast button — not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

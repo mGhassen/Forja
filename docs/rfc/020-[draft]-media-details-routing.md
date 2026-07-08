@@ -1,17 +1,14 @@
 # RFC-020: Media details routing
 
-**Version:** v1.1  
 **Status:** draft  
-**Target version:** [1.0.1](../backlog/1.0.1-[draft].md) (slipped from [1.0.0](done/1.0.0-[done].md))  
 **Area:** `features/home/details_screen.dart` → `features/media/`
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **0 / 4** acceptance (v1.1 slice) |
-| **Current slice** | v1.1 — move details to `features/media/` |
-| **Backlog** | [1.0.1](../backlog/1.0.1-[draft].md) |
+| **Progress** | **0 / 4** acceptance |
+| **Current slice** | Move details to `features/media/` — absorbed by RFC-026 R26-C03; kept as reference |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -118,4 +115,4 @@ Handler in `app/bootstrap.dart` or `shell/deep_link_handler.dart` → `AppRouter
 
 ## Related
 
-RFC-001, RFC-019 (split details sub-files after move), RFC-016/017/018 (independent)
+RFC-001, RFC-019 (split details sub-files after move), RFC-016/017/018 (independent), [RFC-026](026-[draft]-media-details-player-ux.md) (absorbs structural goals as R26-C03)

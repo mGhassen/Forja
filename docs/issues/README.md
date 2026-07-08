@@ -40,10 +40,10 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [016-[fixed]-…](fixed/016-[fixed]-async-job-ffi-hard-cancel.md) | Async job FFI cancel | P2 | Medium | fixed | Complete | [0.4.0](../backlog/done/0.4.0-[done].md) |
 | [017-[fixed]-…](fixed/017-[fixed]-webstreamr-stream-choice-button-missing.md) | WebStreamr stream-choice button | P2 | Medium | fixed | 4/4 | [0.4.5](../backlog/done/0.4.5-[done].md) |
 | [018-[draft]-…](018-[draft]-migration-playback-parity-unverified.md) | Playback parity unverified | P1 | High | draft | 3/13 | [1.0.1](../backlog/1.0.1-[draft].md) |
-| [019-[draft]-…](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md) | WebStreamr E2E test gap | P2 | Medium | draft | 0/3 | [1.0.1](../backlog/1.0.1-[draft].md) |
-| [020-[draft]-…](020-[draft]-cancel-gen-token-discard-unverified.md) | Cancel gen-token unverified | P2 | Medium | draft | 0/3 | [1.0.1](../backlog/1.0.1-[draft].md) |
-| [021-[draft]-…](021-[draft]-catalog-vertical-import-smoke-unverified.md) | Catalog import smoke unverified | P3 | Low | draft | 0/3 | [1.0.1](../backlog/1.0.1-[draft].md) |
-| [022-[draft]-…](022-[draft]-playback-widget-integration-tests.md) | No playback widget tests | P3 | Low | draft | 0/3 | [1.0.1](../backlog/1.0.1-[draft].md) |
+| [019-[draft]-…](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md) | WebStreamr E2E test gap | P2 | Medium | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [020-[draft]-…](020-[draft]-cancel-gen-token-discard-unverified.md) | Cancel gen-token unverified | P2 | Medium | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [021-[draft]-…](021-[draft]-catalog-vertical-import-smoke-unverified.md) | Catalog import smoke unverified | P3 | Low | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [022-[draft]-…](022-[draft]-playback-widget-integration-tests.md) | No playback widget tests | P3 | Low | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [023-[fixed]-…](fixed/023-[fixed]-packages-api-delete-blocked-host-relocation.md) | packages/api delete | P2 | Medium | fixed | 4/4 | [0.3.2](../backlog/done/0.3.2-[done].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

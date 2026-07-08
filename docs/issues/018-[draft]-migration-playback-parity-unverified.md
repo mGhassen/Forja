@@ -11,7 +11,6 @@
 | | |
 |--|--|
 | **Progress** | **0 / 13** verification (3 auto · 10 manual) |
-| **Backlog** | [1.0.1](../backlog/1.0.1-[draft].md) |
 
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started

@@ -73,8 +73,26 @@ abstract final class ShellTokens {
   static const double musicDesktopSidebarWidth = 260;
   static const double musicDesktopBreakpoint = 900;
 
-  /// Minimum Home body width for the cinematic desktop hero; narrower → hero hidden.
+  /// Minimum Home body width for the full cinematic hero; narrower uses compact hero.
   static const double heroDesktopMinBodyWidth = 1000;
+
+  /// Home body width below which Films / TV / Categories collapse to a menu button.
+  static const double homeTopBarCompactBodyWidth = 720;
+
+  static const double homeTopBarCompactHeight =
+      shellHeaderTopPadding + shellButtonHeight;
+
+  static double homeTopBarHeightForBodyWidth(double bodyWidth) {
+    return bodyWidth < homeTopBarCompactBodyWidth
+        ? homeTopBarCompactHeight
+        : homeTopBarHeight;
+  }
+
+  static const double heroHeightFractionCompact = 0.50;
+  static const double heroMinHeightCompact = 280;
+  static const double heroLogoMaxHeightCompact = 72;
+  static const double heroTitleSlotHeightCompact = 80;
+  static const double heroImageStartFractionCompact = 0.08;
 
   static const double heroImageStartFraction = 0.20;
   static const double heroImageWidthFraction = 0.80;
@@ -116,9 +134,9 @@ abstract final class ShellTokens {
 
   static const double heroTextColumnWidthDesktop = 480;
 
-  /// Top inset for hero text: clears [homeTopBarHeight] plus breathing room.
-  static double get heroTextColumnTopInsetDesktop =>
-      homeTopBarHeight + 16;
+  /// Top inset for hero text: clears home top bar plus breathing room.
+  static double heroTextTopInsetForBodyWidth(double bodyWidth) =>
+      homeTopBarHeightForBodyWidth(bodyWidth) + 16;
   /// Vertical align for hero text within the hero band (-1 top … 1 bottom).
   static const double heroTextColumnVerticalAlign = -0.82;
   static const double heroTitleSlotHeightDesktop = 196;

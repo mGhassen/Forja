@@ -1,8 +1,6 @@
 # RFC-003: Player overlay + server grid
 
-**Version:** v1.1 (wire stubs)  
 **Status:** partial — player shipped; overlay stubs not wired  
-**Target version:** [1.0.1](../backlog/1.0.1-[draft].md) (slipped from [1.0.0](done/1.0.0-[done].md))  
 **Depends on:** RFC-011 (v1.0 player shell)  
 **Area:** `apps/forja/lib/shared/player/`, `shared/design/src/player_overlay.dart`, `shared/design/src/server_grid.dart`
 
@@ -10,9 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 6** components · **0 / 4** acceptance (v1.1 slice) |
-| **Current slice** | v1.1 — wire overlay + server grid |
-| **Backlog** | [1.0.1](../backlog/1.0.1-[draft].md) |
+| **Progress** | **4 / 6** components · **0 / 4** acceptance |
+| **Current slice** | Wire overlay + server grid — not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

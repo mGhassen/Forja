@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:rust/rust.dart';
 import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -26,24 +28,27 @@ import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
   if (!compactTop) return ShellTokens.homeSectionTitleTop;
-  final isDesktop =
-      MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-  return isDesktop
+  return _usesShellHomeLayout(context)
       ? ShellTokens.homeSectionTitleTopCompactDesktop
       : ShellTokens.homeSectionTitleTopCompactMobile;
 }
 
-bool _isDesktopHomeLayout(BuildContext context) {
+bool _usesShellHomeLayout(BuildContext context) {
+  if (!kIsWeb &&
+      (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    return true;
+  }
   return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
 }
 
-bool _showDesktopHero(BuildContext context) {
-  return _isDesktopHomeLayout(context) &&
-      MediaQuery.sizeOf(context).width >= ShellTokens.heroDesktopMinBodyWidth;
+bool _isFullCinematicHero(BuildContext context) {
+  return MediaQuery.sizeOf(context).width >= ShellTokens.heroDesktopMinBodyWidth;
 }
 
-double _desktopHomeTopClearance(BuildContext context) {
-  return MediaQuery.paddingOf(context).top + ShellTokens.homeTopBarHeight;
+double _heroTextTopInset(BuildContext context) {
+  return ShellTokens.heroTextTopInsetForBodyWidth(
+    MediaQuery.sizeOf(context).width,
+  );
 }
 
 SliverToBoxAdapter _homeRowSliver(
@@ -217,11 +222,21 @@ Widget _homeContinueWatchingSkeleton(
   );
 }
 
-Widget _heroTitleText(Movie movie, bool isLandscape, {bool desktop = false}) {
+Widget _heroTitleText(
+  Movie movie,
+  bool isLandscape, {
+  bool desktop = false,
+  bool compact = false,
+}) {
+  final fontSize = compact
+      ? 22.0
+      : desktop
+          ? 32.0
+          : (isLandscape ? 48.0 : 36.0);
   return Text(
     movie.title,
     style: TextStyle(
-      fontSize: desktop ? 32 : (isLandscape ? 48 : 36),
+      fontSize: fontSize,
       fontWeight: FontWeight.w900,
       color: Colors.white,
       height: 1.0,
@@ -725,18 +740,16 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _resetHomeCategoryFeeds());
   }
 
-  void _publishHomeHeroHeight(bool isDesktop) {
-    _heroHeightSyncDesktop = isDesktop;
+  void _publishHomeHeroHeight(bool usesShellHome) {
+    _heroHeightSyncDesktop = usesShellHome;
     if (_heroHeightSyncScheduled) return;
     _heroHeightSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _heroHeightSyncScheduled = false;
       if (!mounted) return;
-      final height = _heroHeightSyncDesktop && _showDesktopHero(context)
-          ? _desktopHeroHeight(context) + _desktopTopBarBleed(context)
-          : _heroHeightSyncDesktop
-              ? 0.0
-              : _mobileHeroHeight(context);
+      final compact = !_isFullCinematicHero(context);
+      final height = _cinematicHeroHeight(context, compact: compact) +
+          (_heroHeightSyncDesktop ? _desktopTopBarBleed(context) : 0);
       if (ShellBus.homeHeroHeight.value != height) {
         ShellBus.homeHeroHeight.value = height;
       }
@@ -1395,12 +1408,12 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final isDesktop = _isDesktopHomeLayout(context);
-    final showDesktopHero = _showDesktopHero(context);
+    final usesShellHome = _usesShellHomeLayout(context);
+    final fullHero = _isFullCinematicHero(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _syncHomeScrollOffset();
-      _publishHomeHeroHeight(isDesktop);
+      _publishHomeHeroHeight(usesShellHome);
     });
 
     final content = RefreshIndicator(
@@ -1413,46 +1426,32 @@ class _HomeScreenState extends State<HomeScreen>
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
-              if (isDesktop && !showDesktopHero)
-                SliverToBoxAdapter(
-                  child: SizedBox(height: _desktopHomeTopClearance(context)),
-                ),
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: FutureBuilder<List<Movie>>(
                     future: _trendingFuture,
                     builder: (context, snapshot) {
-                      if (!showDesktopHero) {
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return isDesktop
-                              ? const SizedBox.shrink()
-                              : _buildHeroShimmer();
-                        }
-                        if (!isDesktop) {
-                          return _buildHeroCarousel(
-                            snapshot.data!.take(5).toList(),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return _buildDesktopHeroShimmer();
+                        return _buildCinematicHeroShimmer(
+                          compact: !fullHero,
+                        );
                       }
-                      return _buildDesktopHeroBlock(
+                      return _buildCinematicHeroBlock(
                         snapshot.data!.take(5).toList(),
+                        compact: !fullHero,
                       );
                     },
                   ),
                 ),
               ),
 
-              if (!isDesktop)
+              if (!usesShellHome)
                 _homeRowSliver(
                   _ContinueWatchingSection(compactTop: true),
                   isFirstAfterHero: true,
                 ),
 
-              if (!isDesktop)
+              if (!usesShellHome)
                 _homeRowSliver(
                   _MovieSection(
                     title: 'Featured This Month',
@@ -1462,7 +1461,7 @@ class _HomeScreenState extends State<HomeScreen>
                   isFirstAfterHero: false,
                 ),
 
-              if (isDesktop)
+              if (usesShellHome)
                 _homeRowSliver(
                   _MovieSection(
                     title: 'Featured This Month',
@@ -1470,16 +1469,16 @@ class _HomeScreenState extends State<HomeScreen>
                     onMovieTap: _openDetails,
                     compactTop: true,
                   ),
-                  isFirstAfterHero: showDesktopHero,
-                  heroOverlapPull: showDesktopHero
+                  isFirstAfterHero: true,
+                  heroOverlapPull: fullHero
                       ? _desktopHeroFirstRowOverlap(context)
                       : 0,
-                  overlapLayoutHeight: showDesktopHero
+                  overlapLayoutHeight: fullHero
                       ? _MovieSection.sectionHeight(context, compactTop: true)
                       : null,
                 ),
 
-              if (isDesktop)
+              if (usesShellHome)
                 _homeRowSliver(
                   _MovieSection(
                     title: 'Popular',
@@ -1490,7 +1489,7 @@ class _HomeScreenState extends State<HomeScreen>
                   isFirstAfterHero: false,
                 ),
 
-              if (isDesktop)
+              if (usesShellHome)
                 _homeRowSliver(
                   const _ContinueWatchingSection(compactTop: false),
                   isFirstAfterHero: false,
@@ -1525,7 +1524,7 @@ class _HomeScreenState extends State<HomeScreen>
                   isFirstAfterHero: false,
                 ),
 
-              if (!isDesktop)
+              if (!usesShellHome)
                 _homeRowSliver(
                   _MovieSection(
                     title: 'Popular',
@@ -1631,7 +1630,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         );
 
-    if (!isDesktop) {
+    if (!usesShellHome) {
       return Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1654,14 +1653,25 @@ class _HomeScreenState extends State<HomeScreen>
     return (value * dpr).round() / dpr;
   }
 
-  double _continueWatchingSectionHeight(BuildContext context) {
-    final topPadding = _homeSectionTitleTop(context, compactTop: true);
-    return topPadding + 30 + 16 + _HistoryCard.cardHeight(context);
-  }
-
   double _desktopHeroFirstRowOverlap(BuildContext context) {
     return _MovieSection.sectionHeight(context, compactTop: true) *
         ShellTokens.heroFirstRowOverlapFraction;
+  }
+
+  double _cinematicHeroHeight(BuildContext context, {required bool compact}) {
+    if (compact) {
+      final screenH = MediaQuery.sizeOf(context).height;
+      final target = screenH * ShellTokens.heroHeightFractionCompact;
+      return _snapToDevicePixels(
+        context,
+        math.max(ShellTokens.heroMinHeightCompact, target),
+      );
+    }
+    return _desktopHeroHeight(context);
+  }
+
+  double _desktopTopBarBleed(BuildContext context) {
+    return MediaQuery.paddingOf(context).top;
   }
 
   double _desktopHeroHeight(BuildContext context) {
@@ -1681,40 +1691,9 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  double _mobileHeroHeight(BuildContext context) {
-    final screenH = MediaQuery.sizeOf(context).height;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    if (isLandscape) {
-      return _snapToDevicePixels(context, screenH * 0.55);
-    }
-    final cwHeight = _continueWatchingSectionHeight(context);
-    final maxHero = screenH - cwHeight;
-    final target = screenH * 0.62;
-    return _snapToDevicePixels(
-      context,
-      math.min(target, math.max(300.0, maxHero)),
-    );
-  }
-
-  double _desktopTopBarBleed(BuildContext context) {
-    return MediaQuery.paddingOf(context).top;
-  }
-
-  Widget _buildHeroShimmer() {
-    final h = _mobileHeroHeight(context);
-    final placeholder = Container(height: h, color: AppTheme.bgCard);
-    if (AppTheme.isLightMode) return placeholder;
-    return Shimmer.fromColors(
-      baseColor: AppTheme.bgCard,
-      highlightColor: const Color(0xFF1E1E2F),
-      child: placeholder,
-    );
-  }
-
-  Widget _buildDesktopHeroShimmer() {
-    final height =
-        _desktopHeroHeight(context) + _desktopTopBarBleed(context);
+  Widget _buildCinematicHeroShimmer({required bool compact}) {
+    final height = _cinematicHeroHeight(context, compact: compact) +
+        _desktopTopBarBleed(context);
     final placeholder = Container(height: height, color: AppTheme.bgCard);
     if (AppTheme.isLightMode) return placeholder;
     return Shimmer.fromColors(
@@ -1724,12 +1703,13 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDesktopHeroBlock(List<Movie> movies) {
+  Widget _buildCinematicHeroBlock(List<Movie> movies, {required bool compact}) {
     final heroMovie = movies[_heroIndex];
-    final backdropHeight = _desktopHeroHeight(context);
+    final backdropHeight = _cinematicHeroHeight(context, compact: compact);
     final topBarBleed = _desktopTopBarBleed(context);
     final imageHeight =
         _snapToDevicePixels(context, backdropHeight + topBarBleed);
+    final textTop = topBarBleed + _heroTextTopInset(context);
 
     return SizedBox(
       height: imageHeight,
@@ -1742,46 +1722,74 @@ class _HomeScreenState extends State<HomeScreen>
             left: 0,
             right: 0,
             height: imageHeight,
-            child: _buildDesktopHeroBackdrop(movies),
+            child: _buildDesktopHeroBackdrop(
+              movies,
+              compact: compact,
+            ),
           ),
           Positioned(
             left: 20,
-            top: topBarBleed + ShellTokens.heroTextColumnTopInsetDesktop,
-            right: 48,
-            bottom: 24,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return ClipRect(
-                  child: Align(
-                    alignment: Alignment(
-                      -1,
-                      ShellTokens.heroTextColumnVerticalAlign,
-                    ),
-                    child: SizedBox(
-                      width: math.min(
-                        MediaQuery.sizeOf(context).width * 0.34,
-                        ShellTokens.heroTextColumnWidthDesktop,
-                      ),
-                      child: _buildDesktopHeroTextColumn(
-                        heroMovie,
-                        maxHeight: constraints.maxHeight,
-                      ),
-                    ),
+            top: textTop,
+            right: compact ? 20 : 48,
+            bottom: 16,
+            child: compact
+                ? _buildCompactHeroTextColumn(heroMovie)
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      return ClipRect(
+                        child: Align(
+                          alignment: Alignment(
+                            -1,
+                            ShellTokens.heroTextColumnVerticalAlign,
+                          ),
+                          child: SizedBox(
+                            width: math.min(
+                              MediaQuery.sizeOf(context).width * 0.34,
+                              ShellTokens.heroTextColumnWidthDesktop,
+                            ),
+                            child: _buildDesktopHeroTextColumn(
+                              heroMovie,
+                              maxHeight: constraints.maxHeight,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
           Positioned(
             right: 20,
-            top: 0,
-            height: imageHeight,
-            child: Center(
-              child: _buildHeroStepIndicators(movies),
-            ),
+            bottom: compact ? 16 : null,
+            top: compact ? null : 0,
+            height: compact ? null : imageHeight,
+            child: compact
+                ? _buildHeroStepIndicators(movies, axis: Axis.horizontal)
+                : Center(
+                    child: _buildHeroStepIndicators(movies),
+                  ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCompactHeroTextColumn(Movie heroMovie) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildHeroTitleBlock(
+          heroMovie,
+          isLandscape: false,
+          desktop: true,
+          compact: true,
+        ),
+        const SizedBox(height: 10),
+        _buildHeroMetaRow(heroMovie, singleLine: true),
+        const SizedBox(height: 12),
+        _buildHeroActionRow(heroMovie),
+      ],
     );
   }
 
@@ -1917,19 +1925,21 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
         const SizedBox(height: actionGap),
-        _buildHeroActionRow(heroMovie, flat: true),
+        _buildHeroActionRow(heroMovie),
       ],
     );
   }
 
-  Widget _buildDesktopHeroBackdrop(List<Movie> movies) {
+  Widget _buildDesktopHeroBackdrop(List<Movie> movies, {bool compact = false}) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final shellBg = AppTheme.isLightMode
             ? AppTheme.appBackground
             : Theme.of(context).scaffoldBackgroundColor;
-        final imageLeft =
-            constraints.maxWidth * ShellTokens.heroImageStartFraction;
+        final imageLeft = constraints.maxWidth *
+            (compact
+                ? ShellTokens.heroImageStartFractionCompact
+                : ShellTokens.heroImageStartFraction);
 
         return ClipRect(
           child: Stack(
@@ -1980,6 +1990,7 @@ class _HomeScreenState extends State<HomeScreen>
     Movie heroMovie, {
     required bool isLandscape,
     bool desktop = false,
+    bool compact = false,
   }) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 600),
@@ -2011,6 +2022,7 @@ class _HomeScreenState extends State<HomeScreen>
         logoUrl: _heroLogos[heroMovie.id],
         isLandscape: isLandscape,
         desktop: desktop,
+        compact: compact,
       ),
     );
   }
@@ -2135,60 +2147,13 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildHeroActionRow(Movie heroMovie, {required bool flat}) {
-    if (flat) {
-      return Row(
-        children: [
-          ForjaGhostButton(
-            label: 'Watch Now',
-            icon: Icons.play_arrow_rounded,
-            onTap: () => _openDetails(heroMovie),
-          ),
-          const SizedBox(width: 16),
-          ForjaPlainIcon(
-            icon: Icons.info_outline_rounded,
-            tooltip: 'Details',
-            onTap: () => _openDetails(heroMovie),
-          ),
-          ForjaPlainIcon(
-            icon: Icons.add,
-            tooltip: 'Add to My List',
-            child: _MyListButton.movie(movie: heroMovie),
-          ),
-        ],
-      );
-    }
-
+  Widget _buildHeroActionRow(Movie heroMovie) {
     return Row(
       children: [
-        Flexible(
-          child: Material(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            child: InkWell(
-              onTap: () => _openDetails(heroMovie),
-              borderRadius: BorderRadius.circular(28),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.play_arrow_rounded, color: Colors.black, size: 26),
-                    SizedBox(width: 6),
-                    Text(
-                      'Play',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        ForjaGhostButton(
+          label: 'Watch Now',
+          icon: Icons.play_arrow_rounded,
+          onTap: () => _openDetails(heroMovie),
         ),
         const SizedBox(width: 16),
         ForjaPlainIcon(
@@ -2202,219 +2167,6 @@ class _HomeScreenState extends State<HomeScreen>
           child: _MyListButton.movie(movie: heroMovie),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeroCarousel(List<Movie> movies) {
-    final height = _mobileHeroHeight(context);
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    final heroMovie = movies[_heroIndex];
-    
-    return SizedBox(
-      height: height,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          PageView.builder(
-            clipBehavior: Clip.hardEdge,
-            controller: _heroController,
-            itemCount: _heroLoopLength,
-            onPageChanged: (i) => _onHeroPageChanged(i, movies),
-            itemBuilder: (context, index) {
-              final movie = movies[index % movies.length];
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  ColoredBox(
-                    color: AppTheme.bgDark,
-                    child: CachedNetworkImage(
-                      imageUrl: movie.backdropPath.isNotEmpty 
-                          ? TmdbApi.getBackdropUrl(movie.backdropPath) 
-                          : TmdbApi.getImageUrl(movie.posterPath),
-                      fit: BoxFit.cover,
-                      alignment: Alignment.topCenter,
-                      filterQuality: FilterQuality.medium,
-                      placeholder: (c, u) =>
-                          ColoredBox(color: AppTheme.bgDark),
-                    ),
-                  ),
-                  // Multi-layer gradient for depth
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.transparent,
-                          AppTheme.bgDark.withValues(alpha: 0.42),
-                          AppTheme.bgDark.withValues(alpha: 0.92),
-                          AppTheme.bgDark,
-                        ],
-                        stops: const [0.0, 0.25, 0.55, 0.8, 1.0],
-                      ),
-                    ),
-                  ),
-                  // Side vignette
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        colors: [
-                          AppTheme.bgDark.withValues(alpha: 0.78),
-                          Colors.transparent,
-                          Colors.transparent,
-                          AppTheme.bgDark.withValues(alpha: 0.52),
-                        ],
-                        stops: const [0.0, 0.25, 0.75, 1.0],
-                      ),
-                    ),
-                  ),
-                  // Subtle dark tint overlay (skipped in light mode)
-                  if (!AppTheme.isLightMode)
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        center: Alignment.bottomLeft,
-                        radius: 1.8,
-                        colors: [
-                          Colors.white.withValues(alpha: 0.04),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          
-          // Top gradient for status bar
-          Positioned(
-            top: 0, left: 0, right: 0,
-            height: MediaQuery.of(context).padding.top + 60,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.7),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          
-          // Bottom vignette — blends hero into content below
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: height * 0.45,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      AppTheme.bgDark.withValues(alpha: 0.5),
-                      AppTheme.bgDark.withValues(alpha: 0.88),
-                      AppTheme.bgDark,
-                    ],
-                    stops: const [0.0, 0.4, 0.75, 1.0],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Content overlay
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 0, 28, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Logo or Title — fixed slot prevents layout jump on logo load
-                  _buildHeroTitleBlock(heroMovie, isLandscape: isLandscape),
-                  const SizedBox(height: 12),
-                  // Meta row — cinematic
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        // Rating pill
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.amber.withValues(alpha: 0.25), Colors.amber.withValues(alpha: 0.08)],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                              const SizedBox(width: 4),
-                              Text(heroMovie.voteAverage.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                        if (heroMovie.releaseDate.isNotEmpty)
-                          Text(heroMovie.releaseDate.split('-').first, style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 13, fontWeight: FontWeight.w500)),
-                        if (heroMovie.mediaType == 'tv')
-                          _buildHeroMediaTypeBadge('SERIES')
-                        else if (heroMovie.mediaType == 'movie')
-                          _buildHeroMediaTypeBadge('FILM'),
-                        if (heroMovie.genres.isNotEmpty)
-                          Text(
-                            heroMovie.genres.take(3).join('  ·  '),
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                      ],
-                    ),
-                  ),
-                  // Synopsis
-                  if (heroMovie.overview.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: Text(
-                        heroMovie.overview,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.55),
-                          fontSize: 15,
-                          height: 1.5,
-                          letterSpacing: 0.1,
-                        ),
-                      ),
-                    ),
-                  // Action buttons
-                  _buildHeroActionRow(heroMovie, flat: false),
-                  const SizedBox(height: 24),
-                  _buildHeroStepIndicators(movies, axis: Axis.horizontal),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -4271,34 +4023,48 @@ class _HeroTitleSlot extends StatelessWidget {
     required this.logoUrl,
     required this.isLandscape,
     this.desktop = false,
+    this.compact = false,
   });
 
   final Movie movie;
   final String? logoUrl;
   final bool isLandscape;
   final bool desktop;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final logoMaxHeight = desktop
-        ? ShellTokens.heroLogoMaxHeightDesktop
-        : (isLandscape ? 140.0 : 110.0);
-    final maxWidth = desktop
-        ? ShellTokens.heroTextColumnWidthDesktop
-        : (isLandscape ? 420.0 : MediaQuery.sizeOf(context).width * 0.75);
-    final slotHeight = desktop
-        ? ShellTokens.heroTitleSlotHeightDesktop
-        : logoMaxHeight + 14;
-    final title = _heroTitleText(movie, isLandscape, desktop: desktop);
+    final bodyWidth = MediaQuery.sizeOf(context).width;
+    final logoMaxHeight = compact
+        ? ShellTokens.heroLogoMaxHeightCompact
+        : desktop
+            ? ShellTokens.heroLogoMaxHeightDesktop
+            : (isLandscape ? 140.0 : 110.0);
+    final maxWidth = compact
+        ? bodyWidth * 0.72
+        : desktop
+            ? ShellTokens.heroTextColumnWidthDesktop
+            : (isLandscape ? 420.0 : bodyWidth * 0.75);
+    final slotHeight = compact
+        ? ShellTokens.heroTitleSlotHeightCompact
+        : desktop
+            ? ShellTokens.heroTitleSlotHeightDesktop
+            : logoMaxHeight + 14;
+    final title = _heroTitleText(
+      movie,
+      isLandscape,
+      desktop: desktop,
+      compact: compact,
+    );
     final hasLogo = logoUrl != null && logoUrl!.isNotEmpty;
 
     return SizedBox(
-      height: slotHeight,
+      height: compact ? null : slotHeight,
       width: maxWidth,
       child: Align(
         alignment: Alignment.bottomLeft,
         child: Padding(
-          padding: EdgeInsets.only(bottom: desktop ? 0 : 14),
+          padding: EdgeInsets.only(bottom: desktop || compact ? 0 : 14),
           child: SizedBox(
             height: logoMaxHeight,
             width: maxWidth,

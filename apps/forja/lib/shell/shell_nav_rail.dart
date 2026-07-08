@@ -45,18 +45,21 @@ class ShellNavRail extends StatelessWidget {
             const _RailLogo(),
             const SizedBox(height: 20),
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: _navIds.map((id) {
-                  final index = _indexForId(id)!;
-                  final dest = navDestinations[id]!;
-                  final selected = index == selectedIndex;
-                  return _ShellNavRailItem(
-                    destination: dest,
-                    selected: selected,
-                    onTap: () => onDestinationSelected(index),
-                  );
-                }).toList(),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: _navIds.map((id) {
+                    final index = _indexForId(id)!;
+                    final dest = navDestinations[id]!;
+                    final selected = index == selectedIndex;
+                    return _ShellNavRailItem(
+                      destination: dest,
+                      selected: selected,
+                      onTap: () => onDestinationSelected(index),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
             if (settingsIndex != null) ...[

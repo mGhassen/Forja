@@ -15,7 +15,7 @@ One file **per release version**. Specs live in [RFCs](../rfc/README.md); each f
 Filename = `{semver}-[{status}].md`. Tag matches `**Status:**` in the body.
 
 ```
-plan     →  1.0.1-[draft].md
+plan     →  1.0.1-[draft].md  ·  1.0.2-[draft].md
 shipping →  1.0.1-[open].md
 shipped  →  done/1.0.0-[done].md
 dropped  →  canceled/1.0.0-[canceled].md
@@ -30,7 +30,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | Major | Theme | Era |
 |-------|-------|-----|
 | **v0** | Tell & land | Engine migration + foundation |
-| **v1** | Souk & métier | Player overlay, casting, providers |
+| **v1** | Souk & métier | Details/player UX (1.0.1); overlay, casting, providers (1.0.2) |
 | **v2** | Diwan & mer | Sync, LAN, watch party |
 | **v3** | TBD | Web client |
 
@@ -38,7 +38,8 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | File | Codename | Status |
 |------|----------|--------|
-| [1.0.1-[draft].md](1.0.1-[draft].md) | — | draft |
+| [1.0.1-[draft].md](1.0.1-[draft].md) | — | draft — details & player UX |
+| [1.0.2-[draft].md](1.0.2-[draft].md) | — | draft — overlay, providers, casting |
 
 ## Done — v1
 
