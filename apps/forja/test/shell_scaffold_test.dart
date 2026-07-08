@@ -10,6 +10,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_scaffold.dart';
 import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:rust/src/settings_service.dart';
 
@@ -251,6 +252,18 @@ void main() {
 
     expect(find.byType(ShellBottomNav), findsOneWidget);
     expect(find.byType(BackdropFilter), findsNothing);
+  });
+
+  test('ForjaShellColors adapts to light mode', () {
+    SettingsService.lightModeNotifier.value = false;
+    expect(ForjaShellColors.textPrimary, const Color(0xFFE5E7EB));
+    expect(ForjaShellColors.cinematic.textPrimary, const Color(0xFFE5E7EB));
+
+    SettingsService.lightModeNotifier.value = true;
+    expect(ForjaShellColors.textPrimary, const Color(0xFF111827));
+    expect(ForjaShellColors.cinematic.textPrimary, const Color(0xFFE5E7EB));
+
+    SettingsService.lightModeNotifier.value = false;
   });
 
   test('navDestinations includes default shell tabs', () {

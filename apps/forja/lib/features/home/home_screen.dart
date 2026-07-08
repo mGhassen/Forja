@@ -1110,6 +1110,12 @@ class _HomeScreenState extends State<HomeScreen>
     List<Movie> movies, {
     Axis axis = Axis.vertical,
   }) {
+    final lightMode = AppTheme.isLightMode;
+    final selectedColor = lightMode ? ForjaShellColors.textPrimary : Colors.white;
+    final unselectedColor = lightMode
+        ? ForjaShellColors.textSecondary.withValues(alpha: 0.55)
+        : Colors.white.withValues(alpha: 0.25);
+
     final dots = List.generate(movies.length, (i) {
       final selected = i == _heroIndex;
       final isVertical = axis == Axis.vertical;
@@ -1129,9 +1135,7 @@ class _HomeScreenState extends State<HomeScreen>
               height: isVertical ? (selected ? 24.0 : 6.0) : 3.0,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(isVertical ? 4 : 2),
-                color: selected
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.25),
+                color: selected ? selectedColor : unselectedColor,
               ),
             ),
           ),
@@ -1711,7 +1715,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           Positioned(
             left: 20,
-            top: topBarBleed + 24,
+            top: topBarBleed + 32,
             right: 48,
             bottom: 24,
             child: ClipRect(
@@ -1856,7 +1860,9 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildDesktopHeroBackdrop(List<Movie> movies) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final shellBg = Theme.of(context).scaffoldBackgroundColor;
+        final shellBg = AppTheme.isLightMode
+            ? AppTheme.appBackground
+            : Theme.of(context).scaffoldBackgroundColor;
         final imageLeft =
             constraints.maxWidth * ShellTokens.heroImageStartFraction;
 

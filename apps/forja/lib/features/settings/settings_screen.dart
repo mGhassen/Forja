@@ -410,7 +410,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         _buildFocusableToggle(
                           'Light Mode',
-                          'Disables blur, glows, shadows, and animations for better FPS.',
+                          'Brighter shell and lists. Home hero keeps cinematic dark treatment.',
                           _isLightMode,
                           (val) async {
                             await _settings.setLightMode(val);

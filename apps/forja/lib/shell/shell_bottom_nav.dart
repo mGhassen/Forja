@@ -19,12 +19,18 @@ class ShellBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lightMode = AppTheme.isLightMode;
+    final borderColor =
+        lightMode ? ForjaShellColors.borderSubtle : Colors.white10;
+    final selectedColor =
+        lightMode ? ForjaShellColors.iconActive : Colors.white;
+    final unselectedColor =
+        lightMode ? ForjaShellColors.iconMuted : Colors.white54;
 
     return Container(
       height: ShellTokens.bottomNavHeight,
       decoration: BoxDecoration(
         color: lightMode ? AppTheme.appBackgroundLight : AppTheme.bgDark,
-        border: const Border(top: BorderSide(color: Colors.white10, width: 0.5)),
+        border: Border(top: BorderSide(color: borderColor, width: 0.5)),
       ),
       child: Stack(
         children: [
@@ -62,14 +68,14 @@ class ShellBottomNav extends StatelessWidget {
                           ),
                           child: Icon(
                             isSelected ? dest.activeIcon : dest.icon,
-                            color: isSelected ? Colors.white : Colors.white54,
+                            color: isSelected ? selectedColor : unselectedColor,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           dest.label,
                           style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.white54,
+                            color: isSelected ? selectedColor : unselectedColor,
                             fontSize: ShellTokens.bottomNavLabelSize,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
@@ -100,7 +106,11 @@ class ShellBottomNav extends StatelessWidget {
                       ],
                     ),
                   ),
-                  child: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.white24),
+                  child: Icon(
+                    Icons.arrow_forward_ios,
+                    size: 12,
+                    color: lightMode ? ForjaShellColors.iconMuted : Colors.white24,
+                  ),
                 ),
               ),
             ),

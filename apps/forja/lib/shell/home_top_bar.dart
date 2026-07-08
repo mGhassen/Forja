@@ -5,6 +5,7 @@ import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Sentinel for the "All" entry in the categories popup menu.
@@ -51,13 +52,14 @@ class _HomeTopBarState extends State<HomeTopBar> {
               left: offset.dx,
               top: offset.dy + box.size.height + 4,
               child: Material(
-                color: const Color(0xFF141414),
+                color: ForjaShellColors.cinematic.menuSurface,
                 elevation: 8,
                 borderRadius: BorderRadius.circular(8),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: ForjaShellColors.borderSubtle),
+                    border: Border.all(
+                        color: ForjaShellColors.cinematic.borderSubtle),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
@@ -209,9 +211,9 @@ class _CategoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive
-        ? ForjaShellColors.textPrimary
-        : ForjaShellColors.textSecondary;
+    final cinematic = ForjaShellColors.cinematic;
+    final color =
+        isActive ? cinematic.textPrimary : cinematic.textSecondary;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -256,7 +258,7 @@ class _CategoryTab extends StatelessWidget {
               height: ShellTokens.shellNavUnderlineHeight,
               width: isActive ? 28 : 0,
               decoration: BoxDecoration(
-                color: isActive ? ForjaShellColors.navUnderline : Colors.transparent,
+                color: isActive ? cinematic.navUnderline : Colors.transparent,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -280,6 +282,7 @@ class _FlatMenuRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -293,8 +296,8 @@ class _FlatMenuRow extends StatelessWidget {
               fontSize: 14,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               color: selected
-                  ? ForjaShellColors.textPrimary
-                  : ForjaShellColors.textSecondary,
+                  ? cinematic.textPrimary
+                  : cinematic.textSecondary,
             ),
           ),
         ),

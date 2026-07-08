@@ -128,4 +128,4 @@ After each PR:
 
 ## Related
 
-RFC-020 (media folder move), RFC-003 (player overlay), RFC-001 (feature boundaries), [RFC-025](025-[open]-flat-cinematic-shell.md) (optional `home_hero.dart` extract)
+RFC-020 (media folder move), RFC-003 (player overlay), RFC-001 (feature boundaries), [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) (optional `home_hero.dart` extract)

@@ -515,7 +515,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             focusNode: _focusNode,
             autofocus: true,
             onChanged: _onSearchChanged,
-            style: const TextStyle(
+            style: TextStyle(
               color: ForjaShellColors.textPrimary,
               fontSize: 32,
               fontWeight: FontWeight.w600,
@@ -621,7 +621,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                 title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: 15,
                   height: 1.25,
@@ -734,7 +734,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                   Expanded(
                     child: Text(
                       result.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: ForjaShellColors.textPrimary,
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
@@ -745,7 +745,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                   if (result.year != null && result.year!.isNotEmpty)
                     Text(
                       result.year!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: ForjaShellColors.textSecondary,
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
@@ -757,11 +757,11 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.favorite, size: 16, color: ForjaShellColors.textSecondary),
+                    Icon(Icons.favorite, size: 16, color: ForjaShellColors.textSecondary),
                     const SizedBox(width: 6),
                     Text(
                       result.rating!.toStringAsFixed(1),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: ForjaShellColors.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -775,7 +775,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                 result.overview.isNotEmpty ? result.overview : 'No description available.',
                 maxLines: 6,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: 15,
                   height: 1.45,
@@ -799,7 +799,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             textAlign: TextAlign.center,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: ForjaShellColors.textSecondary, fontSize: 12),
+            style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: 12),
           ),
         ),
       ),

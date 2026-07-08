@@ -1,6 +1,6 @@
 # RFC-025: Flat cinematic shell & Home hero
 
-**Status:** open  
+**Status:** fixed  
 **Version:** v1.0.0  
 **Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[open].md)  
 **Scope (slice 1):** **desktop only** — hover-expand rail, flat shell bg, Home hero layout  
@@ -11,8 +11,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **37 / 37** acceptance (desktop slices 1–1.3) · deferred slice 2: **2 / 3** (A13–A14 ✅ · A15 ⏭️) |
-| **Current slice** | Desktop cinematic polish (1.3) + mobile flat nav |
+| **Progress** | **Complete** · **4 / 4** components · **37 / 37** acceptance · deferred slice 2: **3 / 3** |
+| **Current slice** | Shipped in [1.0.0](../backlog/1.0.0-[open].md) |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -101,7 +101,7 @@
 |--:|----|-------------|--------|
 | 13 | R25-A13 | Mobile bottom nav flat treatment (remove `BackdropFilter` in `shell_bottom_nav.dart`) | ✅ |
 | 14 | R25-A14 | App-wide blur/glow purge (Music, cards, player chrome) | ✅ |
-| 15 | R25-A15 | Light-mode parity audit after flat dark default ships | ⏭️ |
+| 15 | R25-A15 | Light-mode parity audit after flat dark default ships | ✅ |
 
 ---
 
@@ -218,7 +218,7 @@ R25-A13–A15
 ## Honesty / debt notes
 
 - **Slice 1 scope:** Removing `BackdropFilter` on shell + Home reduces GPU layers on desktop; Music, player, and card blur remain — track in R25-A14.
-- **Settings copy:** “Light Mode disables blur, glows…” in Settings → Appearance becomes partially stale once dark mode is flat by default; update on ship.
+- **Settings copy:** Light mode description updated — flat shell is default in dark mode; light mode brightens chrome while Home hero stays cinematic.
 - **RFC-019:** Hero work may extract `home_hero.dart` without waiting for full `home_screen.dart` split.
 
 ## Related
