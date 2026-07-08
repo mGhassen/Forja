@@ -715,6 +715,19 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                   ),
                 ),
               ),
+            if (cinematicDesktop)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 600),
+                    opacity: _showTrailer ? 0 : 1,
+                    child: _CinematicHeroBottomGradient(
+                      shellBg: shellBg,
+                      overlap: ShellTokens.detailsHeroBodyOverlap,
+                    ),
+                  ),
+                ),
+              ),
             if (!cinematicDesktop)
               Positioned(
                 left: 0,
@@ -837,6 +850,34 @@ class _HeroBottomFade extends StatelessWidget {
           stops: const [0.0, 0.35, 0.68, 0.92, 1.0],
         ),
       ),
+    );
+  }
+}
+
+class _CinematicHeroBottomGradient extends StatelessWidget {
+  const _CinematicHeroBottomGradient({
+    required this.shellBg,
+    this.overlap = 0,
+  });
+
+  final Color shellBg;
+  final double overlap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return IgnorePointer(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              height: constraints.maxHeight * 0.55 + overlap,
+              width: double.infinity,
+              child: _HeroBottomFade(shellBg: shellBg),
+            ),
+          ),
+        );
+      },
     );
   }
 }
