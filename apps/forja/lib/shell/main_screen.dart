@@ -197,6 +197,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    if (!kShowShellProviderMenuOnHome) {
+      ShellBus.selectedWatchProviderId.value = null;
+    }
     WidgetsBinding.instance.addObserver(this);
     ShellBus.stremioSearchNotifier.addListener(_onStremioSearch);
     ShellBus.requestTab.addListener(_onRequestTab);
@@ -345,7 +348,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         onDestinationSelected: _selectTab,
         tabFor: _tabFor,
         shellHeader: _shellHeader(),
-        shellTopBar: _currentTabId == 'home' && useNavRail && isDesktop
+        shellTopBar: kShowShellProviderMenuOnHome &&
+                _currentTabId == 'home' &&
+                useNavRail &&
+                isDesktop
             ? const ShellTopBar()
             : null,
         hideGlobalNav: ShellBus.hideGlobalNav.value,

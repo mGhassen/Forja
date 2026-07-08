@@ -5,6 +5,12 @@ import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:rust/rust.dart';
 
+/// TMDB watch-provider strip for desktop shell.
+///
+/// Hidden on Home for v1.0 — mount via [kShowShellProviderMenuOnHome] or embed
+/// on Search (and other tabs) when that UX ships.
+const bool kShowShellProviderMenuOnHome = false;
+
 class ShellTopBar extends StatefulWidget {
   const ShellTopBar({super.key});
 
@@ -204,8 +210,7 @@ class _ProviderFilterStripState extends State<_ProviderFilterStrip> {
   Widget build(BuildContext context) {
     final centeredIndex = _centeredListIndex();
 
-    return ClipRect(
-      child: SizedBox(
+    return SizedBox(
         width: ShellTokens.shellProviderRowViewportWidth,
         height: ShellTokens.shellProviderStripHeight,
         child: Stack(
@@ -263,7 +268,6 @@ class _ProviderFilterStripState extends State<_ProviderFilterStrip> {
               ),
           ],
         ),
-      ),
     );
   }
 }
@@ -340,6 +344,15 @@ class _ProviderFilterCard extends StatelessWidget {
                             ),
                           ]
                         : null,
+                    image: provider.logoPath.isNotEmpty
+                        ? DecorationImage(
+                            image: CachedNetworkImageProvider(
+                              provider.logoCardUrl,
+                            ),
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                          )
+                        : null,
                   ),
                   child: provider.logoPath.isEmpty
                       ? Center(
@@ -355,26 +368,7 @@ class _ProviderFilterCard extends StatelessWidget {
                             ),
                           ),
                         )
-                      : CachedNetworkImage(
-                          imageUrl: provider.logoCardUrl,
-                          fit: BoxFit.cover,
-                          alignment: Alignment.center,
-                          width: width,
-                          height: height,
-                          errorWidget: (_, _, _) => Center(
-                            child: Text(
-                              provider.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
+                      : null,
                 ),
               );
             },

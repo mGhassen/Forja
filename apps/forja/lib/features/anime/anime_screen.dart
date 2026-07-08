@@ -360,7 +360,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                               SliverToBoxAdapter(
                                 child: _AnimeRail(
                                   title: 'Trending Now',
-                                  icon: Icons.trending_up_rounded,
                                   items: _trending,
                                   onTap: _openDetails,
                                 ),
@@ -372,7 +371,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                               SliverToBoxAdapter(
                                 child: _AnimeRail(
                                   title: 'Top Airing',
-                                  icon: Icons.live_tv_rounded,
                                   items: _topAiring,
                                   onTap: _openDetails,
                                 ),
@@ -380,7 +378,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                               SliverToBoxAdapter(
                                 child: _AnimeRail(
                                   title: 'Top 10 Today',
-                                  icon: Icons.leaderboard_rounded,
                                   items: _top10,
                                   onTap: _openDetails,
                                   showRank: true,
@@ -389,7 +386,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                               SliverToBoxAdapter(
                                 child: _AnimeRail(
                                   title: 'Most Popular',
-                                  icon: Icons.whatshot_rounded,
                                   items: _mostPopular,
                                   onTap: _openDetails,
                                 ),
@@ -397,7 +393,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                               SliverToBoxAdapter(
                                 child: _AnimeRail(
                                   title: 'Latest Episodes',
-                                  icon: Icons.new_releases_rounded,
                                   items: _recentEpisodes,
                                   onTap: _openDetails,
                                 ),
@@ -405,7 +400,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                               SliverToBoxAdapter(
                                 child: _AnimeRail(
                                   title: 'Top Rated',
-                                  icon: Icons.star_rounded,
                                   items: _topRated,
                                   onTap: _openDetails,
                                 ),
@@ -413,7 +407,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                               SliverToBoxAdapter(
                                 child: _AnimeRail(
                                   title: 'Most Favorited',
-                                  icon: Icons.favorite_rounded,
                                   items: _mostFavorite,
                                   onTap: _openDetails,
                                 ),
@@ -421,7 +414,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                               SliverToBoxAdapter(
                                 child: _AnimeRail(
                                   title: 'Recently Completed',
-                                  icon: Icons.check_circle_rounded,
                                   items: _latestCompleted,
                                   onTap: _openDetails,
                                 ),
@@ -830,61 +822,20 @@ class _AnimeScreenState extends State<AnimeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
+        ShellSectionTitle(
+          title: 'Continue Watching',
           padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.history_rounded,
-                    color: AppTheme.primaryColor, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Continue Watching',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 2.5,
-                      width: 36,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.primaryColor,
-                            AppTheme.primaryColor.withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: _cwScrollLeft,
-                child: _cwArrowButton(Icons.arrow_back_ios_new_rounded),
-              ),
-              const SizedBox(width: 6),
-              GestureDetector(
-                onTap: _cwScrollRight,
-                child: _cwArrowButton(Icons.arrow_forward_ios_rounded),
-              ),
-            ],
-          ),
+          trailing: [
+            GestureDetector(
+              onTap: _cwScrollLeft,
+              child: _cwArrowButton(Icons.arrow_back_ios_new_rounded),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: _cwScrollRight,
+              child: _cwArrowButton(Icons.arrow_forward_ios_rounded),
+            ),
+          ],
         ),
         SizedBox(
           height: cardH,
@@ -1018,7 +969,7 @@ class _AnimeScreenState extends State<AnimeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader('Pick your vibe', Icons.tune_rounded),
+          _sectionHeader('Pick your vibe'),
           SizedBox(
             height: 40,
             child: ListView.separated(
@@ -1109,7 +1060,6 @@ class _AnimeScreenState extends State<AnimeScreen>
         }
         return _AnimeRail(
           title: 'In the mood',
-          icon: Icons.auto_awesome_rounded,
           items: snap.data!,
           onTap: _openDetails,
           topPadding: 0,
@@ -1364,52 +1314,10 @@ class _AnimeScreenState extends State<AnimeScreen>
   }
 
   // ─── Section header (re-usable) ───────────────────────────────
-  Widget _sectionHeader(String title, IconData icon) {
-    return Padding(
+  Widget _sectionHeader(String title) {
+    return ShellSectionTitle(
+      title: title,
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: AppTheme.primaryColor, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  height: 2.5,
-                  width: 36,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.primaryColor,
-                        AppTheme.primaryColor.withValues(alpha: 0.0),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1504,7 +1412,6 @@ class _AnimeScreenState extends State<AnimeScreen>
 // ──────────────────────────────────────────────────────────────────
 class _AnimeRail extends StatelessWidget {
   final String title;
-  final IconData icon;
   final List<AnimeCard> items;
   final void Function(AnimeCard) onTap;
   final bool showRank;
@@ -1513,7 +1420,6 @@ class _AnimeRail extends StatelessWidget {
 
   const _AnimeRail({
     required this.title,
-    required this.icon,
     required this.items,
     required this.onTap,
     this.showRank = false,
@@ -1537,52 +1443,9 @@ class _AnimeRail extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!hideHeader)
-            Padding(
+            ShellSectionTitle(
+              title: title,
               padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(icon,
-                        color: AppTheme.primaryColor, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          height: 2.5,
-                          width: 36,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(2),
-                            gradient: LinearGradient(
-                              colors: [
-                                AppTheme.primaryColor,
-                                AppTheme.primaryColor.withValues(alpha: 0.0),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
           SizedBox(
             height: railH,

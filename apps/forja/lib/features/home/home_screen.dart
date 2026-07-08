@@ -62,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen>
   
   late Future<List<Movie>> _trendingFuture;
   late Future<List<Movie>> _popularFuture;
+  late Future<List<Movie>> _featuredThisMonthFuture;
   late Future<List<Movie>> _nowPlayingFuture;
   
   Timer? _heroTimer;
@@ -119,6 +120,36 @@ class _HomeScreenState extends State<HomeScreen>
 
   int? get _watchProviderId => ShellBus.selectedWatchProviderId.value;
 
+  ({String gte, String lte}) _currentMonthDateRange() {
+    final now = DateTime.now();
+    final lastDay = DateTime(now.year, now.month + 1, 0);
+    String pad(int n) => n.toString().padLeft(2, '0');
+    return (
+      gte: '${now.year}-${pad(now.month)}-01',
+      lte: '${lastDay.year}-${pad(lastDay.month)}-${pad(lastDay.day)}',
+    );
+  }
+
+  Future<List<Movie>> _loadFeaturedThisMonth() {
+    final range = _currentMonthDateRange();
+    final providerId = _watchProviderId;
+    return _isTvHome
+        ? _api.discoverTvShows(
+            releaseDateGte: range.gte,
+            releaseDateLte: range.lte,
+            minRating: 6.0,
+            watchProviderId: providerId,
+            sortBy: 'popularity.desc',
+          )
+        : _api.discoverMovies(
+            releaseDateGte: range.gte,
+            releaseDateLte: range.lte,
+            minRating: 6.0,
+            watchProviderId: providerId,
+            sortBy: 'popularity.desc',
+          );
+  }
+
   void _resetHomeCategoryFeeds({bool useBootCache = false}) {
     final providerId = _watchProviderId;
     final canUseBootCache = useBootCache && !_isTvHome && providerId == null;
@@ -157,6 +188,7 @@ class _HomeScreenState extends State<HomeScreen>
                 sortBy: 'primary_release_date.desc',
               ),
       );
+      _featuredThisMonthFuture = _tmdbFuture(null, _loadFeaturedThisMonth);
     } else {
       final trendingFetcher = _isTvHome ? _api.getTrendingTv : _api.getTrending;
       final popularFetcher = _isTvHome ? _api.getPopularTv : _api.getPopular;
@@ -175,6 +207,7 @@ class _HomeScreenState extends State<HomeScreen>
         canUseBootCache ? BootCache.nowPlaying : null,
         latestFetcher,
       );
+      _featuredThisMonthFuture = _tmdbFuture(null, _loadFeaturedThisMonth);
     }
     _moodFuture = _loadMoodMovies(_selectedMood);
     _heroIndex = 0;
@@ -841,9 +874,49 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
 
-              const SliverToBoxAdapter(
-                child: RepaintBoundary(child: _ContinueWatchingSection()),
-              ),
+              if (!isDesktop)
+                const SliverToBoxAdapter(
+                  child: RepaintBoundary(child: _ContinueWatchingSection()),
+                ),
+
+              if (!isDesktop)
+                SliverToBoxAdapter(
+                  child: RepaintBoundary(
+                    child: _MovieSection(
+                      title: 'Featured This Month',
+                      future: _featuredThisMonthFuture,
+                      onMovieTap: _openDetails,
+                    ),
+                  ),
+                ),
+
+              if (isDesktop)
+                SliverToBoxAdapter(
+                  child: RepaintBoundary(
+                    child: _MovieSection(
+                      title: 'Featured This Month',
+                      future: _featuredThisMonthFuture,
+                      onMovieTap: _openDetails,
+                      compactTop: true,
+                    ),
+                  ),
+                ),
+
+              if (isDesktop)
+                SliverToBoxAdapter(
+                  child: RepaintBoundary(
+                    child: _MovieSection(
+                      title: 'Popular',
+                      future: _popularFuture,
+                      onMovieTap: _openDetails,
+                    ),
+                  ),
+                ),
+
+              if (isDesktop)
+                const SliverToBoxAdapter(
+                  child: RepaintBoundary(child: _ContinueWatchingSection()),
+                ),
 
               // Mood / Genre chips — interactive filter
               SliverToBoxAdapter(
@@ -875,8 +948,16 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
 
-              // Popular
-              SliverToBoxAdapter(child: RepaintBoundary(child: _MovieSection(title: 'Popular', icon: Icons.movie_filter_rounded, future: _popularFuture, onMovieTap: _openDetails))),
+              if (!isDesktop)
+                SliverToBoxAdapter(
+                  child: RepaintBoundary(
+                    child: _MovieSection(
+                      title: 'Popular',
+                      future: _popularFuture,
+                      onMovieTap: _openDetails,
+                    ),
+                  ),
+                ),
 
               // Stremio Addon Catalogs (preserved exactly as before)
               if (_catalogsLoaded)
@@ -898,17 +979,17 @@ class _HomeScreenState extends State<HomeScreen>
 
               // Trakt Recommendations
               if (_traktRecommendations.isNotEmpty)
-                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Recommended for You', icon: Icons.recommend_rounded, movies: _traktRecommendations, onMovieTap: _openDetails))),
+                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Recommended for You', movies: _traktRecommendations, onMovieTap: _openDetails))),
 
               // Trakt Calendar
               if (_traktUpcomingShows.isNotEmpty)
-                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Upcoming Schedule', icon: Icons.calendar_month_rounded, movies: _traktUpcomingShows, onMovieTap: _openDetails))),
+                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Upcoming Schedule', movies: _traktUpcomingShows, onMovieTap: _openDetails))),
 
               if (_traktUpcomingMovies.isNotEmpty)
-                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Upcoming Movies', icon: Icons.movie_filter_rounded, movies: _traktUpcomingMovies, onMovieTap: _openDetails))),
+                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Upcoming Movies', movies: _traktUpcomingMovies, onMovieTap: _openDetails))),
 
               // New Releases
-              SliverToBoxAdapter(child: RepaintBoundary(child: _MovieSection(title: 'New Releases', icon: Icons.new_releases_rounded, future: _nowPlayingFuture, onMovieTap: _openDetails))),
+              SliverToBoxAdapter(child: RepaintBoundary(child: _MovieSection(title: 'New Releases', future: _nowPlayingFuture, onMovieTap: _openDetails))),
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -917,47 +998,59 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (!isDesktop) return content;
 
-    return Stack(
-      children: [
-        Positioned.fill(child: content),
-        Positioned(
-          top: 0,
-          bottom: 0,
-          right: 0,
-          width: ShellTokens.bodyRightGradientWidth,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    Colors.transparent,
-                    AppTheme.bgDark.withValues(alpha: 0.55),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return content;
+  }
+
+  double _snapToDevicePixels(BuildContext context, double value) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    return (value * dpr).round() / dpr;
+  }
+
+  double _continueWatchingSectionHeight(BuildContext context) {
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    final topPadding = isDesktop ? 16.0 : 32.0;
+    return topPadding + 30 + 16 + _MovieCard.cardHeight(context);
+  }
+
+  double _desktopHeroHeight(BuildContext context) {
+    final screenH = MediaQuery.sizeOf(context).height;
+    final topBar = _desktopTopBarBleed(context);
+    final firstRowHeight =
+        _MovieSection.sectionHeight(context, compactTop: true);
+    final nextRowPeek = _MovieSection.sectionHeight(context) *
+        ShellTokens.heroNextRowPeekFraction;
+    final reservedBelow = firstRowHeight + nextRowPeek;
+    final target = screenH * ShellTokens.heroHeightFractionDesktop;
+    final maxHero = screenH - topBar - reservedBelow;
+    return _snapToDevicePixels(
+      context,
+      math.min(target, math.max(320.0, maxHero)),
     );
   }
 
-  double _heroHeight(BuildContext context) {
-    return MediaQuery.sizeOf(context).height * ShellTokens.heroHeightFractionDesktop;
+  double _mobileHeroHeight(BuildContext context) {
+    final screenH = MediaQuery.sizeOf(context).height;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    if (isLandscape) {
+      return _snapToDevicePixels(context, screenH * 0.55);
+    }
+    final cwHeight = _continueWatchingSectionHeight(context);
+    final maxHero = screenH - cwHeight;
+    final target = screenH * 0.62;
+    return _snapToDevicePixels(
+      context,
+      math.min(target, math.max(300.0, maxHero)),
+    );
   }
 
   double _desktopTopBarBleed(BuildContext context) {
-    return MediaQuery.paddingOf(context).top + ShellTokens.shellTopBarHeight;
+    return MediaQuery.paddingOf(context).top;
   }
 
   Widget _buildHeroShimmer() {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    final h = isLandscape
-        ? MediaQuery.of(context).size.height * 0.65
-        : MediaQuery.of(context).size.height * 0.82;
+    final h = _mobileHeroHeight(context);
     final placeholder = Container(height: h, color: AppTheme.bgCard);
     if (AppTheme.isLightMode) return placeholder;
     return Shimmer.fromColors(
@@ -967,15 +1060,10 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  double _desktopHeroBackdropHeight(BuildContext context) => _heroHeight(context);
-
   Widget _buildDesktopHeroShimmer() {
-    final backdropHeight = _desktopHeroBackdropHeight(context);
-    final topBarBleed = _desktopTopBarBleed(context);
-    final placeholder = Container(
-      height: backdropHeight + topBarBleed,
-      color: AppTheme.bgCard,
-    );
+    final height =
+        _desktopHeroHeight(context) + _desktopTopBarBleed(context);
+    final placeholder = Container(height: height, color: AppTheme.bgCard);
     if (AppTheme.isLightMode) return placeholder;
     return Shimmer.fromColors(
       baseColor: AppTheme.bgCard,
@@ -986,9 +1074,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildDesktopHeroBlock(List<Movie> movies) {
     final heroMovie = movies[_heroIndex];
-    final backdropHeight = _desktopHeroBackdropHeight(context);
+    final backdropHeight = _desktopHeroHeight(context);
     final topBarBleed = _desktopTopBarBleed(context);
-    final imageHeight = backdropHeight + topBarBleed;
+    final imageHeight =
+        _snapToDevicePixels(context, backdropHeight + topBarBleed);
 
     return SizedBox(
       height: imageHeight,
@@ -1065,7 +1154,7 @@ class _HomeScreenState extends State<HomeScreen>
               left: 0,
               right: 0,
               bottom: 0,
-              height: height * 0.5,
+              height: height * 0.55,
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
@@ -1074,11 +1163,12 @@ class _HomeScreenState extends State<HomeScreen>
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        AppTheme.bgDark.withValues(alpha: 0.52),
-                        AppTheme.bgDark.withValues(alpha: 0.88),
+                        AppTheme.bgDark.withValues(alpha: 0.45),
+                        AppTheme.bgDark.withValues(alpha: 0.82),
+                        AppTheme.bgDark,
                         AppTheme.bgDark,
                       ],
-                      stops: const [0.0, 0.42, 0.76, 1.0],
+                      stops: const [0.0, 0.35, 0.68, 0.92, 1.0],
                     ),
                   ),
                 ),
@@ -1143,27 +1233,35 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildDesktopHeroBackdrop(List<Movie> movies) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        PageView.builder(
-          controller: _heroController,
-          itemCount: _heroLoopLength,
-          onPageChanged: (i) => _onHeroPageChanged(i, movies),
-          itemBuilder: (context, index) {
-            final movie = movies[index % movies.length];
-            return CachedNetworkImage(
-              imageUrl: movie.backdropPath.isNotEmpty
-                  ? TmdbApi.getBackdropUrl(movie.backdropPath)
-                  : TmdbApi.getImageUrl(movie.posterPath),
-              fit: BoxFit.cover,
-              alignment: Alignment.centerRight,
-              placeholder: (c, u) => Container(color: AppTheme.bgCard),
-            );
-          },
-        ),
-        _buildDesktopHeroGradients(),
-      ],
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          PageView.builder(
+            clipBehavior: Clip.hardEdge,
+            controller: _heroController,
+            itemCount: _heroLoopLength,
+            onPageChanged: (i) => _onHeroPageChanged(i, movies),
+            itemBuilder: (context, index) {
+              final movie = movies[index % movies.length];
+              return ColoredBox(
+                color: AppTheme.bgDark,
+                child: CachedNetworkImage(
+                  imageUrl: movie.backdropPath.isNotEmpty
+                      ? TmdbApi.getBackdropUrl(movie.backdropPath)
+                      : TmdbApi.getImageUrl(movie.posterPath),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  filterQuality: FilterQuality.medium,
+                  placeholder: (c, u) =>
+                      ColoredBox(color: AppTheme.bgDark),
+                ),
+              );
+            },
+          ),
+          _buildDesktopHeroGradients(),
+        ],
+      ),
     );
   }
 
@@ -1425,7 +1523,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeroCarousel(List<Movie> movies) {
-    final height = _heroHeight(context);
+    final height = _mobileHeroHeight(context);
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     final heroMovie = movies[_heroIndex];
@@ -1433,9 +1531,10 @@ class _HomeScreenState extends State<HomeScreen>
     return SizedBox(
       height: height,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // Background image with parallax-like crossfade
           PageView.builder(
+            clipBehavior: Clip.hardEdge,
             controller: _heroController,
             itemCount: _heroLoopLength,
             onPageChanged: (i) => _onHeroPageChanged(i, movies),
@@ -1444,13 +1543,18 @@ class _HomeScreenState extends State<HomeScreen>
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  CachedNetworkImage(
-                    imageUrl: movie.backdropPath.isNotEmpty 
-                        ? TmdbApi.getBackdropUrl(movie.backdropPath) 
-                        : TmdbApi.getImageUrl(movie.posterPath),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    placeholder: (c, u) => Container(color: AppTheme.bgCard),
+                  ColoredBox(
+                    color: AppTheme.bgDark,
+                    child: CachedNetworkImage(
+                      imageUrl: movie.backdropPath.isNotEmpty 
+                          ? TmdbApi.getBackdropUrl(movie.backdropPath) 
+                          : TmdbApi.getImageUrl(movie.posterPath),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                      filterQuality: FilterQuality.medium,
+                      placeholder: (c, u) =>
+                          ColoredBox(color: AppTheme.bgDark),
+                    ),
                   ),
                   // Multi-layer gradient for depth
                   Container(
@@ -1469,20 +1573,19 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                   ),
-                  // Side vignette — full opacity at left edge
+                  // Side vignette
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                         colors: [
-                          AppTheme.bgDark,
-                          AppTheme.bgDark,
-                          AppTheme.bgDark.withValues(alpha: 0.55),
+                          AppTheme.bgDark.withValues(alpha: 0.78),
+                          Colors.transparent,
                           Colors.transparent,
                           AppTheme.bgDark.withValues(alpha: 0.52),
                         ],
-                        stops: const [0.0, 0.28, 0.42, 0.72, 1.0],
+                        stops: const [0.0, 0.25, 0.75, 1.0],
                       ),
                     ),
                   ),
@@ -1525,6 +1628,31 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           
+          // Bottom vignette — blends hero into content below
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: height * 0.45,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      AppTheme.bgDark.withValues(alpha: 0.5),
+                      AppTheme.bgDark.withValues(alpha: 0.88),
+                      AppTheme.bgDark,
+                    ],
+                    stops: const [0.0, 0.4, 0.75, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // Content overlay
           Positioned(
             bottom: 0, left: 0, right: 0,
@@ -1712,16 +1840,26 @@ class _HomeScreenState extends State<HomeScreen>
 
 class _MovieSection extends StatefulWidget {
   final String title;
-  final IconData? icon;
   final Future<List<Movie>> future;
   final Function(Movie) onMovieTap;
+  final bool compactTop;
 
   const _MovieSection({
     required this.title,
-    this.icon,
     required this.future,
     required this.onMovieTap,
+    this.compactTop = false,
   });
+
+  static double sectionHeight(
+    BuildContext context, {
+    bool compactTop = false,
+  }) {
+    final top = compactTop ? 16.0 : 36.0;
+    const headerRow = 28.0;
+    const bottomGap = 16.0;
+    return top + headerRow + bottomGap + _MovieCard.cardHeight(context);
+  }
 
   @override
   State<_MovieSection> createState() => _MovieSectionState();
@@ -1730,50 +1868,10 @@ class _MovieSection extends StatefulWidget {
 class _MovieSectionState extends State<_MovieSection> {
   final ScrollController _scrollController = ScrollController();
 
-  void _scrollLeft() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.offset - 600,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  void _scrollRight() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.offset + 600,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Widget _buildSmallFrostedArrow(IconData icon) {
-    final inner = Container(
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: AppTheme.isLightMode ? 0.12 : 0.08),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Icon(icon, color: Colors.white.withValues(alpha: 0.6), size: 14),
-    );
-    if (AppTheme.isLightMode) return inner;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-        child: inner,
-      ),
-    );
   }
 
   @override
@@ -1785,7 +1883,7 @@ class _MovieSectionState extends State<_MovieSection> {
           // Shimmer placeholder while loading
           if (snapshot.connectionState == ConnectionState.waiting) {
             final shimmerChild = Padding(
-                padding: const EdgeInsets.only(top: 32),
+                padding: EdgeInsets.only(top: widget.compactTop ? 16 : 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1821,57 +1919,17 @@ class _MovieSectionState extends State<_MovieSection> {
         }
         final movies = snapshot.data!;
         
+        final sectionTop = widget.compactTop ? 16.0 : 36.0;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 36, 24, 16),
-              child: Row(
-                children: [
-                  if (widget.icon != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: ForjaShellColors.sectionIconBg,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(widget.icon, color: ForjaShellColors.sectionAccent, size: 18),
-                    ),
-                    const SizedBox(width: 10),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-                        const SizedBox(height: 4),
-                        Container(
-                          height: 2.5,
-                          width: 36,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(2),
-                            gradient: LinearGradient(
-                              colors: [ForjaShellColors.sectionAccent, ForjaShellColors.sectionAccent.withValues(alpha: 0.0)],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _scrollLeft,
-                    child: _buildSmallFrostedArrow(Icons.arrow_back_ios_new_rounded),
-                  ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: _scrollRight,
-                    child: _buildSmallFrostedArrow(Icons.arrow_forward_ios_rounded),
-                  ),
-                ],
-              ),
+            ShellSectionTitle(
+              title: widget.title,
+              padding: EdgeInsets.fromLTRB(24, sectionTop, 24, 16),
             ),
             SizedBox(
-              height: 290,
+              height: _MovieCard.cardHeight(context),
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _scrollController,
@@ -1895,13 +1953,11 @@ class _MovieSectionState extends State<_MovieSection> {
 
 class _StaticMovieSection extends StatefulWidget {
   final String title;
-  final IconData? icon;
   final List<Movie> movies;
   final Function(Movie) onMovieTap;
 
   const _StaticMovieSection({
     required this.title,
-    this.icon,
     required this.movies,
     required this.onMovieTap,
   });
@@ -1913,50 +1969,10 @@ class _StaticMovieSection extends StatefulWidget {
 class _StaticMovieSectionState extends State<_StaticMovieSection> {
   final ScrollController _scrollController = ScrollController();
 
-  void _scrollLeft() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.offset - 600,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  void _scrollRight() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.offset + 600,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Widget _buildSmallFrostedArrow(IconData icon) {
-    final inner = Container(
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: AppTheme.isLightMode ? 0.12 : 0.08),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Icon(icon, color: Colors.white.withValues(alpha: 0.6), size: 14),
-    );
-    if (AppTheme.isLightMode) return inner;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-        child: inner,
-      ),
-    );
   }
 
   @override
@@ -1965,54 +1981,9 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 36, 24, 16),
-          child: Row(
-            children: [
-              if (widget.icon != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: ForjaShellColors.sectionIconBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(widget.icon, color: ForjaShellColors.sectionAccent, size: 18),
-                ),
-                const SizedBox(width: 10),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 2.5,
-                      width: 36,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        gradient: LinearGradient(
-                          colors: [ForjaShellColors.sectionAccent, ForjaShellColors.sectionAccent.withValues(alpha: 0.0)],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: _scrollLeft,
-                child: _buildSmallFrostedArrow(Icons.arrow_back_ios_new_rounded),
-              ),
-              const SizedBox(width: 6),
-              GestureDetector(
-                onTap: _scrollRight,
-                child: _buildSmallFrostedArrow(Icons.arrow_forward_ios_rounded),
-              ),
-            ],
-          ),
-        ),
+        ShellSectionTitle(title: widget.title),
         SizedBox(
-          height: 290,
+          height: _MovieCard.cardHeight(context),
           child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
@@ -2046,10 +2017,19 @@ class _MovieCard extends StatelessWidget {
     return isDesktop ? 190.0 : 165.0;
   }
 
+  static double cardHeight(BuildContext context) =>
+      _snapPosterHeight(cardWidth(context));
+
+  static double _snapPosterHeight(double width) {
+    // Poster aspect ratio 2:3 (width:height).
+    return (width * 1.5).roundToDouble();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 900;
     final cardWidth = _MovieCard.cardWidth(context);
+    final cardHeight = _MovieCard.cardHeight(context);
     final imageUrl = movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '';
 
     return FocusableControl(
@@ -2058,32 +2038,33 @@ class _MovieCard extends StatelessWidget {
       scaleOnFocus: 1.05,
       child: Container(
         width: cardWidth,
-        clipBehavior: Clip.antiAlias,
+        height: cardHeight,
         decoration: BoxDecoration(
-          color: AppTheme.bgCard,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
           boxShadow: AppTheme.isLightMode ? null : [
             BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 8)),
           ],
         ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (imageUrl.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (c, u) => Container(color: AppTheme.bgCard),
-                errorWidget: (c, u, e) => Container(
-                  color: AppTheme.bgCard,
-                  child: Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
-                ),
-              )
-            else
-              Container(
-                color: AppTheme.bgCard,
-                child: Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(
+                color: AppTheme.bgDark,
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.medium,
+                        placeholder: (c, u) =>
+                            ColoredBox(color: AppTheme.bgDark),
+                        errorWidget: (c, u, e) => Container(
+                          color: AppTheme.bgDark,
+                          child: Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
+                        ),
+                      )
+                    : Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
               ),
             Container(
               decoration: BoxDecoration(
@@ -2146,6 +2127,7 @@ class _MovieCard extends StatelessWidget {
               child: _MyListButton.movie(movie: movie),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -2222,46 +2204,10 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
   final ScrollController _scrollController = ScrollController();
   String? _loadingItemId;
 
-  void _scrollLeft() {
-    _scrollController.animateTo(
-      _scrollController.offset - 600,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  void _scrollRight() {
-    _scrollController.animateTo(
-      _scrollController.offset + 600,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Widget _buildCWSectionArrow(IconData icon) {
-    final inner = Container(
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: AppTheme.isLightMode ? 0.12 : 0.08),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Icon(icon, color: Colors.white.withValues(alpha: 0.6), size: 14),
-    );
-    if (AppTheme.isLightMode) return inner;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-        child: inner,
-      ),
-    );
   }
 
   Future<void> _resumePlayback(Map<String, dynamic> item) async {
@@ -2685,57 +2631,18 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
           if (seen.add(key)) history.add(item);
         }
 
+        final isDesktop =
+            MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: ForjaShellColors.sectionIconBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.play_circle_outline_rounded, color: ForjaShellColors.sectionAccent, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Continue Watching", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-                        const SizedBox(height: 4),
-                        Container(
-                          height: 2.5,
-                          width: 36,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(2),
-                            gradient: LinearGradient(
-                              colors: [ForjaShellColors.sectionAccent, ForjaShellColors.sectionAccent.withValues(alpha: 0.0)],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (history.isNotEmpty) ...[
-                    GestureDetector(
-                      onTap: _scrollLeft,
-                      child: _buildCWSectionArrow(Icons.arrow_back_ios_new_rounded),
-                    ),
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: _scrollRight,
-                      child: _buildCWSectionArrow(Icons.arrow_forward_ios_rounded),
-                    ),
-                  ],
-                ],
-              ),
+            ShellSectionTitle(
+              title: 'Continue Watching',
+              padding: EdgeInsets.fromLTRB(24, isDesktop ? 16 : 32, 24, 16),
             ),
             SizedBox(
-              height: 290,
+              height: _MovieCard.cardHeight(context),
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _scrollController,
@@ -2801,6 +2708,7 @@ class _HistoryCard extends StatelessWidget {
         : '';
 
     final cardWidth = _MovieCard.cardWidth(context);
+    final cardHeight = _MovieCard.cardHeight(context);
 
     return FocusableControl(
       onTap: isLoading ? () {} : onTap,
@@ -2808,27 +2716,30 @@ class _HistoryCard extends StatelessWidget {
       scaleOnFocus: 1.05,
       child: Container(
         width: cardWidth,
-        clipBehavior: Clip.antiAlias,
+        height: cardHeight,
         decoration: BoxDecoration(
-          color: AppTheme.bgCard,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
           boxShadow: AppTheme.isLightMode ? null : [
             BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 6)),
           ],
         ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Full bleed poster image
-            if (imageUrl.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (c, u) => Container(color: AppTheme.bgCard),
-              )
-            else
-              Container(color: AppTheme.bgCard, child: const Icon(Icons.movie, color: Colors.white24, size: 40)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(
+                color: AppTheme.bgDark,
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.medium,
+                        placeholder: (c, u) =>
+                            ColoredBox(color: AppTheme.bgDark),
+                      )
+                    : const Icon(Icons.movie, color: Colors.white24, size: 40),
+              ),
             
             // Dark overlay gradient
             Container(
@@ -2947,6 +2858,7 @@ class _HistoryCard extends StatelessWidget {
                ),
           ],
         ),
+        ),
       ),
     );
   }
@@ -2976,26 +2888,6 @@ class _StremioCatalogSection extends StatefulWidget {
 class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
   final ScrollController _scrollController = ScrollController();
 
-  void _scrollLeft() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.offset - 600,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  void _scrollRight() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.offset + 600,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
@@ -3013,33 +2905,11 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
     );
   }
 
-  Widget _buildStremioArrow(IconData icon) {
-    final inner = Container(
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: AppTheme.isLightMode ? 0.12 : 0.08),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Icon(icon, color: Colors.white.withValues(alpha: 0.6), size: 14),
-    );
-    if (AppTheme.isLightMode) return inner;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-        child: inner,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final cat = widget.catalog;
     final addonName = cat['addonName'] as String;
     final catalogName = cat['catalogName'] as String;
-    final addonIcon = (cat['addonIcon'] ?? '').toString();
-    final isDesktop = MediaQuery.of(context).size.width > 900;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3048,57 +2918,18 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
           padding: const EdgeInsets.fromLTRB(24, 36, 24, 14),
           child: Row(
             children: [
-              if (addonIcon.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: ForjaShellColors.sectionIconBg.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: CachedNetworkImage(
-                      imageUrl: addonIcon,
-                      width: 20, height: 20,
-                      errorWidget: (_, _, _) => Icon(Icons.extension, size: 20, color: ForjaShellColors.sectionAccent),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-              ] else ...[
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: ForjaShellColors.sectionIconBg.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.extension_rounded, color: ForjaShellColors.sectionAccent, size: 18),
-                ),
-                const SizedBox(width: 10),
-              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       catalogName,
-                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                      style: ShellSectionTitle.titleStyle,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       addonName,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 2.5,
-                      width: 36,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        gradient: LinearGradient(
-                          colors: [ForjaShellColors.sectionAccent, ForjaShellColors.sectionAccent.withValues(alpha: 0.0)],
-                        ),
-                      ),
+                      style: ShellSectionTitle.subtitleStyle(context),
                     ),
                   ],
                 ),
@@ -3126,24 +2957,11 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
                   ),
                 ),
               ),
-              if (isDesktop) ...[
-                const SizedBox(width: 10),
-              ],
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _scrollLeft,
-                child: _buildStremioArrow(Icons.arrow_back_ios_new_rounded),
-              ),
-              const SizedBox(width: 6),
-              GestureDetector(
-                onTap: _scrollRight,
-                child: _buildStremioArrow(Icons.arrow_forward_ios_rounded),
-              ),
             ],
           ),
         ),
         SizedBox(
-          height: 290,
+          height: _MovieCard.cardHeight(context),
           child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
@@ -3178,6 +2996,7 @@ class _StremioCatalogCard extends StatelessWidget {
     final name = item['name']?.toString() ?? 'Unknown';
     final rating = item['imdbRating']?.toString() ?? '';
     final cardWidth = _MovieCard.cardWidth(context);
+    final cardHeight = _MovieCard.cardHeight(context);
 
     return FocusableControl(
       onTap: onTap,
@@ -3185,30 +3004,34 @@ class _StremioCatalogCard extends StatelessWidget {
       scaleOnFocus: 1.05,
       child: Container(
         width: cardWidth,
-        clipBehavior: Clip.antiAlias,
+        height: cardHeight,
         decoration: BoxDecoration(
-          color: AppTheme.bgCard,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
           boxShadow: AppTheme.isLightMode ? null : [
             BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 6)),
           ],
         ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (poster.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: poster,
-                fit: BoxFit.cover,
-                placeholder: (_, _) => Container(color: AppTheme.bgCard),
-                errorWidget: (_, _, _) => Container(
-                  color: AppTheme.bgCard,
-                  child: Center(child: Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white38))),
-                ),
-              )
-            else
-              Center(child: Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white38))),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(
+                color: AppTheme.bgDark,
+                child: poster.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: poster,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.medium,
+                        placeholder: (_, _) =>
+                            ColoredBox(color: AppTheme.bgDark),
+                        errorWidget: (_, _, _) => Container(
+                          color: AppTheme.bgDark,
+                          child: Center(child: Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white38))),
+                        ),
+                      )
+                    : Center(child: Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white38))),
+              ),
 
             // Improved gradient
             Container(
@@ -3251,6 +3074,7 @@ class _StremioCatalogCard extends StatelessWidget {
               child: _MyListButton.stremio(stremioItem: item),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -3346,40 +3170,10 @@ class _MoodSection extends StatefulWidget {
 class _MoodSectionState extends State<_MoodSection> {
   final ScrollController _resultsCtrl = ScrollController();
 
-  void _scrollResults(double delta) {
-    if (!_resultsCtrl.hasClients) return;
-    final target = (_resultsCtrl.offset + delta)
-        .clamp(0.0, _resultsCtrl.position.maxScrollExtent);
-    _resultsCtrl.animateTo(target,
-        duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
-  }
-
   @override
   void dispose() {
     _resultsCtrl.dispose();
     super.dispose();
-  }
-
-  Widget _arrow(IconData icon, VoidCallback onTap) {
-    final inner = Container(
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: AppTheme.isLightMode ? 0.12 : 0.08),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Icon(icon, color: Colors.white.withValues(alpha: 0.6), size: 14),
-    );
-    final wrapped = AppTheme.isLightMode
-        ? inner
-        : ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-              child: inner,
-            ),
-          );
-    return GestureDetector(onTap: onTap, child: wrapped);
   }
 
   @override
@@ -3397,27 +3191,9 @@ class _MoodSectionState extends State<_MoodSection> {
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(24, isDesktop ? 12 : 36, 24, 12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: ForjaShellColors.sectionIconBg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.mood_rounded, color: ForjaShellColors.sectionAccent, size: 18),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  "What's your mood?",
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                ),
-              ),
-              _arrow(Icons.arrow_back_ios_new_rounded, () => _scrollResults(-600)),
-              const SizedBox(width: 6),
-              _arrow(Icons.arrow_forward_ios_rounded, () => _scrollResults(600)),
-            ],
+          child: const Text(
+            "What's your mood?",
+            style: ShellSectionTitle.titleStyle,
           ),
         ),
         // Chip strip
@@ -3516,7 +3292,7 @@ class _MoodSectionState extends State<_MoodSection> {
               );
             }
             return SizedBox(
-              height: 290,
+              height: _MovieCard.cardHeight(context),
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _resultsCtrl,
@@ -3563,14 +3339,6 @@ class _BecauseYouWatchedSection extends StatefulWidget {
 
 class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
   final ScrollController _ctrl = ScrollController();
-
-  void _scroll(double delta) {
-    if (!_ctrl.hasClients) return;
-    final target =
-        (_ctrl.offset + delta).clamp(0.0, _ctrl.position.maxScrollExtent);
-    _ctrl.animateTo(target,
-        duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
-  }
 
   @override
   void dispose() {
@@ -3678,36 +3446,16 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
                             letterSpacing: -0.3,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Container(
-                          height: 2.5,
-                          width: 36,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(2),
-                            gradient: LinearGradient(
-                              colors: [
-                                ForjaShellColors.sectionAccent,
-                                ForjaShellColors.sectionAccent.withValues(alpha: 0.0),
-                              ],
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
                   _frostedAction(Icons.shuffle_rounded, widget.onShuffle,
                       tooltip: 'Pick a different show'),
-                  if (widget.onShuffle != null) const SizedBox(width: 6),
-                  _frostedAction(
-                      Icons.arrow_back_ios_new_rounded, () => _scroll(-600)),
-                  const SizedBox(width: 6),
-                  _frostedAction(
-                      Icons.arrow_forward_ios_rounded, () => _scroll(600)),
                 ],
               ),
             ),
             SizedBox(
-              height: 290,
+              height: _MovieCard.cardHeight(context),
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _ctrl,

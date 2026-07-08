@@ -256,6 +256,8 @@ class TmdbApi {
   Future<List<Movie>> discoverMovies({
     List<int>? genres,
     int? year,
+    String? releaseDateGte,
+    String? releaseDateLte,
     double? minRating,
     String? language,
     int? watchProviderId,
@@ -269,6 +271,12 @@ class TmdbApi {
     }
     if (year != null) {
       path += '&primary_release_year=$year';
+    }
+    if (releaseDateGte != null) {
+      path += '&primary_release_date.gte=$releaseDateGte';
+    }
+    if (releaseDateLte != null) {
+      path += '&primary_release_date.lte=$releaseDateLte';
     }
     if (minRating != null) {
       path += '&vote_average.gte=$minRating';
@@ -287,6 +295,8 @@ class TmdbApi {
   Future<List<Movie>> discoverTvShows({
     List<int>? genres,
     int? year,
+    String? releaseDateGte,
+    String? releaseDateLte,
     double? minRating,
     String? language,
     int? watchProviderId,
@@ -300,6 +310,12 @@ class TmdbApi {
     }
     if (year != null) {
       path += '&first_air_date_year=$year';
+    }
+    if (releaseDateGte != null) {
+      path += '&first_air_date.gte=$releaseDateGte';
+    }
+    if (releaseDateLte != null) {
+      path += '&first_air_date.lte=$releaseDateLte';
     }
     if (minRating != null) {
       path += '&vote_average.gte=$minRating';

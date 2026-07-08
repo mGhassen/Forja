@@ -13,6 +13,7 @@ Tap **Home** in the navigation bar (first tab by default).
 ## What you can do
 
 - Browse featured and trending movies and series
+- See **Featured This Month** — popular titles released in the current month
 - Use mood/genre chips to filter what appears in rails
 - See **Tonight's Pick** and **Because you watched…** (BestSimilar) suggestions
 - Resume from **Continue watching** (local watch history)

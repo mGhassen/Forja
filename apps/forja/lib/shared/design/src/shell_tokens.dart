@@ -49,6 +49,24 @@ abstract final class ShellTokens {
   static const double heroImageWidthFraction = 2 / 3;
   static const double heroTextWidthFraction = 1 / 3;
   static const double heroHeightFractionDesktop = 0.72;
+  static const double heroMoodHeaderOverlapFraction = 1 / 3;
+
+  /// Fraction of the second Home row visible below the first (desktop cinematic).
+  static const double heroNextRowPeekFraction = 0.10;
+
+  /// Continue Watching section height on desktop (header + poster row).
+  static const double heroContinueWatchingHeightDesktop = 16 + 30 + 16 + 285;
+
+  /// Mood section header block before chips (padding + title row + padding).
+  static const double heroMoodHeaderTopHeightDesktop = 36 + 44 + 12;
+
+  /// Pull Continue Watching into the hero; hero bottom lands ~1/3 into mood header.
+  static double get heroBackdropOverlapDesktop {
+    final moodOverlap =
+        heroMoodHeaderTopHeightDesktop * heroMoodHeaderOverlapFraction;
+    return (heroContinueWatchingHeightDesktop + moodOverlap) / 2;
+  }
+
   static const double heroTextColumnWidthDesktop = 480;
   static const double heroTitleSlotHeightDesktop = 112;
   static const double heroMetaSlotHeightDesktop = 36;
