@@ -1307,7 +1307,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildDesktopHeroTextColumn(Movie heroMovie) {
     const overviewStyle = TextStyle(
-      fontSize: 20,
+      fontSize: 18,
       height: 1.55,
       letterSpacing: 0.1,
     );
@@ -1327,7 +1327,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
         SizedBox(
           height: ShellTokens.heroMetaSlotHeightDesktop,
           child: Align(
@@ -1335,7 +1335,7 @@ class _HomeScreenState extends State<HomeScreen>
             child: _buildHeroMetaRow(heroMovie, singleLine: true),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
         SizedBox(
           height: ShellTokens.heroOverviewSlotHeightDesktop,
           child: Padding(
@@ -1352,7 +1352,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _buildHeroActionRow(heroMovie, flat: true),
       ],
     );

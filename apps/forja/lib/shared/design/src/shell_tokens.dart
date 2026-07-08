@@ -77,10 +77,10 @@ abstract final class ShellTokens {
   }
 
   static const double heroTextColumnWidthDesktop = 480;
-  static const double heroTitleSlotHeightDesktop = 144;
+  static const double heroTitleSlotHeightDesktop = 196;
   static const double heroMetaSlotHeightDesktop = 40;
-  static const double heroOverviewSlotHeightDesktop = 120;
-  static const double heroLogoMaxHeightDesktop = 164;
+  static const double heroOverviewSlotHeightDesktop = 128;
+  static const double heroLogoMaxHeightDesktop = 180;
 
   /// Narrow right-edge vignette on flat cinematic body (desktop Home).
   static const double bodyRightGradientWidth = 88;
