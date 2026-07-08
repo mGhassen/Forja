@@ -10,8 +10,8 @@ class ShellTopBar extends StatelessWidget {
   const ShellTopBar({super.key});
 
   static const _categories = ['Films', 'TV Shows', 'Anime'];
-  static const _scrollFadeDistance = 48.0;
-  static const _gradientFadeExtent = 40.0;
+  static const _scrollFadeDistance = 32.0;
+  static const _gradientFadeExtent = 56.0;
 
   void _onCategoryTap(int index) {
     switch (index) {
@@ -31,40 +31,45 @@ class ShellTopBar extends StatelessWidget {
     final topInset = MediaQuery.paddingOf(context).top;
     final chromeHeight = topInset + ShellTokens.shellTopBarHeight;
     final totalHeight = chromeHeight + _gradientFadeExtent;
-    final fadeStart = chromeHeight / totalHeight;
+    final solidStop = chromeHeight / totalHeight;
 
     return ValueListenableBuilder<double>(
       valueListenable: ShellBus.homeScrollOffset,
       builder: (context, scrollOffset, _) {
-        final t = (scrollOffset / _scrollFadeDistance).clamp(0.0, 1.0);
-        if (t <= 0) {
-          return SizedBox(
-            height: chromeHeight,
-            child: _buildMenu(context),
-          );
-        }
+        final fadeIn = (scrollOffset / _scrollFadeDistance).clamp(0.0, 1.0);
+        final showOverlay = scrollOffset > 0;
 
         return SizedBox(
-          height: totalHeight,
+          height: showOverlay ? totalHeight : chromeHeight,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppTheme.bgDark.withValues(alpha: t),
-                        AppTheme.bgDark.withValues(alpha: t),
-                        AppTheme.bgDark.withValues(alpha: 0),
-                      ],
-                      stops: [0, fadeStart, 1],
+              if (showOverlay)
+                IgnorePointer(
+                  child: Opacity(
+                    opacity: fadeIn,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppTheme.bgDark,
+                            AppTheme.bgDark,
+                            AppTheme.bgDark.withValues(alpha: 0.85),
+                            Colors.transparent,
+                          ],
+                          stops: [
+                            0.0,
+                            solidStop,
+                            solidStop + (1.0 - solidStop) * 0.45,
+                            1.0,
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
               _buildMenu(context),
             ],
           ),
