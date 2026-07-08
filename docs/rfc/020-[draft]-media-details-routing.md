@@ -2,7 +2,7 @@
 
 **Version:** v1.1  
 **Status:** draft  
-**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[open].md)  
+**Target version:** [1.0.1](../backlog/1.0.1-[draft].md) (slipped from [1.0.0](done/1.0.0-[done].md))  
 **Area:** `features/home/details_screen.dart` → `features/media/`
 
 ## Status at a glance
@@ -11,7 +11,7 @@
 |--|--|
 | **Progress** | **0 / 4** acceptance (v1.1 slice) |
 | **Current slice** | v1.1 — move details to `features/media/` |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
+| **Backlog** | [1.0.1](../backlog/1.0.1-[draft].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

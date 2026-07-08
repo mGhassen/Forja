@@ -15,8 +15,8 @@ One file **per release version**. Specs live in [RFCs](../rfc/README.md); each f
 Filename = `{semver}-[{status}].md`. Tag matches `**Status:**` in the body.
 
 ```
-plan     →  1.0.0-[open].md
-shipping →  1.0.0-[open].md
+plan     →  1.0.1-[draft].md
+shipping →  1.0.1-[open].md
 shipped  →  done/1.0.0-[done].md
 dropped  →  canceled/1.0.0-[canceled].md
 ```
@@ -38,7 +38,13 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | File | Codename | Status |
 |------|----------|--------|
-| [1.0.0-[open].md](1.0.0-[open].md) | Bab Souika | open |
+| [1.0.1-[draft].md](1.0.1-[draft].md) | — | draft |
+
+## Done — v1
+
+| Version | Codename | RFCs | Issues | Migration |
+|---------|----------|------|--------|-----------|
+| [1.0.0](done/1.0.0-[done].md) | Bab Souika | 025 | — | — |
 
 ## Done — v0 master index
 
@@ -75,12 +81,6 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | [0.8.0](done/0.8.0-[done].md) | Sidi Bou Said | 023† | — | — |
 | [0.8.1](done/0.8.1-[done].md) | — | 023† | — | — |
 | [0.8.2](done/0.8.2-[done].md) | — | 016†, 024 | — | — |
-
-## Active — v1
-
-| Version | Codename | RFCs | Issues | Migration |
-|---------|----------|------|--------|-----------|
-| [1.0.0](1.0.0-[open].md) | Bab Souika | 025†, 003†, 012†, 019†, 020† | 018–022 | — |
 
 † = slice only; RFC/issue may stay `[partial]` or `[draft]` until fully done.
 

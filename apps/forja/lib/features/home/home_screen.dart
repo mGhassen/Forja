@@ -33,6 +33,19 @@ double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
       : ShellTokens.homeSectionTitleTopCompactMobile;
 }
 
+bool _isDesktopHomeLayout(BuildContext context) {
+  return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+}
+
+bool _showDesktopHero(BuildContext context) {
+  return _isDesktopHomeLayout(context) &&
+      MediaQuery.sizeOf(context).width >= ShellTokens.heroDesktopMinBodyWidth;
+}
+
+double _desktopHomeTopClearance(BuildContext context) {
+  return MediaQuery.paddingOf(context).top + ShellTokens.homeTopBarHeight;
+}
+
 SliverToBoxAdapter _homeRowSliver(
   Widget section, {
   required bool isFirstAfterHero,
@@ -719,9 +732,11 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _heroHeightSyncScheduled = false;
       if (!mounted) return;
-      final height = _heroHeightSyncDesktop
+      final height = _heroHeightSyncDesktop && _showDesktopHero(context)
           ? _desktopHeroHeight(context) + _desktopTopBarBleed(context)
-          : _mobileHeroHeight(context);
+          : _heroHeightSyncDesktop
+              ? 0.0
+              : _mobileHeroHeight(context);
       if (ShellBus.homeHeroHeight.value != height) {
         ShellBus.homeHeroHeight.value = height;
       }
@@ -1380,8 +1395,8 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    final isDesktop = _isDesktopHomeLayout(context);
+    final showDesktopHero = _showDesktopHero(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _syncHomeScrollOffset();
@@ -1398,21 +1413,34 @@ class _HomeScreenState extends State<HomeScreen>
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
+              if (isDesktop && !showDesktopHero)
+                SliverToBoxAdapter(
+                  child: SizedBox(height: _desktopHomeTopClearance(context)),
+                ),
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: FutureBuilder<List<Movie>>(
                     future: _trendingFuture,
                     builder: (context, snapshot) {
+                      if (!showDesktopHero) {
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return isDesktop
+                              ? const SizedBox.shrink()
+                              : _buildHeroShimmer();
+                        }
+                        if (!isDesktop) {
+                          return _buildHeroCarousel(
+                            snapshot.data!.take(5).toList(),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return isDesktop
-                            ? _buildDesktopHeroShimmer()
-                            : _buildHeroShimmer();
+                        return _buildDesktopHeroShimmer();
                       }
-                      final movies = snapshot.data!.take(5).toList();
-                      if (isDesktop) {
-                        return _buildDesktopHeroBlock(movies);
-                      }
-                      return _buildHeroCarousel(movies);
+                      return _buildDesktopHeroBlock(
+                        snapshot.data!.take(5).toList(),
+                      );
                     },
                   ),
                 ),
@@ -1442,10 +1470,13 @@ class _HomeScreenState extends State<HomeScreen>
                     onMovieTap: _openDetails,
                     compactTop: true,
                   ),
-                  isFirstAfterHero: true,
-                  heroOverlapPull: _desktopHeroFirstRowOverlap(context),
-                  overlapLayoutHeight:
-                      _MovieSection.sectionHeight(context, compactTop: true),
+                  isFirstAfterHero: showDesktopHero,
+                  heroOverlapPull: showDesktopHero
+                      ? _desktopHeroFirstRowOverlap(context)
+                      : 0,
+                  overlapLayoutHeight: showDesktopHero
+                      ? _MovieSection.sectionHeight(context, compactTop: true)
+                      : null,
                 ),
 
               if (isDesktop)
@@ -1715,20 +1746,30 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           Positioned(
             left: 20,
-            top: topBarBleed + 32,
+            top: topBarBleed + ShellTokens.heroTextColumnTopInsetDesktop,
             right: 48,
             bottom: 24,
-            child: ClipRect(
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  width: math.min(
-                    MediaQuery.sizeOf(context).width * 0.34,
-                    ShellTokens.heroTextColumnWidthDesktop,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return ClipRect(
+                  child: Align(
+                    alignment: Alignment(
+                      -1,
+                      ShellTokens.heroTextColumnVerticalAlign,
+                    ),
+                    child: SizedBox(
+                      width: math.min(
+                        MediaQuery.sizeOf(context).width * 0.34,
+                        ShellTokens.heroTextColumnWidthDesktop,
+                      ),
+                      child: _buildDesktopHeroTextColumn(
+                        heroMovie,
+                        maxHeight: constraints.maxHeight,
+                      ),
+                    ),
                   ),
-                  child: _buildDesktopHeroTextColumn(heroMovie),
-                ),
-              ),
+                );
+              },
             ),
           ),
           Positioned(
@@ -1807,20 +1848,42 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDesktopHeroTextColumn(Movie heroMovie) {
+  Widget _buildDesktopHeroTextColumn(
+    Movie heroMovie, {
+    required double maxHeight,
+  }) {
     const overviewStyle = TextStyle(
       fontSize: ShellTokens.heroOverviewFontSizeDesktop,
       height: ShellTokens.heroOverviewLineHeightDesktop,
       letterSpacing: 0.1,
       color: Color(0x99FFFFFF),
     );
+    const titleGap = 20.0;
+    const actionGap = 16.0;
+    const minTitleHeight = 72.0;
+
+    final baseWithoutOverview = titleGap +
+        ShellTokens.heroMetaSlotHeightDesktop +
+        actionGap +
+        ShellTokens.shellButtonHeight;
+    final overviewBlock = ShellTokens.heroMetaOverviewGapDesktop +
+        ShellTokens.heroOverviewSlotHeightDesktop;
+
+    var titleHeight = ShellTokens.heroTitleSlotHeightDesktop;
+    final showOverview = heroMovie.overview.isNotEmpty &&
+        titleHeight + baseWithoutOverview + overviewBlock <= maxHeight;
+
+    if (!showOverview && titleHeight + baseWithoutOverview > maxHeight) {
+      titleHeight = (maxHeight - baseWithoutOverview)
+          .clamp(minTitleHeight, ShellTokens.heroTitleSlotHeightDesktop);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: ShellTokens.heroTitleSlotHeightDesktop,
+          height: titleHeight,
           child: Align(
             alignment: Alignment.bottomLeft,
             child: _buildHeroTitleBlock(
@@ -1830,7 +1893,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: titleGap),
         SizedBox(
           height: ShellTokens.heroMetaSlotHeightDesktop,
           child: Align(
@@ -1838,20 +1901,22 @@ class _HomeScreenState extends State<HomeScreen>
             child: _buildHeroMetaRow(heroMovie, singleLine: true),
           ),
         ),
-        SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
-        SizedBox(
-          height: ShellTokens.heroOverviewSlotHeightDesktop,
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: _HeroOverviewText(
-              overview: heroMovie.overview,
-              style: overviewStyle,
-              maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
-              onReadMore: () => _openDetails(heroMovie),
+        if (showOverview) ...[
+          SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
+          SizedBox(
+            height: ShellTokens.heroOverviewSlotHeightDesktop,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: _HeroOverviewText(
+                overview: heroMovie.overview,
+                style: overviewStyle,
+                maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+                onReadMore: () => _openDetails(heroMovie),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
+        ],
+        const SizedBox(height: actionGap),
         _buildHeroActionRow(heroMovie, flat: true),
       ],
     );

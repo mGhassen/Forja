@@ -2,7 +2,7 @@
 
 **Version:** v1.0 core / v1.1 expansion  
 **Status:** partial — registry + resolver shipped; in-player switch UI pending  
-**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[open].md)  
+**Target version:** [1.0.1](../backlog/1.0.1-[draft].md) (slipped from [1.0.0](done/1.0.0-[done].md))  
 **Area:** `packages/streaming/lib/src/provider_registry.dart`, `packages/streaming/lib/src/stream_resolver.dart`
 
 ## Status at a glance
@@ -11,7 +11,7 @@
 |--|--|
 | **Progress** | **3 / 3** acceptance (v1.0) · **0 / 3** acceptance (v1.1 slice) |
 | **Current slice** | v1.1 — in-player switch + provider expansion |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
+| **Backlog** | [1.0.1](../backlog/1.0.1-[draft].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

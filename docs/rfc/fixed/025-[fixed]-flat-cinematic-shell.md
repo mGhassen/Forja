@@ -2,7 +2,7 @@
 
 **Status:** fixed  
 **Version:** v1.0.0  
-**Target version:** [1.0.0 Bab Souika](../backlog/1.0.0-[open].md)  
+**Target version:** [1.0.0 Bab Souika](../backlog/done/1.0.0-[done].md)  
 **Scope (slice 1):** **desktop only** — hover-expand rail, flat shell bg, Home hero layout  
 **Depends on:** [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) (shell structure shipped), [RFC-016](016-[partial]-lazy-tab-mounting.md) (lazy tabs)  
 **Area:** `apps/forja/lib/shell/`, `apps/forja/lib/features/home/`, `apps/forja/lib/shared/design/`
@@ -12,8 +12,8 @@
 | | |
 |--|--|
 | **Progress** | **Complete** · **4 / 4** components · **37 / 37** acceptance · deferred slice 2: **3 / 3** |
-| **Current slice** | Shipped in [1.0.0](../backlog/1.0.0-[open].md) |
-| **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
+| **Current slice** | Shipped in [1.0.0](../backlog/done/1.0.0-[done].md) |
+| **Backlog** | [1.0.0](../backlog/done/1.0.0-[done].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -223,4 +223,4 @@ R25-A13–A15
 
 ## Related
 
-[RFC-023](fixed/023-[fixed]-app-shell-redesign.md), [RFC-024](024-[partial]-tab-cache-eviction-stale.md), [RFC-016](016-[partial]-lazy-tab-mounting.md), [RFC-019](019-[draft]-god-file-decomposition.md), [1.0.0 backlog](../backlog/1.0.0-[open].md)
+[RFC-023](fixed/023-[fixed]-app-shell-redesign.md), [RFC-024](024-[partial]-tab-cache-eviction-stale.md), [RFC-016](016-[partial]-lazy-tab-mounting.md), [RFC-019](019-[draft]-god-file-decomposition.md), [1.0.0 backlog](../backlog/done/1.0.0-[done].md)
