@@ -1,6 +1,6 @@
 # RFC-026: Media details & player UX redesign
 
-**Status:** draft  
+**Status:** partial  
 **Depends on:** [RFC-019](019-[draft]-god-file-decomposition.md) (details + player splits), [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) (flat shell tokens)  
 **Area:** `features/media/`, `features/home/details_screen.dart` → move, `shared/player/`
 
@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 8** components · **0 / 7** acceptance |
-| **Current slice** | Details + player full UX rework — not started |
+| **Progress** | **5 / 13** components · **7 / 14** acceptance (1.0.1 UX slice) |
+| **Current slice** | Details trailer hero + rich metadata + TV picker + Mediateka player chrome |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,6 +27,11 @@
 | 6 | R26-C06 | Player chrome — flat `ForjaShellColors` / `ShellTokens`, no glass | ⬜ |
 | 7 | R26-C07 | Player controls hierarchy — seek, tracks, speed, next ep, PiP | ⬜ |
 | 8 | R26-C08 | Details → player handoff — sources, resume, season/episode | ⬜ |
+| 9 | R26-C09 | `MediaDetailsHero` — 2s dwell trailer, backdrop fallback, watch progress bar | ✅ |
+| 10 | R26-C10 | TMDB rich metadata — cast, crew, keywords, production, recommendations | ✅ |
+| 11 | R26-C11 | `StreamSourcePanel` — desktop side panel + mobile sheet from `_currentSources` | ✅ |
+| 12 | R26-C12 | `SeekBarWithPreview` — debounced `media_kit` screenshot + timestamp fallback | ✅ |
+| 13 | R26-C13 | `TvSeasonEpisodePicker` — season poster cards + expandable episode rail | ✅ |
 
 ---
 
@@ -41,6 +46,20 @@
 | 5 | R26-A05 | Desktop + mobile layouts ship; no platform left on old chrome | ⬜ |
 | 6 | R26-A06 | `flutter analyze` clean; manual smoke on both details variants + player | ⬜ |
 | 7 | R26-A07 | [Issue 018](../issues/018-[draft]-migration-playback-parity-unverified.md) playback parity rows verified or explicitly scoped out with notes | ⬜ |
+
+---
+
+## Acceptance (1.0.1 UX slice)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R26-A08 | Details hero: backdrop immediately; YouTube trailer after 2s dwell when TMDB key exists; backdrop when none | ✅ |
+| 2 | R26-A09 | Hero watch progress bar for movies + selected TV episode (hide &lt;2% or ≥90%) | ✅ |
+| 3 | R26-A10 | Rich TMDB sections visible on torrent + streaming details (cast, crew, keywords, production, recommendations) | ✅ |
+| 4 | R26-A11 | Player flat chrome: Back + title/meta overlay; play, ±10s, volume, sources, PiP, fullscreen | ✅ |
+| 5 | R26-A12 | `StreamSourcePanel` switches among `_currentSources` without engine change | ✅ |
+| 6 | R26-A13 | Seek hover preview shows frame when `screenshot()` succeeds; timestamp-only fallback otherwise | ✅ |
+| 7 | R26-A14 | TV season poster cards + expandable episode rail with thumbnails, progress, synopsis, watched | ✅ |
 
 ---
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:rust/rust.dart';
+import '../models/media_details_extras.dart';
 
 class WatchProvider {
   const WatchProvider({
@@ -397,5 +398,190 @@ class TmdbApi {
     } catch (_) {
       return [];
     }
+  }
+
+  static const _richAppendMovie =
+      'videos,credits,keywords,recommendations,release_dates,external_ids,images';
+  static const _richAppendTv =
+      'videos,credits,keywords,recommendations,content_ratings,external_ids,images';
+
+  static String? parseTrailerYoutubeKey(Map<String, dynamic> json) {
+    final videos = json['videos'];
+    if (videos is! Map<String, dynamic>) return null;
+    final results = videos['results'] as List? ?? [];
+    Map<String, dynamic>? pick;
+    for (final v in results) {
+      if (v is! Map<String, dynamic>) continue;
+      if (v['site'] != 'YouTube') continue;
+      if (v['type'] != 'Trailer') continue;
+      if (v['official'] == true) {
+        pick = v;
+        break;
+      }
+      pick ??= v;
+    }
+    final key = pick?['key']?.toString();
+    return (key != null && key.isNotEmpty) ? key : null;
+  }
+
+  static MediaDetailsExtras parseMediaExtras(
+    Map<String, dynamic> json, {
+    required String mediaType,
+  }) {
+    final credits = json['credits'] as Map<String, dynamic>?;
+    final cast = (credits?['cast'] as List? ?? []).take(20).map<Map<String, String>>((e) {
+      return {
+        'name': (e['name'] ?? '').toString(),
+        'character': (e['character'] ?? '').toString(),
+        'profilePath': (e['profile_path'] ?? '').toString(),
+      };
+    }).toList();
+
+    final crew = (credits?['crew'] as List? ?? [])
+        .where((e) {
+          final job = (e['job'] ?? '').toString().toLowerCase();
+          return job.contains('director') ||
+              job.contains('writer') ||
+              job.contains('creator');
+        })
+        .take(8)
+        .map<Map<String, String>>((e) => {
+              'name': (e['name'] ?? '').toString(),
+              'job': (e['job'] ?? '').toString(),
+            })
+        .toList();
+
+    final keywordsRaw = json['keywords'];
+    final keywordList = keywordsRaw is Map<String, dynamic>
+        ? (keywordsRaw['keywords'] as List? ?? keywordsRaw['results'] as List? ?? [])
+        : <dynamic>[];
+    final keywords = keywordList
+        .map((e) => (e is Map ? e['name'] : null)?.toString() ?? '')
+        .where((s) => s.isNotEmpty)
+        .cast<String>()
+        .take(12)
+        .toList();
+
+    final companies = (json['production_companies'] as List? ?? [])
+        .map((e) => (e['name'] ?? '').toString())
+        .where((s) => s.isNotEmpty)
+        .cast<String>()
+        .take(6)
+        .toList();
+
+    final languages = (json['spoken_languages'] as List? ?? [])
+        .map((e) => (e['english_name'] ?? e['name'] ?? '').toString())
+        .where((s) => s.isNotEmpty)
+        .cast<String>()
+        .toList();
+
+    final countries = (json['origin_country'] as List? ?? [])
+        .map((e) => e.toString())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    var certification = '';
+    if (mediaType == 'movie') {
+      final rd = json['release_dates'] as Map<String, dynamic>?;
+      final us = (rd?['results'] as List? ?? []).cast<Map<String, dynamic>?>().firstWhere(
+            (r) => r?['iso_3166_1'] == 'US',
+            orElse: () => null,
+          );
+      final dates = us?['release_dates'] as List? ?? [];
+      for (final d in dates) {
+        final c = d['certification']?.toString() ?? '';
+        if (c.isNotEmpty) {
+          certification = c;
+          break;
+        }
+      }
+    } else {
+      final cr = json['content_ratings'] as Map<String, dynamic>?;
+      final us = (cr?['results'] as List? ?? []).cast<Map<String, dynamic>?>().firstWhere(
+            (r) => r?['iso_3166_1'] == 'US',
+            orElse: () => null,
+          );
+      certification = us?['rating']?.toString() ?? '';
+    }
+
+    final recs = json['recommendations'] as Map<String, dynamic>?;
+    final recResults = recs?['results'] as List? ?? [];
+    final recommendations = recResults
+        .take(12)
+        .map((e) => Movie.fromJson(e as Map<String, dynamic>, mediaType: mediaType))
+        .toList();
+
+    return MediaDetailsExtras(
+      tagline: json['tagline']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      voteCount: (json['vote_count'] as num?)?.toInt() ?? 0,
+      popularity: (json['popularity'] as num?)?.toDouble() ?? 0,
+      cast: cast,
+      crew: crew,
+      keywords: keywords,
+      productionCompanies: companies,
+      spokenLanguages: languages,
+      originCountries: countries,
+      certification: certification,
+      recommendations: recommendations,
+      trailerYoutubeKey: parseTrailerYoutubeKey(json),
+    );
+  }
+
+  Movie _movieFromRichJson(Map<String, dynamic> json, {required String mediaType}) {
+    final images = json['images'];
+    final backdrops = (images != null && images['backdrops'] != null)
+        ? (images['backdrops'] as List).map((e) => e['file_path'] as String).toList()
+        : <String>[];
+
+    var logoPath = '';
+    if (images != null && images['logos'] != null) {
+      final logos = images['logos'] as List;
+      final enLogo = logos.cast<Map<String, dynamic>?>().firstWhere(
+            (e) => e?['iso_639_1'] == 'en',
+            orElse: () => logos.isNotEmpty ? logos.first as Map<String, dynamic> : null,
+          );
+      if (enLogo != null) logoPath = enLogo['file_path']?.toString() ?? '';
+    }
+
+    final externalIds = json['external_ids'];
+    final imdbId = json['imdb_id']?.toString() ??
+        (externalIds is Map ? externalIds['imdb_id']?.toString() : null);
+
+    final runtime = mediaType == 'tv'
+        ? ((json['episode_run_time'] as List?)?.isNotEmpty == true
+            ? json['episode_run_time'][0]
+            : 0)
+        : (json['runtime'] ?? 0);
+
+    return Movie.fromJson(json, mediaType: mediaType).copyWith(
+      imdbId: imdbId,
+      overview: json['overview']?.toString() ?? '',
+      genres: (json['genres'] as List?)?.map((e) => e['name'] as String).toList() ?? [],
+      runtime: runtime is int ? runtime : (runtime as num).toInt(),
+      screenshots: backdrops,
+      logoPath: logoPath,
+      numberOfSeasons: json['number_of_seasons'] ?? 0,
+    );
+  }
+
+  Future<RichMediaDetails> getRichMovieDetails(int movieId) async {
+    final json = await _fetchMap('movie/$movieId?append_to_response=$_richAppendMovie');
+    return RichMediaDetails(
+      movie: _movieFromRichJson(json, mediaType: 'movie'),
+      extras: parseMediaExtras(json, mediaType: 'movie'),
+    );
+  }
+
+  Future<RichMediaDetails> getRichTvDetails(int tvId) async {
+    final json = await _fetchMap('tv/$tvId?append_to_response=$_richAppendTv');
+    return RichMediaDetails(
+      movie: _movieFromRichJson(json, mediaType: 'tv'),
+      extras: parseMediaExtras(json, mediaType: 'tv'),
+    );
+  }
+
+  Future<RichMediaDetails> getRichDetails(int id, String mediaType) {
+    return mediaType == 'tv' ? getRichTvDetails(id) : getRichMovieDetails(id);
   }
 }

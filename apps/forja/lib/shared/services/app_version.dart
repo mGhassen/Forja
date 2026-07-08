@@ -16,19 +16,10 @@ final class AppVersion {
 
   Future<String> get version async => (await load()).version;
 
-  Future<String> get buildNumber async => (await load()).buildNumber;
-
   Future<String> label({String prefix = 'v', bool includeCodename = true}) async {
     final base = '$prefix${await version}';
     if (!includeCodename || kReleaseCodename.isEmpty) return base;
     return '$base · $kReleaseCodename';
-  }
-
-  Future<String> platformAboutVersion() async {
-    final info = await load();
-    final base = '${info.version} (${info.buildNumber})';
-    if (kReleaseCodename.isEmpty) return base;
-    return '$base — $kReleaseCodename';
   }
 }
 

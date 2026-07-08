@@ -11,6 +11,7 @@ export 'src/episode_watched_service.dart';
 export 'src/my_list_service.dart';
 export 'src/book_progress_service.dart';
 export 'src/models/movie.dart';
+export 'src/models/media_details_extras.dart';
 export 'src/models/stream_source.dart';
 export 'src/models/torrent_result.dart';
 export 'src/models/book_result.dart';

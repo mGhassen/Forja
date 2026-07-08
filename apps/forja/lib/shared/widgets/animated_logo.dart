@@ -264,6 +264,13 @@ class SplashOverlayContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final logoColors = LogoColors.forTheme(isLight);
 
+    final versionStyle = TextStyle(
+      fontSize: 11,
+      letterSpacing: 2,
+      color: logoColors.base.withValues(alpha: 0.5),
+      fontWeight: FontWeight.bold,
+    );
+
     return Container(
       decoration: AppTheme.backgroundDecoration,
       child: LayoutBuilder(
@@ -272,50 +279,53 @@ class SplashOverlayContent extends StatelessWidget {
             _maxLogoHeight,
             constraints.maxHeight * 0.38,
           );
-          return Center(
-            child: OverflowBox(
-              maxWidth: constraints.maxWidth,
-              maxHeight: constraints.maxHeight,
-              alignment: Alignment.center,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                clipBehavior: Clip.none,
-                child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SplashLogoWithHalo(
-                    logoHeight: logoHeight,
-                    isLight: isLight,
-                  ),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      slogan,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 18,
-                        letterSpacing: 4,
-                        color: logoColors.base,
-                        fontFamily: 'Poppins',
-                      ),
+          return Stack(
+            children: [
+              Center(
+                child: OverflowBox(
+                  maxWidth: constraints.maxWidth,
+                  maxHeight: constraints.maxHeight,
+                  alignment: Alignment.center,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    clipBehavior: Clip.none,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SplashLogoWithHalo(
+                          logoHeight: logoHeight,
+                          isLight: isLight,
+                        ),
+                        const SizedBox(height: 20),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            slogan,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 18,
+                              letterSpacing: 4,
+                              color: logoColors.base,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SplashLoadingDots(color: logoColors.base),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  SplashLoadingDots(color: logoColors.base),
-                  const SizedBox(height: 12),
-                  AppVersionLabel(
-                    style: TextStyle(
-                      fontSize: 11,
-                      letterSpacing: 2,
-                      color: logoColors.base.withValues(alpha: 0.5),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
                 ),
               ),
-            ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: MediaQuery.paddingOf(context).bottom + 24,
+                child: Center(
+                  child: AppVersionLabel(style: versionStyle),
+                ),
+              ),
+            ],
           );
         },
       ),

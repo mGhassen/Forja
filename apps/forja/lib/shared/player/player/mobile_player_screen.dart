@@ -28,6 +28,8 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'menus.dart';
 import 'package:forja/shared/services/pip_service.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/stream_source_panel.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GLASS PRIMITIVES  (mobile — press feedback only, no hover)
@@ -2537,192 +2539,123 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _showSourcesMenu() {
-    if (_currentSources == null || _currentSources!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No sources available'),
-        duration: Duration(seconds: 1),
+    StreamSourcePanel.show(
+      context,
+      sources: _currentSources ?? [],
+      currentUrl: _currentUrl,
+      current111477FileUrl: _current111477FileUrl,
+      is111477: _currentProvider == 'service111477',
+      useSidePanel: false,
+      onSelect: _switchToStreamSource,
+    );
+  }
+
+  Future<void> _switchToStreamSource(StreamSource source, int index) async {
+    final isCurrent = _currentProvider == 'service111477'
+        ? source.url == _current111477FileUrl
+        : source.url == _currentUrl;
+    if (isCurrent) return;
+
+    final currentPos = _positionNotifier.value;
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (_currentProvider == 'service111477') {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Switching to ${source.title}…'),
+        duration: const Duration(seconds: 30),
       ));
+      try {
+        if (site111477_proxy.is111477ProxyRunning) {
+          await site111477_proxy.stop111477Proxy();
+        }
+        final newProxied = await site111477_proxy.start111477Proxy(source.url);
+        if (!mounted) return;
+        messenger.hideCurrentSnackBar();
+        await _player.open(Media(newProxied));
+        setState(() {
+          _currentUrl = newProxied;
+          _current111477FileUrl = source.url;
+          _currentFallbackSourceIndex = 0;
+          _hasError = false;
+          _errorMessage = '';
+        });
+        _detectHlsQualities(newProxied, null);
+        if (currentPos.inSeconds > 0) await _player.seek(currentPos);
+        if (mounted) {
+          messenger.showSnackBar(SnackBar(
+            content: Text('Switched to ${source.title}'),
+            duration: const Duration(seconds: 2),
+          ));
+        }
+      } catch (e) {
+        if (!mounted) return;
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(SnackBar(
+          content: Text('Switch failed: $e'),
+          duration: const Duration(seconds: 3),
+        ));
+      }
       return;
     }
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 40, height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2)),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Video Sources',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _currentSources!.length,
-              itemBuilder: (context, index) {
-                final source = _currentSources![index];
-                final isCurrent = _currentProvider == 'service111477'
-                    ? source.url == _current111477FileUrl
-                    : source.url == _currentUrl;
-                return ListTile(
-                  leading: Icon(
-                    Icons.play_circle_outline,
-                    color: isCurrent ? const Color(0xFF7C3AED) : Colors.white70,
-                  ),
-                  title: Text(
-                    source.title,
-                    style: TextStyle(
-                      color: isCurrent ? const Color(0xFF7C3AED) : Colors.white,
-                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  subtitle: Text(
-                    source.type.toUpperCase(),
-                    style: TextStyle(
-                      color: isCurrent 
-                          ? const Color(0xFF7C3AED).withValues(alpha: 0.7)
-                          : Colors.white54,
-                      fontSize: 11,
-                    ),
-                  ),
-                  trailing: isCurrent
-                      ? const Icon(Icons.check, color: Color(0xFF7C3AED))
-                      : null,
-                  onTap: () async {
-                    Navigator.pop(context);
-                    if (!isCurrent) {
-                      // Save current position
-                      final currentPos = _positionNotifier.value;
-                      final messenger = ScaffoldMessenger.of(context);
+    if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Extracting ${source.title}...'),
+        duration: const Duration(seconds: 30),
+      ));
+      final result = await ArabicService.extractStreamUrl(source.url);
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      if (result == null) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('Failed to extract ${source.title}'),
+          duration: const Duration(seconds: 2),
+        ));
+        return;
+      }
+      await _player.open(Media(result.url, httpHeaders: result.headers));
+      _currentSources![index] = StreamSource(
+        url: result.url,
+        title: source.title,
+        type: result.url.contains('.m3u8')
+            ? 'hls'
+            : result.url.contains('.mpd')
+                ? 'dash'
+                : 'mp4',
+      );
+      setState(() {
+        _currentUrl = result.url;
+        _currentFallbackSourceIndex = 0;
+        _hasError = false;
+        _errorMessage = '';
+      });
+      _detectHlsQualities(result.url, result.headers);
+    } else {
+      final srcHeaders = source.headers ?? widget.headers;
+      if (source.headers != null && _player.platform is NativePlayer) {
+        final ref = source.headers!['Referer'] ?? source.headers!['referer'];
+        if (ref != null) {
+          await (_player.platform as NativePlayer).setProperty('referrer', ref);
+        }
+      }
+      await _player.open(Media(source.url, httpHeaders: srcHeaders));
+      setState(() {
+        _currentUrl = source.url;
+        _currentFallbackSourceIndex = 0;
+        _hasError = false;
+        _errorMessage = '';
+      });
+      _detectHlsQualities(source.url, srcHeaders);
+    }
 
-                      // 111477: stop the proxy (which deletes its on-disk
-                      // cache), restart it with the new upstream URL, then
-                      // open the new localhost stream URL.
-                      if (_currentProvider == 'service111477') {
-                        messenger.showSnackBar(SnackBar(
-                          content: Text('Switching to ${source.title}…'),
-                          duration: const Duration(seconds: 30),
-                        ));
-                        try {
-                          if (site111477_proxy.is111477ProxyRunning) {
-                            await site111477_proxy.stop111477Proxy();
-                          }
-                          final newProxied =
-                              await site111477_proxy.start111477Proxy(source.url);
-                          if (!mounted) return;
-                          messenger.hideCurrentSnackBar();
-                          await _player.open(Media(newProxied));
-                          setState(() {
-                            _currentUrl = newProxied;
-                            _current111477FileUrl = source.url;
-                            _currentFallbackSourceIndex = 0;
-                            _hasError = false;
-                            _errorMessage = '';
-                          });
-                          _detectHlsQualities(newProxied, null);
-                          if (currentPos.inSeconds > 0) {
-                            await _player.seek(currentPos);
-                          }
-                          if (mounted) {
-                            messenger.showSnackBar(SnackBar(
-                              content: Text('Switched to ${source.title}'),
-                              duration: const Duration(seconds: 2),
-                            ));
-                          }
-                        } catch (e) {
-                          if (!mounted) return;
-                          messenger.hideCurrentSnackBar();
-                          messenger.showSnackBar(SnackBar(
-                            content: Text('Switch failed: $e'),
-                            duration: const Duration(seconds: 3),
-                          ));
-                        }
-                        return;
-                      }
+    if (currentPos.inSeconds > 0) await _player.seek(currentPos);
 
-                      // Arabic provider: extract on-demand from embed URL
-                      if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
-                        messenger.showSnackBar(SnackBar(
-                          content: Text('Extracting ${source.title}...'),
-                          duration: const Duration(seconds: 30),
-                        ));
-                        final result = await ArabicService.extractStreamUrl(source.url);
-                        if (!mounted) return;
-                        messenger.hideCurrentSnackBar();
-                        if (result == null) {
-                          messenger.showSnackBar(SnackBar(
-                            content: Text('Failed to extract ${source.title}'),
-                            duration: const Duration(seconds: 2),
-                          ));
-                          return;
-                        }
-                        await _player.open(
-                          Media(result.url, httpHeaders: result.headers),
-                        );
-                        // Update the source entry with the extracted stream URL
-                        _currentSources![index] = StreamSource(
-                          url: result.url,
-                          title: source.title,
-                          type: result.url.contains('.m3u8') ? 'hls' : result.url.contains('.mpd') ? 'dash' : 'mp4',
-                        );
-                        setState(() {
-                          _currentUrl = result.url;
-                          _currentFallbackSourceIndex = 0;
-                          _hasError = false;
-                          _errorMessage = '';
-                        });
-                        _detectHlsQualities(result.url, result.headers);
-                      } else {
-                        // Normal direct switch — use per-source headers if available
-                        final srcHeaders = source.headers ?? widget.headers;
-                        if (source.headers != null && _player.platform is NativePlayer) {
-                          final ref = source.headers!['Referer'] ?? source.headers!['referer'];
-                          if (ref != null) await (_player.platform as NativePlayer).setProperty('referrer', ref);
-                        }
-                        await _player.open(
-                          Media(source.url, httpHeaders: srcHeaders),
-                        );
-                        setState(() {
-                          _currentUrl = source.url;
-                          _currentFallbackSourceIndex = 0;
-                          _hasError = false;
-                          _errorMessage = '';
-                        });
-                        _detectHlsQualities(source.url, srcHeaders);
-                      }
-                      
-                      // Seek to saved position
-                      if (currentPos.inSeconds > 0) {
-                        await _player.seek(currentPos);
-                      }
-                      
-                      if (mounted) {
-                        messenger.showSnackBar(SnackBar(
-                          content: Text('Switched to ${source.title}'),
-                          duration: const Duration(seconds: 2),
-                        ));
-                      }
-                    }
-                  },
-                );
-              },
-            ),
-          ),
-        ]),
-      ),
-    );
+    if (mounted) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Switched to ${source.title}'),
+        duration: const Duration(seconds: 2),
+      ));
+    }
   }
 
   void _showProviderMenu() {
@@ -3789,30 +3722,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
             padding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(children: [
-              _GlassIconButton(
-                icon: Icons.arrow_back_ios_new_rounded,
+              PlayerFlatIconButton(
+                icon: Icons.arrow_back,
+                label: 'Back',
                 onPressed: _exitPlayer,
-                size: btnSize, iconSize: iconSz,
               ),
-              SizedBox(width: isPortrait ? 6 : 10),
-              // Title pill
-              Expanded(
-                child: _BlurGlass(               // ← blur OK, only 1
-                  radius: 20,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: isPortrait ? 10 : 14, vertical: 8),
-                  child: Text(
-                    widget.title,
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isPortrait ? 12 : 13,
-                        fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              SizedBox(width: gap),
+              const Spacer(),
               // HW mode badge
               if (!isPortrait)
                 _GlassPillButton(
@@ -3866,6 +3781,16 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
               ],
             ]),
           ),
+        ),
+      ),
+
+      Positioned(
+        left: 12,
+        top: 56,
+        right: 12,
+        child: SafeArea(
+          bottom: false,
+          child: PlayerTitleMeta(title: widget.title, movie: widget.movie),
         ),
       ),
 

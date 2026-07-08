@@ -9,6 +9,9 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
+import 'package:forja/shared/widgets/media_details_hero.dart';
+import 'package:forja/shared/widgets/media_details_metadata_sections.dart';
+import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/player/player_screen.dart';
 
 class StreamingDetailsScreen extends StatefulWidget {
@@ -54,6 +57,11 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   // Episode watched tracking
   final EpisodeWatchedService _episodeWatchedService = EpisodeWatchedService();
   Set<String> _watchedEpisodes = {};
+  Map<String, dynamic>? _lastProgress;
+  MediaDetailsExtras? _mediaExtras;
+  String? _trailerKey;
+  final Map<int, String> _seasonPosters = {};
+  Map<String, Map<String, dynamic>> _episodeProgress = {};
   
   final ScrollController _similarScrollController = ScrollController();
   final ScrollController _screenshotsScrollController = ScrollController();
@@ -75,6 +83,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     // Start atmosphere color extraction
     final url = (_movie.posterPath.isNotEmpty ? _movie.posterPath : _movie.backdropPath);
     loadAtmosphere(url.startsWith('http') ? url : TmdbApi.getImageUrl(url));
+    _checkHistory();
     _loadWatchedEpisodes();
     _loadNuvioProviders();
     _fetchDetails();
@@ -90,14 +99,39 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     }
   }
 
+  Future<void> _checkHistory() async {
+    final progress = await WatchHistoryService().getProgress(
+      _movie.id,
+      season: _movie.mediaType == 'tv' ? _selectedSeason : null,
+      episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
+    );
+    if (mounted) setState(() => _lastProgress = progress);
+  }
+
+  Future<void> _loadEpisodeProgressForSeason(int season) async {
+    if (_seasonData == null || _seasonData!['episodes'] == null) return;
+    final episodes = _seasonData!['episodes'] as List;
+    final map = <String, Map<String, dynamic>>{};
+    for (final ep in episodes) {
+      final n = ep['episode_number'] as int;
+      final p = await WatchHistoryService().getProgress(
+        _movie.id,
+        season: season,
+        episode: n,
+      );
+      if (p != null) map['S${season}_E$n'] = p;
+    }
+    if (mounted) setState(() => _episodeProgress = map);
+  }
+
   Future<void> _fetchDetails() async {
     try {
-      final Movie fullDetails;
+      final RichMediaDetails rich;
       if (_movie.mediaType == 'tv') {
-        fullDetails = await _api.getTvDetails(widget.movie.id);
+        rich = await _api.getRichTvDetails(widget.movie.id);
         await _fetchSeason(widget.initialSeason ?? 1);
       } else {
-        fullDetails = await _api.getMovieDetails(widget.movie.id);
+        rich = await _api.getRichMovieDetails(widget.movie.id);
       }
 
       final streamAddons = await _stremio.getAddonsForResource('stream');
@@ -109,7 +143,9 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
       
       if (mounted) {
         setState(() {
-          _movie = fullDetails;
+          _movie = rich.movie;
+          _mediaExtras = rich.extras;
+          _trailerKey = rich.extras.trailerYoutubeKey;
           _streamAddons = streamAddons;
           _similarContent = similar;
           _isLoading = false;
@@ -130,11 +166,17 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     try {
       final data = await _api.getTvSeasonDetails(_movie.id, seasonNumber);
       if (mounted) {
+        final poster = data['poster_path'] as String?;
         setState(() {
           _seasonData = data;
           _isLoadingSeason = false;
           _selectedSeason = seasonNumber;
+          if (poster != null && poster.isNotEmpty) {
+            _seasonPosters[seasonNumber] = poster;
+          }
         });
+        await _loadEpisodeProgressForSeason(seasonNumber);
+        _checkHistory();
         _loadWatchedEpisodes();
       }
     } catch (e) {
@@ -632,9 +674,41 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
                   _buildHeroSection(isTablet),
                   const SizedBox(height: 32),
                   _buildAboutSection(),
+                  if (_mediaExtras != null) ...[
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: MediaDetailsMetadataSections(
+                        movie: _movie,
+                        extras: _mediaExtras!,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 32),
                   if (_movie.mediaType == 'tv') ...[
-                    _buildSeasonsAndEpisodes(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: TvSeasonEpisodePicker(
+                        tmdbId: _movie.id,
+                        seasonCount: _movie.numberOfSeasons,
+                        selectedSeason: _selectedSeason,
+                        selectedEpisode: _selectedEpisode,
+                        isLoadingSeason: _isLoadingSeason,
+                        seasonData: _seasonData,
+                        watchedEpisodes: _watchedEpisodes,
+                        fallbackPosterPath: _movie.posterPath.isNotEmpty
+                            ? _movie.posterPath
+                            : _movie.backdropPath,
+                        seasonPosters: _seasonPosters,
+                        episodeProgress: _episodeProgress,
+                        onSeasonSelected: _fetchSeason,
+                        onEpisodeSelected: (ep) {
+                          setState(() => _selectedEpisode = ep);
+                          _checkHistory();
+                        },
+                        onToggleWatched: _toggleEpisodeWatched,
+                      ),
+                    ),
                     const SizedBox(height: 32),
                   ],
                   if (_movie.screenshots.isNotEmpty) ...[
@@ -683,180 +757,28 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   }
 
   Widget _buildHeroSection(bool isTablet) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: isTablet
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildPoster(),
-                const SizedBox(width: 32),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildMovieInfo(),
-                      const SizedBox(height: 24),
-                      _buildActionButtons(),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : Column(
-              children: [
-                _buildPoster(),
-                const SizedBox(height: 24),
-                _buildMovieInfo(),
-                const SizedBox(height: 24),
-                _buildActionButtons(),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildPoster() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-    final posterWidth = isMobile ? screenWidth * 0.5 : 180.0;
-    final posterHeight = posterWidth * 1.5;
-    
-    return wrapPosterGlow(
-      width: posterWidth,
-      height: posterHeight,
-      borderRadius: 12,
-      genres: _movie.genres,
-      child: Hero(
-        tag: 'movie-poster-${_movie.id}',
-        child: Container(
-          width: posterWidth,
-          height: posterHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: CachedNetworkImage(
-              imageUrl: TmdbApi.getImageUrl(_movie.posterPath),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMovieInfo() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 600;
-    final logoHeight = isTablet ? 100.0 : 80.0;
-    
     return Column(
-      crossAxisAlignment: isTablet ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Logo or Text Title
-        if (_movie.logoPath.isNotEmpty)
-          SizedBox(
-            height: logoHeight,
-            child: Row(
-              mainAxisAlignment: isTablet ? MainAxisAlignment.start : MainAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: CachedNetworkImage(
-                    imageUrl: TmdbApi.getImageUrl(_movie.logoPath),
-                    height: logoHeight,
-                    fit: BoxFit.contain,
-                    alignment: isTablet ? Alignment.centerLeft : Alignment.center,
-                    fadeInDuration: const Duration(milliseconds: 0),
-                    fadeOutDuration: const Duration(milliseconds: 0),
-                    placeholder: (context, url) => SizedBox(
-                      height: logoHeight,
-                      width: double.infinity,
-                    ),
-                    errorWidget: (context, url, error) => Text(
-                      _movie.title,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          Text(
-            _movie.title,
-            style: GoogleFonts.montserrat(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Text(
-              _movie.releaseDate.isNotEmpty ? _movie.releaseDate.split('-').first : 'N/A',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(width: 8),
-            const Text('·', style: TextStyle(color: Colors.white70)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFF1565C0)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.star, color: Colors.amber, size: 14),
-                  const SizedBox(width: 4),
-                  Text(
-                    _movie.voteAverage.toStringAsFixed(1),
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-            if (_movie.runtime > 0) ...[
-              const SizedBox(width: 8),
-              const Text('·', style: TextStyle(color: Colors.white70)),
-              const SizedBox(width: 8),
-              Text(
-                '${_movie.runtime}m',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ],
-          ],
+        MediaDetailsHero(
+          movie: _movie,
+          trailerYoutubeKey: _trailerKey,
+          progress: _lastProgress,
+          height: isTablet ? 360 : 300,
         ),
-        const SizedBox(height: 16),
-        if (_movie.genres.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _movie.genres.take(4).map((genre) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  genre,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              );
-            }).toList(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              _buildActionButtons(),
+            ],
           ),
+        ),
       ],
     );
   }
+
 
   Widget _buildActionButtons() {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -964,147 +886,6 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     );
   }
 
-  Widget _buildSeasonsAndEpisodes() {
-    void scrollSeasonsBy(double delta) {
-      if (!_seasonScrollController.hasClients) return;
-      final target = (_seasonScrollController.offset + delta)
-          .clamp(0.0, _seasonScrollController.position.maxScrollExtent);
-      _seasonScrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeInOut,
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Episodes',
-                style: GoogleFonts.montserrat(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_rounded, size: 18, color: Colors.white70),
-                    onPressed: () => scrollSeasonsBy(-200),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18, color: Colors.white70),
-                    onPressed: () => scrollSeasonsBy(200),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 50,
-          child: ListView.builder(
-            controller: _seasonScrollController,
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: _movie.numberOfSeasons,
-            itemBuilder: (context, index) {
-              final seasonNum = index + 1;
-              final isSelected = _selectedSeason == seasonNum;
-              return _SeasonChip(
-                seasonNumber: seasonNum,
-                isSelected: isSelected,
-                onTap: () => _fetchSeason(seasonNum),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 24),
-        if (_isLoadingSeason)
-          const Center(child: CircularProgressIndicator(color: Color(0xFF1565C0)))
-        else if (_seasonData != null && _seasonData!['episodes'] != null)
-          _buildEpisodeList(),
-      ],
-    );
-  }
-
-  Widget _buildEpisodeList() {
-    final episodes = _seasonData!['episodes'] as List;
-
-    void scrollBy(double delta) {
-      if (!_episodeScrollController.hasClients) return;
-      final target = (_episodeScrollController.offset + delta)
-          .clamp(0.0, _episodeScrollController.position.maxScrollExtent);
-      _episodeScrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeInOut,
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── arrow row ──────────────────────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_rounded, size: 18, color: Colors.white70),
-                onPressed: () => scrollBy(-400),
-              ),
-              IconButton(
-                icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18, color: Colors.white70),
-                onPressed: () => scrollBy(400),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // ── horizontal list ────────────────────────────────────────────────
-          SizedBox(
-            height: 190,
-            child: ListView.separated(
-              controller: _episodeScrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: episodes.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final episode = episodes[index];
-                final epNum = episode['episode_number'] as int;
-                final title = (episode['name'] ?? 'Episode $epNum').toString();
-                final still = episode['still_path'] as String?;
-                final isSelected = _selectedEpisode == epNum;
-                final isWatched = _watchedEpisodes.contains('${_movie.id}_S${_selectedSeason}_E$epNum');
-
-                return _HorizontalEpisodeCard(
-                  epNum: epNum,
-                  title: title,
-                  stillPath: still,
-                  isSelected: isSelected,
-                  isWatched: isWatched,
-                  onToggleWatched: () => _toggleEpisodeWatched(_selectedSeason, epNum),
-                  onTap: () {
-                    setState(() => _selectedEpisode = epNum);
-                    _startExtraction();
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildSimilarContent() {
     if (_similarContent.isEmpty) return const SizedBox.shrink();
@@ -1330,412 +1111,6 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   }
 }
 
-class _HorizontalEpisodeCard extends StatefulWidget {
-  final int epNum;
-  final String title;
-  final String? stillPath;
-  final bool isSelected;
-  final bool isWatched;
-  final VoidCallback onTap;
-  final VoidCallback onToggleWatched;
-
-  const _HorizontalEpisodeCard({
-    required this.epNum,
-    required this.title,
-    required this.stillPath,
-    required this.isSelected,
-    required this.isWatched,
-    required this.onTap,
-    required this.onToggleWatched,
-  });
-
-  @override
-  State<_HorizontalEpisodeCard> createState() => _HorizontalEpisodeCardState();
-}
-
-class _HorizontalEpisodeCardState extends State<_HorizontalEpisodeCard> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 220,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: widget.isSelected
-                  ? const Color(0xFF1565C0)
-                  : _isHovered
-                      ? Colors.white38
-                      : Colors.white12,
-              width: 2,
-            ),
-            boxShadow: (widget.isSelected || _isHovered)
-                ? [
-                    BoxShadow(
-                      color: widget.isSelected
-                          ? const Color(0xFF1565C0).withValues(alpha: 0.4)
-                          : Colors.white.withValues(alpha: 0.08),
-                      blurRadius: 14,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : null,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(11),
-            child: Stack(
-              children: [
-                // thumbnail
-                SizedBox(
-                  width: 220,
-                  height: 190,
-                  child: widget.stillPath != null
-                      ? CachedNetworkImage(
-                          imageUrl: TmdbApi.getStillUrl(widget.stillPath!),
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                        )
-                      : Container(
-                          color: Colors.white10,
-                          child: const Center(
-                            child: Icon(Icons.movie_rounded,
-                                color: Colors.white24, size: 40),
-                          ),
-                        ),
-                ),
-                // dark gradient at bottom
-                Positioned(
-                  left: 0, right: 0, bottom: 0,
-                  child: Container(
-                    height: 70,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black87],
-                      ),
-                    ),
-                  ),
-                ),
-                // play icon in centre
-                Center(
-                  child: AnimatedOpacity(
-                    opacity: _isHovered || widget.isSelected ? 1.0 : 0.55,
-                    duration: const Duration(milliseconds: 150),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: widget.isSelected
-                            ? const Color(0xFF1565C0).withValues(alpha: 0.85)
-                            : Colors.black54,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.play_arrow_rounded,
-                          color: Colors.white, size: 24),
-                    ),
-                  ),
-                ),
-                // watched checkmark
-                Positioned(
-                  top: 6, right: 6,
-                  child: GestureDetector(
-                    onTap: widget.onToggleWatched,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: widget.isWatched ? Colors.green : Colors.black.withValues(alpha: 0.55),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.check,
-                        size: 14,
-                        color: widget.isWatched ? Colors.white : Colors.white38,
-                      ),
-                    ),
-                  ),
-                ),
-                // episode number + title
-                Positioned(
-                  left: 10, right: 10, bottom: 10,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'E${widget.epNum}',
-                        style: TextStyle(
-                          color: widget.isSelected
-                              ? const Color(0xFF64B5F6)
-                              : Colors.white70,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      Text(
-                        widget.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EpisodeCard extends StatefulWidget {
-  final Map<String, dynamic> episode;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _EpisodeCard({
-    required this.episode,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  State<_EpisodeCard> createState() => _EpisodeCardState();
-}
-
-class _EpisodeCardState extends State<_EpisodeCard> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final epNum = widget.episode['episode_number'];
-    
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: widget.isSelected 
-                ? Colors.white.withValues(alpha: 0.12) 
-                : _isHovered
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: widget.isSelected 
-                  ? const Color(0xFF1565C0) 
-                  : _isHovered
-                      ? Colors.white.withValues(alpha: 0.3)
-                      : Colors.transparent,
-              width: widget.isSelected || _isHovered ? 2 : 1,
-            ),
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: widget.isSelected
-                          ? const Color(0xFF1565C0).withValues(alpha: 0.3)
-                          : Colors.white.withValues(alpha: 0.1),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 130,
-                height: 73,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.black26,
-                ),
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: widget.episode['still_path'] != null
-                          ? CachedNetworkImage(
-                              imageUrl: TmdbApi.getStillUrl(widget.episode['still_path']),
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                            )
-                          : const Center(
-                              child: Icon(Icons.movie, color: Colors.white24, size: 32),
-                            ),
-                    ),
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Episode $epNum',
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.episode['name'] ?? 'Episode $epNum',
-                      style: TextStyle(
-                        color: _isHovered || widget.isSelected ? Colors.white : Colors.white70,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (widget.episode['runtime'] != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${widget.episode['runtime']}m',
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                    ],
-                    if (widget.episode['overview'] != null && widget.episode['overview'].isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.episode['overview'],
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1565C0).withValues(alpha: _isHovered ? 0.3 : 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.play_arrow, color: Color(0xFF1565C0), size: 20),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SeasonChip extends StatefulWidget {
-  final int seasonNumber;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _SeasonChip({
-    required this.seasonNumber,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  State<_SeasonChip> createState() => _SeasonChipState();
-}
-
-class _SeasonChipState extends State<_SeasonChip> {
-  bool _isHovered = false;
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) {
-          setState(() => _isPressed = false);
-          widget.onTap();
-        },
-        onTapCancel: () => setState(() => _isPressed = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.only(right: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          transform: _isPressed 
-              ? Matrix4.diagonal3Values(0.95, 0.95, 1.0)
-              : _isHovered 
-                  ? Matrix4.diagonal3Values(1.05, 1.05, 1.0)
-                  : Matrix4.identity(),
-          decoration: BoxDecoration(
-            color: widget.isSelected 
-                ? const Color(0xFF1565C0) 
-                : _isHovered 
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(
-              color: widget.isSelected 
-                  ? const Color(0xFF1565C0) 
-                  : _isHovered
-                      ? Colors.white.withValues(alpha: 0.5)
-                      : Colors.white.withValues(alpha: 0.3),
-              width: widget.isSelected || _isHovered ? 2 : 1,
-            ),
-            boxShadow: _isHovered && !widget.isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Center(
-            child: Text(
-              'Season ${widget.seasonNumber}',
-              style: TextStyle(
-                color: widget.isSelected || _isHovered ? Colors.white : Colors.white70,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _SimilarMovieCard extends StatefulWidget {
   final Movie movie;

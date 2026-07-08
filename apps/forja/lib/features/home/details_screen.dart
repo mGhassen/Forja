@@ -14,6 +14,9 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
+import 'package:forja/shared/widgets/media_details_hero.dart';
+import 'package:forja/shared/widgets/media_details_metadata_sections.dart';
+import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class DetailsScreen extends StatefulWidget {
@@ -107,6 +110,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   List<Map<String, String>> _castMembers = [];
   final ScrollController _castScrollController = ScrollController();
 
+  MediaDetailsExtras? _mediaExtras;
+  String? _trailerKey;
+  final Map<int, String> _seasonPosters = {};
+  Map<String, Map<String, dynamic>> _episodeProgress = {};
+
   final ScrollController _episodeScrollController = ScrollController();
   final ScrollController _seasonScrollController = ScrollController();
   final ScrollController _chipsScrollController = ScrollController();
@@ -167,6 +175,116 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
     );
     if (mounted) setState(() => _lastProgress = progress);
+  }
+
+  Future<void> _loadEpisodeProgressForSeason(int season) async {
+    List episodes = [];
+    if (_seasonData != null) {
+      if (_seasonData!['episodes'] != null) {
+        episodes = _seasonData!['episodes'] as List;
+      } else if (_seasonData!['episodesBySeason'] != null) {
+        final bySeason = _seasonData!['episodesBySeason'] as Map;
+        episodes = bySeason[season] as List? ?? [];
+      }
+    }
+    final map = <String, Map<String, dynamic>>{};
+    for (final ep in episodes) {
+      final n = (ep['episode_number'] ?? ep['episode']) as int;
+      final p = await WatchHistoryService().getProgress(
+        _movie.id,
+        season: season,
+        episode: n,
+      );
+      if (p != null) map['S${season}_E$n'] = p;
+    }
+    if (mounted) setState(() => _episodeProgress = map);
+  }
+
+  void _refreshSourcesForEpisode() {
+    if (_selectedSourceId == 'forja') {
+      _autoSearch();
+    } else if (_selectedSourceId == 'jackett') {
+      _searchJackett();
+    } else if (_selectedSourceId == 'prowlarr') {
+      _searchProwlarr();
+    } else if (_selectedSourceId == 'all_stremio') {
+      _fetchAllStremioStreams();
+    } else if (_isNuvioSource) {
+      _fetchAllNuvioStreams();
+    } else {
+      _fetchStremioStreams();
+    }
+  }
+
+  void _onEpisodeSelected(int episode) {
+    setState(() => _selectedEpisode = episode);
+    _checkHistory();
+    _refreshSourcesForEpisode();
+  }
+
+  void _onSeasonSelected(int season) {
+    if (widget.stremioItem != null &&
+        _seasonData != null &&
+        _seasonData!['episodesBySeason'] != null) {
+      setState(() {
+        _selectedSeason = season;
+        _selectedEpisode = 1;
+      });
+      _fetchStremioStreamsForCustomId(widget.stremioItem!);
+      _checkHistory();
+      _loadEpisodeProgressForSeason(season);
+      return;
+    }
+    _fetchSeason(season);
+  }
+
+  Widget _buildDetailsHero({double? height, bool compact = false}) {
+    return MediaDetailsHero(
+      movie: _movie,
+      trailerYoutubeKey: _trailerKey,
+      progress: _lastProgress,
+      height: height,
+      compact: compact,
+    );
+  }
+
+  Widget _buildMetadataSections() {
+    final extras = _mediaExtras;
+    if (extras == null) return const SizedBox.shrink();
+    return MediaDetailsMetadataSections(movie: _movie, extras: extras);
+  }
+
+  Widget _buildTvPicker() {
+    int seasonCount = _movie.numberOfSeasons;
+    if (_seasonData != null && _seasonData!['seasons'] != null) {
+      seasonCount = (_seasonData!['seasons'] as List).length;
+    }
+    Map<int, List<Map<String, dynamic>>>? customEpisodes;
+    if (_seasonData != null && _seasonData!['episodesBySeason'] != null) {
+      customEpisodes = Map<int, List<Map<String, dynamic>>>.from(
+        (_seasonData!['episodesBySeason'] as Map).map(
+          (k, v) => MapEntry(k as int, List<Map<String, dynamic>>.from(v as List)),
+        ),
+      );
+    }
+    return TvSeasonEpisodePicker(
+      tmdbId: _movie.id,
+      seasonCount: seasonCount,
+      selectedSeason: _selectedSeason,
+      selectedEpisode: _selectedEpisode,
+      isLoadingSeason: _isLoadingSeason,
+      seasonData: _seasonData,
+      watchedEpisodes: _watchedEpisodes,
+      fallbackPosterPath: _movie.posterPath.isNotEmpty
+          ? _movie.posterPath
+          : _movie.backdropPath,
+      seasonPosters: _seasonPosters,
+      episodeProgress: _episodeProgress,
+      customEpisodesBySeason: customEpisodes,
+      onSeasonSelected: _onSeasonSelected,
+      onEpisodeSelected: _onEpisodeSelected,
+      onToggleWatched: _toggleEpisodeWatched,
+    );
   }
 
   Future<void> _loadWatchedEpisodes() async {
@@ -309,16 +427,19 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         return;
       }
 
-      final Movie fullDetails;
+      final RichMediaDetails rich;
       if (_movie.mediaType == 'tv') {
-        fullDetails = await _api.getTvDetails(widget.movie.id);
+        rich = await _api.getRichTvDetails(widget.movie.id);
         await _fetchSeason(widget.initialSeason ?? 1);
       } else {
-        fullDetails = await _api.getMovieDetails(widget.movie.id);
+        rich = await _api.getRichMovieDetails(widget.movie.id);
       }
       if (mounted) {
         setState(() {
-          _movie = fullDetails;
+          _movie = rich.movie;
+          _mediaExtras = rich.extras;
+          _trailerKey = rich.extras.trailerYoutubeKey;
+          _castMembers = rich.extras.cast;
           _streamAddons = streamAddons;
           _isLoading = false;
           if (!_playbackProfile.builtinTorrentSearch && streamAddons.isNotEmpty) {
@@ -331,7 +452,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         _fetchAllStremioStreams();
         _checkAndFetchNuvio();
         _fetchStremioRecommendations();
-        _fetchCastMembers();
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -351,13 +471,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         _nuvioAddons = addons.where((a) =>
             a.scrapers.any((s) => s.enabled)).toList();
       });
-    } catch (_) {}
-  }
-
-  Future<void> _fetchCastMembers() async {
-    try {
-      final members = await _api.getCredits(_movie.id, _movie.mediaType);
-      if (mounted) setState(() => _castMembers = members);
     } catch (_) {}
   }
 
@@ -828,10 +941,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     try {
       final data = await _api.getTvSeasonDetails(_movie.id, seasonNumber);
       if (mounted) {
+        final poster = data['poster_path'] as String?;
         setState(() {
           _seasonData = data;
           _isLoadingSeason = false;
           _selectedSeason = seasonNumber;
+          if (poster != null && poster.isNotEmpty) {
+            _seasonPosters[seasonNumber] = poster;
+          }
           // Only reset to episode 1 if no initial episode was provided,
           // or if we're navigating to a different season after init.
           if (widget.initialEpisode != null && seasonNumber == widget.initialSeason) {
@@ -840,6 +957,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             _selectedEpisode = 1;
           }
         });
+        await _loadEpisodeProgressForSeason(seasonNumber);
+        _checkHistory();
         if (_selectedSourceId == 'forja') {
           _autoSearch();
         } else if (_selectedSourceId == 'jackett') {
@@ -2126,7 +2245,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildMobileHero(),
+          _buildDetailsHero(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
@@ -2169,11 +2288,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                     ],
                   );
                 }),
+                const SizedBox(height: 16),
+                _buildMetadataSections(),
+                const SizedBox(height: 16),
                 _buildRecommendationsSection(),
                 if (_movie.mediaType == 'tv' && !_isCollection) ...[
-                  _buildSeasonSelector(),
-                  const SizedBox(height: 16),
-                  _buildEpisodeSelector(),
+                  _buildTvPicker(),
                   const SizedBox(height: 6),
                   const Text('← → Episodes  |  ↑ ↓ Season',
                     style: TextStyle(color: Colors.white24, fontSize: 10)),
@@ -2197,124 +2317,36 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     );
   }
 
-  Widget _buildMobileHero() {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final heroHeight = isLandscape ? 240.0 : 360.0;
-    return SizedBox(
-      height: heroHeight,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ShaderMask(
-              shaderCallback: (rect) => const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                // Hold the image strong for the top 60%, then fade it out
-                // smoothly so the backdrop blends into the page background
-                // instead of getting hard-cropped at the bottom.
-                colors: [Colors.white, Colors.white, Colors.transparent],
-                stops: [0.0, 0.6, 1.0],
-              ).createShader(rect),
-              blendMode: BlendMode.dstIn,
-              child: CachedNetworkImage(
-                imageUrl: _imageUrl(_movie.backdropPath.isNotEmpty ? _movie.backdropPath : _movie.posterPath),
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-                errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
-              ),
-            ),
-          ),
-          // Soft tint + bottom fade to black so text on top of the hero stays
-          // readable and the seam against the page body disappears.
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x22000000),
-                  Color(0x55000000),
-                  Color(0xCC000000),
-                  Color(0xFF000000),
-                ],
-                stops: [0.0, 0.45, 0.8, 1.0],
-              )),
-            ),
-          ),
-          Positioned(
-            left: 16, right: 16, bottom: 16,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                wrapPosterGlow(
-                  width: 90,
-                  height: 132,
-                  borderRadius: 10,
-                  genres: _movie.genres,
-                  child: Hero(
-                    tag: 'movie-poster-${_movie.id}',
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: CachedNetworkImage(
-                        imageUrl: _imageUrl(_movie.posterPath),
-                        width: 90, height: 132, fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_movie.title,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
-                          color: Colors.white, height: 1.2),
-                        maxLines: 3, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 6),
-                      Row(children: [
-                        Text(_movie.releaseDate.take(4),
-                          style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.star_rounded, color: Color(0xFFFFD700), size: 13),
-                        const SizedBox(width: 3),
-                        Text(_movie.voteAverage.toStringAsFixed(1),
-                          style: const TextStyle(color: Color(0xFFFFD700), fontSize: 12, fontWeight: FontWeight.w600)),
-                      ]),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ═══════════════════════════════════════════════════════════════════════════
   //  DESKTOP LAYOUT
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildDesktopLayout() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(24, 16, 20, 32),
-            child: _buildDesktopLeftPanel(),
-          ),
-        ),
-        Container(width: 1, color: Colors.white.withValues(alpha: 0.07)),
+        _buildDetailsHero(height: 300, compact: true),
         Expanded(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-            child: _buildRightPanel(),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(24, 16, 20, 32),
+                  child: _buildDesktopLeftPanel(),
+                ),
+              ),
+              Container(width: 1, color: Colors.white.withValues(alpha: 0.07)),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                  child: _buildRightPanel(),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -2387,7 +2419,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _buildCollectionItemsSection(),
           const SizedBox(height: 20),
         ],
-        if (_castMembers.isNotEmpty) _buildDesktopCastRow(),
+        _buildMetadataSections(),
+        const SizedBox(height: 20),
         _buildRecommendationsSection(),
         const SizedBox(height: 24),
       ],
@@ -2416,12 +2449,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_movie.mediaType == 'tv') ...[
-          _buildSeasonSelector(),
-          const SizedBox(height: 20),
-          _buildEpisodeSelector(),
-          const SizedBox(height: 8),
-          const Text('← → Navigate Episodes  |  ↑ ↓ Change Season',
-            style: TextStyle(color: Colors.white24, fontSize: 11)),
+          _buildTvPicker(),
           const SizedBox(height: 24),
         ],
         _buildSourceToggle(),
@@ -2431,243 +2459,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         _buildResultsHeader(),
         const SizedBox(height: 12),
         _buildStreamList(),
-      ],
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  SEASON SELECTOR
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildSeasonSelector() {
-    // Get season count from either TMDB or custom ID data
-    int seasonCount = _movie.numberOfSeasons;
-    if (_seasonData != null && _seasonData!['seasons'] != null) {
-      // Custom ID format
-      final seasons = _seasonData!['seasons'] as List<int>;
-      seasonCount = seasons.length;
-    }
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(children: [
-              const Icon(Icons.layers_outlined, color: Colors.white54, size: 16),
-              const SizedBox(width: 6),
-              const Text('Seasons', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-            ]),
-            Row(children: [
-              _scrollArrow(Icons.arrow_back_ios_rounded, () => _seasonScrollController.animateTo(
-                _seasonScrollController.offset - 160, duration: const Duration(milliseconds: 280), curve: Curves.easeInOut)),
-              _scrollArrow(Icons.arrow_forward_ios_rounded, () => _seasonScrollController.animateTo(
-                _seasonScrollController.offset + 160, duration: const Duration(milliseconds: 280), curve: Curves.easeInOut)),
-            ]),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 38,
-          child: ListView.separated(
-            controller: _seasonScrollController,
-            scrollDirection: Axis.horizontal,
-            itemCount: seasonCount,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (_, i) {
-              final n = i + 1;
-              final sel = _selectedSeason == n;
-              return FocusableControl(
-                onTap: () {
-                  // For custom IDs, just update state and re-fetch
-                  if (widget.stremioItem != null && _seasonData != null && _seasonData!['episodesBySeason'] != null) {
-                    setState(() {
-                      _selectedSeason = n;
-                      _selectedEpisode = 1;
-                    });
-                    _fetchStremioStreamsForCustomId(widget.stremioItem!);
-                  } else {
-                    // For TMDB, fetch season data
-                    _fetchSeason(n);
-                  }
-                },
-                borderRadius: 20,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: sel ? Colors.white : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: sel ? Colors.white : Colors.white30, width: 1.2),
-                  ),
-                  child: Text('Season $n',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                      color: sel ? Colors.black : Colors.white70)),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  EPISODE SELECTOR
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildEpisodeSelector() {
-    if (_isLoadingSeason) {
-      return const SizedBox(height: 140,
-        child: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor, strokeWidth: 2)));
-    }
-    
-    // Handle both TMDB format (_seasonData['episodes']) and custom ID format (_seasonData['episodesBySeason'])
-    List episodes = [];
-    if (_seasonData != null) {
-      if (_seasonData!['episodes'] != null) {
-        // TMDB format
-        episodes = _seasonData!['episodes'] as List;
-      } else if (_seasonData!['episodesBySeason'] != null) {
-        // Custom ID format
-        final episodesBySeason = _seasonData!['episodesBySeason'] as Map<int, List<Map<String, dynamic>>>;
-        episodes = episodesBySeason[_selectedSeason] ?? [];
-      }
-    }
-    
-    if (episodes.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(children: [
-              const Icon(Icons.video_library_outlined, color: Colors.white54, size: 16),
-              const SizedBox(width: 6),
-              Text('Episodes (${episodes.length})',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-            ]),
-            Row(children: [
-              _scrollArrow(Icons.arrow_back_ios_rounded, () => _episodeScrollController.animateTo(
-                _episodeScrollController.offset - 240, duration: const Duration(milliseconds: 280), curve: Curves.easeInOut)),
-              _scrollArrow(Icons.arrow_forward_ios_rounded, () => _episodeScrollController.animateTo(
-                _episodeScrollController.offset + 240, duration: const Duration(milliseconds: 280), curve: Curves.easeInOut)),
-            ]),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 155,
-          child: ListView.separated(
-            controller: _episodeScrollController,
-            scrollDirection: Axis.horizontal,
-            itemCount: episodes.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (_, i) {
-              final ep = episodes[i];
-              // Handle both TMDB and custom ID formats
-              final epNum = (ep['episode_number'] ?? ep['episode']) as int;
-              final sel = _selectedEpisode == epNum;
-              final epName = ep['name'] ?? ep['title'] ?? 'Episode $epNum';
-              final thumbnail = ep['still_path'] ?? ep['thumbnail'];
-              final isWatched = _watchedEpisodes.contains('${_movie.id}_S${_selectedSeason}_E$epNum');
-              
-              return FocusableControl(
-                onTap: () {
-                  setState(() => _selectedEpisode = epNum);
-                  if (_selectedSourceId == 'forja') {
-                    _autoSearch();
-                  } else if (_selectedSourceId == 'jackett') {
-                    _searchJackett();
-                  } else if (_selectedSourceId == 'prowlarr') {
-                    _searchProwlarr();
-                  } else if (_selectedSourceId == 'all_stremio') {
-                    _fetchAllStremioStreams();
-                  } else if (_isNuvioSource) {
-                    if (_nuvioSelectedScraperId != null) {
-                      _runSingleNuvioScraper(_nuvioSelectedScraperId!);
-                    }
-                  } else {
-                    // For custom IDs, re-fetch streams with the new episode
-                    if (widget.stremioItem != null) {
-                      _fetchStremioStreamsForCustomId(widget.stremioItem!);
-                    } else {
-                      _fetchStremioStreams();
-                    }
-                  }
-                },
-                borderRadius: 10,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 200,
-                  decoration: BoxDecoration(
-                    color: sel ? AppTheme.primaryColor.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: sel ? AppTheme.primaryColor : Colors.white12, width: sel ? 1.5 : 1),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Stack(fit: StackFit.expand, children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
-                            child: thumbnail != null
-                                ? CachedNetworkImage(
-                                    imageUrl: thumbnail.startsWith('http') 
-                                        ? thumbnail 
-                                        : TmdbApi.getStillUrl(thumbnail),
-                                    fit: BoxFit.cover,
-                                    errorWidget: (c, u, e) => Container(
-                                      color: Colors.white.withValues(alpha: 0.06),
-                                      child: const Center(child: Icon(Icons.movie_outlined, color: Colors.white24, size: 28))))
-                                : Container(color: Colors.white.withValues(alpha: 0.06),
-                                    child: const Center(child: Icon(Icons.movie_outlined, color: Colors.white24, size: 28))),
-                          ),
-                          Positioned(
-                            top: 6, left: 6,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65), borderRadius: BorderRadius.circular(4)),
-                              child: Text('$epNum', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                          Positioned(
-                            top: 4, right: 4,
-                            child: GestureDetector(
-                              onTap: () => _toggleEpisodeWatched(_selectedSeason, epNum),
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  color: isWatched ? Colors.green : Colors.black.withValues(alpha: 0.55),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  isWatched ? Icons.check : Icons.check,
-                                  size: 14,
-                                  color: isWatched ? Colors.white : Colors.white38,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ]),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        child: Text(epName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                            color: sel ? Colors.white : Colors.white70)),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
       ],
     );
   }

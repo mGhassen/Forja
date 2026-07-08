@@ -38,7 +38,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 
 | File | Codename | Status |
 |------|----------|--------|
-| [1.0.1-[draft].md](1.0.1-[draft].md) | — | draft — details & player UX |
+| [1.0.1-[open].md](1.0.1-[open].md) | — | open — details & player UX (4/11 shipped) |
 | [1.0.2-[draft].md](1.0.2-[draft].md) | — | draft — overlay, providers, casting |
 
 ## Done — v1

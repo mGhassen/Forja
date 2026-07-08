@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
@@ -29,6 +30,9 @@ import 'package:forja/shared/extractors/arabic_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/services/pip_service.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/seek_bar_with_preview.dart';
+import 'package:forja/shared/player/controls/stream_source_panel.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GLASSY WIDGET PRIMITIVES  (MPVEx-style frosted black glass)
@@ -2295,187 +2299,130 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _showSourcesMenu() {
-    if (_currentSources == null || _currentSources!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No sources available'),
-        duration: Duration(seconds: 1),
+    StreamSourcePanel.show(
+      context,
+      sources: _currentSources ?? [],
+      currentUrl: _currentUrl,
+      current111477FileUrl: _current111477FileUrl,
+      is111477: _currentProvider == 'service111477',
+      useSidePanel: true,
+      onSelect: _switchToStreamSource,
+    );
+  }
+
+  Future<void> _switchToStreamSource(StreamSource source, int index) async {
+    final isCurrent = _currentProvider == 'service111477'
+        ? source.url == _current111477FileUrl
+        : source.url == _currentUrl;
+    if (isCurrent) return;
+
+    final currentPos = _positionNotifier.value;
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (_currentProvider == 'service111477') {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Switching to ${source.title}…'),
+        duration: const Duration(seconds: 30),
       ));
+      try {
+        if (site111477_proxy.is111477ProxyRunning) {
+          await site111477_proxy.stop111477Proxy();
+        }
+        final newProxied = await site111477_proxy.start111477Proxy(source.url);
+        if (!mounted) return;
+        messenger.hideCurrentSnackBar();
+        await _player.open(Media(newProxied));
+        setState(() {
+          _currentUrl = newProxied;
+          _current111477FileUrl = source.url;
+          _currentFallbackSourceIndex = 0;
+          _hasError = false;
+          _errorMessage = '';
+        });
+        _detectHlsQualities(newProxied, null);
+        if (currentPos.inSeconds > 0) await _player.seek(currentPos);
+        if (mounted) {
+          messenger.showSnackBar(SnackBar(
+            content: Text('Switched to ${source.title}'),
+            duration: const Duration(seconds: 2),
+          ));
+        }
+      } catch (e) {
+        if (!mounted) return;
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(SnackBar(
+          content: Text('Switch failed: $e'),
+          duration: const Duration(seconds: 3),
+        ));
+      }
       return;
     }
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 40, height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2)),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Video Sources',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _currentSources!.length,
-              itemBuilder: (context, index) {
-                final source = _currentSources![index];
-                final isCurrent = _currentProvider == 'service111477'
-                    ? source.url == _current111477FileUrl
-                    : source.url == _currentUrl;
-                return ListTile(
-                  leading: Icon(
-                    Icons.play_circle_outline,
-                    color: isCurrent ? const Color(0xFF7C3AED) : Colors.white70,
-                  ),
-                  title: Text(
-                    source.title,
-                    style: TextStyle(
-                      color: isCurrent ? const Color(0xFF7C3AED) : Colors.white,
-                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  subtitle: Text(
-                    source.type.toUpperCase(),
-                    style: TextStyle(
-                      color: isCurrent 
-                          ? const Color(0xFF7C3AED).withValues(alpha: 0.7)
-                          : Colors.white54,
-                      fontSize: 11,
-                    ),
-                  ),
-                  trailing: isCurrent
-                      ? const Icon(Icons.check, color: Color(0xFF7C3AED))
-                      : null,
-                  onTap: () async {
-                    Navigator.pop(context);
-                    if (!isCurrent) {
-                      // Save current position
-                      final currentPos = _positionNotifier.value;
-                      final messenger = ScaffoldMessenger.of(context);
+    if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Extracting ${source.title}...'),
+        duration: const Duration(seconds: 30),
+      ));
+      final result = await ArabicService.extractStreamUrl(source.url);
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      if (result == null) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('Failed to extract ${source.title}'),
+          duration: const Duration(seconds: 2),
+        ));
+        return;
+      }
+      await _player.open(Media(result.url, httpHeaders: result.headers));
+      _currentSources![index] = StreamSource(
+        url: result.url,
+        title: source.title,
+        type: result.url.contains('.m3u8')
+            ? 'hls'
+            : result.url.contains('.mpd')
+                ? 'dash'
+                : 'mp4',
+      );
+      setState(() {
+        _currentUrl = result.url;
+        _currentFallbackSourceIndex = 0;
+        _hasError = false;
+        _errorMessage = '';
+      });
+      _detectHlsQualities(result.url, result.headers);
+    } else {
+      await _player.open(
+        Media(source.url, httpHeaders: source.headers ?? widget.headers),
+      );
+      setState(() {
+        _currentUrl = source.url;
+        _currentFallbackSourceIndex = 0;
+        _hasError = false;
+        _errorMessage = '';
+      });
+      _detectHlsQualities(source.url, source.headers ?? widget.headers);
+    }
 
-                      // 111477: stop the proxy (which deletes its on-disk
-                      // cache), restart it with the new upstream URL, then
-                      // open the new localhost stream URL.
-                      if (_currentProvider == 'service111477') {
-                        messenger.showSnackBar(SnackBar(
-                          content: Text('Switching to ${source.title}…'),
-                          duration: const Duration(seconds: 30),
-                        ));
-                        try {
-                          if (site111477_proxy.is111477ProxyRunning) {
-                            await site111477_proxy.stop111477Proxy();
-                          }
-                          final newProxied =
-                              await site111477_proxy.start111477Proxy(source.url);
-                          if (!mounted) return;
-                          messenger.hideCurrentSnackBar();
-                          await _player.open(Media(newProxied));
-                          setState(() {
-                            _currentUrl = newProxied;
-                            _current111477FileUrl = source.url;
-                            _currentFallbackSourceIndex = 0;
-                            _hasError = false;
-                            _errorMessage = '';
-                          });
-                          _detectHlsQualities(newProxied, null);
-                          if (currentPos.inSeconds > 0) {
-                            await _player.seek(currentPos);
-                          }
-                          if (mounted) {
-                            messenger.showSnackBar(SnackBar(
-                              content: Text('Switched to ${source.title}'),
-                              duration: const Duration(seconds: 2),
-                            ));
-                          }
-                        } catch (e) {
-                          if (!mounted) return;
-                          messenger.hideCurrentSnackBar();
-                          messenger.showSnackBar(SnackBar(
-                            content: Text('Switch failed: $e'),
-                            duration: const Duration(seconds: 3),
-                          ));
-                        }
-                        return;
-                      }
+    if (currentPos.inSeconds > 0) await _player.seek(currentPos);
 
-                      // Arabic provider: extract on-demand from embed URL
-                      if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
-                        messenger.showSnackBar(SnackBar(
-                          content: Text('Extracting ${source.title}...'),
-                          duration: const Duration(seconds: 30),
-                        ));
-                        final result = await ArabicService.extractStreamUrl(source.url);
-                        if (!mounted) return;
-                        messenger.hideCurrentSnackBar();
-                        if (result == null) {
-                          messenger.showSnackBar(SnackBar(
-                            content: Text('Failed to extract ${source.title}'),
-                            duration: const Duration(seconds: 2),
-                          ));
-                          return;
-                        }
-                        await _player.open(
-                          Media(result.url, httpHeaders: result.headers),
-                        );
-                        // Update the source entry with the extracted stream URL
-                        _currentSources![index] = StreamSource(
-                          url: result.url,
-                          title: source.title,
-                          type: result.url.contains('.m3u8') ? 'hls' : result.url.contains('.mpd') ? 'dash' : 'mp4',
-                        );
-                        setState(() {
-                          _currentUrl = result.url;
-                          _currentFallbackSourceIndex = 0;
-                          _hasError = false;
-                          _errorMessage = '';
-                        });
-                        _detectHlsQualities(result.url, result.headers);
-                      } else {
-                        // Normal direct switch
-                        await _player.open(
-                          Media(source.url, httpHeaders: source.headers ?? widget.headers),
-                        );
-                        setState(() {
-                          _currentUrl = source.url;
-                          _currentFallbackSourceIndex = 0;
-                          _hasError = false;
-                          _errorMessage = '';
-                        });
-                        _detectHlsQualities(source.url, source.headers ?? widget.headers);
-                      }
-                      
-                      // Seek to saved position
-                      if (currentPos.inSeconds > 0) {
-                        await _player.seek(currentPos);
-                      }
-                      
-                      if (mounted) {
-                        messenger.showSnackBar(SnackBar(
-                          content: Text('Switched to ${source.title}'),
-                          duration: const Duration(seconds: 2),
-                        ));
-                      }
-                    }
-                  },
-                );
-              },
-            ),
-          ),
-        ]),
-      ),
-    );
+    if (mounted) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Switched to ${source.title}'),
+        duration: const Duration(seconds: 2),
+      ));
+    }
+  }
+
+  Future<Uint8List?> _captureSeekPreview(Duration position) async {
+    try {
+      if (!_isPlayingNotifier.value) {
+        await _player.seek(position);
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+      return await _player.screenshot(format: 'image/jpeg');
+    } catch (_) {
+      return null;
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -3532,10 +3479,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(children: [
-            GlassIconButton(
-              icon: Icons.close_rounded,
+            PlayerFlatIconButton(
+              icon: Icons.arrow_back,
+              label: 'Back',
               onPressed: () async {
-                // Exit fullscreen if currently fullscreen
                 if (_isFullscreen) {
                   await windowManager.setFullScreen(false);
                   setState(() => _isFullscreen = false);
@@ -3543,28 +3490,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                 _saveWatchHistory();
                 if (mounted) Navigator.of(context).pop(_positionNotifier.value);
               },
-              size: 38, iconSize: 18,
             ),
-            const SizedBox(width: 10),
-            // Title pill
-            Expanded(
-              child: _Glass(
-                radius: 20,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
-                child: Text(
-                  widget.title,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // HW decode mode badge
+            const Spacer(),
             GlassPillButton(
               text: _hwDecMode.label,
               onTap: _cycleHwDec,
@@ -3580,8 +3507,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               icon: Icons.subtitles_outlined,
               onPressed: _showSubtitlesMenu,
             ),
-            // Quality selector — only when the playing stream is a master
-            // HLS playlist with 2+ variants.
             ValueListenableBuilder<List<HlsQuality>?>(
               valueListenable: _hlsQualitiesNotifier,
               builder: (ctx, qs, _) {
@@ -3595,14 +3520,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                 ]);
               },
             ),
-            if (_currentSources != null && _currentSources!.isNotEmpty) ...[
-              const SizedBox(width: 8),
-              GlassIconButton(
-                icon: Icons.video_library_outlined,
-                onPressed: _showSourcesMenu,
-              ),
-            ],
           ]),
+        ),
+      ),
+
+      Positioned(
+        left: 16,
+        top: 64,
+        bottom: 132,
+        width: 380,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: PlayerTitleMeta(title: widget.title, movie: widget.movie),
         ),
       ),
 
@@ -3715,36 +3644,61 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Left: speed / loop
                 Row(children: [
-                  GlassIconButton(
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _isPlayingNotifier,
+                    builder: (context, playing, _) => PlayerFlatIconButton(
+                      icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      onPressed: () {
+                        _player.playOrPause();
+                        _onMouseMove();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  PlayerFlatIconButton(
+                    icon: Icons.replay_10_rounded,
+                    onPressed: () {
+                      final pos = _positionNotifier.value - const Duration(seconds: 10);
+                      _player.seek(pos < Duration.zero ? Duration.zero : pos);
+                      _onMouseMove();
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  PlayerFlatIconButton(
+                    icon: Icons.forward_10_rounded,
+                    onPressed: () {
+                      final dur = _durationNotifier.value;
+                      final pos = _positionNotifier.value + const Duration(seconds: 10);
+                      _player.seek(pos > dur ? dur : pos);
+                      _onMouseMove();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  PlayerFlatIconButton(
                     icon: Icons.speed_outlined,
                     onPressed: () => showSpeedMenu(
                         context, _player.state.rate,
                         (s) => _player.setRate(s)),
                   ),
-                  const SizedBox(width: 8),
-                  GlassIconButton(
+                  const SizedBox(width: 4),
+                  PlayerFlatIconButton(
                     icon: _loopEnabled
                         ? Icons.repeat_one_rounded
                         : Icons.repeat_rounded,
-                    onPressed: _toggleLoop,
                     active: _loopEnabled,
+                    onPressed: _toggleLoop,
                   ),
-                ]),
-
-                // Center: volume
-                Row(children: [
+                  const SizedBox(width: 8),
                   ValueListenableBuilder<double>(
                     valueListenable: _volumeNotifier,
-                    builder: (context, vol, _) => GlassIconButton(
+                    builder: (context, vol, _) => PlayerFlatIconButton(
                       icon: vol == 0
                           ? Icons.volume_off_rounded
                           : vol < 50
                               ? Icons.volume_down_rounded
                               : Icons.volume_up_rounded,
-                      onPressed: () => _player
-                          .setVolume(vol > 0 ? 0.0 : 100.0),
+                      onPressed: () => _player.setVolume(vol > 0 ? 0.0 : 100.0),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -3755,12 +3709,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                       builder: (context, vol, _) => SliderTheme(
                         data: SliderThemeData(
                           trackHeight: 2,
-                          thumbShape:
-                              const RoundSliderThumbShape(
-                                  enabledThumbRadius: 5.5),
-                          overlayShape:
-                              const RoundSliderOverlayShape(
-                                  overlayRadius: 10),
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5.5),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
                           activeTrackColor: Colors.white,
                           inactiveTrackColor: Colors.white24,
                           thumbColor: Colors.white,
@@ -3770,7 +3720,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                           descendantsAreFocusable: false,
                           child: Slider(
                             value: vol,
-                            min: 0, max: 150,
+                            min: 0,
+                            max: 150,
                             onChanged: (v) => _player.setVolume(v),
                           ),
                         ),
@@ -3778,19 +3729,23 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                     ),
                   ),
                 ]),
-
-                // Right: provider switcher / copy URL / subtitle settings / aspect / fullscreen
                 Row(children: [
-                  // Show provider switcher only when providers are available and not using torrent/stremio
-                  if (widget.providers != null && widget.providers!.isNotEmpty && 
+                  if (_currentSources != null && _currentSources!.isNotEmpty) ...[
+                    PlayerFlatIconButton(
+                      icon: Icons.video_library_outlined,
+                      onPressed: _showSourcesMenu,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  if (widget.providers != null && widget.providers!.isNotEmpty &&
                       widget.magnetLink == null && widget.activeProvider != 'stremio_direct') ...[
-                    GlassIconButton(
+                    PlayerFlatIconButton(
                       icon: Icons.swap_horiz_rounded,
                       onPressed: _isSwitchingProvider ? () {} : _showProviderMenu,
                     ),
                     const SizedBox(width: 8),
                   ],
-                  GlassIconButton(
+                  PlayerFlatIconButton(
                     icon: Icons.link_rounded,
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: widget.mediaPath));
@@ -3802,13 +3757,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                     },
                   ),
                   const SizedBox(width: 8),
-                  // Aspect ratio pill – shows current mode so it's obvious
-                  GlassPillButton(
-                    text: _videoFitLabel,
-                    onTap: _cycleAspectRatio,
+                  PlayerFlatIconButton(
+                    icon: _videoFitLabel == 'Fit' ? Icons.fit_screen_rounded : Icons.crop_free_rounded,
+                    onPressed: _cycleAspectRatio,
                   ),
                   const SizedBox(width: 8),
-                  GlassIconButton(
+                  PlayerFlatIconButton(
                     icon: PipService.instance.isDesktopActive
                         ? Icons.picture_in_picture_alt_rounded
                         : Icons.picture_in_picture_rounded,
@@ -3818,7 +3772,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                     },
                   ),
                   const SizedBox(width: 8),
-                  GlassIconButton(
+                  PlayerFlatIconButton(
                     icon: _isFullscreen
                         ? Icons.fullscreen_exit_rounded
                         : Icons.fullscreen_rounded,
@@ -3859,10 +3813,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                         ValueListenableBuilder<Duration>(
                       valueListenable: _bufferedNotifier,
                       builder: (context, buffered, _) =>
-                          _GlassSeekbar(
+                          SeekBarWithPreview(
                         duration: duration,
                         position: position,
                         bufferedPosition: buffered,
+                        captureFrame: _captureSeekPreview,
                         onSeek: (t) {
                           _player.seek(t);
                           _onMouseMove();

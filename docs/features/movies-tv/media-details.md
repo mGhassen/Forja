@@ -4,7 +4,7 @@
 
 ## What it is
 
-When you open a title from Home, Discover, or Search (with torrent mode enabled), you get the **torrent details** screen. It shows TMDB posters, cast, overview, ratings, and a torrent search across built-in scrapers, Jackett, Prowlarr, Stremio streams, and Nuvio scrapers. For TV, pick seasons and episodes. You can mark episodes watched, rate on Trakt, and add to My List.
+When you open a title from Home, Discover, or Search (with torrent mode enabled), you get the **torrent details** screen. A cinematic hero shows the backdrop immediately; if TMDB has a YouTube trailer, it autoplays muted after about two seconds on the page. A progress bar appears in the hero when you have partial watch history for the movie or the selected episode. Below: rich TMDB metadata (cast, crew, keywords, production, recommendations), season poster cards with an expandable episode rail for TV, torrent search, Stremio/Nuvio streams, and list actions.
 
 ## How to open it
 
@@ -12,11 +12,13 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 
 ## What you can do
 
-- Read full metadata (cast, overview, ratings)
+- Watch the hero trailer (when available) or backdrop art
+- See resume progress in the hero for movies and the selected TV episode
+- Browse cast, crew, keywords, production info, and “more like this” recommendations
+- For TV: pick a season from poster cards, then an episode from the rail (thumbnails, synopsis, watch progress, watched toggle)
 - Search and sort torrent results (seeders, size, etc.)
 - Resolve torrents through debrid when configured
 - Pick Stremio addon streams or Nuvio scraper links
-- Select season/episode for TV series
 - Mark watched / unwatched per episode
 - Add or remove from My List
 - Rate on Trakt when logged in
@@ -31,7 +33,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 ## Tips
 
 - Sort order for torrents is set in Settings → Search & Torrents
-- Enable **Direct streaming mode** to skip torrents and use the [streaming details](direct-streaming-mode.md) screen instead
+- Enable **Direct streaming mode** to skip torrents and use the [streaming details](direct-streaming-mode.md) screen instead (same hero and TV picker patterns)
 
 ## Related
 
