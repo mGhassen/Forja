@@ -656,7 +656,10 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 600),
                     opacity: _showTrailer ? 0 : 1,
-                    child: _CinematicHeroSideGradient(shellBg: shellBg),
+                    child: _CinematicHeroBottomGradient(
+                      shellBg: shellBg,
+                      overlap: ShellTokens.detailsHeroBodyOverlap,
+                    ),
                   ),
                 ),
               ),
@@ -721,10 +724,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 600),
                     opacity: _showTrailer ? 0 : 1,
-                    child: _CinematicHeroBottomGradient(
-                      shellBg: shellBg,
-                      overlap: ShellTokens.detailsHeroBodyOverlap,
-                    ),
+                    child: _CinematicHeroSideGradient(shellBg: shellBg),
                   ),
                 ),
               ),

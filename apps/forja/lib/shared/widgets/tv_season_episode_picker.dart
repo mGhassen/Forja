@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
@@ -358,124 +359,147 @@ class _EpisodeCard extends StatefulWidget {
 class _EpisodeCardState extends State<_EpisodeCard> {
   bool _hovered = false;
 
+  double get _scale {
+    if (_hovered) return widget.selected ? 1.08 : 1.05;
+    if (widget.selected) return 1.05;
+    return 1.0;
+  }
+
   @override
   Widget build(BuildContext context) {
     final thumbHeight = _EpisodeCard.cardWidth * 9 / 16;
     final showProgress =
         WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
     final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
+    final scale = AppTheme.isLightMode ? 1.0 : _scale;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        onSecondaryTap: widget.onToggleWatched,
-        child: SizedBox(
-          width: _EpisodeCard.cardWidth,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: _EpisodeCard.cardWidth,
-                height: thumbHeight,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
-                  border: widget.selected
-                      ? Border.all(color: Colors.white, width: 2)
-                      : null,
-                  boxShadow: _hovered && !widget.selected
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.45),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      widget.thumbnail != null
-                          ? CachedNetworkImage(
-                              imageUrl: widget.thumbnail.toString().startsWith('http')
-                                  ? widget.thumbnail.toString()
-                                  : TmdbApi.getStillUrl(widget.thumbnail.toString()),
-                              fit: BoxFit.cover,
-                              errorWidget: (_, _, _) => _thumbFallback(),
-                            )
-                          : _thumbFallback(),
-                      if (showProgress)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: LinearProgressIndicator(
-                            value: (widget.positionMs / widget.durationMs)
-                                .clamp(0.0, 1.0),
-                            minHeight: 3,
-                            backgroundColor: Colors.black54,
-                            valueColor: AlwaysStoppedAnimation(
-                              ForjaShellColors.progressFill,
+    return FocusableControl(
+      onTap: widget.onTap,
+      borderRadius: _EpisodeCard.thumbRadius,
+      scaleOnFocus: 1.0,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: AnimatedScale(
+          scale: scale,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          child: GestureDetector(
+            onSecondaryTap: widget.onToggleWatched,
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: _EpisodeCard.cardWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: _EpisodeCard.cardWidth,
+                    height: thumbHeight,
+                    decoration: BoxDecoration(
+                      borderRadius:
+                          BorderRadius.circular(_EpisodeCard.thumbRadius),
+                      border: widget.selected
+                          ? Border.all(color: Colors.white, width: 2)
+                          : null,
+                      boxShadow: !AppTheme.isLightMode
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                blurRadius: 16,
+                                offset: const Offset(0, 8),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: ClipRRect(
+                      borderRadius:
+                          BorderRadius.circular(_EpisodeCard.thumbRadius),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          widget.thumbnail != null
+                              ? CachedNetworkImage(
+                                  imageUrl: widget.thumbnail
+                                          .toString()
+                                          .startsWith('http')
+                                      ? widget.thumbnail.toString()
+                                      : TmdbApi.getStillUrl(
+                                          widget.thumbnail.toString(),
+                                        ),
+                                  fit: BoxFit.cover,
+                                  errorWidget: (_, _, _) => _thumbFallback(),
+                                )
+                              : _thumbFallback(),
+                          if (showProgress)
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: LinearProgressIndicator(
+                                value: (widget.positionMs / widget.durationMs)
+                                    .clamp(0.0, 1.0),
+                                minHeight: 3,
+                                backgroundColor: Colors.black54,
+                                valueColor: AlwaysStoppedAnimation(
+                                  ForjaShellColors.progressFill,
+                                ),
+                              ),
                             ),
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child:
+                                _ThumbBadge(label: 'E${widget.episodeNumber}'),
                           ),
-                        ),
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: _ThumbBadge(label: 'E${widget.episodeNumber}'),
+                          if (durationLabel != null)
+                            Positioned(
+                              right: 8,
+                              bottom: 8,
+                              child: _ThumbBadge(label: durationLabel),
+                            ),
+                          if (widget.watched)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Icon(
+                                Icons.check_circle_rounded,
+                                size: 16,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                            ),
+                        ],
                       ),
-                      if (durationLabel != null)
-                        Positioned(
-                          right: 8,
-                          bottom: 8,
-                          child: _ThumbBadge(label: durationLabel),
-                        ),
-                      if (widget.watched)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Icon(
-                            Icons.check_circle_rounded,
-                            size: 16,
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                widget.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  height: 1.25,
-                ),
-              ),
-              if (widget.overview.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  widget.overview,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 12,
-                    height: 1.4,
+                  const SizedBox(height: 10),
+                  Text(
+                    widget.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
+                    ),
                   ),
-                ),
-              ],
-            ],
+                  if (widget.overview.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.overview,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
