@@ -40,6 +40,10 @@ abstract final class ShellTokens {
   }
 
   static const double shellTopBarHeight = shellProviderStripHeight + 20;
+
+  /// Home Films / TV / Categories text menu (not provider strip).
+  static const double homeTopBarHeight =
+      shellHeaderTopPadding + 34 + shellCategoryUnderlineGap + shellNavUnderlineHeight;
   static const double shellLogoWidth = 110;
 
   /// Music desktop sidebar width — global rail hidden when Music tab uses this.

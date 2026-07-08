@@ -6,24 +6,18 @@ import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_scaffold.dart';
-import 'package:forja/shell/shell_top_bar.dart';
+import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
-import 'package:rust/rust.dart';
-
-Finder _netflixProviderCard() {
-  return find.byWidgetPredicate((widget) {
-    if (widget.key is! ValueKey) return false;
-    final value = (widget.key! as ValueKey).value;
-    return value is String && value.startsWith('watch-provider-8-');
-  });
-}
+import 'package:rust/src/settings_service.dart';
 
 void main() {
   const visibleIds = ['home', 'search', 'settings'];
 
   setUp(() {
-    ShellBus.homeCategory.value = ShellHomeCategory.films;
+    ShellBus.homeCategory.value = null;
+    ShellBus.homeSelectedMoodId.value = 'mind';
+    ShellBus.homeHeroHeight.value = 0;
     ShellBus.selectedWatchProviderId.value = null;
     ShellBus.requestTab.value = null;
   });
@@ -106,7 +100,7 @@ void main() {
     );
 
     expect(find.byType(ShellNavRail), findsOneWidget);
-    expect(find.byType(ShellTopBar), findsNothing);
+    expect(find.byType(HomeTopBar), findsNothing);
     expect(find.byType(ShellBottomNav), findsNothing);
     expect(find.text('Films'), findsNothing);
   });
@@ -114,35 +108,33 @@ void main() {
   testWidgets('ShellScaffold shows home top bar when shellTopBar is set', (tester) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const ShellTopBar()),
+      desktopScaffold(shellTopBar: const HomeTopBar()),
       size: const Size(1200, 800),
     );
 
-    expect(find.byType(ShellTopBar), findsOneWidget);
-    await tester.pumpAndSettle();
-    expect(_netflixProviderCard(), findsWidgets);
+    expect(find.byType(HomeTopBar), findsOneWidget);
+    expect(find.text('Films'), findsOneWidget);
+    expect(find.text('TV Shows'), findsOneWidget);
   });
 
-  testWidgets('ShellTopBar provider taps update selectedWatchProviderId', (tester) async {
+  testWidgets('HomeTopBar Films tap toggles homeCategory filter', (tester) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const ShellTopBar()),
+      desktopScaffold(shellTopBar: const HomeTopBar()),
       size: const Size(1200, 800),
     );
 
+    expect(ShellBus.homeCategory.value, isNull);
+
+    await tester.tap(find.text('Films'));
     await tester.pumpAndSettle();
 
-    expect(ShellBus.selectedWatchProviderId.value, isNull);
+    expect(ShellBus.homeCategory.value, ShellHomeCategory.films);
 
-    await tester.tap(_netflixProviderCard().first);
+    await tester.tap(find.text('Films'));
     await tester.pumpAndSettle();
 
-    expect(ShellBus.selectedWatchProviderId.value, 8);
-
-    await tester.tap(_netflixProviderCard().first);
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.selectedWatchProviderId.value, isNull);
+    expect(ShellBus.homeCategory.value, isNull);
   });
 
   testWidgets('ShellNavRail uses fixed width without hover expand', (tester) async {
@@ -176,7 +168,7 @@ void main() {
     );
 
     expect(find.byType(ShellNavRail), findsNothing);
-    expect(find.byType(ShellTopBar), findsNothing);
+    expect(find.byType(HomeTopBar), findsNothing);
   });
 
   testWidgets('ForjaGhostButton is text-only; ForjaPlainIcon has no border box', (tester) async {

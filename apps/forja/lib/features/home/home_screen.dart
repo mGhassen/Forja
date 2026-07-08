@@ -17,6 +17,7 @@ import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/app/boot_cache.dart';
+import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'stremio_catalog_screen.dart';
@@ -117,9 +118,11 @@ class _HomeScreenState extends State<HomeScreen>
   StreamSubscription<List<Map<String, dynamic>>>? _historySeedSub;
   VoidCallback? _splashDismissedListener;
   VoidCallback? _watchProviderListener;
+  VoidCallback? _homeCategoryListener;
+  VoidCallback? _homeMoodListener;
 
   // Mood/genre filter state
-  String _selectedMood = 'mind';
+  String _selectedMood = ShellBus.homeSelectedMoodId.value;
   Future<List<Movie>>? _moodFuture;
 
   // Mood definitions — movie and TV use different TMDB genre IDs.
@@ -199,6 +202,43 @@ class _HomeScreenState extends State<HomeScreen>
 
   int? get _watchProviderId => ShellBus.selectedWatchProviderId.value;
 
+  ShellHomeCategory? get _mediaFilter => ShellBus.homeCategory.value;
+
+  Future<List<Movie>> _fetchMediaFiltered({
+    required Future<List<Movie>> Function() movieFetch,
+    required Future<List<Movie>> Function() tvFetch,
+    List<Movie>? movieCache,
+    void Function(List<Movie> movies)? onLoaded,
+  }) {
+    final filter = _mediaFilter;
+    if (filter == ShellHomeCategory.films) {
+      if (movieCache != null) {
+        onLoaded?.call(movieCache);
+        return Future.value(movieCache);
+      }
+      return movieFetch()
+          .then((movies) {
+            onLoaded?.call(movies);
+            return movies;
+          })
+          .catchError((_) => <Movie>[]);
+    }
+    if (filter == ShellHomeCategory.tvShows) {
+      return tvFetch()
+          .then((movies) {
+            onLoaded?.call(movies);
+            return movies;
+          })
+          .catchError((_) => <Movie>[]);
+    }
+    return _fetchMixed(
+      movieFetch,
+      tvFetch,
+      movieCache: movieCache,
+      onLoaded: onLoaded,
+    );
+  }
+
   List<Movie> _interleaveMedia(List<Movie> movies, List<Movie> tv) {
     final out = <Movie>[];
     final seen = <String>{};
@@ -251,15 +291,15 @@ class _HomeScreenState extends State<HomeScreen>
   Future<List<Movie>> _loadFeaturedThisMonth() {
     final range = _currentMonthDateRange();
     final providerId = _watchProviderId;
-    return _fetchMixed(
-      () => _api.discoverMovies(
+    return _fetchMediaFiltered(
+      movieFetch: () => _api.discoverMovies(
         releaseDateGte: range.gte,
         releaseDateLte: range.lte,
         minRating: 6.0,
         watchProviderId: providerId,
         sortBy: 'popularity.desc',
       ),
-      () => _api.discoverTvShows(
+      tvFetch: () => _api.discoverTvShows(
         releaseDateGte: range.gte,
         releaseDateLte: range.lte,
         minRating: 6.0,
@@ -274,49 +314,49 @@ class _HomeScreenState extends State<HomeScreen>
     final canUseBootCache = useBootCache && providerId == null;
 
     if (providerId != null) {
-      _trendingFuture = _fetchMixed(
-        () => _api.discoverMovies(watchProviderId: providerId),
-        () => _api.discoverTvShows(watchProviderId: providerId),
+      _trendingFuture = _fetchMediaFiltered(
+        movieFetch: () => _api.discoverMovies(watchProviderId: providerId),
+        tvFetch: () => _api.discoverTvShows(watchProviderId: providerId),
         onLoaded: (movies) => _fetchHeroLogos(movies.take(5).toList()),
       );
-      _popularFuture = _fetchMixed(
-        () => _api.discoverMovies(
+      _popularFuture = _fetchMediaFiltered(
+        movieFetch: () => _api.discoverMovies(
           watchProviderId: providerId,
           sortBy: 'vote_average.desc',
           minRating: 7,
         ),
-        () => _api.discoverTvShows(
+        tvFetch: () => _api.discoverTvShows(
           watchProviderId: providerId,
           sortBy: 'vote_average.desc',
           minRating: 7,
         ),
       );
-      _nowPlayingFuture = _fetchMixed(
-        () => _api.discoverMovies(
+      _nowPlayingFuture = _fetchMediaFiltered(
+        movieFetch: () => _api.discoverMovies(
           watchProviderId: providerId,
           sortBy: 'primary_release_date.desc',
         ),
-        () => _api.discoverTvShows(
+        tvFetch: () => _api.discoverTvShows(
           watchProviderId: providerId,
           sortBy: 'first_air_date.desc',
         ),
       );
       _featuredThisMonthFuture = _loadFeaturedThisMonth();
     } else {
-      _trendingFuture = _fetchMixed(
-        _api.getTrending,
-        _api.getTrendingTv,
+      _trendingFuture = _fetchMediaFiltered(
+        movieFetch: _api.getTrending,
+        tvFetch: _api.getTrendingTv,
         movieCache: canUseBootCache ? BootCache.trending : null,
         onLoaded: (movies) => _fetchHeroLogos(movies.take(5).toList()),
       );
-      _popularFuture = _fetchMixed(
-        _api.getPopular,
-        _api.getPopularTv,
+      _popularFuture = _fetchMediaFiltered(
+        movieFetch: _api.getPopular,
+        tvFetch: _api.getPopularTv,
         movieCache: canUseBootCache ? BootCache.popular : null,
       );
-      _nowPlayingFuture = _fetchMixed(
-        _api.getNowPlaying,
-        _api.getOnTheAir,
+      _nowPlayingFuture = _fetchMediaFiltered(
+        movieFetch: _api.getNowPlaying,
+        tvFetch: _api.getOnTheAir,
         movieCache: canUseBootCache ? BootCache.nowPlaying : null,
       );
       _featuredThisMonthFuture = _loadFeaturedThisMonth();
@@ -339,6 +379,30 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _resetHomeCategoryFeeds());
   }
 
+  void _onHomeCategoryChanged() {
+    if (!mounted) return;
+    setState(() => _resetHomeCategoryFeeds());
+  }
+
+  void _onHomeMoodChanged() {
+    if (!mounted) return;
+    final moodId = ShellBus.homeSelectedMoodId.value;
+    if (moodId == _selectedMood) return;
+    setState(() {
+      _selectedMood = moodId;
+      _moodFuture = _loadMoodMovies(moodId);
+    });
+  }
+
+  void _publishHomeHeroHeight(bool isDesktop) {
+    final height = isDesktop
+        ? _desktopHeroHeight(context) + _desktopTopBarBleed(context)
+        : _mobileHeroHeight(context);
+    if (ShellBus.homeHeroHeight.value != height) {
+      ShellBus.homeHeroHeight.value = height;
+    }
+  }
+
   void _syncHomeScrollOffset() {
     if (!_homeScrollController.hasClients) return;
     final offset = _homeScrollController.offset;
@@ -358,6 +422,10 @@ class _HomeScreenState extends State<HomeScreen>
     SettingsService.addonChangeNotifier.addListener(_onAddonsChanged);
     _watchProviderListener = _onWatchProviderChanged;
     ShellBus.selectedWatchProviderId.addListener(_watchProviderListener!);
+    _homeCategoryListener = _onHomeCategoryChanged;
+    ShellBus.homeCategory.addListener(_homeCategoryListener!);
+    _homeMoodListener = _onHomeMoodChanged;
+    ShellBus.homeSelectedMoodId.addListener(_homeMoodListener!);
 
     _schedulePostSplashWork();
     markShellTabFresh();
@@ -741,13 +809,13 @@ class _HomeScreenState extends State<HomeScreen>
   Future<List<Movie>> _loadMoodMovies(String moodId) async {
     final mood = _moods.firstWhere((m) => m.id == moodId, orElse: () => _moods.first);
     final providerId = _watchProviderId;
-    return _fetchMixed(
-      () => _api.discoverMovies(
+    return _fetchMediaFiltered(
+      movieFetch: () => _api.discoverMovies(
         genres: mood.movieGenres,
         minRating: 6.0,
         watchProviderId: providerId,
       ),
-      () => _api.discoverTvShows(
+      tvFetch: () => _api.discoverTvShows(
         genres: mood.tvGenres,
         minRating: 6.0,
         watchProviderId: providerId,
@@ -757,6 +825,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _selectMood(String moodId) {
     if (moodId == _selectedMood) return;
+    ShellBus.homeSelectedMoodId.value = moodId;
     setState(() {
       _selectedMood = moodId;
       _moodFuture = _loadMoodMovies(moodId);
@@ -798,9 +867,16 @@ class _HomeScreenState extends State<HomeScreen>
     if (_watchProviderListener != null) {
       ShellBus.selectedWatchProviderId.removeListener(_watchProviderListener!);
     }
+    if (_homeCategoryListener != null) {
+      ShellBus.homeCategory.removeListener(_homeCategoryListener!);
+    }
+    if (_homeMoodListener != null) {
+      ShellBus.homeSelectedMoodId.removeListener(_homeMoodListener!);
+    }
     _homeScrollController.removeListener(_syncHomeScrollOffset);
     _homeScrollController.dispose();
     ShellBus.homeScrollOffset.value = 0;
+    ShellBus.homeHeroHeight.value = 0;
     _heroTimer?.cancel();
     _heroController.dispose();
     _historySeedSub?.cancel();
@@ -961,6 +1037,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     final isDesktop =
         MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    _publishHomeHeroHeight(isDesktop);
 
     final content = RefreshIndicator(
           onRefresh: () => refreshIfStale(force: true),
@@ -1124,7 +1201,20 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         );
 
-    if (!isDesktop) return content;
+    if (!isDesktop) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          content,
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: HomeTopBar(),
+          ),
+        ],
+      );
+    }
 
     return content;
   }

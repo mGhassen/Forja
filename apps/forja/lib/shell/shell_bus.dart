@@ -8,15 +8,22 @@ enum ShellHomeCategory { films, tvShows }
 class ShellBus {
   ShellBus._();
 
-  /// Films / TV Shows selection for [HomeScreen] feed.
-  static final ValueNotifier<ShellHomeCategory> homeCategory =
-      ValueNotifier(ShellHomeCategory.films);
+  /// Films / TV Shows filter for [HomeScreen] (`null` = mixed feed).
+  static final ValueNotifier<ShellHomeCategory?> homeCategory =
+      ValueNotifier<ShellHomeCategory?>(null);
+
+  /// Mood/genre row selection — synced with Home top-bar Categories menu.
+  static final ValueNotifier<String> homeSelectedMoodId =
+      ValueNotifier<String>('mind');
 
   /// TMDB watch-provider filter for Home desktop top bar (`null` = all providers).
   static final ValueNotifier<int?> selectedWatchProviderId = ValueNotifier(null);
 
-  /// Home feed vertical scroll — [ShellTopBar] uses this for a gradient bg when scrolled.
+  /// Home feed vertical scroll — [HomeTopBar] hides when this passes [homeHeroHeight].
   static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);
+
+  /// Hero block height in px — [HomeScreen] publishes on layout.
+  static final ValueNotifier<double> homeHeroHeight = ValueNotifier(0);
 
   /// SearchScreen listens for incoming Stremio search requests.
   /// Value: {'query': '...', 'addonBaseUrl': '...'} or null.

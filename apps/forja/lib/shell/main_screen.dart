@@ -15,7 +15,7 @@ import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_scaffold.dart';
-import 'package:forja/shell/shell_top_bar.dart';
+import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:rust/rust.dart';
@@ -199,9 +199,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    if (!kShowShellProviderMenuOnHome) {
-      ShellBus.selectedWatchProviderId.value = null;
-    }
+    ShellBus.selectedWatchProviderId.value = null;
     WidgetsBinding.instance.addObserver(this);
     ShellBus.stremioSearchNotifier.addListener(_onStremioSearch);
     ShellBus.requestTab.addListener(_onRequestTab);
@@ -350,11 +348,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         onDestinationSelected: _selectTab,
         tabFor: _tabFor,
         shellHeader: _shellHeader(),
-        shellTopBar: kShowShellProviderMenuOnHome &&
-                _currentTabId == 'home' &&
-                useNavRail &&
-                isDesktop
-            ? const ShellTopBar()
+        shellTopBar: _currentTabId == 'home' && useNavRail && isDesktop
+            ? const HomeTopBar()
             : null,
         hideGlobalNav: ShellBus.hideGlobalNav.value,
       ),
