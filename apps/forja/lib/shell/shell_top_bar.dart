@@ -10,6 +10,8 @@ class ShellTopBar extends StatelessWidget {
   const ShellTopBar({super.key});
 
   static const _categories = ['Films', 'TV Shows', 'Anime'];
+  static const _scrollFadeDistance = 48.0;
+  static const _gradientFadeExtent = 40.0;
 
   void _onCategoryTap(int index) {
     switch (index) {
@@ -26,56 +28,93 @@ class ShellTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.paddingOf(context).top;
+    final chromeHeight = topInset + ShellTokens.shellTopBarHeight;
+    final totalHeight = chromeHeight + _gradientFadeExtent;
+    final fadeStart = chromeHeight / totalHeight;
+
     return ValueListenableBuilder<double>(
       valueListenable: ShellBus.homeScrollOffset,
       builder: (context, scrollOffset, _) {
-        final bgOpacity = (scrollOffset / 24).clamp(0.0, 1.0);
-        return ColoredBox(
-          color: AppTheme.bgDark.withValues(alpha: bgOpacity),
-          child: SafeArea(
-            bottom: false,
-            child: SizedBox(
-              height: ShellTokens.shellTopBarHeight,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  ShellTokens.bodyHorizontalPadding,
-                  ShellTokens.shellHeaderTopPadding,
-                  ShellTokens.bodyHorizontalPadding,
-                  0,
-                ),
-                child: ValueListenableBuilder<ShellHomeCategory>(
-                  valueListenable: ShellBus.homeCategory,
-                  builder: (context, selectedCategory, _) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...List.generate(_categories.length, (index) {
-                          final label = _categories[index];
-                          final isActive = switch (index) {
-                            0 => selectedCategory == ShellHomeCategory.films,
-                            1 => selectedCategory == ShellHomeCategory.tvShows,
-                            _ => false,
-                          };
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              right: index < _categories.length - 1 ? 36 : 0,
-                            ),
-                            child: _CategoryTab(
-                              label: label,
-                              isActive: isActive,
-                              onTap: () => _onCategoryTap(index),
-                            ),
-                          );
-                        }),
+        final t = (scrollOffset / _scrollFadeDistance).clamp(0.0, 1.0);
+        if (t <= 0) {
+          return SizedBox(
+            height: chromeHeight,
+            child: _buildMenu(context),
+          );
+        }
+
+        return SizedBox(
+          height: totalHeight,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.bgDark.withValues(alpha: t),
+                        AppTheme.bgDark.withValues(alpha: t),
+                        AppTheme.bgDark.withValues(alpha: 0),
                       ],
-                    );
-                  },
+                      stops: [0, fadeStart, 1],
+                    ),
+                  ),
                 ),
               ),
-            ),
+              _buildMenu(context),
+            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMenu(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: SizedBox(
+        height: ShellTokens.shellTopBarHeight,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            ShellTokens.bodyHorizontalPadding,
+            ShellTokens.shellHeaderTopPadding,
+            ShellTokens.bodyHorizontalPadding,
+            0,
+          ),
+          child: ValueListenableBuilder<ShellHomeCategory>(
+            valueListenable: ShellBus.homeCategory,
+            builder: (context, selectedCategory, _) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...List.generate(_categories.length, (index) {
+                    final label = _categories[index];
+                    final isActive = switch (index) {
+                      0 => selectedCategory == ShellHomeCategory.films,
+                      1 => selectedCategory == ShellHomeCategory.tvShows,
+                      _ => false,
+                    };
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        right: index < _categories.length - 1 ? 36 : 0,
+                      ),
+                      child: _CategoryTab(
+                        label: label,
+                        isActive: isActive,
+                        onTap: () => _onCategoryTap(index),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 }

@@ -18,4 +18,13 @@ abstract final class ForjaShellColors {
   /// Subtle Material ink — avoids theme-primary purple hover on shell controls.
   static const Color inkHover = Color(0x0AFFFFFF);
   static const Color inkSplash = Color(0x14FFFFFF);
+
+  /// Flat home section headers (theme-independent).
+  static const Color sectionIconBg = Color(0xFF252525);
+  static const Color sectionAccent = iconActive;
+  static const Color chipSelectedBg = Color(0x33FFFFFF);
+  static const Color chipSelectedBorder = Color(0x99E5E7EB);
+  static const Color chipSelectedIcon = textPrimary;
+  static const Color progressFill = textPrimary;
+  static const Color badgeLabel = textSecondary;
 }

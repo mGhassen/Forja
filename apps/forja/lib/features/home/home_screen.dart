@@ -5,7 +5,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:palette_generator/palette_generator.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
@@ -21,6 +20,27 @@ import 'package:forja/shell/shell_tab_refresh.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart' hide AppTheme;
+
+Widget _heroTitleText(Movie movie, bool isLandscape, {bool desktop = false}) {
+  return Text(
+    movie.title,
+    style: TextStyle(
+      fontSize: desktop ? 32 : (isLandscape ? 48 : 36),
+      fontWeight: FontWeight.w900,
+      color: Colors.white,
+      height: 1.0,
+      letterSpacing: -1.0,
+      shadows: AppTheme.isLightMode
+          ? null
+          : [
+              const Shadow(color: Colors.black, blurRadius: 40),
+              Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 80),
+            ],
+    ),
+    maxLines: 2,
+    overflow: TextOverflow.ellipsis,
+  );
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -59,11 +79,6 @@ class _HomeScreenState extends State<HomeScreen>
   List<Movie> _traktRecommendations = [];
   List<Movie> _traktUpcomingShows = [];
   List<Movie> _traktUpcomingMovies = [];
-
-  // Ambient backdrop colors derived from current hero poster
-  Color _ambientPrimary = AppTheme.primaryColor;
-  Color _ambientSecondary = AppTheme.accentColor;
-  final Map<int, ({Color primary, Color secondary})> _ambientCache = {};
 
   // "Because you watched ___" — randomized seed pulled from continue-watching
   // once per session, then BestSimilar.com recommendations (mapped to TMDB).
@@ -111,7 +126,6 @@ class _HomeScreenState extends State<HomeScreen>
       trendingFetcher,
       onLoaded: (movies) {
         _fetchHeroLogos(movies.take(5).toList());
-        if (movies.isNotEmpty) _extractAmbientFor(movies.first);
       },
     );
     _popularFuture = _tmdbFuture(
@@ -450,7 +464,6 @@ class _HomeScreenState extends State<HomeScreen>
     if (_heroIndex != realIndex) {
       setState(() => _heroIndex = realIndex);
     }
-    _extractAmbientFor(movies[realIndex]);
 
     if (pageIndex <= 2 || pageIndex >= _heroLoopLength - 3) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -540,60 +553,17 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  Future<void> _extractAmbientFor(Movie movie) async {
-    if (AppTheme.isLightMode) return;
-    if (_ambientCache.containsKey(movie.id)) {
-      final c = _ambientCache[movie.id]!;
-      if (mounted) {
-        setState(() {
-          _ambientPrimary = c.primary;
-          _ambientSecondary = c.secondary;
-        });
-      }
-      return;
-    }
-    final src = movie.backdropPath.isNotEmpty
-        ? TmdbApi.getImageUrl(movie.backdropPath)
-        : (movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '');
-    if (src.isEmpty) return;
-    try {
-      final pg = await PaletteGenerator.fromImageProvider(
-        CachedNetworkImageProvider(src),
-        size: const Size(160, 90),
-        maximumColorCount: 12,
-      );
-      final dom = pg.dominantColor?.color ?? pg.vibrantColor?.color ?? AppTheme.primaryColor;
-      final vib = pg.vibrantColor?.color ??
-          pg.lightVibrantColor?.color ??
-          pg.mutedColor?.color ??
-          AppTheme.accentColor;
-      // Boost saturation slightly so dark posters still tint the page
-      Color boosted(Color c) {
-        final hsl = HSLColor.fromColor(c);
-        return hsl
-            .withSaturation((hsl.saturation + 0.25).clamp(0.0, 1.0))
-            .withLightness((hsl.lightness * 0.65 + 0.18).clamp(0.05, 0.55))
-            .toColor();
-      }
-      final primary = boosted(dom);
-      final secondary = boosted(vib);
-      _ambientCache[movie.id] = (primary: primary, secondary: secondary);
-      if (!mounted) return;
-      setState(() {
-        _ambientPrimary = primary;
-        _ambientSecondary = secondary;
-      });
-    } catch (_) {}
-  }
-
   Future<void> _fetchHeroLogos(List<Movie> movies) async {
     for (final movie in movies) {
       if (_heroLogos.containsKey(movie.id)) continue;
       try {
         final logoPath = await _api.getLogoPath(movie.id, mediaType: movie.mediaType);
-        if (logoPath.isNotEmpty && mounted) {
-          setState(() => _heroLogos[movie.id] = TmdbApi.getImageUrl(logoPath));
-        }
+        if (!mounted) return;
+        setState(() {
+          _heroLogos[movie.id] = logoPath.isNotEmpty
+              ? TmdbApi.getImageUrl(logoPath)
+              : '';
+        });
       } catch (_) {}
     }
   }
@@ -784,7 +754,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     final content = RefreshIndicator(
           onRefresh: () => refreshIfStale(force: true),
-          color: AppTheme.primaryColor,
+          color: ForjaShellColors.sectionAccent,
           child: CustomScrollView(
             controller: _homeScrollController,
             scrollCacheExtent: ScrollCacheExtent.pixels(500),
@@ -792,7 +762,10 @@ class _HomeScreenState extends State<HomeScreen>
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
-              // Hero (+ continue watching overlap on desktop)
+              const SliverToBoxAdapter(
+                child: RepaintBoundary(child: _ContinueWatchingSection()),
+              ),
+
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: FutureBuilder<List<Movie>>(
@@ -805,23 +778,13 @@ class _HomeScreenState extends State<HomeScreen>
                       }
                       final movies = snapshot.data!.take(5).toList();
                       if (isDesktop) {
-                        return _buildDesktopHeroBlock(
-                          movies,
-                          belowHero: const RepaintBoundary(
-                            child: _ContinueWatchingSection(),
-                          ),
-                        );
+                        return _buildDesktopHeroBlock(movies);
                       }
                       return _buildHeroCarousel(movies);
                     },
                   ),
                 ),
               ),
-
-              if (!isDesktop)
-                const SliverToBoxAdapter(
-                  child: RepaintBoundary(child: _ContinueWatchingSection()),
-                ),
 
               // Mood / Genre chips — interactive filter
               SliverToBoxAdapter(
@@ -922,10 +885,12 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  double _heroHeight(BuildContext context) {
+    return MediaQuery.sizeOf(context).height * ShellTokens.heroHeightFractionDesktop;
+  }
+
   Widget _buildHeroShimmer() {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final h = isLandscape ? MediaQuery.of(context).size.height * 0.65 : MediaQuery.of(context).size.height * 0.82;
-    final placeholder = Container(height: h, color: AppTheme.bgCard);
+    final placeholder = Container(height: _heroHeight(context), color: AppTheme.bgCard);
     if (AppTheme.isLightMode) return placeholder;
     return Shimmer.fromColors(
       baseColor: AppTheme.bgCard,
@@ -934,15 +899,11 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  double _desktopHeroBackdropHeight(BuildContext context) {
-    return MediaQuery.sizeOf(context).height * ShellTokens.heroHeightFractionDesktop;
-  }
+  double _desktopHeroBackdropHeight(BuildContext context) => _heroHeight(context);
 
   Widget _buildDesktopHeroShimmer() {
-    final backdropHeight = _desktopHeroBackdropHeight(context);
-    const overlap = ShellTokens.heroBackdropOverlapDesktop;
     final placeholder = Container(
-      height: backdropHeight - overlap,
+      height: _desktopHeroBackdropHeight(context),
       color: AppTheme.bgCard,
     );
     if (AppTheme.isLightMode) return placeholder;
@@ -953,62 +914,44 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDesktopHeroBlock(
-    List<Movie> movies, {
-    required Widget belowHero,
-  }) {
+  Widget _buildDesktopHeroBlock(List<Movie> movies) {
     final heroMovie = movies[_heroIndex];
-    final backdropHeight = _desktopHeroBackdropHeight(context);
-    const overlap = ShellTokens.heroBackdropOverlapDesktop;
-    final topBarBleed =
-        MediaQuery.paddingOf(context).top + ShellTokens.shellTopBarHeight;
-    final imageHeight = backdropHeight + topBarBleed;
+    final heroHeight = _desktopHeroBackdropHeight(context);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          height: backdropHeight - overlap,
-          width: double.infinity,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                top: -topBarBleed,
-                left: 0,
-                right: 0,
-                height: imageHeight,
-                child: _buildDesktopHeroBackdrop(movies),
-              ),
-              Positioned(
-                left: 20,
-                top: topBarBleed + 24,
-                right: 48,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: SizedBox(
-                    width: math.min(
-                      MediaQuery.sizeOf(context).width * 0.34,
-                      ShellTokens.heroTextColumnWidthDesktop,
-                    ),
-                    child: _buildDesktopHeroTextColumn(heroMovie),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 20,
-                top: -topBarBleed,
-                height: imageHeight,
-                child: Center(
-                  child: _buildHeroStepIndicators(movies),
-                ),
-              ),
-            ],
+    return SizedBox(
+      height: heroHeight,
+      width: double.infinity,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: _buildDesktopHeroBackdrop(movies),
           ),
-        ),
-        belowHero,
-      ],
+          Positioned(
+            left: 20,
+            top: 24,
+            right: 48,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: math.min(
+                  MediaQuery.sizeOf(context).width * 0.34,
+                  ShellTokens.heroTextColumnWidthDesktop,
+                ),
+                child: _buildDesktopHeroTextColumn(heroMovie),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 20,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: _buildHeroStepIndicators(movies),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1034,6 +977,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
+        const SizedBox(height: 12),
         SizedBox(
           height: ShellTokens.heroMetaSlotHeightDesktop,
           child: Align(
@@ -1041,6 +985,7 @@ class _HomeScreenState extends State<HomeScreen>
             child: _buildHeroMetaRow(heroMovie, singleLine: true),
           ),
         ),
+        const SizedBox(height: 12),
         SizedBox(
           height: ShellTokens.heroOverviewSlotHeightDesktop,
           child: Padding(
@@ -1148,20 +1093,20 @@ class _HomeScreenState extends State<HomeScreen>
     required bool isLandscape,
     bool desktop = false,
   }) {
-    final logoMaxHeight = desktop
-        ? ShellTokens.heroLogoMaxHeightDesktop
-        : (isLandscape ? 140.0 : 110.0);
-    final logoMaxWidth = desktop
-        ? ShellTokens.heroTextColumnWidthDesktop
-        : (isLandscape ? 420.0 : MediaQuery.sizeOf(context).width * 0.75);
-    final titlePadding = desktop
-        ? EdgeInsets.zero
-        : const EdgeInsets.only(bottom: 14);
-
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 600),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeIn,
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: Alignment.bottomLeft,
+          clipBehavior: Clip.none,
+          children: [
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
       transitionBuilder: (child, animation) => FadeTransition(
         opacity: animation,
         child: SlideTransition(
@@ -1172,31 +1117,13 @@ class _HomeScreenState extends State<HomeScreen>
           child: child,
         ),
       ),
-      child: _heroLogos.containsKey(heroMovie.id) &&
-              _heroLogos[heroMovie.id]!.isNotEmpty
-          ? Padding(
-              key: ValueKey('logo_${heroMovie.id}'),
-              padding: titlePadding,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: logoMaxWidth,
-                  maxHeight: logoMaxHeight,
-                ),
-                child: CachedNetworkImage(
-                  imageUrl: _heroLogos[heroMovie.id]!,
-                  fit: BoxFit.contain,
-                  alignment: Alignment.centerLeft,
-                  placeholder: (_, _) => const SizedBox.shrink(),
-                  errorWidget: (_, _, _) =>
-                      _buildHeroTitle(heroMovie, isLandscape, desktop: desktop),
-                ),
-              ),
-            )
-          : Padding(
-              key: ValueKey('title_${heroMovie.id}'),
-              padding: titlePadding,
-              child: _buildHeroTitle(heroMovie, isLandscape, desktop: desktop),
-            ),
+      child: _HeroTitleSlot(
+        key: ValueKey(heroMovie.id),
+        movie: heroMovie,
+        logoUrl: _heroLogos[heroMovie.id],
+        isLandscape: isLandscape,
+        desktop: desktop,
+      ),
     );
   }
 
@@ -1419,8 +1346,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeroCarousel(List<Movie> movies) {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final height = isLandscape ? MediaQuery.of(context).size.height * 0.65 : MediaQuery.of(context).size.height * 0.82;
+    final height = _heroHeight(context);
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     final heroMovie = movies[_heroIndex];
     
     return SizedBox(
@@ -1478,7 +1406,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                   ),
-                  // Subtle color tint overlay (skipped in light mode)
+                  // Subtle dark tint overlay (skipped in light mode)
                   if (!AppTheme.isLightMode)
                   Container(
                     decoration: BoxDecoration(
@@ -1486,7 +1414,7 @@ class _HomeScreenState extends State<HomeScreen>
                         center: Alignment.bottomLeft,
                         radius: 1.8,
                         colors: [
-                          AppTheme.primaryColor.withValues(alpha: 0.08),
+                          Colors.white.withValues(alpha: 0.04),
                           Colors.transparent,
                         ],
                       ),
@@ -1526,45 +1454,12 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Logo or Title — cinematic size
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 600),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(animation),
-                        child: child,
-                      ),
-                    ),
-                    child: _heroLogos.containsKey(heroMovie.id) && _heroLogos[heroMovie.id]!.isNotEmpty
-                        ? Padding(
-                            key: ValueKey('logo_${heroMovie.id}'),
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: isLandscape ? 420 : MediaQuery.of(context).size.width * 0.75,
-                                maxHeight: isLandscape ? 140 : 110,
-                              ),
-                              child: CachedNetworkImage(
-                                imageUrl: _heroLogos[heroMovie.id]!,
-                                fit: BoxFit.contain,
-                                alignment: Alignment.centerLeft,
-                                placeholder: (_, _) => const SizedBox.shrink(),
-                                errorWidget: (_, _, _) => _buildHeroTitle(heroMovie, isLandscape),
-                              ),
-                            ),
-                          )
-                        : Padding(
-                            key: ValueKey('title_${heroMovie.id}'),
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: _buildHeroTitle(heroMovie, isLandscape),
-                          ),
-                  ),
+                  // Logo or Title — fixed slot prevents layout jump on logo load
+                  _buildHeroTitleBlock(heroMovie, isLandscape: isLandscape),
+                  const SizedBox(height: 12),
                   // Meta row — cinematic
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: 16),
                     child: Wrap(
                       spacing: 10,
                       runSpacing: 6,
@@ -1690,25 +1585,6 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildHeroTitle(Movie movie, bool isLandscape, {bool desktop = false}) {
-    return Text(
-      movie.title,
-      style: TextStyle(
-        fontSize: desktop ? 32 : (isLandscape ? 48 : 36),
-        fontWeight: FontWeight.w900,
-        color: Colors.white,
-        height: 1.0,
-        letterSpacing: -1.0,
-        shadows: AppTheme.isLightMode ? null : [
-          const Shadow(color: Colors.black, blurRadius: 40),
-          Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 80),
-        ],
-      ),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -1876,10 +1752,10 @@ class _MovieSectionState extends State<_MovieSection> {
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                        color: ForjaShellColors.sectionIconBg,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(widget.icon, color: AppTheme.primaryColor, size: 18),
+                      child: Icon(widget.icon, color: ForjaShellColors.sectionAccent, size: 18),
                     ),
                     const SizedBox(width: 10),
                   ],
@@ -1895,7 +1771,7 @@ class _MovieSectionState extends State<_MovieSection> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(2),
                             gradient: LinearGradient(
-                              colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.0)],
+                              colors: [ForjaShellColors.sectionAccent, ForjaShellColors.sectionAccent.withValues(alpha: 0.0)],
                             ),
                           ),
                         ),
@@ -2017,10 +1893,10 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    color: ForjaShellColors.sectionIconBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(widget.icon, color: AppTheme.primaryColor, size: 18),
+                  child: Icon(widget.icon, color: ForjaShellColors.sectionAccent, size: 18),
                 ),
                 const SizedBox(width: 10),
               ],
@@ -2036,7 +1912,7 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(2),
                         gradient: LinearGradient(
-                          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.0)],
+                          colors: [ForjaShellColors.sectionAccent, ForjaShellColors.sectionAccent.withValues(alpha: 0.0)],
                         ),
                       ),
                     ),
@@ -2109,7 +1985,6 @@ class _MovieCard extends StatelessWidget {
           border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
           boxShadow: AppTheme.isLightMode ? null : [
             BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 8)),
-            BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: -4),
           ],
         ),
         child: Stack(
@@ -2179,7 +2054,7 @@ class _MovieCard extends StatelessWidget {
                         if (movie.releaseDate.isNotEmpty) ...[
                           Text('  •  ', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
                         ],
-                        Text('TV', style: TextStyle(color: AppTheme.primaryColor.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text('TV', style: TextStyle(color: ForjaShellColors.badgeLabel, fontSize: 10, fontWeight: FontWeight.bold)),
                       ],
                     ],
                   ),
@@ -2740,10 +2615,10 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                      color: ForjaShellColors.sectionIconBg,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.play_circle_outline_rounded, color: AppTheme.primaryColor, size: 18),
+                    child: Icon(Icons.play_circle_outline_rounded, color: ForjaShellColors.sectionAccent, size: 18),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -2758,7 +2633,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(2),
                             gradient: LinearGradient(
-                              colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.0)],
+                              colors: [ForjaShellColors.sectionAccent, ForjaShellColors.sectionAccent.withValues(alpha: 0.0)],
                             ),
                           ),
                         ),
@@ -2860,7 +2735,6 @@ class _HistoryCard extends StatelessWidget {
           border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
           boxShadow: AppTheme.isLightMode ? null : [
             BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 6)),
-            BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.06), blurRadius: 24, spreadRadius: -4),
           ],
         ),
         child: Stack(
@@ -2902,6 +2776,8 @@ class _HistoryCard extends StatelessWidget {
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(20),
+                      hoverColor: ForjaShellColors.inkHover,
+                      splashColor: ForjaShellColors.inkSplash,
                       onTap: onRemove,
                       child: Container(
                         padding: const EdgeInsets.all(5),
@@ -2915,6 +2791,8 @@ class _HistoryCard extends StatelessWidget {
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(20),
+                      hoverColor: ForjaShellColors.inkHover,
+                      splashColor: ForjaShellColors.inkSplash,
                       onTap: onInfo,
                       child: Container(
                         padding: const EdgeInsets.all(5),
@@ -2959,7 +2837,7 @@ class _HistoryCard extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 3),
                             child: Text(
                               remainingText,
-                              style: TextStyle(color: AppTheme.primaryColor.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.w600),
+                              style: TextStyle(color: ForjaShellColors.badgeLabel, fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ),
                       ],
@@ -2971,7 +2849,7 @@ class _HistoryCard extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: progress,
                       backgroundColor: Colors.white.withValues(alpha: 0.1),
-                      color: AppTheme.primaryColor,
+                      color: ForjaShellColors.sectionAccent,
                       minHeight: 3,
                     ),
                   ),
@@ -2985,7 +2863,7 @@ class _HistoryCard extends StatelessWidget {
                    color: Colors.black.withValues(alpha: 0.6),
                    borderRadius: BorderRadius.circular(14),
                  ),
-                 child: const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+                 child: Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent)),
                ),
           ],
         ),
@@ -3094,7 +2972,7 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
                 Container(
                   padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                    color: ForjaShellColors.sectionIconBg.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: ClipRRect(
@@ -3102,7 +2980,7 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
                     child: CachedNetworkImage(
                       imageUrl: addonIcon,
                       width: 20, height: 20,
-                      errorWidget: (_, _, _) => const Icon(Icons.extension, size: 20, color: AppTheme.primaryColor),
+                      errorWidget: (_, _, _) => Icon(Icons.extension, size: 20, color: ForjaShellColors.sectionAccent),
                     ),
                   ),
                 ),
@@ -3111,10 +2989,10 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                    color: ForjaShellColors.sectionIconBg.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.extension_rounded, color: AppTheme.primaryColor, size: 18),
+                  child: Icon(Icons.extension_rounded, color: ForjaShellColors.sectionAccent, size: 18),
                 ),
                 const SizedBox(width: 10),
               ],
@@ -3138,7 +3016,7 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(2),
                         gradient: LinearGradient(
-                          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.0)],
+                          colors: [ForjaShellColors.sectionAccent, ForjaShellColors.sectionAccent.withValues(alpha: 0.0)],
                         ),
                       ),
                     ),
@@ -3234,7 +3112,6 @@ class _StremioCatalogCard extends StatelessWidget {
           border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
           boxShadow: AppTheme.isLightMode ? null : [
             BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 6)),
-            BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: -4),
           ],
         ),
         child: Stack(
@@ -3442,10 +3319,10 @@ class _MoodSectionState extends State<_MoodSection> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                  color: ForjaShellColors.sectionIconBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.mood_rounded, color: AppTheme.primaryColor, size: 18),
+                child: Icon(Icons.mood_rounded, color: ForjaShellColors.sectionAccent, size: 18),
               ),
               const SizedBox(width: 10),
               const Expanded(
@@ -3474,11 +3351,14 @@ class _MoodSectionState extends State<_MoodSection> {
               final isSelected = m.id == selectedId;
               return Material(
                 color: isSelected
-                    ? AppTheme.primaryColor.withValues(alpha: 0.2)
+                    ? ForjaShellColors.chipSelectedBg
                     : Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(24),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(24),
+                  hoverColor: ForjaShellColors.inkHover,
+                  splashColor: ForjaShellColors.inkSplash,
+                  highlightColor: ForjaShellColors.inkSplash,
                   onTap: () => onSelect(m.id),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -3486,7 +3366,7 @@ class _MoodSectionState extends State<_MoodSection> {
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: isSelected
-                            ? AppTheme.primaryColor.withValues(alpha: 0.7)
+                            ? ForjaShellColors.chipSelectedBorder
                             : Colors.white.withValues(alpha: 0.08),
                       ),
                     ),
@@ -3497,7 +3377,7 @@ class _MoodSectionState extends State<_MoodSection> {
                           m.icon,
                           size: 14,
                           color: isSelected
-                              ? AppTheme.primaryColor
+                              ? ForjaShellColors.chipSelectedIcon
                               : Colors.white.withValues(alpha: 0.7),
                         ),
                         const SizedBox(width: 6),
@@ -3673,18 +3553,9 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
                       borderRadius: BorderRadius.circular(6),
                       color: AppTheme.bgCard,
                       border: Border.all(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                        color: ForjaShellColors.borderSubtle,
                         width: 1.2,
                       ),
-                      boxShadow: AppTheme.isLightMode
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: AppTheme.primaryColor.withValues(alpha: 0.35),
-                                blurRadius: 12,
-                                spreadRadius: -2,
-                              ),
-                            ],
                     ),
                     child: posterUrl.isNotEmpty
                         ? CachedNetworkImage(
@@ -3732,8 +3603,8 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
                             borderRadius: BorderRadius.circular(2),
                             gradient: LinearGradient(
                               colors: [
-                                AppTheme.primaryColor,
-                                AppTheme.primaryColor.withValues(alpha: 0.0),
+                                ForjaShellColors.sectionAccent,
+                                ForjaShellColors.sectionAccent.withValues(alpha: 0.0),
                               ],
                             ),
                           ),
@@ -3771,6 +3642,67 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
           ],
         );
       },
+    );
+  }
+}
+
+class _HeroTitleSlot extends StatelessWidget {
+  const _HeroTitleSlot({
+    super.key,
+    required this.movie,
+    required this.logoUrl,
+    required this.isLandscape,
+    this.desktop = false,
+  });
+
+  final Movie movie;
+  final String? logoUrl;
+  final bool isLandscape;
+  final bool desktop;
+
+  @override
+  Widget build(BuildContext context) {
+    final logoMaxHeight = desktop
+        ? ShellTokens.heroLogoMaxHeightDesktop
+        : (isLandscape ? 140.0 : 110.0);
+    final maxWidth = desktop
+        ? ShellTokens.heroTextColumnWidthDesktop
+        : (isLandscape ? 420.0 : MediaQuery.sizeOf(context).width * 0.75);
+    final slotHeight = desktop
+        ? ShellTokens.heroTitleSlotHeightDesktop
+        : logoMaxHeight + 14;
+    final title = _heroTitleText(movie, isLandscape, desktop: desktop);
+    final hasLogo = logoUrl != null && logoUrl!.isNotEmpty;
+
+    return SizedBox(
+      height: slotHeight,
+      width: maxWidth,
+      child: Align(
+        alignment: Alignment.bottomLeft,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: desktop ? 0 : 14),
+          child: SizedBox(
+            height: logoMaxHeight,
+            width: maxWidth,
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: hasLogo
+                  ? CachedNetworkImage(
+                      imageUrl: logoUrl!,
+                      height: logoMaxHeight,
+                      width: maxWidth,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
+                      placeholder: (_, _) => title,
+                      errorWidget: (_, _, _) => title,
+                      fadeInDuration: const Duration(milliseconds: 250),
+                      fadeOutDuration: Duration.zero,
+                    )
+                  : title,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

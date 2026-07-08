@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
@@ -39,6 +40,8 @@ class ShellBottomNav extends StatelessWidget {
                 final isSelected = selectedIndex == idx;
 
                 return InkWell(
+                  hoverColor: ForjaShellColors.inkHover,
+                  splashColor: ForjaShellColors.inkSplash,
                   onTap: () => onItemTapped(idx),
                   child: Container(
                     width: ShellTokens.bottomNavItemWidth,
@@ -54,7 +57,7 @@ class ShellBottomNav extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppTheme.current.primaryColor.withValues(alpha: 0.2)
+                                ? ForjaShellColors.chipSelectedBg
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(ShellTokens.navSelectionBorderRadius),
                           ),

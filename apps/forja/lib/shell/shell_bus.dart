@@ -12,7 +12,7 @@ class ShellBus {
   static final ValueNotifier<ShellHomeCategory> homeCategory =
       ValueNotifier(ShellHomeCategory.films);
 
-  /// Home feed vertical scroll — [ShellTopBar] uses this for a solid bg when scrolled.
+  /// Home feed vertical scroll — [ShellTopBar] uses this for a gradient bg when scrolled.
   static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);
 
   /// SearchScreen listens for incoming Stremio search requests.
