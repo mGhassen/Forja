@@ -821,7 +821,6 @@ class _HomeScreenState extends State<HomeScreen>
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
-              // Hero (+ continue watching overlap on desktop)
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: FutureBuilder<List<Movie>>(
@@ -834,12 +833,7 @@ class _HomeScreenState extends State<HomeScreen>
                       }
                       final movies = snapshot.data!.take(5).toList();
                       if (isDesktop) {
-                        return _buildDesktopHeroBlock(
-                          movies,
-                          belowHero: const RepaintBoundary(
-                            child: _ContinueWatchingSection(),
-                          ),
-                        );
+                        return _buildDesktopHeroBlock(movies);
                       }
                       return _buildHeroCarousel(movies);
                     },
@@ -847,10 +841,9 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
 
-              if (!isDesktop)
-                const SliverToBoxAdapter(
-                  child: RepaintBoundary(child: _ContinueWatchingSection()),
-                ),
+              const SliverToBoxAdapter(
+                child: RepaintBoundary(child: _ContinueWatchingSection()),
+              ),
 
               // Mood / Genre chips — interactive filter
               SliverToBoxAdapter(
@@ -978,10 +971,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildDesktopHeroShimmer() {
     final backdropHeight = _desktopHeroBackdropHeight(context);
-    final overlap = ShellTokens.heroBackdropOverlapDesktop;
     final topBarBleed = _desktopTopBarBleed(context);
     final placeholder = Container(
-      height: backdropHeight - overlap + topBarBleed,
+      height: backdropHeight + topBarBleed,
       color: AppTheme.bgCard,
     );
     if (AppTheme.isLightMode) return placeholder;
@@ -992,20 +984,16 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDesktopHeroBlock(
-    List<Movie> movies, {
-    required Widget belowHero,
-  }) {
+  Widget _buildDesktopHeroBlock(List<Movie> movies) {
     final heroMovie = movies[_heroIndex];
     final backdropHeight = _desktopHeroBackdropHeight(context);
-    final overlap = ShellTokens.heroBackdropOverlapDesktop;
     final topBarBleed = _desktopTopBarBleed(context);
     final imageHeight = backdropHeight + topBarBleed;
 
-    final heroStackHeight = backdropHeight - overlap + topBarBleed;
-
-    Widget buildHeroStack() {
-      return Stack(
+    return SizedBox(
+      height: imageHeight,
+      width: double.infinity,
+      child: Stack(
         clipBehavior: Clip.none,
         children: [
           Positioned(
@@ -1039,45 +1027,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ],
-      );
-    }
-
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: WatchHistoryService().historyStream,
-      initialData: WatchHistoryService().current,
-      builder: (context, historySnapshot) {
-        final hasContinueWatching = historySnapshot.data?.isNotEmpty ?? false;
-        final continueHeight = hasContinueWatching
-            ? ShellTokens.heroContinueWatchingHeightDesktop
-            : 0.0;
-        final blockHeight = heroStackHeight +
-            continueHeight -
-            (hasContinueWatching ? overlap : 0);
-
-        return SizedBox(
-          height: blockHeight,
-          width: double.infinity,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: heroStackHeight,
-                child: buildHeroStack(),
-              ),
-              if (hasContinueWatching)
-                Positioned(
-                  top: heroStackHeight - overlap,
-                  left: 0,
-                  right: 0,
-                  child: belowHero,
-                ),
-            ],
-          ),
-        );
-      },
+      ),
     );
   }
 

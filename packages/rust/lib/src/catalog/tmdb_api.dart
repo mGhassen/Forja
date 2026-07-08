@@ -16,7 +16,7 @@ class WatchProvider {
   String get logoUrl => 'https://image.tmdb.org/t/p/w92$logoPath';
 
   /// Higher-res tile for top-bar cards (fills the card).
-  String get logoCardUrl => 'https://image.tmdb.org/t/p/w154$logoPath';
+  String get logoCardUrl => 'https://image.tmdb.org/t/p/w300$logoPath';
 
   factory WatchProvider.fromJson(Map<String, dynamic> json) {
     return WatchProvider(

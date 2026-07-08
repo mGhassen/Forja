@@ -1,18 +1,12 @@
-import 'dart:ui';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
 
 class ShellTopBar extends StatefulWidget {
   const ShellTopBar({super.key});
-
-  static const _scrollFadeDistance = 32.0;
-  static const _gradientFadeExtent = 56.0;
 
   @override
   State<ShellTopBar> createState() => _ShellTopBarState();
@@ -37,79 +31,7 @@ class _ShellTopBarState extends State<ShellTopBar> {
 
   @override
   Widget build(BuildContext context) {
-    final topInset = MediaQuery.paddingOf(context).top;
-    final chromeHeight = topInset + ShellTokens.shellTopBarHeight;
-    final totalHeight = chromeHeight + ShellTopBar._gradientFadeExtent;
-
-    return ValueListenableBuilder<double>(
-      valueListenable: ShellBus.homeScrollOffset,
-      builder: (context, scrollOffset, _) {
-        final fadeIn = (scrollOffset / ShellTopBar._scrollFadeDistance).clamp(0.0, 1.0);
-        final showOverlay = scrollOffset > 0;
-
-        return SizedBox(
-          height: showOverlay ? totalHeight : chromeHeight,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (showOverlay)
-                IgnorePointer(
-                  child: Opacity(
-                    opacity: fadeIn,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: chromeHeight,
-                          child: ClipRect(
-                            child: AppTheme.isLightMode
-                                ? ColoredBox(
-                                    color: AppTheme.bgDark.withValues(alpha: 0.95),
-                                  )
-                                : BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                                    child: ColoredBox(
-                                      color: AppTheme.bgDark.withValues(alpha: 0.72),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        Positioned(
-                          top: chromeHeight,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  AppTheme.bgDark.withValues(alpha: 0.85),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _buildMenu(context),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    return _buildMenu(context);
   }
 
   Widget _buildMenu(BuildContext context) {
@@ -168,8 +90,6 @@ class _ProviderFilterStripState extends State<_ProviderFilterStrip> {
 
   final ScrollController _scrollController = ScrollController();
   bool _isLoopJumping = false;
-  bool _showLeftFade = false;
-  bool _showRightFade = true;
 
   static const double _itemStride =
       ShellTokens.shellProviderCardWidth + ShellTokens.shellProviderCardGap;
@@ -201,7 +121,7 @@ class _ProviderFilterStripState extends State<_ProviderFilterStrip> {
         ShellTokens.shellProviderCardWidth * ShellTokens.shellProviderEdgePeekFraction;
     _scrollController.jumpTo(_loopExtent - peek);
     _isLoopJumping = false;
-    _updateEdgeFades();
+    if (mounted) setState(() {});
   }
 
   void _onScroll() {
@@ -220,20 +140,34 @@ class _ProviderFilterStripState extends State<_ProviderFilterStrip> {
       _isLoopJumping = false;
     }
 
-    _updateEdgeFades();
+    setState(() {});
   }
 
-  void _updateEdgeFades() {
-    if (!_scrollController.hasClients) return;
-    final canScroll =
-        _scrollController.position.maxScrollExtent > 0;
-    final showLeft = canScroll;
-    final showRight = canScroll;
-    if (showLeft == _showLeftFade && showRight == _showRightFade) return;
-    setState(() {
-      _showLeftFade = showLeft;
-      _showRightFade = showRight;
-    });
+  /// 0 = far from center, 1 = centered in the viewport (drives default scale).
+  double _centerFocusForIndex(int index) {
+    if (!_scrollController.hasClients) return 0;
+    final viewport = _scrollController.position.viewportDimension;
+    final cardCenter =
+        index * _itemStride + ShellTokens.shellProviderCardWidth / 2;
+    final viewCenter = _scrollController.offset + viewport / 2;
+    final distance = (cardCenter - viewCenter).abs();
+    final threshold =
+        _itemStride * ShellTokens.shellProviderCenterFocusThreshold;
+    return (1 - distance / threshold).clamp(0.0, 1.0);
+  }
+
+  int? _centeredListIndex() {
+    if (!_scrollController.hasClients || _loopedItemCount == 0) return null;
+    var bestIndex = 0;
+    var bestFocus = -1.0;
+    for (var i = 0; i < _loopedItemCount; i++) {
+      final focus = _centerFocusForIndex(i);
+      if (focus > bestFocus) {
+        bestFocus = focus;
+        bestIndex = i;
+      }
+    }
+    return bestFocus > 0.35 ? bestIndex : null;
   }
 
   @override
@@ -268,7 +202,7 @@ class _ProviderFilterStripState extends State<_ProviderFilterStrip> {
 
   @override
   Widget build(BuildContext context) {
-    final fadeColor = AppTheme.bgDark;
+    final centeredIndex = _centeredListIndex();
 
     return ClipRect(
       child: SizedBox(
@@ -277,80 +211,58 @@ class _ProviderFilterStripState extends State<_ProviderFilterStrip> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-          ListView.separated(
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
+            ListView.separated(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              clipBehavior: Clip.none,
+              itemCount: _loopedItemCount,
+              separatorBuilder: (_, _) =>
+                  const SizedBox(width: ShellTokens.shellProviderCardGap),
+              itemBuilder: (context, index) {
+                final provider = widget.providers[index % _providerCount];
+                final isCentered = centeredIndex == index;
+                final centerFocus =
+                    isCentered ? 0.0 : _centerFocusForIndex(index);
+                return Visibility(
+                  visible: !isCentered,
+                  maintainState: true,
+                  maintainAnimation: true,
+                  maintainSize: true,
+                  child: _ProviderFilterCard(
+                    key: ValueKey('watch-provider-${provider.id}-$index'),
+                    provider: provider,
+                    isActive: widget.selectedId == provider.id,
+                    isCenterFocused: false,
+                    centerFocus: centerFocus,
+                    onTap: () => widget.onProviderTap(provider.id),
+                  ),
+                );
+              },
             ),
-            clipBehavior: Clip.none,
-            itemCount: _loopedItemCount,
-            separatorBuilder: (_, _) =>
-                const SizedBox(width: ShellTokens.shellProviderCardGap),
-            itemBuilder: (context, index) {
-              final provider = widget.providers[index % _providerCount];
-              return _ProviderFilterCard(
-                key: ValueKey('watch-provider-${provider.id}-$index'),
-                provider: provider,
-                isActive: widget.selectedId == provider.id,
-                onTap: () => widget.onProviderTap(provider.id),
-              );
-            },
-          ),
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: ShellTokens.shellProviderEdgeFadeWidth,
-            child: IgnorePointer(
-              child: AnimatedOpacity(
-                opacity: _showLeftFade ? 1 : 0,
-                duration: ShellTokens.navSelectionAnimation,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      stops: const [0, 0.45, 1],
-                      colors: [
-                        fadeColor,
-                        fadeColor.withValues(alpha: 0.85),
-                        fadeColor.withValues(alpha: 0),
-                      ],
-                    ),
+            if (centeredIndex != null && _scrollController.hasClients)
+              Positioned(
+                left: centeredIndex * _itemStride - _scrollController.offset,
+                width: ShellTokens.shellProviderCardWidth,
+                height: ShellTokens.shellProviderStripHeight,
+                child: _ProviderFilterCard(
+                  key: ValueKey(
+                    'watch-provider-overlay-${widget.providers[centeredIndex % _providerCount].id}-$centeredIndex',
+                  ),
+                  provider: widget.providers[centeredIndex % _providerCount],
+                  isActive: widget.selectedId ==
+                      widget.providers[centeredIndex % _providerCount].id,
+                  isCenterFocused: true,
+                  centerFocus: 1,
+                  onTap: () => widget.onProviderTap(
+                    widget.providers[centeredIndex % _providerCount].id,
                   ),
                 ),
               ),
-            ),
-          ),
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: ShellTokens.shellProviderEdgeFadeWidth,
-            child: IgnorePointer(
-              child: AnimatedOpacity(
-                opacity: _showRightFade ? 1 : 0,
-                duration: ShellTokens.navSelectionAnimation,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerRight,
-                      end: Alignment.centerLeft,
-                      stops: const [0, 0.45, 1],
-                      colors: [
-                        fadeColor,
-                        fadeColor.withValues(alpha: 0.85),
-                        fadeColor.withValues(alpha: 0),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -361,115 +273,169 @@ class _ProviderFilterCard extends StatelessWidget {
     super.key,
     required this.provider,
     required this.isActive,
+    required this.isCenterFocused,
+    required this.centerFocus,
     required this.onTap,
   });
 
   final WatchProvider provider;
   final bool isActive;
+  final bool isCenterFocused;
+  final double centerFocus;
   final VoidCallback onTap;
+
+  double get _targetScale {
+    final centerScale = 1 +
+        (ShellTokens.shellProviderHoverScale - 1) * centerFocus;
+    return centerScale;
+  }
 
   @override
   Widget build(BuildContext context) {
     const width = ShellTokens.shellProviderCardWidth;
     const height = ShellTokens.shellProviderCardHeight;
+    final showElevated = isCenterFocused || isActive;
 
     return SizedBox(
       width: width,
       height: height,
-      child: Center(
-        child: ForjaInteractive(
-          onTap: onTap,
-          hoverScale: ShellTokens.shellProviderHoverScale,
-          pressScale: 0.98,
-          builder: (hover, _) {
-            final elevated = hover || isActive;
-            return AnimatedContainer(
-              duration: ShellTokens.navSelectionAnimation,
-              width: width,
-              height: height,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: const Color(0xFF141414),
-                borderRadius:
-                    BorderRadius.circular(ShellTokens.shellProviderCardRadius),
-                border: Border.all(
-                  color: elevated
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.1),
-                  width: elevated ? 2 : 1,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          ForjaInteractive(
+            onTap: onTap,
+            hoverScale: 1,
+            pressScale: 1,
+            builder: (hover, _) {
+              final scale = hover
+                  ? ShellTokens.shellProviderHoverScale
+                  : _targetScale;
+              return AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                child: AnimatedContainer(
+                  duration: ShellTokens.navSelectionAnimation,
+                  width: width,
+                  height: height,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141414),
+                    borderRadius: BorderRadius.circular(
+                      ShellTokens.shellProviderCardRadius,
+                    ),
+                    border: Border.all(
+                      color: showElevated || hover
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.1),
+                      width: showElevated || hover ? 2 : 1,
+                    ),
+                    boxShadow: hover || isCenterFocused
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: provider.logoPath.isEmpty
+                      ? Center(
+                          child: Text(
+                            provider.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: provider.logoCardUrl,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          width: width,
+                          height: height,
+                          errorWidget: (_, _, _) => Center(
+                            child: Text(
+                              provider.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                 ),
-                boxShadow: hover
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (provider.logoPath.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Text(
-                          provider.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    CachedNetworkImage(
-                      imageUrl: provider.logoCardUrl,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) => Center(
-                        child: Text(
-                          provider.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (isActive)
-                    Positioned(
-                      top: 5,
-                      right: 5,
-                      child: Container(
-                        width: 18,
-                        height: 18,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check_rounded,
-                          size: 13,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
+          if (isActive)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: const _ProviderSelectedMark(),
+            ),
+        ],
       ),
     );
   }
+}
+
+/// Thin line check — always visible when provider filter is active.
+class _ProviderSelectedMark extends StatelessWidget {
+  const _ProviderSelectedMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.55),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: CustomPaint(
+        size: const Size(16, 12),
+        painter: _LineCheckPainter(color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _LineCheckPainter extends CustomPainter {
+  _LineCheckPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path()
+      ..moveTo(size.width * 0.12, size.height * 0.52)
+      ..lineTo(size.width * 0.38, size.height * 0.82)
+      ..lineTo(size.width * 0.9, size.height * 0.18);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _LineCheckPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
