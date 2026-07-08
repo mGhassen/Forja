@@ -15,6 +15,7 @@ import 'package:forja/shared/extractors/amri_extractor.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/features/home/details_screen.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/app/boot_cache.dart';
@@ -1254,16 +1255,8 @@ class _HomeScreenState extends State<HomeScreen>
 
 
   Future<void> _openDetails(Movie movie) async {
-    final settings = SettingsService();
-    final isStreaming = await settings.isStreamingModeEnabled();
-    
     if (!mounted) return;
-
-    if (isStreaming) {
-      await Navigator.push(context, MaterialPageRoute(builder: (_) => StreamingDetailsScreen(movie: movie)));
-    } else {
-      await Navigator.push(context, MaterialPageRoute(builder: (_) => DetailsScreen(movie: movie)));
-    }
+    await AppRouter.openMovie(context, movie: movie);
   }
 
   Future<void> _loadStremioCatalogs() async {
@@ -1346,8 +1339,8 @@ class _HomeScreenState extends State<HomeScreen>
         final movie = await _api.findByImdbId(id, mediaType: type == 'series' ? 'tv' : 'movie');
         if (movie != null && mounted) {
           // Always use DetailsScreen for Stremio items
-          Navigator.push(context, MaterialPageRoute(
-            builder: (_) => DetailsScreen(movie: movie, stremioItem: item),
+          Navigator.push(context, AppRouter.slideRoute(
+            (_) => DetailsScreen(movie: movie, stremioItem: item),
           ));
           return;
         }
@@ -1364,8 +1357,8 @@ class _HomeScreenState extends State<HomeScreen>
             orElse: () => results.first,
           );
           // Always use DetailsScreen for Stremio items
-          Navigator.push(context, MaterialPageRoute(
-            builder: (_) => DetailsScreen(movie: match, stremioItem: item),
+          Navigator.push(context, AppRouter.slideRoute(
+            (_) => DetailsScreen(movie: match, stremioItem: item),
           ));
           return;
         }
@@ -1396,8 +1389,8 @@ class _HomeScreenState extends State<HomeScreen>
       }
       
       // Always use DetailsScreen for Stremio items
-      Navigator.push(context, MaterialPageRoute(
-        builder: (_) => DetailsScreen(movie: movie, stremioItem: updatedItem),
+      Navigator.push(context, AppRouter.slideRoute(
+        (_) => DetailsScreen(movie: movie, stremioItem: updatedItem),
       ));
     }
   }
@@ -2613,8 +2606,8 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
           );
           await Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => StreamingDetailsScreen(
+            AppRouter.slideRoute(
+              (_) => StreamingDetailsScreen(
                 movie: movie,
                 initialSeason: season,
                 initialEpisode: episode,
@@ -2664,8 +2657,8 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
               'name': title,
             };
           }
-          Navigator.push(context, MaterialPageRoute(
-            builder: (_) => DetailsScreen(
+          Navigator.push(context, AppRouter.slideRoute(
+            (_) => DetailsScreen(
               movie: movie,
               stremioItem: stremioItem,
               initialSeason: season,
@@ -2810,8 +2803,8 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
           );
           final navigator = Navigator.of(context);
           final isStreaming = await SettingsService().isStreamingModeEnabled();
-          navigator.push(MaterialPageRoute(
-            builder: (_) => isStreaming
+          navigator.push(AppRouter.slideRoute(
+            (_) => isStreaming
                 ? StreamingDetailsScreen(
                     movie: movie,
                     initialSeason: season,
@@ -2919,8 +2912,8 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
       if (mounted) {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => StreamingDetailsScreen(
+          AppRouter.slideRoute(
+            (_) => StreamingDetailsScreen(
               movie: movie,
               initialSeason: season,
               initialEpisode: episode,
@@ -2949,8 +2942,8 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
         if (mounted) {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => DetailsScreen(
+            AppRouter.slideRoute(
+              (_) => DetailsScreen(
                 movie: movie,
                 stremioItem: stremioItem,
                 initialSeason: season,
@@ -2964,8 +2957,8 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
         if (mounted) {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => DetailsScreen(
+            AppRouter.slideRoute(
+              (_) => DetailsScreen(
                 movie: movie,
                 initialSeason: season,
                 initialEpisode: episode,

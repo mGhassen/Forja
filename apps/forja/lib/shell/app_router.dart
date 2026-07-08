@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
@@ -7,6 +8,9 @@ import 'package:forja/shared/player/player_screen.dart';
 /// Central navigation for cross-feature routes (details, player).
 class AppRouter {
   AppRouter._();
+
+  static Route<T> slideRoute<T>(WidgetBuilder builder) =>
+      CupertinoPageRoute<T>(builder: builder);
 
   static Future<T?> openDetails<T>(
     BuildContext context, {
@@ -18,8 +22,8 @@ class AppRouter {
   }) {
     return Navigator.push<T>(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailsScreen(
+      slideRoute(
+        (_) => DetailsScreen(
           movie: movie,
           stremioItem: stremioItem,
           initialSeason: initialSeason,
@@ -39,8 +43,8 @@ class AppRouter {
   }) {
     return Navigator.push<T>(
       context,
-      MaterialPageRoute(
-        builder: (_) => StreamingDetailsScreen(
+      slideRoute(
+        (_) => StreamingDetailsScreen(
           movie: movie,
           initialSeason: initialSeason,
           initialEpisode: initialEpisode,
@@ -103,8 +107,8 @@ class AppRouter {
   }) {
     return Navigator.push<T>(
       context,
-      MaterialPageRoute(
-        builder: (_) => PlayerScreen(
+      slideRoute(
+        (_) => PlayerScreen(
           streamUrl: streamUrl,
           audioUrl: audioUrl,
           title: title,

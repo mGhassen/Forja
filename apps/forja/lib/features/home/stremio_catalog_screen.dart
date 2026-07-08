@@ -3,6 +3,7 @@ import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/features/home/details_screen.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 /// Full-screen catalog browser for Stremio addons.
@@ -237,8 +238,8 @@ class _StremioCatalogScreenState extends State<StremioCatalogScreen> {
   Future<void> _navigateToDetails(Movie movie, {Map<String, dynamic>? stremioItem}) async {
     // Always use DetailsScreen for Stremio catalog items (they have addon context)
     if (!mounted) return;
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => DetailsScreen(movie: movie, stremioItem: stremioItem),
+    Navigator.push(context, AppRouter.slideRoute(
+      (_) => DetailsScreen(movie: movie, stremioItem: stremioItem),
     ));
   }
 

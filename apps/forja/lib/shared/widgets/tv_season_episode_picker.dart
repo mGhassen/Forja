@@ -105,7 +105,7 @@ class TvSeasonEpisodePicker extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 168,
+          height: 220,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: seasonCount,

@@ -12,7 +12,9 @@ import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_metadata_sections.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
+import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shell/app_router.dart';
 
 class StreamingDetailsScreen extends StatefulWidget {
   final Movie movie;
@@ -649,7 +651,8 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
 
-    return Scaffold(
+    return BackNavigationScope(
+      child: Scaffold(
       backgroundColor: const Color(0xFF141414),
       body: Stack(
         children: [
@@ -660,17 +663,8 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
           // Scrollable content
           CustomScrollView(
             slivers: [
-              SliverAppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
               SliverList(
                 delegate: SliverChildListDelegate([
-                  const SizedBox(height: 40),
                   _buildHeroSection(isTablet),
                   const SizedBox(height: 32),
                   _buildAboutSection(),
@@ -725,6 +719,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -764,7 +759,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
           movie: _movie,
           trailerYoutubeKey: _trailerKey,
           progress: _lastProgress,
-          height: isTablet ? 360 : 300,
+          height: MediaQuery.sizeOf(context).height * (isTablet ? 0.42 : 0.50),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1134,8 +1129,8 @@ class _SimilarMovieCardState extends State<_SimilarMovieCard> {
         onTap: () {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (context) => StreamingDetailsScreen(movie: widget.movie),
+            AppRouter.slideRoute(
+              (_) => StreamingDetailsScreen(movie: widget.movie),
             ),
           );
         },

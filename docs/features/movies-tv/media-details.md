@@ -4,7 +4,7 @@
 
 ## What it is
 
-When you open a title from Home, Discover, or Search (with torrent mode enabled), you get the **torrent details** screen. A cinematic hero shows the backdrop immediately; if TMDB has a YouTube trailer, it autoplays muted after about two seconds on the page. A progress bar appears in the hero when you have partial watch history for the movie or the selected episode. Below: rich TMDB metadata (cast, crew, keywords, production, recommendations), season poster cards with an expandable episode rail for TV, torrent search, Stremio/Nuvio streams, and list actions.
+When you open a title from Home, Discover, or Search (with torrent mode enabled), you get the **torrent details** screen. A cinematic hero matches the Home layout: title (or TMDB logo), rating, year, genres, and synopsis sit on the left over the backdrop. The trailer area plays on the right — backdrop first, then a muted YouTube trailer shortly after open when TMDB has one. A progress bar appears in the hero when you have partial watch history for the movie or the selected episode. Below: rich TMDB metadata (cast, crew, keywords, production, recommendations), season poster cards with an expandable episode rail for TV, torrent search, Stremio/Nuvio streams, and list actions.
 
 ## How to open it
 
@@ -12,7 +12,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 
 ## What you can do
 
-- Watch the hero trailer (when available) or backdrop art
+- Watch the hero trailer (when available) or backdrop art with title, logo, and synopsis overlaid like Home
 - See resume progress in the hero for movies and the selected TV episode
 - Browse cast, crew, keywords, production info, and “more like this” recommendations
 - For TV: pick a season from poster cards, then an episode from the rail (thumbnails, synopsis, watch progress, watched toggle)

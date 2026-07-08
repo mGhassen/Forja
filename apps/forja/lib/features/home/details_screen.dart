@@ -17,6 +17,8 @@ import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_metadata_sections.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
+import 'package:forja/shared/navigation/back_navigation_scope.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class DetailsScreen extends StatefulWidget {
@@ -55,6 +57,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   int _stremioFetchGen = 0;
   String? _errorMessage;
   Map<String, dynamic>? _lastProgress;
+  bool _sourcesPanelOpen = false;
 
   String _selectedSourceId = 'forja';
   List<Map<String, dynamic>> _streamAddons = [];
@@ -899,7 +902,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       try {
         final movie = await _api.findByImdbId(id, mediaType: type == 'series' ? 'tv' : 'movie');
         if (movie != null && mounted) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => DetailsScreen(movie: movie)));
+          Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(movie: movie)));
           return;
         }
       } catch (_) {}
@@ -915,7 +918,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             (m) => m.title.toLowerCase() == name.toLowerCase(),
             orElse: () => results.first,
           );
-          Navigator.push(context, MaterialPageRoute(builder: (_) => DetailsScreen(movie: match)));
+          Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(movie: match)));
           return;
         }
       } catch (_) {}
@@ -923,7 +926,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     // Last fallback: minimal Movie
     if (mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => DetailsScreen(
+      Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(
         movie: Movie(
           id: id.hashCode,
           imdbId: id.startsWith('tt') ? id : null,
@@ -1681,6 +1684,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // ─── play methods ─────────────────────────────────────────────────────────
 
   void _playStremioStream(Map<String, dynamic> stream, {Duration? startPosition}) async {
+    if (mounted && _sourcesPanelOpen) setState(() => _sourcesPanelOpen = false);
     final stremioId = widget.stremioItem?['id']?.toString() ?? _movie.imdbId;
     final stremioAddonBaseUrl = stream['_addonBaseUrl']?.toString() ?? _selectedSourceId;
     final isTv = _movie.mediaType == 'tv';
@@ -1845,6 +1849,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   void _playTorrent(TorrentResult result, {Duration? startPosition}) async {
+    if (mounted && _sourcesPanelOpen) setState(() => _sourcesPanelOpen = false);
     final useDebrid = await _settings.useDebridForStreams();
     final debridService = await _settings.getDebridService();
     if (!mounted) return;
@@ -1973,7 +1978,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final w = MediaQuery.of(context).size.width;
     final isMobile = (Platform.isAndroid || Platform.isIOS) || w < 800;
 
-    return KeyboardListener(
+    return BackNavigationScope(
+      child: KeyboardListener(
       focusNode: _keyboardFocusNode,
       autofocus: true,
       onKeyEvent: (event) {
@@ -1997,23 +2003,26 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: Padding(
-            padding: const EdgeInsets.all(8),
-            child: FocusableControl(
-              onTap: () => Navigator.of(context).pop(),
-              borderRadius: 50,
-              child: const CircleAvatar(
-                backgroundColor: Colors.black54,
-                child: Icon(Icons.arrow_back, color: Colors.white),
+          automaticallyImplyLeading: false,
+          actions: [
+            if (!_isCollection)
+              IconButton(
+                tooltip: 'Sources',
+                onPressed: () => setState(() => _sourcesPanelOpen = !_sourcesPanelOpen),
+                icon: Icon(
+                  Icons.download_rounded,
+                  color: _sourcesPanelOpen ? AppTheme.primaryColor : Colors.white,
+                ),
               ),
-            ),
-          ),
+          ],
         ),
         body: Stack(children: [
           _buildBackdropWidget(),
           SafeArea(child: isMobile ? _buildMobileLayout() : _buildDesktopLayout()),
+          if (!_isCollection) _buildSourcesSlidingPanel(),
         ]),
       ),
+    ),
     );
   }
 
@@ -2299,15 +2308,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                     style: TextStyle(color: Colors.white24, fontSize: 10)),
                   const SizedBox(height: 20),
                 ],
-                if (!_isCollection) ...[
-                  _buildSourceToggle(),
-                  const SizedBox(height: 12),
-                  _buildSourceChips(),
-                  const SizedBox(height: 16),
-                  _buildResultsHeader(),
-                  const SizedBox(height: 10),
-                  _buildStreamList(),
-                ],
                 const SizedBox(height: 32),
               ],
             ),
@@ -2325,28 +2325,23 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildDetailsHero(height: 300, compact: true),
+        _buildDetailsHero(
+          height: MediaQuery.sizeOf(context).height * 0.42,
+        ),
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 520,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 16, 20, 32),
-                  child: _buildDesktopLeftPanel(),
-                ),
-              ),
-              Container(width: 1, color: Colors.white.withValues(alpha: 0.07)),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                  child: _buildRightPanel(),
-                ),
-              ),
-            ],
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDesktopLeftPanel(),
+                if (_movie.mediaType == 'tv' && !_isCollection) ...[
+                  const SizedBox(height: 24),
+                  _buildTvPicker(),
+                ],
+              ],
+            ),
           ),
         ),
       ],
@@ -2428,43 +2423,80 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  //  RIGHT PANEL
+  //  SOURCES SLIDING PANEL
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildRightPanel() {
-    // For collections, don't show stream/torrent sections
-    if (_isCollection) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'This is a collection. Select an item from the list to view details and streams.',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
+  Widget _buildSourcesSlidingPanel() {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final panelWidth = screenWidth < 700 ? screenWidth * 0.92 : 480.0;
+
+    return Stack(
+      children: [
+        if (_sourcesPanelOpen)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => setState(() => _sourcesPanelOpen = false),
+              child: Container(color: Colors.black54),
+            ),
           ),
-        ],
-      );
-    }
-    
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          top: 0,
+          bottom: 0,
+          right: _sourcesPanelOpen ? 0 : -panelWidth,
+          width: panelWidth,
+          child: Material(
+            color: const Color(0xFF0A0A14),
+            elevation: 12,
+            child: SafeArea(
+              left: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 12, 16),
+                child: _buildSourcesPanelContent(),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSourcesPanelContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_movie.mediaType == 'tv') ...[
-          _buildTvPicker(),
-          const SizedBox(height: 24),
-        ],
+        Row(
+          children: [
+            const Text(
+              'Sources',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+            const Spacer(),
+            IconButton(
+              tooltip: 'Close',
+              onPressed: () => setState(() => _sourcesPanelOpen = false),
+              icon: const Icon(Icons.close_rounded, color: Colors.white70),
+            ),
+          ],
+        ),
         _buildSourceToggle(),
         const SizedBox(height: 14),
         _buildSourceChips(),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         _buildResultsHeader(),
-        const SizedBox(height: 12),
-        _buildStreamList(),
+        const SizedBox(height: 10),
+        Expanded(child: _buildStreamList(inPanel: true)),
       ],
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  //  SOURCE TOGGLE + CHIPS
+  //  SOURCE TOGGLE + CHIPS (sliding source panel)
   // ═══════════════════════════════════════════════════════════════════════════
 
   bool get _isTorrentSource =>
@@ -2858,7 +2890,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   //  STREAM LIST
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildStreamList() {
+  Widget _buildStreamList({bool inPanel = false}) {
     if (_errorMessage != null) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 20),
@@ -2899,8 +2931,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       );
     }
     return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: !inPanel,
+      physics: inPanel ? const BouncingScrollPhysics() : const NeverScrollableScrollPhysics(),
       itemCount: count,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
@@ -3426,7 +3458,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       try {
         final movie = await _api.findByImdbId(id, mediaType: 'movie');
         if (movie != null && mounted) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => DetailsScreen(movie: movie)));
+          Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(movie: movie)));
           return;
         }
       } catch (e) {
@@ -3436,7 +3468,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     // Fallback: create minimal Movie object
     if (mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => DetailsScreen(
+      Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(
         movie: Movie(
           id: id.hashCode,
           imdbId: id.startsWith('tt') ? id : null,
