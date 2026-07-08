@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+/// Release codename for the current minor arc (1.0.x → Bab Souika).
+const kReleaseCodename = 'Bab Souika';
+
 final class AppVersion {
   AppVersion._();
 
@@ -13,8 +16,20 @@ final class AppVersion {
 
   Future<String> get version async => (await load()).version;
 
-  Future<String> label({String prefix = 'v'}) async =>
-      '$prefix${await version}';
+  Future<String> get buildNumber async => (await load()).buildNumber;
+
+  Future<String> label({String prefix = 'v', bool includeCodename = true}) async {
+    final base = '$prefix${await version}';
+    if (!includeCodename || kReleaseCodename.isEmpty) return base;
+    return '$base · $kReleaseCodename';
+  }
+
+  Future<String> platformAboutVersion() async {
+    final info = await load();
+    final base = '${info.version} (${info.buildNumber})';
+    if (kReleaseCodename.isEmpty) return base;
+    return '$base — $kReleaseCodename';
+  }
 }
 
 class AppVersionLabel extends StatelessWidget {
@@ -22,15 +37,20 @@ class AppVersionLabel extends StatelessWidget {
     super.key,
     this.style,
     this.prefix = 'v',
+    this.includeCodename = true,
   });
 
   final TextStyle? style;
   final String prefix;
+  final bool includeCodename;
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
-      future: AppVersion.instance.label(prefix: prefix),
+      future: AppVersion.instance.label(
+        prefix: prefix,
+        includeCodename: includeCodename,
+      ),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
         return Text(snapshot.data!, style: style);
