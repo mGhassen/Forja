@@ -36,15 +36,8 @@ class AppDelegate: FlutterAppDelegate {
       )
     )
 
-    let shortVersion =
-      Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-    let codename =
-      Bundle.main.object(forInfoDictionaryKey: "ForjaReleaseCodename") as? String ?? ""
-    let versionLine = codename.isEmpty ? shortVersion : "\(shortVersion) — \(codename)"
-
     NSApp.orderFrontStandardAboutPanel(
       options: [
-        .applicationVersion: versionLine,
         .credits: body,
       ]
     )

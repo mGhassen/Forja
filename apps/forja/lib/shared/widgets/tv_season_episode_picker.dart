@@ -103,16 +103,17 @@ class TvSeasonEpisodePicker extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 220,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: seasonCount,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (_, i) {
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const itemWidth = 120.0;
+            const gap = 16.0;
+            final totalWidth =
+                seasonCount * itemWidth + (seasonCount - 1) * gap;
+            final centered = totalWidth <= constraints.maxWidth;
+
+            final cards = List.generate(seasonCount, (i) {
               final n = i + 1;
-              final selected = selectedSeason == n;
               final poster = seasonPosters[n];
               final posterUrl = poster != null && poster.isNotEmpty
                   ? TmdbApi.getImageUrl(poster)
@@ -120,94 +121,58 @@ class TvSeasonEpisodePicker extends StatelessWidget {
                       ? TmdbApi.getBackdropUrl(fallbackPosterPath)
                       : null);
               final epCount = _episodeCountForSeason(n);
-              final countLabel = epCount > 0 ? '$epCount episodes' : 'Season $n';
+              final subtitle =
+                  epCount > 0 ? '$epCount episodes' : 'Season $n';
 
-              return GestureDetector(
+              return _SeasonCard(
+                key: ValueKey('season-$n'),
+                seasonNumber: n,
+                selected: selectedSeason == n,
+                posterUrl: posterUrl,
+                subtitle: subtitle,
+                watched: _seasonFullyWatched(n),
                 onTap: () => onSeasonSelected(n),
-                child: Column(
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 108,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: selected ? AppTheme.primaryColor : Colors.white24,
-                          width: selected ? 2 : 1,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
-                            child: AspectRatio(
-                              aspectRatio: 2 / 3,
-                              child: posterUrl != null
-                                  ? CachedNetworkImage(
-                                      imageUrl: posterUrl,
-                                      fit: BoxFit.cover,
-                                      errorWidget: (_, _, _) => _posterFallback(),
-                                    )
-                                  : _posterFallback(),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'Season $n',
-                                        style: TextStyle(
-                                          color: selected ? Colors.white : Colors.white70,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    Icon(
-                                      _seasonFullyWatched(n)
-                                          ? Icons.visibility
-                                          : Icons.visibility_outlined,
-                                      size: 14,
-                                      color: _seasonFullyWatched(n)
-                                          ? AppTheme.primaryColor
-                                          : Colors.white38,
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  countLabel,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.45),
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+              );
+            });
+
+            if (centered) {
+              return SizedBox(
+                height: 200,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (var i = 0; i < cards.length; i++) ...[
+                          if (i > 0) const SizedBox(width: gap),
+                          cards[i],
                         ],
-                      ),
+                      ],
                     ),
-                    if (selected)
-                      CustomPaint(
-                        size: const Size(16, 8),
-                        painter: _CaretPainter(AppTheme.primaryColor),
-                      )
-                    else
-                      const SizedBox(height: 8),
-                  ],
+                  ),
                 ),
               );
-            },
-          ),
+            }
+
+            return SizedBox(
+              height: 200,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  itemCount: seasonCount,
+                  separatorBuilder: (_, _) => const SizedBox(width: gap),
+                  itemBuilder: (_, i) => cards[i],
+                ),
+              ),
+            );
+          },
         ),
         if (selectedSeason > 0) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           AnimatedSize(
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeOutCubic,
@@ -215,15 +180,6 @@ class TvSeasonEpisodePicker extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-
-  Widget _posterFallback() {
-    return Container(
-      color: Colors.white.withValues(alpha: 0.06),
-      child: const Center(
-        child: Icon(Icons.movie_outlined, color: Colors.white24, size: 28),
-      ),
     );
   }
 
@@ -240,187 +196,427 @@ class TvSeasonEpisodePicker extends StatelessWidget {
     final episodes = _episodes;
     if (episodes.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Episodes',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 28),
+        Row(
+          children: [
+            Icon(Icons.playlist_play_rounded, color: Colors.white.withValues(alpha: 0.5), size: 16),
+            const SizedBox(width: 6),
+            Text(
+              'Episodes · Season $selectedSeason',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 200,
+          ],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 240,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               itemCount: episodes.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (_, i) {
-                final ep = episodes[i];
-                final epNum = (ep['episode_number'] ?? ep['episode']) as int;
-                final selected = selectedEpisode == epNum;
-                final title = (ep['name'] ?? ep['title'] ?? 'Episode $epNum').toString();
-                final overview = (ep['overview'] ?? '').toString();
-                final runtime = ep['runtime'] as int? ?? 0;
-                final thumbnail = ep['still_path'] ?? ep['thumbnail'];
-                final watched = _watchedKey(selectedSeason, epNum);
-                final progKey = 'S${selectedSeason}_E$epNum';
-                final prog = episodeProgress[progKey];
-                final pos = prog?['position'] as int? ?? 0;
-                final dur = prog?['duration'] as int? ?? (runtime > 0 ? runtime * 60000 : 0);
+              separatorBuilder: (_, _) => const SizedBox(width: 20),
+            itemBuilder: (_, i) {
+              final ep = episodes[i];
+              final epNum = (ep['episode_number'] ?? ep['episode']) as int;
+              final title = (ep['name'] ?? ep['title'] ?? 'Episode $epNum').toString();
+              final overview = (ep['overview'] ?? '').toString();
+              final runtime = ep['runtime'] as int? ?? 0;
+              final thumbnail = ep['still_path'] ?? ep['thumbnail'];
+              final watched = _watchedKey(selectedSeason, epNum);
+              final progKey = 'S${selectedSeason}_E$epNum';
+              final prog = episodeProgress[progKey];
+              final pos = prog?['position'] as int? ?? 0;
+              final dur = prog?['duration'] as int? ?? (runtime > 0 ? runtime * 60000 : 0);
 
-                return GestureDetector(
-                  onTap: () => onEpisodeSelected(epNum),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 220,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: selected ? AppTheme.primaryColor : Colors.white12,
-                        width: selected ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              return _EpisodeTile(
+                key: ValueKey('ep-$selectedSeason-$epNum'),
+                episodeNumber: epNum,
+                title: title,
+                overview: overview,
+                runtime: runtime,
+                thumbnail: thumbnail,
+                selected: selectedEpisode == epNum,
+                watched: watched,
+                positionMs: pos,
+                durationMs: dur,
+                onTap: () => onEpisodeSelected(epNum),
+                onToggleWatched: () => onToggleWatched(selectedSeason, epNum),
+              );
+            },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EpisodeTile extends StatefulWidget {
+  const _EpisodeTile({
+    super.key,
+    required this.episodeNumber,
+    required this.title,
+    required this.overview,
+    required this.runtime,
+    required this.thumbnail,
+    required this.selected,
+    required this.watched,
+    required this.positionMs,
+    required this.durationMs,
+    required this.onTap,
+    required this.onToggleWatched,
+  });
+
+  final int episodeNumber;
+  final String title;
+  final String overview;
+  final int runtime;
+  final dynamic thumbnail;
+  final bool selected;
+  final bool watched;
+  final int positionMs;
+  final int durationMs;
+  final VoidCallback onTap;
+  final VoidCallback onToggleWatched;
+
+  static const double _tileWidth = 200;
+  static const double _thumbHeight = 112;
+  static const double _hoverScale = 1.1;
+  static const double _selectedScale = 1.06;
+
+  @override
+  State<_EpisodeTile> createState() => _EpisodeTileState();
+}
+
+class _EpisodeTileState extends State<_EpisodeTile> {
+  bool _hovered = false;
+
+  double get _scale {
+    if (widget.selected && _hovered) return _EpisodeTile._selectedScale * 1.04;
+    if (widget.selected) return _EpisodeTile._selectedScale;
+    if (_hovered) return _EpisodeTile._hoverScale;
+    return 1.0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.selected;
+    final showProgress = WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _scale,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.bottomCenter,
+          child: SizedBox(
+            width: _EpisodeTile._tileWidth,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: _EpisodeTile._tileWidth,
+                  height: _EpisodeTile._thumbHeight,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: selected || _hovered
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: selected ? 0.4 : 0.2,
+                              ),
+                              blurRadius: _hovered ? 18 : 12,
+                              spreadRadius: _hovered ? 1 : 0,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        Expanded(
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
-                                child: thumbnail != null
-                                    ? CachedNetworkImage(
-                                        imageUrl: thumbnail.toString().startsWith('http')
-                                            ? thumbnail.toString()
-                                            : TmdbApi.getStillUrl(thumbnail.toString()),
-                                        fit: BoxFit.cover,
-                                        errorWidget: (_, _, _) => _thumbFallback(),
-                                      )
-                                    : _thumbFallback(),
-                              ),
-                              Positioned(
-                                top: 8,
-                                left: 8,
-                                child: Text(
-                                  '$epNum',
-                                  style: TextStyle(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white.withValues(alpha: 0.35),
-                                    height: 1,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                top: 6,
-                                right: 6,
-                                child: GestureDetector(
-                                  onTap: () => onToggleWatched(selectedSeason, epNum),
-                                  child: Icon(
-                                    watched ? Icons.visibility : Icons.visibility_outlined,
-                                    size: 18,
-                                    color: watched ? AppTheme.primaryColor : Colors.white70,
-                                  ),
-                                ),
-                              ),
-                              if (WatchProgressBar.isResumable(pos, dur))
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    color: Colors.black54,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(2),
-                                          child: LinearProgressIndicator(
-                                            value: (pos / dur).clamp(0.0, 1.0),
-                                            minHeight: 3,
-                                            backgroundColor: Colors.white24,
-                                            valueColor: AlwaysStoppedAnimation(AppTheme.primaryColor),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${WatchProgressBar.formatMinutes(dur - pos)} left',
-                                          style: const TextStyle(color: Colors.white70, fontSize: 10),
-                                        ),
-                                      ],
+                        widget.thumbnail != null
+                            ? CachedNetworkImage(
+                                imageUrl: widget.thumbnail.toString().startsWith('http')
+                                    ? widget.thumbnail.toString()
+                                    : TmdbApi.getStillUrl(widget.thumbnail.toString()),
+                                fit: BoxFit.cover,
+                                errorWidget: (_, _, _) => _thumbFallback(),
+                              )
+                            : _thumbFallback(),
+                        Positioned(
+                          top: 6,
+                          left: 8,
+                          child: Text(
+                            '${widget.episodeNumber}',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white.withValues(alpha: 0.4),
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: GestureDetector(
+                            onTap: widget.onToggleWatched,
+                            child: Icon(
+                              widget.watched ? Icons.visibility : Icons.visibility_outlined,
+                              size: 18,
+                              color: widget.watched ? AppTheme.primaryColor : Colors.white70,
+                            ),
+                          ),
+                        ),
+                        if (showProgress)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              color: Colors.black54,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(2),
+                                    child: LinearProgressIndicator(
+                                      value: (widget.positionMs / widget.durationMs).clamp(0.0, 1.0),
+                                      minHeight: 3,
+                                      backgroundColor: Colors.white24,
+                                      valueColor: const AlwaysStoppedAnimation(AppTheme.primaryColor),
                                     ),
                                   ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: selected ? Colors.white : Colors.white70,
-                                ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${WatchProgressBar.formatMinutes(widget.durationMs - widget.positionMs)} left',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 10),
+                                  ),
+                                ],
                               ),
-                              if (runtime > 0)
-                                Text(
-                                  '${runtime}m',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.45),
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              if (overview.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  overview,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.4),
-                                    fontSize: 10,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ],
-                            ],
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
-                );
-              },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: selected || _hovered ? Colors.white : Colors.white70,
+                  ),
+                ),
+                if (widget.runtime > 0)
+                  Text(
+                    '${widget.runtime}m',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 10,
+                      height: 1.3,
+                    ),
+                  ),
+                if (widget.overview.isNotEmpty)
+                  Text(
+                    widget.overview,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 10,
+                      height: 1.3,
+                    ),
+                  ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _thumbFallback() {
     return Container(color: Colors.white.withValues(alpha: 0.06));
+  }
+}
+
+class _SeasonCard extends StatefulWidget {
+  const _SeasonCard({
+    super.key,
+    required this.seasonNumber,
+    required this.selected,
+    required this.posterUrl,
+    required this.subtitle,
+    required this.watched,
+    required this.onTap,
+  });
+
+  final int seasonNumber;
+  final bool selected;
+  final String? posterUrl;
+  final String subtitle;
+  final bool watched;
+  final VoidCallback onTap;
+
+  static const double _cardWidth = 120;
+  static const double _posterSize = 120;
+  static const double _hoverScale = 1.1;
+  static const double _selectedScale = 1.06;
+
+  @override
+  State<_SeasonCard> createState() => _SeasonCardState();
+}
+
+class _SeasonCardState extends State<_SeasonCard> {
+  bool _hovered = false;
+
+  double get _scale {
+    if (widget.selected && _hovered) return _SeasonCard._selectedScale * 1.04;
+    if (widget.selected) return _SeasonCard._selectedScale;
+    if (_hovered) return _SeasonCard._hoverScale;
+    return 1.0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = widget.seasonNumber;
+    final selected = widget.selected;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _scale,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.bottomCenter,
+          child: SizedBox(
+            width: _SeasonCard._cardWidth,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: _SeasonCard._posterSize,
+                  height: _SeasonCard._posterSize,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: selected ? AppTheme.primaryColor : Colors.white24,
+                      width: selected ? 2 : 1,
+                    ),
+                    boxShadow: selected || _hovered
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: selected ? 0.35 : 0.18,
+                              ),
+                              blurRadius: _hovered ? 16 : 10,
+                              spreadRadius: _hovered ? 1 : 0,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(7),
+                    child: widget.posterUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: widget.posterUrl!,
+                            fit: BoxFit.cover,
+                            width: _SeasonCard._posterSize,
+                            height: _SeasonCard._posterSize,
+                            errorWidget: (_, _, _) => _seasonPosterFallback(),
+                          )
+                        : _seasonPosterFallback(),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'S$n',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selected || _hovered
+                              ? Colors.white
+                              : Colors.white70,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      widget.watched
+                          ? Icons.visibility
+                          : Icons.visibility_outlined,
+                      size: 14,
+                      color: widget.watched
+                          ? AppTheme.primaryColor
+                          : Colors.white38,
+                    ),
+                  ],
+                ),
+                Text(
+                  widget.subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: 10,
+                    height: 1.2,
+                  ),
+                ),
+                if (selected)
+                  CustomPaint(
+                    size: const Size(16, 8),
+                    painter: _CaretPainter(AppTheme.primaryColor),
+                  )
+                else
+                  const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _seasonPosterFallback() {
+    return Container(
+      color: Colors.white.withValues(alpha: 0.06),
+      child: const Center(
+        child: Icon(Icons.movie_outlined, color: Colors.white24, size: 28),
+      ),
+    );
   }
 }
 

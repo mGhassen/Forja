@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 13** components · **7 / 14** acceptance (1.0.1 UX slice) |
-| **Current slice** | Details trailer hero + rich metadata + TV picker + Mediateka player chrome |
+| **Progress** | **5 / 13** components · **6 / 14** acceptance (1.0.1 UX slice) · **2 / 13** components in progress (details layout) |
+| **Current slice** | Full-viewport details hero + unified scroll sections (torrent + streaming) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,12 +22,12 @@
 | 1 | R26-C01 | God-file split — details (`features/media/details/` per RFC-019) | ⬜ |
 | 2 | R26-C02 | God-file split — player `controls/` extract (RFC-019 R19-A05) | ⬜ |
 | 3 | R26-C03 | `features/media/` module — move screens; `AppRouter` imports only (absorbs RFC-020) | ⬜ |
-| 4 | R26-C04 | Torrent details UX — layout, hero, source tabs, play CTA | ⬜ |
-| 5 | R26-C05 | Streaming details UX — unified with torrent where possible | ⬜ |
+| 4 | R26-C04 | Torrent details UX — full-viewport hero, unified scroll, Sources panel | 🔄 |
+| 5 | R26-C05 | Streaming details UX — same hero + section order as torrent | 🔄 |
 | 6 | R26-C06 | Player chrome — flat `ForjaShellColors` / `ShellTokens`, no glass | ⬜ |
 | 7 | R26-C07 | Player controls hierarchy — seek, tracks, speed, next ep, PiP | ⬜ |
 | 8 | R26-C08 | Details → player handoff — sources, resume, season/episode | ⬜ |
-| 9 | R26-C09 | `MediaDetailsHero` — 2s dwell trailer, backdrop fallback, watch progress bar | ✅ |
+| 9 | R26-C09 | `MediaDetailsHero` — full-viewport Ken Burns, 3s preloaded trailer crossfade, bottom-left overlay | ✅ |
 | 10 | R26-C10 | TMDB rich metadata — cast, crew, keywords, production, recommendations | ✅ |
 | 11 | R26-C11 | `StreamSourcePanel` — desktop side panel + mobile sheet from `_currentSources` | ✅ |
 | 12 | R26-C12 | `SeekBarWithPreview` — debounced `media_kit` screenshot + timestamp fallback | ✅ |
@@ -43,7 +43,7 @@
 | 2 | R26-A02 | Torrent + Stremio + Nuvio + Jackett/Prowlarr paths unchanged functionally | ⬜ |
 | 3 | R26-A03 | Direct streaming mode path unchanged functionally | ⬜ |
 | 4 | R26-A04 | No `BackdropFilter` / glass chrome on details or player (RFC-025 parity) | ⬜ |
-| 5 | R26-A05 | Desktop + mobile layouts ship; no platform left on old chrome | ⬜ |
+| 5 | R26-A05 | Desktop + mobile unified scroll layout; no split poster column | 🔄 |
 | 6 | R26-A06 | `flutter analyze` clean; manual smoke on both details variants + player | ⬜ |
 | 7 | R26-A07 | [Issue 018](../issues/018-[draft]-migration-playback-parity-unverified.md) playback parity rows verified or explicitly scoped out with notes | ⬜ |
 
@@ -53,9 +53,9 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R26-A08 | Details hero: backdrop immediately; YouTube trailer after 2s dwell when TMDB key exists; backdrop when none | ✅ |
+| 1 | R26-A08 | Details hero: Ken Burns backdrop immediately; preloaded YouTube trailer after 3s when TMDB key exists | ✅ |
 | 2 | R26-A09 | Hero watch progress bar for movies + selected TV episode (hide &lt;2% or ≥90%) | ✅ |
-| 3 | R26-A10 | Rich TMDB sections visible on torrent + streaming details (cast, crew, keywords, production, recommendations) | ✅ |
+| 3 | R26-A10 | Primary scroll: Main Characters + More Like This (+ seasons for TV); crew/keywords/production deferred | 🔄 |
 | 4 | R26-A11 | Player flat chrome: Back + title/meta overlay; play, ±10s, volume, sources, PiP, fullscreen | ✅ |
 | 5 | R26-A12 | `StreamSourcePanel` switches among `_currentSources` without engine change | ✅ |
 | 6 | R26-A13 | Seek hover preview shows frame when `screenshot()` succeeds; timestamp-only fallback otherwise | ✅ |

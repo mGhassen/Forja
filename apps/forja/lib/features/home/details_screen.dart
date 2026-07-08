@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,11 +13,17 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/widgets/home_movie_row.dart';
+import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
-import 'package:forja/shared/widgets/media_details_metadata_sections.dart';
+import 'package:forja/shared/widgets/media_details_trailers_section.dart';
+import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
+import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 import 'package:forja/shared/theme/app_theme.dart';
 
 class DetailsScreen extends StatefulWidget {
@@ -101,16 +106,25 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   bool _isJackettConfigured = false;
   bool _isProwlarrConfigured = false;
 
-  // Stremio recommendations from meta links
-  List<Map<String, dynamic>> _stremioRecommendations = [];
-  bool _isLoadingRecommendations = false;
-  final ScrollController _recommendationsScrollController = ScrollController();
+  List<Movie> _similarMovies = [];
+  final ScrollController _castScrollController = ScrollController();
+  List<Map<String, String>> _castMembers = [];
+  List<MediaTrailer> _trailers = [];
 
   // Stream resolution cancellation
   bool _streamCancelled = false;
 
-  MediaDetailsExtras? _mediaExtras;
   String? _trailerKey;
+  String _originalLanguage = '';
+  String _tagline = '';
+  String _certification = '';
+  String _status = '';
+  String _directorName = '';
+  int _budget = 0;
+  int _revenue = 0;
+  List<String> _spokenLanguages = [];
+  List<String> _productionCompanies = [];
+  List<String> _originCountries = [];
   final Map<int, String> _seasonPosters = {};
   Map<String, Map<String, dynamic>> _episodeProgress = {};
 
@@ -156,7 +170,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _episodeScrollController.dispose();
     _seasonScrollController.dispose();
     _chipsScrollController.dispose();
-    _recommendationsScrollController.dispose();
+    _castScrollController.dispose();
     _jackett.dispose();
     _prowlarr.dispose();
     _linkResolver.dispose();
@@ -236,20 +250,171 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _fetchSeason(season);
   }
 
-  Widget _buildDetailsHero({double? height, bool compact = false}) {
+  String get _detailsBackdropUrl {
+    final path = _movie.backdropPath.isNotEmpty
+        ? _movie.backdropPath
+        : _movie.posterPath;
+    return path.isNotEmpty ? TmdbApi.getBackdropUrl(path) : '';
+  }
+
+  Widget _buildDetailsHero() {
     return MediaDetailsHero(
       movie: _movie,
       trailerYoutubeKey: _trailerKey,
+      trailerLanguageCode: _originalLanguage,
       progress: _lastProgress,
-      height: height,
-      compact: compact,
+      height: MediaQuery.sizeOf(context).height * 0.82,
+      tagline: _tagline,
+      certification: _certification,
+      status: _status,
+      imdbRating: _heroImdbRating,
+      directorName: _directorName,
+      budget: _budget,
+      revenue: _revenue,
+      languageCode: _originalLanguage,
+      spokenLanguages: _spokenLanguages,
+      productionCompanies: _productionCompanies,
+      originCountries: _originCountries,
+      actionRow: _isCollection ? null : _buildHeroActionRow(),
     );
   }
 
-  Widget _buildMetadataSections() {
-    final extras = _mediaExtras;
-    if (extras == null) return const SizedBox.shrink();
-    return MediaDetailsMetadataSections(movie: _movie, extras: extras);
+  double? get _heroImdbRating {
+    final r = _mdblistRatings;
+    if (r == null) return null;
+    final scores = r['scores'] as List<dynamic>? ?? r['ratings'] as List<dynamic>? ?? [];
+    for (final s in scores) {
+      final source = (s['source'] ?? '').toString().toLowerCase();
+      if (source != 'imdb') continue;
+      final value = s['value'] ?? s['score'];
+      if (value is num && value > 0) return value.toDouble();
+    }
+    return null;
+  }
+
+  String _pickDirector(List<Map<String, String>> crew) {
+    for (final c in crew) {
+      final job = (c['job'] ?? '').toLowerCase();
+      if (job.contains('director')) return c['name'] ?? '';
+    }
+    for (final c in crew) {
+      final job = (c['job'] ?? '').toLowerCase();
+      if (job.contains('creator')) return c['name'] ?? '';
+    }
+    return '';
+  }
+
+  Widget _buildHeroActionRow() {
+    final hasResume = _lastProgress != null &&
+        ((_lastProgress!['position'] as int? ?? 0) > 0);
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _sourcesPanelOpen = true),
+          child: Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 26),
+                const SizedBox(width: 4),
+                Text(
+                  hasResume ? 'Resume' : 'Play',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white24),
+          ),
+          child: Center(
+            child: MyListButton.movie(movie: _movie),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => setState(() => _sourcesPanelOpen = true),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white24),
+            ),
+            child: const Icon(Icons.download_outlined, color: Colors.white, size: 22),
+          ),
+        ),
+        const SizedBox(width: 8),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_horiz_rounded, color: Colors.white70),
+          color: const Color(0xFF1A1A24),
+          onSelected: (value) => _handleHeroOverflowAction(value),
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'trakt_rate',
+              child: Text(_userTraktRating != null
+                  ? 'Trakt rating: $_userTraktRating'
+                  : 'Rate on Trakt'),
+            ),
+            PopupMenuItem(
+              value: 'simkl_rate',
+              child: Text(_userSimklRating != null
+                  ? 'Simkl rating: $_userSimklRating'
+                  : 'Rate on Simkl'),
+            ),
+            PopupMenuItem(
+              value: 'collect',
+              child: Text(_isInTraktCollection ? 'Remove from collection' : 'Add to collection'),
+            ),
+            const PopupMenuItem(value: 'checkin', child: Text('Trakt check-in')),
+            const PopupMenuItem(value: 'trakt_list', child: Text('Add to Trakt list')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleHeroOverflowAction(String value) async {
+    switch (value) {
+      case 'trakt_rate':
+        if (await TraktService().isLoggedIn()) {
+          _showRatingDialog();
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login to Trakt first in Settings')));
+        }
+      case 'simkl_rate':
+        if (await SimklService().isLoggedIn()) {
+          _showSimklRatingDialog();
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login to Simkl first in Settings')));
+        }
+      case 'collect':
+        await _toggleTraktCollection();
+      case 'checkin':
+        await _traktCheckin();
+      case 'trakt_list':
+        await _addToTraktList();
+    }
   }
 
   Widget _buildTvPicker() {
@@ -432,12 +597,27 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       } else {
         rich = await _api.getRichMovieDetails(widget.movie.id);
       }
+      final similar = rich.movie.mediaType == 'tv'
+          ? await _api.getTvRecommendations(rich.movie.id)
+          : await _api.getMovieRecommendations(rich.movie.id);
       if (mounted) {
         setState(() {
           _movie = rich.movie;
-          _mediaExtras = rich.extras;
           _trailerKey = rich.extras.trailerYoutubeKey;
+          _originalLanguage = rich.extras.originalLanguage;
+          _tagline = rich.extras.tagline;
+          _certification = rich.extras.certification;
+          _status = rich.extras.status;
+          _directorName = _pickDirector(rich.extras.crew);
+          _budget = rich.extras.budget;
+          _revenue = rich.extras.revenue;
+          _spokenLanguages = rich.extras.spokenLanguages;
+          _productionCompanies = rich.extras.productionCompanies;
+          _originCountries = rich.extras.originCountries;
+          _castMembers = rich.extras.cast;
+          _trailers = rich.extras.trailers;
           _streamAddons = streamAddons;
+          _similarMovies = similar;
           _isLoading = false;
           if (!_playbackProfile.builtinTorrentSearch && streamAddons.isNotEmpty) {
             _selectedSourceId = streamAddons.length > 1
@@ -448,7 +628,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (_playbackProfile.builtinTorrentSearch) _autoSearch();
         _fetchAllStremioStreams();
         _checkAndFetchNuvio();
-        _fetchStremioRecommendations();
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -818,73 +997,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         ),
       ),
     );
-  }
-
-  /// Fetches recommendations by getting meta from Stremio addons and
-  /// collecting meta.links (stremio:///detail/...) items.
-  Future<void> _fetchStremioRecommendations() async {
-    final stremioId = _movie.imdbId ?? '';
-    if (stremioId.isEmpty) return;
-
-    setState(() => _isLoadingRecommendations = true);
-    try {
-      final type = _movie.mediaType == 'tv' ? 'series' : 'movie';
-      final meta = await _stremio.getMetaFromAny(type: type, id: stremioId);
-      if (meta == null || !mounted) {
-        if (mounted) setState(() => _isLoadingRecommendations = false);
-        return;
-      }
-
-      final links = meta['links'] as List? ?? [];
-      final List<Map<String, dynamic>> recommendations = [];
-
-      for (final link in links) {
-        if (link is! Map) continue;
-        final url = link['url']?.toString() ?? '';
-        final name = link['name']?.toString() ?? '';
-        final category = link['category']?.toString() ?? '';
-
-        final parsed = StremioService.parseMetaLink(url);
-        if (parsed == null) continue;
-
-        if (parsed['action'] == 'detail') {
-          recommendations.add({
-            'name': name,
-            'category': category,
-            'type': parsed['type'],
-            'id': parsed['id'],
-            'url': url,
-            'poster': null, // Will try to resolve
-          });
-        }
-      }
-
-      // Try to load posters for recommendations by batch-resolving metas
-      if (recommendations.isNotEmpty) {
-        await Future.wait(recommendations.map((rec) async {
-          try {
-            final recMeta = await _stremio.getMetaFromAny(
-              type: rec['type'] ?? type,
-              id: rec['id'],
-            );
-            if (recMeta != null) {
-              rec['poster'] = recMeta['poster'];
-              rec['name'] = rec['name'].isEmpty ? (recMeta['name'] ?? '') : rec['name'];
-            }
-          } catch (_) {}
-        }));
-      }
-
-      if (mounted) {
-        setState(() {
-          _stremioRecommendations = recommendations;
-          _isLoadingRecommendations = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('[DetailsScreen] Recommendations error: $e');
-      if (mounted) setState(() => _isLoadingRecommendations = false);
-    }
   }
 
   Future<void> _openRecommendation(Map<String, dynamic> rec) async {
@@ -1654,15 +1766,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   // ─── safe field helpers ───────────────────────────────────────────────────
 
-  List<String> _getCastNames() {
-    try {
-      final dynamic m = _movie;
-      final dynamic raw = m.castNames ?? m.cast ?? m.credits;
-      if (raw is List) return raw.map((e) => e.toString()).toList();
-    } catch (_) {}
-    return [];
-  }
-
   String _getTrackerName(TorrentResult result) {
     try {
       final dynamic r = result;
@@ -1961,16 +2064,20 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        body: Stack(fit: StackFit.expand, children: [
-          _buildBackdropWidget(),
-          const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
-        ]),
+      return BackNavigationScope(
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+              DesktopWindowChrome.overlayDragStrip(),
+              MediaDetailsBackButton(),
+            ],
+          ),
+        ),
       );
     }
-
-    final w = MediaQuery.of(context).size.width;
-    final isMobile = (Platform.isAndroid || Platform.isIOS) || w < 800;
 
     return BackNavigationScope(
       child: KeyboardListener(
@@ -1993,436 +2100,56 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: Padding(
-            padding: const EdgeInsets.all(8),
-            child: FocusableControl(
-              onTap: () => Navigator.of(context).pop(),
-              borderRadius: 50,
-              child: const CircleAvatar(
-                backgroundColor: Colors.black54,
-                child: Icon(Icons.arrow_back, color: Colors.white),
-              ),
-            ),
-          ),
-          actions: [
-            if (!_isCollection)
-              IconButton(
-                tooltip: 'Sources',
-                onPressed: () => setState(() => _sourcesPanelOpen = !_sourcesPanelOpen),
-                icon: Icon(
-                  Icons.download_rounded,
-                  color: _sourcesPanelOpen ? AppTheme.primaryColor : Colors.white,
-                ),
-              ),
-          ],
-        ),
         body: Stack(children: [
-          _buildBackdropWidget(),
-          SafeArea(child: isMobile ? _buildMobileLayout() : _buildDesktopLayout()),
+          _buildScrollLayout(),
           if (!_isCollection) _buildSourcesSlidingPanel(),
+          DesktopWindowChrome.overlayDragStrip(),
+          const MediaDetailsBackButton(),
         ]),
       ),
     ),
     );
   }
 
-  // ─── shared backdrop ──────────────────────────────────────────────────────
-
-  /// Returns a full image URL. If the path is already a full URL (e.g. from
-  /// Stremio), returns it as-is; otherwise wraps with TMDB base URL.
-  String _imageUrl(String path) =>
-      path.startsWith('http') ? path : TmdbApi.getBackdropUrl(path);
-
-  Widget _buildBackdropWidget() {
-    final url = _imageUrl(_movie.backdropPath.isNotEmpty ? _movie.backdropPath : _movie.posterPath);
-    return buildAtmosphereBackdrop(
-      imageUrl: url,
-      genres: _movie.genres,
-      blurSigma: 12,
-    );
-  }
-
   // ═══════════════════════════════════════════════════════════════════════════
-  //  RATINGS ROW + ACTION BUTTONS
+  //  SCROLL LAYOUT
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildRatingsRow() {
-    final r = _mdblistRatings;
-    final chips = <Widget>[];
-
-    Widget ratingChip(String label, dynamic value, {Color color = Colors.white70, String? icon}) {
-      if (value == null || value == 0) return const SizedBox.shrink();
-      final display = value is double ? value.toStringAsFixed(1) : value.toString();
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Text(icon, style: const TextStyle(fontSize: 12)),
-              const SizedBox(width: 4),
-            ],
-            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-            const SizedBox(width: 4),
-            Text(display, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
-          ],
-        ),
-      );
-    }
-
-    if (r != null) {
-      final scores = r['scores'] as List<dynamic>? ?? r['ratings'] as List<dynamic>? ?? [];
-      for (final s in scores) {
-        final source = (s['source'] ?? '').toString();
-        final value = s['value'] ?? s['score'];
-        if (value == null || value == 0) continue;
-        String label;
-        Color color;
-        switch (source.toLowerCase()) {
-          case 'imdb':
-            label = 'IMDb';
-            color = const Color(0xFFf5c518);
-          case 'metacritic':
-            label = 'MC';
-            color = const Color(0xFF66CC33);
-          case 'metacriticuser':
-            label = 'MC User';
-            color = const Color(0xFF66CC33);
-          case 'trakt':
-            label = 'Trakt';
-            color = const Color(0xFFED1C24);
-          case 'letterboxd':
-            label = 'LB';
-            color = const Color(0xFF00D735);
-          case 'tomatoes':
-            label = 'RT';
-            color = const Color(0xFFFA320A);
-          case 'tomatoesaudience':
-            label = 'RT Aud';
-            color = const Color(0xFFFA320A);
-          case 'tmdb':
-            label = 'TMDB';
-            color = const Color(0xFF01B4E4);
-          case 'rogerebert':
-            label = 'Ebert';
-            color = const Color(0xFFCCCCCC);
-          default:
-            label = source;
-            color = Colors.white70;
-        }
-        chips.add(ratingChip(label, value, color: color));
-      }
-    }
-
-    if (_userTraktRating != null) {
-      chips.add(Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFED1C24).withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFED1C24).withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.star_rounded, color: Color(0xFFED1C24), size: 14),
-            const SizedBox(width: 3),
-            Text('You: $_userTraktRating/10',
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
-          ],
-        ),
-      ));
-    }
-
-    if (_userSimklRating != null) {
-      chips.add(Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0BF5E5).withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF0BF5E5).withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.star_rounded, color: Color(0xFF0BF5E5), size: 14),
-            const SizedBox(width: 3),
-            Text('Simkl: $_userSimklRating/10',
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
-          ],
-        ),
-      ));
-    }
-
-    if (chips.isEmpty) return const SizedBox.shrink();
-    return Wrap(spacing: 6, runSpacing: 6, children: chips);
-  }
-
-  Widget _buildActionButtons() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        _actionButton(
-          icon: _userTraktRating != null ? Icons.star_rounded : Icons.star_outline_rounded,
-          label: _userTraktRating != null ? 'Trakt $_userTraktRating' : 'Rate Trakt',
-          color: const Color(0xFFED1C24),
-          onTap: () async {
-            if (await TraktService().isLoggedIn()) {
-              _showRatingDialog();
-            } else {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Login to Trakt first in Settings')));
-            }
-          },
-        ),
-        _actionButton(
-          icon: _userSimklRating != null ? Icons.star_rounded : Icons.star_outline_rounded,
-          label: _userSimklRating != null ? 'Simkl $_userSimklRating' : 'Rate Simkl',
-          color: const Color(0xFF0BF5E5),
-          onTap: () async {
-            if (await SimklService().isLoggedIn()) {
-              _showSimklRatingDialog();
-            } else {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Login to Simkl first in Settings')));
-            }
-          },
-        ),
-        _actionButton(
-          icon: _isInTraktCollection ? Icons.library_add_check_rounded : Icons.library_add_rounded,
-          label: _isInTraktCollection ? 'Collected' : 'Collect',
-          color: const Color(0xFFCC7B19),
-          onTap: _toggleTraktCollection,
-        ),
-        _actionButton(
-          icon: Icons.live_tv_rounded,
-          label: 'Check In',
-          color: const Color(0xFF9B59B6),
-          onTap: _traktCheckin,
-        ),
-        _actionButton(
-          icon: Icons.playlist_add_rounded,
-          label: 'Add to List',
-          color: const Color(0xFF3498DB),
-          onTap: _addToTraktList,
-        ),
-      ],
-    );
-  }
-
-  Widget _actionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  MOBILE LAYOUT
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildMobileLayout() {
+  Widget _buildScrollLayout() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildDetailsHero(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          MediaDetailsBody(
+            backdropUrl: _detailsBackdropUrl,
+            backgroundColor: Colors.black,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(spacing: 6, runSpacing: 6,
-                  children: _movie.genres.take(3).map(_genreChip).toList()),
-                if (_mdblistRatings != null || _userTraktRating != null || _userSimklRating != null) ...[  
-                  const SizedBox(height: 12),
-                  _buildRatingsRow(),
-                ],
-                const SizedBox(height: 8),
-                _buildActionButtons(),
-                const SizedBox(height: 16),
-                _ExpandableSynopsis(text: _movie.overview),
-                const SizedBox(height: 16),
-                // Collection items display
                 if (_isCollection && _collectionItems.isNotEmpty) ...[
                   _buildCollectionItemsSection(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
-                Builder(builder: (ctx) {
-                  final cast = _getCastNames();
-                  if (cast.isEmpty) return const SizedBox.shrink();
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _sectionLabel('Cast'),
-                      const SizedBox(height: 8),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: cast.take(8).map((n) => Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: _castChip(n),
-                          )).toList(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                }),
-                const SizedBox(height: 16),
-                _buildMetadataSections(),
-                const SizedBox(height: 16),
-                _buildRecommendationsSection(),
                 if (_movie.mediaType == 'tv' && !_isCollection) ...[
                   _buildTvPicker(),
-                  const SizedBox(height: 6),
-                  const Text('← → Episodes  |  ↑ ↓ Season',
-                    style: TextStyle(color: Colors.white24, fontSize: 10)),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
-                const SizedBox(height: 32),
+                if (_castMembers.isNotEmpty) ...[
+                  _buildCharactersSection(),
+                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
+                ],
+                if (_trailers.isNotEmpty) ...[
+                  MediaDetailsTrailersSection(trailers: _trailers),
+                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
+                ],
+                _buildRecommendationsSection(),
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  DESKTOP LAYOUT
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildDesktopLayout() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildDetailsHero(
-          height: MediaQuery.sizeOf(context).height * 0.42,
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildDesktopLeftPanel(),
-                if (_movie.mediaType == 'tv' && !_isCollection) ...[
-                  const SizedBox(height: 24),
-                  _buildTvPicker(),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDesktopLeftPanel() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            wrapPosterGlow(
-              width: 260,
-              height: 380,
-              borderRadius: 12,
-              genres: _movie.genres,
-              child: Hero(
-                tag: 'movie-poster-${_movie.id}',
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: CachedNetworkImage(
-                    imageUrl: _imageUrl(_movie.posterPath),
-                    width: 260, height: 380, fit: BoxFit.cover),
-                ),
-              ),
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 4),
-                  Text(_movie.title,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold,
-                      color: Colors.white, height: 1.2)),
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    Text(_movie.releaseDate.take(4),
-                      style: const TextStyle(color: Colors.white54, fontSize: 13)),
-                    const SizedBox(width: 8),
-                    const Text('·', style: TextStyle(color: Colors.white38)),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.star_rounded, color: Color(0xFFFFD700), size: 15),
-                    const SizedBox(width: 3),
-                    Text(_movie.voteAverage.toStringAsFixed(1),
-                      style: const TextStyle(color: Color(0xFFFFD700), fontSize: 13, fontWeight: FontWeight.w600)),
-                  ]),
-                  const SizedBox(height: 10),
-                  Wrap(spacing: 6, runSpacing: 6,
-                    children: _movie.genres.take(3).map(_genreChip).toList()),
-                  if (_mdblistRatings != null || _userTraktRating != null || _userSimklRating != null) ...[  
-                    const SizedBox(height: 12),
-                    _buildRatingsRow(),
-                  ],
-                  const SizedBox(height: 8),
-                  _buildActionButtons(),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Text(_movie.overview,
-          style: const TextStyle(color: Color(0xFFB0B0C0), fontSize: 13.5, height: 1.6)),
-        const SizedBox(height: 20),
-        // Collection items display
-        if (_isCollection && _collectionItems.isNotEmpty) ...[
-          _buildCollectionItemsSection(),
-          const SizedBox(height: 20),
-        ],
-        _buildMetadataSections(),
-        const SizedBox(height: 20),
-        _buildRecommendationsSection(),
-        const SizedBox(height: 24),
-      ],
     );
   }
 
@@ -3198,23 +2925,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   //  SMALL REUSABLE WIDGETS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _sectionLabel(String text) => Text(text,
-    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14));
-
-  Widget _genreChip(String label) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Colors.white24)),
-    child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)));
-
-  Widget _castChip(String name) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Colors.white24)),
-    child: Text(name, style: const TextStyle(color: Colors.white70, fontSize: 12)));
+  Widget _sectionLabel(String text) => Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 20,
+          letterSpacing: -0.3,
+        ),
+      );
 
   Widget _qualityBadge(String q, Color c) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -3245,10 +2964,61 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Icon(icon, color: Colors.white38, size: 16)));
 
+  Widget _buildCharactersSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Main Characters'),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 155,
+          child: ListView.separated(
+            controller: _castScrollController,
+            scrollDirection: Axis.horizontal,
+            itemCount: _castMembers.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (context, i) {
+              final m = _castMembers[i];
+              final profilePath = m['profilePath'] ?? '';
+              final name = m['name'] ?? '';
+              final character = m['character'] ?? '';
+              return SizedBox(
+                width: 92,
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 42,
+                      backgroundColor: Colors.white10,
+                      backgroundImage: profilePath.isNotEmpty
+                          ? CachedNetworkImageProvider(
+                              TmdbApi.getProfileUrl(profilePath))
+                          : null,
+                      child: profilePath.isEmpty
+                          ? const Icon(Icons.person, color: Colors.white24, size: 32)
+                          : null,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(name,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                    if (character.isNotEmpty)
+                      Text(character,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   // ═════════════════════════════════════════════════════════════════════════════
   //  RECOMMENDATIONS SECTION
-  // ═════════════════════════════════════════════════════════════════════════════
-  //  COLLECTION ITEMS SECTION
   // ═════════════════════════════════════════════════════════════════════════════
 
   Widget _buildCollectionItemsSection() {
@@ -3385,107 +3155,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // ═════════════════════════════════════════════════════════════════════════════
 
   Widget _buildRecommendationsSection() {
-    if (_isLoadingRecommendations) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sectionLabel('Similar'),
-            const SizedBox(height: 12),
-            const SizedBox(
-              height: 40,
-              child: Center(child: SizedBox(
-                width: 20, height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor),
-              )),
-            ),
-          ],
-        ),
-      );
-    }
-    if (_stremioRecommendations.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _sectionLabel('Similar'),
-              const Spacer(),
-              Row(children: [
-                _scrollArrow(Icons.arrow_back_ios_rounded, () => _recommendationsScrollController.animateTo(
-                  _recommendationsScrollController.offset - 260,
-                  duration: const Duration(milliseconds: 280), curve: Curves.easeInOut)),
-                _scrollArrow(Icons.arrow_forward_ios_rounded, () => _recommendationsScrollController.animateTo(
-                  _recommendationsScrollController.offset + 260,
-                  duration: const Duration(milliseconds: 280), curve: Curves.easeInOut)),
-              ]),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 180,
-            child: ListView.separated(
-              controller: _recommendationsScrollController,
-              scrollDirection: Axis.horizontal,
-              itemCount: _stremioRecommendations.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final rec = _stremioRecommendations[index];
-                final poster = rec['poster']?.toString() ?? '';
-                final name = rec['name']?.toString() ?? 'Unknown';
-
-                return FocusableControl(
-                  onTap: () => _openRecommendation(rec),
-                  borderRadius: 10,
-                  child: SizedBox(
-                    width: 115,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            width: 115, height: 150,
-                            color: AppTheme.bgCard,
-                            child: poster.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: poster,
-                                    fit: BoxFit.cover,
-                                    width: 115, height: 150,
-                                    placeholder: (_, _) => Container(color: AppTheme.bgCard),
-                                    errorWidget: (_, _, _) => Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(6),
-                                        child: Text(name, textAlign: TextAlign.center,
-                                          style: const TextStyle(fontSize: 10, color: Colors.white38)),
-                                      ),
-                                    ),
-                                  )
-                                : Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(6),
-                                      child: Text(name, textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 10, color: Colors.white38)),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11, color: Colors.white70)),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+    return HomeMovieRow(
+      title: 'More Like This',
+      movies: _similarMovies,
+      embedded: true,
+      onMovieTap: (movie) => AppRouter.openMovie(context, movie: movie),
     );
   }
 }
@@ -3493,43 +3167,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 // ═════════════════════════════════════════════════════════════════════════════
 //  EXPANDABLE SYNOPSIS
 // ═════════════════════════════════════════════════════════════════════════════
-
-class _ExpandableSynopsis extends StatefulWidget {
-  final String text;
-  const _ExpandableSynopsis({required this.text});
-
-  @override
-  State<_ExpandableSynopsis> createState() => _ExpandableSynopsisState();
-}
-
-class _ExpandableSynopsisState extends State<_ExpandableSynopsis> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AnimatedCrossFade(
-          duration: const Duration(milliseconds: 250),
-          firstChild: Text(widget.text,
-            maxLines: 3, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFFB0B0C0), fontSize: 13.5, height: 1.6)),
-          secondChild: Text(widget.text,
-            style: const TextStyle(color: Color(0xFFB0B0C0), fontSize: 13.5, height: 1.6)),
-          crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-        ),
-        const SizedBox(height: 4),
-        GestureDetector(
-          onTap: () => setState(() => _expanded = !_expanded),
-          child: Text(_expanded ? 'Show less' : 'Show more',
-            style: TextStyle(color: AppTheme.primaryColor.withValues(alpha: 0.9),
-              fontSize: 12, fontWeight: FontWeight.w600)),
-        ),
-      ],
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  AUDIO FILTER MENU  (stateful so checkboxes update without closing the menu)

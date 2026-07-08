@@ -27,6 +27,7 @@ class MainFlutterWindow: NSWindow {
     titlebarAppearsTransparent = true
     titleVisibility = .hidden
     styleMask.insert(.fullSizeContentView)
+    backgroundColor = NSColor.black
 
     super.awakeFromNib()
     repositionTrafficLights()

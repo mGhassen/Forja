@@ -26,6 +26,24 @@ class DesktopWindowChrome {
 
     return _DesktopShellFrame(child: child);
   }
+
+  /// Drag + double-tap maximize strip for routes pushed above [wrapShell]
+  /// (e.g. media details on the root navigator).
+  static Widget overlayDragStrip() {
+    if (!isDesktop) return const SizedBox.shrink();
+
+    final height = Platform.isMacOS ? kMacTitleBarHeight : kWindowCaptionHeight;
+
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: height,
+      child: const DragToMoveArea(
+        child: SizedBox.expand(),
+      ),
+    );
+  }
 }
 
 class _DesktopShellFrame extends StatelessWidget {

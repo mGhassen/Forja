@@ -406,22 +406,65 @@ class TmdbApi {
       'videos,credits,keywords,recommendations,content_ratings,external_ids,images';
 
   static String? parseTrailerYoutubeKey(Map<String, dynamic> json) {
+    final trailers = parseTrailers(json);
+    for (final t in trailers) {
+      if (t.type == 'Trailer' && t.official) return t.key;
+    }
+    for (final t in trailers) {
+      if (t.type == 'Trailer') return t.key;
+    }
+    return trailers.isNotEmpty ? trailers.first.key : null;
+  }
+
+  static const _trailerTypes = {
+    'Trailer',
+    'Teaser',
+    'Featurette',
+    'Clip',
+    'Behind the Scenes',
+  };
+
+  static const _trailerTypeOrder = {
+    'Trailer': 0,
+    'Teaser': 1,
+    'Featurette': 2,
+    'Clip': 3,
+    'Behind the Scenes': 4,
+  };
+
+  static List<MediaTrailer> parseTrailers(Map<String, dynamic> json) {
     final videos = json['videos'];
-    if (videos is! Map<String, dynamic>) return null;
+    if (videos is! Map<String, dynamic>) return const [];
     final results = videos['results'] as List? ?? [];
-    Map<String, dynamic>? pick;
+    final seen = <String>{};
+    final trailers = <MediaTrailer>[];
+
     for (final v in results) {
       if (v is! Map<String, dynamic>) continue;
       if (v['site'] != 'YouTube') continue;
-      if (v['type'] != 'Trailer') continue;
-      if (v['official'] == true) {
-        pick = v;
-        break;
-      }
-      pick ??= v;
+      final type = (v['type'] ?? '').toString();
+      if (!_trailerTypes.contains(type)) continue;
+      final key = v['key']?.toString() ?? '';
+      if (key.isEmpty || seen.contains(key)) continue;
+      seen.add(key);
+      trailers.add(MediaTrailer(
+        key: key,
+        name: (v['name'] ?? type).toString(),
+        type: type,
+        official: v['official'] == true,
+        site: (v['site'] ?? 'YouTube').toString(),
+      ));
     }
-    final key = pick?['key']?.toString();
-    return (key != null && key.isNotEmpty) ? key : null;
+
+    trailers.sort((a, b) {
+      if (a.official != b.official) return a.official ? -1 : 1;
+      final typeCmp = (_trailerTypeOrder[a.type] ?? 99)
+          .compareTo(_trailerTypeOrder[b.type] ?? 99);
+      if (typeCmp != 0) return typeCmp;
+      return a.name.compareTo(b.name);
+    });
+
+    return trailers;
   }
 
   static MediaDetailsExtras parseMediaExtras(
@@ -521,10 +564,14 @@ class TmdbApi {
       keywords: keywords,
       productionCompanies: companies,
       spokenLanguages: languages,
+      originalLanguage: json['original_language']?.toString() ?? '',
       originCountries: countries,
       certification: certification,
       recommendations: recommendations,
       trailerYoutubeKey: parseTrailerYoutubeKey(json),
+      budget: (json['budget'] as num?)?.toInt() ?? 0,
+      revenue: (json['revenue'] as num?)?.toInt() ?? 0,
+      trailers: parseTrailers(json),
     );
   }
 

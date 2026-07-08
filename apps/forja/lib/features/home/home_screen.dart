@@ -25,6 +25,8 @@ import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/features/home/stremio_catalog_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/home_movie_card.dart';
+import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
@@ -109,7 +111,7 @@ Widget _homeTitleBarSkeleton({double width = 140, double height = 18}) {
 
 Widget _homeCardSkeleton(BuildContext context, {double? width}) {
   return Container(
-    width: width ?? _MovieCard.cardWidth(context),
+    width: width ?? HomeMovieCard.cardWidth(context),
     decoration: BoxDecoration(
       color: AppTheme.bgCard,
       borderRadius: BorderRadius.circular(14),
@@ -144,7 +146,7 @@ Widget _homeMovieRowSkeleton(
   final top = topPadding > 0
       ? topPadding
       : _homeSectionTitleTop(context, compactTop: compactTop);
-  final cardHeight = _MovieCard.cardHeight(context);
+  final cardHeight = HomeMovieCard.cardHeight(context);
 
   return Padding(
     padding: EdgeInsets.only(top: top),
@@ -2155,7 +2157,7 @@ class _HomeScreenState extends State<HomeScreen>
         ForjaPlainIcon(
           icon: Icons.add,
           tooltip: 'Add to My List',
-          child: _MyListButton.movie(movie: heroMovie),
+          child: MyListButton.movie(movie: heroMovie),
         ),
       ],
     );
@@ -2186,7 +2188,7 @@ class _MovieSection extends StatefulWidget {
         : ShellTokens.homeSectionTitleTop;
     const headerRow = 28.0;
     const bottomGap = 16.0;
-    return top + headerRow + bottomGap + _MovieCard.cardHeight(context);
+    return top + headerRow + bottomGap + HomeMovieCard.cardHeight(context);
   }
 
   @override
@@ -2238,7 +2240,7 @@ class _MovieSectionState extends State<_MovieSection> {
               padding: EdgeInsets.fromLTRB(24, sectionTop, 24, 16),
             ),
             SizedBox(
-              height: _MovieCard.cardHeight(context),
+              height: HomeMovieCard.cardHeight(context),
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _scrollController,
@@ -2248,7 +2250,7 @@ class _MovieSectionState extends State<_MovieSection> {
                 itemCount: movies.length,
                 separatorBuilder: (_, _) =>
                     SizedBox(width: widget.showRank ? 6 : 14),
-                itemBuilder: (context, index) => _MovieCard(
+                itemBuilder: (context, index) => HomeMovieCard(
                   movie: movies[index],
                   onTap: () => widget.onMovieTap(movies[index]),
                   rank: widget.showRank ? index + 1 : null,
@@ -2294,7 +2296,7 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
       children: [
         ShellSectionTitle(title: widget.title),
         SizedBox(
-          height: _MovieCard.cardHeight(context),
+          height: HomeMovieCard.cardHeight(context),
           child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
@@ -2303,7 +2305,7 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             itemCount: widget.movies.length,
             separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (context, index) => _MovieCard(
+            itemBuilder: (context, index) => HomeMovieCard(
               movie: widget.movies[index],
               onTap: () => widget.onMovieTap(widget.movies[index]),
             ),
@@ -2312,188 +2314,6 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
       ],
     );
   }
-}
-
-class _MovieCard extends StatelessWidget {
-  final Movie movie;
-  final VoidCallback onTap;
-  final int? rank;
-
-  const _MovieCard({
-    required this.movie,
-    required this.onTap,
-    this.rank,
-  });
-
-  static double cardWidth(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 900;
-    return isDesktop ? 190.0 : 165.0;
-  }
-
-  static double cardHeight(BuildContext context) =>
-      _snapPosterHeight(cardWidth(context));
-
-  static double _snapPosterHeight(double width) {
-    // Poster aspect ratio 2:3 (width:height).
-    return (width * 1.5).roundToDouble();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 900;
-    final cardWidth = _MovieCard.cardWidth(context);
-    final cardHeight = _MovieCard.cardHeight(context);
-    final imageUrl = movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '';
-
-    final card = FocusableControl(
-      onTap: onTap,
-      borderRadius: 14,
-      scaleOnFocus: 1.05,
-      child: Container(
-        width: cardWidth,
-        height: cardHeight,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: AppTheme.isLightMode ? null : [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 8)),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ColoredBox(
-                color: AppTheme.bgDark,
-                child: imageUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        filterQuality: FilterQuality.medium,
-                        placeholder: (c, u) =>
-                            ColoredBox(color: AppTheme.bgDark),
-                        errorWidget: (c, u, e) => Container(
-                          color: AppTheme.bgDark,
-                          child: Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
-                        ),
-                      )
-                    : Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
-              ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.7),
-                    Colors.black.withValues(alpha: 0.95),
-                  ],
-                  stops: const [0.0, 0.45, 0.8, 1.0],
-                ),
-              ),
-            ),
-            if (movie.voteAverage > 0)
-              Positioned(
-                top: 8, right: 8,
-                child: _buildRatingBadge(movie.voteAverage),
-              ),
-            Positioned(
-              bottom: 10, left: 10, right: 10,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    movie.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isDesktop ? 14 : 13,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      if (movie.releaseDate.isNotEmpty)
-                        Text(
-                          movie.releaseDate.split('-').first,
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
-                        ),
-                      if (movie.mediaType == 'tv' || movie.mediaType == 'movie') ...[
-                        if (movie.releaseDate.isNotEmpty) ...[
-                          Text('  •  ', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
-                        ],
-                        Text(
-                          movie.mediaType == 'tv' ? 'TV' : 'FILM',
-                          style: TextStyle(color: ForjaShellColors.badgeLabel, fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              top: 8, left: 8,
-              child: _MyListButton.movie(movie: movie),
-            ),
-          ],
-        ),
-        ),
-      ),
-    );
-
-    if (rank == null) return card;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          '$rank',
-          style: TextStyle(
-            fontSize: 120,
-            fontWeight: FontWeight.w900,
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
-              ..color = Colors.white.withValues(alpha: 0.1),
-            height: 0.85,
-            letterSpacing: -8,
-          ),
-        ),
-        card,
-      ],
-    );
-  }
-}
-
-/// Rating badge — uses frosted glass when not in light mode.
-Widget _buildRatingBadge(double voteAverage) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-    decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: AppTheme.isLightMode ? 0.55 : 0.45),
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
-        const SizedBox(width: 3),
-        Text(
-          voteAverage.toStringAsFixed(1),
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-      ],
-    ),
-  );
 }
 
 /// Rating badge for string ratings (Stremio).
@@ -3356,7 +3176,7 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
           ),
         ),
         SizedBox(
-          height: _MovieCard.cardHeight(context),
+          height: HomeMovieCard.cardHeight(context),
           child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
@@ -3390,8 +3210,8 @@ class _StremioCatalogCard extends StatelessWidget {
     final poster = item['poster']?.toString() ?? '';
     final name = item['name']?.toString() ?? 'Unknown';
     final rating = item['imdbRating']?.toString() ?? '';
-    final cardWidth = _MovieCard.cardWidth(context);
-    final cardHeight = _MovieCard.cardHeight(context);
+    final cardWidth = HomeMovieCard.cardWidth(context);
+    final cardHeight = HomeMovieCard.cardHeight(context);
 
     return FocusableControl(
       onTap: onTap,
@@ -3466,7 +3286,7 @@ class _StremioCatalogCard extends StatelessWidget {
             // My List button
             Positioned(
               top: 8, left: 8,
-              child: _MyListButton.stremio(stremioItem: item),
+              child: MyListButton.stremio(stremioItem: item),
             ),
           ],
         ),
@@ -3477,68 +3297,6 @@ class _StremioCatalogCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared My List add/remove button used on movie & stremio cards
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MyListButton extends StatelessWidget {
-  final Movie? movie;
-  final Map<String, dynamic>? stremioItem;
-
-  const _MyListButton.movie({required Movie this.movie}) : stremioItem = null;
-  const _MyListButton.stremio({required Map<String, dynamic> this.stremioItem}) : movie = null;
-
-  String get _uniqueId {
-    if (movie != null) return MyListService.movieId(movie!.id, movie!.mediaType);
-    return MyListService.stremioItemId(stremioItem!);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: MyListService.changeNotifier,
-      builder: (context, _, _) {
-        final inList = MyListService().contains(_uniqueId);
-        return GestureDetector(
-          onTap: () async {
-            if (movie != null) {
-              final added = await MyListService().toggleMovie(
-                tmdbId: movie!.id,
-                imdbId: movie!.imdbId,
-                title: movie!.title,
-                posterPath: movie!.posterPath,
-                mediaType: movie!.mediaType,
-                voteAverage: movie!.voteAverage,
-                releaseDate: movie!.releaseDate,
-              );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(added ? 'Added to My List' : 'Removed from My List'),
-                  duration: const Duration(seconds: 1),
-                ));
-              }
-            } else if (stremioItem != null) {
-              final added = await MyListService().toggleStremioItem(stremioItem!);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(added ? 'Added to My List' : 'Removed from My List'),
-                  duration: const Duration(seconds: 1),
-                ));
-              }
-            }
-          },
-          child: Icon(
-            inList ? Icons.bookmark_rounded : Icons.add_rounded,
-            size: 20,
-            color: inList ? ForjaShellColors.iconActive : ForjaShellColors.iconMuted,
-          ),
-        );
-      },
-    );
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MOOD SECTION — chip filter + result row
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -3675,7 +3433,7 @@ class _MoodSectionState extends State<_MoodSection> {
                 Padding(
                   padding: const EdgeInsets.only(top: 0),
                   child: SizedBox(
-                    height: _MovieCard.cardHeight(context),
+                    height: HomeMovieCard.cardHeight(context),
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       physics: const NeverScrollableScrollPhysics(),
@@ -3701,7 +3459,7 @@ class _MoodSectionState extends State<_MoodSection> {
               );
             }
             return SizedBox(
-              height: _MovieCard.cardHeight(context),
+              height: HomeMovieCard.cardHeight(context),
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _resultsCtrl,
@@ -3710,7 +3468,7 @@ class _MoodSectionState extends State<_MoodSection> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 itemCount: movies.length.clamp(0, 20),
                 separatorBuilder: (_, _) => const SizedBox(width: 14),
-                itemBuilder: (context, i) => _MovieCard(
+                itemBuilder: (context, i) => HomeMovieCard(
                   movie: movies[i],
                   onTap: () => onMovieTap(movies[i]),
                 ),
@@ -3833,7 +3591,7 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
       Padding(
         padding: const EdgeInsets.only(top: 0),
         child: SizedBox(
-          height: _MovieCard.cardHeight(context),
+          height: HomeMovieCard.cardHeight(context),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const NeverScrollableScrollPhysics(),
@@ -3865,7 +3623,7 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
               _buildCardSkeletonRow()
             else
               SizedBox(
-                height: _MovieCard.cardHeight(context),
+                height: HomeMovieCard.cardHeight(context),
                 child: ListView.separated(
                   clipBehavior: Clip.none,
                   controller: _ctrl,
@@ -3874,7 +3632,7 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   itemCount: movies.length.clamp(0, 25),
                   separatorBuilder: (_, _) => const SizedBox(width: 14),
-                  itemBuilder: (context, i) => _MovieCard(
+                  itemBuilder: (context, i) => HomeMovieCard(
                     movie: movies[i],
                     onTap: () => widget.onMovieTap(movies[i]),
                   ),

@@ -1,4 +1,5 @@
 import 'movie.dart';
+import 'media_trailer.dart';
 
 /// TMDB fields beyond [Movie] for details screens.
 class MediaDetailsExtras {
@@ -12,10 +13,14 @@ class MediaDetailsExtras {
     this.keywords = const [],
     this.productionCompanies = const [],
     this.spokenLanguages = const [],
+    this.originalLanguage = '',
     this.originCountries = const [],
     this.certification = '',
     this.recommendations = const [],
     this.trailerYoutubeKey,
+    this.budget = 0,
+    this.revenue = 0,
+    this.trailers = const [],
   });
 
   final String tagline;
@@ -27,10 +32,15 @@ class MediaDetailsExtras {
   final List<String> keywords;
   final List<String> productionCompanies;
   final List<String> spokenLanguages;
+  /// TMDB ISO 639-1 code (e.g. `en`, `ko`).
+  final String originalLanguage;
   final List<String> originCountries;
   final String certification;
   final List<Movie> recommendations;
   final String? trailerYoutubeKey;
+  final int budget;
+  final int revenue;
+  final List<MediaTrailer> trailers;
 }
 
 class RichMediaDetails {

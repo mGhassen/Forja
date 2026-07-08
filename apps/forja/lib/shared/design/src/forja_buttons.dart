@@ -121,7 +121,7 @@ class ForjaGhostButton extends StatelessWidget {
   }
 }
 
-/// Bare icon action — no border box.
+/// Bare icon action — no background, scales on hover.
 class ForjaPlainIcon extends StatelessWidget {
   const ForjaPlainIcon({
     super.key,
@@ -130,6 +130,8 @@ class ForjaPlainIcon extends StatelessWidget {
     this.tooltip,
     this.color,
     this.size = 24,
+    this.hoverScale = 1.12,
+    this.pressScale = 0.94,
     this.child,
   });
 
@@ -138,12 +140,16 @@ class ForjaPlainIcon extends StatelessWidget {
   final String? tooltip;
   final Color? color;
   final double size;
+  final double hoverScale;
+  final double pressScale;
   final Widget? child;
 
   @override
   Widget build(BuildContext context) {
     final button = ForjaInteractive(
       onTap: onTap,
+      hoverScale: hoverScale,
+      pressScale: pressScale,
       builder: (hover, pressed) {
         final resolved = color ??
             (AppTheme.isLightMode
@@ -196,31 +202,25 @@ class ForjaIconButton extends StatelessWidget {
         ? Colors.black87
         : ForjaShellColors.textPrimary;
 
-    final content = Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(ShellTokens.shellButtonRadius),
-        border: Border.all(color: borderColor),
-      ),
-      child: child ?? Icon(icon, size: 20, color: iconColor),
-    );
-
-    final button = child != null
-        ? content
-        : Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              hoverColor: ForjaShellColors.inkHover,
-              splashColor: ForjaShellColors.inkSplash,
-              highlightColor: ForjaShellColors.inkSplash,
-              borderRadius:
-                  BorderRadius.circular(ShellTokens.shellButtonRadius),
-              child: content,
+    final button = ForjaInteractive(
+      onTap: onTap,
+      hoverScale: 1.08,
+      pressScale: 0.95,
+      builder: (hover, pressed) {
+        return Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(ShellTokens.shellButtonRadius),
+            border: Border.all(
+              color: hover ? iconColor.withValues(alpha: 0.5) : borderColor,
             ),
-          );
+          ),
+          child: child ?? Icon(icon, size: 20, color: iconColor),
+        );
+      },
+    );
 
     if (tooltip != null) {
       return Tooltip(message: tooltip!, child: button);

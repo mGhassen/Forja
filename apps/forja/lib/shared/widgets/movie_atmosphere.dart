@@ -65,12 +65,20 @@ class KenBurnsBackdrop extends StatefulWidget {
   final String imageUrl;
   final AtmosphereColors? colors;
   final double blurSigma;
+  final Duration cycleDuration;
+  final double minScale;
+  final double maxScale;
+  final bool showColorTint;
 
   const KenBurnsBackdrop({
     super.key,
     required this.imageUrl,
     this.colors,
     this.blurSigma = 28,
+    this.cycleDuration = const Duration(seconds: 25),
+    this.minScale = 1.0,
+    this.maxScale = 1.25,
+    this.showColorTint = true,
   });
 
   @override
@@ -85,21 +93,35 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+  }
+
+  @override
+  void didUpdateWidget(KenBurnsBackdrop oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cycleDuration != widget.cycleDuration ||
+        oldWidget.minScale != widget.minScale ||
+        oldWidget.maxScale != widget.maxScale) {
+      _controller.dispose();
+      _setupAnimations();
+    }
+  }
+
+  void _setupAnimations() {
     _controller = AnimationController(
-      duration: const Duration(seconds: 25),
+      duration: widget.cycleDuration,
       vsync: this,
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.25).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: widget.minScale,
+      end: widget.maxScale,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     _alignAnimation = AlignmentTween(
-      begin: const Alignment(-0.5, -0.3),
-      end: const Alignment(0.5, 0.2),
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+      begin: const Alignment(-0.92, -0.82),
+      end: const Alignment(0.92, 0.82),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -115,38 +137,35 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Animated backdrop
         AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
+            final alignment = _alignAnimation.value;
             return Transform.scale(
               scale: _scaleAnimation.value,
-              alignment: _alignAnimation.value,
-              child: child,
+              alignment: alignment,
+              child: CachedNetworkImage(
+                imageUrl: widget.imageUrl,
+                fit: BoxFit.cover,
+                alignment: alignment,
+                errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
+              ),
             );
           },
-          child: CachedNetworkImage(
-            imageUrl: widget.imageUrl,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
-          ),
         ),
-
-        // Gradient overlay — strongly tinted with movie's dominant color
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.lerp(const Color(0xFF141414), colors?.dominant ?? const Color(0xFF141414), 0.35)!.withValues(alpha: 0.75),
-                Color.lerp(const Color(0xFF000000), colors?.muted ?? const Color(0xFF000000), 0.15)!.withValues(alpha: 0.88),
-              ],
+        if (widget.showColorTint)
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.lerp(const Color(0xFF141414), colors?.dominant ?? const Color(0xFF141414), 0.35)!.withValues(alpha: 0.75),
+                  Color.lerp(const Color(0xFF000000), colors?.muted ?? const Color(0xFF000000), 0.15)!.withValues(alpha: 0.88),
+                ],
+              ),
             ),
           ),
-        ),
-
       ],
     );
   }

@@ -16,10 +16,11 @@ final class AppVersion {
 
   Future<String> get version async => (await load()).version;
 
-  Future<String> label({String prefix = 'v', bool includeCodename = true}) async {
-    final base = '$prefix${await version}';
+  Future<String> label({String prefix = '', bool includeCodename = true}) async {
+    final ver = await version;
+    final base = prefix.isEmpty ? ver : '$prefix$ver';
     if (!includeCodename || kReleaseCodename.isEmpty) return base;
-    return '$base · $kReleaseCodename';
+    return '$base ($kReleaseCodename)';
   }
 }
 
@@ -27,7 +28,7 @@ class AppVersionLabel extends StatelessWidget {
   const AppVersionLabel({
     super.key,
     this.style,
-    this.prefix = 'v',
+    this.prefix = '',
     this.includeCodename = true,
   });
 

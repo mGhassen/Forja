@@ -147,6 +147,32 @@ abstract final class ShellTokens {
 
   static const double bodyHorizontalPadding = 20;
   static const double bodyMaxWidthDesktop = 1600;
+
+  /// Media details — body below full-bleed hero (hero stays edge-to-edge).
+  static const double detailsHeroBodyOverlap = 120;
+  static const double detailsHeroContentTopInset = 88;
+  static const double detailsHeroDescriptionWidthFraction = 0.40;
+  static const double detailsBodyTopSpacing = 36;
+  static const double detailsSectionSpacing = 48;
+  static const double detailsBodyBottomSpacing = 80;
+  static const double detailsContentPaddingDesktop = 64;
+  static const double detailsContentPaddingCompact = bodyHorizontalPadding;
+
+  static double detailsContentHorizontalPadding(double viewportWidth) {
+    if (viewportWidth >= shellNavCompactMaxWidth) {
+      return detailsContentPaddingDesktop;
+    }
+    return detailsContentPaddingCompact;
+  }
+
+  static double detailsContentLeftInset(double viewportWidth) {
+    final padding = detailsContentHorizontalPadding(viewportWidth);
+    final columnWidth =
+        viewportWidth < bodyMaxWidthDesktop ? viewportWidth : bodyMaxWidthDesktop;
+    final sideGutter = (viewportWidth - columnWidth) / 2;
+    return sideGutter + padding;
+  }
+
   static const double tabHeaderTopPadding = 16;
   static const double tabHeaderBottomPadding = 12;
   static const double tabHeaderFontSize = 32;
