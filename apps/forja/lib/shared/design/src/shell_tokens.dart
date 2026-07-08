@@ -92,6 +92,9 @@ abstract final class ShellTokens {
   static const double tabHeaderFontSize = 32;
 
   static const double sectionTopSpacing = 20;
+
+  /// Vertical gap between Home content rows (not hero → first row).
+  static const double homeRowSpacing = 24;
   static const double searchCardWidthDesktop = 140;
   static const double searchCardWidthCompact = 120;
 

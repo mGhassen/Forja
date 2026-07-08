@@ -22,6 +22,23 @@ import 'stremio_catalog_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart' hide AppTheme;
 
+SliverToBoxAdapter _homeRowSliver(
+  Widget section, {
+  required bool isFirstAfterHero,
+}) {
+  return SliverToBoxAdapter(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!isFirstAfterHero)
+          const SizedBox(height: ShellTokens.homeRowSpacing),
+        RepaintBoundary(child: section),
+      ],
+    ),
+  );
+}
+
 Widget _heroTitleText(Movie movie, bool isLandscape, {bool desktop = false}) {
   return Text(
     movie.title,
@@ -876,88 +893,84 @@ class _HomeScreenState extends State<HomeScreen>
               ),
 
               if (!isDesktop)
-                const SliverToBoxAdapter(
-                  child: RepaintBoundary(child: _ContinueWatchingSection()),
+                _homeRowSliver(
+                  const _ContinueWatchingSection(),
+                  isFirstAfterHero: true,
                 ),
 
               if (!isDesktop)
-                SliverToBoxAdapter(
-                  child: RepaintBoundary(
-                    child: _MovieSection(
-                      title: 'Featured This Month',
-                      future: _featuredThisMonthFuture,
-                      onMovieTap: _openDetails,
-                    ),
+                _homeRowSliver(
+                  _MovieSection(
+                    title: 'Featured This Month',
+                    future: _featuredThisMonthFuture,
+                    onMovieTap: _openDetails,
                   ),
+                  isFirstAfterHero: false,
                 ),
 
               if (isDesktop)
-                SliverToBoxAdapter(
-                  child: RepaintBoundary(
-                    child: _MovieSection(
-                      title: 'Featured This Month',
-                      future: _featuredThisMonthFuture,
-                      onMovieTap: _openDetails,
-                      compactTop: true,
-                    ),
+                _homeRowSliver(
+                  _MovieSection(
+                    title: 'Featured This Month',
+                    future: _featuredThisMonthFuture,
+                    onMovieTap: _openDetails,
+                    compactTop: true,
                   ),
+                  isFirstAfterHero: true,
                 ),
 
               if (isDesktop)
-                SliverToBoxAdapter(
-                  child: RepaintBoundary(
-                    child: _MovieSection(
-                      title: 'Popular',
-                      future: _popularFuture,
-                      onMovieTap: _openDetails,
-                    ),
+                _homeRowSliver(
+                  _MovieSection(
+                    title: 'Popular',
+                    future: _popularFuture,
+                    onMovieTap: _openDetails,
                   ),
+                  isFirstAfterHero: false,
                 ),
 
               if (isDesktop)
-                const SliverToBoxAdapter(
-                  child: RepaintBoundary(child: _ContinueWatchingSection()),
+                _homeRowSliver(
+                  const _ContinueWatchingSection(),
+                  isFirstAfterHero: false,
                 ),
 
               // Mood / Genre chips — interactive filter
-              SliverToBoxAdapter(
-                child: RepaintBoundary(
-                  child: _MoodSection(
-                    moods: _moods,
-                    selectedId: _selectedMood,
-                    onSelect: _selectMood,
-                    future: _moodFuture,
-                    onMovieTap: _openDetails,
-                  ),
+              _homeRowSliver(
+                _MoodSection(
+                  moods: _moods,
+                  selectedId: _selectedMood,
+                  onSelect: _selectMood,
+                  future: _moodFuture,
+                  onMovieTap: _openDetails,
                 ),
+                isFirstAfterHero: false,
               ),
 
               // "Because you watched ___" — BestSimilar.com recommendations
               // (the /recommendations endpoint, not the trash /similar one)
               if (_becauseSeed != null && _becauseFuture != null)
-                SliverToBoxAdapter(
-                  child: RepaintBoundary(
-                    child: _BecauseYouWatchedSection(
-                      seedTitle: (_becauseSeed!['title'] as String?) ?? '',
-                      seedPosterPath: (_becauseSeed!['posterPath'] as String?) ?? '',
-                      future: _becauseFuture!,
-                      onMovieTap: _openDetails,
-                      // Only allow re-rolling when there's actually more than
-                      // one in-progress show to choose between.
-                      onShuffle: _becausePoolSize > 1 ? _shuffleBecauseSeed : null,
-                    ),
+                _homeRowSliver(
+                  _BecauseYouWatchedSection(
+                    seedTitle: (_becauseSeed!['title'] as String?) ?? '',
+                    seedPosterPath: (_becauseSeed!['posterPath'] as String?) ?? '',
+                    future: _becauseFuture!,
+                    onMovieTap: _openDetails,
+                    // Only allow re-rolling when there's actually more than
+                    // one in-progress show to choose between.
+                    onShuffle: _becausePoolSize > 1 ? _shuffleBecauseSeed : null,
                   ),
+                  isFirstAfterHero: false,
                 ),
 
               if (!isDesktop)
-                SliverToBoxAdapter(
-                  child: RepaintBoundary(
-                    child: _MovieSection(
-                      title: 'Popular',
-                      future: _popularFuture,
-                      onMovieTap: _openDetails,
-                    ),
+                _homeRowSliver(
+                  _MovieSection(
+                    title: 'Popular',
+                    future: _popularFuture,
+                    onMovieTap: _openDetails,
                   ),
+                  isFirstAfterHero: false,
                 ),
 
               // Stremio Addon Catalogs (preserved exactly as before)
@@ -966,31 +979,42 @@ class _HomeScreenState extends State<HomeScreen>
                   final key = '${cat['addonBaseUrl']}/${cat['catalogType']}/${cat['catalogId']}';
                   final items = _catalogItems[key];
                   if (items == null || items.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
-                  return SliverToBoxAdapter(
-                    child: RepaintBoundary(
-                      child: _StremioCatalogSection(
-                        catalog: cat,
-                        items: items,
-                        onItemTap: _openStremioItem,
-                        onShowAll: () => _openStremioCatalog(cat),
-                      ),
+                  return _homeRowSliver(
+                    _StremioCatalogSection(
+                      catalog: cat,
+                      items: items,
+                      onItemTap: _openStremioItem,
+                      onShowAll: () => _openStremioCatalog(cat),
                     ),
+                    isFirstAfterHero: false,
                   );
                 }),
 
               // Trakt Recommendations
               if (_traktRecommendations.isNotEmpty)
-                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Recommended for You', movies: _traktRecommendations, onMovieTap: _openDetails))),
+                _homeRowSliver(
+                  _StaticMovieSection(title: 'Recommended for You', movies: _traktRecommendations, onMovieTap: _openDetails),
+                  isFirstAfterHero: false,
+                ),
 
               // Trakt Calendar
               if (_traktUpcomingShows.isNotEmpty)
-                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Upcoming Schedule', movies: _traktUpcomingShows, onMovieTap: _openDetails))),
+                _homeRowSliver(
+                  _StaticMovieSection(title: 'Upcoming Schedule', movies: _traktUpcomingShows, onMovieTap: _openDetails),
+                  isFirstAfterHero: false,
+                ),
 
               if (_traktUpcomingMovies.isNotEmpty)
-                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Upcoming Movies', movies: _traktUpcomingMovies, onMovieTap: _openDetails))),
+                _homeRowSliver(
+                  _StaticMovieSection(title: 'Upcoming Movies', movies: _traktUpcomingMovies, onMovieTap: _openDetails),
+                  isFirstAfterHero: false,
+                ),
 
               // New Releases
-              SliverToBoxAdapter(child: RepaintBoundary(child: _MovieSection(title: 'New Releases', future: _nowPlayingFuture, onMovieTap: _openDetails))),
+              _homeRowSliver(
+                _MovieSection(title: 'New Releases', future: _nowPlayingFuture, onMovieTap: _openDetails),
+                isFirstAfterHero: false,
+              ),
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],

@@ -13,7 +13,7 @@ Tap **Search** in the navigation bar.
 ## What you can do
 
 - Type a title, keyword, or person name
-- **Desktop:** type in the search field on the left; pick a watch provider from the top row; matching titles appear as a text list below the field; film cards and a detail preview appear on the right
+- **Desktop:** type in the search field on the left; matching titles appear as a text list below the field; film cards and a detail preview appear on the right
 - **Mobile / narrow:** use the search bar at the top; results appear in horizontal rows by source
 - Browse TMDB movie and TV results
 - See matching results from each Stremio addon (combined list on desktop; separate sections on mobile)

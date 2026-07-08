@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/features/search/search_provider_row.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
@@ -510,14 +509,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SearchProviderRow(
-            onProviderChanged: (_) {
-              if (_query.trim().isNotEmpty) {
-                _performUnifiedSearch(_query);
-              }
-            },
-          ),
-          const SizedBox(height: 20),
           TextField(
             controller: _controller,
             focusNode: _focusNode,
