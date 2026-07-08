@@ -11,22 +11,32 @@ class ShellTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: ShellTokens.shellTopBarHeight,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            ...List.generate(_categories.length, (index) {
-              final label = _categories[index];
-              final isActive = index == 0;
-              return Padding(
-                padding: EdgeInsets.only(right: index < _categories.length - 1 ? 36 : 0),
-                child: _CategoryTab(label: label, isActive: isActive),
-              );
-            }),
-          ],
+    return SafeArea(
+      bottom: false,
+      child: SizedBox(
+        height: ShellTokens.shellTopBarHeight,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            ShellTokens.bodyHorizontalPadding,
+            ShellTokens.shellHeaderTopPadding,
+            ShellTokens.bodyHorizontalPadding,
+            0,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...List.generate(_categories.length, (index) {
+                final label = _categories[index];
+                final isActive = index == 0;
+                return Padding(
+                  padding: EdgeInsets.only(
+                    right: index < _categories.length - 1 ? 36 : 0,
+                  ),
+                  child: _CategoryTab(label: label, isActive: isActive),
+                );
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -46,18 +56,25 @@ class _CategoryTab extends StatelessWidget {
         : ForjaShellColors.textSecondary;
 
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 17,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-            color: color,
-            letterSpacing: 0.1,
+        SizedBox(
+          height: ShellTokens.navRailLogoHeight,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 17,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                color: color,
+                letterSpacing: 0.1,
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
         AnimatedContainer(
           duration: ShellTokens.navSelectionAnimation,
           height: ShellTokens.shellNavUnderlineHeight,

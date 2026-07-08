@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -38,7 +39,7 @@ class ShellNavRail extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 16),
+            const SizedBox(height: ShellTokens.shellHeaderTopPadding),
             const _RailLogo(),
             const SizedBox(height: 20),
             Expanded(
@@ -114,33 +115,31 @@ class _ShellNavRailItem extends StatelessWidget {
       child: SizedBox(
         width: ShellTokens.navRailWidth,
         child: Center(
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(4),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    selected ? destination.activeIcon : destination.icon,
-                    color: iconColor,
-                    size: ShellTokens.navRailIconSize,
+          child: ForjaInteractive(
+            onTap: onTap,
+            hoverScale: 1.08,
+            pressScale: 0.94,
+            builder: (_, __) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  selected ? destination.activeIcon : destination.icon,
+                  color: iconColor,
+                  size: ShellTokens.navRailIconSize,
+                ),
+                const SizedBox(height: 6),
+                AnimatedContainer(
+                  duration: ShellTokens.navSelectionAnimation,
+                  height: ShellTokens.shellNavUnderlineHeight,
+                  width: selected ? 24 : 0,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppTheme.current.primaryColor
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  const SizedBox(height: 6),
-                  AnimatedContainer(
-                    duration: ShellTokens.navSelectionAnimation,
-                    height: ShellTokens.shellNavUnderlineHeight,
-                    width: selected ? 24 : 0,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppTheme.current.primaryColor
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

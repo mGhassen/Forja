@@ -41,7 +41,6 @@ class _HomeScreenState extends State<HomeScreen>
   
   late Future<List<Movie>> _trendingFuture;
   late Future<List<Movie>> _popularFuture;
-  late Future<List<Movie>> _topRatedFuture;
   late Future<List<Movie>> _nowPlayingFuture;
   
   Timer? _heroTimer;
@@ -64,9 +63,6 @@ class _HomeScreenState extends State<HomeScreen>
   Color _ambientPrimary = AppTheme.primaryColor;
   Color _ambientSecondary = AppTheme.accentColor;
   final Map<int, ({Color primary, Color secondary})> _ambientCache = {};
-
-  // Tonight's Pick — randomized recommendation
-  Movie? _tonightsPick;
 
   // "Because you watched ___" — randomized seed pulled from continue-watching
   // once per session, then BestSimilar.com recommendations (mapped to TMDB).
@@ -106,15 +102,10 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       _trendingFuture = _api.getTrending().then((movies) {
         _fetchHeroLogos(movies.take(5).toList());
-        if (movies.length > 6 && mounted) {
-          final pool = movies.skip(3).toList();
-          setState(() => _tonightsPick = pool[math.Random().nextInt(pool.length)]);
-        }
         if (movies.isNotEmpty) _extractAmbientFor(movies.first);
         return movies;
       });
       _popularFuture = _api.getPopular();
-      _topRatedFuture = _api.getTopRated();
       _nowPlayingFuture = _api.getNowPlaying();
       _moodFuture = _loadMoodMovies(_selectedMood);
     });
@@ -129,15 +120,10 @@ class _HomeScreenState extends State<HomeScreen>
       _api.getTrending,
       onLoaded: (movies) {
         _fetchHeroLogos(movies.take(5).toList());
-        if (movies.length > 6 && mounted) {
-          final pool = movies.skip(3).toList();
-          setState(() => _tonightsPick = pool[math.Random().nextInt(pool.length)]);
-        }
         if (movies.isNotEmpty) _extractAmbientFor(movies.first);
       },
     );
     _popularFuture = _tmdbFuture(BootCache.popular, _api.getPopular);
-    _topRatedFuture = _tmdbFuture(BootCache.topRated, _api.getTopRated);
     _nowPlayingFuture = _tmdbFuture(BootCache.nowPlaying, _api.getNowPlaying);
     _moodFuture = _loadMoodMovies(_selectedMood);
 
@@ -1014,45 +1000,6 @@ class _HomeScreenState extends State<HomeScreen>
                   child: RepaintBoundary(child: _ContinueWatchingSection()),
                 ),
 
-              // Mosaic Spotlight — Trending Now reimagined as 1 big + 4 small
-              SliverToBoxAdapter(
-                child: RepaintBoundary(
-                  child: _MosaicSpotlight(
-                    future: _trendingFuture,
-                    onTap: _openDetails,
-                  ),
-                ),
-              ),
-
-              // Trending Ticker — auto-scrolling marquee with rank numbers
-              SliverToBoxAdapter(
-                child: RepaintBoundary(
-                  child: _TrendingTicker(
-                    future: _trendingFuture,
-                    onTap: _openDetails,
-                  ),
-                ),
-              ),
-
-              // Tonight's Pick — randomized hand-feeling recommendation
-              if (_tonightsPick != null)
-                SliverToBoxAdapter(
-                  child: RepaintBoundary(
-                    child: _TonightsPickCard(
-                      movie: _tonightsPick!,
-                      onPlay: () => _openDetails(_tonightsPick!),
-                      onShuffle: () {
-                        _trendingFuture.then((movies) {
-                          if (!mounted || movies.length < 4) return;
-                          final pool = movies.skip(2).where((m) => m.id != _tonightsPick?.id).toList();
-                          if (pool.isEmpty) return;
-                          setState(() => _tonightsPick = pool[math.Random().nextInt(pool.length)]);
-                        });
-                      },
-                    ),
-                  ),
-                ),
-
               // Mood / Genre chips — interactive filter
               SliverToBoxAdapter(
                 child: RepaintBoundary(
@@ -1104,9 +1051,6 @@ class _HomeScreenState extends State<HomeScreen>
                   );
                 }),
 
-              // Top Rated
-              SliverToBoxAdapter(child: RepaintBoundary(child: _MovieSection(title: 'Top Rated', icon: Icons.star_rounded, future: _topRatedFuture, onMovieTap: _openDetails))),
-
               // Trakt Recommendations
               if (_traktRecommendations.isNotEmpty)
                 SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Recommended for You', icon: Icons.recommend_rounded, movies: _traktRecommendations, onMovieTap: _openDetails))),
@@ -1143,10 +1087,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   double _desktopHeroBackdropHeight(BuildContext context) {
-    return math.max(
-      ShellTokens.heroMinHeightDesktop,
-      MediaQuery.sizeOf(context).height * 0.55,
-    );
+    return MediaQuery.sizeOf(context).height * ShellTokens.heroHeightFractionDesktop;
   }
 
   Widget _buildDesktopHeroShimmer() {
@@ -1171,7 +1112,8 @@ class _HomeScreenState extends State<HomeScreen>
     final heroMovie = movies[_heroIndex];
     final backdropHeight = _desktopHeroBackdropHeight(context);
     const overlap = ShellTokens.heroBackdropOverlapDesktop;
-    final topBarBleed = ShellTokens.shellTopBarHeight;
+    final topBarBleed =
+        MediaQuery.paddingOf(context).top + ShellTokens.shellTopBarHeight;
     final imageHeight = backdropHeight + topBarBleed;
 
     return Column(
@@ -1200,32 +1142,9 @@ class _HomeScreenState extends State<HomeScreen>
                   child: SizedBox(
                     width: math.min(
                       MediaQuery.sizeOf(context).width * 0.34,
-                      480,
+                      ShellTokens.heroTextColumnWidthDesktop,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHeroTitleBlock(heroMovie, isLandscape: false),
-                        _buildHeroMetaRow(heroMovie),
-                        if (heroMovie.overview.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            child: Text(
-                              heroMovie.overview,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.55),
-                                fontSize: 13.5,
-                                height: 1.5,
-                                letterSpacing: 0.1,
-                              ),
-                            ),
-                          ),
-                        _buildHeroActionRow(heroMovie, flat: true),
-                      ],
-                    ),
+                    child: _buildDesktopHeroTextColumn(heroMovie),
                   ),
                 ),
               ),
@@ -1241,6 +1160,56 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
         belowHero,
+      ],
+    );
+  }
+
+  Widget _buildDesktopHeroTextColumn(Movie heroMovie) {
+    const overviewStyle = TextStyle(
+      fontSize: 13.5,
+      height: 1.5,
+      letterSpacing: 0.1,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: ShellTokens.heroTitleSlotHeightDesktop,
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: _buildHeroTitleBlock(
+              heroMovie,
+              isLandscape: false,
+              desktop: true,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: ShellTokens.heroMetaSlotHeightDesktop,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _buildHeroMetaRow(heroMovie, singleLine: true),
+          ),
+        ),
+        SizedBox(
+          height: ShellTokens.heroOverviewSlotHeightDesktop,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Text(
+              heroMovie.overview.isNotEmpty ? heroMovie.overview : ' ',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: overviewStyle.copyWith(
+                color: heroMovie.overview.isNotEmpty
+                    ? Colors.white.withValues(alpha: 0.55)
+                    : Colors.transparent,
+              ),
+            ),
+          ),
+        ),
+        _buildHeroActionRow(heroMovie, flat: true),
       ],
     );
   }
@@ -1326,7 +1295,21 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildHeroTitleBlock(Movie heroMovie, {required bool isLandscape}) {
+  Widget _buildHeroTitleBlock(
+    Movie heroMovie, {
+    required bool isLandscape,
+    bool desktop = false,
+  }) {
+    final logoMaxHeight = desktop
+        ? ShellTokens.heroLogoMaxHeightDesktop
+        : (isLandscape ? 140.0 : 110.0);
+    final logoMaxWidth = desktop
+        ? ShellTokens.heroTextColumnWidthDesktop
+        : (isLandscape ? 420.0 : MediaQuery.sizeOf(context).width * 0.75);
+    final titlePadding = desktop
+        ? EdgeInsets.zero
+        : const EdgeInsets.only(bottom: 14);
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 600),
       switchInCurve: Curves.easeOutCubic,
@@ -1345,13 +1328,11 @@ class _HomeScreenState extends State<HomeScreen>
               _heroLogos[heroMovie.id]!.isNotEmpty
           ? Padding(
               key: ValueKey('logo_${heroMovie.id}'),
-              padding: const EdgeInsets.only(bottom: 14),
+              padding: titlePadding,
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: isLandscape
-                      ? 420
-                      : MediaQuery.of(context).size.width * 0.75,
-                  maxHeight: isLandscape ? 140 : 110,
+                  maxWidth: logoMaxWidth,
+                  maxHeight: logoMaxHeight,
                 ),
                 child: CachedNetworkImage(
                   imageUrl: _heroLogos[heroMovie.id]!,
@@ -1359,19 +1340,96 @@ class _HomeScreenState extends State<HomeScreen>
                   alignment: Alignment.centerLeft,
                   placeholder: (_, _) => const SizedBox.shrink(),
                   errorWidget: (_, _, _) =>
-                      _buildHeroTitle(heroMovie, isLandscape),
+                      _buildHeroTitle(heroMovie, isLandscape, desktop: desktop),
                 ),
               ),
             )
           : Padding(
               key: ValueKey('title_${heroMovie.id}'),
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _buildHeroTitle(heroMovie, isLandscape),
+              padding: titlePadding,
+              child: _buildHeroTitle(heroMovie, isLandscape, desktop: desktop),
             ),
     );
   }
 
-  Widget _buildHeroMetaRow(Movie heroMovie) {
+  Widget _buildHeroMetaRow(Movie heroMovie, {bool singleLine = false}) {
+    final rating = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+          const SizedBox(width: 4),
+          Text(
+            heroMovie.voteAverage.toStringAsFixed(1),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.amber,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (singleLine) {
+      return Row(
+        children: [
+          rating,
+          if (heroMovie.releaseDate.isNotEmpty) ...[
+            const SizedBox(width: 10),
+            Text(
+              heroMovie.releaseDate.split('-').first,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+          if (heroMovie.mediaType == 'tv') ...[
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'SERIES',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white60,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+          ],
+          if (heroMovie.genres.isNotEmpty) ...[
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                heroMovie.genres.take(3).join('  ·  '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Wrap(
@@ -1379,29 +1437,7 @@ class _HomeScreenState extends State<HomeScreen>
         runSpacing: 6,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                const SizedBox(width: 4),
-                Text(
-                  heroMovie.voteAverage.toStringAsFixed(1),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.amber,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          rating,
           if (heroMovie.releaseDate.isNotEmpty)
             Text(
               heroMovie.releaseDate.split('-').first,
@@ -1809,11 +1845,11 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildHeroTitle(Movie movie, bool isLandscape) {
+  Widget _buildHeroTitle(Movie movie, bool isLandscape, {bool desktop = false}) {
     return Text(
       movie.title,
       style: TextStyle(
-        fontSize: isLandscape ? 48 : 36,
+        fontSize: desktop ? 32 : (isLandscape ? 48 : 36),
         fontWeight: FontWeight.w900,
         color: Colors.white,
         height: 1.0,
@@ -2963,29 +2999,6 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
   }
 }
 
-Widget _buildCWPlayButton() {
-  final inner = Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: AppTheme.primaryColor.withValues(alpha: 0.7),
-      shape: BoxShape.circle,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      boxShadow: AppTheme.isLightMode
-          ? null
-          : [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.4), blurRadius: 24, spreadRadius: 2)],
-    ),
-    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
-  );
-  if (AppTheme.isLightMode) return inner;
-  return ClipRRect(
-    borderRadius: BorderRadius.circular(30),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-      child: inner,
-    ),
-  );
-}
-
 class _HistoryCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onTap;
@@ -3066,11 +3079,6 @@ class _HistoryCard extends StatelessWidget {
                   stops: const [0.0, 0.3, 0.7, 1.0],
                 ),
               ),
-            ),
-
-            // Play button (center)
-            Center(
-              child: _buildCWPlayButton(),
             ),
 
             // Top-right actions
@@ -3550,698 +3558,6 @@ class _MyListButton extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  MOSAIC SPOTLIGHT — 1 big featured tile + 4 smaller tiles in a grid
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _MosaicSpotlight extends StatelessWidget {
-  final Future<List<Movie>> future;
-  final Function(Movie) onTap;
-
-  const _MosaicSpotlight({required this.future, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<Movie>>(
-      future: future,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.length < 5) {
-          return const SizedBox.shrink();
-        }
-        final movies = snapshot.data!;
-        final featured = movies.first;
-        final small = movies.skip(1).take(4).toList();
-
-        return LayoutBuilder(builder: (context, c) {
-          final w = c.maxWidth;
-          final isWide = w > 720;
-          // Adaptive horizontal padding so mobile gets more breathing room.
-          final hPad = w < 380 ? 14.0 : (w < 520 ? 18.0 : 24.0);
-          final headerTopPad = w < 380 ? 24.0 : 36.0;
-          final headerBotPad = w < 380 ? 12.0 : 16.0;
-
-          final header = Padding(
-            padding: EdgeInsets.fromLTRB(hPad, headerTopPad, hPad, headerBotPad),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.auto_awesome_rounded, color: AppTheme.primaryColor, size: 18),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Spotlight',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ),
-                if (w >= 380)
-                  Text(
-                    '${movies.take(5).length} trending now',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-              ],
-            ),
-          );
-
-          if (isWide) {
-            // Side-by-side: big tile left, 2x2 grid right
-            final featuredW = (w - hPad * 2 - 14) * 0.58;
-            final smallW = (w - hPad * 2 - 14) * 0.42;
-            final tileH = featuredW * 0.58;
-            final smallTileH = (tileH - 12) / 2;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                header,
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: hPad),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: featuredW,
-                        height: tileH,
-                        child: _MosaicTile(movie: featured, onTap: () => onTap(featured), big: true),
-                      ),
-                      const SizedBox(width: 14),
-                      SizedBox(
-                        width: smallW,
-                        height: tileH,
-                        child: GridView.count(
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: (smallW / 2 - 6) / smallTileH,
-                          children: small
-                              .map((m) => _MosaicTile(movie: m, onTap: () => onTap(m)))
-                              .toList(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }
-
-          // Stacked: big tile on top, horizontal scroll of small below
-          // Sizes scale to viewport so phones look right.
-          final featuredAvail = w - hPad * 2;
-          final featuredH = (featuredAvail * 0.56).clamp(170.0, 320.0);
-          // Small tile width: ~62% of viewport on tiny phones (peek of next),
-          // capped so tablets in narrow mode don't get giant tiles.
-          final smallTileW = w < 380
-              ? (w * 0.62).clamp(180.0, 240.0)
-              : (w < 520 ? 200.0 : 220.0);
-          final smallTileH = w < 380 ? 110.0 : 130.0;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              header,
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: hPad),
-                child: SizedBox(
-                  height: featuredH,
-                  child: _MosaicTile(movie: featured, onTap: () => onTap(featured), big: true),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: smallTileH,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.symmetric(horizontal: hPad),
-                  itemCount: small.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 10),
-                  itemBuilder: (_, i) => SizedBox(
-                    width: smallTileW,
-                    child: _MosaicTile(movie: small[i], onTap: () => onTap(small[i])),
-                  ),
-                ),
-              ),
-            ],
-          );
-        });
-      },
-    );
-  }
-}
-
-class _MosaicTile extends StatelessWidget {
-  final Movie movie;
-  final VoidCallback onTap;
-  final bool big;
-  const _MosaicTile({required this.movie, required this.onTap, this.big = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl = movie.backdropPath.isNotEmpty
-        ? TmdbApi.getBackdropUrl(movie.backdropPath)
-        : (movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '');
-
-    return FocusableControl(
-      onTap: onTap,
-      borderRadius: 16,
-      scaleOnFocus: 1.04,
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: AppTheme.bgCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-          boxShadow: AppTheme.isLightMode
-              ? null
-              : [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.45), blurRadius: 18, offset: const Offset(0, 8)),
-                ],
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (imageUrl.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (_, _) => Container(color: AppTheme.bgCard),
-                errorWidget: (_, _, _) => Container(color: AppTheme.bgCard),
-              ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.25),
-                    Colors.black.withValues(alpha: 0.85),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
-                ),
-              ),
-            ),
-            if (big)
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                  ),
-                  child: const Text(
-                    '#1 TRENDING',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                ),
-              ),
-            if (movie.voteAverage > 0)
-              Positioned(
-                top: 10,
-                right: 10,
-                child: _buildRatingBadge(movie.voteAverage),
-              ),
-            Positioned(
-              left: 14,
-              right: 14,
-              bottom: 12,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    movie.title,
-                    maxLines: big ? 2 : 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: big ? 20 : 14,
-                      height: 1.1,
-                      letterSpacing: -0.3,
-                      shadows: AppTheme.isLightMode
-                          ? null
-                          : const [Shadow(color: Colors.black54, blurRadius: 8)],
-                    ),
-                  ),
-                  if (big && movie.overview.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      movie.overview,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 12.5,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  TRENDING TICKER — auto-scrolling marquee with rank numbers
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _TrendingTicker extends StatefulWidget {
-  final Future<List<Movie>> future;
-  final Function(Movie) onTap;
-  const _TrendingTicker({required this.future, required this.onTap});
-
-  @override
-  State<_TrendingTicker> createState() => _TrendingTickerState();
-}
-
-class _TrendingTickerState extends State<_TrendingTicker> {
-  final ScrollController _ctrl = ScrollController();
-  Timer? _timer;
-  bool _userScrolling = false;
-  Timer? _resumeTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 50), (_) {
-      if (!_ctrl.hasClients || _userScrolling) return;
-      final pos = _ctrl.position;
-      final next = pos.pixels + 0.5;
-      if (next >= pos.maxScrollExtent - 1) {
-        _ctrl.jumpTo(0);
-      } else {
-        _ctrl.jumpTo(next);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _resumeTimer?.cancel();
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _pause() {
-    _userScrolling = true;
-    _resumeTimer?.cancel();
-    _resumeTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) _userScrolling = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<Movie>>(
-      future: widget.future,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
-        final list = snapshot.data!.take(10).toList();
-        // Repeat list to give marquee breathing room
-        final loop = [...list, ...list];
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 36, 24, 14),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.local_fire_department_rounded, color: AppTheme.primaryColor, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Top 10 Right Now',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.4)),
-                    ),
-                    child: const Text(
-                      'LIVE',
-                      style: TextStyle(color: Color(0xFFEF4444), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: 110,
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (n) {
-                  if (n is ScrollStartNotification && n.dragDetails != null) _pause();
-                  return false;
-                },
-                child: ListView.separated(
-                  controller: _ctrl,
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  itemCount: loop.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 6),
-                  itemBuilder: (context, i) {
-                    final movie = loop[i];
-                    final rank = (i % list.length) + 1;
-                    return _TickerItem(
-                      movie: movie,
-                      rank: rank,
-                      onTap: () => widget.onTap(movie),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _TickerItem extends StatelessWidget {
-  final Movie movie;
-  final int rank;
-  final VoidCallback onTap;
-  const _TickerItem({required this.movie, required this.rank, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl = movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '';
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Big stroked rank number
-            SizedBox(
-              width: 60,
-              child: Text(
-                '$rank',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 80,
-                  height: 1.0,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -6,
-                  foreground: Paint()
-                    ..style = PaintingStyle.stroke
-                    ..strokeWidth = 2
-                    ..color = (rank <= 3
-                        ? AppTheme.primaryColor.withValues(alpha: 0.7)
-                        : Colors.white.withValues(alpha: 0.18)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Container(
-              width: 70,
-              height: 100,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: AppTheme.bgCard,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-              ),
-              child: imageUrl.isNotEmpty
-                  ? CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover)
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  TONIGHT'S PICK — randomized hand-feeling recommendation card
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _TonightsPickCard extends StatelessWidget {
-  final Movie movie;
-  final VoidCallback onPlay;
-  final VoidCallback onShuffle;
-  const _TonightsPickCard({required this.movie, required this.onPlay, required this.onShuffle});
-
-  @override
-  Widget build(BuildContext context) {
-    final hasBackdrop = movie.backdropPath.isNotEmpty;
-    final imageUrl = hasBackdrop
-        ? TmdbApi.getBackdropUrl(movie.backdropPath)
-        : (movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '');
-    final bgIsPoster = !hasBackdrop && imageUrl.isNotEmpty;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 36, 24, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.nights_stay_rounded, color: AppTheme.primaryColor, size: 18),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  "Tonight's Pick",
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                ),
-                const Spacer(),
-                Material(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: onShuffle,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.shuffle_rounded, size: 14, color: Colors.white.withValues(alpha: 0.7)),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Shuffle',
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          LayoutBuilder(builder: (context, c) {
-            final w = c.maxWidth;
-            final isWide = w > 700;
-            // Scale with width so the 16:9 backdrop has room to actually breathe.
-            // Cap so very large screens don't get a wall of poster.
-            final cardHeight = (w / (isWide ? 2.6 : 1.9)).clamp(260.0, 420.0);
-
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: onPlay,
-                child: Container(
-                  height: cardHeight,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: AppTheme.bgCard,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                    boxShadow: AppTheme.isLightMode
-                        ? null
-                        : [
-                            BoxShadow(color: Colors.black.withValues(alpha: 0.45), blurRadius: 24, offset: const Offset(0, 10)),
-                            BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.10), blurRadius: 32, spreadRadius: -8),
-                          ],
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (imageUrl.isNotEmpty) ...[
-                        // Blurred fill so portrait-poster fallbacks don't look cropped to a sliver
-                        if (bgIsPoster)
-                          ImageFiltered(
-                            imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                            child: CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover),
-                          ),
-                        CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: bgIsPoster ? BoxFit.contain : BoxFit.cover,
-                          // Pull the focal point slightly above center \u2014 backdrops
-                          // usually frame faces in the upper third, and our text
-                          // overlays the bottom third.
-                          alignment: bgIsPoster
-                              ? Alignment.topRight
-                              : const Alignment(0, -0.15),
-                        ),
-                      ],
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomLeft,
-                            end: Alignment.topRight,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.92),
-                              Colors.black.withValues(alpha: 0.55),
-                              Colors.black.withValues(alpha: 0.10),
-                            ],
-                            stops: const [0.0, 0.55, 1.0],
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Row(
-                              children: [
-                                if (movie.voteAverage > 0) ...[
-                                  Icon(Icons.star_rounded, size: 16, color: Colors.amber.withValues(alpha: 0.9)),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    movie.voteAverage.toStringAsFixed(1),
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
-                                  ),
-                                  const SizedBox(width: 12),
-                                ],
-                                if (movie.releaseDate.isNotEmpty)
-                                  Text(
-                                    movie.releaseDate.split('-').first,
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
-                                  ),
-                                if (movie.genres.isNotEmpty) ...[
-                                  const SizedBox(width: 12),
-                                  Flexible(
-                                    child: Text(
-                                      movie.genres.take(2).join(' · '),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              movie.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isWide ? 28 : 22,
-                                fontWeight: FontWeight.w900,
-                                height: 1.05,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            if (movie.overview.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              ConstrainedBox(
-                                constraints: BoxConstraints(maxWidth: w * 0.85),
-                                child: Text(
-                                  movie.overview,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.72),
-                                    fontSize: 13,
-                                    height: 1.45,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 14),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.play_arrow_rounded, color: Colors.black, size: 22),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Play Now',
-                                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
     );
   }
 }

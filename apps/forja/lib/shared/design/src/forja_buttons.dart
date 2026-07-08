@@ -6,8 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 typedef ForjaInteractiveBuilder = Widget Function(bool hover, bool pressed);
 
-class _ForjaInteractive extends StatefulWidget {
-  const _ForjaInteractive({
+class ForjaInteractive extends StatefulWidget {
+  const ForjaInteractive({
+    super.key,
     required this.builder,
     this.onTap,
     this.hoverScale = 1.06,
@@ -20,10 +21,10 @@ class _ForjaInteractive extends StatefulWidget {
   final double pressScale;
 
   @override
-  State<_ForjaInteractive> createState() => _ForjaInteractiveState();
+  State<ForjaInteractive> createState() => _ForjaInteractiveState();
 }
 
-class _ForjaInteractiveState extends State<_ForjaInteractive> {
+class _ForjaInteractiveState extends State<ForjaInteractive> {
   bool _hover = false;
   bool _pressed = false;
 
@@ -82,41 +83,35 @@ class ForjaGhostButton extends StatelessWidget {
   final VoidCallback? onTap;
   final IconData? icon;
 
-  Color _color(bool hover, bool pressed) {
-    if (AppTheme.isLightMode) {
-      return hover || pressed ? Colors.black : Colors.black87;
-    }
-    if (hover || pressed) return Colors.white;
+  Color get _color {
+    if (AppTheme.isLightMode) return Colors.black87;
     return ForjaShellColors.textPrimary;
   }
 
   @override
   Widget build(BuildContext context) {
-    return _ForjaInteractive(
+    return ForjaInteractive(
       onTap: onTap,
       hoverScale: 1.04,
       pressScale: 0.96,
       builder: (hover, pressed) {
-        final color = _color(hover, pressed);
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 22, color: color),
+                Icon(icon, size: 22, color: _color),
                 const SizedBox(width: 8),
               ],
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 140),
-                curve: Curves.easeOutCubic,
+              Text(
+                label,
                 style: GoogleFonts.inter(
-                  color: color,
+                  color: _color,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.2,
                 ),
-                child: Text(label),
               ),
             ],
           ),
@@ -145,31 +140,24 @@ class ForjaPlainIcon extends StatelessWidget {
   final double size;
   final Widget? child;
 
-  Color _iconColor(bool hover, bool pressed) {
+  Color get _iconColor {
     if (color != null) return color!;
-    if (AppTheme.isLightMode) {
-      return hover || pressed ? Colors.black87 : Colors.black54;
-    }
-    if (hover || pressed) return ForjaShellColors.textPrimary;
+    if (AppTheme.isLightMode) return Colors.black54;
     return ForjaShellColors.iconMuted;
   }
 
   @override
   Widget build(BuildContext context) {
-    final button = _ForjaInteractive(
+    final button = ForjaInteractive(
       onTap: onTap,
       builder: (hover, pressed) {
         return Padding(
           padding: const EdgeInsets.all(8),
           child: child ??
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 140),
-                child: Icon(
-                  icon,
-                  key: ValueKey(_iconColor(hover, pressed)),
-                  size: size,
-                  color: _iconColor(hover, pressed),
-                ),
+              Icon(
+                icon,
+                size: size,
+                color: _iconColor,
               ),
         );
       },
