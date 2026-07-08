@@ -10,6 +10,19 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
+    let messenger = flutterViewController.engine.binaryMessenger
+    let navigationChannel = FlutterMethodChannel(
+      name: "forja/navigation",
+      binaryMessenger: messenger
+    )
+    _ = NSEvent.addLocalMonitorForEvents(matching: .swipe) { event in
+      // Two-finger swipe left on trackpad = back (Safari / App Store convention).
+      if event.deltaX < 0 {
+        navigationChannel.invokeMethod("trackpadBack", arguments: nil)
+      }
+      return event
+    }
+
     // Let app content extend to the window edge; traffic lights float on top.
     titlebarAppearsTransparent = true
     titleVisibility = .hidden

@@ -109,10 +109,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // Stream resolution cancellation
   bool _streamCancelled = false;
 
-  // Desktop cast avatars
-  List<Map<String, String>> _castMembers = [];
-  final ScrollController _castScrollController = ScrollController();
-
   MediaDetailsExtras? _mediaExtras;
   String? _trailerKey;
   final Map<int, String> _seasonPosters = {};
@@ -161,7 +157,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _seasonScrollController.dispose();
     _chipsScrollController.dispose();
     _recommendationsScrollController.dispose();
-    _castScrollController.dispose();
     _jackett.dispose();
     _prowlarr.dispose();
     _linkResolver.dispose();
@@ -442,7 +437,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _movie = rich.movie;
           _mediaExtras = rich.extras;
           _trailerKey = rich.extras.trailerYoutubeKey;
-          _castMembers = rich.extras.cast;
           _streamAddons = streamAddons;
           _isLoading = false;
           if (!_playbackProfile.builtinTorrentSearch && streamAddons.isNotEmpty) {
@@ -2003,7 +1997,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          automaticallyImplyLeading: false,
+          leading: Padding(
+            padding: const EdgeInsets.all(8),
+            child: FocusableControl(
+              onTap: () => Navigator.of(context).pop(),
+              borderRadius: 50,
+              child: const CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: Icon(Icons.arrow_back, color: Colors.white),
+              ),
+            ),
+          ),
           actions: [
             if (!_isCollection)
               IconButton(
@@ -3240,111 +3244,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Icon(icon, color: Colors.white38, size: 16)));
-
-  // ═════════════════════════════════════════════════════════════════════════════
-  //  DESKTOP CAST ROW
-  // ═════════════════════════════════════════════════════════════════════════════
-
-  Widget _buildDesktopCastRow() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _sectionLabel('Cast'),
-            Row(
-              children: [
-                _castNavButton(Icons.arrow_back_ios_rounded, -300),
-                const SizedBox(width: 4),
-                _castNavButton(Icons.arrow_forward_ios_rounded, 300),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 155,
-          child: ListView.separated(
-            controller: _castScrollController,
-            scrollDirection: Axis.horizontal,
-            itemCount: _castMembers.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (context, i) {
-              final m = _castMembers[i];
-              final profilePath = m['profilePath'] ?? '';
-              final name = m['name'] ?? '';
-              final character = m['character'] ?? '';
-              return SizedBox(
-                width: 92,
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 42,
-                      backgroundColor: Colors.white10,
-                      backgroundImage: profilePath.isNotEmpty
-                          ? CachedNetworkImageProvider(
-                              TmdbApi.getProfileUrl(profilePath))
-                          : null,
-                      child: profilePath.isEmpty
-                          ? Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : '?',
-                              style: const TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w600),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 11,
-                          fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      character,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 10),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
-    );
-  }
-
-  Widget _castNavButton(IconData icon, double delta) {
-    return SizedBox(
-      width: 32,
-      height: 32,
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        icon: Icon(icon, size: 16, color: Colors.white60),
-        onPressed: () {
-          if (!_castScrollController.hasClients) return;
-          final target = (_castScrollController.offset + delta)
-              .clamp(0.0, _castScrollController.position.maxScrollExtent);
-          _castScrollController.animateTo(
-            target,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        },
-      ),
-    );
-  }
 
   // ═════════════════════════════════════════════════════════════════════════════
   //  RECOMMENDATIONS SECTION
