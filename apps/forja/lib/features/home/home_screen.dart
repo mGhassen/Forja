@@ -36,7 +36,16 @@ double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
 SliverToBoxAdapter _homeRowSliver(
   Widget section, {
   required bool isFirstAfterHero,
+  double heroOverlapPull = 0,
 }) {
+  Widget child = RepaintBoundary(child: section);
+  if (heroOverlapPull > 0) {
+    child = Transform.translate(
+      offset: Offset(0, -heroOverlapPull),
+      child: child,
+    );
+  }
+
   return SliverToBoxAdapter(
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -44,7 +53,7 @@ SliverToBoxAdapter _homeRowSliver(
       children: [
         if (!isFirstAfterHero)
           const SizedBox(height: ShellTokens.homeRowSpacing),
-        RepaintBoundary(child: section),
+        child,
       ],
     ),
   );
@@ -1377,6 +1386,7 @@ class _HomeScreenState extends State<HomeScreen>
                     compactTop: true,
                   ),
                   isFirstAfterHero: true,
+                  heroOverlapPull: _desktopHeroFirstRowOverlap(context),
                 ),
 
               if (isDesktop)
@@ -1557,14 +1567,20 @@ class _HomeScreenState extends State<HomeScreen>
     return topPadding + 30 + 16 + _HistoryCard.cardHeight(context);
   }
 
+  double _desktopHeroFirstRowOverlap(BuildContext context) {
+    return _MovieSection.sectionHeight(context, compactTop: true) *
+        ShellTokens.heroFirstRowOverlapFraction;
+  }
+
   double _desktopHeroHeight(BuildContext context) {
     final screenH = MediaQuery.sizeOf(context).height;
     final topBar = _desktopTopBarBleed(context);
     final firstRowHeight =
         _MovieSection.sectionHeight(context, compactTop: true);
+    final firstRowOverlap = _desktopHeroFirstRowOverlap(context);
     final nextRowPeek = _MovieSection.sectionHeight(context) *
         ShellTokens.heroNextRowPeekFraction;
-    final reservedBelow = firstRowHeight + nextRowPeek;
+    final reservedBelow = firstRowHeight - firstRowOverlap + nextRowPeek;
     final target = screenH * ShellTokens.heroHeightFractionDesktop;
     final maxHero = screenH - topBar - reservedBelow;
     return _snapToDevicePixels(
@@ -1641,14 +1657,16 @@ class _HomeScreenState extends State<HomeScreen>
             top: topBarBleed + 24,
             right: 48,
             bottom: 24,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                width: math.min(
-                  MediaQuery.sizeOf(context).width * 0.34,
-                  ShellTokens.heroTextColumnWidthDesktop,
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: SizedBox(
+                  width: math.min(
+                    MediaQuery.sizeOf(context).width * 0.34,
+                    ShellTokens.heroTextColumnWidthDesktop,
+                  ),
+                  child: _buildDesktopHeroTextColumn(heroMovie),
                 ),
-                child: _buildDesktopHeroTextColumn(heroMovie),
               ),
             ),
           ),
@@ -1760,11 +1778,17 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
         const SizedBox(height: 20),
-        _HeroOverviewText(
-          overview: heroMovie.overview,
-          style: overviewStyle,
-          maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
-          onReadMore: () => _openDetails(heroMovie),
+        SizedBox(
+          height: ShellTokens.heroOverviewSlotHeightDesktop,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: _HeroOverviewText(
+              overview: heroMovie.overview,
+              style: overviewStyle,
+              maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+              onReadMore: () => _openDetails(heroMovie),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         _buildHeroActionRow(heroMovie, flat: true),
@@ -1863,6 +1887,25 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildHeroMediaTypeBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.white60,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeroMetaRow(Movie heroMovie, {bool singleLine = false}) {
     final rating = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1905,22 +1948,10 @@ class _HomeScreenState extends State<HomeScreen>
           ],
           if (heroMovie.mediaType == 'tv') ...[
             const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'SERIES',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white60,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
+            _buildHeroMediaTypeBadge('SERIES'),
+          ] else if (heroMovie.mediaType == 'movie') ...[
+            const SizedBox(width: 10),
+            _buildHeroMediaTypeBadge('FILM'),
           ],
           if (heroMovie.genres.isNotEmpty) ...[
             const SizedBox(width: 10),
@@ -1959,22 +1990,9 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           if (heroMovie.mediaType == 'tv')
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'SERIES',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white60,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
+            _buildHeroMediaTypeBadge('SERIES')
+          else if (heroMovie.mediaType == 'movie')
+            _buildHeroMediaTypeBadge('FILM'),
           if (heroMovie.genres.isNotEmpty)
             Text(
               heroMovie.genres.take(3).join('  ·  '),
@@ -2232,14 +2250,9 @@ class _HomeScreenState extends State<HomeScreen>
                         if (heroMovie.releaseDate.isNotEmpty)
                           Text(heroMovie.releaseDate.split('-').first, style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 13, fontWeight: FontWeight.w500)),
                         if (heroMovie.mediaType == 'tv')
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('SERIES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white60, letterSpacing: 0.8)),
-                          ),
+                          _buildHeroMediaTypeBadge('SERIES')
+                        else if (heroMovie.mediaType == 'movie')
+                          _buildHeroMediaTypeBadge('FILM'),
                         if (heroMovie.genres.isNotEmpty)
                           Text(
                             heroMovie.genres.take(3).join('  ·  '),
@@ -2540,11 +2553,14 @@ class _MovieCard extends StatelessWidget {
                           movie.releaseDate.split('-').first,
                           style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
                         ),
-                      if (movie.mediaType == 'tv') ...[
+                      if (movie.mediaType == 'tv' || movie.mediaType == 'movie') ...[
                         if (movie.releaseDate.isNotEmpty) ...[
                           Text('  •  ', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
                         ],
-                        Text('TV', style: TextStyle(color: ForjaShellColors.badgeLabel, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text(
+                          movie.mediaType == 'tv' ? 'TV' : 'FILM',
+                          style: TextStyle(color: ForjaShellColors.badgeLabel, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ],
                   ),

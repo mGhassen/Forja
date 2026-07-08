@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,6 +22,7 @@ class HomeTopBar extends StatefulWidget {
 
 class _HomeTopBarState extends State<HomeTopBar> {
   final GlobalKey _categoriesKey = GlobalKey();
+  final math.Random _categoryRandom = math.Random();
   bool _categoriesOpen = false;
 
   void _toggleMediaFilter(ShellHomeCategory target) {
@@ -34,61 +34,70 @@ class _HomeTopBarState extends State<HomeTopBar> {
     final box = _categoriesKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
 
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final offset = box.localToGlobal(Offset.zero, ancestor: overlay);
+    final offset = box.localToGlobal(Offset.zero);
     final selectedId = ShellBus.homeSelectedGenreId.value;
+    final randomCategories = List.of(homeGenreCategories)..shuffle(_categoryRandom);
+    final menuCategories = randomCategories.take(3).toList();
+    if (selectedId != null) {
+      final selectedEntry = homeGenreCategories
+          .where((genre) => genre.id == selectedId)
+          .firstOrNull;
+      if (selectedEntry != null &&
+          !menuCategories.any((genre) => genre.id == selectedId)) {
+        menuCategories[menuCategories.length - 1] = selectedEntry;
+      }
+    }
 
     setState(() => _categoriesOpen = true);
 
-    final picked = await showMenu<String>(
+    final picked = await showGeneralDialog<String>(
       context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromLTWH(
-          offset.dx,
-          offset.dy + box.size.height,
-          box.size.width,
-          0,
-        ),
-        Offset.zero & overlay.size,
-      ),
-      color: const Color(0xFF141414),
-      elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: ForjaShellColors.borderSubtle),
-      ),
-      constraints: const BoxConstraints(minWidth: 180, maxHeight: 360),
-      items: [
-        PopupMenuItem<String>(
-          value: _allGenresSentinel,
-          child: Text(
-            'All',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: selectedId == null ? FontWeight.w600 : FontWeight.w500,
-              color: selectedId == null
-                  ? ForjaShellColors.textPrimary
-                  : ForjaShellColors.textSecondary,
-            ),
-          ),
-        ),
-        for (final genre in homeGenreCategories)
-          PopupMenuItem<String>(
-            value: genre.id,
-            child: Text(
-              genre.label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: genre.id == selectedId
-                    ? FontWeight.w600
-                    : FontWeight.w500,
-                color: genre.id == selectedId
-                    ? ForjaShellColors.textPrimary
-                    : ForjaShellColors.textSecondary,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss categories',
+      barrierColor: Colors.transparent,
+      transitionDuration: Duration.zero,
+      pageBuilder: (context, _, _) {
+        return Stack(
+          children: [
+            Positioned(
+              left: offset.dx,
+              top: offset.dy + box.size.height + 4,
+              child: Material(
+                color: const Color(0xFF141414),
+                elevation: 8,
+                borderRadius: BorderRadius.circular(8),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: ForjaShellColors.borderSubtle),
+                  ),
+                  child: IntrinsicWidth(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _FlatMenuRow(
+                          label: 'All',
+                          selected: selectedId == null,
+                          onTap: () =>
+                              Navigator.of(context).pop(_allGenresSentinel),
+                        ),
+                        for (final genre in menuCategories)
+                          _FlatMenuRow(
+                            label: genre.label,
+                            selected: genre.id == selectedId,
+                            onTap: () =>
+                                Navigator.of(context).pop(genre.id),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-      ],
+          ],
+        );
+      },
     );
 
     if (!mounted) return;
@@ -130,7 +139,8 @@ class _HomeTopBarState extends State<HomeTopBar> {
           height: ShellTokens.homeTopBarHeight,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
-              ShellTokens.bodyHorizontalPadding,
+              ShellTokens.bodyHorizontalPadding +
+                  ShellTokens.homeTopBarMenuLeadingInset,
               ShellTokens.shellHeaderTopPadding,
               ShellTokens.bodyHorizontalPadding,
               0,
@@ -203,53 +213,91 @@ class _CategoryTab extends StatelessWidget {
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
 
-    return ForjaInteractive(
-      onTap: onTap,
-      hoverScale: 1,
-      pressScale: 1,
-      builder: (_, _) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 34,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.inter(
-                      fontSize: 17,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                      color: color,
-                      letterSpacing: 0.1,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 34,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.inter(
+                        fontSize: 17,
+                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                        color: color,
+                        letterSpacing: 0.1,
+                      ),
                     ),
-                  ),
-                  if (showChevron) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.expand_more_rounded,
-                      size: 18,
-                      color: color,
-                    ),
+                    if (showChevron) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.expand_more_rounded,
+                        size: 18,
+                        color: color,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-          SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
-          AnimatedContainer(
-            duration: ShellTokens.navSelectionAnimation,
-            height: ShellTokens.shellNavUnderlineHeight,
-            width: isActive ? 28 : 0,
-            decoration: BoxDecoration(
-              color: isActive ? ForjaShellColors.navUnderline : Colors.transparent,
-              borderRadius: BorderRadius.circular(2),
+            SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
+            AnimatedContainer(
+              duration: ShellTokens.navSelectionAnimation,
+              height: ShellTokens.shellNavUnderlineHeight,
+              width: isActive ? 28 : 0,
+              decoration: BoxDecoration(
+                color: isActive ? ForjaShellColors.navUnderline : Colors.transparent,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FlatMenuRow extends StatelessWidget {
+  const _FlatMenuRow({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              color: selected
+                  ? ForjaShellColors.textPrimary
+                  : ForjaShellColors.textSecondary,
             ),
           ),
-        ],
+        ),
       ),
     );
   }

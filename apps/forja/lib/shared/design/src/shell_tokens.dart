@@ -10,11 +10,12 @@ abstract final class ShellTokens {
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
   static const double navRailIconSize = 30;
-  static const double navRailIconHoverScale = 1.14;
   static const double navRailIconRevealedScale = 0.78;
+  static const double navRailIconSlideUp = 10;
+  static const double navRailIconLabelGap = 2;
   static const double navRailLabelFontSize = 11;
   static const double navRailItemSpacing = 28;
-  static const Duration navRailLabelRevealDelay = Duration(milliseconds: 350);
+  static const Duration navRailLabelRevealDelay = Duration(seconds: 3);
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
   static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
   static const Duration navRailLabelRevealAnimation = Duration(milliseconds: 520);
@@ -51,6 +52,9 @@ abstract final class ShellTokens {
   /// Home Films / TV / Categories text menu (not provider strip).
   static const double homeTopBarHeight =
       shellHeaderTopPadding + 34 + shellCategoryUnderlineGap + shellNavUnderlineHeight;
+
+  /// Extra inset before the Films tab in [HomeTopBar].
+  static const double homeTopBarMenuLeadingInset = 28;
   static const double shellLogoWidth = 110;
 
   /// Music desktop sidebar width — global rail hidden when Music tab uses this.
@@ -69,6 +73,9 @@ abstract final class ShellTokens {
 
   /// Fraction of the second Home row visible below the first (desktop cinematic).
   static const double heroNextRowPeekFraction = 0.10;
+
+  /// Fraction of the first Home row pulled under the desktop hero bottom.
+  static const double heroFirstRowOverlapFraction = 0.10;
 
   /// Continue Watching horizontal card (16:9 landscape).
   static const double shellContinueWatchingCardWidthDesktop = 280;
@@ -98,6 +105,12 @@ abstract final class ShellTokens {
   static const int heroOverviewMaxLinesDesktop = 5;
   static const double heroOverviewFontSizeDesktop = 17;
   static const double heroOverviewLineHeightDesktop = 1.55;
+
+  /// Fixed overview block — keeps action row stable across hero slides.
+  static double get heroOverviewSlotHeightDesktop =>
+      heroOverviewFontSizeDesktop *
+      heroOverviewLineHeightDesktop *
+      heroOverviewMaxLinesDesktop;
   static const double heroLogoMaxHeightDesktop = 180;
 
   /// Narrow right-edge vignette on flat cinematic body (desktop Home).

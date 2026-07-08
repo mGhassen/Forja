@@ -8,6 +8,7 @@ import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
@@ -129,10 +130,18 @@ void main() {
     await tester.tap(find.text('Categories'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Action'));
+    final visibleGenre = homeGenreCategories
+        .map((genre) => genre.label)
+        .firstWhere((label) => find.text(label).evaluate().isNotEmpty);
+    await tester.tap(find.text(visibleGenre));
     await tester.pumpAndSettle();
 
-    expect(ShellBus.homeSelectedGenreId.value, 'action');
+    expect(
+      ShellBus.homeSelectedGenreId.value,
+      homeGenreCategories
+          .firstWhere((genre) => genre.label == visibleGenre)
+          .id,
+    );
   });
 
   testWidgets('HomeTopBar Films tap toggles homeCategory filter', (tester) async {
@@ -184,8 +193,8 @@ void main() {
     await tester.pump();
     await gesture.moveTo(tester.getCenter(searchIcon));
     await tester.pump();
-
     await tester.pump(ShellTokens.navRailLabelRevealDelay);
+    await tester.pump(ShellTokens.navRailIconScaleAnimation);
     for (var i = 0; i < 12; i++) {
       await tester.pump(ShellTokens.navRailLabelLetterInterval);
     }

@@ -169,8 +169,6 @@ class _TypewriterLabelState extends State<_TypewriterLabel> {
     return Text(
       widget.text.substring(0, end),
       textAlign: TextAlign.center,
-      maxLines: 2,
-      overflow: TextOverflow.clip,
       style: widget.style,
     );
   }
@@ -191,41 +189,79 @@ class _ShellNavRailItem extends StatefulWidget {
   State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
 }
 
-class _ShellNavRailItemState extends State<_ShellNavRailItem> {
+class _ShellNavRailItemState extends State<_ShellNavRailItem>
+    with SingleTickerProviderStateMixin {
   bool _hover = false;
   bool _pressed = false;
-  bool _revealed = false;
+  bool _typing = false;
   Timer? _revealTimer;
+  late final AnimationController _revealController;
+  late final Animation<double> _iconSlide;
+  late final Animation<double> _iconScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _revealController = AnimationController(
+      vsync: this,
+      duration: ShellTokens.navRailIconScaleAnimation,
+    );
+    final curve = CurvedAnimation(
+      parent: _revealController,
+      curve: Curves.easeOutCubic,
+    );
+    _iconSlide = Tween<double>(
+      begin: 0,
+      end: -ShellTokens.navRailIconSlideUp,
+    ).animate(curve);
+    _iconScale = Tween<double>(
+      begin: 1,
+      end: ShellTokens.navRailIconRevealedScale,
+    ).animate(curve);
+    _revealController.addStatusListener(_onRevealStatus);
+  }
+
+  void _onRevealStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed && _hover && mounted) {
+      setState(() => _typing = true);
+    }
+    if (status == AnimationStatus.dismissed && mounted) {
+      setState(() => _typing = false);
+    }
+  }
 
   @override
   void dispose() {
     _revealTimer?.cancel();
+    _revealController
+      ..removeStatusListener(_onRevealStatus)
+      ..dispose();
     super.dispose();
   }
 
   void _onHoverEnter() {
-    setState(() => _hover = true);
+    setState(() {
+      _hover = true;
+      _typing = false;
+    });
     _revealTimer?.cancel();
     _revealTimer = Timer(ShellTokens.navRailLabelRevealDelay, () {
-      if (mounted && _hover) setState(() => _revealed = true);
+      if (!mounted || !_hover) return;
+      _revealController.forward(from: 0);
     });
   }
 
   void _onHoverExit() {
     _revealTimer?.cancel();
+    _revealController.reverse();
     setState(() {
       _hover = false;
       _pressed = false;
-      _revealed = false;
+      _typing = false;
     });
   }
 
-  double get _iconScale {
-    if (_pressed) return 0.92;
-    if (_revealed) return ShellTokens.navRailIconRevealedScale;
-    if (_hover) return ShellTokens.navRailIconHoverScale;
-    return 1.0;
-  }
+  double get _pressedScale => _pressed ? 0.92 : 1.0;
 
   @override
   Widget build(BuildContext context) {
@@ -263,54 +299,59 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               onTapCancel: () => setState(() => _pressed = false),
               onTap: widget.onTap,
               behavior: HitTestBehavior.opaque,
-              child: AnimatedSize(
-                duration: ShellTokens.navRailLabelRevealAnimation,
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedScale(
-                      scale: _iconScale,
-                      duration: ShellTokens.navRailIconScaleAnimation,
-                      curve: Curves.easeOutCubic,
-                      child: Icon(
-                        widget.selected
-                            ? widget.destination.activeIcon
-                            : widget.destination.icon,
-                        color: iconColor,
-                        size: ShellTokens.navRailIconSize,
-                      ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedBuilder(
+                    animation: _revealController,
+                    builder: (context, child) {
+                      final scale = _hover || _revealController.isAnimating
+                          ? _iconScale.value * _pressedScale
+                          : _pressedScale;
+                      return Transform.translate(
+                        offset: Offset(0, _iconSlide.value),
+                        child: Transform.scale(
+                          scale: scale,
+                          alignment: Alignment.topCenter,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Icon(
+                      widget.selected
+                          ? widget.destination.activeIcon
+                          : widget.destination.icon,
+                      color: iconColor,
+                      size: ShellTokens.navRailIconSize,
                     ),
-                    AnimatedSize(
-                      duration: ShellTokens.navRailLabelRevealAnimation,
-                      curve: Curves.easeOutCubic,
-                      alignment: Alignment.topCenter,
-                      child: _revealed
-                          ? Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: _TypewriterLabel(
-                                text: widget.destination.label,
-                                active: _revealed,
-                                style: labelStyle,
-                              ),
-                            )
-                          : const SizedBox.shrink(),
+                  ),
+                  Transform.translate(
+                    offset: Offset(
+                      0,
+                      _typing
+                          ? -(ShellTokens.navRailIconSlideUp -
+                              ShellTokens.navRailIconLabelGap)
+                          : 0,
                     ),
-                    const SizedBox(height: 6),
-                    AnimatedContainer(
-                      duration: ShellTokens.navSelectionAnimation,
-                      height: ShellTokens.shellNavUnderlineHeight,
-                      width: widget.selected ? 24 : 0,
-                      decoration: BoxDecoration(
-                        color: widget.selected
-                            ? ForjaShellColors.navUnderline
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+                    child: _TypewriterLabel(
+                      text: widget.destination.label,
+                      active: _typing,
+                      style: labelStyle,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 6),
+                  AnimatedContainer(
+                    duration: ShellTokens.navSelectionAnimation,
+                    height: ShellTokens.shellNavUnderlineHeight,
+                    width: widget.selected ? 24 : 0,
+                    decoration: BoxDecoration(
+                      color: widget.selected
+                          ? ForjaShellColors.navUnderline
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
