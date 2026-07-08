@@ -19,12 +19,27 @@ abstract final class ShellTokens {
   static const double navRailLogoWidth = 80;
   static const double navRailLogoHeight = navRailLogoWidth * 160 / 370;
   static const double shellCategoryUnderlineGap = 6;
-  static const double shellTopBarHeight =
-      shellHeaderTopPadding +
-      navRailLogoHeight +
-      shellCategoryUnderlineGap +
-      shellNavUnderlineHeight +
-      8;
+  static const double shellProviderCardWidth = 104;
+  static const double shellProviderCardHeight = 58;
+  static const double shellProviderCardRadius = 6;
+  static const double shellProviderCardGap = 8;
+  static const double shellProviderHoverScale = 1.2;
+  static const int shellProviderVisibleCount = 5;
+  static const double shellProviderEdgePeekFraction = 0.5;
+  static const double shellProviderEdgeFadeWidth = 36;
+  static const double shellProviderRowRightInset = 0;
+
+  static const double shellProviderStripHeight =
+      shellProviderCardHeight * shellProviderHoverScale + 4;
+
+  /// Width of the top-bar provider strip (center cards + half-card peeks on edges).
+  static double get shellProviderRowViewportWidth {
+    final cardSlots =
+        shellProviderVisibleCount + shellProviderEdgePeekFraction * 2;
+    return cardSlots * shellProviderCardWidth + (cardSlots - 1) * shellProviderCardGap;
+  }
+
+  static const double shellTopBarHeight = shellProviderStripHeight + 20;
   static const double shellLogoWidth = 110;
 
   /// Music desktop sidebar width — global rail hidden when Music tab uses this.

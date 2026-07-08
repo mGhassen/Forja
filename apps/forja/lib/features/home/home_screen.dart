@@ -88,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen>
   StreamSubscription<List<Map<String, dynamic>>>? _historySeedSub;
   VoidCallback? _splashDismissedListener;
   VoidCallback? _homeCategoryListener;
+  VoidCallback? _watchProviderListener;
 
   // Mood/genre filter state
   String _selectedMood = 'mind';
@@ -116,26 +117,65 @@ class _HomeScreenState extends State<HomeScreen>
 
   bool get _isTvHome => ShellBus.homeCategory.value == ShellHomeCategory.tvShows;
 
-  void _resetHomeCategoryFeeds({bool useBootCache = false}) {
-    final trendingFetcher = _isTvHome ? _api.getTrendingTv : _api.getTrending;
-    final popularFetcher = _isTvHome ? _api.getPopularTv : _api.getPopular;
-    final latestFetcher = _isTvHome ? _api.getOnTheAir : _api.getNowPlaying;
+  int? get _watchProviderId => ShellBus.selectedWatchProviderId.value;
 
-    _trendingFuture = _tmdbFuture(
-      useBootCache && !_isTvHome ? BootCache.trending : null,
-      trendingFetcher,
-      onLoaded: (movies) {
-        _fetchHeroLogos(movies.take(5).toList());
-      },
-    );
-    _popularFuture = _tmdbFuture(
-      useBootCache && !_isTvHome ? BootCache.popular : null,
-      popularFetcher,
-    );
-    _nowPlayingFuture = _tmdbFuture(
-      useBootCache && !_isTvHome ? BootCache.nowPlaying : null,
-      latestFetcher,
-    );
+  void _resetHomeCategoryFeeds({bool useBootCache = false}) {
+    final providerId = _watchProviderId;
+    final canUseBootCache = useBootCache && !_isTvHome && providerId == null;
+
+    if (providerId != null) {
+      _trendingFuture = _tmdbFuture(
+        null,
+        () => _isTvHome
+            ? _api.discoverTvShows(watchProviderId: providerId)
+            : _api.discoverMovies(watchProviderId: providerId),
+        onLoaded: (movies) => _fetchHeroLogos(movies.take(5).toList()),
+      );
+      _popularFuture = _tmdbFuture(
+        null,
+        () => _isTvHome
+            ? _api.discoverTvShows(
+                watchProviderId: providerId,
+                sortBy: 'vote_average.desc',
+                minRating: 7,
+              )
+            : _api.discoverMovies(
+                watchProviderId: providerId,
+                sortBy: 'vote_average.desc',
+                minRating: 7,
+              ),
+      );
+      _nowPlayingFuture = _tmdbFuture(
+        null,
+        () => _isTvHome
+            ? _api.discoverTvShows(
+                watchProviderId: providerId,
+                sortBy: 'first_air_date.desc',
+              )
+            : _api.discoverMovies(
+                watchProviderId: providerId,
+                sortBy: 'primary_release_date.desc',
+              ),
+      );
+    } else {
+      final trendingFetcher = _isTvHome ? _api.getTrendingTv : _api.getTrending;
+      final popularFetcher = _isTvHome ? _api.getPopularTv : _api.getPopular;
+      final latestFetcher = _isTvHome ? _api.getOnTheAir : _api.getNowPlaying;
+
+      _trendingFuture = _tmdbFuture(
+        canUseBootCache ? BootCache.trending : null,
+        trendingFetcher,
+        onLoaded: (movies) => _fetchHeroLogos(movies.take(5).toList()),
+      );
+      _popularFuture = _tmdbFuture(
+        canUseBootCache ? BootCache.popular : null,
+        popularFetcher,
+      );
+      _nowPlayingFuture = _tmdbFuture(
+        canUseBootCache ? BootCache.nowPlaying : null,
+        latestFetcher,
+      );
+    }
     _moodFuture = _loadMoodMovies(_selectedMood);
     _heroIndex = 0;
     if (_heroController.hasClients) {
@@ -150,6 +190,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onHomeCategoryChanged() {
+    if (!mounted) return;
+    setState(() => _resetHomeCategoryFeeds());
+  }
+
+  void _onWatchProviderChanged() {
     if (!mounted) return;
     setState(() => _resetHomeCategoryFeeds());
   }
@@ -173,6 +218,8 @@ class _HomeScreenState extends State<HomeScreen>
     SettingsService.addonChangeNotifier.addListener(_onAddonsChanged);
     _homeCategoryListener = _onHomeCategoryChanged;
     ShellBus.homeCategory.addListener(_homeCategoryListener!);
+    _watchProviderListener = _onWatchProviderChanged;
+    ShellBus.selectedWatchProviderId.addListener(_watchProviderListener!);
 
     _schedulePostSplashWork();
     markShellTabFresh();
@@ -536,9 +583,18 @@ class _HomeScreenState extends State<HomeScreen>
   Future<List<Movie>> _loadMoodMovies(String moodId) async {
     final mood = _moods.firstWhere((m) => m.id == moodId, orElse: () => _moods.first);
     try {
+      final providerId = _watchProviderId;
       final results = _isTvHome
-          ? await _api.discoverTvShows(genres: mood.genres, minRating: 6.0)
-          : await _api.discoverMovies(genres: mood.genres, minRating: 6.0);
+          ? await _api.discoverTvShows(
+              genres: mood.genres,
+              minRating: 6.0,
+              watchProviderId: providerId,
+            )
+          : await _api.discoverMovies(
+              genres: mood.genres,
+              minRating: 6.0,
+              watchProviderId: providerId,
+            );
       return results;
     } catch (_) {
       return [];
@@ -587,6 +643,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
     if (_homeCategoryListener != null) {
       ShellBus.homeCategory.removeListener(_homeCategoryListener!);
+    }
+    if (_watchProviderListener != null) {
+      ShellBus.selectedWatchProviderId.removeListener(_watchProviderListener!);
     }
     _homeScrollController.removeListener(_syncHomeScrollOffset);
     _homeScrollController.dispose();
@@ -943,57 +1002,82 @@ class _HomeScreenState extends State<HomeScreen>
     final topBarBleed = _desktopTopBarBleed(context);
     final imageHeight = backdropHeight + topBarBleed;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: -overlap),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    final heroStackHeight = backdropHeight - overlap + topBarBleed;
+
+    Widget buildHeroStack() {
+      return Stack(
+        clipBehavior: Clip.none,
         children: [
-          SizedBox(
-            height: backdropHeight - overlap + topBarBleed,
-            width: double.infinity,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: imageHeight,
-                  child: _buildDesktopHeroBackdrop(movies),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: imageHeight,
+            child: _buildDesktopHeroBackdrop(movies),
+          ),
+          Positioned(
+            left: 20,
+            top: topBarBleed + 24,
+            right: 48,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: math.min(
+                  MediaQuery.sizeOf(context).width * 0.34,
+                  ShellTokens.heroTextColumnWidthDesktop,
                 ),
-                Positioned(
-                  left: 20,
-                  top: topBarBleed + 24,
-                  right: 48,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: SizedBox(
-                      width: math.min(
-                        MediaQuery.sizeOf(context).width * 0.34,
-                        ShellTokens.heroTextColumnWidthDesktop,
-                      ),
-                      child: _buildDesktopHeroTextColumn(heroMovie),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: 20,
-                  top: 0,
-                  height: imageHeight,
-                  child: Center(
-                    child: _buildHeroStepIndicators(movies),
-                  ),
-                ),
-              ],
+                child: _buildDesktopHeroTextColumn(heroMovie),
+              ),
             ),
           ),
-          Transform.translate(
-            offset: Offset(0, -overlap),
-            child: belowHero,
+          Positioned(
+            right: 20,
+            top: 0,
+            height: imageHeight,
+            child: Center(
+              child: _buildHeroStepIndicators(movies),
+            ),
           ),
         ],
-      ),
+      );
+    }
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: WatchHistoryService().historyStream,
+      initialData: WatchHistoryService().current,
+      builder: (context, historySnapshot) {
+        final hasContinueWatching = historySnapshot.data?.isNotEmpty ?? false;
+        final continueHeight = hasContinueWatching
+            ? ShellTokens.heroContinueWatchingHeightDesktop
+            : 0.0;
+        final blockHeight = heroStackHeight +
+            continueHeight -
+            (hasContinueWatching ? overlap : 0);
+
+        return SizedBox(
+          height: blockHeight,
+          width: double.infinity,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: heroStackHeight,
+                child: buildHeroStack(),
+              ),
+              if (hasContinueWatching)
+                Positioned(
+                  top: heroStackHeight - overlap,
+                  left: 0,
+                  right: 0,
+                  child: belowHero,
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 

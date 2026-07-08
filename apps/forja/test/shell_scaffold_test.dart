@@ -11,11 +11,20 @@ import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:rust/rust.dart';
 
+Finder _netflixProviderCard() {
+  return find.byWidgetPredicate((widget) {
+    if (widget.key is! ValueKey) return false;
+    final value = (widget.key! as ValueKey).value;
+    return value is String && value.startsWith('watch-provider-8-');
+  });
+}
+
 void main() {
   const visibleIds = ['home', 'search', 'settings'];
 
   setUp(() {
     ShellBus.homeCategory.value = ShellHomeCategory.films;
+    ShellBus.selectedWatchProviderId.value = null;
     ShellBus.requestTab.value = null;
   });
 
@@ -110,22 +119,30 @@ void main() {
     );
 
     expect(find.byType(ShellTopBar), findsOneWidget);
-    expect(find.text('Films'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(_netflixProviderCard(), findsWidgets);
   });
 
-  testWidgets('ShellTopBar category taps update homeCategory', (tester) async {
+  testWidgets('ShellTopBar provider taps update selectedWatchProviderId', (tester) async {
     await pumpScaffold(
       tester,
       desktopScaffold(shellTopBar: const ShellTopBar()),
       size: const Size(1200, 800),
     );
 
-    expect(ShellBus.homeCategory.value, ShellHomeCategory.films);
-
-    await tester.tap(find.text('TV Shows'));
     await tester.pumpAndSettle();
 
-    expect(ShellBus.homeCategory.value, ShellHomeCategory.tvShows);
+    expect(ShellBus.selectedWatchProviderId.value, isNull);
+
+    await tester.tap(_netflixProviderCard().first);
+    await tester.pumpAndSettle();
+
+    expect(ShellBus.selectedWatchProviderId.value, 8);
+
+    await tester.tap(_netflixProviderCard().first);
+    await tester.pumpAndSettle();
+
+    expect(ShellBus.selectedWatchProviderId.value, isNull);
   });
 
   testWidgets('ShellNavRail uses fixed width without hover expand', (tester) async {

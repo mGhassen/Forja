@@ -8,9 +8,12 @@ enum ShellHomeCategory { films, tvShows }
 class ShellBus {
   ShellBus._();
 
-  /// Films / TV Shows selection for [ShellTopBar] + [HomeScreen] feed.
+  /// Films / TV Shows selection for [HomeScreen] feed.
   static final ValueNotifier<ShellHomeCategory> homeCategory =
       ValueNotifier(ShellHomeCategory.films);
+
+  /// TMDB watch-provider filter for Home desktop top bar (`null` = all providers).
+  static final ValueNotifier<int?> selectedWatchProviderId = ValueNotifier(null);
 
   /// Home feed vertical scroll — [ShellTopBar] uses this for a gradient bg when scrolled.
   static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);

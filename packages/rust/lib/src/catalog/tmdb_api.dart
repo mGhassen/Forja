@@ -2,6 +2,31 @@ import 'dart:convert';
 
 import 'package:rust/rust.dart';
 
+class WatchProvider {
+  const WatchProvider({
+    required this.id,
+    required this.name,
+    required this.logoPath,
+  });
+
+  final int id;
+  final String name;
+  final String logoPath;
+
+  String get logoUrl => 'https://image.tmdb.org/t/p/w92$logoPath';
+
+  /// Higher-res tile for top-bar cards (fills the card).
+  String get logoCardUrl => 'https://image.tmdb.org/t/p/w154$logoPath';
+
+  factory WatchProvider.fromJson(Map<String, dynamic> json) {
+    return WatchProvider(
+      id: json['provider_id'] as int,
+      name: json['provider_name'] as String? ?? '',
+      logoPath: json['logo_path'] as String? ?? '',
+    );
+  }
+}
+
 class TmdbApi {
   static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 
@@ -196,8 +221,49 @@ class TmdbApi {
     return (decoded['genres'] as List).cast<Map<String, dynamic>>();
   }
 
-  Future<List<Movie>> discoverMovies({List<int>? genres, int? year, double? minRating, String? language, int page = 1}) async {
-    var path = 'discover/movie?page=$page';
+  static const List<WatchProvider> fallbackWatchProviders = [
+    WatchProvider(id: 8, name: 'Netflix', logoPath: '/t2yyOv40HZolWobUddeOKCzK00l.png'),
+    WatchProvider(id: 337, name: 'Disney Plus', logoPath: '/7rDHAkCx4R4x9uYkl25W2YiOinRd9EwK.png'),
+    WatchProvider(id: 9, name: 'Prime Video', logoPath: '/emthp39XA2YScoYLtFEer2eNJ0U.png'),
+    WatchProvider(id: 350, name: 'Apple TV+', logoPath: '/6LfztECW4G3jXb16TzXBIy9XW19.png'),
+    WatchProvider(id: 1899, name: 'Max', logoPath: '/pbbY8oE2AxGcH2ww1iflHQ4bTzM.png'),
+    WatchProvider(id: 15, name: 'Hulu', logoPath: '/bnoevw11yf2tcsc7dol6y688nkm.png'),
+    WatchProvider(id: 531, name: 'Paramount+', logoPath: '/6uhHDRkj59HQD3TCfDm2N1Kc5P.png'),
+    WatchProvider(id: 386, name: 'Peacock', logoPath: '/8UGimH0nX3WHQfB6eTJkksbef2.png'),
+    WatchProvider(id: 283, name: 'Crunchyroll', logoPath: '/8n0UUKuxl2AdGYrpQxdSA3KWW69.png'),
+    WatchProvider(id: 73, name: 'Tubi', logoPath: '/7w3aFA8jP8fRWGj8n007iPorQGn.png'),
+    WatchProvider(id: 300, name: 'Pluto TV', logoPath: '/4nTKDysENfAwArWP6XDNLmntQ3.png'),
+    WatchProvider(id: 43, name: 'Starz', logoPath: '/giYWxN6DcOQGXYInphosLu3K5m.png'),
+  ];
+
+  /// Top flatrate watch providers for a region (used by Home top-bar filter).
+  Future<List<WatchProvider>> getTopWatchProviders({
+    int limit = 24,
+    String region = 'US',
+  }) async {
+    try {
+      final decoded = await _fetchMap('watch/providers/movie?watch_region=$region');
+      final results = (decoded['results'] as List? ?? [])
+          .map((json) => WatchProvider.fromJson(json as Map<String, dynamic>))
+          .where((p) => p.logoPath.isNotEmpty)
+          .take(limit)
+          .toList();
+      if (results.isNotEmpty) return results;
+    } catch (_) {}
+    return fallbackWatchProviders.take(limit).toList();
+  }
+
+  Future<List<Movie>> discoverMovies({
+    List<int>? genres,
+    int? year,
+    double? minRating,
+    String? language,
+    int? watchProviderId,
+    String watchRegion = 'US',
+    String sortBy = 'popularity.desc',
+    int page = 1,
+  }) async {
+    var path = 'discover/movie?page=$page&watch_region=$watchRegion&sort_by=$sortBy';
     if (genres != null && genres.isNotEmpty) {
       path += '&with_genres=${genres.join(',')}';
     }
@@ -210,13 +276,25 @@ class TmdbApi {
     if (language != null) {
       path += '&with_original_language=$language';
     }
+    if (watchProviderId != null) {
+      path += '&with_watch_providers=$watchProviderId';
+    }
 
     final decoded = await _fetchMap(path);
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'movie')).toList();
   }
 
-  Future<List<Movie>> discoverTvShows({List<int>? genres, int? year, double? minRating, String? language, int page = 1}) async {
-    var path = 'discover/tv?page=$page';
+  Future<List<Movie>> discoverTvShows({
+    List<int>? genres,
+    int? year,
+    double? minRating,
+    String? language,
+    int? watchProviderId,
+    String watchRegion = 'US',
+    String sortBy = 'popularity.desc',
+    int page = 1,
+  }) async {
+    var path = 'discover/tv?page=$page&watch_region=$watchRegion&sort_by=$sortBy';
     if (genres != null && genres.isNotEmpty) {
       path += '&with_genres=${genres.join(',')}';
     }
@@ -228,6 +306,9 @@ class TmdbApi {
     }
     if (language != null) {
       path += '&with_original_language=$language';
+    }
+    if (watchProviderId != null) {
+      path += '&with_watch_providers=$watchProviderId';
     }
 
     final decoded = await _fetchMap(path);
