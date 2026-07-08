@@ -156,6 +156,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Widget? _shellHeader() {
     if (_visibleIds.isEmpty || _selectedIndex >= _visibleIds.length) return null;
     if (_visibleIds[_selectedIndex] != 'search') return null;
+    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    if (isDesktop) return null;
     return _searchKey.currentState?.buildShellSearchBar();
   }
 

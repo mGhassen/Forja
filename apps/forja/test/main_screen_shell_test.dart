@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/features/search/search_keyboard.dart';
 import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
@@ -66,7 +67,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.byType(ShellSearchBar), findsOneWidget);
+    expect(find.byType(ShellSearchBar), findsNothing);
+    expect(find.byType(SearchKeyboard), findsOneWidget);
   });
 
   testWidgets('mobile portrait: bottom nav on non-desktop host', (tester) async {

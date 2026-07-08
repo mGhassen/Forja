@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/features/search/search_keyboard.dart';
+import 'package:forja/features/search/search_provider_row.dart';
 import 'package:forja/shell/shell_search_bar.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
@@ -23,6 +26,30 @@ class _SearchSection {
     this.isTmdb = false,
     List<dynamic>? results,
   }) : results = results ?? [];
+}
+
+class _FlatSearchResult {
+  const _FlatSearchResult({
+    required this.key,
+    required this.title,
+    required this.overview,
+    required this.posterUrl,
+    this.backdropUrl,
+    this.year,
+    this.rating,
+    required this.isTmdb,
+    required this.raw,
+  });
+
+  final String key;
+  final String title;
+  final String overview;
+  final String posterUrl;
+  final String? backdropUrl;
+  final String? year;
+  final double? rating;
+  final bool isTmdb;
+  final dynamic raw;
 }
 
 /// Search tab — RFC-024 R24-A11: query-driven only; no ShellTabRefresh / auto stale refetch.
@@ -53,6 +80,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   /// True while at least one provider hasn't responded yet.
   bool _isSearching = false;
+
+  int _focusedIndex = 0;
 
   @override
   bool get wantKeepAlive => true;
@@ -101,13 +130,17 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 
   void _onSearchChanged(String query) {
-    setState(() => _query = query);
+    setState(() {
+      _query = query;
+      _focusedIndex = 0;
+    });
     ShellBus.notifyShellChromeChanged();
     _debounce?.cancel();
     if (query.trim().isEmpty) {
       setState(() {
         _sections.clear();
         _isSearching = false;
+        _focusedIndex = 0;
       });
       return;
     }
@@ -124,6 +157,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     setState(() {
       _sections.clear();
       _isSearching = true;
+      _focusedIndex = 0;
     });
 
     int pendingCount = 1 + _addonProviders.length; // TMDB + each addon
@@ -303,7 +337,87 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   // UI
   // ─────────────────────────────────────────────────────────────────────────
 
+  List<_FlatSearchResult> _flatResults() {
+    final seen = <String>{};
+    final out = <_FlatSearchResult>[];
+    for (final section in _sections) {
+      for (final item in section.results) {
+        if (item is Movie) {
+          final key = 'tmdb:${item.id}:${item.mediaType}';
+          if (!seen.add(key)) continue;
+          out.add(_FlatSearchResult(
+            key: key,
+            title: item.title,
+            overview: item.overview,
+            posterUrl: item.posterPath.isNotEmpty ? TmdbApi.getImageUrl(item.posterPath) : '',
+            backdropUrl: item.backdropPath.isNotEmpty ? TmdbApi.getImageUrl(item.backdropPath) : null,
+            year: item.releaseDate.length >= 4 ? item.releaseDate.substring(0, 4) : null,
+            rating: item.voteAverage > 0 ? item.voteAverage : null,
+            isTmdb: true,
+            raw: item,
+          ));
+        } else {
+          final map = item as Map<String, dynamic>;
+          final id = map['id']?.toString() ?? map['name']?.toString() ?? '';
+          final key = 'addon:$id';
+          if (id.isEmpty || !seen.add(key)) continue;
+          final poster = map['poster']?.toString() ?? '';
+          final ratingStr = map['imdbRating']?.toString() ?? '';
+          out.add(_FlatSearchResult(
+            key: key,
+            title: map['name']?.toString() ?? 'Unknown',
+            overview: map['description']?.toString() ?? '',
+            posterUrl: poster,
+            backdropUrl: map['background']?.toString() ?? poster,
+            year: map['releaseInfo']?.toString(),
+            rating: double.tryParse(ratingStr),
+            isTmdb: false,
+            raw: map,
+          ));
+        }
+      }
+    }
+    return out;
+  }
+
+  _FlatSearchResult? get _focusedResult {
+    final results = _flatResults();
+    if (results.isEmpty) return null;
+    final index = _focusedIndex.clamp(0, results.length - 1);
+    return results[index];
+  }
+
+  void _appendCharacter(String char) {
+    _controller.text = _controller.text + char;
+    _onSearchChanged(_controller.text);
+  }
+
+  void _backspace() {
+    if (_controller.text.isEmpty) return;
+    _controller.text = _controller.text.substring(0, _controller.text.length - 1);
+    _onSearchChanged(_controller.text);
+  }
+
+  void _openResult(_FlatSearchResult result) {
+    if (result.isTmdb) {
+      _openDetails(result.raw as Movie);
+    } else {
+      _openStremioItem(result.raw as Map<String, dynamic>);
+    }
+  }
+
+  void _setFocusedIndex(int index) {
+    final count = _flatResults().length;
+    if (count == 0) return;
+    setState(() => _focusedIndex = index.clamp(0, count - 1));
+  }
+
+  bool _isDesktopLayout(BuildContext context) {
+    return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+  }
+
   Widget buildShellSearchBar() {
+    if (_isDesktopLayout(context)) return const SizedBox.shrink();
     return ShellSearchBar(
       controller: _controller,
       focusNode: _focusNode,
@@ -319,10 +433,310 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return _buildBody();
+    if (_isDesktopLayout(context)) {
+      return _buildDesktopLayout(context);
+    }
+    return _buildMobileBody(context);
   }
 
-  Widget _buildBody() {
+  Widget _buildDesktopLayout(BuildContext context) {
+    final focused = _focusedResult;
+    final results = _flatResults();
+    final backdropUrl = focused?.backdropUrl ?? focused?.posterUrl;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (backdropUrl != null && backdropUrl.isNotEmpty)
+          Positioned.fill(
+            child: CachedNetworkImage(
+              imageUrl: backdropUrl,
+              fit: BoxFit.cover,
+              alignment: Alignment.centerRight,
+              errorWidget: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  AppTheme.bgDark,
+                  AppTheme.bgDark.withValues(alpha: 0.92),
+                  AppTheme.bgDark.withValues(alpha: 0.55),
+                ],
+                stops: const [0.0, 0.42, 1.0],
+              ),
+            ),
+          ),
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: ShellTokens.searchLeftColumnWidth,
+              child: _buildKeyboardColumn(context, results),
+            ),
+            Expanded(
+              child: _buildResultsColumn(context, results, focused),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKeyboardColumn(BuildContext context, List<_FlatSearchResult> results) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        ShellTokens.searchLeftColumnPadding,
+        ShellTokens.shellHeaderTopPadding,
+        ShellTokens.searchLeftColumnPadding,
+        24,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SearchProviderRow(
+            onProviderChanged: (_) {
+              if (_query.trim().isNotEmpty) {
+                _performUnifiedSearch(_query);
+              }
+            },
+          ),
+          const SizedBox(height: 20),
+          Text(
+            _query.isEmpty ? 'Search' : _query,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: ForjaShellColors.textPrimary,
+              fontSize: _query.isEmpty ? 32 : ShellTokens.searchQueryFontSize,
+              fontWeight: FontWeight.w600,
+              height: 1.1,
+            ),
+          ),
+          if (results.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 34,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: results.length.clamp(0, 8),
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final item = results[index];
+                  final selected = index == _focusedIndex;
+                  return GestureDetector(
+                    onTap: () => _setFocusedIndex(index),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected ? ForjaShellColors.chipSelectedBg : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: selected
+                              ? ForjaShellColors.chipSelectedBorder
+                              : Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Text(
+                        item.title,
+                        style: TextStyle(
+                          color: selected
+                              ? ForjaShellColors.textPrimary
+                              : ForjaShellColors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+          const Spacer(),
+          SearchKeyboard(
+            onCharacter: _appendCharacter,
+            onBackspace: _backspace,
+            onSubmit: () {
+              final item = _focusedResult;
+              if (item != null) {
+                _openResult(item);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultsColumn(
+    BuildContext context,
+    List<_FlatSearchResult> results,
+    _FlatSearchResult? focused,
+  ) {
+    if (_query.isEmpty) {
+      return _buildEmpty(hint: 'Type on the keyboard to search');
+    }
+    if (results.isEmpty && _isSearching) {
+      return Center(child: CircularProgressIndicator(color: AppTheme.current.primaryColor));
+    }
+    if (results.isEmpty) {
+      return _buildEmpty(hint: 'No results found');
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, ShellTokens.shellHeaderTopPadding, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (focused != null) _buildResultDetail(focused),
+          const SizedBox(height: 24),
+          Expanded(
+            child: ListView.separated(
+              itemCount: results.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final item = results[index];
+                final selected = index == _focusedIndex;
+                return _SearchResultRow(
+                  result: item,
+                  selected: selected,
+                  onTap: () => _setFocusedIndex(index),
+                  onOpen: () => _openResult(item),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultDetail(_FlatSearchResult result) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FocusableControl(
+          onTap: () => _openResult(result),
+          borderRadius: 8,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: ShellTokens.searchDetailPosterWidth,
+                  height: ShellTokens.searchDetailPosterHeight,
+                  child: result.posterUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: result.posterUrl,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, _, _) => _posterPlaceholder(result.title),
+                        )
+                      : _posterPlaceholder(result.title),
+                ),
+              ),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.play_arrow, color: Colors.black, size: 28),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      result.title,
+                      style: const TextStyle(
+                        color: ForjaShellColors.textPrimary,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
+                    ),
+                  ),
+                  if (result.year != null && result.year!.isNotEmpty)
+                    Text(
+                      result.year!,
+                      style: const TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
+              ),
+              if (result.rating != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.favorite, size: 16, color: ForjaShellColors.textSecondary),
+                    const SizedBox(width: 6),
+                    Text(
+                      result.rating!.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: ForjaShellColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 14),
+              Text(
+                result.overview.isNotEmpty ? result.overview : 'No description available.',
+                maxLines: 6,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 15,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _posterPlaceholder(String title) {
+    return ColoredBox(
+      color: ForjaShellColors.surfaceElevated,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: ForjaShellColors.textSecondary, fontSize: 12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileBody(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width > ShellTokens.musicDesktopBreakpoint;
     final bottomPad = isDesktop ? 24.0 : ShellTokens.bottomNavHeight;
@@ -333,7 +747,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     } else if (_sections.isEmpty && _isSearching) {
       body = Center(child: CircularProgressIndicator(color: AppTheme.current.primaryColor));
     } else if (_sections.isEmpty && !_isSearching) {
-      body = _buildEmpty();
+      body = _buildEmpty(hint: 'No results found');
     } else {
       body = ListView.builder(
         physics: const BouncingScrollPhysics(),
@@ -429,7 +843,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty({String? hint}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -437,10 +851,117 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           Icon(Icons.search, size: 80, color: Colors.white.withValues(alpha: 0.05)),
           const SizedBox(height: 16),
           Text(
-            _query.isEmpty ? "Search for your favorite content" : "No results found",
+            hint ?? (_query.isEmpty ? 'Search for your favorite content' : 'No results found'),
             style: const TextStyle(color: Colors.white38),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SearchResultRow extends StatelessWidget {
+  const _SearchResultRow({
+    required this.result,
+    required this.selected,
+    required this.onTap,
+    required this.onOpen,
+  });
+
+  final _FlatSearchResult result;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return FocusableControl(
+      onTap: onTap,
+      borderRadius: 8,
+      child: Material(
+        color: selected
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          onDoubleTap: onOpen,
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            height: ShellTokens.searchResultRowHeight,
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: result.posterUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: result.posterUrl,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, _, _) => _thumbFallback(),
+                          )
+                        : _thumbFallback(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        result.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selected
+                              ? ForjaShellColors.textPrimary
+                              : ForjaShellColors.textSecondary,
+                          fontSize: 15,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
+                      if (result.year != null && result.year!.isNotEmpty)
+                        Text(
+                          result.year!,
+                          style: const TextStyle(
+                            color: ForjaShellColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (result.rating != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Text(
+                      result.rating!.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _thumbFallback() {
+    return ColoredBox(
+      color: ForjaShellColors.surfaceElevated,
+      child: Center(
+        child: Text(
+          result.title.isNotEmpty ? result.title[0].toUpperCase() : '?',
+          style: const TextStyle(color: ForjaShellColors.textSecondary),
+        ),
       ),
     );
   }

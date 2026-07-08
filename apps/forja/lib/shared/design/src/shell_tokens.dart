@@ -85,6 +85,20 @@ abstract final class ShellTokens {
   static const double sectionTopSpacing = 20;
   static const double searchCardWidthDesktop = 140;
   static const double searchCardWidthCompact = 120;
+
+  /// Netflix-style search: keyboard column on desktop.
+  static const double searchLeftColumnWidth = 420;
+  static const double searchLeftColumnPadding = 24;
+  static const double searchKeyboardKeyGap = 5;
+  static const double searchKeyboardKeyHeight = 40;
+  static const double searchKeyboardKeyRadius = 6;
+  static const double searchProviderRowHeight = 52;
+  static const double searchProviderCardWidth = 88;
+  static const double searchProviderCardHeight = 48;
+  static const double searchQueryFontSize = 42;
+  static const double searchDetailPosterWidth = 120;
+  static const double searchDetailPosterHeight = 180;
+  static const double searchResultRowHeight = 72;
   static const double settingsSectionBottomSpacing = 8;
   static const double settingsSectionTitleSize = 15;
   static const double settingsSectionRadius = 14;
