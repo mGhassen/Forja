@@ -100,7 +100,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.byType(ShellSearchBar), findsOneWidget);
+    expect(find.byType(ShellSearchBar), findsNothing);
+    expect(find.byType(TextField), findsWidgets);
     expect(ShellBus.requestTab.value, isNull);
   });
 
@@ -140,7 +141,8 @@ void main() {
     await _tapNavId(tester, 'search');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byType(ShellSearchBar), findsOneWidget);
+    expect(find.byType(ShellSearchBar), findsNothing);
+    expect(find.byType(TextField), findsWidgets);
 
     await _tapNavId(tester, 'mylist');
     await tester.pump();

@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tabs:** Home, Search, My List, and Settings. On desktop you get a narrow side rail (grey icons, Netflix-style underline on the active tab) plus a top bar with the Forja logo and category labels (Films, TV Shows, Anime — visual only for now). On phone and tablet, a bottom navigation bar. You can hide, show, and reorder additional tabs in Settings.
+Forja uses a tab-based shell. **Default tabs:** Home, Search, My List, and Settings. On desktop you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder additional tabs in Settings.
 
 ## How to open it
 
@@ -13,16 +13,17 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 ## What you can do
 
 - Tap any tab to switch sections instantly (tabs stay mounted in memory for fast switching)
-- On desktop, the left rail is a **fixed-width** column (grey icons, Netflix-style underline on the active tab); the body is inset so content is not hidden under icons
-- The **top bar** (logo + Films / TV Shows / Anime) appears on **Home only**; other tabs use their own headers
+- On desktop, the left rail is a **fixed-width** column; the body is inset so content is not hidden under icons
+- On **Home (desktop)**, a Films / TV Shows / Categories menu overlays the hero and slides away as you scroll
+- **Search (desktop)** uses a full-page layout with a left search column — no separate shell search bar
 - Open **Settings → Navigation Bar** to toggle tabs on/off and drag to reorder
 - Jump to Search or other tabs from deep links inside the app (e.g. from a Stremio addon result)
 
 ## Desktop shell layout
 
-- **Top bar (Home only):** Films / TV Shows / Anime category tabs (Films underlined by default)
-- **Left rail:** Forja logo (top), your configured tabs (center), Settings (bottom); muted grey icons
-- **Body:** flat `bgDark` — no ambient glow blobs or edge vignettes; Home hero uses text-only Watch Now plus bare info and add-to-list icons
+- **Home menu (desktop):** Films / TV Shows / Categories overlaid on the hero; Categories opens a mood picker
+- **Left rail:** Forja logo (top), your configured tabs (center), Settings (bottom); muted grey icons with hover feedback
+- **Body:** flat `bgDark`; Home hero is full-bleed with text-only Watch Now plus bare info and add-to-list icons
 
 ## Available tabs
 

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
@@ -21,10 +20,10 @@ class ShellBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final lightMode = AppTheme.isLightMode;
 
-    Widget navContent = Container(
+    return Container(
       height: ShellTokens.bottomNavHeight,
       decoration: BoxDecoration(
-        color: AppTheme.current.bgDark.withValues(alpha: lightMode ? 1.0 : 0.75),
+        color: lightMode ? AppTheme.appBackgroundLight : AppTheme.bgDark,
         border: const Border(top: BorderSide(color: Colors.white10, width: 0.5)),
       ),
       child: Stack(
@@ -96,7 +95,8 @@ class ShellBottomNav extends StatelessWidget {
                       end: Alignment.centerRight,
                       colors: [
                         Colors.transparent,
-                        AppTheme.current.bgDark.withValues(alpha: 0.7),
+                        (lightMode ? AppTheme.appBackgroundLight : AppTheme.bgDark)
+                            .withValues(alpha: 0.9),
                       ],
                     ),
                   ),
@@ -105,17 +105,6 @@ class ShellBottomNav extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-
-    if (lightMode) {
-      return ClipRect(child: navContent);
-    }
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: navContent,
       ),
     );
   }

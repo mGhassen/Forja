@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/nav_config.dart';
@@ -188,6 +190,24 @@ void main() {
     expect(find.text('Watch Now'), findsOneWidget);
     expect(find.byType(ForjaPlainIcon), findsOneWidget);
     expect(find.byType(ForjaIconButton), findsNothing);
+  });
+
+  testWidgets('ShellBottomNav is flat without BackdropFilter', (tester) async {
+    await pumpScaffold(
+      tester,
+      ShellScaffold(
+        useNavRail: false,
+        isDesktop: false,
+        visibleIds: visibleIds,
+        selectedIndex: 0,
+        mountedTabIds: const {'home'},
+        onDestinationSelected: (_) {},
+        tabFor: (id) => Center(child: Text(id)),
+      ),
+    );
+
+    expect(find.byType(ShellBottomNav), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsNothing);
   });
 
   test('navDestinations includes default shell tabs', () {

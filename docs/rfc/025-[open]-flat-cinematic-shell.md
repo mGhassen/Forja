@@ -11,8 +11,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **28 / 29** acceptance (desktop slice 1 + 1.1 + 1.2) · **0 / 3** deferred |
-| **Current slice** | Desktop — user feedback corrections (1.2) |
+| **Progress** | **4 / 4** components · **37 / 39** acceptance (desktop slices 1–1.3) · **2 / 3** deferred |
+| **Current slice** | Desktop cinematic polish (1.3) + mobile flat nav |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -80,11 +80,26 @@
 
 ---
 
+## Acceptance (1.0.0 — desktop slice 1.3)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 33 | R25-A33 | `HomeTopBar`: Films / TV / Categories on hero; scroll-hide; mood menu via `ShellBus` | ✅ |
+| 34 | R25-A34 | Cinematic hero: ~72% viewport height; image under top bar + continue-watching / mood overlap | ✅ |
+| 35 | R25-A35 | Fixed hero text slots (title, meta, overview) — stable layout across slides | ✅ |
+| 36 | R25-A36 | Infinite hero carousel + clickable vertical step indicators | ✅ |
+| 37 | R25-A37 | Logo on nav rail (`navRailWidth` 120); `ShellTopBar` provider strip stub (hidden on Home) | ✅ |
+| 38 | R25-A38 | Desktop Search: full-page Netflix layout — no `ShellSearchBar` in shell header | ✅ |
+| 39 | R25-A39 | Rail items use `ForjaInteractive` hover/press feedback | ✅ |
+| 40 | R25-A40 | Widget tests: `HomeTopBar`, desktop search tab, flat bottom nav | ✅ |
+
+---
+
 ## Acceptance (deferred)
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 13 | R25-A13 | Mobile bottom nav flat treatment (remove `BackdropFilter` in `shell_bottom_nav.dart`) | ⏭️ |
+| 13 | R25-A13 | Mobile bottom nav flat treatment (remove `BackdropFilter` in `shell_bottom_nav.dart`) | ✅ |
 | 14 | R25-A14 | App-wide blur/glow purge (Music, cards, player chrome) | ⏭️ |
 | 15 | R25-A15 | Light-mode parity audit after flat dark default ships | ⏭️ |
 
