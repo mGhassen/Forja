@@ -37,12 +37,23 @@ SliverToBoxAdapter _homeRowSliver(
   Widget section, {
   required bool isFirstAfterHero,
   double heroOverlapPull = 0,
+  double? overlapLayoutHeight,
 }) {
   Widget child = RepaintBoundary(child: section);
-  if (heroOverlapPull > 0) {
-    child = Transform.translate(
-      offset: Offset(0, -heroOverlapPull),
-      child: child,
+  if (heroOverlapPull > 0 && overlapLayoutHeight != null) {
+    child = SizedBox(
+      height: overlapLayoutHeight - heroOverlapPull,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: -heroOverlapPull,
+            left: 0,
+            right: 0,
+            child: section,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1387,6 +1398,8 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   isFirstAfterHero: true,
                   heroOverlapPull: _desktopHeroFirstRowOverlap(context),
+                  overlapLayoutHeight:
+                      _MovieSection.sectionHeight(context, compactTop: true),
                 ),
 
               if (isDesktop)
@@ -1659,7 +1672,7 @@ class _HomeScreenState extends State<HomeScreen>
             bottom: 24,
             child: ClipRect(
               child: Align(
-                alignment: Alignment.bottomLeft,
+                alignment: Alignment.topLeft,
                 child: SizedBox(
                   width: math.min(
                     MediaQuery.sizeOf(context).width * 0.34,
