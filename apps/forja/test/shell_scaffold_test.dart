@@ -7,6 +7,7 @@ import 'package:forja/shell/shell_body.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_scaffold.dart';
 import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
@@ -23,6 +24,7 @@ void main() {
     ShellBus.homeHeroHeight.value = 0;
     ShellBus.selectedWatchProviderId.value = null;
     ShellBus.requestTab.value = null;
+    ShellBus.shellOverlayHasPage.value = false;
   });
 
   Future<void> pumpScaffold(
@@ -154,6 +156,58 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(ShellBus.homeCategory.value, isNull);
+  });
+
+  testWidgets('ShellScaffold hides home top bar when shell overlay has page',
+      (tester) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(shellTopBar: const HomeTopBar()),
+      size: const Size(1200, 800),
+    );
+
+    expect(find.text('Films'), findsOneWidget);
+
+    shellOverlayNavigatorKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('Details')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(ShellBus.shellOverlayHasPage.value, isTrue);
+
+    shellOverlayNavigatorKey.currentState!.pop();
+    await tester.pumpAndSettle();
+
+    expect(ShellBus.shellOverlayHasPage.value, isFalse);
+  });
+
+  testWidgets('ShellScaffold dismisses shell overlay when nav destination selected',
+      (tester) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(),
+      size: const Size(1200, 800),
+    );
+
+    shellOverlayNavigatorKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('Details')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(ShellBus.shellOverlayHasPage.value, isTrue);
+    expect(find.text('Details'), findsOneWidget);
+
+    await tester.tap(
+      find.image(const AssetImage('assets/images/nav/home.png')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(ShellBus.shellOverlayHasPage.value, isFalse);
+    expect(find.text('Details'), findsNothing);
   });
 
   testWidgets('ShellScaffold collapses nav rail to left menu on home when narrow', (tester) async {

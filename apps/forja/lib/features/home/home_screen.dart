@@ -14,9 +14,7 @@ import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/app/boot_cache.dart';
 import 'package:forja/shell/home_top_bar.dart';
@@ -1340,10 +1338,11 @@ class _HomeScreenState extends State<HomeScreen>
       try {
         final movie = await _api.findByImdbId(id, mediaType: type == 'series' ? 'tv' : 'movie');
         if (movie != null && mounted) {
-          // Always use DetailsScreen for Stremio items
-          Navigator.push(context, AppRouter.slideRoute(
-            (_) => DetailsScreen(movie: movie, stremioItem: item),
-          ));
+          await AppRouter.openDetails(
+            context,
+            movie: movie,
+            stremioItem: item,
+          );
           return;
         }
       } catch (_) {}
@@ -1358,10 +1357,11 @@ class _HomeScreenState extends State<HomeScreen>
             (m) => m.title.toLowerCase() == name.toLowerCase(),
             orElse: () => results.first,
           );
-          // Always use DetailsScreen for Stremio items
-          Navigator.push(context, AppRouter.slideRoute(
-            (_) => DetailsScreen(movie: match, stremioItem: item),
-          ));
+          await AppRouter.openDetails(
+            context,
+            movie: match,
+            stremioItem: item,
+          );
           return;
         }
       } catch (_) {}
@@ -1390,10 +1390,11 @@ class _HomeScreenState extends State<HomeScreen>
         updatedItem['type'] = 'collections';
       }
       
-      // Always use DetailsScreen for Stremio items
-      Navigator.push(context, AppRouter.slideRoute(
-        (_) => DetailsScreen(movie: movie, stremioItem: updatedItem),
-      ));
+      await AppRouter.openDetails(
+        context,
+        movie: movie,
+        stremioItem: updatedItem,
+      );
     }
   }
 
@@ -2424,16 +2425,12 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
             genres: [],
             imdbId: item['imdbId'],
           );
-          await Navigator.push(
+          await AppRouter.openStreamingDetails(
             context,
-            AppRouter.slideRoute(
-              (_) => StreamingDetailsScreen(
-                movie: movie,
-                initialSeason: season,
-                initialEpisode: episode,
-                startPosition: startPos,
-              ),
-            ),
+            movie: movie,
+            initialSeason: season,
+            initialEpisode: episode,
+            startPosition: startPos,
           );
         }
         return;
@@ -2477,15 +2474,14 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
               'name': title,
             };
           }
-          Navigator.push(context, AppRouter.slideRoute(
-            (_) => DetailsScreen(
-              movie: movie,
-              stremioItem: stremioItem,
-              initialSeason: season,
-              initialEpisode: episode,
-              startPosition: startPos,
-            ),
-          ));
+          await AppRouter.openDetails(
+            context,
+            movie: movie,
+            stremioItem: stremioItem,
+            initialSeason: season,
+            initialEpisode: episode,
+            startPosition: startPos,
+          );
         }
         return; // Skip the player launch below
       } else if (method == 'stream') {
@@ -2621,23 +2617,25 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
             genres: [],
             imdbId: item['imdbId'],
           );
-          final navigator = Navigator.of(context);
           final isStreaming = await SettingsService().isStreamingModeEnabled();
-          navigator.push(AppRouter.slideRoute(
-            (_) => isStreaming
-                ? StreamingDetailsScreen(
-                    movie: movie,
-                    initialSeason: season,
-                    initialEpisode: episode,
-                    startPosition: startPos,
-                  )
-                : DetailsScreen(
-                    movie: movie,
-                    initialSeason: season,
-                    initialEpisode: episode,
-                    startPosition: startPos,
-                  ),
-          ));
+          if (!context.mounted) return;
+          if (isStreaming) {
+            await AppRouter.openStreamingDetails(
+              context,
+              movie: movie,
+              initialSeason: season,
+              initialEpisode: episode,
+              startPosition: startPos,
+            );
+          } else {
+            await AppRouter.openDetails(
+              context,
+              movie: movie,
+              initialSeason: season,
+              initialEpisode: episode,
+              startPosition: startPos,
+            );
+          }
         }
         return;
       }
@@ -2728,17 +2726,12 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
     
     // Determine which screen to open based on streaming mode and item type
     if (isStreamingMode) {
-      // Streaming mode ON -> always open StreamingDetailsScreen
       if (mounted) {
-        Navigator.push(
+        await AppRouter.openStreamingDetails(
           context,
-          AppRouter.slideRoute(
-            (_) => StreamingDetailsScreen(
-              movie: movie,
-              initialSeason: season,
-              initialEpisode: episode,
-            ),
-          ),
+          movie: movie,
+          initialSeason: season,
+          initialEpisode: episode,
         );
       }
     } else {
@@ -2760,30 +2753,21 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
         };
         
         if (mounted) {
-          Navigator.push(
+          await AppRouter.openDetails(
             context,
-            AppRouter.slideRoute(
-              (_) => DetailsScreen(
-                movie: movie,
-                stremioItem: stremioItem,
-                initialSeason: season,
-                initialEpisode: episode,
-              ),
-            ),
+            movie: movie,
+            stremioItem: stremioItem,
+            initialSeason: season,
+            initialEpisode: episode,
           );
         }
       } else {
-        // Regular content -> open DetailsScreen (torrent mode)
         if (mounted) {
-          Navigator.push(
+          await AppRouter.openDetails(
             context,
-            AppRouter.slideRoute(
-              (_) => DetailsScreen(
-                movie: movie,
-                initialSeason: season,
-                initialEpisode: episode,
-              ),
-            ),
+            movie: movie,
+            initialSeason: season,
+            initialEpisode: episode,
           );
         }
       }

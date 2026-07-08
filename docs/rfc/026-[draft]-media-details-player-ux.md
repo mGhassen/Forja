@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 13** components · **6 / 14** acceptance (1.0.1 UX slice) · **2 / 13** components in progress (details layout) |
-| **Current slice** | Full-viewport details hero + unified scroll sections (torrent + streaming) |
+| **Progress** | **10 / 18** components · **6 / 14** acceptance (1.0.1 UX slice) · **2 / 18** components in progress (details screen thin-wrap) |
+| **Current slice** | Shared hero + details scroll shell + sources panel extraction (torrent + streaming) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -32,6 +32,11 @@
 | 11 | R26-C11 | `StreamSourcePanel` — desktop side panel + mobile sheet from `_currentSources` | ✅ |
 | 12 | R26-C12 | `SeekBarWithPreview` — debounced `media_kit` screenshot + timestamp fallback | ✅ |
 | 13 | R26-C13 | `TvSeasonEpisodePicker` — season poster cards + expandable episode rail | ✅ |
+| 14 | R26-C14 | Hero primitives — `HeroTitle`, `HeroMetaLine`, `HeroFactsPanel`, `pickDirectorFromCrew` (Home + details) | ✅ |
+| 15 | R26-C15 | `HeroOverviewText` — bounded-height slot fix (Home desktop hero) | ✅ |
+| 16 | R26-C16 | `MediaDetailsScrollPage` + `MediaDetailsRecommendationsSection` | ✅ |
+| 17 | R26-C17 | `TorrentSourcesPanel` + `TorrentSourceFilters` + `TorrentSourceTile` / `StremioSourceTile` | ✅ |
+| 18 | R26-C18 | `MediaDetailsTorrentActionRow` + `MediaDetailsStreamingActionRow` | ✅ |
 
 ---
 
@@ -55,7 +60,7 @@
 |--:|----|-------------|--------|
 | 1 | R26-A08 | Details hero: Ken Burns backdrop immediately; preloaded YouTube trailer after 3s when TMDB key exists | ✅ |
 | 2 | R26-A09 | Hero watch progress bar for movies + selected TV episode (hide &lt;2% or ≥90%) | ✅ |
-| 3 | R26-A10 | Primary scroll: Main Characters + More Like This (+ seasons for TV); crew/keywords/production deferred | 🔄 |
+| 3 | R26-A10 | Primary scroll: Main Characters + More Like This (+ seasons for TV); crew/keywords in body deferred | 🔄 |
 | 4 | R26-A11 | Player flat chrome: Back + title/meta overlay; play, ±10s, volume, sources, PiP, fullscreen | ✅ |
 | 5 | R26-A12 | `StreamSourcePanel` switches among `_currentSources` without engine change | ✅ |
 | 6 | R26-A13 | Seek hover preview shows frame when `screenshot()` succeeds; timestamp-only fallback otherwise | ✅ |
@@ -71,8 +76,8 @@ Full UX redesign of media details (torrent + streaming) and the unified player. 
 
 | File | Lines (approx.) | Issue |
 |------|-----------------|-------|
-| [`details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | ~3920 | God file; wrong feature owner; pre-shell UI patterns |
-| [`streaming_details_screen.dart`](../../apps/forja/lib/features/home/streaming_details_screen.dart) | ~1831 | Separate layout from torrent details; same ownership problem |
+| [`details_screen.dart`](../../apps/forja/lib/features/home/details_screen.dart) | ~2570 | God file shrinking; sources UI extracted to `shared/widgets/media_details/` |
+| [`streaming_details_screen.dart`](../../apps/forja/lib/features/home/streaming_details_screen.dart) | ~765 | Uses shared scroll shell + action row; logic still in screen |
 | [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | ~4292 | `_Glass` chrome; not aligned with flat shell |
 | [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | ~4145 | Same |
 

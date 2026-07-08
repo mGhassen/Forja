@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 /// Layout constants for the app shell nav chrome.
 abstract final class ShellTokens {
   static const double bottomNavHeight = 80;
@@ -131,15 +133,18 @@ abstract final class ShellTokens {
   static const double heroTitleSlotHeightDesktop = 196;
   static const double heroMetaSlotHeightDesktop = 40;
   static const double heroMetaOverviewGapDesktop = 32;
-  static const int heroOverviewMaxLinesDesktop = 5;
+  static const int heroOverviewMaxLinesDesktop = 3;
   static const double heroOverviewFontSizeDesktop = 17;
   static const double heroOverviewLineHeightDesktop = 1.55;
+  static const double heroOverviewReadMoreGap = 8;
 
   /// Fixed overview block — keeps action row stable across hero slides.
   static double get heroOverviewSlotHeightDesktop =>
       heroOverviewFontSizeDesktop *
-      heroOverviewLineHeightDesktop *
-      heroOverviewMaxLinesDesktop;
+          heroOverviewLineHeightDesktop *
+          heroOverviewMaxLinesDesktop +
+      heroOverviewReadMoreGap +
+      heroOverviewFontSizeDesktop * heroOverviewLineHeightDesktop;
   static const double heroLogoMaxHeightDesktop = 180;
 
   /// Narrow right-edge vignette on flat cinematic body (desktop Home).
@@ -148,15 +153,19 @@ abstract final class ShellTokens {
   static const double bodyHorizontalPadding = 20;
   static const double bodyMaxWidthDesktop = 1600;
 
+  /// Horizontal inset for home catalog rows ([ShellSectionTitle], poster lists).
+  static const double homeSectionHorizontalPadding = 24;
+
   /// Media details — body below full-bleed hero (hero stays edge-to-edge).
+  static const double detailsHeroGradientSolidEndFraction = 0.12;
   static const double detailsHeroBodyOverlap = 120;
   static const double detailsHeroContentTopInset = 88;
   static const double detailsHeroDescriptionWidthFraction = 0.40;
   static const double detailsBodyTopSpacing = 36;
   static const double detailsSectionSpacing = 48;
   static const double detailsBodyBottomSpacing = 80;
-  static const double detailsContentPaddingDesktop = 64;
-  static const double detailsContentPaddingCompact = bodyHorizontalPadding;
+  static const double detailsContentPaddingDesktop = homeSectionHorizontalPadding;
+  static const double detailsContentPaddingCompact = homeSectionHorizontalPadding;
 
   static double detailsContentHorizontalPadding(double viewportWidth) {
     if (viewportWidth >= shellNavCompactMaxWidth) {
@@ -171,6 +180,18 @@ abstract final class ShellTokens {
         viewportWidth < bodyMaxWidthDesktop ? viewportWidth : bodyMaxWidthDesktop;
     final sideGutter = (viewportWidth - columnWidth) / 2;
     return sideGutter + padding;
+  }
+
+  /// Full viewport hero — prefer [viewportHeight] from a [LayoutBuilder] when set.
+  static double detailsHeroHeight(
+    BuildContext context, {
+    double? viewportHeight,
+  }) {
+    final height = viewportHeight ?? MediaQuery.sizeOf(context).height;
+    if (height.isFinite && height > 0) {
+      return height;
+    }
+    return MediaQuery.sizeOf(context).height;
   }
 
   static const double tabHeaderTopPadding = 16;

@@ -55,6 +55,7 @@ void main() {
   tearDown(() {
     ShellBus.requestTab.value = null;
     ShellBus.clearHideGlobalNav();
+    ShellBus.shellOverlayHasPage.value = false;
   });
 
   testWidgets('desktop: rail visible and tab switch to Search', (tester) async {

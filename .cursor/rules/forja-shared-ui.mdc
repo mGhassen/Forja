@@ -1,0 +1,79 @@
+---
+description: Shared hero and media-details UI components — when to extract and where they live
+globs: apps/forja/lib/**/*.dart
+alwaysApply: false
+---
+
+# Shared UI components (RFC-026)
+
+Extract **presentation** into `shared/widgets/`; keep **state, fetching, navigation** in feature screens.
+
+## Folder map
+
+```
+shared/widgets/hero/
+  hero_title.dart          # Home + details titles (HeroTitleStyle.home | .details)
+  hero_meta_line.dart      # HeroMetaStyle.home | .details
+  hero_facts_panel.dart    # Details production-info column
+  hero_utils.dart          # pickDirectorFromCrew()
+  ../hero_overview_text.dart
+
+shared/widgets/media_details/
+  media_details_scroll_page.dart
+  media_details_recommendations_section.dart
+  media_details_torrent_action_row.dart
+  media_details_streaming_action_row.dart
+  torrent_sources_panel.dart
+  torrent_source_filters.dart
+  torrent_source_tiles.dart
+  media_details.dart       # barrel export
+
+shared/widgets/          # existing cross-feature widgets
+  media_details_hero.dart, media_details_body.dart,
+  media_details_cast_section.dart, media_details_trailers_section.dart,
+  tv_season_episode_picker.dart, home_movie_row.dart, watch_progress_bar.dart
+```
+
+## When to extract
+
+| Signal | Action |
+|--------|--------|
+| Same widget in torrent + streaming details | `media_details/` |
+| Same widget in Home hero + details hero | `hero/` |
+| Screen-only logic (search, Trakt, gen-token) | Stay in `details_screen.dart` |
+| Panel UI vs panel state | Panel widget gets data + callbacks; screen owns `_selectedSourceId`, fetch |
+
+## Media details page shape
+
+Both details screens use:
+
+```dart
+MediaDetailsScrollPage(
+  hero: MediaDetailsHero(...),
+  backdropUrl: ...,
+  backgroundColor: ...,
+  sections: [/* tv picker, cast, trailers, recommendations */],
+)
+```
+
+- Section spacing: `ShellTokens.detailsSectionSpacing` — applied inside scroll page, not per screen.
+- Recommendations: `MediaDetailsRecommendationsSection` + screen-specific `onMovieTap`.
+- Torrent sources overlay: `TorrentSourcesPanel` + filters/tiles; screen wires chip `onChipTap` to existing handlers.
+
+## Hero overview slots
+
+- Home desktop uses a **fixed-height** overview slot (`ShellTokens.heroOverviewSlotHeightDesktop`).
+- `HeroOverviewText` must respect `constraints.hasBoundedHeight` — never let synopsis + Read More overflow the slot.
+
+## Adding a new shared widget
+
+1. Pick `hero/` or `media_details/` (or top-level `shared/widgets/` if used outside those flows).
+2. Export from barrel if in `media_details/`.
+3. Use `ShellTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
+4. Update RFC-026 component row if part of the media-details UX arc.
+
+## Do not
+
+- Clone cast/crew UI — use `MediaDetailsCastSection` only.
+- Reintroduce `media_details_metadata_sections.dart` (deleted; superseded).
+- Put torrent search / Stremio fetch logic inside `torrent_source_tiles.dart`.

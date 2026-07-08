@@ -9,14 +9,14 @@ When you open a title from Home, Discover, or Search (with torrent mode enabled)
 The hero overlay is split into two columns on wide screens:
 
 - **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), **Play** / **Resume** (white pill — opens Sources), **+** (My List), download (opens Sources), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), and watch progress when you have history.
-- **Right:** a stats panel with runtime (and estimated end time when resuming), language, release date, production companies, origin countries, and budget/revenue for movies when TMDB has them.
+- **Right:** **Production Info** panel — status, language, and TV fields (first/last aired, seasons, episodes, network, production companies, origin, creators) or movie fields (release date, runtime, production, origin, budget/revenue) from TMDB rich details.
 
-Hero text sits in the **upper** area of the hero (not pinned to the bottom). The backdrop **blurs and darkens** into Cast / Trailers below — no hard cut to a flat black block.
+Hero text sits in the **upper** area of the hero (not pinned to the bottom). Below the hero, the page uses a **flat shell background** (same `#141414` as the left nav rail and Home catalog rows) — no blurred backdrop bleed-through.
 
 Scroll below the hero for:
 
 1. **Seasons** (TV only) — square season photo cards; tap a season to expand the episode rail
-2. **Main Characters** — cast photos and roles
+2. **Cast** — circular photos, actor and character names
 3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open in your browser
 4. **More Like This** — recommendation row
 

@@ -13,6 +13,7 @@ class Movie {
   final List<String> screenshots;
   final String mediaType; // 'movie' or 'tv'
   final int numberOfSeasons;
+  final int numberOfEpisodes;
 
   Movie({
     required this.id,
@@ -29,6 +30,7 @@ class Movie {
     this.screenshots = const [],
     this.mediaType = 'movie',
     this.numberOfSeasons = 0,
+    this.numberOfEpisodes = 0,
   });
 
   factory Movie.fromJson(Map<String, dynamic> json, {String? mediaType}) {
@@ -52,6 +54,7 @@ class Movie {
       screenshots: [],
       mediaType: mediaType ?? json['media_type'] ?? (json['title'] != null ? 'movie' : 'tv'),
       numberOfSeasons: json['number_of_seasons'] ?? 0,
+      numberOfEpisodes: json['number_of_episodes'] ?? 0,
     );
   }
 
@@ -70,6 +73,7 @@ class Movie {
     List<String>? screenshots,
     String? mediaType,
     int? numberOfSeasons,
+    int? numberOfEpisodes,
   }) {
     return Movie(
       id: id ?? this.id,
@@ -86,6 +90,7 @@ class Movie {
       screenshots: screenshots ?? this.screenshots,
       mediaType: mediaType ?? this.mediaType,
       numberOfSeasons: numberOfSeasons ?? this.numberOfSeasons,
+      numberOfEpisodes: numberOfEpisodes ?? this.numberOfEpisodes,
     );
   }
 }

@@ -42,6 +42,10 @@ class ShellBus {
   /// When true, shell hides global rail / bottom nav (IPTV deep views, Music desktop).
   static final ValueNotifier<bool> hideGlobalNav = ValueNotifier<bool>(false);
 
+  /// True when [ShellOverlayNavigator] has a route above the transparent root.
+  static final ValueNotifier<bool> shellOverlayHasPage =
+      ValueNotifier<bool>(false);
+
   static void notifyShellChromeChanged() {
     shellChromeRevision.value++;
   }

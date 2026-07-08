@@ -13,7 +13,7 @@ class MediaDetailsBackButton extends StatelessWidget {
     final top = MediaQuery.paddingOf(context).top;
     final isDesktop =
         Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-    if (isDesktop) return top + 36;
+    if (isDesktop) return top + 16;
     return top + 10;
   }
 

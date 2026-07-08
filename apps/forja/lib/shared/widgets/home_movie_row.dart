@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/shell_section_title.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
 import 'package:rust/rust.dart';
 
@@ -14,6 +14,7 @@ class HomeMovieRow extends StatefulWidget {
     this.titlePadding,
     this.listPadding,
     this.titleGap,
+    this.outdentHorizontal = 0,
   });
 
   final String title;
@@ -24,6 +25,8 @@ class HomeMovieRow extends StatefulWidget {
   final EdgeInsetsGeometry? titlePadding;
   final EdgeInsetsGeometry? listPadding;
   final double? titleGap;
+  /// Cancels parent horizontal padding so row insets match home (24px).
+  final double outdentHorizontal;
 
   static double rowHeight(BuildContext context) =>
       HomeMovieCard.cardHeight(context);
@@ -45,22 +48,39 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
   Widget build(BuildContext context) {
     if (widget.movies.isEmpty) return const SizedBox.shrink();
 
-    final listPadding = widget.listPadding ??
-        (widget.embedded
-            ? EdgeInsets.zero
-            : const EdgeInsets.symmetric(horizontal: 24));
-    final titleGap = widget.titleGap ?? (widget.embedded ? 12.0 : 0.0);
+    final homePad = ShellTokens.homeSectionHorizontalPadding;
+    final outdent = widget.outdentHorizontal;
+    final useHomeInsets = outdent > 0;
 
-    return Column(
+    final listPadding = widget.listPadding ??
+        (useHomeInsets
+            ? EdgeInsets.symmetric(horizontal: homePad)
+            : widget.embedded
+                ? EdgeInsets.zero
+                : EdgeInsets.symmetric(horizontal: homePad));
+    final titleGap = widget.titleGap ??
+        (widget.embedded && !useHomeInsets ? 12.0 : 0.0);
+
+    final row = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.embedded)
-          Text(widget.title, style: ShellSectionTitle.titleStyle)
+        if (useHomeInsets)
+          ShellSectionTitle(
+            title: widget.title,
+            padding: widget.titlePadding ??
+                EdgeInsets.fromLTRB(homePad, 0, homePad, 16),
+          )
+        else if (widget.embedded)
+          ShellSectionTitle(
+            title: widget.title,
+            padding: widget.titlePadding ??
+                const EdgeInsets.only(bottom: 16),
+          )
         else
           ShellSectionTitle(
             title: widget.title,
             padding: widget.titlePadding ??
-                const EdgeInsets.fromLTRB(24, 36, 24, 16),
+                EdgeInsets.fromLTRB(homePad, 36, homePad, 16),
           ),
         if (titleGap > 0) SizedBox(height: titleGap),
         SizedBox(
@@ -82,6 +102,20 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
           ),
         ),
       ],
+    );
+
+    if (outdent <= 0) return row;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          width: constraints.maxWidth + outdent * 2,
+          child: Transform.translate(
+            offset: Offset(-outdent, 0),
+            child: row,
+          ),
+        );
+      },
     );
   }
 }

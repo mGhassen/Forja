@@ -69,6 +69,8 @@ class KenBurnsBackdrop extends StatefulWidget {
   final double minScale;
   final double maxScale;
   final bool showColorTint;
+  final Alignment panBegin;
+  final Alignment panEnd;
 
   const KenBurnsBackdrop({
     super.key,
@@ -79,6 +81,8 @@ class KenBurnsBackdrop extends StatefulWidget {
     this.minScale = 1.0,
     this.maxScale = 1.25,
     this.showColorTint = true,
+    this.panBegin = const Alignment(-0.5, -0.3),
+    this.panEnd = const Alignment(0.5, 0.2),
   });
 
   @override
@@ -101,7 +105,9 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
     super.didUpdateWidget(oldWidget);
     if (oldWidget.cycleDuration != widget.cycleDuration ||
         oldWidget.minScale != widget.minScale ||
-        oldWidget.maxScale != widget.maxScale) {
+        oldWidget.maxScale != widget.maxScale ||
+        oldWidget.panBegin != widget.panBegin ||
+        oldWidget.panEnd != widget.panEnd) {
       _controller.dispose();
       _setupAnimations();
     }
@@ -119,8 +125,8 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     _alignAnimation = AlignmentTween(
-      begin: const Alignment(-0.92, -0.82),
-      end: const Alignment(0.92, 0.82),
+      begin: widget.panBegin,
+      end: widget.panEnd,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
@@ -140,18 +146,18 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with SingleTickerPr
         AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
-            final alignment = _alignAnimation.value;
             return Transform.scale(
               scale: _scaleAnimation.value,
-              alignment: alignment,
-              child: CachedNetworkImage(
-                imageUrl: widget.imageUrl,
-                fit: BoxFit.cover,
-                alignment: alignment,
-                errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
-              ),
+              alignment: _alignAnimation.value,
+              child: child,
             );
           },
+          child: CachedNetworkImage(
+            imageUrl: widget.imageUrl,
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
+          ),
         ),
         if (widget.showColorTint)
           Container(

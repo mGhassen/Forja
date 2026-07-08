@@ -1,0 +1,57 @@
+---
+description: Forja flat cinematic design system — tokens, colors, buttons, layout
+globs: apps/forja/lib/**/*.dart
+alwaysApply: false
+---
+
+# Forja design system (RFC-025)
+
+**Source of truth:** `apps/forja/lib/shared/design/` — import via `package:forja/shared/design/design.dart`.
+
+## Visual language
+
+- **Flat cinematic shell** — no `BackdropFilter`, frosted glass, or ambient glows on shell, details, or player chrome.
+- **Hero overlays** use `ForjaShellColors.cinematic` (fixed light-on-imagery), not `AppTheme.primaryColor`.
+- **Spacing and breakpoints** come from `ShellTokens` — do not hardcode magic numbers that already exist there.
+
+## Tokens (`ShellTokens`)
+
+| Area | Use |
+|------|-----|
+| Nav / top bar | `navRailWidth`, `homeTopBarHeight`, `shellNavCompactMaxWidth` |
+| Home hero | `heroDesktopMinBodyWidth`, `heroTextColumnWidthDesktop`, `heroOverviewSlotHeightDesktop`, `homeSectionHorizontalPadding` |
+| Media details | `detailsHeroHeight`, `detailsSectionSpacing`, `detailsHeroBodyOverlap`, `detailsContentHorizontalPadding` |
+| Catalog rows | `homeSectionTitleTop`, `bodyMaxWidthDesktop` |
+
+When adding a new surface, **extend `ShellTokens`** if the constant will be reused; one-off padding inside a single widget is fine.
+
+## Colors (`ForjaShellColors`)
+
+- Shell chrome: `textPrimary`, `textSecondary`, `iconMuted`, `borderSubtle`, `surfaceElevated`
+- Selection / resume: `chipSelectedBg`, `chipSelectedBorder`, `progressFill`
+- Menus / dropdowns: `ForjaShellColors.cinematic.menuSurface`
+- **Do not** use raw `Colors.white54` for new shell UI when a semantic token exists.
+
+## Buttons
+
+| Widget | When |
+|--------|------|
+| `ForjaGhostButton` | Primary CTA on hero / details (Play, Watch Now) — text + optional icon, no fill |
+| `ForjaPlainIcon` | Secondary icon actions (+, info, overflow) — no border box |
+| `ForjaIconButton` | Sparingly — bordered square; prefer `ForjaPlainIcon` in hero chrome |
+| `ForjaInteractive` | Custom hit targets that need hover/press scale |
+
+## Section titles
+
+- Horizontal catalog rows: `ShellSectionTitle` or `ShellSectionTitle.titleStyle`
+- Media details sections (Cast, Trailers): same `titleStyle` — plain text, no underline, no icon prefix
+
+## Focus / TV
+
+- Interactive list tiles and cards: wrap with `FocusableControl` from `app_theme.dart` (keyboard + focus ring).
+
+## Forbidden without explicit approval
+
+- `BackdropFilter`, `ImageFilter.blur` for decorative chrome
+- Ad-hoc pill/chip styles that duplicate `TorrentSourceToggle` / chip selected tokens
+- Duplicating hero title or meta rendering — use `shared/widgets/hero/` (see `forja-shared-ui.mdc`)

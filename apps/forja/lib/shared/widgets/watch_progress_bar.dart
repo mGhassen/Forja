@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 
 class WatchProgressBar extends StatelessWidget {
   const WatchProgressBar({
@@ -42,7 +42,7 @@ class WatchProgressBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final accent = accentColor ?? AppTheme.primaryColor;
+    final accent = accentColor ?? ForjaShellColors.progressFill;
     final remaining = durationMs - positionMs;
     final label = isFinished(positionMs, durationMs)
         ? 'Watched'

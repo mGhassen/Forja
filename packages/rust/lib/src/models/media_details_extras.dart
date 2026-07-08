@@ -21,6 +21,9 @@ class MediaDetailsExtras {
     this.budget = 0,
     this.revenue = 0,
     this.trailers = const [],
+    this.lastAirDate = '',
+    this.networks = const [],
+    this.creators = const [],
   });
 
   final String tagline;
@@ -41,6 +44,10 @@ class MediaDetailsExtras {
   final int budget;
   final int revenue;
   final List<MediaTrailer> trailers;
+  /// TV `last_air_date` (ISO); empty for movies.
+  final String lastAirDate;
+  final List<String> networks;
+  final List<String> creators;
 }
 
 class RichMediaDetails {

@@ -4,6 +4,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 
 /// Central navigation for cross-feature routes (details, player).
 class AppRouter {
@@ -20,7 +21,7 @@ class AppRouter {
     int? initialEpisode,
     Duration? startPosition,
   }) {
-    return Navigator.push<T>(
+    return pushShellRoute<T>(
       context,
       slideRoute(
         (_) => DetailsScreen(
@@ -41,7 +42,7 @@ class AppRouter {
     int? initialEpisode,
     Duration? startPosition,
   }) {
-    return Navigator.push<T>(
+    return pushShellRoute<T>(
       context,
       slideRoute(
         (_) => StreamingDetailsScreen(
@@ -105,8 +106,7 @@ class AppRouter {
     bool hasNextEpisode = false,
     Future<void> Function(Duration position, Duration duration)? onSaveProgress,
   }) {
-    return Navigator.push<T>(
-      context,
+    return Navigator.of(context, rootNavigator: true).push<T>(
       slideRoute(
         (_) => PlayerScreen(
           streamUrl: streamUrl,

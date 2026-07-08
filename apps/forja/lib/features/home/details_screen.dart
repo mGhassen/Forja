@@ -13,12 +13,13 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
-import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/home_movie_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
+import 'package:forja/shared/widgets/media_details/media_details_torrent_action_row.dart';
+import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
+import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
-import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
@@ -107,18 +108,26 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   bool _isProwlarrConfigured = false;
 
   List<Movie> _similarMovies = [];
-  final ScrollController _castScrollController = ScrollController();
   List<Map<String, String>> _castMembers = [];
   List<MediaTrailer> _trailers = [];
 
   // Stream resolution cancellation
   bool _streamCancelled = false;
 
+  void _dismissStreamLoadingDialog(BuildContext dialogContext) {
+    _streamCancelled = true;
+    Engine.cancelPendingResolve();
+    Navigator.of(dialogContext).pop();
+  }
+
   String? _trailerKey;
   String _originalLanguage = '';
   String _tagline = '';
   String _certification = '';
   String _status = '';
+  String _lastAirDate = '';
+  List<String> _networks = [];
+  List<String> _creators = [];
   String _directorName = '';
   int _budget = 0;
   int _revenue = 0;
@@ -170,7 +179,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _episodeScrollController.dispose();
     _seasonScrollController.dispose();
     _chipsScrollController.dispose();
-    _castScrollController.dispose();
     _jackett.dispose();
     _prowlarr.dispose();
     _linkResolver.dispose();
@@ -250,20 +258,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _fetchSeason(season);
   }
 
-  String get _detailsBackdropUrl {
-    final path = _movie.backdropPath.isNotEmpty
-        ? _movie.backdropPath
-        : _movie.posterPath;
-    return path.isNotEmpty ? TmdbApi.getBackdropUrl(path) : '';
-  }
-
-  Widget _buildDetailsHero() {
+  Widget _buildDetailsHero({required double heroHeight}) {
     return MediaDetailsHero(
       movie: _movie,
       trailerYoutubeKey: _trailerKey,
       trailerLanguageCode: _originalLanguage,
       progress: _lastProgress,
-      height: MediaQuery.sizeOf(context).height * 0.82,
+      height: heroHeight,
       tagline: _tagline,
       certification: _certification,
       status: _status,
@@ -275,6 +276,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       spokenLanguages: _spokenLanguages,
       productionCompanies: _productionCompanies,
       originCountries: _originCountries,
+      lastAirDate: _lastAirDate,
+      networks: _networks,
+      creators: _creators,
       actionRow: _isCollection ? null : _buildHeroActionRow(),
     );
   }
@@ -307,88 +311,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Widget _buildHeroActionRow() {
     final hasResume = _lastProgress != null &&
         ((_lastProgress!['position'] as int? ?? 0) > 0);
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () => setState(() => _sourcesPanelOpen = true),
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 26),
-                const SizedBox(width: 4),
-                Text(
-                  hasResume ? 'Resume' : 'Play',
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white24),
-          ),
-          child: Center(
-            child: MyListButton.movie(movie: _movie),
-          ),
-        ),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: () => setState(() => _sourcesPanelOpen = true),
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white24),
-            ),
-            child: const Icon(Icons.download_outlined, color: Colors.white, size: 22),
-          ),
-        ),
-        const SizedBox(width: 8),
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_horiz_rounded, color: Colors.white70),
-          color: const Color(0xFF1A1A24),
-          onSelected: (value) => _handleHeroOverflowAction(value),
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'trakt_rate',
-              child: Text(_userTraktRating != null
-                  ? 'Trakt rating: $_userTraktRating'
-                  : 'Rate on Trakt'),
-            ),
-            PopupMenuItem(
-              value: 'simkl_rate',
-              child: Text(_userSimklRating != null
-                  ? 'Simkl rating: $_userSimklRating'
-                  : 'Rate on Simkl'),
-            ),
-            PopupMenuItem(
-              value: 'collect',
-              child: Text(_isInTraktCollection ? 'Remove from collection' : 'Add to collection'),
-            ),
-            const PopupMenuItem(value: 'checkin', child: Text('Trakt check-in')),
-            const PopupMenuItem(value: 'trakt_list', child: Text('Add to Trakt list')),
-          ],
-        ),
-      ],
+    return MediaDetailsTorrentActionRow(
+      movie: _movie,
+      hasResume: hasResume,
+      onOpenSources: () => setState(() => _sourcesPanelOpen = true),
+      onOverflowAction: _handleHeroOverflowAction,
+      userTraktRating: _userTraktRating,
+      userSimklRating: _userSimklRating,
+      isInTraktCollection: _isInTraktCollection,
     );
   }
 
@@ -466,10 +396,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   // ─── audio filter helpers ────────────────────────────────────────────────
-
-  static const List<String> _kAudioTags = [
-    'Atmos', 'TrueHD', 'DTS:X', 'DTS-HD', 'DTS', 'DD+', 'DD', 'AAC', '7.1', '5.1', '2.0',
-  ];
 
   /// Returns every audio tag found in [name] (upper-cased for matching).
   static List<String> _detectAudioTags(String name) {
@@ -608,6 +534,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _tagline = rich.extras.tagline;
           _certification = rich.extras.certification;
           _status = rich.extras.status;
+          _lastAirDate = rich.extras.lastAirDate;
+          _networks = rich.extras.networks;
+          _creators = rich.extras.creators;
           _directorName = _pickDirector(rich.extras.crew);
           _budget = rich.extras.budget;
           _revenue = rich.extras.revenue;
@@ -1008,7 +937,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       try {
         final movie = await _api.findByImdbId(id, mediaType: type == 'series' ? 'tv' : 'movie');
         if (movie != null && mounted) {
-          Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(movie: movie)));
+          await AppRouter.openDetails(context, movie: movie);
           return;
         }
       } catch (_) {}
@@ -1024,7 +953,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             (m) => m.title.toLowerCase() == name.toLowerCase(),
             orElse: () => results.first,
           );
-          Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(movie: match)));
+          await AppRouter.openDetails(context, movie: match);
           return;
         }
       } catch (_) {}
@@ -1032,7 +961,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     // Last fallback: minimal Movie
     if (mounted) {
-      Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(
+      await AppRouter.openDetails(
+        context,
         movie: Movie(
           id: id.hashCode,
           imdbId: id.startsWith('tt') ? id : null,
@@ -1041,7 +971,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           releaseDate: '', overview: '',
           mediaType: type == 'series' ? 'tv' : 'movie',
         ),
-      )));
+      );
     }
   }
 
@@ -1838,19 +1768,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     );
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       barrierColor: Colors.black,
-      builder: (_) => LoadingOverlay(
+      builder: (dialogContext) => LoadingOverlay(
         movie: _movie,
         message: loadingMessage,
         subtitle: playbackSourceHint(
           useDebrid: useDebrid,
           debridService: debridService,
         ),
-        onCancel: () {
-          _streamCancelled = true;
-          Navigator.of(context).pop();
-        },
+        onCancel: () => _dismissStreamLoadingDialog(dialogContext),
       ),
     );
     final navigator = Navigator.of(context);
@@ -1959,13 +1887,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       useDebrid: useDebrid,
       debridService: debridService,
     );
-    showDialog(context: context, barrierDismissible: false, barrierColor: Colors.black,
-      builder: (_) => LoadingOverlay(
+    showDialog(
+      context: context,
+      useRootNavigator: false,
+      barrierDismissible: false,
+      barrierColor: Colors.black,
+      builder: (dialogContext) => LoadingOverlay(
         movie: _movie,
         messageNotifier: overlayMessage,
         subtitle: sourceHint,
-        onCancel: () { _streamCancelled = true; Navigator.of(context).pop(); },
-      ));
+        onCancel: () => _dismissStreamLoadingDialog(dialogContext),
+      ),
+    );
 
     String? url;
     String? magnetLink = result.magnet;
@@ -1975,9 +1908,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       if (!magnetLink.startsWith('magnet:')) {
         if (!mounted || _streamCancelled) return;
         Navigator.pop(context);
-        showDialog(context: context, barrierDismissible: false, barrierColor: Colors.black,
-          builder: (_) => LoadingOverlay(movie: _movie, message: 'Resolving download link...',
-            onCancel: () { _streamCancelled = true; Navigator.of(context).pop(); }));
+        showDialog(
+          context: context,
+          useRootNavigator: false,
+          barrierDismissible: false,
+          barrierColor: Colors.black,
+          builder: (dialogContext) => LoadingOverlay(
+            movie: _movie,
+            message: 'Resolving download link...',
+            onCancel: () => _dismissStreamLoadingDialog(dialogContext),
+          ),
+        );
         try {
           final resolved = await _linkResolver.resolve(magnetLink);
           if (_streamCancelled) return;
@@ -2000,13 +1941,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         }
         if (!mounted || _streamCancelled) return;
         if (Navigator.canPop(context)) Navigator.pop(context);
-        showDialog(context: context, barrierDismissible: false, barrierColor: Colors.black,
-          builder: (_) => LoadingOverlay(
+        showDialog(
+          context: context,
+          useRootNavigator: false,
+          barrierDismissible: false,
+          barrierColor: Colors.black,
+          builder: (dialogContext) => LoadingOverlay(
             movie: _movie,
             messageNotifier: overlayMessage,
             subtitle: sourceHint,
-            onCancel: () { _streamCancelled = true; Navigator.of(context).pop(); },
-          ));
+            onCancel: () => _dismissStreamLoadingDialog(dialogContext),
+          ),
+        );
       }
 
       overlayMessage.value = playbackResolveLabel(
@@ -2066,13 +2012,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (_isLoading) {
       return BackNavigationScope(
         child: Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: AppTheme.bgDark,
           body: Stack(
             fit: StackFit.expand,
             children: [
               Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
-              DesktopWindowChrome.overlayDragStrip(),
-              MediaDetailsBackButton(),
+              const MediaDetailsBackButton(),
             ],
           ),
         ),
@@ -2080,30 +2025,48 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
 
     return BackNavigationScope(
-      child: KeyboardListener(
+      child: Focus(
       focusNode: _keyboardFocusNode,
       autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent && _movie.mediaType == 'tv' && _seasonData != null) {
-          final episodes = _seasonData!['episodes'] as List?;
-          if (episodes == null || episodes.isEmpty) return;
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft && _selectedEpisode > 1) {
-            setState(() => _selectedEpisode--); _autoSearch();
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowRight && _selectedEpisode < episodes.length) {
-            setState(() => _selectedEpisode++); _autoSearch();
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && _selectedSeason > 1) {
-            _fetchSeason(_selectedSeason - 1); setState(() => _selectedEpisode = 1);
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && _selectedSeason < _movie.numberOfSeasons) {
-            _fetchSeason(_selectedSeason + 1); setState(() => _selectedEpisode = 1);
-          }
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent || _movie.mediaType != 'tv' || _seasonData == null) {
+          return KeyEventResult.ignored;
         }
+        final episodes = _seasonData!['episodes'] as List?;
+        if (episodes == null || episodes.isEmpty) return KeyEventResult.ignored;
+
+        if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+          if (_selectedEpisode > 1) {
+            setState(() => _selectedEpisode--);
+            _autoSearch();
+          }
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+          if (_selectedEpisode < episodes.length) {
+            setState(() => _selectedEpisode++);
+            _autoSearch();
+          }
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.arrowUp && _selectedSeason > 1) {
+          _fetchSeason(_selectedSeason - 1);
+          setState(() => _selectedEpisode = 1);
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
+            _selectedSeason < _movie.numberOfSeasons) {
+          _fetchSeason(_selectedSeason + 1);
+          setState(() => _selectedEpisode = 1);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppTheme.bgDark,
         body: Stack(children: [
           _buildScrollLayout(),
           if (!_isCollection) _buildSourcesSlidingPanel(),
-          DesktopWindowChrome.overlayDragStrip(),
           const MediaDetailsBackButton(),
         ]),
       ),
@@ -2116,15 +2079,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildScrollLayout() {
+    final heroHeight = ShellTokens.detailsHeroHeight(context);
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDetailsHero(),
+          _buildDetailsHero(heroHeight: heroHeight),
           MediaDetailsBody(
-            backdropUrl: _detailsBackdropUrl,
-            backgroundColor: Colors.black,
+            backgroundColor: AppTheme.bgDark,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2137,7 +2100,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
                 if (_castMembers.isNotEmpty) ...[
-                  _buildCharactersSection(),
+                  MediaDetailsCastSection(
+                    cast: _castMembers,
+                    title: 'Main Characters',
+                    outdentHorizontal: ShellTokens.homeSectionHorizontalPadding,
+                  ),
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
                 if (_trailers.isNotEmpty) ...[
@@ -2219,7 +2186,23 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         const SizedBox(height: 14),
         _buildSourceChips(),
         const SizedBox(height: 16),
-        _buildResultsHeader(),
+        TorrentSourceResultsHeader(
+          showSort: _isTorrentSource,
+          isFetching: _isSearching || _isStremioFetching || _isNuvioFetching,
+          episodeLabel: _movie.mediaType == 'tv'
+              ? 'S${_selectedSeason.toString().padLeft(2, '0')}E${_selectedEpisode.toString().padLeft(2, '0')}'
+              : null,
+          sortPreference: _sortPreference,
+          activeAudioFilters: _activeAudioFilters,
+          onSortChanged: (val) {
+            setState(() => _sortPreference = val);
+            _settings.setSortPreference(val);
+            _sortResults();
+          },
+          onCancelFetch: _cancelActiveSourceFetch,
+          onAudioFiltersChanged: (updated) =>
+              setState(() => _activeAudioFilters = updated),
+        ),
         const SizedBox(height: 10),
         Expanded(child: _buildStreamList(inPanel: true)),
       ],
@@ -2489,131 +2472,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           (_chipsScrollController.offset + 160).clamp(0.0, _chipsScrollController.position.maxScrollExtent),
           duration: const Duration(milliseconds: 280), curve: Curves.easeInOut)),
       ],
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  RESULTS HEADER
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildResultsHeader() {
-    // Show sort dropdown for ALL torrent sources, not just Forja
-    final showSort = _isTorrentSource;
-    String? epLabel;
-    if (_movie.mediaType == 'tv') {
-      final s = _selectedSeason.toString().padLeft(2, '0');
-      final e = _selectedEpisode.toString().padLeft(2, '0');
-      epLabel = 'S${s}E$e';
-    }
-    return Row(
-      children: [
-        const Icon(Icons.download_rounded, color: Colors.white54, size: 16),
-        const SizedBox(width: 6),
-        const Text('Available Sources',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-        if (epLabel != null) ...[
-          const SizedBox(width: 6),
-          Text('— $epLabel', style: const TextStyle(color: Colors.white38, fontSize: 12)),
-        ],
-        if (_isSearching || _isStremioFetching || _isNuvioFetching) ...[
-          const SizedBox(width: 8),
-          const SizedBox(width: 12, height: 12,
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor)),
-          const SizedBox(width: 8),
-          TextButton(
-            onPressed: _cancelActiveSourceFetch,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54, fontSize: 12)),
-          ),
-        ],
-        const Spacer(),
-        if (showSort)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: DropdownButton<String>(
-              value: _sortPreference,
-              isDense: true,
-              underline: const SizedBox.shrink(),
-              dropdownColor: const Color(0xFF0F0F2D),
-              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white54, size: 16),
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
-              items: [
-                'Seeders (High to Low)', 'Seeders (Low to High)',
-                'Quality (High to Low)', 'Quality (Low to High)',
-                'Size (High to Low)', 'Size (Low to High)',
-              ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _sortPreference = val);
-                  _settings.setSortPreference(val);
-                  _sortResults();
-                }
-              },
-            ),
-          ),
-        if (showSort) ...[const SizedBox(width: 8), _buildAudioFilterButton()],
-      ],
-    );
-  }
-
-  Widget _buildAudioFilterButton() {
-    final active = _activeAudioFilters.isNotEmpty;
-    return GestureDetector(
-      onTapDown: (details) async {
-        final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-        final position = RelativeRect.fromRect(
-          Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1),
-          Offset.zero & overlay.size,
-        );
-        // Build a temporary stateful popup via showMenu
-        await showMenu(
-          context: context,
-          position: position,
-          color: const Color(0xFF0F0F2D),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          items: [
-            PopupMenuItem(
-              enabled: false,
-              padding: EdgeInsets.zero,
-              child: _AudioFilterMenu(
-                allTags: _kAudioTags,
-                activeTags: Set<String>.from(_activeAudioFilters),
-                onChanged: (updated) => setState(() => _activeAudioFilters = updated),
-              ),
-            ),
-          ],
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: active
-              ? AppTheme.primaryColor.withValues(alpha: 0.18)
-              : Colors.white.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: active ? AppTheme.primaryColor.withValues(alpha: 0.6) : Colors.white12,
-          ),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.graphic_eq,
-              size: 14,
-              color: active ? AppTheme.primaryColor : Colors.white54),
-          if (active) ...[const SizedBox(width: 4),
-            Text('${_activeAudioFilters.length}',
-                style: TextStyle(color: AppTheme.primaryColor, fontSize: 11,
-                    fontWeight: FontWeight.bold))],
-        ]),
-      ),
     );
   }
 
@@ -2964,63 +2822,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Icon(icon, color: Colors.white38, size: 16)));
 
-  Widget _buildCharactersSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionLabel('Main Characters'),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 155,
-          child: ListView.separated(
-            controller: _castScrollController,
-            scrollDirection: Axis.horizontal,
-            itemCount: _castMembers.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (context, i) {
-              final m = _castMembers[i];
-              final profilePath = m['profilePath'] ?? '';
-              final name = m['name'] ?? '';
-              final character = m['character'] ?? '';
-              return SizedBox(
-                width: 92,
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 42,
-                      backgroundColor: Colors.white10,
-                      backgroundImage: profilePath.isNotEmpty
-                          ? CachedNetworkImageProvider(
-                              TmdbApi.getProfileUrl(profilePath))
-                          : null,
-                      child: profilePath.isEmpty
-                          ? const Icon(Icons.person, color: Colors.white24, size: 32)
-                          : null,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(name,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                    if (character.isNotEmpty)
-                      Text(character,
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ═════════════════════════════════════════════════════════════════════════════
-  //  RECOMMENDATIONS SECTION
-  // ═════════════════════════════════════════════════════════════════════════════
-
   Widget _buildCollectionItemsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3127,7 +2928,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       try {
         final movie = await _api.findByImdbId(id, mediaType: 'movie');
         if (movie != null && mounted) {
-          Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(movie: movie)));
+          await AppRouter.openDetails(context, movie: movie);
           return;
         }
       } catch (e) {
@@ -3137,7 +2938,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     // Fallback: create minimal Movie object
     if (mounted) {
-      Navigator.push(context, AppRouter.slideRoute((_) => DetailsScreen(
+      await AppRouter.openDetails(
+        context,
         movie: Movie(
           id: id.hashCode,
           imdbId: id.startsWith('tt') ? id : null,
@@ -3146,7 +2948,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           releaseDate: '', overview: '',
           mediaType: 'movie',
         ),
-      )));
+      );
     }
   }
 
@@ -3158,7 +2960,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     return HomeMovieRow(
       title: 'More Like This',
       movies: _similarMovies,
-      embedded: true,
+      outdentHorizontal: ShellTokens.homeSectionHorizontalPadding,
       onMovieTap: (movie) => AppRouter.openMovie(context, movie: movie),
     );
   }
@@ -3167,114 +2969,3 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 // ═════════════════════════════════════════════════════════════════════════════
 //  EXPANDABLE SYNOPSIS
 // ═════════════════════════════════════════════════════════════════════════════
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  AUDIO FILTER MENU  (stateful so checkboxes update without closing the menu)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AudioFilterMenu extends StatefulWidget {
-  final List<String> allTags;
-  final Set<String> activeTags;
-  final ValueChanged<Set<String>> onChanged;
-  const _AudioFilterMenu({
-    required this.allTags,
-    required this.activeTags,
-    required this.onChanged,
-  });
-
-  @override
-  State<_AudioFilterMenu> createState() => _AudioFilterMenuState();
-}
-
-class _AudioFilterMenuState extends State<_AudioFilterMenu> {
-  late Set<String> _selected;
-
-  @override
-  void initState() {
-    super.initState();
-    _selected = Set<String>.from(widget.activeTags);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 200,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-              child: Row(
-                children: [
-                  const Icon(Icons.graphic_eq,
-                      size: 14, color: Colors.white54),
-                  const SizedBox(width: 6),
-                  const Expanded(
-                    child: Text('Audio',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5)),
-                  ),
-                  if (_selected.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => _selected.clear());
-                        widget.onChanged({});
-                      },
-                      child: Text('Clear',
-                          style: TextStyle(
-                              color: AppTheme.primaryColor,
-                              fontSize: 11)),
-                    ),
-                ],
-              ),
-            ),
-            const Divider(color: Colors.white12, height: 8),
-            ...widget.allTags.map((tag) {
-              final on = _selected.contains(tag);
-              return InkWell(
-                onTap: () {
-                  setState(() {
-                    if (on) { _selected.remove(tag); } else { _selected.add(tag); }
-                  });
-                  widget.onChanged(Set<String>.from(_selected));
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Row(children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      width: 18, height: 18,
-                      decoration: BoxDecoration(
-                        color: on ? AppTheme.primaryColor : Colors.transparent,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: on ? AppTheme.primaryColor : Colors.white30,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: on
-                          ? const Icon(Icons.check_rounded,
-                              size: 13, color: Colors.white)
-                          : null,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(tag,
-                        style: TextStyle(
-                            color: on ? Colors.white : Colors.white60,
-                            fontSize: 13)),
-                  ]),
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-}

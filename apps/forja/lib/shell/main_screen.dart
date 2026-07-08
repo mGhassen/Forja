@@ -348,7 +348,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         onDestinationSelected: _selectTab,
         tabFor: _tabFor,
         shellHeader: _shellHeader(),
-        shellTopBar: _currentTabId == 'home' && useNavRail && isDesktop
+        shellTopBar: _currentTabId == 'home' &&
+                useNavRail &&
+                isDesktop &&
+                !ShellBus.shellOverlayHasPage.value
             ? const HomeTopBar()
             : null,
         hideGlobalNav: ShellBus.hideGlobalNav.value,

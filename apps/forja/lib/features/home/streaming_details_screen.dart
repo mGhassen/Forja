@@ -1,25 +1,26 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
-import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/widgets/home_movie_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
+import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/player/player_screen.dart';
-import 'package:forja/shell/app_router.dart';
 
 class StreamingDetailsScreen extends StatefulWidget {
   final Movie movie;
@@ -643,14 +644,15 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   Widget build(BuildContext context) {
     if (_isLoading) {
       return BackNavigationScope(
-        child: const Scaffold(
-          backgroundColor: Color(0xFF141414),
-          body:             Stack(
+        child: Scaffold(
+          backgroundColor: AppTheme.bgDark,
+          body: Stack(
             fit: StackFit.expand,
             children: [
-              Center(child: CircularProgressIndicator(color: Color(0xFF1565C0))),
-              DesktopWindowChrome.overlayDragStrip(),
-              MediaDetailsBackButton(),
+              const Center(
+                child: CircularProgressIndicator(color: Color(0xFF1565C0)),
+              ),
+              const MediaDetailsBackButton(),
             ],
           ),
         ),
@@ -659,7 +661,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
 
     return BackNavigationScope(
       child: Scaffold(
-        backgroundColor: const Color(0xFF141414),
+        backgroundColor: AppTheme.bgDark,
         body: Stack(
           children: [
             SingleChildScrollView(
@@ -667,10 +669,11 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDetailsHero(),
+                  _buildDetailsHero(
+                    heroHeight: ShellTokens.detailsHeroHeight(context),
+                  ),
                   MediaDetailsBody(
-                    backdropUrl: _detailsBackdropUrl,
-                    backgroundColor: const Color(0xFF141414),
+                    backgroundColor: AppTheme.bgDark,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -698,7 +701,11 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
                           const SizedBox(height: ShellTokens.detailsSectionSpacing),
                         ],
                         if (_mediaExtras != null && _mediaExtras!.cast.isNotEmpty) ...[
-                          _buildCharactersSection(),
+                          MediaDetailsCastSection(
+                            cast: _mediaExtras!.cast,
+                            title: 'Main Characters',
+                            outdentHorizontal: ShellTokens.homeSectionHorizontalPadding,
+                          ),
                           const SizedBox(height: ShellTokens.detailsSectionSpacing),
                         ],
                         if (_mediaExtras != null && _mediaExtras!.trailers.isNotEmpty) ...[
@@ -712,7 +719,6 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
                 ],
               ),
             ),
-            DesktopWindowChrome.overlayDragStrip(),
             const MediaDetailsBackButton(),
           ],
         ),
@@ -720,21 +726,14 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     );
   }
 
-  String get _detailsBackdropUrl {
-    final path = _movie.backdropPath.isNotEmpty
-        ? _movie.backdropPath
-        : _movie.posterPath;
-    return path.isNotEmpty ? TmdbApi.getBackdropUrl(path) : '';
-  }
-
-  Widget _buildDetailsHero() {
+  Widget _buildDetailsHero({required double heroHeight}) {
     final extras = _mediaExtras;
     return MediaDetailsHero(
       movie: _movie,
       trailerYoutubeKey: _trailerKey,
       trailerLanguageCode: extras?.originalLanguage,
       progress: _lastProgress,
-      height: MediaQuery.sizeOf(context).height * 0.82,
+      height: heroHeight,
       tagline: extras?.tagline,
       certification: extras?.certification,
       status: extras?.status,
@@ -745,6 +744,9 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
       spokenLanguages: extras?.spokenLanguages ?? const [],
       productionCompanies: extras?.productionCompanies ?? const [],
       originCountries: extras?.originCountries ?? const [],
+      lastAirDate: extras?.lastAirDate,
+      networks: extras?.networks ?? const [],
+      creators: extras?.creators ?? const [],
       actionRow: _buildHeroActionRow(),
     );
   }
@@ -769,53 +771,30 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
       children: [
         Row(
           children: [
-            GestureDetector(
+            if (_isExtracting)
+              const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+            ForjaGhostButton(
+              label: _isExtracting
+                  ? 'Loading'
+                  : (hasResume ? 'Resume' : 'Play'),
+              icon: _isExtracting ? null : Icons.play_arrow_rounded,
               onTap: _isExtracting ? null : _startExtraction,
-              child: Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                decoration: BoxDecoration(
-                  color: _isExtracting ? Colors.white38 : Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_isExtracting)
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black54),
-                      )
-                    else
-                      const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 26),
-                    const SizedBox(width: 4),
-                    Text(
-                      _isExtracting
-                          ? 'Loading'
-                          : (hasResume ? 'Resume' : 'Play'),
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
-            const SizedBox(width: 12),
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white24),
-              ),
-              child: Center(
-                child: MyListButton.movie(movie: _movie),
-              ),
+            const SizedBox(width: 16),
+            ForjaPlainIcon(
+              icon: Icons.add,
+              tooltip: 'Add to My List',
+              child: MyListButton.movie(movie: _movie),
             ),
           ],
         ),
@@ -830,84 +809,13 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     );
   }
 
-  Widget _buildCharactersSection() {
-    final cast = _mediaExtras!.cast;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Main Characters',
-          style: ShellSectionTitle.titleStyle,
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 130,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: cast.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (_, i) {
-              final m = cast[i];
-              final profile = m['profilePath'] ?? '';
-              final name = m['name'] ?? '';
-              final character = m['character'] ?? '';
-              return SizedBox(
-                width: 72,
-                child: Column(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
-                      child: profile.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: TmdbApi.getProfileUrl(profile),
-                              width: 72,
-                              height: 72,
-                              fit: BoxFit.cover,
-                            )
-                          : Container(
-                              width: 72,
-                              height: 72,
-                              color: Colors.white10,
-                              child: const Icon(Icons.person, color: Colors.white24),
-                            ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                    ),
-                    if (character.isNotEmpty)
-                      Text(
-                        character,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white38, fontSize: 10),
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // UI COMPONENTS
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Widget _buildSimilarContent() {
     return HomeMovieRow(
       title: 'More Like This',
       movies: _similarContent,
-      embedded: true,
+      outdentHorizontal: ShellTokens.homeSectionHorizontalPadding,
       onMovieTap: (movie) {
-        Navigator.pushReplacement(
+        pushReplacementShellRoute(
           context,
           AppRouter.slideRoute(
             (_) => StreamingDetailsScreen(movie: movie),

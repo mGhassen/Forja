@@ -509,7 +509,6 @@ class TmdbApi {
         .map((e) => (e['name'] ?? '').toString())
         .where((s) => s.isNotEmpty)
         .cast<String>()
-        .take(6)
         .toList();
 
     final languages = (json['spoken_languages'] as List? ?? [])
@@ -518,10 +517,23 @@ class TmdbApi {
         .cast<String>()
         .toList();
 
-    final countries = (json['origin_country'] as List? ?? [])
-        .map((e) => e.toString())
-        .where((s) => s.isNotEmpty)
-        .toList();
+    final countries = _parseOriginCountries(json, mediaType: mediaType);
+
+    final networks = mediaType == 'tv'
+        ? (json['networks'] as List? ?? [])
+            .map((e) => (e['name'] ?? '').toString())
+            .where((s) => s.isNotEmpty)
+            .cast<String>()
+            .toList()
+        : const <String>[];
+
+    final creators = mediaType == 'tv'
+        ? (json['created_by'] as List? ?? [])
+            .map((e) => (e['name'] ?? '').toString())
+            .where((s) => s.isNotEmpty)
+            .cast<String>()
+            .toList()
+        : const <String>[];
 
     var certification = '';
     if (mediaType == 'movie') {
@@ -572,7 +584,90 @@ class TmdbApi {
       budget: (json['budget'] as num?)?.toInt() ?? 0,
       revenue: (json['revenue'] as num?)?.toInt() ?? 0,
       trailers: parseTrailers(json),
+      lastAirDate: json['last_air_date']?.toString() ?? '',
+      networks: networks,
+      creators: creators,
     );
+  }
+
+  static List<String> _parseOriginCountries(
+    Map<String, dynamic> json, {
+    required String mediaType,
+  }) {
+    if (mediaType == 'movie') {
+      return (json['production_countries'] as List? ?? [])
+          .map((e) {
+            if (e is! Map) return '';
+            return (e['name'] ?? '').toString();
+          })
+          .where((s) => s.isNotEmpty)
+          .cast<String>()
+          .toList();
+    }
+    return (json['origin_country'] as List? ?? [])
+        .map((e) => countryNameFromCode(e.toString()))
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  static String countryNameFromCode(String code) {
+    final upper = code.trim().toUpperCase();
+    if (upper.isEmpty) return '';
+    const names = {
+      'AD': 'Andorra',
+      'AE': 'United Arab Emirates',
+      'AR': 'Argentina',
+      'AT': 'Austria',
+      'AU': 'Australia',
+      'BE': 'Belgium',
+      'BG': 'Bulgaria',
+      'BR': 'Brazil',
+      'CA': 'Canada',
+      'CH': 'Switzerland',
+      'CL': 'Chile',
+      'CN': 'China',
+      'CO': 'Colombia',
+      'CZ': 'Czech Republic',
+      'DE': 'Germany',
+      'DK': 'Denmark',
+      'ES': 'Spain',
+      'FI': 'Finland',
+      'FR': 'France',
+      'GB': 'United Kingdom',
+      'GR': 'Greece',
+      'HK': 'Hong Kong',
+      'HR': 'Croatia',
+      'HU': 'Hungary',
+      'ID': 'Indonesia',
+      'IE': 'Ireland',
+      'IL': 'Israel',
+      'IN': 'India',
+      'IR': 'Iran',
+      'IS': 'Iceland',
+      'IT': 'Italy',
+      'JP': 'Japan',
+      'KR': 'South Korea',
+      'LU': 'Luxembourg',
+      'MX': 'Mexico',
+      'MY': 'Malaysia',
+      'NL': 'Netherlands',
+      'NO': 'Norway',
+      'NZ': 'New Zealand',
+      'PH': 'Philippines',
+      'PL': 'Poland',
+      'PT': 'Portugal',
+      'RO': 'Romania',
+      'RU': 'Russia',
+      'SE': 'Sweden',
+      'SG': 'Singapore',
+      'TH': 'Thailand',
+      'TR': 'Turkey',
+      'TW': 'Taiwan',
+      'UA': 'Ukraine',
+      'US': 'United States',
+      'ZA': 'South Africa',
+    };
+    return names[upper] ?? upper;
   }
 
   Movie _movieFromRichJson(Map<String, dynamic> json, {required String mediaType}) {
@@ -609,6 +704,7 @@ class TmdbApi {
       screenshots: backdrops,
       logoPath: logoPath,
       numberOfSeasons: json['number_of_seasons'] ?? 0,
+      numberOfEpisodes: json['number_of_episodes'] ?? 0,
     );
   }
 

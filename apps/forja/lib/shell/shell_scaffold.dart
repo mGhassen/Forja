@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shell/shell_body.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
@@ -39,6 +40,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _onNavSelected(int index) {
+    popShellOverlayUntilRoot();
     widget.onDestinationSelected(index);
     final width = MediaQuery.sizeOf(context).width;
     final compactNav = widget.useNavRail &&
@@ -82,11 +84,18 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                 children: [
                   if (widget.shellHeader != null) widget.shellHeader!,
                   Expanded(
-                    child: ShellBody(
-                      selectedIndex: widget.selectedIndex,
-                      visibleIds: widget.visibleIds,
-                      mountedTabIds: widget.mountedTabIds,
-                      tabFor: widget.tabFor,
+                    child: Stack(
+                      children: [
+                        ShellBody(
+                          selectedIndex: widget.selectedIndex,
+                          visibleIds: widget.visibleIds,
+                          mountedTabIds: widget.mountedTabIds,
+                          tabFor: widget.tabFor,
+                        ),
+                        const Positioned.fill(
+                          child: ShellOverlayNavigator(),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -126,7 +135,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
               child: ShellNavRail(
                 visibleIds: widget.visibleIds,
                 selectedIndex: widget.selectedIndex,
-                onDestinationSelected: widget.onDestinationSelected,
+                onDestinationSelected: _onNavSelected,
                 isDesktop: widget.isDesktop,
               ),
             ),
@@ -137,7 +146,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
           : ShellBottomNav(
               visibleIds: widget.visibleIds,
               selectedIndex: widget.selectedIndex,
-              onItemTapped: widget.onDestinationSelected,
+              onItemTapped: _onNavSelected,
             ),
     );
   }
