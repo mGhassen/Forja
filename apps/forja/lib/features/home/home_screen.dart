@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen>
   final StremioService _stremio = StremioService();
   final PageController _heroController =
       PageController(initialPage: _heroLoopStart);
+  final ScrollController _homeScrollController = ScrollController();
   
   late Future<List<Movie>> _trendingFuture;
   late Future<List<Movie>> _popularFuture;
@@ -56,8 +57,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   // Trakt personalized sections
   List<Movie> _traktRecommendations = [];
-  List<Map<String, dynamic>> _traktCalendar = [];
-  List<Map<String, dynamic>> _traktCalendarMovies = [];
+  List<Movie> _traktUpcomingShows = [];
+  List<Movie> _traktUpcomingMovies = [];
 
   // Ambient backdrop colors derived from current hero poster
   Color _ambientPrimary = AppTheme.primaryColor;
@@ -71,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen>
   int _becausePoolSize = 0; // unique in-progress shows; controls shuffle button
   StreamSubscription<List<Map<String, dynamic>>>? _historySeedSub;
   VoidCallback? _splashDismissedListener;
+  VoidCallback? _homeCategoryListener;
 
   // Mood/genre filter state
   String _selectedMood = 'mind';
@@ -97,39 +99,66 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Future<void> onShellTabRefresh({required bool force}) => _reloadHomeFeed();
 
-  Future<void> _reloadHomeFeed() async {
-    if (!mounted) return;
-    setState(() {
-      _trendingFuture = _api.getTrending().then((movies) {
-        _fetchHeroLogos(movies.take(5).toList());
-        if (movies.isNotEmpty) _extractAmbientFor(movies.first);
-        return movies;
-      });
-      _popularFuture = _api.getPopular();
-      _nowPlayingFuture = _api.getNowPlaying();
-      _moodFuture = _loadMoodMovies(_selectedMood);
-    });
-    await _loadStremioCatalogs();
-  }
+  bool get _isTvHome => ShellBus.homeCategory.value == ShellHomeCategory.tvShows;
 
-  @override
-  void initState() {
-    super.initState();
+  void _resetHomeCategoryFeeds({bool useBootCache = false}) {
+    final trendingFetcher = _isTvHome ? _api.getTrendingTv : _api.getTrending;
+    final popularFetcher = _isTvHome ? _api.getPopularTv : _api.getPopular;
+    final latestFetcher = _isTvHome ? _api.getOnTheAir : _api.getNowPlaying;
+
     _trendingFuture = _tmdbFuture(
-      BootCache.trending,
-      _api.getTrending,
+      useBootCache && !_isTvHome ? BootCache.trending : null,
+      trendingFetcher,
       onLoaded: (movies) {
         _fetchHeroLogos(movies.take(5).toList());
         if (movies.isNotEmpty) _extractAmbientFor(movies.first);
       },
     );
-    _popularFuture = _tmdbFuture(BootCache.popular, _api.getPopular);
-    _nowPlayingFuture = _tmdbFuture(BootCache.nowPlaying, _api.getNowPlaying);
+    _popularFuture = _tmdbFuture(
+      useBootCache && !_isTvHome ? BootCache.popular : null,
+      popularFetcher,
+    );
+    _nowPlayingFuture = _tmdbFuture(
+      useBootCache && !_isTvHome ? BootCache.nowPlaying : null,
+      latestFetcher,
+    );
     _moodFuture = _loadMoodMovies(_selectedMood);
+    _heroIndex = 0;
+    if (_heroController.hasClients) {
+      _heroController.jumpToPage(_heroLoopStart);
+    }
+  }
+
+  Future<void> _reloadHomeFeed() async {
+    if (!mounted) return;
+    setState(() => _resetHomeCategoryFeeds());
+    await _loadStremioCatalogs();
+  }
+
+  void _onHomeCategoryChanged() {
+    if (!mounted) return;
+    setState(() => _resetHomeCategoryFeeds());
+  }
+
+  void _syncHomeScrollOffset() {
+    if (!_homeScrollController.hasClients) return;
+    final offset = _homeScrollController.offset;
+    if (ShellBus.homeScrollOffset.value != offset) {
+      ShellBus.homeScrollOffset.value = offset;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _homeScrollController.addListener(_syncHomeScrollOffset);
+    _resetHomeCategoryFeeds(useBootCache: true);
 
     _startHeroTimer();
     _loadStremioCatalogs();
     SettingsService.addonChangeNotifier.addListener(_onAddonsChanged);
+    _homeCategoryListener = _onHomeCategoryChanged;
+    ShellBus.homeCategory.addListener(_homeCategoryListener!);
 
     _schedulePostSplashWork();
     markShellTabFresh();
@@ -369,8 +398,17 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       if (!await TraktService().isLoggedIn()) return;
       final shows = await TraktService().getCalendarShows(days: 14);
-      if (mounted && shows.isNotEmpty) {
-        setState(() => _traktCalendar = shows.take(20).toList());
+      final movies = <Movie>[];
+      for (final entry in shows.take(20)) {
+        final show = entry['show'] as Map<String, dynamic>? ?? {};
+        final tmdbId = (show['ids'] as Map<String, dynamic>?)?['tmdb'] as int?;
+        if (tmdbId == null) continue;
+        try {
+          movies.add(await _api.getTvDetails(tmdbId));
+        } catch (_) {}
+      }
+      if (mounted && movies.isNotEmpty) {
+        setState(() => _traktUpcomingShows = movies);
       }
     } catch (_) {}
   }
@@ -378,9 +416,18 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadTraktCalendarMovies() async {
     try {
       if (!await TraktService().isLoggedIn()) return;
-      final movies = await TraktService().getCalendarMovies(days: 30);
+      final entries = await TraktService().getCalendarMovies(days: 30);
+      final movies = <Movie>[];
+      for (final entry in entries.take(20)) {
+        final movie = entry['movie'] as Map<String, dynamic>? ?? {};
+        final tmdbId = (movie['ids'] as Map<String, dynamic>?)?['tmdb'] as int?;
+        if (tmdbId == null) continue;
+        try {
+          movies.add(await _api.getMovieDetails(tmdbId));
+        } catch (_) {}
+      }
       if (mounted && movies.isNotEmpty) {
-        setState(() => _traktCalendarMovies = movies.take(20).toList());
+        setState(() => _traktUpcomingMovies = movies);
       }
     } catch (_) {}
   }
@@ -476,7 +523,9 @@ class _HomeScreenState extends State<HomeScreen>
   Future<List<Movie>> _loadMoodMovies(String moodId) async {
     final mood = _moods.firstWhere((m) => m.id == moodId, orElse: () => _moods.first);
     try {
-      final results = await _api.discoverMovies(genres: mood.genres, minRating: 6.0);
+      final results = _isTvHome
+          ? await _api.discoverTvShows(genres: mood.genres, minRating: 6.0)
+          : await _api.discoverMovies(genres: mood.genres, minRating: 6.0);
       return results;
     } catch (_) {
       return [];
@@ -566,246 +615,18 @@ class _HomeScreenState extends State<HomeScreen>
     if (_splashDismissedListener != null) {
       ShellBus.splashDismissed.removeListener(_splashDismissedListener!);
     }
+    if (_homeCategoryListener != null) {
+      ShellBus.homeCategory.removeListener(_homeCategoryListener!);
+    }
+    _homeScrollController.removeListener(_syncHomeScrollOffset);
+    _homeScrollController.dispose();
+    ShellBus.homeScrollOffset.value = 0;
     _heroTimer?.cancel();
     _heroController.dispose();
     _historySeedSub?.cancel();
     super.dispose();
   }
 
-  Widget _buildTraktCalendarSection() {
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const weekdays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 36, 24, 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.calendar_month_rounded, color: AppTheme.primaryColor, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Upcoming Schedule', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 2.5,
-                      width: 36,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        gradient: LinearGradient(
-                          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.0)],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 140,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: _traktCalendar.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final entry = _traktCalendar[index];
-              final show = entry['show'] as Map<String, dynamic>? ?? {};
-              final episode = entry['episode'] as Map<String, dynamic>? ?? {};
-              final showTitle = show['title'] as String? ?? 'Unknown';
-              final epTitle = episode['title'] as String? ?? '';
-              final season = episode['season'] as int? ?? 0;
-              final number = episode['number'] as int? ?? 0;
-              final aired = entry['first_aired'] as String? ?? '';
-              String dateLabel = '';
-              if (aired.isNotEmpty) {
-                try {
-                  final dt = DateTime.parse(aired).toLocal();
-                  final wd = weekdays[dt.weekday - 1];
-                  final mo = months[dt.month - 1];
-                  dateLabel = '$wd, $mo ${dt.day}';
-                } catch (_) {}
-              }
-              final showIds = show['ids'] as Map<String, dynamic>? ?? {};
-              final tmdbId = showIds['tmdb'] as int?;
-
-              return GestureDetector(
-                onTap: () async {
-                  if (tmdbId == null) return;
-                  try {
-                    final movie = await _api.getTvDetails(tmdbId);
-                    if (mounted) _openDetails(movie);
-                  } catch (_) {}
-                },
-                child: Container(
-                  width: 220,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.bgCard,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
-                    boxShadow: AppTheme.isLightMode ? null : [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 6)),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(showTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                      const SizedBox(height: 4),
-                      Text('S${season.toString().padLeft(2, '0')}E${number.toString().padLeft(2, '0')}',
-                        style: TextStyle(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w600)),
-                      if (epTitle.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(epTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
-                      ],
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time_rounded, size: 13, color: Colors.white.withValues(alpha: 0.4)),
-                          const SizedBox(width: 4),
-                          Text(dateLabel, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTraktCalendarMoviesSection() {
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const weekdays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 36, 24, 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.movie_filter_rounded, color: AppTheme.primaryColor, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Upcoming Movies', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 2.5,
-                      width: 36,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        gradient: LinearGradient(
-                          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.0)],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 140,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: _traktCalendarMovies.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final entry = _traktCalendarMovies[index];
-              final movie = entry['movie'] as Map<String, dynamic>? ?? {};
-              final title = movie['title'] as String? ?? 'Unknown';
-              final year = movie['year'] as int?;
-              final released = entry['released'] as String? ?? '';
-              String dateLabel = '';
-              if (released.isNotEmpty) {
-                try {
-                  final dt = DateTime.parse(released);
-                  final wd = weekdays[dt.weekday - 1];
-                  final mo = months[dt.month - 1];
-                  dateLabel = '$wd, $mo ${dt.day}';
-                } catch (_) {}
-              }
-              final movieIds = movie['ids'] as Map<String, dynamic>? ?? {};
-              final tmdbId = movieIds['tmdb'] as int?;
-
-              return GestureDetector(
-                onTap: () async {
-                  if (tmdbId == null) return;
-                  try {
-                    final m = await _api.getMovieDetails(tmdbId);
-                    if (mounted) _openDetails(m);
-                  } catch (_) {}
-                },
-                child: Container(
-                  width: 220,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.bgCard,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
-                    boxShadow: AppTheme.isLightMode ? null : [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 6)),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                      if (year != null) ...[
-                        const SizedBox(height: 4),
-                        Text('$year', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
-                      ],
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today_rounded, size: 13, color: Colors.white.withValues(alpha: 0.4)),
-                          const SizedBox(width: 4),
-                          Text(dateLabel, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
   Future<void> _openDetails(Movie movie) async {
     final settings = SettingsService();
@@ -956,6 +777,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    _syncHomeScrollOffset();
 
     final isDesktop =
         MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
@@ -964,6 +786,7 @@ class _HomeScreenState extends State<HomeScreen>
           onRefresh: () => refreshIfStale(force: true),
           color: AppTheme.primaryColor,
           child: CustomScrollView(
+            controller: _homeScrollController,
             scrollCacheExtent: ScrollCacheExtent.pixels(500),
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
@@ -1031,7 +854,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
 
               // Popular
-              SliverToBoxAdapter(child: RepaintBoundary(child: _MovieSection(title: 'Popular', icon: Icons.movie_filter_rounded, future: _popularFuture, onMovieTap: _openDetails, isPortrait: true, showRank: true))),
+              SliverToBoxAdapter(child: RepaintBoundary(child: _MovieSection(title: 'Popular', icon: Icons.movie_filter_rounded, future: _popularFuture, onMovieTap: _openDetails))),
 
               // Stremio Addon Catalogs (preserved exactly as before)
               if (_catalogsLoaded)
@@ -1056,22 +879,47 @@ class _HomeScreenState extends State<HomeScreen>
                 SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Recommended for You', icon: Icons.recommend_rounded, movies: _traktRecommendations, onMovieTap: _openDetails))),
 
               // Trakt Calendar
-              if (_traktCalendar.isNotEmpty)
-                SliverToBoxAdapter(child: RepaintBoundary(child: _buildTraktCalendarSection())),
+              if (_traktUpcomingShows.isNotEmpty)
+                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Upcoming Schedule', icon: Icons.calendar_month_rounded, movies: _traktUpcomingShows, onMovieTap: _openDetails))),
 
-              // Trakt Calendar Movies
-              if (_traktCalendarMovies.isNotEmpty)
-                SliverToBoxAdapter(child: RepaintBoundary(child: _buildTraktCalendarMoviesSection())),
+              if (_traktUpcomingMovies.isNotEmpty)
+                SliverToBoxAdapter(child: RepaintBoundary(child: _StaticMovieSection(title: 'Upcoming Movies', icon: Icons.movie_filter_rounded, movies: _traktUpcomingMovies, onMovieTap: _openDetails))),
 
               // New Releases
-              SliverToBoxAdapter(child: RepaintBoundary(child: _MovieSection(title: 'New Releases', icon: Icons.new_releases_rounded, future: _nowPlayingFuture, onMovieTap: _openDetails, isPortrait: true))),
+              SliverToBoxAdapter(child: RepaintBoundary(child: _MovieSection(title: 'New Releases', icon: Icons.new_releases_rounded, future: _nowPlayingFuture, onMovieTap: _openDetails))),
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
         );
 
-    return content;
+    if (!isDesktop) return content;
+
+    return Stack(
+      children: [
+        Positioned.fill(child: content),
+        Positioned(
+          top: 0,
+          bottom: 0,
+          right: 0,
+          width: ShellTokens.bodyRightGradientWidth,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.transparent,
+                    AppTheme.bgDark.withValues(alpha: 0.55),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildHeroShimmer() {
@@ -1166,7 +1014,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildDesktopHeroTextColumn(Movie heroMovie) {
     const overviewStyle = TextStyle(
-      fontSize: 13.5,
+      fontSize: 15,
       height: 1.5,
       letterSpacing: 0.1,
     );
@@ -1242,8 +1090,8 @@ class _HomeScreenState extends State<HomeScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppTheme.bgDark.withValues(alpha: 0.72),
-                    AppTheme.bgDark.withValues(alpha: 0.25),
+                    AppTheme.bgDark.withValues(alpha: 0.82),
+                    AppTheme.bgDark.withValues(alpha: 0.38),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.12, 0.28],
@@ -1261,8 +1109,8 @@ class _HomeScreenState extends State<HomeScreen>
                   end: Alignment.centerRight,
                   colors: [
                     AppTheme.bgDark,
-                    AppTheme.bgDark.withValues(alpha: 0.92),
-                    AppTheme.bgDark.withValues(alpha: 0.55),
+                    AppTheme.bgDark.withValues(alpha: 0.96),
+                    AppTheme.bgDark.withValues(alpha: 0.68),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.22, 0.42, 0.62],
@@ -1281,8 +1129,8 @@ class _HomeScreenState extends State<HomeScreen>
                   colors: [
                     Colors.transparent,
                     Colors.transparent,
-                    AppTheme.bgDark.withValues(alpha: 0.45),
-                    AppTheme.bgDark.withValues(alpha: 0.88),
+                    AppTheme.bgDark.withValues(alpha: 0.58),
+                    AppTheme.bgDark.withValues(alpha: 0.94),
                     AppTheme.bgDark,
                   ],
                   stops: const [0.0, 0.45, 0.72, 0.88, 1.0],
@@ -1606,8 +1454,8 @@ class _HomeScreenState extends State<HomeScreen>
                         colors: [
                           Colors.transparent,
                           Colors.transparent,
-                          AppTheme.bgDark.withValues(alpha: 0.3),
-                          AppTheme.bgDark.withValues(alpha: 0.85),
+                          AppTheme.bgDark.withValues(alpha: 0.42),
+                          AppTheme.bgDark.withValues(alpha: 0.92),
                           AppTheme.bgDark,
                         ],
                         stops: const [0.0, 0.25, 0.55, 0.8, 1.0],
@@ -1621,10 +1469,10 @@ class _HomeScreenState extends State<HomeScreen>
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                         colors: [
-                          AppTheme.bgDark.withValues(alpha: 0.65),
+                          AppTheme.bgDark.withValues(alpha: 0.78),
                           Colors.transparent,
                           Colors.transparent,
-                          AppTheme.bgDark.withValues(alpha: 0.4),
+                          AppTheme.bgDark.withValues(alpha: 0.52),
                         ],
                         stops: const [0.0, 0.25, 0.75, 1.0],
                       ),
@@ -1766,11 +1614,11 @@ class _HomeScreenState extends State<HomeScreen>
                       padding: const EdgeInsets.only(bottom: 20),
                       child: Text(
                         heroMovie.overview,
-                        maxLines: 2,
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.55),
-                          fontSize: 13.5,
+                          fontSize: 15,
                           height: 1.5,
                           letterSpacing: 0.1,
                         ),
@@ -1911,16 +1759,12 @@ class _MovieSection extends StatefulWidget {
   final IconData? icon;
   final Future<List<Movie>> future;
   final Function(Movie) onMovieTap;
-  final bool isPortrait;
-  final bool showRank;
 
   const _MovieSection({
     required this.title,
     this.icon,
     required this.future,
     required this.onMovieTap,
-    this.isPortrait = false,
-    this.showRank = false,
   });
 
   @override
@@ -1995,14 +1839,14 @@ class _MovieSectionState extends State<_MovieSection> {
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
-                      height: widget.isPortrait ? 240 : 180,
+                      height: 230,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         itemCount: 5,
                         separatorBuilder: (_, _) => const SizedBox(width: 14),
                         itemBuilder: (_, _) => Container(
-                          width: widget.isPortrait ? 150 : 280,
+                          width: 150,
                           decoration: BoxDecoration(color: AppTheme.bgCard, borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
@@ -2071,19 +1915,18 @@ class _MovieSectionState extends State<_MovieSection> {
               ),
             ),
             SizedBox(
-              height: widget.isPortrait ? 290 : 210,
+              height: 290,
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 itemCount: movies.length,
-                separatorBuilder: (_, _) => SizedBox(width: widget.showRank ? 6 : 14),
+                separatorBuilder: (_, _) => const SizedBox(width: 14),
                 itemBuilder: (context, index) => _MovieCard(
                   movie: movies[index],
                   onTap: () => widget.onMovieTap(movies[index]),
-                  isPortrait: widget.isPortrait,
-                  rank: widget.showRank ? index + 1 : null,
                 ),
               ),
             ),
@@ -2213,11 +2056,12 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
           ),
         ),
         SizedBox(
-          height: 210,
+          height: 290,
           child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 24),
             itemCount: widget.movies.length,
             separatorBuilder: (_, _) => const SizedBox(width: 14),
@@ -2234,156 +2078,121 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
 
 class _MovieCard extends StatelessWidget {
   final Movie movie;
-  final bool isPortrait;
-  final int? rank;
   final VoidCallback onTap;
 
   const _MovieCard({
     required this.movie,
-    this.isPortrait = false,
-    this.rank,
     required this.onTap,
   });
 
+  static double cardWidth(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width > 900;
+    return isDesktop ? 190.0 : 165.0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth > 900;
-    
-    final cardWidth = isPortrait 
-        ? (isDesktop ? 190.0 : 165.0) 
-        : (isDesktop ? 360.0 : 300.0);
-        
-    final image = isPortrait ? movie.posterPath : movie.backdropPath;
-    final imageUrl = image.isNotEmpty ? TmdbApi.getImageUrl(image) : '';
-    final hasRank = rank != null;
+    final isDesktop = MediaQuery.of(context).size.width > 900;
+    final cardWidth = _MovieCard.cardWidth(context);
+    final imageUrl = movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '';
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        // Big rank number
-        if (hasRank)
-          Text(
-            '$rank',
-            style: TextStyle(
-              fontSize: isPortrait ? 120 : 90,
-              fontWeight: FontWeight.w900,
-              foreground: Paint()
-                ..style = PaintingStyle.stroke
-                ..strokeWidth = 2
-                ..color = Colors.white.withValues(alpha: 0.1),
-              height: 0.85,
-              letterSpacing: -8,
-            ),
-          ),
-        FocusableControl(
-          onTap: onTap,
-          borderRadius: 14,
-          scaleOnFocus: 1.05,
-          child: Container(
-            width: cardWidth,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: AppTheme.bgCard,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
-              boxShadow: AppTheme.isLightMode ? null : [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 8)),
-                BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: -4),
-              ],
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (imageUrl.isNotEmpty)
-                  CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (c, u) => Container(color: AppTheme.bgCard),
-                    errorWidget: (c, u, e) => Container(
-                      color: AppTheme.bgCard,
-                      child: Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
-                    ),
-                  )
-                else
-                  Container(
-                    color: AppTheme.bgCard,
-                    child: Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
-                  ),
-                
-                // Gradient overlay
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.7),
-                        Colors.black.withValues(alpha: 0.95),
-                      ],
-                      stops: const [0.0, 0.45, 0.8, 1.0],
-                    ),
-                  ),
+    return FocusableControl(
+      onTap: onTap,
+      borderRadius: 14,
+      scaleOnFocus: 1.05,
+      child: Container(
+        width: cardWidth,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppTheme.bgCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+          boxShadow: AppTheme.isLightMode ? null : [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 8)),
+            BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: -4),
+          ],
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (imageUrl.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder: (c, u) => Container(color: AppTheme.bgCard),
+                errorWidget: (c, u, e) => Container(
+                  color: AppTheme.bgCard,
+                  child: Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
                 ),
-                
-                // Rating badge (top right) — frosted glass
-                if (movie.voteAverage > 0)
-                  Positioned(
-                    top: 8, right: 8,
-                    child: _buildRatingBadge(movie.voteAverage),
+              )
+            else
+              Container(
+                color: AppTheme.bgCard,
+                child: Center(child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white24))),
+              ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.7),
+                    Colors.black.withValues(alpha: 0.95),
+                  ],
+                  stops: const [0.0, 0.45, 0.8, 1.0],
+                ),
+              ),
+            ),
+            if (movie.voteAverage > 0)
+              Positioned(
+                top: 8, right: 8,
+                child: _buildRatingBadge(movie.voteAverage),
+              ),
+            Positioned(
+              bottom: 10, left: 10, right: 10,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    movie.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isDesktop ? 14 : 13,
+                      height: 1.2,
+                    ),
                   ),
-
-                // Bottom content
-                Positioned(
-                  bottom: 10, left: 10, right: 10,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                  const SizedBox(height: 4),
+                  Row(
                     children: [
-                      Text(
-                        movie.title,
-                        maxLines: isPortrait ? 2 : 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white, 
-                          fontWeight: FontWeight.bold, 
-                          fontSize: isDesktop ? 14 : 13,
-                          height: 1.2,
+                      if (movie.releaseDate.isNotEmpty)
+                        Text(
+                          movie.releaseDate.split('-').first,
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          if (movie.releaseDate.isNotEmpty)
-                            Text(
-                              movie.releaseDate.split('-').first,
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
-                            ),
-                          if (movie.mediaType == 'tv') ...[
-                            if (movie.releaseDate.isNotEmpty) ...[
-                              Text('  •  ', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
-                            ],
-                            Text('TV', style: TextStyle(color: AppTheme.primaryColor.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.bold)),
-                          ],
+                      if (movie.mediaType == 'tv') ...[
+                        if (movie.releaseDate.isNotEmpty) ...[
+                          Text('  •  ', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
                         ],
-                      ),
+                        Text('TV', style: TextStyle(color: AppTheme.primaryColor.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.bold)),
+                      ],
                     ],
                   ),
-                ),
-
-                // My List button
-                Positioned(
-                  top: 8, left: 8,
-                  child: _MyListButton.movie(movie: movie),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+            Positioned(
+              top: 8, left: 8,
+              child: _MyListButton.movie(movie: movie),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -2971,11 +2780,12 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
               ),
             ),
             SizedBox(
-              height: MediaQuery.of(context).orientation == Orientation.landscape ? 140 : 175,
+              height: 290,
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 itemCount: history.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 14),
@@ -3035,12 +2845,14 @@ class _HistoryCard extends StatelessWidget {
         ? 'S$season E$episode${episodeTitle != null && episodeTitle.isNotEmpty ? ' • $episodeTitle' : ''}'
         : '';
 
+    final cardWidth = _MovieCard.cardWidth(context);
+
     return FocusableControl(
       onTap: isLoading ? () {} : onTap,
       borderRadius: 14,
       scaleOnFocus: 1.05,
       child: Container(
-        width: 280,
+        width: cardWidth,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: AppTheme.bgCard,
@@ -3128,9 +2940,9 @@ class _HistoryCard extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, height: 1.2),
                         ),
                         if (subtitle.isNotEmpty)
                           Padding(
@@ -3373,20 +3185,20 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
           ),
         ),
         SizedBox(
-          height: isDesktop ? 240 : 200,
+          height: 290,
           child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 24),
             itemCount: widget.items.length.clamp(0, 20),
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
               final item = widget.items[index];
               return _StremioCatalogCard(
                 item: item,
                 onTap: () => widget.onItemTap(item),
-                height: isDesktop ? 240 : 200,
               );
             },
           ),
@@ -3399,33 +3211,22 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
 class _StremioCatalogCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onTap;
-  final double height;
 
-  const _StremioCatalogCard({required this.item, required this.onTap, this.height = 200});
+  const _StremioCatalogCard({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final poster = item['poster']?.toString() ?? '';
     final name = item['name']?.toString() ?? 'Unknown';
     final rating = item['imdbRating']?.toString() ?? '';
-    final shape = item['posterShape']?.toString() ?? 'poster';
-
-    final double width;
-    if (shape == 'landscape') {
-      width = height * (16 / 9);
-    } else if (shape == 'square') {
-      width = height;
-    } else {
-      width = height * (2 / 3);
-    }
+    final cardWidth = _MovieCard.cardWidth(context);
 
     return FocusableControl(
       onTap: onTap,
       borderRadius: 14,
       scaleOnFocus: 1.05,
       child: Container(
-        width: width,
-        height: height,
+        width: cardWidth,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: AppTheme.bgCard,
@@ -3764,7 +3565,6 @@ class _MoodSectionState extends State<_MoodSection> {
                 itemBuilder: (context, i) => _MovieCard(
                   movie: movies[i],
                   onTap: () => onMovieTap(movies[i]),
-                  isPortrait: true,
                 ),
               ),
             );
@@ -3965,7 +3765,6 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
                 itemBuilder: (context, i) => _MovieCard(
                   movie: movies[i],
                   onTap: () => widget.onMovieTap(movies[i]),
-                  isPortrait: true,
                 ),
               ),
             ),

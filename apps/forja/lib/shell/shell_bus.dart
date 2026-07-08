@@ -1,9 +1,19 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+/// Home desktop top-bar category (Films vs TV Shows).
+enum ShellHomeCategory { films, tvShows }
+
 /// Shell-level event bus — decouples features from [MainScreen].
 class ShellBus {
   ShellBus._();
+
+  /// Films / TV Shows selection for [ShellTopBar] + [HomeScreen] feed.
+  static final ValueNotifier<ShellHomeCategory> homeCategory =
+      ValueNotifier(ShellHomeCategory.films);
+
+  /// Home feed vertical scroll — [ShellTopBar] uses this for a solid bg when scrolled.
+  static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);
 
   /// SearchScreen listens for incoming Stremio search requests.
   /// Value: {'query': '...', 'addonBaseUrl': '...'} or null.

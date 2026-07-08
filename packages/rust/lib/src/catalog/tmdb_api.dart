@@ -38,9 +38,19 @@ class TmdbApi {
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'movie')).toList();
   }
 
+  Future<List<Movie>> getTrendingTv() async {
+    final decoded = await _fetchMap('trending/tv/day');
+    return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'tv')).toList();
+  }
+
   Future<List<Movie>> getPopular() async {
     final decoded = await _fetchMap('movie/popular');
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'movie')).toList();
+  }
+
+  Future<List<Movie>> getPopularTv() async {
+    final decoded = await _fetchMap('tv/popular');
+    return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'tv')).toList();
   }
 
   Future<List<Movie>> getTopRated() async {
@@ -51,6 +61,11 @@ class TmdbApi {
   Future<List<Movie>> getNowPlaying() async {
     final decoded = await _fetchMap('movie/now_playing');
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'movie')).toList();
+  }
+
+  Future<List<Movie>> getOnTheAir() async {
+    final decoded = await _fetchMap('tv/on_the_air');
+    return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'tv')).toList();
   }
 
   Future<List<String>> getBackdrops(int movieId) async {

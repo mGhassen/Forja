@@ -4,6 +4,7 @@ import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_body.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_scaffold.dart';
 import 'package:forja/shell/shell_top_bar.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
@@ -12,6 +13,11 @@ import 'package:rust/rust.dart';
 
 void main() {
   const visibleIds = ['home', 'search', 'settings'];
+
+  setUp(() {
+    ShellBus.homeCategory.value = ShellHomeCategory.films;
+    ShellBus.requestTab.value = null;
+  });
 
   Future<void> pumpScaffold(
     WidgetTester tester,
@@ -105,6 +111,21 @@ void main() {
 
     expect(find.byType(ShellTopBar), findsOneWidget);
     expect(find.text('Films'), findsOneWidget);
+  });
+
+  testWidgets('ShellTopBar category taps update homeCategory', (tester) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(shellTopBar: const ShellTopBar()),
+      size: const Size(1200, 800),
+    );
+
+    expect(ShellBus.homeCategory.value, ShellHomeCategory.films);
+
+    await tester.tap(find.text('TV Shows'));
+    await tester.pumpAndSettle();
+
+    expect(ShellBus.homeCategory.value, ShellHomeCategory.tvShows);
   });
 
   testWidgets('ShellNavRail uses fixed width without hover expand', (tester) async {
