@@ -184,6 +184,7 @@ void main() {
     await tester.pump();
     await gesture.moveTo(tester.getCenter(searchIcon));
     await tester.pump();
+    await tester.pump(ShellTokens.navRailLabelRevealDelay);
     await tester.pump(ShellTokens.navRailIconScaleAnimation);
     for (var i = 0; i < 12; i++) {
       await tester.pump(ShellTokens.navRailLabelLetterInterval);

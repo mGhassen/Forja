@@ -279,7 +279,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem>
       color: labelColor,
       fontSize: ShellTokens.navRailLabelFontSize,
       fontWeight: FontWeight.w500,
-      height: 1.2,
+      height: 1,
     );
 
     return Padding(
@@ -328,10 +328,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem>
                   Transform.translate(
                     offset: Offset(
                       0,
-                      _typing
-                          ? -(ShellTokens.navRailIconSlideUp -
-                              ShellTokens.navRailIconLabelGap)
-                          : 0,
+                      _typing ? ShellTokens.navRailLabelYOffset : 0,
                     ),
                     child: _TypewriterLabel(
                       text: widget.destination.label,

@@ -12,13 +12,19 @@ abstract final class ShellTokens {
   static const double navRailIconSize = 30;
   static const double navRailIconRevealedScale = 0.78;
   static const double navRailIconSlideUp = 10;
-  static const double navRailIconLabelGap = 2;
+  static const double navRailIconLabelGap = 0;
   static const double navRailLabelFontSize = 11;
   static const double navRailItemSpacing = 28;
   static const Duration navRailLabelRevealDelay = Duration(seconds: 3);
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
   static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
   static const Duration navRailLabelRevealAnimation = Duration(milliseconds: 520);
+
+  /// Y-offset for the typewriter label once the icon has slid/shrunk.
+  static double get navRailLabelYOffset =>
+      -navRailIconSlideUp +
+      navRailIconSize * (navRailIconRevealedScale - 1) +
+      navRailIconLabelGap;
 
   static const double shellButtonHeight = 40;
   static const double shellButtonRadius = 6;
@@ -55,6 +61,12 @@ abstract final class ShellTokens {
 
   /// Extra inset before the Films tab in [HomeTopBar].
   static const double homeTopBarMenuLeadingInset = 28;
+
+  /// Home Categories popup: visible rows before scrolling.
+  static const double homeCategoriesMenuRowHeight = 38;
+  static const int homeCategoriesMenuMaxVisibleRows = 8;
+  static double get homeCategoriesMenuMaxHeight =>
+      homeCategoriesMenuRowHeight * homeCategoriesMenuMaxVisibleRows;
   static const double shellLogoWidth = 110;
 
   /// Music desktop sidebar width — global rail hidden when Music tab uses this.
@@ -102,6 +114,7 @@ abstract final class ShellTokens {
   static const double heroTextColumnWidthDesktop = 480;
   static const double heroTitleSlotHeightDesktop = 196;
   static const double heroMetaSlotHeightDesktop = 40;
+  static const double heroMetaOverviewGapDesktop = 32;
   static const int heroOverviewMaxLinesDesktop = 5;
   static const double heroOverviewFontSizeDesktop = 17;
   static const double heroOverviewLineHeightDesktop = 1.55;

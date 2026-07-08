@@ -59,25 +59,37 @@ class _HomeTopBarState extends State<HomeTopBar> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: ForjaShellColors.borderSubtle),
                   ),
-                  child: IntrinsicWidth(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _FlatMenuRow(
-                          label: 'All',
-                          selected: selectedId == null,
-                          onTap: () =>
-                              Navigator.of(context).pop(_allGenresSentinel),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: IntrinsicWidth(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: ShellTokens.homeCategoriesMenuMaxHeight,
                         ),
-                        for (final genre in homeGenreCategories)
-                          _FlatMenuRow(
-                            label: genre.label,
-                            selected: genre.id == selectedId,
-                            onTap: () =>
-                                Navigator.of(context).pop(genre.id),
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.zero,
+                          physics: const ClampingScrollPhysics(),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _FlatMenuRow(
+                                label: 'All',
+                                selected: selectedId == null,
+                                onTap: () => Navigator.of(context)
+                                    .pop(_allGenresSentinel),
+                              ),
+                              for (final genre in homeGenreCategories)
+                                _FlatMenuRow(
+                                  label: genre.label,
+                                  selected: genre.id == selectedId,
+                                  onTap: () =>
+                                      Navigator.of(context).pop(genre.id),
+                                ),
+                            ],
                           ),
-                      ],
+                        ),
+                      ),
                     ),
                   ),
                 ),

@@ -1455,8 +1455,6 @@ class _HomeScreenState extends State<HomeScreen>
                   isFirstAfterHero: false,
                 ),
 
-              if (isDesktop) ..._randomCategoryRowSlivers(),
-
               if (isDesktop)
                 _homeRowSliver(
                   const _ContinueWatchingSection(compactTop: false),
@@ -1502,8 +1500,6 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   isFirstAfterHero: false,
                 ),
-
-              if (!isDesktop) ..._randomCategoryRowSlivers(),
 
               // Stremio Addon Catalogs
               if (_stremioCatalogsLoading && _stremioCatalogs.isEmpty)
@@ -1592,6 +1588,8 @@ class _HomeScreenState extends State<HomeScreen>
                 _MovieSection(title: 'New Releases', future: _nowPlayingFuture, onMovieTap: _openDetails),
                 isFirstAfterHero: false,
               ),
+
+              ..._randomCategoryRowSlivers(),
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -1836,7 +1834,7 @@ class _HomeScreenState extends State<HomeScreen>
             child: _buildHeroMetaRow(heroMovie, singleLine: true),
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
         SizedBox(
           height: ShellTokens.heroOverviewSlotHeightDesktop,
           child: Align(
