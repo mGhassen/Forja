@@ -49,6 +49,10 @@ abstract final class ShellTokens {
   static const double heroImageStartFraction = 0.20;
   static const double heroImageWidthFraction = 0.80;
   static const double heroTextWidthFraction = heroImageStartFraction;
+
+  /// Horizontal fade on the image strip: 0 → this fraction of image width
+  /// (shell bg → transparent). Was 0.58; ~46% of total hero width at 20% start.
+  static const double heroImageGradientFadeEndFraction = 0.72;
   static const double heroHeightFractionDesktop = 0.72;
   static const double heroMoodHeaderOverlapFraction = 1 / 3;
 
@@ -80,7 +84,9 @@ abstract final class ShellTokens {
   static const double heroTextColumnWidthDesktop = 480;
   static const double heroTitleSlotHeightDesktop = 196;
   static const double heroMetaSlotHeightDesktop = 40;
-  static const double heroOverviewHeightFractionDesktop = 0.40;
+  static const int heroOverviewMaxLinesDesktop = 5;
+  static const double heroOverviewFontSizeDesktop = 18;
+  static const double heroOverviewLineHeightDesktop = 1.55;
   static const double heroLogoMaxHeightDesktop = 180;
 
   /// Narrow right-edge vignette on flat cinematic body (desktop Home).

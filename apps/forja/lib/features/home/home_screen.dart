@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:rust/rust.dart';
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -1229,14 +1230,7 @@ class _HomeScreenState extends State<HomeScreen>
                   MediaQuery.sizeOf(context).width * 0.34,
                   ShellTokens.heroTextColumnWidthDesktop,
                 ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return _buildDesktopHeroTextColumn(
-                      heroMovie,
-                      areaHeight: constraints.maxHeight,
-                    );
-                  },
-                ),
+                child: _buildDesktopHeroTextColumn(heroMovie),
               ),
             ),
           ),
@@ -1257,6 +1251,7 @@ class _HomeScreenState extends State<HomeScreen>
     return LayoutBuilder(
       builder: (context, constraints) {
         final height = constraints.maxHeight;
+        final fadeEnd = ShellTokens.heroImageGradientFadeEndFraction;
 
         return Stack(
           fit: StackFit.expand,
@@ -1274,7 +1269,12 @@ class _HomeScreenState extends State<HomeScreen>
                         shellBg.withValues(alpha: 0.28),
                         Colors.transparent,
                       ],
-                      stops: const [0.0, 0.18, 0.38, 0.58],
+                      stops: [
+                        0.0,
+                        fadeEnd * 0.31,
+                        fadeEnd * 0.66,
+                        fadeEnd,
+                      ],
                     ),
                   ),
                 ),
@@ -1310,32 +1310,12 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDesktopHeroTextColumn(
-    Movie heroMovie, {
-    required double areaHeight,
-  }) {
-    const overviewFontSize = 18.0;
-    const overviewLineHeight = 1.55;
+  Widget _buildDesktopHeroTextColumn(Movie heroMovie) {
     const overviewStyle = TextStyle(
-      fontSize: overviewFontSize,
-      height: overviewLineHeight,
+      fontSize: ShellTokens.heroOverviewFontSizeDesktop,
+      height: ShellTokens.heroOverviewLineHeightDesktop,
       letterSpacing: 0.1,
-    );
-
-    const sectionGaps = 20.0 + 20.0 + 12.0;
-    final reservedHeight = ShellTokens.heroTitleSlotHeightDesktop +
-        ShellTokens.heroMetaSlotHeightDesktop +
-        sectionGaps +
-        ShellTokens.shellButtonHeight;
-    final targetOverviewHeight =
-        areaHeight * ShellTokens.heroOverviewHeightFractionDesktop;
-    final overviewHeight = math.min(
-      targetOverviewHeight,
-      math.max(0.0, areaHeight - reservedHeight),
-    );
-    final overviewMaxLines = math.max(
-      1,
-      (overviewHeight / (overviewFontSize * overviewLineHeight)).floor(),
+      color: Color(0x99FFFFFF),
     );
 
     return Column(
@@ -1362,23 +1342,13 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
         const SizedBox(height: 20),
-        SizedBox(
-          height: overviewHeight,
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: Text(
-              heroMovie.overview.isNotEmpty ? heroMovie.overview : ' ',
-              maxLines: overviewMaxLines,
-              overflow: TextOverflow.ellipsis,
-              style: overviewStyle.copyWith(
-                color: heroMovie.overview.isNotEmpty
-                    ? Colors.white.withValues(alpha: 0.6)
-                    : Colors.transparent,
-              ),
-            ),
-          ),
+        _HeroOverviewText(
+          overview: heroMovie.overview,
+          style: overviewStyle,
+          maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+          onReadMore: () => _openDetails(heroMovie),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _buildHeroActionRow(heroMovie, flat: true),
       ],
     );
@@ -3772,6 +3742,126 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _HeroOverviewText extends StatefulWidget {
+  const _HeroOverviewText({
+    required this.overview,
+    required this.style,
+    required this.maxLines,
+    required this.onReadMore,
+  });
+
+  final String overview;
+  final TextStyle style;
+  final int maxLines;
+  final VoidCallback onReadMore;
+
+  @override
+  State<_HeroOverviewText> createState() => _HeroOverviewTextState();
+}
+
+class _HeroOverviewTextState extends State<_HeroOverviewText> {
+  static const _ellipsis = '... ';
+  static const _readMoreLabel = 'read more';
+
+  late final TapGestureRecognizer _readMoreRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _readMoreRecognizer = TapGestureRecognizer()..onTap = widget.onReadMore;
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeroOverviewText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _readMoreRecognizer.onTap = widget.onReadMore;
+  }
+
+  @override
+  void dispose() {
+    _readMoreRecognizer.dispose();
+    super.dispose();
+  }
+
+  TextStyle get _readMoreStyle => widget.style.copyWith(
+        color: Colors.white.withValues(alpha: 0.85),
+        decoration: TextDecoration.underline,
+        decorationColor: Colors.white.withValues(alpha: 0.55),
+      );
+
+  bool _fits(String body, double maxWidth) {
+    final painter = TextPainter(
+      text: TextSpan(
+        children: [
+          TextSpan(text: body, style: widget.style),
+          TextSpan(text: _ellipsis, style: widget.style),
+          TextSpan(text: _readMoreLabel, style: _readMoreStyle),
+        ],
+      ),
+      maxLines: widget.maxLines,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: maxWidth);
+    return !painter.didExceedMaxLines;
+  }
+
+  String _truncateForReadMore(String text, double maxWidth) {
+    var low = 0;
+    var high = text.length;
+    while (low < high) {
+      final mid = (low + high + 1) ~/ 2;
+      final candidate = text.substring(0, mid).trimRight();
+      if (_fits(candidate, maxWidth)) {
+        low = mid;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return text.substring(0, low).trimRight();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.overview.isEmpty) {
+      return Text(' ', style: widget.style.copyWith(color: Colors.transparent));
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final fullPainter = TextPainter(
+          text: TextSpan(text: widget.overview, style: widget.style),
+          maxLines: widget.maxLines,
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: maxWidth);
+
+        if (!fullPainter.didExceedMaxLines) {
+          return Text(
+            widget.overview,
+            style: widget.style,
+            maxLines: widget.maxLines,
+          );
+        }
+
+        final truncated = _truncateForReadMore(widget.overview, maxWidth);
+        return Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: truncated, style: widget.style),
+              TextSpan(text: _ellipsis, style: widget.style),
+              TextSpan(
+                text: _readMoreLabel,
+                style: _readMoreStyle,
+                recognizer: _readMoreRecognizer,
+              ),
+            ],
+          ),
+          maxLines: widget.maxLines,
         );
       },
     );
