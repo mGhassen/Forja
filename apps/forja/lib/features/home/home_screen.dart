@@ -1307,7 +1307,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildDesktopHeroTextColumn(Movie heroMovie) {
     const overviewStyle = TextStyle(
-      fontSize: 17,
+      fontSize: 20,
       height: 1.55,
       letterSpacing: 0.1,
     );
