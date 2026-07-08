@@ -158,6 +158,8 @@ class AppTheme {
 
   static ThemeData get themeData {
     final preset = current;
+    const buttonRadius = BorderRadius.all(Radius.circular(6));
+
     if (isLightMode) {
       return ThemeData(
         useMaterial3: true,
@@ -169,13 +171,41 @@ class AppTheme {
           secondary: preset.accentColor,
           surface: appCardLight,
         ),
-        textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme).copyWith(
+        textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).copyWith(
           displayLarge: GoogleFonts.bebasNeue(fontSize: 48, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Colors.black87),
           displayMedium: GoogleFonts.bebasNeue(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.black87),
-          titleLarge: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
-          bodyMedium: GoogleFonts.roboto(fontSize: 14, color: Colors.black54),
+          titleLarge: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
+          bodyMedium: GoogleFonts.inter(fontSize: 14, color: Colors.black54),
+          labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
         ),
-        iconTheme: const IconThemeData(color: Colors.black54),
+        iconTheme: const IconThemeData(color: Color(0xFF6B7280)),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            shape: const RoundedRectangleBorder(borderRadius: buttonRadius),
+            backgroundColor: preset.primaryColor,
+            foregroundColor: Colors.black87,
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            shape: const RoundedRectangleBorder(borderRadius: buttonRadius),
+            side: const BorderSide(color: Color(0xFFD1D5DB)),
+            foregroundColor: Colors.black87,
+          ),
+        ),
+        iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            minimumSize: const Size(40, 40),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+              side: const BorderSide(color: Color(0xFFD1D5DB)),
+            ),
+          ),
+        ),
       );
     }
     return ThemeData(
@@ -187,14 +217,44 @@ class AppTheme {
         primary: preset.primaryColor,
         secondary: preset.accentColor,
         surface: preset.bgCard,
+        onSurface: const Color(0xFFF5F5F7),
       ),
-      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).copyWith(
+      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
         displayLarge: GoogleFonts.bebasNeue(fontSize: 48, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Colors.white),
         displayMedium: GoogleFonts.bebasNeue(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.white),
-        titleLarge: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
-        bodyMedium: GoogleFonts.roboto(fontSize: 14, color: Colors.white70),
+        titleLarge: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFFF5F5F7)),
+        bodyMedium: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF9CA3AF)),
+        labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFFF5F5F7)),
       ),
-      iconTheme: const IconThemeData(color: Colors.white70),
+      iconTheme: const IconThemeData(color: Color(0xFF9CA3AF)),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: const RoundedRectangleBorder(borderRadius: buttonRadius),
+          backgroundColor: preset.bgCard,
+          foregroundColor: const Color(0xFFF5F5F7),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: const RoundedRectangleBorder(borderRadius: buttonRadius),
+          side: const BorderSide(color: Color(0xFF4B5563)),
+          foregroundColor: const Color(0xFFF5F5F7),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          minimumSize: const Size(40, 40),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: const BorderSide(color: Color(0xFF4B5563)),
+          ),
+          foregroundColor: const Color(0xFFF5F5F7),
+        ),
+      ),
     );
   }
 

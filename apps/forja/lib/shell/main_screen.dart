@@ -15,6 +15,7 @@ import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shell/shell_top_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:rust/rust.dart';
@@ -344,6 +345,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         onDestinationSelected: _selectTab,
         tabFor: _tabFor,
         shellHeader: _shellHeader(),
+        shellTopBar: _currentTabId == 'home' && useNavRail && isDesktop
+            ? const ShellTopBar()
+            : null,
         hideGlobalNav: ShellBus.hideGlobalNav.value,
       ),
     );

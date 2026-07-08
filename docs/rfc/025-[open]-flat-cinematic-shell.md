@@ -11,8 +11,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **11 / 12** acceptance (desktop slice 1) · **0 / 3** deferred |
-| **Current slice** | Desktop — flat shell rail + Home hero (shipping) |
+| **Progress** | **4 / 4** components · **28 / 29** acceptance (desktop slice 1 + 1.1 + 1.2) · **0 / 3** deferred |
+| **Current slice** | Desktop — user feedback corrections (1.2) |
 | **Backlog** | [1.0.0](../backlog/1.0.0-[open].md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -44,8 +44,39 @@
 | 8 | R25-A08 | Hero carousel indicators on **right edge** (vertical dots on desktop) — replace bottom horizontal bars | ✅ |
 | 9 | R25-A09 | All Home hero `BackdropFilter` / frosted-glass helpers removed; flat solid pills/circles/arrows | ✅ |
 | 10 | R25-A10 | No primary-color radial “ambient tint” on hero; no glow box-shadows on Play / indicators | ✅ |
-| 11 | R25-A11 | Widget tests: rail collapsed width, hover expand, glow absent; hero layout smoke (desktop width) | 🔄 |
+| 11 | R25-A11 | Widget tests: rail collapsed width, hover expand, glow absent; hero layout smoke (desktop width) | ✅ |
 | 12 | R25-A12 | `flutter analyze` clean on touched files | ✅ |
+
+---
+
+## Acceptance (1.0.0 — desktop slice 1.1)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 16 | R25-A16 | Logo + Films/TV/Anime top bar on body; Films underlined (visual only) | ✅ |
+| 17 | R25-A17 | Rail: profile top, settings bottom, nav centered; grey icons | ✅ |
+| 18 | R25-A18 | Netflix underline active state (no circle fill) | ✅ |
+| 19 | R25-A19 | Collapsed rail wider; body left-inset = collapsed width | ✅ |
+| 20 | R25-A20 | Expanded rail transparent + body scrim gradient | ✅ |
+| 21 | R25-A21 | Right viewport gradient; full-width desktop body (no 1600 cap on Home) | ✅ |
+| 22 | R25-A22 | Hero: Watch Now ghost + square info/add buttons (40px) | ✅ |
+| 23 | R25-A23 | App-wide button theme + Home continue-watching/stats migrated | 🔄 |
+| 24 | R25-A24 | Shell/nav typography Inter | ✅ |
+| 25 | R25-A25 | Widget tests updated | ✅ |
+
+---
+
+## Acceptance (1.0.0 — desktop slice 1.2)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 26 | R25-A26 | Fixed-width rail (`navRailWidth` 88px); no hover expand / scrim | ✅ |
+| 27 | R25-A27 | Top bar (logo + Films/TV/Anime) **Home tab only** — other tabs use their own headers | ✅ |
+| 28 | R25-A28 | Hero: full-bleed `Stack` (backdrop under gradient) — no Row seam at image edge | ✅ |
+| 29 | R25-A29 | Remove Home `_AmbientBackdrop` body lights; no shell right-edge vignette | ✅ |
+| 30 | R25-A30 | Watch Now = text-only ghost; info / + = bare `ForjaPlainIcon` (no bordered boxes) | ✅ |
+| 31 | R25-A31 | Muted grey nav icons; larger rail items + top-bar category spacing | ✅ |
+| 32 | R25-A32 | Widget tests: fixed rail width, home-only top bar opt-in, plain icon smoke | ✅ |
 
 ---
 

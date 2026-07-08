@@ -17,6 +17,7 @@ import 'anime_arabic_details_screen.dart';
 import 'anime_arabic_player_screen.dart';
 import 'anime_arabic_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class AnimeArabicScreen extends StatefulWidget {
   const AnimeArabicScreen({super.key});
@@ -668,39 +669,15 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
               const SizedBox(height: 18),
               Row(
                 children: [
-                  Material(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(28),
-                      onTap: () => _openDetails(a),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 28, vertical: 12),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.play_arrow_rounded,
-                                color: Colors.black, size: 26),
-                            SizedBox(width: 6),
-                            Text(
-                              'مشاهدة',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  ForjaGhostButton(
+                    label: 'مشاهدة',
+                    icon: Icons.play_arrow_rounded,
+                    onTap: () => _openDetails(a),
                   ),
-                  const SizedBox(width: 12),
-                  _frostedPill(
+                  const SizedBox(width: 16),
+                  ForjaPlainIcon(
                     icon: Icons.info_outline_rounded,
-                    label: 'تفاصيل',
+                    tooltip: 'تفاصيل',
                     onTap: () => _openDetails(a),
                   ),
                 ],

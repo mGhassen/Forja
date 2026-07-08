@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/nav_config.dart';
@@ -7,6 +5,8 @@ import 'package:forja/shell/shell_body.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shell/shell_top_bar.dart';
+import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:rust/rust.dart';
 
@@ -27,6 +27,23 @@ void main() {
           child: child,
         ),
       ),
+    );
+  }
+
+  ShellScaffold desktopScaffold({
+    bool hideGlobalNav = false,
+    Widget? shellTopBar,
+  }) {
+    return ShellScaffold(
+      useNavRail: true,
+      isDesktop: true,
+      visibleIds: visibleIds,
+      selectedIndex: 1,
+      mountedTabIds: const {'home', 'search'},
+      onDestinationSelected: (_) {},
+      tabFor: (id) => Center(child: Text(id)),
+      hideGlobalNav: hideGlobalNav,
+      shellTopBar: shellTopBar,
     );
   }
 
@@ -66,20 +83,7 @@ void main() {
     expect(find.byType(ShellBottomNav), findsNothing);
   });
 
-  ShellScaffold desktopScaffold({bool hideGlobalNav = false}) {
-    return ShellScaffold(
-      useNavRail: true,
-      isDesktop: true,
-      visibleIds: visibleIds,
-      selectedIndex: 1,
-      mountedTabIds: const {'home', 'search'},
-      onDestinationSelected: (_) {},
-      tabFor: (id) => Center(child: Text(id)),
-      hideGlobalNav: hideGlobalNav,
-    );
-  }
-
-  testWidgets('ShellScaffold shows rail on desktop layout', (tester) async {
+  testWidgets('ShellScaffold shows rail on desktop; top bar only when passed', (tester) async {
     await pumpScaffold(
       tester,
       desktopScaffold(),
@@ -87,11 +91,23 @@ void main() {
     );
 
     expect(find.byType(ShellNavRail), findsOneWidget);
+    expect(find.byType(ShellTopBar), findsNothing);
     expect(find.byType(ShellBottomNav), findsNothing);
-    expect(find.text('Search'), findsNothing);
+    expect(find.text('Films'), findsNothing);
   });
 
-  testWidgets('ShellNavRail expands on hover and shows labels', (tester) async {
+  testWidgets('ShellScaffold shows home top bar when shellTopBar is set', (tester) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(shellTopBar: const ShellTopBar()),
+      size: const Size(1200, 800),
+    );
+
+    expect(find.byType(ShellTopBar), findsOneWidget);
+    expect(find.text('Films'), findsOneWidget);
+  });
+
+  testWidgets('ShellNavRail uses fixed width without hover expand', (tester) async {
     await pumpScaffold(
       tester,
       desktopScaffold(),
@@ -99,21 +115,11 @@ void main() {
     );
 
     final railFinder = find.byType(ShellNavRail);
-    expect(tester.getSize(railFinder).width, ShellTokens.navRailCollapsedWidth);
-
-    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    await gesture.addPointer(location: Offset.zero);
-    addTearDown(gesture.removePointer);
-    await tester.pump();
-    await gesture.moveTo(tester.getCenter(railFinder));
-    await tester.pump();
-    await tester.pump(ShellTokens.navRailExpandDuration);
-
-    expect(tester.getSize(railFinder).width, ShellTokens.navRailExpandedWidth);
-    expect(find.text('Search'), findsOneWidget);
+    expect(tester.getSize(railFinder).width, ShellTokens.navRailWidth);
+    expect(find.text('Search'), findsNothing);
   });
 
-  testWidgets('ShellScaffold body is full width with overlay rail', (tester) async {
+  testWidgets('ShellScaffold body is inset by fixed rail width', (tester) async {
     await pumpScaffold(
       tester,
       desktopScaffold(),
@@ -121,7 +127,7 @@ void main() {
     );
 
     final bodyBox = tester.renderObject<RenderBox>(find.byType(ShellBody));
-    expect(bodyBox.size.width, 1200);
+    expect(bodyBox.size.width, 1200 - ShellTokens.navRailWidth);
   });
 
   testWidgets('ShellScaffold hides rail when hideGlobalNav is true', (tester) async {
@@ -132,16 +138,26 @@ void main() {
     );
 
     expect(find.byType(ShellNavRail), findsNothing);
+    expect(find.byType(ShellTopBar), findsNothing);
   });
 
-  testWidgets('ShellScaffold has flat background without ambient glows', (tester) async {
+  testWidgets('ForjaGhostButton is text-only; ForjaPlainIcon has no border box', (tester) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(),
-      size: const Size(1200, 800),
+      Scaffold(
+        body: Row(
+          children: [
+            ForjaGhostButton(label: 'Watch Now', onTap: () {}),
+            ForjaPlainIcon(icon: Icons.info_outline, onTap: () {}),
+          ],
+        ),
+      ),
+      size: const Size(600, 200),
     );
 
-    expect(find.byType(Positioned), findsNWidgets(2));
+    expect(find.text('Watch Now'), findsOneWidget);
+    expect(find.byType(ForjaPlainIcon), findsOneWidget);
+    expect(find.byType(ForjaIconButton), findsNothing);
   });
 
   test('navDestinations includes default shell tabs', () {

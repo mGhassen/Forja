@@ -7,14 +7,18 @@ abstract final class ShellTokens {
   static const double bottomNavLabelSize = 11;
   static const double bottomNavFadeWidth = 40;
 
-  static const double navRailCollapsedWidth = 56;
-  static const double navRailExpandedWidth = 220;
-  static const Duration navRailExpandDuration = Duration(milliseconds: 200);
+  /// Fixed desktop nav rail width (no hover expand).
+  static const double navRailWidth = 88;
+  static const double navRailIconSize = 30;
+  static const double navRailItemSpacing = 16;
 
-  static const double navRailLogoWidth = 48;
-  static const double navRailLogoBottomPadding = 24;
-  static const double navRailLogoTopPaddingDesktopMac = 8;
-  static const double navRailLogoTopPaddingDefault = 24;
+  static const double shellButtonHeight = 40;
+  static const double shellButtonRadius = 6;
+  static const double shellNavUnderlineHeight = 3;
+  static const double shellTopBarHeight = 68;
+  static const double shellLogoWidth = 110;
+
+  static const double navRailProfileSize = 36;
 
   /// Music desktop sidebar width — global rail hidden when Music tab uses this.
   static const double musicDesktopSidebarWidth = 260;
@@ -52,4 +56,10 @@ abstract final class ShellTokens {
   static const Duration tabStaleIptv = Duration(minutes: 10);
   static const Duration tabStaleMusic = Duration(minutes: 10);
   static const Duration tabStaleJellyfin = Duration(minutes: 15);
+
+  @Deprecated('Use navRailWidth')
+  static const double navRailCollapsedWidth = navRailWidth;
+
+  @Deprecated('Use navRailWidth')
+  static const double navRailExpandedWidth = navRailWidth;
 }

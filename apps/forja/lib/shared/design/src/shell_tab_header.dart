@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Optional title row for body-only shell tabs.
 class ShellTabHeader extends StatelessWidget {
@@ -29,10 +30,9 @@ class ShellTabHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
                 fontSize: ShellTokens.tabHeaderFontSize,
-                fontFamily: 'Poppins',
               ),
             ),
           ),

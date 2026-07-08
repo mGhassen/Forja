@@ -20,7 +20,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -905,21 +905,8 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
 
-    final content = Stack(
-      children: [
-        if (!AppTheme.isLightMode)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: _AmbientBackdrop(
-                primary: _ambientPrimary,
-                secondary: _ambientSecondary,
-              ),
-            ),
-          ),
-        RefreshIndicator(
+    final content = RefreshIndicator(
           onRefresh: () => refreshIfStale(force: true),
           color: AppTheme.primaryColor,
           child: CustomScrollView(
@@ -946,57 +933,6 @@ class _HomeScreenState extends State<HomeScreen>
               // Stats strip — derived from local watch history
               const SliverToBoxAdapter(child: RepaintBoundary(child: _StatsStrip())),
 
-              // Continue Watching — wide cinematic hero card for the most recent
-              SliverToBoxAdapter(
-                child: RepaintBoundary(
-                  child: _ContinueWatchingHero(
-                    onOpen: _openDetails,
-                    onResume: (item) async {
-                      final tmdbId = item['tmdbId'] as int?;
-                      if (tmdbId == null) return;
-                      final title = (item['title'] as String?) ?? '';
-                      final posterPath = (item['posterPath'] as String?) ?? '';
-                      final season = item['season'] as int?;
-                      final episode = item['episode'] as int?;
-                      final position = (item['position'] as int?) ?? 0;
-                      final mediaType = (item['mediaType'] as String?) ??
-                          (season != null ? 'tv' : 'movie');
-                      final startPos = Duration(milliseconds: position);
-                      final movie = Movie(
-                        id: tmdbId,
-                        title: title,
-                        posterPath: posterPath,
-                        backdropPath: '',
-                        overview: '',
-                        releaseDate: '',
-                        voteAverage: 0,
-                        mediaType: mediaType,
-                        genres: [],
-                        imdbId: item['imdbId'] as String?,
-                      );
-                      final isStreaming = await SettingsService().isStreamingModeEnabled();
-                      if (!context.mounted) return;
-                      Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => isStreaming
-                            ? StreamingDetailsScreen(
-                                movie: movie,
-                                initialSeason: season,
-                                initialEpisode: episode,
-                                startPosition: startPos,
-                              )
-                            : DetailsScreen(
-                                movie: movie,
-                                initialSeason: season,
-                                initialEpisode: episode,
-                                startPosition: startPos,
-                              ),
-                      ));
-                    },
-                  ),
-                ),
-              ),
-
-              // Continue Watching strip (everything else)
               const SliverToBoxAdapter(child: RepaintBoundary(child: _ContinueWatchingSection())),
 
               // Mosaic Spotlight — Trending Now reimagined as 1 big + 4 small
@@ -1110,19 +1046,9 @@ class _HomeScreenState extends State<HomeScreen>
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
-        ),
-      ],
-    );
+        );
 
-    if (!isDesktop) return content;
-
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ShellTokens.bodyMaxWidthDesktop),
-        child: content,
-      ),
-    );
+    return content;
   }
 
   Widget _buildHeroShimmer() {
@@ -1146,150 +1072,148 @@ class _HomeScreenState extends State<HomeScreen>
 
     return SizedBox(
       height: height,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Expanded(
-            flex: 1,
-            child: ColoredBox(
-              color: AppTheme.bgDark,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(28, 48, 16, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildHeroTitleBlock(heroMovie, isLandscape: false),
-                    _buildHeroMetaRow(heroMovie),
-                    if (heroMovie.overview.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: Text(
-                          heroMovie.overview,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.55),
-                            fontSize: 13.5,
-                            height: 1.5,
-                            letterSpacing: 0.1,
-                          ),
-                        ),
-                      ),
-                    _buildHeroActionRow(heroMovie, flat: true),
-                  ],
+          PageView.builder(
+            controller: _heroController,
+            itemCount: movies.length,
+            onPageChanged: (i) {
+              setState(() => _heroIndex = i);
+              _extractAmbientFor(movies[i]);
+            },
+            itemBuilder: (context, index) {
+              final movie = movies[index];
+              return CachedNetworkImage(
+                imageUrl: movie.backdropPath.isNotEmpty
+                    ? TmdbApi.getBackdropUrl(movie.backdropPath)
+                    : TmdbApi.getImageUrl(movie.posterPath),
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
+                placeholder: (c, u) => Container(color: AppTheme.bgCard),
+              );
+            },
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      AppTheme.bgDark,
+                      AppTheme.bgDark.withValues(alpha: 0.92),
+                      AppTheme.bgDark.withValues(alpha: 0.55),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.22, 0.42, 0.62],
+                  ),
                 ),
               ),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                PageView.builder(
-                  controller: _heroController,
-                  itemCount: movies.length,
-                  onPageChanged: (i) {
-                    setState(() => _heroIndex = i);
-                    _extractAmbientFor(movies[i]);
-                  },
-                  itemBuilder: (context, index) {
-                    final movie = movies[index];
-                    return CachedNetworkImage(
-                      imageUrl: movie.backdropPath.isNotEmpty
-                          ? TmdbApi.getBackdropUrl(movie.backdropPath)
-                          : TmdbApi.getImageUrl(movie.posterPath),
-                      fit: BoxFit.cover,
-                      alignment: Alignment.centerRight,
-                      placeholder: (c, u) => Container(color: AppTheme.bgCard),
-                    );
-                  },
-                ),
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [
-                            AppTheme.bgDark,
-                            AppTheme.bgDark.withValues(alpha: 0.85),
-                            Colors.transparent,
-                          ],
-                          stops: const [0.0, 0.12, 0.45],
-                        ),
-                      ),
-                    ),
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 48, 24),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: math.min(
+                    MediaQuery.sizeOf(context).width * 0.34,
+                    480,
                   ),
-                ),
-                Positioned(
-                  right: 20,
-                  top: 0,
-                  bottom: 0,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(
-                        movies.length,
-                        (i) => AnimatedContainer(
-                          duration: const Duration(milliseconds: 400),
-                          curve: Curves.easeOutCubic,
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          width: i == _heroIndex ? 8 : 6,
-                          height: i == _heroIndex ? 24 : 6,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4),
-                            color: i == _heroIndex
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.25),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildHeroTitleBlock(heroMovie, isLandscape: false),
+                      _buildHeroMetaRow(heroMovie),
+                      if (heroMovie.overview.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: Text(
+                            heroMovie.overview,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              fontSize: 13.5,
+                              height: 1.5,
+                              letterSpacing: 0.1,
+                            ),
                           ),
                         ),
-                      ),
+                      _buildHeroActionRow(heroMovie, flat: true),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 20,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(
+                  movies.length,
+                  (i) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutCubic,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    width: i == _heroIndex ? 8 : 6,
+                    height: i == _heroIndex ? 24 : 6,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: i == _heroIndex
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.25),
                     ),
                   ),
                 ),
-                Positioned(
-                  left: 8,
-                  top: 0,
-                  bottom: 0,
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        if (_heroController.hasClients && _heroIndex > 0) {
-                          _heroController.animateToPage(
-                            _heroIndex - 1,
-                            duration: const Duration(milliseconds: 600),
-                            curve: Curves.easeOutCubic,
-                          );
-                        }
-                      },
-                      child: _buildFlatArrow(icon: Icons.arrow_back_ios_new_rounded),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: 48,
-                  top: 0,
-                  bottom: 0,
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        if (_heroController.hasClients &&
-                            _heroIndex < movies.length - 1) {
-                          _heroController.animateToPage(
-                            _heroIndex + 1,
-                            duration: const Duration(milliseconds: 600),
-                            curve: Curves.easeOutCubic,
-                          );
-                        }
-                      },
-                      child: _buildFlatArrow(icon: Icons.arrow_forward_ios_rounded),
-                    ),
-                  ),
-                ),
-              ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 8,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  if (_heroController.hasClients && _heroIndex > 0) {
+                    _heroController.animateToPage(
+                      _heroIndex - 1,
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                },
+                child: _buildFlatArrow(icon: Icons.arrow_back_ios_new_rounded),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 48,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  if (_heroController.hasClients &&
+                      _heroIndex < movies.length - 1) {
+                    _heroController.animateToPage(
+                      _heroIndex + 1,
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                },
+                child: _buildFlatArrow(icon: Icons.arrow_forward_ios_rounded),
+              ),
             ),
           ),
         ],
@@ -1414,6 +1338,29 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeroActionRow(Movie heroMovie, {required bool flat}) {
+    if (flat) {
+      return Row(
+        children: [
+          ForjaGhostButton(
+            label: 'Watch Now',
+            icon: Icons.play_arrow_rounded,
+            onTap: () => _openDetails(heroMovie),
+          ),
+          const SizedBox(width: 16),
+          ForjaPlainIcon(
+            icon: Icons.info_outline_rounded,
+            tooltip: 'Details',
+            onTap: () => _openDetails(heroMovie),
+          ),
+          ForjaPlainIcon(
+            icon: Icons.add,
+            tooltip: 'Add to My List',
+            child: _MyListButton.movie(movie: heroMovie),
+          ),
+        ],
+      );
+    }
+
     return Row(
       children: [
         Flexible(
@@ -1447,82 +1394,37 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         const SizedBox(width: 12),
         Flexible(
-          child: flat
-              ? Material(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(28),
-                  child: InkWell(
-                    onTap: () => _openDetails(heroMovie),
-                    borderRadius: BorderRadius.circular(28),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.info_outline_rounded,
-                            color: Colors.white.withValues(alpha: 0.85),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'More Info',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+          child: _buildFrostedPill(
+            onTap: () => _openDetails(heroMovie),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 22,
+                vertical: 12,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: Colors.white.withValues(alpha: 0.85),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'More Info',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                )
-              : _buildFrostedPill(
-                  onTap: () => _openDetails(heroMovie),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.info_outline_rounded,
-                          color: Colors.white.withValues(alpha: 0.85),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'More Info',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                ],
+              ),
+            ),
+          ),
         ),
         const SizedBox(width: 12),
-        flat
-            ? Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: _MyListButton.movie(movie: heroMovie),
-              )
-            : _buildFrostedCircle(child: _MyListButton.movie(movie: heroMovie)),
+        _buildFrostedCircle(child: _MyListButton.movie(movie: heroMovie)),
       ],
     );
   }
@@ -3633,114 +3535,11 @@ class _MyListButton extends StatelessWidget {
               }
             }
           },
-          child: Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.55),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              inList ? Icons.bookmark_rounded : Icons.add_rounded,
-              size: 16,
-              color: inList ? AppTheme.primaryColor : Colors.white70,
-            ),
+          child: Icon(
+            inList ? Icons.bookmark_rounded : Icons.add_rounded,
+            size: 20,
+            color: inList ? AppTheme.primaryColor : ForjaShellColors.iconMuted,
           ),
-        );
-      },
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  AMBIENT BACKDROP — animated color blobs derived from current hero poster
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _AmbientBackdrop extends StatelessWidget {
-  final Color primary;
-  final Color secondary;
-  const _AmbientBackdrop({required this.primary, required this.secondary});
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 1200),
-      curve: Curves.easeOutCubic,
-      builder: (context, _, _) {
-        // The TweenAnimationBuilder's value is unused — the AnimatedContainer
-        // children below crossfade their own colors. The outer tween simply
-        // forces a rebuild when colors change so the children re-animate.
-        return Stack(
-          children: [
-            // Top-right vibrant blob
-            Positioned(
-              top: -120,
-              right: -120,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 1400),
-                curve: Curves.easeOutCubic,
-                width: 520,
-                height: 520,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      primary.withValues(alpha: 0.40),
-                      primary.withValues(alpha: 0.14),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.45, 1.0],
-                  ),
-                ),
-              ),
-            ),
-            // Bottom-left dominant blob
-            Positioned(
-              top: MediaQuery.of(context).size.height * 0.55,
-              left: -150,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 1400),
-                curve: Curves.easeOutCubic,
-                width: 480,
-                height: 480,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      secondary.withValues(alpha: 0.30),
-                      secondary.withValues(alpha: 0.10),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.45, 1.0],
-                  ),
-                ),
-              ),
-            ),
-            // Mid-right subtle accent
-            Positioned(
-              top: MediaQuery.of(context).size.height * 1.4,
-              right: -60,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 1400),
-                curve: Curves.easeOutCubic,
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      primary.withValues(alpha: 0.18),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Soft veil so it never overpowers content
-            Positioned.fill(
-              child: Container(color: AppTheme.bgDark.withValues(alpha: 0.35)),
-            ),
-          ],
         );
       },
     );
@@ -3873,9 +3672,9 @@ class _StatTile extends StatelessWidget {
       width: 168,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withValues(alpha: AppTheme.isLightMode ? 0.06 : 0.04),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        borderRadius: BorderRadius.circular(8),
+        color: ForjaShellColors.surfaceElevated,
+        border: Border.all(color: ForjaShellColors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3898,7 +3697,7 @@ class _StatTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
+                    color: ForjaShellColors.textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.2,
@@ -3916,8 +3715,8 @@ class _StatTile extends StatelessWidget {
               final shown = isInt ? v.round().toString() : v.toStringAsFixed(1);
               return Text(
                 shown,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: ForjaShellColors.textPrimary,
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -1,
@@ -3929,314 +3728,7 @@ class _StatTile extends StatelessWidget {
         ],
       ),
     );
-    if (AppTheme.isLightMode) return inner;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: inner,
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  CONTINUE WATCHING HERO — wide cinematic card for the most recent item
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _ContinueWatchingHero extends StatefulWidget {
-  final Function(Movie) onOpen;
-  final Function(Map<String, dynamic>)? onResume;
-  const _ContinueWatchingHero({required this.onOpen, this.onResume});
-
-  @override
-  State<_ContinueWatchingHero> createState() => _ContinueWatchingHeroState();
-}
-
-class _ContinueWatchingHeroState extends State<_ContinueWatchingHero> {
-  String? _backdropPath;
-  int? _lastTmdbId;
-
-  Future<void> _loadBackdrop(int tmdbId, String mediaType) async {
-    if (_lastTmdbId == tmdbId && _backdropPath != null) return;
-    _lastTmdbId = tmdbId;
-    try {
-      final m = mediaType == 'tv'
-          ? await TmdbApi().getTvDetails(tmdbId)
-          : await TmdbApi().getMovieDetails(tmdbId);
-      if (!mounted) return;
-      setState(() => _backdropPath = m.backdropPath);
-    } catch (_) {}
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: WatchHistoryService().historyStream,
-      initialData: WatchHistoryService().current,
-      builder: (context, snapshot) {
-        final list = snapshot.data ?? const <Map<String, dynamic>>[];
-        if (list.isEmpty) return const SizedBox.shrink();
-        final item = list.first;
-
-        final tmdbId = item['tmdbId'] as int?;
-        final mediaType = (item['mediaType'] as String?) ??
-            (item['season'] != null ? 'tv' : 'movie');
-        if (tmdbId != null) _loadBackdrop(tmdbId, mediaType);
-
-        final title = (item['title'] as String?) ?? '';
-        final posterPath = (item['posterPath'] as String?) ?? '';
-        final season = item['season'] as int?;
-        final episode = item['episode'] as int?;
-        final episodeTitle = (item['episodeTitle'] as String?) ?? '';
-        final position = (item['position'] as int?) ?? 0;
-        final duration = (item['duration'] as int?) ?? 0;
-        final progress = duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
-        final remaining = duration > 0 ? Duration(milliseconds: duration - position) : Duration.zero;
-        final remainingText = remaining.inMinutes > 0 ? '${remaining.inMinutes}m left' : '';
-
-        final subtitle = season != null
-            ? 'S$season · E$episode${episodeTitle.isNotEmpty ? '  ·  $episodeTitle' : ''}'
-            : (mediaType == 'movie' ? 'Movie' : 'Series');
-
-        // Background image: prefer fetched landscape backdrop, fall back to poster
-        String bgUrl = '';
-        bool bgIsPoster = false;
-        if (_backdropPath != null && _backdropPath!.isNotEmpty) {
-          bgUrl = TmdbApi.getBackdropUrl(_backdropPath!);
-        } else if (posterPath.isNotEmpty) {
-          bgUrl = posterPath.startsWith('http')
-              ? posterPath
-              : TmdbApi.getImageUrl(posterPath);
-          bgIsPoster = true;
-        }
-
-        return LayoutBuilder(builder: (context, c) {
-          final w = c.maxWidth;
-          final isWide = w > 700;
-          // Scale height with width so wide screens don't crop the backdrop to a sliver.
-          // Backdrops are 16:9, so a ~3:1 card ratio still feels cinematic without
-          // chopping the visually interesting middle of the image away.
-          final cardHeight = (w / (isWide ? 3.4 : 2.6)).clamp(190.0, 320.0);
-
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {
-                  if (tmdbId == null) return;
-                  // If this is a trakt_import or has season/episode data,
-                  // route through the resume flow so we get source selection
-                  final method = item['method'] as String? ?? '';
-                  if (widget.onResume != null &&
-                      (method == 'trakt_import' || season != null)) {
-                    widget.onResume!(item);
-                    return;
-                  }
-                  final movie = Movie(
-                    id: tmdbId,
-                    title: title,
-                    posterPath: posterPath,
-                    backdropPath: _backdropPath ?? '',
-                    voteAverage: 0,
-                    releaseDate: '',
-                    overview: '',
-                    mediaType: mediaType,
-                    imdbId: item['imdbId'] as String?,
-                  );
-                  widget.onOpen(movie);
-                },
-                child: Container(
-                  height: cardHeight,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: AppTheme.bgCard,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                    boxShadow: AppTheme.isLightMode
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              blurRadius: 24,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (bgUrl.isNotEmpty) ...[
-                        // Blurred fill behind so portrait posters never look cropped to a sliver
-                        if (bgIsPoster)
-                          ImageFiltered(
-                            imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                            child: CachedNetworkImage(
-                              imageUrl: bgUrl,
-                              fit: BoxFit.cover,
-                              alignment: Alignment.center,
-                              placeholder: (_, _) => Container(color: AppTheme.bgCard),
-                              errorWidget: (_, _, _) => Container(color: AppTheme.bgCard),
-                            ),
-                          ),
-                        // Foreground image — centered, contain for portrait so we see the
-                        // whole poster; cover for landscape so the card fills edge-to-edge.
-                        CachedNetworkImage(
-                          imageUrl: bgUrl,
-                          fit: bgIsPoster ? BoxFit.contain : BoxFit.cover,
-                          alignment: bgIsPoster
-                              ? Alignment.centerRight
-                              : const Alignment(0, -0.1),
-                          placeholder: (_, _) => Container(color: AppTheme.bgCard),
-                          errorWidget: (_, _, _) => Container(color: AppTheme.bgCard),
-                        ),
-                      ],
-                      // Left-to-right gradient for text legibility — lighter on the right
-                      // so more of the backdrop image stays visible.
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.78),
-                              Colors.black.withValues(alpha: 0.35),
-                              Colors.transparent,
-                            ],
-                            stops: const [0.0, 0.5, 0.95],
-                          ),
-                        ),
-                      ),
-                      // Bottom gradient for the progress bar zone
-                      Positioned(
-                        left: 0, right: 0, bottom: 0,
-                        height: 80,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.7),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Content
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Tag
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withValues(alpha: 0.22),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.4)),
-                              ),
-                              child: const Text(
-                                'CONTINUE WATCHING',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            ConstrainedBox(
-                              constraints: BoxConstraints(maxWidth: w * 0.7),
-                              child: Text(
-                                title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: isWide ? 26 : 21,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.05,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.65),
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const Spacer(),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.play_arrow_rounded, color: Colors.black, size: 22),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Resume',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                if (remainingText.isNotEmpty)
-                                  Text(
-                                    remainingText,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.75),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            // Progress bar
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(3),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                minHeight: 4,
-                                backgroundColor: Colors.white.withValues(alpha: 0.18),
-                                valueColor: const AlwaysStoppedAnimation(AppTheme.primaryColor),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        });
-      },
-    );
+    return inner;
   }
 }
 

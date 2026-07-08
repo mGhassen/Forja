@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shell/shell_body.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class ShellScaffold extends StatelessWidget {
@@ -15,6 +16,7 @@ class ShellScaffold extends StatelessWidget {
     required this.onDestinationSelected,
     required this.tabFor,
     this.shellHeader,
+    this.shellTopBar,
     this.hideGlobalNav = false,
   });
 
@@ -26,30 +28,38 @@ class ShellScaffold extends StatelessWidget {
   final ValueChanged<int> onDestinationSelected;
   final Widget Function(String id) tabFor;
   final Widget? shellHeader;
+  final Widget? shellTopBar;
   final bool hideGlobalNav;
 
   @override
   Widget build(BuildContext context) {
+    final showRail = useNavRail && !hideGlobalNav;
+    final bodyInset = showRail ? ShellTokens.navRailWidth : 0.0;
+
     return Scaffold(
       body: Stack(
         children: [
           Container(decoration: AppTheme.effectiveBackground),
           Positioned.fill(
-            child: Column(
-              children: [
-                ?shellHeader,
-                Expanded(
-                  child: ShellBody(
-                    selectedIndex: selectedIndex,
-                    visibleIds: visibleIds,
-                    mountedTabIds: mountedTabIds,
-                    tabFor: tabFor,
+            child: Padding(
+              padding: EdgeInsets.only(left: bodyInset),
+              child: Column(
+                children: [
+                  if (shellTopBar != null) shellTopBar!,
+                  if (shellHeader != null) shellHeader!,
+                  Expanded(
+                    child: ShellBody(
+                      selectedIndex: selectedIndex,
+                      visibleIds: visibleIds,
+                      mountedTabIds: mountedTabIds,
+                      tabFor: tabFor,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          if (useNavRail && !hideGlobalNav)
+          if (showRail)
             Positioned(
               left: 0,
               top: 0,

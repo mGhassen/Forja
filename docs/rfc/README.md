@@ -45,7 +45,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [021-[draft]-…](021-[draft]-release-ship-hygiene.md) | Release ship hygiene | v1.0 | draft | 0/8 | — |
 | [022-[draft]-…](022-[draft]-lan-server-client.md) | LAN server/client | post-v1.2 | draft | 3/7 · 0/12 | v2+ |
 | [023-[fixed]-…](fixed/023-[fixed]-app-shell-redesign.md) | App shell redesign | v0.8.x | fixed | Complete · 5/5 · 18/18 | [0.8.1](../backlog/done/0.8.1-[done].md) |
-| [025-[open]-…](025-[open]-flat-cinematic-shell.md) | Flat cinematic shell & Home hero | v1.0.0 | open | 4/4 · 11/12 · 3 ⏭️ | [1.0.0](../backlog/1.0.0-[open].md) |
+| [025-[open]-…](025-[open]-flat-cinematic-shell.md) | Flat cinematic shell & Home hero | v1.0.0 | open | 4/4 · 21/22 · 3 ⏭️ | [1.0.0](../backlog/1.0.0-[open].md) |
 
 ## Related
 
