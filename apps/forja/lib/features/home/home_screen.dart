@@ -31,9 +31,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with AutomaticKeepAliveClientMixin, ShellTabRefresh<HomeScreen> {
+  static const int _heroLoopLength = 10000;
+  static const int _heroLoopStart = 5000;
+
   final TmdbApi _api = TmdbApi();
   final StremioService _stremio = StremioService();
-  final PageController _heroController = PageController();
+  final PageController _heroController =
+      PageController(initialPage: _heroLoopStart);
   
   late Future<List<Movie>> _trendingFuture;
   late Future<List<Movie>> _popularFuture;
@@ -396,30 +400,91 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _startHeroTimer() {
-    if (AppTheme.isLightMode) return; // skip periodic rebuilds in light mode
+    if (AppTheme.isLightMode) return;
     _heroTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
-      if (_heroController.hasClients) {
-        final next = (_heroIndex + 1) % 5;
-        _heroController.animateToPage(
-          next,
-          duration: const Duration(milliseconds: 1000),
-          curve: Curves.easeInOutCubic,
-        );
-        setState(() => _heroIndex = next);
-        _onHeroChanged(next);
-      }
+      if (!_heroController.hasClients) return;
+      _heroController.nextPage(
+        duration: const Duration(milliseconds: 1000),
+        curve: Curves.easeInOutCubic,
+      );
     });
   }
 
-  void _onHeroChanged(int index) {
-    // Extract ambient color for the new hero
-    _trendingFuture.then((movies) {
-      if (!mounted) return;
-      final list = movies.take(5).toList();
-      if (index >= 0 && index < list.length) {
-        _extractAmbientFor(list[index]);
-      }
-    }).catchError((_) {});
+  void _onHeroPageChanged(int pageIndex, List<Movie> movies) {
+    if (movies.isEmpty) return;
+    final count = movies.length;
+    final realIndex = pageIndex % count;
+    if (_heroIndex != realIndex) {
+      setState(() => _heroIndex = realIndex);
+    }
+    _extractAmbientFor(movies[realIndex]);
+
+    if (pageIndex <= 2 || pageIndex >= _heroLoopLength - 3) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_heroController.hasClients) return;
+        _heroController.jumpToPage(_heroLoopStart + realIndex);
+      });
+    }
+  }
+
+  void _goToHeroStep(int stepIndex, List<Movie> movies) {
+    if (!_heroController.hasClients || movies.isEmpty) return;
+    final count = movies.length;
+    final currentPage = _heroController.page?.round() ?? _heroLoopStart;
+    final currentReal = currentPage % count;
+    if (currentReal == stepIndex) return;
+
+    var delta = stepIndex - currentReal;
+    if (delta > count ~/ 2) {
+      delta -= count;
+    } else if (delta < -count ~/ 2) {
+      delta += count;
+    }
+
+    _heroController.animateToPage(
+      currentPage + delta,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Widget _buildHeroStepIndicators(
+    List<Movie> movies, {
+    Axis axis = Axis.vertical,
+  }) {
+    final dots = List.generate(movies.length, (i) {
+      final selected = i == _heroIndex;
+      final isVertical = axis == Axis.vertical;
+      return MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => _goToHeroStep(i, movies),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: isVertical
+                ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                : const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutCubic,
+              width: isVertical ? (selected ? 8.0 : 6.0) : (selected ? 28.0 : 8.0),
+              height: isVertical ? (selected ? 24.0 : 6.0) : 3.0,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(isVertical ? 4 : 2),
+                color: selected
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.25),
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+
+    if (axis == Axis.vertical) {
+      return Column(mainAxisSize: MainAxisSize.min, children: dots);
+    }
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: dots);
   }
 
   Future<List<Movie>> _loadMoodMovies(String moodId) async {
@@ -906,6 +971,9 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+
     final content = RefreshIndicator(
           onRefresh: () => refreshIfStale(force: true),
           color: AppTheme.primaryColor,
@@ -915,25 +983,36 @@ class _HomeScreenState extends State<HomeScreen>
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
-              // Hero
+              // Hero (+ continue watching overlap on desktop)
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: FutureBuilder<List<Movie>>(
                     future: _trendingFuture,
                     builder: (context, snapshot) {
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return _buildHeroShimmer();
+                        return isDesktop
+                            ? _buildDesktopHeroShimmer()
+                            : _buildHeroShimmer();
                       }
-                      return _buildHeroCarousel(snapshot.data!.take(5).toList());
+                      final movies = snapshot.data!.take(5).toList();
+                      if (isDesktop) {
+                        return _buildDesktopHeroBlock(
+                          movies,
+                          belowHero: const RepaintBoundary(
+                            child: _ContinueWatchingSection(),
+                          ),
+                        );
+                      }
+                      return _buildHeroCarousel(movies);
                     },
                   ),
                 ),
               ),
 
-              // Stats strip — derived from local watch history
-              const SliverToBoxAdapter(child: RepaintBoundary(child: _StatsStrip())),
-
-              const SliverToBoxAdapter(child: RepaintBoundary(child: _ContinueWatchingSection())),
+              if (!isDesktop)
+                const SliverToBoxAdapter(
+                  child: RepaintBoundary(child: _ContinueWatchingSection()),
+                ),
 
               // Mosaic Spotlight — Trending Now reimagined as 1 big + 4 small
               SliverToBoxAdapter(
@@ -1063,161 +1142,187 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDesktopHeroCarousel(List<Movie> movies) {
-    final heroMovie = movies[_heroIndex];
-    final height = math.max(
+  double _desktopHeroBackdropHeight(BuildContext context) {
+    return math.max(
       ShellTokens.heroMinHeightDesktop,
       MediaQuery.sizeOf(context).height * 0.55,
     );
+  }
 
-    return SizedBox(
-      height: height,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          PageView.builder(
-            controller: _heroController,
-            itemCount: movies.length,
-            onPageChanged: (i) {
-              setState(() => _heroIndex = i);
-              _extractAmbientFor(movies[i]);
-            },
-            itemBuilder: (context, index) {
-              final movie = movies[index];
-              return CachedNetworkImage(
-                imageUrl: movie.backdropPath.isNotEmpty
-                    ? TmdbApi.getBackdropUrl(movie.backdropPath)
-                    : TmdbApi.getImageUrl(movie.posterPath),
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
-                placeholder: (c, u) => Container(color: AppTheme.bgCard),
-              );
-            },
-          ),
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      AppTheme.bgDark,
-                      AppTheme.bgDark.withValues(alpha: 0.92),
-                      AppTheme.bgDark.withValues(alpha: 0.55),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.22, 0.42, 0.62],
-                  ),
-                ),
+  Widget _buildDesktopHeroShimmer() {
+    final backdropHeight = _desktopHeroBackdropHeight(context);
+    const overlap = ShellTokens.heroBackdropOverlapDesktop;
+    final placeholder = Container(
+      height: backdropHeight - overlap,
+      color: AppTheme.bgCard,
+    );
+    if (AppTheme.isLightMode) return placeholder;
+    return Shimmer.fromColors(
+      baseColor: AppTheme.bgCard,
+      highlightColor: const Color(0xFF1E1E2F),
+      child: placeholder,
+    );
+  }
+
+  Widget _buildDesktopHeroBlock(
+    List<Movie> movies, {
+    required Widget belowHero,
+  }) {
+    final heroMovie = movies[_heroIndex];
+    final backdropHeight = _desktopHeroBackdropHeight(context);
+    const overlap = ShellTokens.heroBackdropOverlapDesktop;
+    final topBarBleed = ShellTokens.shellTopBarHeight;
+    final imageHeight = backdropHeight + topBarBleed;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: backdropHeight - overlap,
+          width: double.infinity,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                top: -topBarBleed,
+                left: 0,
+                right: 0,
+                height: imageHeight,
+                child: _buildDesktopHeroBackdrop(movies),
               ),
-            ),
-          ),
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 48, 24),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: SizedBox(
-                  width: math.min(
-                    MediaQuery.sizeOf(context).width * 0.34,
-                    480,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildHeroTitleBlock(heroMovie, isLandscape: false),
-                      _buildHeroMetaRow(heroMovie),
-                      if (heroMovie.overview.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 20),
-                          child: Text(
-                            heroMovie.overview,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 13.5,
-                              height: 1.5,
-                              letterSpacing: 0.1,
+              Positioned(
+                left: 20,
+                top: topBarBleed + 24,
+                right: 48,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: math.min(
+                      MediaQuery.sizeOf(context).width * 0.34,
+                      480,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildHeroTitleBlock(heroMovie, isLandscape: false),
+                        _buildHeroMetaRow(heroMovie),
+                        if (heroMovie.overview.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            child: Text(
+                              heroMovie.overview,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.55),
+                                fontSize: 13.5,
+                                height: 1.5,
+                                letterSpacing: 0.1,
+                              ),
                             ),
                           ),
-                        ),
-                      _buildHeroActionRow(heroMovie, flat: true),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 20,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(
-                  movies.length,
-                  (i) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOutCubic,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    width: i == _heroIndex ? 8 : 6,
-                    height: i == _heroIndex ? 24 : 6,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      color: i == _heroIndex
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.25),
+                        _buildHeroActionRow(heroMovie, flat: true),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ),
+              Positioned(
+                right: 20,
+                top: -topBarBleed,
+                height: imageHeight,
+                child: Center(
+                  child: _buildHeroStepIndicators(movies),
+                ),
+              ),
+            ],
           ),
-          Positioned(
-            left: 8,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: () {
-                  if (_heroController.hasClients && _heroIndex > 0) {
-                    _heroController.animateToPage(
-                      _heroIndex - 1,
-                      duration: const Duration(milliseconds: 600),
-                      curve: Curves.easeOutCubic,
-                    );
-                  }
-                },
-                child: _buildFlatArrow(icon: Icons.arrow_back_ios_new_rounded),
+        ),
+        belowHero,
+      ],
+    );
+  }
+
+  Widget _buildDesktopHeroBackdrop(List<Movie> movies) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          controller: _heroController,
+          itemCount: _heroLoopLength,
+          onPageChanged: (i) => _onHeroPageChanged(i, movies),
+          itemBuilder: (context, index) {
+            final movie = movies[index % movies.length];
+            return CachedNetworkImage(
+              imageUrl: movie.backdropPath.isNotEmpty
+                  ? TmdbApi.getBackdropUrl(movie.backdropPath)
+                  : TmdbApi.getImageUrl(movie.posterPath),
+              fit: BoxFit.cover,
+              alignment: Alignment.centerRight,
+              placeholder: (c, u) => Container(color: AppTheme.bgCard),
+            );
+          },
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppTheme.bgDark.withValues(alpha: 0.72),
+                    AppTheme.bgDark.withValues(alpha: 0.25),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.12, 0.28],
+                ),
               ),
             ),
           ),
-          Positioned(
-            right: 48,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: () {
-                  if (_heroController.hasClients &&
-                      _heroIndex < movies.length - 1) {
-                    _heroController.animateToPage(
-                      _heroIndex + 1,
-                      duration: const Duration(milliseconds: 600),
-                      curve: Curves.easeOutCubic,
-                    );
-                  }
-                },
-                child: _buildFlatArrow(icon: Icons.arrow_forward_ios_rounded),
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    AppTheme.bgDark,
+                    AppTheme.bgDark.withValues(alpha: 0.92),
+                    AppTheme.bgDark.withValues(alpha: 0.55),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.22, 0.42, 0.62],
+                ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    AppTheme.bgDark.withValues(alpha: 0.45),
+                    AppTheme.bgDark.withValues(alpha: 0.88),
+                    AppTheme.bgDark,
+                  ],
+                  stops: const [0.0, 0.45, 0.72, 0.88, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1429,23 +1534,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildFlatArrow({required IconData icon}) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Icon(icon, color: Colors.white.withValues(alpha: 0.7), size: 18),
-    );
-  }
-
   Widget _buildHeroCarousel(List<Movie> movies) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    if (isDesktop) return _buildDesktopHeroCarousel(movies);
-
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final height = isLandscape ? MediaQuery.of(context).size.height * 0.65 : MediaQuery.of(context).size.height * 0.82;
     final heroMovie = movies[_heroIndex];
@@ -1457,13 +1546,10 @@ class _HomeScreenState extends State<HomeScreen>
           // Background image with parallax-like crossfade
           PageView.builder(
             controller: _heroController,
-            itemCount: movies.length,
-            onPageChanged: (i) {
-              setState(() => _heroIndex = i);
-              _extractAmbientFor(movies[i]);
-            },
+            itemCount: _heroLoopLength,
+            onPageChanged: (i) => _onHeroPageChanged(i, movies),
             itemBuilder: (context, index) {
-              final movie = movies[index];
+              final movie = movies[index % movies.length];
               return Stack(
                 fit: StackFit.expand,
                 children: [
@@ -1713,66 +1799,8 @@ class _HomeScreenState extends State<HomeScreen>
                     ],
                   ),
                   const SizedBox(height: 24),
-                  // Page indicator — thin cinematic bar style
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(movies.length, (i) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeOutCubic,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      height: 3,
-                      width: i == _heroIndex ? 28 : 8,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        color: i == _heroIndex ? Colors.white : Colors.white.withValues(alpha: 0.2),
-                        boxShadow: (i == _heroIndex && !AppTheme.isLightMode) ? [BoxShadow(color: Colors.white.withValues(alpha: 0.3), blurRadius: 8)] : null,
-                      ),
-                    )),
-                  ),
+                  _buildHeroStepIndicators(movies, axis: Axis.horizontal),
                 ],
-              ),
-            ),
-          ),
-          // Hero navigation arrows — frosted glass
-          Positioned(
-            left: 8,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: () {
-                  if (_heroController.hasClients && _heroIndex > 0) {
-                    _heroController.animateToPage(
-                      _heroIndex - 1,
-                      duration: const Duration(milliseconds: 600),
-                      curve: Curves.easeOutCubic,
-                    );
-                  }
-                },
-                child: _buildFrostedArrow(
-                  icon: Icons.arrow_back_ios_new_rounded,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 8,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: () {
-                  if (_heroController.hasClients && _heroIndex < movies.length - 1) {
-                    _heroController.animateToPage(
-                      _heroIndex + 1,
-                      duration: const Duration(milliseconds: 600),
-                      curve: Curves.easeOutCubic,
-                    );
-                  }
-                },
-                child: _buildFrostedArrow(
-                  icon: Icons.arrow_forward_ios_rounded,
-                ),
               ),
             ),
           ),
@@ -1836,26 +1864,6 @@ class _HomeScreenState extends State<HomeScreen>
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: inner,
-      ),
-    );
-  }
-
-  Widget _buildFrostedArrow({required IconData icon}) {
-    final inner = Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: AppTheme.isLightMode ? 0.45 : 0.25),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Icon(icon, color: Colors.white.withValues(alpha: 0.7), size: 18),
-    );
-    if (AppTheme.isLightMode) return inner;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: inner,
       ),
     );
@@ -3543,192 +3551,6 @@ class _MyListButton extends StatelessWidget {
         );
       },
     );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  STATS STRIP — animated counters from local watch history
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _StatsStrip extends StatelessWidget {
-  const _StatsStrip();
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: MyListService.changeNotifier,
-      builder: (context, _, _) {
-        return StreamBuilder<List<Map<String, dynamic>>>(
-          stream: WatchHistoryService().historyStream,
-          initialData: WatchHistoryService().current,
-          builder: (context, snapshot) {
-            final history = snapshot.data ?? const <Map<String, dynamic>>[];
-            final myListCount = MyListService().items.length;
-            if (history.isEmpty && myListCount == 0) return const SizedBox.shrink();
-
-            // Compute stats
-            final now = DateTime.now();
-            int inProgress = 0;
-            Duration remaining = Duration.zero;
-            final activeDays = <String>{};
-
-            for (final item in history) {
-              final pos = (item['position'] as int?) ?? 0;
-              final dur = (item['duration'] as int?) ?? 0;
-              if (dur > 0) {
-                final progress = pos / dur;
-                if (progress > 0.02 && progress < 0.9) {
-                  inProgress++;
-                  // Sum the time still left to watch on in-progress items.
-                  remaining += Duration(milliseconds: dur - pos);
-                }
-              }
-              final tsRaw = item['updatedAt'];
-              if (tsRaw is int) {
-                final dt = DateTime.fromMillisecondsSinceEpoch(tsRaw);
-                activeDays.add('${dt.year}-${dt.month}-${dt.day}');
-              }
-            }
-
-            // Streak: consecutive days back from today with at least one play
-            int streak = 0;
-            for (var i = 0; i < 60; i++) {
-              final d = now.subtract(Duration(days: i));
-              final key = '${d.year}-${d.month}-${d.day}';
-              if (activeDays.contains(key)) {
-                streak++;
-              } else if (i > 0) {
-                break;
-              }
-            }
-
-            final hours = remaining.inMinutes / 60.0;
-            final hoursLabel = hours >= 10
-                ? hours.toStringAsFixed(0)
-                : hours.toStringAsFixed(1);
-
-            final tiles = <_StatTileData>[
-              _StatTileData(
-                icon: Icons.bookmark_rounded,
-                label: 'My List',
-                value: '$myListCount',
-                tint: AppTheme.primaryColor,
-              ),
-              _StatTileData(
-                icon: Icons.play_circle_outline_rounded,
-                label: 'In progress',
-                value: '$inProgress',
-                tint: const Color(0xFF60A5FA),
-              ),
-              _StatTileData(
-                icon: Icons.timer_outlined,
-                label: 'Hours left',
-                value: hoursLabel,
-                tint: const Color(0xFF34D399),
-              ),
-              _StatTileData(
-                icon: Icons.local_fire_department_rounded,
-                label: 'Day streak',
-                value: '$streak',
-                tint: const Color(0xFFF97316),
-              ),
-            ];
-
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 4),
-              child: SizedBox(
-                height: 96,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: tiles.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 12),
-                  itemBuilder: (context, i) => _StatTile(data: tiles[i]),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _StatTileData {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color tint;
-  _StatTileData({required this.icon, required this.label, required this.value, required this.tint});
-}
-
-class _StatTile extends StatelessWidget {
-  final _StatTileData data;
-  const _StatTile({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final inner = Container(
-      width: 168,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: ForjaShellColors.surfaceElevated,
-        border: Border.all(color: ForjaShellColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: data.tint.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(data.icon, size: 14, color: data.tint),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  data.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: ForjaShellColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: double.tryParse(data.value) ?? 0),
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeOutCubic,
-            builder: (context, v, _) {
-              final isInt = !data.value.contains('.');
-              final shown = isInt ? v.round().toString() : v.toStringAsFixed(1);
-              return Text(
-                shown,
-                style: TextStyle(
-                  color: ForjaShellColors.textPrimary,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1,
-                  height: 1.0,
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-    return inner;
   }
 }
 

@@ -45,7 +45,6 @@ class ShellScaffold extends StatelessWidget {
               padding: EdgeInsets.only(left: bodyInset),
               child: Column(
                 children: [
-                  if (shellTopBar != null) shellTopBar!,
                   if (shellHeader != null) shellHeader!,
                   Expanded(
                     child: ShellBody(
@@ -59,6 +58,13 @@ class ShellScaffold extends StatelessWidget {
               ),
             ),
           ),
+          if (shellTopBar != null)
+            Positioned(
+              top: 0,
+              left: bodyInset,
+              right: 0,
+              child: shellTopBar!,
+            ),
           if (showRail)
             Positioned(
               left: 0,

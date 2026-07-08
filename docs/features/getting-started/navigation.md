@@ -20,8 +20,8 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 
 ## Desktop shell layout
 
-- **Top bar (Home only):** large logo + Films / TV Shows / Anime (Films underlined by default)
-- **Left rail:** fixed width; profile placeholder (top), your configured tabs (center), Settings (bottom); muted grey icons
+- **Top bar (Home only):** Films / TV Shows / Anime category tabs (Films underlined by default)
+- **Left rail:** Forja logo (top), your configured tabs (center), Settings (bottom); muted grey icons
 - **Body:** flat `bgDark` — no ambient glow blobs or edge vignettes; Home hero uses text-only Watch Now plus bare info and add-to-list icons
 
 ## Available tabs

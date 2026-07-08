@@ -8,7 +8,7 @@ abstract final class ShellTokens {
   static const double bottomNavFadeWidth = 40;
 
   /// Fixed desktop nav rail width (no hover expand).
-  static const double navRailWidth = 88;
+  static const double navRailWidth = 120;
   static const double navRailIconSize = 30;
   static const double navRailItemSpacing = 16;
 
@@ -17,8 +17,7 @@ abstract final class ShellTokens {
   static const double shellNavUnderlineHeight = 3;
   static const double shellTopBarHeight = 68;
   static const double shellLogoWidth = 110;
-
-  static const double navRailProfileSize = 36;
+  static const double navRailLogoWidth = 80;
 
   /// Music desktop sidebar width — global rail hidden when Music tab uses this.
   static const double musicDesktopSidebarWidth = 260;
@@ -27,6 +26,7 @@ abstract final class ShellTokens {
   static const double heroImageWidthFraction = 2 / 3;
   static const double heroTextWidthFraction = 1 / 3;
   static const double heroMinHeightDesktop = 480;
+  static const double heroBackdropOverlapDesktop = 160;
 
   static const double bodyHorizontalPadding = 20;
   static const double bodyMaxWidthDesktop = 1600;

@@ -39,7 +39,7 @@ class ShellNavRail extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 16),
-            const _ProfilePlaceholder(),
+            const _RailLogo(),
             const SizedBox(height: 20),
             Expanded(
               child: Column(
@@ -71,22 +71,20 @@ class ShellNavRail extends StatelessWidget {
   }
 }
 
-class _ProfilePlaceholder extends StatelessWidget {
-  const _ProfilePlaceholder();
+class _RailLogo extends StatelessWidget {
+  const _RailLogo();
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: ShellTokens.navRailWidth,
       child: Center(
-        child: CircleAvatar(
-          radius: ShellTokens.navRailProfileSize / 2,
-          backgroundColor: ForjaShellColors.surfaceElevated,
-          child: Icon(
-            Icons.person_outline,
-            size: 22,
-            color: ForjaShellColors.iconMuted,
-          ),
+        child: Image.asset(
+          AppTheme.isLightMode
+              ? 'assets/icon/logo-light.png'
+              : 'assets/icon/logo-dark.png',
+          width: ShellTokens.navRailLogoWidth,
+          fit: BoxFit.contain,
         ),
       ),
     );

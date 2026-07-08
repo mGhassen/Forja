@@ -18,14 +18,6 @@ class ShellTopBar extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset(
-              AppTheme.isLightMode
-                  ? 'assets/icon/logo-light.png'
-                  : 'assets/icon/logo-dark.png',
-              width: ShellTokens.shellLogoWidth,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(width: 40),
             ...List.generate(_categories.length, (index) {
               final label = _categories[index];
               final isActive = index == 0;
