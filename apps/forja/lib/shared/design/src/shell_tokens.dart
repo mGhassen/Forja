@@ -9,7 +9,15 @@ abstract final class ShellTokens {
 
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
+
+  /// Below this window width the nav rail collapses to a menu button + drawer.
+  static const double shellNavCompactMaxWidth = 1000;
+
+  /// Width reserved for the shell menu button when the rail is collapsed.
+  static const double shellNavMenuButtonWidth = 56;
   static const double navRailIconSize = 30;
+  /// Immediate hover grow for rail icons (and compact ☰).
+  static const double navRailIconHoverScale = 1.15;
   static const double navRailIconRevealedScale = 0.78;
   static const double navRailIconSlideUp = 10;
   static const double navRailIconLabelGap = 3;
@@ -19,12 +27,6 @@ abstract final class ShellTokens {
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
   static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
   static const Duration navRailLabelRevealAnimation = Duration(milliseconds: 520);
-
-  /// Y-offset for the typewriter label once the icon has slid/shrunk.
-  static double get navRailLabelYOffset =>
-      -navRailIconSlideUp +
-      navRailIconSize * (navRailIconRevealedScale - 1) +
-      navRailIconLabelGap;
 
   static const double shellButtonHeight = 40;
   static const double shellButtonRadius = 6;
@@ -76,18 +78,6 @@ abstract final class ShellTokens {
   /// Minimum Home body width for the full cinematic hero; narrower uses compact hero.
   static const double heroDesktopMinBodyWidth = 1000;
 
-  /// Home body width below which Films / TV / Categories collapse to a menu button.
-  static const double homeTopBarCompactBodyWidth = 720;
-
-  static const double homeTopBarCompactHeight =
-      shellHeaderTopPadding + shellButtonHeight;
-
-  static double homeTopBarHeightForBodyWidth(double bodyWidth) {
-    return bodyWidth < homeTopBarCompactBodyWidth
-        ? homeTopBarCompactHeight
-        : homeTopBarHeight;
-  }
-
   static const double heroHeightFractionCompact = 0.50;
   static const double heroMinHeightCompact = 280;
   static const double heroLogoMaxHeightCompact = 72;
@@ -134,9 +124,8 @@ abstract final class ShellTokens {
 
   static const double heroTextColumnWidthDesktop = 480;
 
-  /// Top inset for hero text: clears home top bar plus breathing room.
-  static double heroTextTopInsetForBodyWidth(double bodyWidth) =>
-      homeTopBarHeightForBodyWidth(bodyWidth) + 16;
+  /// Top inset for hero text: clears [homeTopBarHeight] plus breathing room.
+  static double get heroTextColumnTopInsetDesktop => homeTopBarHeight + 16;
   /// Vertical align for hero text within the hero band (-1 top … 1 bottom).
   static const double heroTextColumnVerticalAlign = -0.82;
   static const double heroTitleSlotHeightDesktop = 196;
@@ -176,6 +165,8 @@ abstract final class ShellTokens {
 
   /// Netflix-style search: input column on desktop.
   static const double searchPageInset = 32;
+  /// Top inset for desktop search — aligns with Home hero text clearance.
+  static double get searchPageTopInset => homeTopBarHeight + 24;
   static const double searchColumnGap = 32;
   static const double searchLeftColumnWidth = 420;
   static const double searchLeftColumnPadding = 16;

@@ -34,6 +34,10 @@ Future<void> _pumpMainScreen(
 
 Future<void> _tapNavId(WidgetTester tester, String navId) async {
   final dest = navDestinations[navId]!;
+  if (dest.iconAsset != null) {
+    await tester.tap(find.text(dest.label).first);
+    return;
+  }
   final icons = find.byIcon(dest.icon);
   if (icons.evaluate().isNotEmpty) {
     await tester.tap(icons.first);

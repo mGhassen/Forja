@@ -66,8 +66,9 @@ class ShellBottomNav extends StatelessWidget {
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(ShellTokens.navSelectionBorderRadius),
                           ),
-                          child: Icon(
-                            isSelected ? dest.activeIcon : dest.icon,
+                          child: NavDestinationIcon(
+                            destination: dest,
+                            selected: isSelected,
                             color: isSelected ? selectedColor : unselectedColor,
                           ),
                         ),

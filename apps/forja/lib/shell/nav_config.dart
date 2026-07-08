@@ -26,12 +26,51 @@ class NavDestination {
     required this.icon,
     required this.activeIcon,
     required this.label,
+    this.iconAsset,
   });
 
   final String id;
   final IconData icon;
   final IconData activeIcon;
   final String label;
+  final String? iconAsset;
+}
+
+class NavDestinationIcon extends StatelessWidget {
+  const NavDestinationIcon({
+    super.key,
+    required this.destination,
+    required this.selected,
+    required this.color,
+    this.size = 24,
+  });
+
+  final NavDestination destination;
+  final bool selected;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = destination.iconAsset;
+    if (asset != null) {
+      return ColorFiltered(
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+        child: Image.asset(
+          asset,
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+        ),
+      );
+    }
+    return Icon(
+      selected ? destination.activeIcon : destination.icon,
+      color: color,
+      size: size,
+    );
+  }
 }
 
 /// Single source of nav item metadata keyed by nav ID.
@@ -128,9 +167,10 @@ const Map<String, NavDestination> navDestinations = {
   ),
   'anime': NavDestination(
     id: 'anime',
-    icon: Icons.play_circle_outline,
-    activeIcon: Icons.play_circle_filled,
+    icon: Icons.animation_outlined,
+    activeIcon: Icons.animation,
     label: 'Anime',
+    iconAsset: 'assets/images/nav/anime.png',
   ),
   'anime_arabic': NavDestination(
     id: 'anime_arabic',
@@ -143,6 +183,7 @@ const Map<String, NavDestination> navDestinations = {
     icon: Icons.theater_comedy_outlined,
     activeIcon: Icons.theater_comedy,
     label: 'Asian Drama',
+    iconAsset: 'assets/images/nav/asian-drama.png',
   ),
   'arabic': NavDestination(
     id: 'arabic',

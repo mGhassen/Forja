@@ -46,9 +46,7 @@ bool _isFullCinematicHero(BuildContext context) {
 }
 
 double _heroTextTopInset(BuildContext context) {
-  return ShellTokens.heroTextTopInsetForBodyWidth(
-    MediaQuery.sizeOf(context).width,
-  );
+  return ShellTokens.heroTextColumnTopInsetDesktop;
 }
 
 SliverToBoxAdapter _homeRowSliver(
@@ -1728,7 +1726,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           Positioned(
-            left: 20,
+            left: ShellTokens.bodyHorizontalPadding,
             top: textTop,
             right: compact ? 20 : 48,
             bottom: 16,

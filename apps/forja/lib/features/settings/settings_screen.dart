@@ -1125,8 +1125,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ListTile(
-                leading: Icon(
-                  dest.activeIcon,
+                leading: NavDestinationIcon(
+                  destination: dest,
+                  selected: isVisible,
                   color: isVisible ? Colors.white : Colors.white24,
                   size: 22,
                 ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav_config.dart';
@@ -6,6 +7,51 @@ import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+/// Opens the shell nav drawer when the rail is collapsed on narrow windows.
+class ShellNavMenuButton extends StatefulWidget {
+  const ShellNavMenuButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  State<ShellNavMenuButton> createState() => _ShellNavMenuButtonState();
+}
+
+class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Center(
+            child: AnimatedScale(
+              scale: _hover ? ShellTokens.navRailIconHoverScale : 1.0,
+              duration: ShellTokens.navSelectionAnimation,
+              curve: Curves.easeOutCubic,
+              child: Icon(
+                Icons.menu_rounded,
+                color: _hover
+                    ? ForjaShellColors.iconHover
+                    : ForjaShellColors.iconMuted,
+                size: ShellTokens.navRailIconSize,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class ShellNavRail extends StatelessWidget {
   const ShellNavRail({
@@ -45,21 +91,33 @@ class ShellNavRail extends StatelessWidget {
             const _RailLogo(),
             const SizedBox(height: 20),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: _navIds.map((id) {
-                    final index = _indexForId(id)!;
-                    final dest = navDestinations[id]!;
-                    final selected = index == selectedIndex;
-                    return _ShellNavRailItem(
-                      destination: dest,
-                      selected: selected,
-                      onTap: () => onDestinationSelected(index),
-                    );
-                  }).toList(),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: math.max(
+                          0,
+                          constraints.maxHeight - 16,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: _navIds.map((id) {
+                          final index = _indexForId(id)!;
+                          final dest = navDestinations[id]!;
+                          final selected = index == selectedIndex;
+                          return _ShellNavRailItem(
+                            destination: dest,
+                            selected: selected,
+                            onTap: () => onDestinationSelected(index),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
             if (settingsIndex != null) ...[
@@ -192,53 +250,15 @@ class _ShellNavRailItem extends StatefulWidget {
   State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
 }
 
-class _ShellNavRailItemState extends State<_ShellNavRailItem>
-    with SingleTickerProviderStateMixin {
+class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   bool _hover = false;
   bool _pressed = false;
   bool _typing = false;
   Timer? _revealTimer;
-  late final AnimationController _revealController;
-  late final Animation<double> _iconSlide;
-  late final Animation<double> _iconScale;
-
-  @override
-  void initState() {
-    super.initState();
-    _revealController = AnimationController(
-      vsync: this,
-      duration: ShellTokens.navRailIconScaleAnimation,
-    );
-    final curve = CurvedAnimation(
-      parent: _revealController,
-      curve: Curves.easeOutCubic,
-    );
-    _iconSlide = Tween<double>(
-      begin: 0,
-      end: -ShellTokens.navRailIconSlideUp,
-    ).animate(curve);
-    _iconScale = Tween<double>(
-      begin: 1,
-      end: ShellTokens.navRailIconRevealedScale,
-    ).animate(curve);
-    _revealController.addStatusListener(_onRevealStatus);
-  }
-
-  void _onRevealStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed && _hover && mounted) {
-      setState(() => _typing = true);
-    }
-    if (status == AnimationStatus.dismissed && mounted) {
-      setState(() => _typing = false);
-    }
-  }
 
   @override
   void dispose() {
     _revealTimer?.cancel();
-    _revealController
-      ..removeStatusListener(_onRevealStatus)
-      ..dispose();
     super.dispose();
   }
 
@@ -250,13 +270,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem>
     _revealTimer?.cancel();
     _revealTimer = Timer(ShellTokens.navRailLabelRevealDelay, () {
       if (!mounted || !_hover) return;
-      _revealController.forward(from: 0);
+      setState(() => _typing = true);
     });
   }
 
   void _onHoverExit() {
     _revealTimer?.cancel();
-    _revealController.reverse();
     setState(() {
       _hover = false;
       _pressed = false;
@@ -264,7 +283,19 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem>
     });
   }
 
-  double get _pressedScale => _pressed ? 0.92 : 1.0;
+  double get _scale {
+    if (_pressed) return 0.92;
+    if (_hover) return ShellTokens.navRailIconHoverScale;
+    return 1.0;
+  }
+
+  /// Fixed footprint: icon + label slot + underline gap — never grows on reveal.
+  static double get _contentHeight =>
+      ShellTokens.navRailIconSize +
+      ShellTokens.navRailIconLabelGap +
+      ShellTokens.navRailLabelFontSize +
+      6 +
+      ShellTokens.shellNavUnderlineHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -291,6 +322,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem>
       ),
       child: SizedBox(
         width: ShellTokens.navRailWidth,
+        height: _contentHeight,
         child: Center(
           child: MouseRegion(
             onEnter: (_) => _onHoverEnter(),
@@ -302,56 +334,49 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem>
               onTapCancel: () => setState(() => _pressed = false),
               onTap: widget.onTap,
               behavior: HitTestBehavior.opaque,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedBuilder(
-                    animation: _revealController,
-                    builder: (context, child) {
-                      final scale = _hover || _revealController.isAnimating
-                          ? _iconScale.value * _pressedScale
-                          : _pressedScale;
-                      return Transform.translate(
-                        offset: Offset(0, _iconSlide.value),
-                        child: Transform.scale(
-                          scale: scale,
-                          alignment: Alignment.topCenter,
-                          child: child,
+              child: SizedBox(
+                width: ShellTokens.navRailWidth,
+                height: _contentHeight,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedScale(
+                      scale: _scale,
+                      duration: ShellTokens.navSelectionAnimation,
+                      curve: Curves.easeOutCubic,
+                      child: NavDestinationIcon(
+                        destination: widget.destination,
+                        selected: widget.selected,
+                        color: iconColor,
+                        size: ShellTokens.navRailIconSize,
+                      ),
+                    ),
+                    SizedBox(height: ShellTokens.navRailIconLabelGap),
+                    SizedBox(
+                      height: ShellTokens.navRailLabelFontSize,
+                      width: ShellTokens.navRailWidth,
+                      child: Center(
+                        child: _TypewriterLabel(
+                          text: widget.destination.label,
+                          active: _typing,
+                          style: labelStyle,
                         ),
-                      );
-                    },
-                    child: Icon(
-                      widget.selected
-                          ? widget.destination.activeIcon
-                          : widget.destination.icon,
-                      color: iconColor,
-                      size: ShellTokens.navRailIconSize,
+                      ),
                     ),
-                  ),
-                  Transform.translate(
-                    offset: Offset(
-                      0,
-                      _typing ? ShellTokens.navRailLabelYOffset : 0,
+                    const SizedBox(height: 6),
+                    AnimatedContainer(
+                      duration: ShellTokens.navSelectionAnimation,
+                      height: ShellTokens.shellNavUnderlineHeight,
+                      width: widget.selected ? 24 : 0,
+                      decoration: BoxDecoration(
+                        color: widget.selected
+                            ? ForjaShellColors.navUnderline
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                    child: _TypewriterLabel(
-                      text: widget.destination.label,
-                      active: _typing,
-                      style: labelStyle,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  AnimatedContainer(
-                    duration: ShellTokens.navSelectionAnimation,
-                    height: ShellTokens.shellNavUnderlineHeight,
-                    width: widget.selected ? 24 : 0,
-                    decoration: BoxDecoration(
-                      color: widget.selected
-                          ? ForjaShellColors.navUnderline
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

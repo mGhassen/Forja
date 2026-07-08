@@ -483,7 +483,12 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           ),
         ),
         Padding(
-          padding: const EdgeInsets.all(ShellTokens.searchPageInset),
+          padding: EdgeInsets.fromLTRB(
+            ShellTokens.searchPageInset,
+            ShellTokens.searchPageTopInset,
+            ShellTokens.searchPageInset,
+            ShellTokens.searchPageInset,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

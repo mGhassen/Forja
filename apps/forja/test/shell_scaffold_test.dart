@@ -156,6 +156,26 @@ void main() {
     expect(ShellBus.homeCategory.value, isNull);
   });
 
+  testWidgets('ShellScaffold collapses nav rail to left menu on home when narrow', (tester) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(shellTopBar: const HomeTopBar()),
+      size: const Size(800, 800),
+    );
+
+    expect(find.byType(ShellNavRail), findsNothing);
+    expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
+
+    final menuCenter = tester.getCenter(find.byIcon(Icons.menu_rounded));
+    expect(menuCenter.dx, lessThan(120));
+
+    await tester.tap(find.byIcon(Icons.menu_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ShellNavRail), findsOneWidget);
+    expect(find.byIcon(Icons.search), findsOneWidget);
+  });
+
   testWidgets('ShellNavRail uses fixed width without hover expand', (tester) async {
     await pumpScaffold(
       tester,
@@ -186,13 +206,20 @@ void main() {
     await gesture.moveTo(tester.getCenter(searchIcon));
     await tester.pump();
     await tester.pump(ShellTokens.navRailLabelRevealDelay);
-    await tester.pump(ShellTokens.navRailIconScaleAnimation);
     for (var i = 0; i < 12; i++) {
       await tester.pump(ShellTokens.navRailLabelLetterInterval);
     }
     await tester.pumpAndSettle();
 
     expect(find.text('Search'), findsOneWidget);
+
+    final searchItem = find.ancestor(
+      of: searchIcon,
+      matching: find.byWidgetPredicate(
+        (w) => w is SizedBox && w.height != null && w.width == ShellTokens.navRailWidth,
+      ),
+    );
+    expect(searchItem, findsWidgets);
   });
 
   testWidgets('ShellScaffold body is inset by fixed rail width', (tester) async {
