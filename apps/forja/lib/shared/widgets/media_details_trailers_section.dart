@@ -2,8 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 const _kTrailerCardWidth = 200.0;
 
@@ -11,9 +11,13 @@ class MediaDetailsTrailersSection extends StatelessWidget {
   const MediaDetailsTrailersSection({
     super.key,
     required this.trailers,
+    this.movie,
+    this.languageCode,
   });
 
   final List<MediaTrailer> trailers;
+  final Movie? movie;
+  final String? languageCode;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +34,11 @@ class MediaDetailsTrailersSection extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemCount: trailers.length,
             separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => _TrailerCard(trailer: trailers[index]),
+            itemBuilder: (context, index) => _TrailerCard(
+              trailer: trailers[index],
+              movie: movie,
+              languageCode: languageCode,
+            ),
           ),
         ),
       ],
@@ -39,19 +47,24 @@ class MediaDetailsTrailersSection extends StatelessWidget {
 }
 
 class _TrailerCard extends StatelessWidget {
-  const _TrailerCard({required this.trailer});
+  const _TrailerCard({
+    required this.trailer,
+    this.movie,
+    this.languageCode,
+  });
 
   final MediaTrailer trailer;
+  final Movie? movie;
+  final String? languageCode;
 
-  Future<void> _open(BuildContext context) async {
-    final uri = Uri.parse(trailer.youtubeUrl);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open trailer')),
-        );
-      }
-    }
+  void _open(BuildContext context) {
+    AppRouter.openTrailerPlayer(
+      context,
+      youtubeKey: trailer.key,
+      title: trailer.name,
+      movie: movie,
+      languageCode: languageCode,
+    );
   }
 
   @override

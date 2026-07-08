@@ -4,6 +4,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/player/trailer_player_screen.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 
 /// Central navigation for cross-feature routes (details, player).
@@ -81,6 +82,25 @@ class AppRouter {
       initialSeason: initialSeason,
       initialEpisode: initialEpisode,
       startPosition: startPosition,
+    );
+  }
+
+  static Future<T?> openTrailerPlayer<T>(
+    BuildContext context, {
+    required String youtubeKey,
+    required String title,
+    Movie? movie,
+    String? languageCode,
+  }) {
+    return Navigator.of(context, rootNavigator: true).push<T>(
+      slideRoute(
+        (_) => TrailerPlayerScreen(
+          youtubeKey: youtubeKey,
+          title: title,
+          movie: movie,
+          languageCode: languageCode,
+        ),
+      ),
     );
   }
 

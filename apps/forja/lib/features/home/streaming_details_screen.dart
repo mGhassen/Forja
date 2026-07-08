@@ -709,7 +709,11 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
                           const SizedBox(height: ShellTokens.detailsSectionSpacing),
                         ],
                         if (_mediaExtras != null && _mediaExtras!.trailers.isNotEmpty) ...[
-                          MediaDetailsTrailersSection(trailers: _mediaExtras!.trailers),
+                          MediaDetailsTrailersSection(
+                            trailers: _mediaExtras!.trailers,
+                            movie: _movie,
+                            languageCode: _mediaExtras!.originalLanguage,
+                          ),
                           const SizedBox(height: ShellTokens.detailsSectionSpacing),
                         ],
                         _buildSimilarContent(),

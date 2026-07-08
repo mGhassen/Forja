@@ -2108,7 +2108,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
                 if (_trailers.isNotEmpty) ...[
-                  MediaDetailsTrailersSection(trailers: _trailers),
+                  MediaDetailsTrailersSection(
+                    trailers: _trailers,
+                    movie: _movie,
+                    languageCode: _originalLanguage,
+                  ),
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
                 _buildRecommendationsSection(),
