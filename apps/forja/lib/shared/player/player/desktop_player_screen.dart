@@ -1450,20 +1450,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     await safeSet('interpolation', 'yes');
     await safeSet('tscale', 'oversample'); // lightweight interpolation
 
-    // ── Adaptive Streaming (HLS/DASH) ─────────────────────────────────────
-    // Always pick the highest bitrate variant in multi-quality playlists.
-    await safeSet('hls-bitrate', 'max');
-
     // ── Network / Streaming ───────────────────────────────────────────────
     await safeSet('network-timeout', '30');
     await safeSet('tls-verify', 'no'); // for self-signed / CDN certs
 
+    // Don't freeze on brief cache drain — keep decoding through HLS hiccups.
+    await safeSet('cache-pause', 'no');
+    await safeSet('cache-pause-initial', 'no');
+
     final isTorrent = widget.magnetLink != null;
     if (isTorrent) {
       // Torrent engine feeds bytes from disk as pieces complete — a small
-      // forward window is enough and keeps memory pressure low. We also
-      // disable cache-pause so playback keeps moving when the demuxer
-      // briefly drains while waiting on the next piece.
+      // forward window is enough and keeps memory pressure low.
       await safeSet('cache', 'yes');
       await safeSet('network-timeout', '15');
       await safeSet('force-seekable', 'yes');
@@ -1479,6 +1477,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
       // How far back the demuxer keeps decoded data (for backward seeks).
       await safeSet('demuxer-max-back-bytes', '50MiB');
+
+      // Let mpv adapt HLS bitrate to network conditions (not locked to max).
+      await safeSet('hls-bitrate', 'no');
     }
 
     // Prevent yt-dlp from being invoked (we supply our own URL).

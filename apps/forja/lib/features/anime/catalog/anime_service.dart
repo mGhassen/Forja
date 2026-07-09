@@ -805,9 +805,12 @@ class AnimeService {
         }
       }
     }
+    // Segment CDNs gate on the embed-page Referer (same as getSources), not
+    // just the host root. Playtorrio's WebView iframe path preserved this;
+    // direct API extraction must pass it through to mpv.
     return AnimeStreamResult(
       url: file,
-      referer: '$origin/',
+      referer: embedPageUrl,
       origin: origin,
       tracks: tracks,
     );

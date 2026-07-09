@@ -1505,20 +1505,17 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // audio sync gives smooth playback tied to the audio clock instead.
     await safeSet('video-sync', 'audio');
 
-    // ── Adaptive Streaming (HLS/DASH) ─────────────────────────────────────
-    // Always pick the highest bitrate variant in multi-quality playlists.
-    await safeSet('hls-bitrate', 'max');
-
     // ── Network / Cache ───────────────────────────────────────────────────
     await safeSet('network-timeout', '30');
     await safeSet('tls-verify', 'no');
 
+    await safeSet('cache-pause', 'no');
+    await safeSet('cache-pause-initial', 'no');
+
     final isTorrent = widget.magnetLink != null;
     if (isTorrent) {
       // Torrent engine feeds bytes from disk as pieces complete — a small
-      // forward window is enough and keeps memory pressure low. We also
-      // disable cache-pause so playback keeps moving when the demuxer
-      // briefly drains while waiting on the next piece.
+      // forward window is enough and keeps memory pressure low.
       await safeSet('cache', 'yes');
       await safeSet('network-timeout', '15');
       await safeSet('force-seekable', 'yes');
@@ -1533,6 +1530,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
       // 30 MiB back-buffer so backward seeks don't require a full rebuffer.
       await safeSet('demuxer-max-back-bytes', '30MiB');
+
+      await safeSet('hls-bitrate', 'no');
     }
 
     // We supply our own URL — no yt-dlp needed.

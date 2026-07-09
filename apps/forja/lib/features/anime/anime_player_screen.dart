@@ -275,7 +275,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final sources = <StreamSource>[];
     for (final h in hits) {
       final headers = Map<String, String>.from(h.media.headers)
-        ..putIfAbsent('Referer', () => '${h.embed.refererOrigin}/')
+        ..putIfAbsent('Referer', () => h.embed.url)
         ..putIfAbsent('Origin', () => h.embed.refererOrigin);
       sources.add(StreamSource(
         url: h.media.url,
