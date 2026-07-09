@@ -42,6 +42,7 @@ class KissKhStream {
 
 class KissKhExtractor {
   HeadlessInAppWebView? _web;
+  InAppWebViewController? _controller;
   Completer<_RawHit>? _videoCompleter;
   final List<Map<String, dynamic>> _subsBuffer = [];
   bool _cancelled = false;
@@ -86,9 +87,10 @@ class KissKhExtractor {
           javaScriptEnabled: true,
           domStorageEnabled: true,
           userAgent: _userAgent,
-          mediaPlaybackRequiresUserGesture: false,
+          mediaPlaybackRequiresUserGesture: true,
           allowsInlineMediaPlayback: true,
         ),
+        onWebViewCreated: (controller) => _controller = controller,
         onLoadStop: (_, _) {
           onProgress?.call('loaded', 'Waiting for stream key…');
         },
@@ -223,6 +225,15 @@ class KissKhExtractor {
   }
 
   Future<void> _cleanup() async {
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) {
+      try {
+        await controller.evaluateJavascript(source: _stopMediaScript);
+      } catch (e) {
+        debugPrint('[KissKhExtractor] stop media error: $e');
+      }
+    }
     final w = _web;
     _web = null;
     if (w != null) {
@@ -234,6 +245,18 @@ class KissKhExtractor {
     }
   }
 
+  static const _stopMediaScript = '''
+(function () {
+  document.querySelectorAll('video,audio').forEach(function (el) {
+    try {
+      el.pause();
+      el.removeAttribute('src');
+      el.load();
+    } catch (e) {}
+  });
+})();
+''';
+
   // ─── Build the in-page hook ─────────────────────────────────────
   String _interceptScript(int epId) {
     return '''
@@ -241,6 +264,23 @@ class KissKhExtractor {
   function log(msg) { console.log('KKH_LOG:' + msg); }
   function sendVideo(data) { console.log('KKH_VIDEO:' + JSON.stringify(data)); }
   function sendSubs(data)  { console.log('KKH_SUBS:'  + JSON.stringify(data)); }
+
+  function stopMedia(el) {
+    try { el.muted = true; el.pause(); } catch (e) {}
+  }
+  document.addEventListener('play', function (e) {
+    var t = e.target;
+    if (t && (t.tagName === 'VIDEO' || t.tagName === 'AUDIO')) stopMedia(t);
+  }, true);
+  new MutationObserver(function (mutations) {
+    mutations.forEach(function (m) {
+      m.addedNodes.forEach(function (node) {
+        if (!node || node.nodeType !== 1) return;
+        if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') stopMedia(node);
+        node.querySelectorAll && node.querySelectorAll('video,audio').forEach(stopMedia);
+      });
+    });
+  }).observe(document.documentElement, { childList: true, subtree: true });
 
   log('intercept ready for ep $epId');
 

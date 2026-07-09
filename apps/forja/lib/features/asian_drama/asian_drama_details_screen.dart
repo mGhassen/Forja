@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
-import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
@@ -103,15 +102,12 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
 
   void _play(KdramaEpisode ep, {Duration? startPosition}) {
     final det = _details!;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsianDramaPlayerScreen(
-          drama: det.toCard(),
-          episode: ep,
-          allEpisodes: det.episodes,
-          startPosition: startPosition,
-        ),
-      ),
+    openAsianDramaPlayer(
+      context,
+      drama: det.toCard(),
+      episode: ep,
+      allEpisodes: det.episodes,
+      startPosition: startPosition,
     ).then((_) => _refreshProgress());
   }
 
@@ -213,25 +209,23 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return BackNavigationScope(
-          child: Scaffold(
-            backgroundColor: AppTheme.bgDark,
-            body: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (_loading)
-                  Center(
-                    child: CircularProgressIndicator(
-                      color: ForjaShellColors.sectionAccent,
-                    ),
-                  )
-                else if (_error != null)
-                  _buildError()
-                else
-                  _buildScrollLayout(),
-                const MediaDetailsBackButton(),
-              ],
-            ),
+        return Scaffold(
+          backgroundColor: AppTheme.bgDark,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_loading)
+                Center(
+                  child: CircularProgressIndicator(
+                    color: ForjaShellColors.sectionAccent,
+                  ),
+                )
+              else if (_error != null)
+                _buildError()
+              else
+                _buildScrollLayout(),
+              const MediaDetailsBackButton(),
+            ],
           ),
         );
       },

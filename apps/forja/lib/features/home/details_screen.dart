@@ -25,7 +25,6 @@ import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
-import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
@@ -2707,22 +2706,19 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return BackNavigationScope(
-        child: Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
-              const MediaDetailsBackButton(),
-            ],
-          ),
+      return Scaffold(
+        backgroundColor: AppTheme.bgDark,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+            const MediaDetailsBackButton(),
+          ],
         ),
       );
     }
 
-    return BackNavigationScope(
-      child: Focus(
+    return Focus(
       focusNode: _keyboardFocusNode,
       autofocus: true,
       onKeyEvent: (node, event) {
@@ -2772,7 +2768,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           const MediaDetailsBackButton(),
         ]),
       ),
-    ),
     );
   }
 

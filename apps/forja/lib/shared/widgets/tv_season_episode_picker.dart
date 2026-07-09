@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
@@ -50,9 +51,25 @@ class TvSeasonEpisodePicker extends StatefulWidget {
 
 class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   bool _oldestFirst = true;
+  int _episodeChunk = 0;
   final ScrollController _episodeScrollController = ScrollController();
 
   static const double _episodeCardStride = _EpisodeCard.cardWidth + 16;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncEpisodeChunk());
+  }
+
+  void _syncEpisodeChunk() {
+    if (!mounted || widget.isLoadingSeason || _sortedEpisodes.isEmpty) return;
+    final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
+    if (chunk != _episodeChunk) {
+      setState(() => _episodeChunk = chunk);
+    }
+    _scrollToSelectedEpisode();
+  }
 
   @override
   void dispose() {
@@ -63,11 +80,50 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   @override
   void didUpdateWidget(covariant TvSeasonEpisodePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedSeason != widget.selectedSeason) {
+      _episodeChunk = _chunkIndexForEpisode(widget.selectedEpisode);
+    } else if (oldWidget.selectedEpisode != widget.selectedEpisode) {
+      final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
+      if (chunk != _episodeChunk) _episodeChunk = chunk;
+    }
     if (oldWidget.selectedEpisode != widget.selectedEpisode ||
         oldWidget.selectedSeason != widget.selectedSeason ||
-        oldWidget.isLoadingSeason != widget.isLoadingSeason) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedEpisode());
+        oldWidget.isLoadingSeason != widget.isLoadingSeason ||
+        oldWidget.customEpisodesBySeason != widget.customEpisodesBySeason ||
+        oldWidget.seasonData != widget.seasonData) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncEpisodeChunk());
     }
+  }
+
+  int _episodeNumberAt(dynamic ep) =>
+      (ep['episode_number'] ?? ep['episode']) as int;
+
+  List<int> get _episodeNumbers =>
+      _sortedEpisodes.map(_episodeNumberAt).toList();
+
+  List<EpisodeRange> get _episodeRanges =>
+      buildEpisodeRanges(_sortedEpisodes.length, episodeNumbers: _episodeNumbers);
+
+  List<dynamic> get _visibleEpisodes =>
+      sliceEpisodeChunk(_sortedEpisodes, _episodeChunk);
+
+  int _chunkIndexForEpisode(int episode) {
+    final index = _sortedEpisodes.indexWhere(
+      (ep) => _episodeNumberAt(ep) == episode,
+    );
+    return episodeChunkIndex(index);
+  }
+
+  void _selectChunk(int chunk) {
+    if (chunk == _episodeChunk) return;
+    setState(() => _episodeChunk = chunk);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_chunkIndexForEpisode(widget.selectedEpisode) == chunk) {
+        _scrollToSelectedEpisode();
+      } else if (_episodeScrollController.hasClients) {
+        _episodeScrollController.jumpTo(0);
+      }
+    });
   }
 
   List<dynamic> get _episodes {
@@ -101,10 +157,15 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
   void _scrollToSelectedEpisode() {
     if (!_episodeScrollController.hasClients) return;
-    final index = _sortedEpisodes.indexWhere((ep) {
-      final epNum = (ep['episode_number'] ?? ep['episode']) as int;
-      return epNum == widget.selectedEpisode;
-    });
+    final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
+    if (chunk != _episodeChunk) {
+      setState(() => _episodeChunk = chunk);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedEpisode());
+      return;
+    }
+    final index = _visibleEpisodes.indexWhere(
+      (ep) => _episodeNumberAt(ep) == widget.selectedEpisode,
+    );
     if (index < 0) return;
     final target = (index * _episodeCardStride)
         .clamp(0.0, _episodeScrollController.position.maxScrollExtent);
@@ -117,6 +178,13 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
   bool _absorbHorizontalScroll(ScrollNotification notification) {
     return notification.metrics.axis == Axis.horizontal;
+  }
+
+  String? _resolveThumbnail(dynamic thumb, String fallback) {
+    final value = thumb?.toString().trim();
+    if (value != null && value.isNotEmpty && value != 'null') return value;
+    final fb = fallback.trim();
+    return fb.isNotEmpty ? fb : null;
   }
 
   @override
@@ -153,11 +221,25 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                 ],
               ),
             ),
+            if (_episodeRanges.length > 1) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: EpisodeRangeBar(
+                  ranges: _episodeRanges,
+                  selectedIndex: _episodeChunk,
+                  onSelected: _selectChunk,
+                  compact: true,
+                ),
+              ),
+            ],
             const SizedBox(width: 10),
             _SeasonPill(
               seasonCount: widget.seasonCount,
               selectedSeason: widget.selectedSeason,
-              onSeasonSelected: widget.onSeasonSelected,
+              onSeasonSelected: (season) {
+                setState(() => _episodeChunk = 0);
+                widget.onSeasonSelected(season);
+              },
             ),
           ],
         ),
@@ -172,7 +254,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
               ),
             ),
           )
-        else if (_sortedEpisodes.isEmpty)
+        else if (_visibleEpisodes.isEmpty)
           const SizedBox.shrink()
         else
           SizedBox(
@@ -183,16 +265,19 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                 controller: _episodeScrollController,
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
-                itemCount: _sortedEpisodes.length,
+                itemCount: _visibleEpisodes.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 16),
                 itemBuilder: (_, i) {
-                final ep = _sortedEpisodes[i];
+                final ep = _visibleEpisodes[i];
                 final epNum = (ep['episode_number'] ?? ep['episode']) as int;
                 final title =
                     (ep['name'] ?? ep['title'] ?? 'Episode $epNum').toString();
                 final overview = (ep['overview'] ?? '').toString();
                 final runtime = ep['runtime'] as int? ?? 0;
-                final thumbnail = ep['still_path'] ?? ep['thumbnail'];
+                final thumbnail = _resolveThumbnail(
+                  ep['still_path'] ?? ep['thumbnail'],
+                  widget.fallbackPosterPath,
+                );
                 final watched = _watchedKey(widget.selectedSeason, epNum);
                 final progKey = 'S${widget.selectedSeason}_E$epNum';
                 final prog = widget.episodeProgress[progKey];

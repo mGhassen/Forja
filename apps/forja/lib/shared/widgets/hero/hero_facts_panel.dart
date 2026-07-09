@@ -236,6 +236,8 @@ class _HeroFactRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,

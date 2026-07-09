@@ -20,7 +20,6 @@ import 'package:forja/shared/widgets/media_details_trailers_section.dart';
 import 'package:forja/shared/widgets/media_details/media_details_torrent_action_row.dart';
 import 'package:forja/shared/widgets/media_details/media_details_tracker_handlers.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
-import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 class StreamingDetailsScreen extends StatefulWidget {
   final Movie movie;
@@ -777,24 +776,21 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return BackNavigationScope(
-        child: Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              const Center(
-                child: CircularProgressIndicator(color: Color(0xFF1565C0)),
-              ),
-              const MediaDetailsBackButton(),
-            ],
-          ),
+      return Scaffold(
+        backgroundColor: AppTheme.bgDark,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            const Center(
+              child: CircularProgressIndicator(color: Color(0xFF1565C0)),
+            ),
+            const MediaDetailsBackButton(),
+          ],
         ),
       );
     }
 
-    return BackNavigationScope(
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: AppTheme.bgDark,
         body: Stack(
           children: [
@@ -871,8 +867,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
             const MediaDetailsBackButton(),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildDetailsHero({required double heroHeight}) {

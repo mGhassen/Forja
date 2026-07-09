@@ -7,10 +7,35 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+
+Movie _hubMovieFromAnime(AnimeCard anime) => Movie(
+      id: -anime.id,
+      title: anime.displayTitle,
+      posterPath: anime.coverUrl,
+      backdropPath: anime.bannerOrCover,
+      voteAverage: (anime.averageScore ?? 0) / 10.0,
+      releaseDate: anime.seasonYear?.toString() ?? '',
+      overview: anime.cleanDescription,
+      genres: anime.genres,
+      runtime: anime.duration ?? 0,
+      mediaType: 'tv',
+      numberOfEpisodes: anime.episodes ?? 0,
+    );
+
+List<PlayerHubEpisode> _hubEpisodesFromAnime(List<AnimeEpisode> episodes) =>
+    episodes
+        .map(
+          (e) => PlayerHubEpisode(
+            number: e.number,
+            title: e.title,
+            thumbnailUrl: e.thumbnail,
+          ),
+        )
+        .toList();
 
 class AnimePlayerScreen extends StatefulWidget {
   final AnimeCard anime;
@@ -269,19 +294,26 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       category: _category,
     );
 
-    // Each provider needs its own Referer/Origin (Miruro CDN gates on
-    // miruro.tv, AllAnime on allmanga.to, etc). Encode that into each
-    // StreamSource so PlayerScreen's per-source headers fallback works.
+    // Megaplay/vidwish HLS CDNs gate segment requests on embed-host headers.
+    // Route through the local hls-proxy so every playlist/segment fetch gets
+    // Referer/Origin injected (mpv direct open only sends them on the master).
+    final ls = LocalServerService();
     final sources = <StreamSource>[];
     for (final h in hits) {
       final headers = Map<String, String>.from(h.media.headers)
-        ..putIfAbsent('Referer', () => h.embed.url)
+        ..putIfAbsent('Referer', () => '${h.embed.refererOrigin}/')
         ..putIfAbsent('Origin', () => h.embed.refererOrigin);
+      var url = h.media.url;
+      Map<String, String>? srcHeaders = headers;
+      if (url.contains('.m3u8') && ls.port != 0) {
+        url = ls.getHlsProxyUrl(url, headers);
+        srcHeaders = null;
+      }
       sources.add(StreamSource(
-        url: h.media.url,
+        url: url,
         title: h.embed.displayName,
         type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
-        headers: headers,
+        headers: srcHeaders,
       ));
     }
 
@@ -298,7 +330,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
     }
 
-    final winnerHeaders = sources.first.headers!;
+    final winnerSource = sources.first;
     final title =
         '${widget.anime.displayTitle} \u2022 Ep ${widget.episodeNumber} (${winner.embed.displayName})';
 
@@ -308,17 +340,55 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
             : (widget.anime.episodes ?? 0));
     final hasNext = totalEpisodes > widget.episodeNumber;
 
+    var episodes = widget.allEpisodes;
+    if (episodes.isEmpty) {
+      episodes = await _service.getEpisodes(widget.anime);
+    }
+    final hubEpisodes = _hubEpisodesFromAnime(episodes);
+    AnimeEpisode? currentEp;
+    for (final e in episodes) {
+      if (e.number == widget.episodeNumber) {
+        currentEp = e;
+        break;
+      }
+    }
+
     if (!mounted) return;
     final navigator = Navigator.of(context);
     await navigator.pushReplacement(
       MaterialPageRoute(
         builder: (_) => PlayerScreen(
-          streamUrl: winner.media.url,
+          streamUrl: winnerSource.url,
           title: title,
-          headers: winnerHeaders,
+          headers: winnerSource.headers,
           sources: sources,
           activeProvider: winner.embed.server,
           externalSubtitles: allSubs.isNotEmpty ? allSubs : null,
+          movie: _hubMovieFromAnime(widget.anime),
+          hubEpisodes: hubEpisodes,
+          hubEpisodeNumber: widget.episodeNumber,
+          episodeOverview: currentEp?.title,
+          onHubEpisodeSelected: (ep) async {
+            await navigator.pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => AnimePlayerScreen(
+                  anime: widget.anime,
+                  episodeNumber: ep.number.toInt(),
+                  category: _category,
+                  allEpisodes: episodes,
+                ),
+              ),
+            );
+          },
+          onSaveProgress: (pos, dur) async {
+            await _service.recordWatch(
+              anime: widget.anime,
+              episodeNumber: widget.episodeNumber,
+              category: _category,
+              position: pos,
+              duration: dur,
+            );
+          },
           hasNextEpisode: hasNext,
           onNextEpisode: hasNext
               ? () async {
@@ -328,7 +398,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
                         anime: widget.anime,
                         episodeNumber: widget.episodeNumber + 1,
                         category: _category,
-                        allEpisodes: widget.allEpisodes,
+                        allEpisodes: episodes,
                       ),
                     ),
                   );

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
@@ -165,6 +167,25 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   List<Map<String, dynamic>> _episodes = [];
   Map<String, Map<String, dynamic>> _episodeProgress = {};
   bool _loading = true;
+  int _episodeChunk = 0;
+
+  List<int> get _episodeNumbers => _episodes
+      .map((ep) => ep['episode_number'] as int? ?? 0)
+      .where((n) => n > 0)
+      .toList();
+
+  List<EpisodeRange> get _episodeRanges =>
+      buildEpisodeRanges(_episodes.length, episodeNumbers: _episodeNumbers);
+
+  List<Map<String, dynamic>> get _visibleEpisodes =>
+      sliceEpisodeChunk(_episodes, _episodeChunk);
+
+  int _chunkIndexForEpisode(int episode) {
+    final index = _episodes.indexWhere(
+      (ep) => (ep['episode_number'] as int? ?? 0) == episode,
+    );
+    return episodeChunkIndex(index);
+  }
 
   @override
   void initState() {
@@ -204,11 +225,15 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     }
 
     if (!mounted) return;
+    final chunk = _selectedSeason == widget.currentSeason
+        ? _chunkIndexForEpisode(widget.currentEpisode)
+        : 0;
     setState(() {
       _seasonCount = count;
       _episodes = episodes;
       _episodeProgress = progress;
       _loading = false;
+      _episodeChunk = chunk;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
@@ -218,7 +243,14 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     if (!_scrollController.hasClients) return;
     if (_selectedSeason != widget.currentSeason) return;
 
-    final index = _episodes.indexWhere(
+    final chunk = _chunkIndexForEpisode(widget.currentEpisode);
+    if (chunk != _episodeChunk) {
+      setState(() => _episodeChunk = chunk);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
+      return;
+    }
+
+    final index = _visibleEpisodes.indexWhere(
       (ep) => (ep['episode_number'] as int? ?? 0) == widget.currentEpisode,
     );
     if (index < 0) return;
@@ -237,8 +269,24 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
 
   Future<void> _selectSeason(int season) async {
     if (season == _selectedSeason) return;
-    setState(() => _selectedSeason = season);
+    setState(() {
+      _selectedSeason = season;
+      _episodeChunk = 0;
+    });
     await _load();
+  }
+
+  void _selectChunk(int chunk) {
+    if (chunk == _episodeChunk) return;
+    setState(() => _episodeChunk = chunk);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_selectedSeason == widget.currentSeason &&
+          _chunkIndexForEpisode(widget.currentEpisode) == chunk) {
+        _scrollToCurrent();
+      } else if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
   }
 
   Future<void> _selectEpisode(int season, int episode) async {
@@ -258,22 +306,34 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
           padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
           child: Row(
             children: [
-              Expanded(
-                child: Text(
-                  'Episodes',
-                  style: TextStyle(
-                    color: ForjaShellColors.cinematic.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
+              Text(
+                'Episodes',
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
                 ),
               ),
-              if ((_seasonCount ?? 0) > 1)
+              if (!_loading && _episodeRanges.length > 1) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: EpisodeRangeBar(
+                    ranges: _episodeRanges,
+                    selectedIndex: _episodeChunk,
+                    onSelected: _selectChunk,
+                    compact: true,
+                  ),
+                ),
+              ] else
+                const Spacer(),
+              if ((_seasonCount ?? 0) > 1) ...[
+                const SizedBox(width: 8),
                 _SeasonDropdown(
                   seasonCount: _seasonCount!,
                   selectedSeason: _selectedSeason,
                   onSelected: _selectSeason,
                 ),
+              ],
               ForjaCloseButton(
                 color: ForjaShellColors.cinematic.textSecondary,
                 onTap: widget.onClose,
@@ -293,7 +353,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                     strokeWidth: 2,
                   ),
                 )
-              : _episodes.isEmpty
+              : _visibleEpisodes.isEmpty
                   ? Center(
                       child: Text(
                         'No episodes found',
@@ -305,10 +365,10 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                   : ListView.separated(
                       controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-                      itemCount: _episodes.length,
+                      itemCount: _visibleEpisodes.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 4),
                       itemBuilder: (_, i) {
-                        final ep = _episodes[i];
+                        final ep = _visibleEpisodes[i];
                         final num = ep['episode_number'] as int? ?? 0;
                         final name =
                             ep['name']?.toString() ?? 'Episode $num';
@@ -434,6 +494,312 @@ class _SeasonDropdown extends StatelessWidget {
   }
 }
 
+/// Right-side sliding panel for hub players (anime, Asian drama).
+class PlayerHubEpisodePanel {
+  static OverlayEntry? _entry;
+  static Completer<void>? _completer;
+
+  static bool get isShowing => _entry != null;
+
+  static void dismiss() {
+    _entry?.remove();
+    _entry = null;
+    _completer?.complete();
+    _completer = null;
+  }
+
+  static Future<void> show({
+    required BuildContext context,
+    required List<PlayerHubEpisode> episodes,
+    required num currentEpisode,
+    required Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected,
+  }) {
+    dismiss();
+
+    final overlay = Overlay.of(context);
+    _completer = Completer<void>();
+
+    _entry = OverlayEntry(
+      builder: (overlayContext) => _HubEpisodePanelOverlay(
+        episodes: episodes,
+        currentEpisode: currentEpisode,
+        onEpisodeSelected: onEpisodeSelected,
+        onClose: dismiss,
+      ),
+    );
+
+    overlay.insert(_entry!);
+    return _completer!.future;
+  }
+}
+
+class _HubEpisodePanelOverlay extends StatefulWidget {
+  const _HubEpisodePanelOverlay({
+    required this.episodes,
+    required this.currentEpisode,
+    required this.onEpisodeSelected,
+    required this.onClose,
+  });
+
+  final List<PlayerHubEpisode> episodes;
+  final num currentEpisode;
+  final Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected;
+  final VoidCallback onClose;
+
+  @override
+  State<_HubEpisodePanelOverlay> createState() =>
+      _HubEpisodePanelOverlayState();
+}
+
+class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+    _slide = Tween<Offset>(
+      begin: const Offset(1, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final panelWidth = screenWidth < 700 ? screenWidth * 0.92 : 420.0;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        GestureDetector(
+          onTap: widget.onClose,
+          behavior: HitTestBehavior.opaque,
+          child: const ColoredBox(color: Colors.black54),
+        ),
+        SlideTransition(
+          position: _slide,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: SizedBox(
+              width: panelWidth,
+              child: Material(
+                color: ForjaShellColors.cinematic.menuSurface,
+                child: SafeArea(
+                  left: false,
+                  child: _HubEpisodePanelBody(
+                    episodes: widget.episodes,
+                    currentEpisode: widget.currentEpisode,
+                    onEpisodeSelected: widget.onEpisodeSelected,
+                    onClose: widget.onClose,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HubEpisodePanelBody extends StatefulWidget {
+  const _HubEpisodePanelBody({
+    required this.episodes,
+    required this.currentEpisode,
+    required this.onEpisodeSelected,
+    required this.onClose,
+  });
+
+  final List<PlayerHubEpisode> episodes;
+  final num currentEpisode;
+  final Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected;
+  final VoidCallback onClose;
+
+  @override
+  State<_HubEpisodePanelBody> createState() => _HubEpisodePanelBodyState();
+}
+
+class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
+  final _scrollController = ScrollController();
+  int _episodeChunk = 0;
+
+  List<int> get _episodeNumbers => widget.episodes
+      .map((e) => e.number is int ? e.number as int : e.number.toInt())
+      .toList();
+
+  List<EpisodeRange> get _episodeRanges => buildEpisodeRanges(
+        widget.episodes.length,
+        episodeNumbers: _episodeNumbers,
+      );
+
+  List<PlayerHubEpisode> get _visibleEpisodes =>
+      sliceEpisodeChunk(widget.episodes, _episodeChunk);
+
+  int _chunkIndexForEpisode(num episode) {
+    final index = widget.episodes.indexWhere((e) => e.number == episode);
+    return episodeChunkIndex(index);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _episodeChunk = _chunkIndexForEpisode(widget.currentEpisode);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
+  }
+
+  @override
+  void didUpdateWidget(covariant _HubEpisodePanelBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentEpisode != widget.currentEpisode ||
+        oldWidget.episodes != widget.episodes) {
+      final chunk = _chunkIndexForEpisode(widget.currentEpisode);
+      if (chunk != _episodeChunk) _episodeChunk = chunk;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToCurrent() {
+    final chunk = _chunkIndexForEpisode(widget.currentEpisode);
+    if (chunk != _episodeChunk) {
+      setState(() => _episodeChunk = chunk);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
+      return;
+    }
+    final index = _visibleEpisodes.indexWhere(
+      (e) => e.number == widget.currentEpisode,
+    );
+    if (index < 0 || !_scrollController.hasClients) return;
+    const rowHeight = 96.0;
+    final offset = (index * rowHeight).clamp(0.0, _scrollController.position.maxScrollExtent);
+    _scrollController.animateTo(
+      offset,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _selectChunk(int chunk) {
+    if (chunk == _episodeChunk) return;
+    setState(() => _episodeChunk = chunk);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_chunkIndexForEpisode(widget.currentEpisode) == chunk) {
+        _scrollToCurrent();
+      } else if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
+  }
+
+  Future<void> _select(PlayerHubEpisode episode) async {
+    if (episode.number == widget.currentEpisode) {
+      widget.onClose();
+      return;
+    }
+    await widget.onEpisodeSelected(episode);
+    widget.onClose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          child: Row(
+            children: [
+              Text(
+                'Episodes',
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              if (_episodeRanges.length > 1) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: EpisodeRangeBar(
+                    ranges: _episodeRanges,
+                    selectedIndex: _episodeChunk,
+                    onSelected: _selectChunk,
+                    compact: true,
+                  ),
+                ),
+              ] else
+                const Spacer(),
+              ForjaCloseButton(
+                color: ForjaShellColors.cinematic.textSecondary,
+                onTap: widget.onClose,
+              ),
+            ],
+          ),
+        ),
+        Divider(
+          height: 1,
+          color: ForjaShellColors.cinematic.borderSubtle,
+        ),
+        Expanded(
+          child: widget.episodes.isEmpty
+              ? Center(
+                  child: Text(
+                    'No episodes found',
+                    style: TextStyle(
+                      color: ForjaShellColors.cinematic.textSecondary,
+                    ),
+                  ),
+                )
+              : _visibleEpisodes.isEmpty
+                  ? const SizedBox.shrink()
+                  : ListView.separated(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                      itemCount: _visibleEpisodes.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 4),
+                      itemBuilder: (_, i) {
+                        final ep = _visibleEpisodes[i];
+                    final selected = ep.number == widget.currentEpisode;
+                    return _EpisodeRow(
+                      episodeNumber: ep.number is int
+                          ? ep.number as int
+                          : ep.number.toInt(),
+                      episodeBadge: 'E${ep.displayNumber}',
+                      title: ep.title,
+                      overview: ep.overview ?? '',
+                      runtime: ep.runtimeMinutes,
+                      thumbnail: ep.thumbnailUrl,
+                      selected: selected,
+                      positionMs: ep.positionMs,
+                      durationMs: ep.durationMs,
+                      onTap: () => _select(ep),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
 class _EpisodeRow extends StatelessWidget {
   const _EpisodeRow({
     required this.episodeNumber,
@@ -445,9 +811,11 @@ class _EpisodeRow extends StatelessWidget {
     required this.positionMs,
     required this.durationMs,
     required this.onTap,
+    this.episodeBadge,
   });
 
   final int episodeNumber;
+  final String? episodeBadge;
   final String title;
   final String overview;
   final int runtime;
@@ -521,7 +889,7 @@ class _EpisodeRow extends StatelessWidget {
                       Positioned(
                         top: 6,
                         left: 6,
-                        child: _Badge(label: 'E$episodeNumber'),
+                        child: _Badge(label: episodeBadge ?? 'E$episodeNumber'),
                       ),
                       if (durationLabel != null)
                         Positioned(

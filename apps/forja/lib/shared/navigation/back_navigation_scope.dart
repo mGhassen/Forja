@@ -1,16 +1,21 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 
-/// Mouse back and Escape for screens without a visible back control.
+/// Mouse back and Escape pop the top route (root navigator, then shell overlay).
 class BackNavigationScope extends StatelessWidget {
   const BackNavigationScope({super.key, required this.child});
 
   final Widget child;
 
   void _pop(BuildContext context) {
-    if (!Navigator.canPop(context)) return;
-    Navigator.maybePop(context);
+    final rootNav = Navigator.of(context, rootNavigator: true);
+    if (rootNav.canPop()) {
+      rootNav.maybePop();
+      return;
+    }
+    maybePopShellOverlay();
   }
 
   @override

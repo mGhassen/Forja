@@ -12,7 +12,7 @@ Forja routes all video playback through a unified player. Controls use a flat ov
 - **Status roulette** — center-right slide-up indicator when checking sources, switching servers, buffering, or auto-fallback (no bottom snackbars)
 - **Bottom bar** — full-width seek bar, then play/pause, ±10s, volume, and **current / total** time on the left; **Servers**, **Sources**, episodes (TV), audio, subtitles, quality, settings, and fullscreen on the right
 - **Floating menus** — servers, sources, audio, subtitles, quality, and settings open as compact popup panels anchored to the button you tapped (above or below, depending on space). Dismiss with the borderless **Close** control (soft circular highlight on hover — no outline box)
-- **Episodes panel** — TV **Episodes** opens a right-side panel with season picker, episode thumbnails, runtime, synopsis, and resume progress. Close the panel with the same borderless **Close** control in the header
+- **Episodes panel** — TV **Episodes** opens a right-side panel with season picker, numbered range chips (**1 - 50**, **51 - 100**, …) when the list is long, episode thumbnails, runtime, synopsis, and resume progress. Close the panel with the same borderless **Close** control in the header
 
 Seek bar on desktop supports hover frame preview (timestamp fallback when preview is unavailable). **Servers** and **Sources** are separate bottom-right buttons with their own popup lists. The player handles torrent streams, direct HLS/MP4 links, debrid URLs, Jellyfin, and hub content.
 
@@ -27,7 +27,7 @@ On desktop, playback opens in a **full-window layer** above the app shell — th
 - Play, pause, seek (with hover preview on desktop when supported), and adjust volume
 - Skip ±10 seconds from the bottom bar or large center controls
 - Open **Servers** (bottom right, cloud icon) to switch provider; open **Sources** (bottom right, list icon) to pick a stream from the current server
-- Open **Episodes** from the bottom bar — a right-side panel lists the season’s episodes with thumbnail, title, runtime, and synopsis; switch season from the header when the show has multiple seasons. Picking another episode resolves the stream and reloads in-player (you stay in the player)
+- Open **Episodes** from the bottom bar — a right-side panel lists the season’s episodes with thumbnail, title, runtime, and synopsis; switch season from the header when the show has multiple seasons; use numbered range chips beside the season control when there are more than 50 episodes. Picking another episode resolves the stream and reloads in-player (you stay in the player)
 - Switch **audio**, **subtitles**, and **quality** from dedicated bottom-bar buttons
 - Open **Settings** popup for speed, aspect ratio, loop, hardware decode, and subtitle style
 - Use picture-in-picture on Android and desktop

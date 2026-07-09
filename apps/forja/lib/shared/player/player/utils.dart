@@ -1,7 +1,39 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
+
+/// Hub players (Asian drama, anime Arabic, …) pass an already-resolved URL.
+bool hasPreResolvedStreamSources({
+  Movie? movie,
+  Map<String, dynamic>? providers,
+  List<StreamSource>? sources,
+}) =>
+    movie == null &&
+    providers == null &&
+    sources != null &&
+    sources.isNotEmpty;
+
+/// Avoid opening mpv while a route fade is still covering the player surface.
+Future<void> waitForRouteTransition(BuildContext context) async {
+  if (!context.mounted) return;
+  final animation = ModalRoute.of(context)?.animation;
+  if (animation == null || animation.status == AnimationStatus.completed) {
+    return;
+  }
+  final done = Completer<void>();
+  void onStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed ||
+        status == AnimationStatus.dismissed) {
+      animation.removeStatusListener(onStatus);
+      if (!done.isCompleted) done.complete();
+    }
+  }
+
+  animation.addStatusListener(onStatus);
+  await done.future;
+}
 
 bool isIgnorablePlayerError(String err) {
   if (err.isEmpty) return true;

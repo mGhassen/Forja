@@ -564,10 +564,44 @@ class _BookReaderScreenState extends State<BookReaderScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _focusMode ? const Color(0xFF111118) : _scaffoldBg,
-      body: KeyboardListener(
+      body: Focus(
         focusNode: _keyFocus,
         autofocus: true,
-        onKeyEvent: _handleKey,
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+            return KeyEventResult.ignored;
+          }
+
+          if (_focusMode) {
+            if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+                event.logicalKey == LogicalKeyboardKey.arrowRight) {
+              _focusMoveTo(_focusLineIndex + 1);
+              return KeyEventResult.handled;
+            }
+            if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+                event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+              _focusMoveTo(_focusLineIndex - 1);
+              return KeyEventResult.handled;
+            }
+            if (event.logicalKey == LogicalKeyboardKey.escape) {
+              _exitFocusMode();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          }
+
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+              _currentChapter > 0) {
+            _loadChapter(_currentChapter - 1);
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+              _currentChapter < _chapters.length - 1) {
+            _loadChapter(_currentChapter + 1);
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
         child: _loading
             ? _buildLoading()
             : _error != null
@@ -575,33 +609,6 @@ class _BookReaderScreenState extends State<BookReaderScreen>
                 : _buildReader(),
       ),
     );
-  }
-
-  // ── Keyboard handler ───────────────────────────────────────────────────────
-
-  void _handleKey(KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return;
-
-    if (_focusMode) {
-      if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
-          event.logicalKey == LogicalKeyboardKey.arrowRight) {
-        _focusMoveTo(_focusLineIndex + 1);
-      } else if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
-          event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-        _focusMoveTo(_focusLineIndex - 1);
-      } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-        _exitFocusMode();
-      }
-    } else {
-      // Normal mode: left/right for chapters
-      if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
-          _currentChapter > 0) {
-        _loadChapter(_currentChapter - 1);
-      } else if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
-          _currentChapter < _chapters.length - 1) {
-        _loadChapter(_currentChapter + 1);
-      }
-    }
   }
 
   // ── Loading / Error ────────────────────────────────────────────────────────

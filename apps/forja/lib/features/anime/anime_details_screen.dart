@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
@@ -161,7 +160,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
           .map(
             (e) => {
               'episode_number': e.number,
-              'name': e.title,
+              'name': _decodeEpisodeTitle(e.title),
               'overview': '',
               'runtime': _data.duration ?? 0,
               'still_path': e.thumbnail,
@@ -211,19 +210,17 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return BackNavigationScope(
-          child: Scaffold(
-            backgroundColor: AppTheme.bgDark,
-            body: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (_error != null)
-                  _buildError()
-                else
-                  _buildScrollLayout(),
-                const MediaDetailsBackButton(),
-              ],
-            ),
+        return Scaffold(
+          backgroundColor: AppTheme.bgDark,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_error != null)
+                _buildError()
+              else
+                _buildScrollLayout(),
+              const MediaDetailsBackButton(),
+            ],
           ),
         );
       },
@@ -291,12 +288,18 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             height: heroHeight,
             positionMs: posMs,
             durationMs: durMs,
-            actionRow: HubDetailsPlayRow(
-              label: hasProgress && resumeEp != null
-                  ? 'Resume Ep $resumeEp'
-                  : 'Play Ep 1',
-              enabled: _episodes.isNotEmpty,
-              onPlay: () => _play(resumeEp ?? 1),
+            actionRow: Row(
+              children: [
+                HubDetailsPlayRow(
+                  label: hasProgress && resumeEp != null
+                      ? 'Resume Ep $resumeEp'
+                      : 'Play Ep 1',
+                  enabled: _episodes.isNotEmpty,
+                  onPlay: () => _play(resumeEp ?? 1),
+                ),
+                const SizedBox(width: 10),
+                _buildCategoryToggle(compact: true),
+              ],
             ),
           ),
           MediaDetailsBody(
@@ -310,8 +313,6 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                   _buildSeasonsRail(),
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
-                _buildCategoryToggle(),
-                const SizedBox(height: 20),
                 if (_episodes.isNotEmpty)
                   TvSeasonEpisodePicker(
                     tmdbId: a.id,
@@ -354,53 +355,74 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     );
   }
 
-  Widget _buildCategoryToggle() {
+  String _decodeEpisodeTitle(String title) => title
+      .replaceAll('&#39;', "'")
+      .replaceAll('&quot;', '"')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>');
+
+  Widget _buildCategoryToggle({bool compact = false}) {
+    final radius = compact ? 20.0 : 24.0;
+    final innerRadius = compact ? 16.0 : 20.0;
+    final height = compact ? 40.0 : null;
     return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: shellChipDecoration(selected: false, radius: 24),
+      height: height,
+      padding: const EdgeInsets.all(3),
+      decoration: shellChipDecoration(selected: false, radius: radius),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _categoryButton('sub', 'SUB', Icons.subtitles_rounded),
-          _categoryButton('dub', 'DUB', Icons.mic_rounded),
+          _categoryButton('sub', 'SUB', Icons.subtitles_rounded,
+              compact: compact, radius: innerRadius),
+          _categoryButton('dub', 'DUB', Icons.mic_rounded,
+              compact: compact, radius: innerRadius),
         ],
       ),
     );
   }
 
-  Widget _categoryButton(String id, String label, IconData icon) {
+  Widget _categoryButton(
+    String id,
+    String label,
+    IconData icon, {
+    bool compact = false,
+    required double radius,
+  }) {
     final selected = _category == id;
     final cinematic = ForjaShellColors.cinematic;
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => setState(() => _category = id),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: shellChipDecoration(selected: selected, radius: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 16,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(radius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(radius),
+        onTap: () => setState(() => _category = id),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 10 : 16,
+            vertical: compact ? 8 : 10,
+          ),
+          decoration: shellChipDecoration(selected: selected, radius: radius),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: compact ? 14 : 16,
+                color: selected ? cinematic.textPrimary : cinematic.textSecondary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
                   color: selected ? cinematic.textPrimary : cinematic.textSecondary,
+                  fontSize: compact ? 11 : 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? cinematic.textPrimary : cinematic.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

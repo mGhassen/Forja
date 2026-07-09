@@ -21,6 +21,7 @@ import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/player_pool_service.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
+import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/app/boot_cache.dart';
@@ -276,6 +277,11 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.themeData,
           home: const SplashScreen(),
+          builder: (context, child) {
+            return BackNavigationScope(
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
         );
         if (_isDesktop) {
           app = ExcludeSemantics(child: app);

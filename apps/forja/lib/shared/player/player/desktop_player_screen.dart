@@ -38,6 +38,8 @@ import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/player_episode_menu.dart';
+import 'package:forja/shared/player/controls/player_episode_panel.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
@@ -405,6 +407,10 @@ class DesktopPlayerScreen extends StatefulWidget {
   final Map<String, dynamic>? providers;
   final Future<void> Function()? onNextEpisode;
   final bool hasNextEpisode;
+  final List<PlayerHubEpisode>? hubEpisodes;
+  final num? hubEpisodeNumber;
+  final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
+  final String? episodeOverview;
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
 
   const DesktopPlayerScreen({
@@ -427,6 +433,10 @@ class DesktopPlayerScreen extends StatefulWidget {
     this.providers,
     this.onNextEpisode,
     this.hasNextEpisode = false,
+    this.hubEpisodes,
+    this.hubEpisodeNumber,
+    this.onHubEpisodeSelected,
+    this.episodeOverview,
     this.onSaveProgress,
   });
 
@@ -601,13 +611,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _playerReady = true;
     setState(() {});
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || !_playerReady) return;
+      await waitForRouteTransition(context);
       if (!mounted || !_playerReady) return;
       _loadSubtitlePrefs();
       _initPlayback();
       _startHideTimer();
       _fetchSubtitles();
-      if (widget.movie != null) {
+      if (widget.movie != null && widget.hubEpisodes == null) {
         TraktService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -747,7 +759,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       _saveAnimeWatchPosition(pos, dur);
     }
 
-    if (widget.movie == null) return;
+    if (widget.movie == null || widget.hubEpisodes != null) return;
     if (pos > 10000 && dur > 0) {
       final isTorrent = widget.magnetLink != null;
       final isStremioDirect = widget.activeProvider == 'stremio_direct';
@@ -848,6 +860,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _playbackConfirmed = false;
     
     try {
+    final showSourceProbe = !hasPreResolvedStreamSources(
+      movie: widget.movie,
+      providers: widget.providers,
+      sources: widget.sources,
+    );
+
     setState(() {
       _hasError = false;
       _errorMessage = '';
@@ -868,11 +886,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         triedUrls.add(source.url);
 
         debugPrint('[Player] Trying source ${i + 1}/${_currentSources!.length}: ${source.title}');
-        _statusController.upsert(
-          'source-$i',
-          source.title,
-          kind: StatusRouletteKind.loading,
-        );
+        if (showSourceProbe) {
+          _statusController.upsert(
+            'source-$i',
+            source.title,
+            kind: StatusRouletteKind.loading,
+          );
+        }
 
         // Arabic embed sources need on-demand extraction first
         if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
@@ -880,12 +900,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           final result = await ArabicService.extractStreamUrl(source.url);
           if (result == null) {
             debugPrint('[Player] Arabic extract failed for ${source.title}');
-            _statusController.upsert(
-              'source-$i',
-              source.title,
-              kind: StatusRouletteKind.failed,
-              dismissAfter: const Duration(milliseconds: 1200),
-            );
+            if (showSourceProbe) {
+              _statusController.upsert(
+                'source-$i',
+                source.title,
+                kind: StatusRouletteKind.failed,
+                dismissAfter: const Duration(milliseconds: 1200),
+              );
+            }
             _currentFallbackSourceIndex++;
             continue;
           }
@@ -925,12 +947,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           if (!opened) {
             debugPrint('[Player] Source $i failed to open: $openUrl');
             await _player.stop();
-            _statusController.upsert(
-              'source-$i',
-              source.title,
-              kind: StatusRouletteKind.failed,
-              dismissAfter: const Duration(milliseconds: 500),
-            );
+            if (showSourceProbe) {
+              _statusController.upsert(
+                'source-$i',
+                source.title,
+                kind: StatusRouletteKind.failed,
+                dismissAfter: const Duration(milliseconds: 500),
+              );
+            }
             _currentFallbackSourceIndex++;
             continue;
           }
@@ -939,16 +963,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             _currentUrl = openUrl;
           });
           _playbackConfirmed = true;
-          _statusController.complete();
+          if (showSourceProbe) _statusController.complete();
           return;
         } catch (e) {
           debugPrint('[Player] Source $i catch error: $e');
-          _statusController.upsert(
-            'source-$i',
-            source.title,
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(milliseconds: 500),
-          );
+          if (showSourceProbe) {
+            _statusController.upsert(
+              'source-$i',
+              source.title,
+              kind: StatusRouletteKind.failed,
+              dismissAfter: const Duration(milliseconds: 500),
+            );
+          }
           _currentFallbackSourceIndex++;
         }
       }
@@ -959,6 +985,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       } else if (mounted) {
         setState(() {
           _hasError = true;
+          _showControls = true;
           _errorMessage = 'All sources on this server failed.';
         });
       }
@@ -994,6 +1021,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     if (widget.providers == null || widget.providers!.isEmpty) {
       setState(() {
         _hasError = true;
+        _showControls = true;
         _errorMessage = 'All sources and providers failed.';
       });
       return;
@@ -1015,6 +1043,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     if (mounted && !_fallbackAborted(chainGen)) {
       setState(() {
         _hasError = true;
+        _showControls = true;
         _errorMessage = 'Could not find any working stream from any provider.';
       });
     }
@@ -1334,6 +1363,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       if (_sourcePinned) {
         setState(() {
           _hasError = true;
+          _showControls = true;
           _errorMessage = 'Playback failed on the selected source.';
         });
         return;
@@ -2462,6 +2492,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   void _showEpisodesMenu(BuildContext anchorContext) {
+    if (widget.hubEpisodes != null &&
+        widget.hubEpisodes!.isNotEmpty &&
+        widget.onHubEpisodeSelected != null) {
+      PlayerPopupPanel.dismiss();
+      PlayerHubEpisodePanel.show(
+        context: context,
+        episodes: widget.hubEpisodes!,
+        currentEpisode:
+            widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
+        onEpisodeSelected: widget.onHubEpisodeSelected!,
+      );
+      return;
+    }
     final movie = widget.movie;
     if (movie == null || movie.mediaType != 'tv') return;
     final season = widget.selectedSeason ?? 1;
@@ -2777,7 +2820,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _hideTimer?.cancel();
     if (!_isPlayingNotifier.value) return;
     _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && !_disposed) setState(() => _showControls = false);
+      if (mounted && !_disposed && !_hasError) {
+        setState(() => _showControls = false);
+      }
     });
   }
 
@@ -2790,7 +2835,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   String get _displayTitle => _displayMovie?.title ?? widget.title;
 
+  String? get _hubEpisodeLine {
+    if (widget.hubEpisodes == null) return null;
+    final n = widget.hubEpisodeNumber ?? widget.selectedEpisode;
+    if (n == null) return null;
+    return 'Episode ${n == n.truncateToDouble() ? n.toInt() : n}';
+  }
+
+  String? get _pausedEpisodeOverview =>
+      widget.episodeOverview ?? _episodeOverview;
+
   Future<void> _loadHeroMetadata() async {
+    if (widget.hubEpisodes != null) return;
     final movie = widget.movie;
     if (movie == null) return;
     final metadata = await loadPlayerHeroMetadata(
@@ -2989,9 +3045,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                 // ── PiP revert button (hover-only) ───────────────────────
                 if (_isPipMode) _buildPipRevertOverlay(),
 
-                // ── Embedded Error Overlay ───────────────────────────────
-                if (_hasError) _buildEmbeddedError(),
-
                 PlayerStatusOverlay(
                   controller: _statusController,
                   bufferingListenable: _isBufferingNotifier,
@@ -3073,56 +3126,61 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
     final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
 
-    return Container(
-      color: Colors.black.withValues(alpha: 0.6),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.redAccent, size: 56),
-            const SizedBox(height: 20),
-            const Text(
-              'Playback Failed',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 60),
-              child: Text(
-                _errorMessage,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GlassPillButton(
-                  text: 'Retry',
-                  onTap: _initPlayback,
+    return Positioned(
+      top: PlayerTopBar.totalHeight(context),
+      left: 16,
+      right: 16,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.82),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Playback Failed',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _errorMessage,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
                 ),
-                if (hasProviders || hasSources) ...[
-                  const SizedBox(width: 16),
-                  if (hasSources)
-                    GlassPillButton(
-                      text: 'Sources',
-                      onTap: _showSourcesMenu,
-                    ),
-                  if (hasSources && hasProviders) const SizedBox(width: 12),
-                  if (hasProviders)
-                    GlassPillButton(
-                      text: 'Servers',
-                      onTap: _isSwitchingProvider ? () {} : _showProviderMenu,
-                    ),
-                ],
+              ),
+              const SizedBox(width: 10),
+              GlassPillButton(text: 'Retry', onTap: _initPlayback),
+              if (hasSources) ...[
+                const SizedBox(width: 8),
+                GlassPillButton(text: 'Sources', onTap: _showSourcesMenu),
               ],
-            ),
-          ],
+              if (hasProviders) ...[
+                const SizedBox(width: 8),
+                GlassPillButton(
+                  text: 'Servers',
+                  onTap: _isSwitchingProvider ? () {} : _showProviderMenu,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -3130,6 +3188,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   Widget _buildControlsOverlay() {
     final isTv = widget.movie?.mediaType == 'tv';
+    final hasEpisodePicker = (isTv && widget.movie != null) ||
+        (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
     final hasProviders = widget.providers != null && widget.providers!.isNotEmpty &&
         widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
     final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
@@ -3148,8 +3208,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         top: 0, left: 0, right: 0,
         child: PlayerTopBar(
           title: _displayTitle,
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
+          season: widget.hubEpisodes != null ? null : widget.selectedSeason,
+          episode: widget.hubEpisodes != null
+              ? null
+              : widget.selectedEpisode,
+          episodeLine: _hubEpisodeLine,
           onBack: () async {
             if (_isFullscreen) {
               await windowManager.setFullScreen(false);
@@ -3181,6 +3244,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         ),
       ),
 
+      if (_hasError) _buildEmbeddedError(),
+
       if (_displayMovie != null)
         Positioned(
           left: 0,
@@ -3197,9 +3262,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   alignment: Alignment.centerLeft,
                   child: PlayerPausedHero(
                     movie: _displayMovie!,
-                    season: widget.selectedSeason,
-                    episode: widget.selectedEpisode,
-                    episodeOverview: _episodeOverview,
+                    season: widget.hubEpisodes != null
+                        ? null
+                        : widget.selectedSeason,
+                    episode: widget.hubEpisodes != null
+                        ? null
+                        : widget.selectedEpisode,
+                    episodeLine: _hubEpisodeLine,
+                    episodeOverview: _pausedEpisodeOverview,
                   ),
                 ),
               ),
@@ -3453,7 +3523,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                     ),
                     const SizedBox(width: 2),
                   ],
-                  if (isTv && widget.movie != null) ...[
+                  if (hasEpisodePicker) ...[
                     PlayerFlatIconButton(
                       icon: Icons.video_library_outlined,
                       tooltip: 'Episodes',

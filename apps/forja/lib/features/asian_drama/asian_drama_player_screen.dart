@@ -8,8 +8,27 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/features/asian_drama/catalog/kisskh_extractor.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
-import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/app_router.dart';
+
+Future<T?> openAsianDramaPlayer<T>(
+  BuildContext context, {
+  required KdramaCard drama,
+  required KdramaEpisode episode,
+  List<KdramaEpisode> allEpisodes = const [],
+  Duration? startPosition,
+}) {
+  return Navigator.of(context, rootNavigator: true).push<T>(
+    AppRouter.fadeRoute(
+      (_) => AsianDramaPlayerScreen(
+        drama: drama,
+        episode: episode,
+        allEpisodes: allEpisodes,
+        startPosition: startPosition,
+      ),
+    ),
+  );
+}
 
 class AsianDramaPlayerScreen extends StatefulWidget {
   final KdramaCard drama;
@@ -107,12 +126,22 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
     final sources = stream.toSources(label: 'kisskh');
     final subs = stream.subtitles;
 
+    var episodes = widget.allEpisodes;
+    var overview = '';
+    if (episodes.isEmpty) {
+      try {
+        final det = await _service.getDetails(widget.drama.id);
+        episodes = det.episodes;
+        overview = det.description;
+      } catch (_) {}
+    }
+
     await _service.recordWatch(
       drama: widget.drama,
       episodeNumber: widget.episode.number,
-      totalEpisodes: widget.allEpisodes.isNotEmpty
-          ? widget.allEpisodes.length
-          : widget.episode.number.toInt(),
+              totalEpisodes: episodes.isNotEmpty
+                  ? episodes.length
+                  : widget.episode.number.toInt(),
     );
 
     final title =
@@ -131,7 +160,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
         widget.allEpisodes.isEmpty ? true : nextFromList != null;
 
     if (!mounted) return;
-    final navigator = Navigator.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final resolverRoute = ModalRoute.of(context);
 
     Future<void> goNext() async {
       var ep = nextFromList;
@@ -150,8 +180,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
       }
       if (ep == null) return;
       await navigator.pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => AsianDramaPlayerScreen(
+        AppRouter.fadeRoute(
+          (_) => AsianDramaPlayerScreen(
             drama: widget.drama,
             episode: ep!,
             allEpisodes: list,
@@ -160,32 +190,33 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
       );
     }
 
-    await navigator.pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => PlayerScreen(
-          streamUrl: sources.first.url,
-          title: title,
-          headers: sources.first.headers,
-          sources: sources,
-          activeProvider: 'kisskh',
-          startPosition: widget.startPosition,
-          externalSubtitles: subs.isNotEmpty ? subs : null,
-          onSaveProgress: (pos, dur) async {
-            await _service.recordWatch(
-              drama: widget.drama,
-              episodeNumber: widget.episode.number,
-              totalEpisodes: widget.allEpisodes.isNotEmpty
-                  ? widget.allEpisodes.length
+    await AppRouter.openPlayer(
+      context,
+      streamUrl: sources.first.url,
+      title: title,
+      headers: sources.first.headers,
+      sources: sources,
+      activeProvider: 'kisskh',
+      startPosition: widget.startPosition,
+      externalSubtitles: subs.isNotEmpty ? subs : null,
+      onSaveProgress: (pos, dur) async {
+        await _service.recordWatch(
+          drama: widget.drama,
+          episodeNumber: widget.episode.number,
+              totalEpisodes: episodes.isNotEmpty
+                  ? episodes.length
                   : widget.episode.number.toInt(),
-              position: pos,
-              duration: dur,
-            );
-          },
-          hasNextEpisode: hasNext,
-          onNextEpisode: hasNext ? goNext : null,
-        ),
-      ),
+          position: pos,
+          duration: dur,
+        );
+      },
+      hasNextEpisode: hasNext,
+      onNextEpisode: hasNext ? goNext : null,
+      fadeTransition: true,
     );
+    if (resolverRoute != null) {
+      navigator.removeRoute(resolverRoute);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────

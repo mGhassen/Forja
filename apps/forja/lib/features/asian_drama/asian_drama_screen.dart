@@ -218,15 +218,12 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
         openAsianDramaDetails(context, card);
         return;
       }
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => AsianDramaPlayerScreen(
-            drama: card,
-            episode: ep!,
-            allEpisodes: details.episodes,
-            startPosition: startPosition,
-          ),
-        ),
+      openAsianDramaPlayer(
+        context,
+        drama: card,
+        episode: ep!,
+        allEpisodes: details.episodes,
+        startPosition: startPosition,
       ).then((_) => _refreshHistory());
     } catch (e) {
       if (!mounted) return;

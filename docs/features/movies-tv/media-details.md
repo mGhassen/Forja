@@ -15,7 +15,7 @@ Hero text sits in the **upper** area of the hero (not pinned to the bottom). Bel
 
 Scroll below the hero for:
 
-1. **Episodes** (TV only) — horizontal episode rail with season picker; visible on the first screen below the hero
+1. **Episodes** (TV only) — horizontal episode rail with season picker; when a season has more than 50 episodes, numbered range chips (**1 - 50**, **51 - 100**, …) appear beside the season control to page the rail; visible on the first screen below the hero
 2. **Cast** — circular photos, actor and character names
 3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio, subtitles, quality, playback speed). When a trailer ends and more are available, an **Up next** prompt lets you continue to the next trailer.
 4. **More Like This** — recommendation row

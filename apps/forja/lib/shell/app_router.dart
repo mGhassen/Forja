@@ -153,6 +153,10 @@ class AppRouter {
     String? stremioAddonBaseUrl,
     Future<void> Function()? onNextEpisode,
     bool hasNextEpisode = false,
+    List<PlayerHubEpisode>? hubEpisodes,
+    num? hubEpisodeNumber,
+    Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected,
+    String? episodeOverview,
     Future<void> Function(Duration position, Duration duration)? onSaveProgress,
     bool fadeTransition = false,
   }) {

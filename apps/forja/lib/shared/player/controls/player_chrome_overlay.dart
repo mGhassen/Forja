@@ -70,6 +70,7 @@ class PlayerTopBar extends StatelessWidget {
     required this.title,
     this.season,
     this.episode,
+    this.episodeLine,
     required this.onBack,
     this.trailing,
   });
@@ -77,11 +78,14 @@ class PlayerTopBar extends StatelessWidget {
   final String title;
   final int? season;
   final int? episode;
+  final String? episodeLine;
   final VoidCallback onBack;
   final Widget? trailing;
 
   String? get _episodeLine {
-    if (season == null || episode == null) return null;
+    if (episodeLine != null && episodeLine!.isNotEmpty) return episodeLine;
+    if (episode == null) return null;
+    if (season == null) return 'Episode $episode';
     return 'S$season E$episode';
   }
 
@@ -298,13 +302,22 @@ class PlayerPausedHero extends StatelessWidget {
     required this.movie,
     this.season,
     this.episode,
+    this.episodeLine,
     this.episodeOverview,
   });
 
   final Movie movie;
   final int? season;
   final int? episode;
+  final String? episodeLine;
   final String? episodeOverview;
+
+  String? get _episodeLine {
+    if (episodeLine != null && episodeLine!.isNotEmpty) return episodeLine;
+    if (episode == null) return null;
+    if (season == null) return 'Episode $episode';
+    return 'S$season E$episode';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -329,10 +342,10 @@ class PlayerPausedHero extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             HeroMetaLine(movie: movie, style: HeroMetaStyle.details),
-            if (season != null && episode != null) ...[
+            if (_episodeLine != null) ...[
               const SizedBox(height: 6),
               Text(
-                'S$season E$episode',
+                _episodeLine!,
                 style: TextStyle(
                   color: ForjaShellColors.cinematic.textSecondary,
                   fontSize: 13,
