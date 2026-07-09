@@ -1,11 +1,9 @@
-# Forja — multi-platform CI (builds from apps/forja)
-# Runs on every push to main. Artifacts only — no version bump, no GitHub Release.
+# Forja — optional multi-platform build (manual only)
+# Artifacts only — no version bump, no GitHub Release.
 # Release packaging: .github/workflows/release.yml (manual)
 name: Build Forja
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

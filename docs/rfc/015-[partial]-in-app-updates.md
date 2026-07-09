@@ -189,7 +189,7 @@ Add to `SettingsService` / `storage`:
 
 ## CI / release integration
 
-`.github/workflows/build.yml` runs on every push to `main` (CI artifacts only). `.github/workflows/release.yml` is manual — bump version, tag, and publish GitHub Release with:
+`.github/workflows/build.yml` is manual only (optional smoke builds, artifacts only). `.github/workflows/release.yml` is manual — bump version, tag, and publish GitHub Release with:
 
 ```
 Forja-1.2.3-android-arm64.apk

@@ -18,8 +18,8 @@ Forja can check GitHub Releases for newer builds when the app starts and lets yo
 
 ## Tips
 
-- CI builds run automatically on every push to `main` (workflow artifacts only)
-- Published desktop releases are manual: Actions → **Release Forja** → pick patch/minor/major
+- Published releases are manual: Actions → **Release Forja** → pick patch/minor/major
+- Optional smoke build: Actions → **Build Forja** (workflow artifacts only, no release)
 - Download latest builds from [GitHub Releases](https://github.com/mGhassen/Forja/releases) if in-app update fails
 - See [Platforms](../getting-started/platforms.md) for per-OS install formats
 

@@ -443,7 +443,7 @@ The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
 |----------|---------|
 | `.github/workflows/rust.yml` | PR touching `crates/**` or `packages/rust/**` |
 | `.github/workflows/forja-macos.yml` | macOS releases |
-| `.github/workflows/build.yml` | General build |
+| `.github/workflows/build.yml` | Manual multi-platform build (optional) |
 
 ### Tests
 
