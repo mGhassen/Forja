@@ -2,6 +2,7 @@
 
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
@@ -9,8 +10,8 @@ import 'package:forja/features/anime/catalog/animerealms_extractor.dart';
 import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
 
 Movie _hubMovieFromAnime(AnimeCard anime) => Movie(
@@ -49,8 +50,8 @@ Future<T?> openAnimePlayer<T>(
   List<AnimeEpisode> allEpisodes = const [],
 }) {
   return Navigator.of(context, rootNavigator: true).push<T>(
-    MaterialPageRoute(
-      builder: (_) => AnimePlayerScreen(
+    AppRouter.fadeRoute(
+      (_) => AnimePlayerScreen(
         anime: anime,
         episodeNumber: episodeNumber,
         category: category,
@@ -113,37 +114,55 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   final MiruroExtractor _miruro = MiruroExtractor();
   final AnimeRealmsExtractor _animeRealms = AnimeRealmsExtractor();
 
-  String _phase = 'Loading…';
+  late final ValueNotifier<String> _messageNotifier;
+  late final ValueNotifier<bool> _fadeOutNotifier;
+
+  String _statusLine = '';
   bool _failed = false;
-  bool _resolving = false;
+  bool _cancelled = false;
   String _activeProvider = '';
   bool _usingAnimeRealms = false;
 
   @override
   void initState() {
     super.initState();
+    _messageNotifier = ValueNotifier('Fetching stream…');
+    _fadeOutNotifier = ValueNotifier(false);
     _activeProvider = widget.provider;
     _usingAnimeRealms = widget.useAnimeRealms;
     _resolve();
   }
 
+  @override
+  void dispose() {
+    _cancelled = true;
+    _messageNotifier.dispose();
+    _fadeOutNotifier.dispose();
+    super.dispose();
+  }
+
+  void _setPhase(String phase) {
+    _messageNotifier.value = phase;
+  }
+
   Future<void> _resolve() async {
+    if (_cancelled) return;
+
     setState(() {
-      _resolving = true;
       _failed = false;
-      _phase = _usingAnimeRealms
-          ? 'Fetching from $_activeProvider…'
-          : 'Fetching stream from $_activeProvider…';
+      _statusLine = '';
     });
+    _setPhase(_usingAnimeRealms
+        ? 'Fetching from $_activeProvider…'
+        : 'Fetching stream from $_activeProvider…');
 
     if (_usingAnimeRealms) {
       final ok = await _tryAnimeRealms();
-      if (!mounted) return;
+      if (!mounted || _cancelled) return;
       if (!ok) {
         setState(() {
-          _resolving = false;
           _failed = true;
-          _phase = 'No streams available';
+          _setPhase('No streams available');
         });
       }
       return;
@@ -155,7 +174,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       category: widget.category,
       provider: _activeProvider,
     );
-    if (!mounted) return;
+    if (!mounted || _cancelled) return;
     if (miruro != null && miruro.url.isNotEmpty) {
       await _launchFromMiruro(miruro);
       return;
@@ -163,17 +182,14 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     debugPrint(
         '[AnimePlayer] Miruro $_activeProvider empty, trying AnimeRealms…');
-    setState(() {
-      _usingAnimeRealms = true;
-      _phase = 'Trying AnimeRealms…';
-    });
+    setState(() => _usingAnimeRealms = true);
+    _setPhase('Trying AnimeRealms…');
     final ok = await _tryAnimeRealms();
-    if (!mounted) return;
+    if (!mounted || _cancelled) return;
     if (!ok) {
       setState(() {
-        _resolving = false;
         _failed = true;
-        _phase = 'No streams available';
+        _setPhase('No streams available');
       });
     }
   }
@@ -203,12 +219,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         return true;
       }
 
-      setState(() => _phase = 'Trying other providers…');
+      _setPhase('Trying other providers…');
       final all = await _animeRealms.getAllSources(
         anilistId: widget.anime.id,
         episodeNumber: widget.episodeNumber,
       );
-      if (!mounted || all.isEmpty) return false;
+      if (!mounted || _cancelled || all.isEmpty) return false;
       final best = all.first;
       await _launchFromAnimeRealms(
         (best['streams'] as List).cast<Map<String, dynamic>>(),
@@ -218,6 +234,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       return true;
     } catch (e) {
       debugPrint('[AnimePlayer] AnimeRealms failed: $e');
+      if (mounted) setState(() => _statusLine = '$e');
       return false;
     }
   }
@@ -348,6 +365,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     required String providerLabel,
     List<Map<String, dynamic>>? externalSubtitles,
   }) async {
+    if (_cancelled || !mounted) return;
+
     await _service.recordWatch(
       anime: widget.anime,
       episodeNumber: widget.episodeNumber,
@@ -377,116 +396,161 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final title =
         '${widget.anime.displayTitle} • Ep ${widget.episodeNumber} ($_activeProvider)';
 
-    if (!mounted) return;
+    if (!mounted || _cancelled) return;
     final navigator = Navigator.of(context, rootNavigator: true);
-    await navigator.pushReplacement(
-      AppRouter.fadeRoute(
-        (_) => PlayerScreen(
-          streamUrl: streamUrl,
-          title: title,
-          headers: headers,
-          sources: sources,
-          activeProvider: providerLabel,
-          externalSubtitles: externalSubtitles,
-          movie: _hubMovieFromAnime(widget.anime),
-          hubEpisodes: hubEpisodes,
-          hubEpisodeNumber: widget.episodeNumber,
-          episodeOverview: currentEp?.title,
-          onHubEpisodeSelected: (ep) async {
-            await navigator.pushReplacement(
-              AppRouter.fadeRoute(
-                (_) => AnimePlayerScreen(
-                  anime: widget.anime,
-                  episodeNumber: ep.number.toInt(),
-                  category: widget.category,
-                  provider: _activeProvider,
-                  useAnimeRealms: _usingAnimeRealms,
-                  allEpisodes: episodes,
-                ),
-              ),
-            );
-          },
-          onSaveProgress: (pos, dur) async {
-            await _service.recordWatch(
-              anime: widget.anime,
-              episodeNumber: widget.episodeNumber,
-              category: widget.category,
-              provider: _activeProvider,
-              useAnimeRealms: _usingAnimeRealms,
-              position: pos,
-              duration: dur,
-            );
-          },
-          hasNextEpisode: hasNext,
-          onNextEpisode: hasNext
-              ? () async {
-                  await navigator.pushReplacement(
-                    AppRouter.fadeRoute(
-                      (_) => AnimePlayerScreen(
-                        anime: widget.anime,
-                        episodeNumber: widget.episodeNumber + 1,
-                        category: widget.category,
-                        provider: _activeProvider,
-                        useAnimeRealms: _usingAnimeRealms,
-                        allEpisodes: episodes,
+    final resolverRoute = ModalRoute.of(context);
+
+    Future<void> openEpisode(int epNumber) async {
+      await navigator.pushReplacement(
+        AppRouter.fadeRoute(
+          (_) => AnimePlayerScreen(
+            anime: widget.anime,
+            episodeNumber: epNumber,
+            category: widget.category,
+            provider: _activeProvider,
+            useAnimeRealms: _usingAnimeRealms,
+            allEpisodes: episodes,
+          ),
+        ),
+      );
+    }
+
+    _fadeOutNotifier.value = true;
+    final playerFuture = AppRouter.openPlayer(
+      context,
+      streamUrl: streamUrl,
+      title: title,
+      headers: headers,
+      sources: sources,
+      activeProvider: providerLabel,
+      externalSubtitles: externalSubtitles,
+      movie: _hubMovieFromAnime(widget.anime),
+      hubEpisodes: hubEpisodes,
+      hubEpisodeNumber: widget.episodeNumber,
+      episodeOverview: currentEp?.title,
+      onHubEpisodeSelected: (ep) => openEpisode(ep.number.toInt()),
+      onSaveProgress: (pos, dur) async {
+        await _service.recordWatch(
+          anime: widget.anime,
+          episodeNumber: widget.episodeNumber,
+          category: widget.category,
+          provider: _activeProvider,
+          useAnimeRealms: _usingAnimeRealms,
+          position: pos,
+          duration: dur,
+        );
+      },
+      hasNextEpisode: hasNext,
+      onNextEpisode: hasNext ? () => openEpisode(widget.episodeNumber + 1) : null,
+      fadeTransition: true,
+    );
+    await Future<void>.delayed(loadingOverlayFadeOutDuration);
+    if (resolverRoute != null) {
+      navigator.removeRoute(resolverRoute);
+    }
+    await playerFuture;
+  }
+
+  Widget _buildFailure(AppThemePreset theme) {
+    final backdropUrl = widget.anime.bannerOrCover;
+    return Material(
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (backdropUrl.isNotEmpty)
+            CachedNetworkImage(
+              imageUrl: backdropUrl,
+              fit: BoxFit.cover,
+              placeholder: (_, _) => const ColoredBox(color: Colors.black),
+              errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
+            )
+          else
+            const ColoredBox(color: Colors.black),
+          Container(color: Colors.black.withValues(alpha: 0.72)),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline,
+                        color: theme.primaryColor, size: 56),
+                    const SizedBox(height: 14),
+                    Text(
+                      _messageNotifier.value,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  );
-                }
-              : null,
-        ),
+                    if (_statusLine.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _statusLine,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.65),
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    OutlinedButton.icon(
+                      onPressed: _resolve,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Try again'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 22, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(
+                        'Back',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final movie = _hubMovieFromAnime(widget.anime);
+    final episodeLabel = 'EP ${widget.episodeNumber}';
+
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, theme, _) {
-        return Scaffold(
-          backgroundColor: theme.bgDark,
-          appBar: AppBar(
-            backgroundColor: theme.bgDark,
-            elevation: 0,
-            iconTheme: const IconThemeData(color: Colors.white),
-            title: Text(
-              '${widget.anime.displayTitle} • EP ${widget.episodeNumber}',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_resolving) ...[
-                    CircularProgressIndicator(
-                        color: theme.primaryColor, strokeWidth: 2.5),
-                    const SizedBox(height: 18),
-                  ] else if (_failed) ...[
-                    Icon(Icons.error_outline,
-                        color: theme.primaryColor, size: 48),
-                    const SizedBox(height: 12),
-                  ],
-                  Text(_phase,
-                      style: const TextStyle(color: Colors.white, fontSize: 14)),
-                  if (_failed) ...[
-                    const SizedBox(height: 22),
-                    TextButton.icon(
-                      onPressed: _resolve,
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label: const Text('Retry'),
-                      style: TextButton.styleFrom(
-                          foregroundColor: theme.primaryColor),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
+        if (_failed) return _buildFailure(theme);
+
+        return LoadingOverlay(
+          movie: movie,
+          messageNotifier: _messageNotifier,
+          fadeOutNotifier: _fadeOutNotifier,
+          subtitle: episodeLabel,
+          onCancel: () {
+            _cancelled = true;
+            Navigator.of(context).pop();
+          },
         );
       },
     );

@@ -25,6 +25,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:rust/rust.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/extractors/stream_extractor.dart';
 
 class KissKhStream {
   final String url;
@@ -43,9 +44,18 @@ class KissKhStream {
 class KissKhExtractor {
   HeadlessInAppWebView? _web;
   InAppWebViewController? _controller;
-  Completer<_RawHit>? _videoCompleter;
+  Completer<Map<String, dynamic>>? _apiCompleter;
   final List<Map<String, dynamic>> _subsBuffer = [];
   bool _cancelled = false;
+
+  static const _blockedHosts = <String>[
+    'tickcounter.com',
+    'google.com',
+    'gstatic.com',
+    'facebook.com',
+    'twitter.com',
+    'doubleclick.net',
+  ];
 
   static const _userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -71,7 +81,7 @@ class KissKhExtractor {
       episodeNumber: episodeNumber,
     );
 
-    _videoCompleter = Completer<_RawHit>();
+    _apiCompleter = Completer<Map<String, dynamic>>();
     _subsBuffer.clear();
 
     try {
@@ -101,13 +111,11 @@ class KissKhExtractor {
           }
           if (s.startsWith('KKH_VIDEO:')) {
             try {
-              final data = jsonDecode(s.substring('KKH_VIDEO:'.length));
-              final url = (data['Video'] ?? data['video'] ?? '').toString();
-              if (url.isEmpty) return;
-              final type = url.contains('.m3u8') ? 'hls' : 'mp4';
-              if (_videoCompleter != null &&
-                  !_videoCompleter!.isCompleted) {
-                _videoCompleter!.complete(_RawHit(url: url, type: type));
+              final raw = jsonDecode(s.substring('KKH_VIDEO:'.length));
+              if (raw is! Map) return;
+              final data = Map<String, dynamic>.from(raw);
+              if (_apiCompleter != null && !_apiCompleter!.isCompleted) {
+                _apiCompleter!.complete(data);
               }
             } catch (e) {
               debugPrint('[KissKhExtractor] video parse failed: $e');
@@ -146,10 +154,10 @@ class KissKhExtractor {
       await _web!.run();
       if (cancelled()) return null;
 
-      final hit = await _videoCompleter!.future.timeout(
+      final api = await _apiCompleter!.future.timeout(
         timeout,
         onTimeout: () =>
-            throw TimeoutException('No video URL in ${timeout.inSeconds}s'),
+            throw TimeoutException('No stream API response in ${timeout.inSeconds}s'),
       );
       if (cancelled()) return null;
 
@@ -163,6 +171,41 @@ class KissKhExtractor {
                 : Future<void>.value()),
       ]);
       if (cancelled()) return null;
+
+      var streamUrl = _pickPlayableUrl(api);
+      var streamType = _streamTypeFor(streamUrl);
+      final referer = '${KissKhService.baseUrl}/';
+
+      if (streamUrl == null) {
+        final embed = _thirdPartyEmbedUrl(api);
+        final rejected = (api['Video'] ?? api['video'] ?? '').toString().trim();
+        if (rejected.isNotEmpty) {
+          debugPrint(
+            '[KissKhExtractor] Rejected Video URL: $rejected'
+            '${embed != null ? ' — trying ThirdParty' : ''}',
+          );
+        }
+        if (embed != null) {
+          onProgress?.call('embed', 'Extracting third-party stream…');
+          await _cleanup();
+          final extracted = await StreamExtractor().extract(
+            embed,
+            referer: referer,
+            timeout: const Duration(seconds: 30),
+            isCancelled: () => cancelled(),
+          );
+          if (cancelled()) return null;
+          if (extracted != null && extracted.url.isNotEmpty) {
+            streamUrl = extracted.url;
+            streamType = _streamTypeFor(streamUrl);
+          }
+        }
+      }
+
+      if (streamUrl == null || streamUrl.isEmpty) {
+        onProgress?.call('error', 'No playable stream in kisskh response');
+        return null;
+      }
 
       onProgress?.call('done', 'Stream ready');
 
@@ -190,8 +233,8 @@ class KissKhExtractor {
       if (cancelled()) return null;
 
       return KissKhStream(
-        url: hit.url,
-        type: hit.type,
+        url: streamUrl,
+        type: streamType,
         subtitles: List<Map<String, dynamic>>.from(_subsBuffer),
         headers: const {
           'User-Agent': _userAgent,
@@ -205,19 +248,19 @@ class KissKhExtractor {
       return null;
     } finally {
       await _cleanup();
-      _videoCompleter = null;
+      _apiCompleter = null;
     }
   }
 
   Future<void> cancel() async {
     _cancelled = true;
-    if (_videoCompleter != null && !_videoCompleter!.isCompleted) {
-      _videoCompleter!.completeError(
+    if (_apiCompleter != null && !_apiCompleter!.isCompleted) {
+      _apiCompleter!.completeError(
         TimeoutException('KissKh extraction cancelled'),
       );
     }
     await _cleanup();
-    _videoCompleter = null;
+    _apiCompleter = null;
   }
 
   Future<void> dispose() async {
@@ -256,6 +299,75 @@ class KissKhExtractor {
   });
 })();
 ''';
+
+  static String? _normalizeUrl(String raw) {
+    var url = raw.trim();
+    if (url.isEmpty) return null;
+    if (url.startsWith('//')) url = 'https:$url';
+    if (!url.startsWith('http://') && !url.startsWith('https://')) return null;
+    return url;
+  }
+
+  static bool _looksLikePlayableStream(String raw) {
+    final url = _normalizeUrl(raw);
+    if (url == null) return false;
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return false;
+    final host = uri.host.toLowerCase();
+    if (_blockedHosts.any(host.contains)) return false;
+    final lower = url.toLowerCase();
+    return lower.contains('.m3u8') ||
+        lower.contains('.mp4') ||
+        lower.contains('.mpd') ||
+        lower.contains('playlist') ||
+        lower.contains('manifest') ||
+        lower.contains('/master');
+  }
+
+  static String _streamTypeFor(String? url) {
+    if (url != null && url.toLowerCase().contains('.m3u8')) return 'hls';
+    return 'mp4';
+  }
+
+  static String? _pickPlayableUrl(Map<String, dynamic> api) {
+    for (final key in ['Video', 'video', 'ThirdParty', 'thirdParty', 'Thirdparty']) {
+      final raw = api[key]?.toString().trim() ?? '';
+      if (raw.isNotEmpty && _looksLikePlayableStream(raw)) {
+        return _normalizeUrl(raw);
+      }
+    }
+    String? found;
+    void walk(dynamic node) {
+      if (found != null) return;
+      if (node is String) {
+        if (_looksLikePlayableStream(node)) found = _normalizeUrl(node);
+      } else if (node is Map) {
+        for (final v in node.values) {
+          walk(v);
+          if (found != null) return;
+        }
+      } else if (node is List) {
+        for (final v in node) {
+          walk(v);
+          if (found != null) return;
+        }
+      }
+    }
+
+    walk(api);
+    return found;
+  }
+
+  static String? _thirdPartyEmbedUrl(Map<String, dynamic> api) {
+    for (final key in ['ThirdParty', 'thirdParty', 'Thirdparty', 'thirdparty']) {
+      final raw = api[key]?.toString().trim() ?? '';
+      if (raw.isEmpty) continue;
+      final url = _normalizeUrl(raw);
+      if (url == null) continue;
+      if (!_looksLikePlayableStream(url)) return url;
+    }
+    return null;
+  }
 
   // ─── Build the in-page hook ─────────────────────────────────────
   String _interceptScript(int epId) {
@@ -340,12 +452,6 @@ class KissKhExtractor {
 })();
 ''';
   }
-}
-
-class _RawHit {
-  final String url;
-  final String type;
-  _RawHit({required this.url, required this.type});
 }
 
 extension KissKhStreamSources on KissKhStream {

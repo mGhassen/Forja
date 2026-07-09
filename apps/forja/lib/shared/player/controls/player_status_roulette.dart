@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 
 enum StatusRouletteKind { loading, success, failed, info }
@@ -133,6 +134,33 @@ bool playerStatusOverlayVisible(
   return controller.entries.isNotEmpty || buffering;
 }
 
+bool isStatusRouletteEntry(StatusRouletteEntry entry) {
+  if (entry.id == 'buffering') return true;
+  if (entry.id.startsWith('source-')) return true;
+  if (entry.id.startsWith('provider-')) return true;
+  if (entry.id == 'episode-switch') return true;
+  return false;
+}
+
+List<StatusRouletteEntry> statusRouletteEntries(
+  List<StatusRouletteEntry> entries,
+) {
+  return entries.where(isStatusRouletteEntry).toList();
+}
+
+List<StatusRouletteEntry> statusNotificationEntries(
+  List<StatusRouletteEntry> entries,
+) {
+  return entries.where((e) => !isStatusRouletteEntry(e)).toList();
+}
+
+double statusNotificationTop(BuildContext context) {
+  final top = DesktopWindowChrome.isDesktop
+      ? DesktopWindowChrome.topInset(context) + 6
+      : MediaQuery.paddingOf(context).top + 6;
+  return top + 44 + 6 + 4;
+}
+
 class PlayerStatusOverlay extends StatelessWidget {
   const PlayerStatusOverlay({
     super.key,
@@ -145,8 +173,9 @@ class PlayerStatusOverlay extends StatelessWidget {
   final ValueListenable<bool>? bufferingListenable;
   final String header;
 
-  List<StatusRouletteEntry> _entries(bool buffering) {
-    if (controller.entries.isNotEmpty) return controller.entries;
+  List<StatusRouletteEntry> _rouletteEntries(bool buffering) {
+    final fromController = statusRouletteEntries(controller.entries);
+    if (fromController.isNotEmpty) return fromController;
     if (buffering) {
       return const [
         StatusRouletteEntry(
@@ -162,23 +191,50 @@ class PlayerStatusOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget buildOverlay(bool buffering) {
-      final entries = _entries(buffering);
-      if (entries.isEmpty) return const SizedBox.shrink();
-      final overlayHeader =
-          controller.entries.isNotEmpty ? header : 'BUFFERING';
-      return Positioned(
-        top: 0,
-        right: 12,
-        bottom: 0,
-        child: IgnorePointer(
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: StatusRouletteView(
-              entries: entries,
-              header: overlayHeader,
+      final rouletteEntries = _rouletteEntries(buffering);
+      final notificationEntries =
+          statusNotificationEntries(controller.entries);
+      if (rouletteEntries.isEmpty && notificationEntries.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      final hasRouletteProgress =
+          controller.entries.any(isStatusRouletteEntry);
+      final overlayHeader = hasRouletteProgress ? header : 'BUFFERING';
+
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (rouletteEntries.isNotEmpty)
+            Positioned(
+              top: 0,
+              right: 12,
+              bottom: 0,
+              child: IgnorePointer(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: StatusRouletteView(
+                    entries: rouletteEntries,
+                    header: overlayHeader,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
+          if (notificationEntries.isNotEmpty)
+            Positioned(
+              top: statusNotificationTop(context),
+              left: 56,
+              right: 56,
+              child: IgnorePointer(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: StatusNotificationView(
+                    entries: notificationEntries,
+                  ),
+                ),
+              ),
+            ),
+        ],
       );
     }
 
@@ -192,6 +248,29 @@ class PlayerStatusOverlay extends StatelessWidget {
     return ListenableBuilder(
       listenable: playerStatusOverlayListenable(controller, bufferingListenable),
       builder: (context, _) => buildOverlay(bufferingListenable!.value),
+    );
+  }
+}
+
+class StatusNotificationView extends StatelessWidget {
+  const StatusNotificationView({super.key, required this.entries});
+
+  final List<StatusRouletteEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    if (entries.isEmpty) return const SizedBox.shrink();
+    final active = entries.last;
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: _StatusRouletteRow(
+        key: ValueKey('${active.id}-${active.kind.name}'),
+        entry: active,
+        centered: true,
+      ),
     );
   }
 }

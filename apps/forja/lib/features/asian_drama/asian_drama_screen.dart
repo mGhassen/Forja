@@ -7,6 +7,7 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
@@ -240,6 +241,18 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     final id = (entry['id'] as num?)?.toInt();
     if (id == null) return;
     await _service.removeFromHistory(id);
+    if (!mounted) return;
+    setState(() {
+      _continueWatching.removeWhere((e) => (e['id'] as num?)?.toInt() == id);
+    });
+  }
+
+  KdramaCard _cardFromHistoryEntry(Map<String, dynamic> entry) {
+    return KdramaCard(
+      id: (entry['id'] as num).toInt(),
+      title: entry['title'] as String? ?? '',
+      cover: entry['cover'] as String? ?? '',
+    );
   }
 
   // ────────────────────────────────────────────────────────────────
@@ -638,199 +651,37 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   // ─── Continue Watching ────────────────────────────────────────
   Widget _buildContinueWatching() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: ForjaShellColors.sectionIconBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.history_rounded,
-                      color: ForjaShellColors.sectionAccent, size: 18),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'Continue Watching',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          HorizontalScroller(
-            height: 175,
+    final w = MediaQuery.of(context).size.width;
+    final hPad = w < 380 ? 14.0 : 24.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShellSectionTitle(
+          title: 'Continue Watching',
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+        ),
+        SizedBox(
+          height: _AsianDramaContinueWatchingCard.cardHeight(context),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            clipBehavior: Clip.none,
+            padding: EdgeInsets.symmetric(horizontal: hPad),
             itemCount: _continueWatching.length,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (_, i) {
               final entry = _continueWatching[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _continueCard(entry),
+              final card = _cardFromHistoryEntry(entry);
+              return _AsianDramaContinueWatchingCard(
+                entry: entry,
+                onTap: () => _resumeWatch(entry),
+                onRemove: () => _removeFromHistory(entry),
+                onInfo: () => _openDetails(card),
               );
             },
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _continueCard(Map<String, dynamic> entry) {
-    final cover = entry['cover'] as String?;
-    final title = entry['title'] as String? ?? '';
-    final epNum = (entry['episodeNumber'] as num?)?.toDouble() ?? 1.0;
-    final totalEps = (entry['totalEpisodes'] as num?)?.toInt() ?? 0;
-    final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
-    final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
-    final progress = (durMs > 0) ? (posMs / durMs).clamp(0.0, 1.0) : 0.0;
-    final epLabel = epNum == epNum.truncateToDouble()
-        ? epNum.toInt().toString()
-        : epNum.toString();
-
-    return SizedBox(
-      width: 270,
-      child: HoverScale(
-        onTap: () => _resumeWatch(entry),
-        onLongPress: () async {
-          await _removeFromHistory(entry);
-        },
-        radius: 12,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (cover != null && cover.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: cover,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) =>
-                            Container(color: AppTheme.bgCard),
-                        errorWidget: (_, _, _) =>
-                            Container(color: AppTheme.bgCard),
-                      )
-                    else
-                      Container(color: AppTheme.bgCard),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.85),
-                          ],
-                          stops: const [0.5, 1.0],
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.play_arrow_rounded,
-                            color: Colors.white, size: 28),
-                      ),
-                    ),
-                    Positioned(
-                      left: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: ForjaShellColors.sectionIconBg,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
-                        ),
-                        child: Text(
-                          'EP $epLabel${totalEps > 0 ? ' / $totalEps' : ''}',
-                          style: TextStyle(
-                            color: ForjaShellColors.sectionAccent,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () => _removeFromHistory(entry),
-                          child: Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                width: 1,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (progress > 0)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 3,
-                          backgroundColor:
-                              Colors.white.withValues(alpha: 0.2),
-                          valueColor: AlwaysStoppedAnimation(
-                              ForjaShellColors.progressFill),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
         ),
-      ),
+      ],
     );
   }
 
@@ -1184,6 +1035,281 @@ class _PosterCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AsianDramaContinueWatchingCard extends StatefulWidget {
+  final Map<String, dynamic> entry;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+  final VoidCallback onInfo;
+
+  const _AsianDramaContinueWatchingCard({
+    required this.entry,
+    required this.onTap,
+    required this.onRemove,
+    required this.onInfo,
+  });
+
+  static double cardWidth(BuildContext context) {
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    return isDesktop
+        ? ShellTokens.shellContinueWatchingCardWidthDesktop
+        : ShellTokens.shellContinueWatchingCardWidthCompact;
+  }
+
+  static double cardHeight(BuildContext context) {
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    return isDesktop
+        ? ShellTokens.shellContinueWatchingCardHeightDesktop
+        : ShellTokens.shellContinueWatchingCardHeightCompact;
+  }
+
+  @override
+  State<_AsianDramaContinueWatchingCard> createState() =>
+      _AsianDramaContinueWatchingCardState();
+}
+
+class _AsianDramaContinueWatchingCardState
+    extends State<_AsianDramaContinueWatchingCard> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool get _active => _hovered || _focused;
+
+  @override
+  Widget build(BuildContext context) {
+    final cover = widget.entry['cover'] as String?;
+    final title = widget.entry['title'] as String? ?? '';
+    final epNum = (widget.entry['episodeNumber'] as num?)?.toDouble() ?? 1.0;
+    final totalEps = (widget.entry['totalEpisodes'] as num?)?.toInt() ?? 0;
+    final position = (widget.entry['positionMs'] as num?)?.toInt() ?? 0;
+    final duration = (widget.entry['durationMs'] as num?)?.toInt() ?? 0;
+    final progress =
+        duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
+    final remaining = duration > 0
+        ? Duration(milliseconds: duration - position)
+        : Duration.zero;
+    final remainingText =
+        remaining.inMinutes > 0 ? '${remaining.inMinutes}m left' : '';
+    final epLabel = epNum == epNum.truncateToDouble()
+        ? epNum.toInt().toString()
+        : epNum.toString();
+    final subtitle = totalEps > 0
+        ? 'Ep $epLabel / $totalEps'
+        : 'Ep $epLabel';
+    final cardWidth = _AsianDramaContinueWatchingCard.cardWidth(context);
+    final cardHeight = _AsianDramaContinueWatchingCard.cardHeight(context);
+
+    return Focus(
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select)) {
+          widget.onTap();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedScale(
+            scale: _active ? 1.05 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            child: Container(
+              width: cardWidth,
+              height: cardHeight,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(
+                      color: AppTheme.bgDark,
+                      child: cover != null && cover.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: cover,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.medium,
+                              placeholder: (c, u) =>
+                                  ColoredBox(color: AppTheme.bgDark),
+                            )
+                          : const Icon(
+                              Icons.movie,
+                              color: Colors.white24,
+                              size: 40,
+                            ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.1),
+                            Colors.black.withValues(alpha: 0.3),
+                            Colors.black.withValues(alpha: 0.85),
+                            Colors.black.withValues(alpha: 0.95),
+                          ],
+                          stops: const [0.0, 0.3, 0.7, 1.0],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Column(
+                        children: [
+                          ForjaCloseButton(
+                            size: 14,
+                            hitSize: 28,
+                            color: Colors.white70,
+                            onTap: widget.onRemove,
+                          ),
+                          const SizedBox(height: 4),
+                          Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              hoverColor: ForjaShellColors.inkHover,
+                              splashColor: ForjaShellColors.inkSplash,
+                              highlightColor: ForjaShellColors.inkSplash,
+                              onTap: widget.onInfo,
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.info_outline_rounded,
+                                  color: Colors.white70,
+                                  size: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    height: 1.2,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    subtitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.6),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                if (remainingText.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Text(
+                                      remainingText,
+                                      style: TextStyle(
+                                        color: ForjaShellColors.badgeLabel,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              bottom: Radius.circular(14),
+                            ),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.1),
+                              color: ForjaShellColors.sectionAccent,
+                              minHeight: 3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedOpacity(
+                          opacity: _active ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

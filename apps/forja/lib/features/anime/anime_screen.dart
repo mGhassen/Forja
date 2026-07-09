@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -794,9 +795,6 @@ class _AnimeScreenState extends State<AnimeScreen>
 
   Widget _buildContinueWatching() {
     final w = MediaQuery.of(context).size.width;
-    // Card width scales: phone 200, tablet 240, desktop 280.
-    final cardW = w < 600 ? 200.0 : (w < 1100 ? 240.0 : 280.0);
-    final cardH = cardW * (130.0 / 220.0); // keep ~1.69 aspect
     final hPad = w < 380 ? 14.0 : 24.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -817,7 +815,7 @@ class _AnimeScreenState extends State<AnimeScreen>
           ],
         ),
         SizedBox(
-          height: cardH,
+          height: _AnimeContinueWatchingCard.cardHeight(context),
           child: ListView.separated(
             controller: _cwScrollController,
             scrollDirection: Axis.horizontal,
@@ -828,111 +826,14 @@ class _AnimeScreenState extends State<AnimeScreen>
             separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (_, i) {
               final entry = _continueWatching[i];
-              final animeJson =
-                  (entry['anime'] as Map).cast<String, dynamic>();
-              final anime = AnimeCard.fromJson(animeJson);
-              final ep = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
-              final cat = (entry['category'] as String?) ?? 'sub';
-              return HoverScale(
+              final anime = AnimeCard.fromJson(
+                (entry['anime'] as Map).cast<String, dynamic>(),
+              );
+              return _AnimeContinueWatchingCard(
+                entry: entry,
                 onTap: () => _resumeWatch(entry),
-                radius: 14,
-                child: Container(
-                  width: cardW,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: AppTheme.bgCard,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.06),
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      if (anime.bannerOrCover.isNotEmpty)
-                        Positioned.fill(
-                          child: CachedNetworkImage(
-                            imageUrl: anime.bannerOrCover,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.0),
-                                Colors.black.withValues(alpha: 0.85),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 10,
-                        right: 10,
-                        bottom: 10,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              anime.displayTitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Ep $ep · ${cat.toUpperCase()}',
-                              style: TextStyle(
-                                color: ForjaShellColors.sectionAccent,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Icon(
-                          Icons.play_circle_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      Positioned(
-                        top: 6,
-                        left: 6,
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () => _removeFromHistory(entry),
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                onRemove: () => _removeFromHistory(entry),
+                onInfo: () => _openDetails(anime),
               );
             },
           ),
@@ -1914,6 +1815,276 @@ class _AnimeMosaicTile extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimeContinueWatchingCard extends StatefulWidget {
+  final Map<String, dynamic> entry;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+  final VoidCallback onInfo;
+
+  const _AnimeContinueWatchingCard({
+    required this.entry,
+    required this.onTap,
+    required this.onRemove,
+    required this.onInfo,
+  });
+
+  static double cardWidth(BuildContext context) {
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    return isDesktop
+        ? ShellTokens.shellContinueWatchingCardWidthDesktop
+        : ShellTokens.shellContinueWatchingCardWidthCompact;
+  }
+
+  static double cardHeight(BuildContext context) {
+    final isDesktop =
+        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    return isDesktop
+        ? ShellTokens.shellContinueWatchingCardHeightDesktop
+        : ShellTokens.shellContinueWatchingCardHeightCompact;
+  }
+
+  @override
+  State<_AnimeContinueWatchingCard> createState() =>
+      _AnimeContinueWatchingCardState();
+}
+
+class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool get _active => _hovered || _focused;
+
+  @override
+  Widget build(BuildContext context) {
+    final anime = AnimeCard.fromJson(
+      (widget.entry['anime'] as Map).cast<String, dynamic>(),
+    );
+    final ep = (widget.entry['episodeNumber'] as num?)?.toInt() ?? 1;
+    final cat = (widget.entry['category'] as String?) ?? 'sub';
+    final position = (widget.entry['positionMs'] as num?)?.toInt() ?? 0;
+    final duration = (widget.entry['durationMs'] as num?)?.toInt() ?? 0;
+    final progress =
+        duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
+    final remaining = duration > 0
+        ? Duration(milliseconds: duration - position)
+        : Duration.zero;
+    final remainingText =
+        remaining.inMinutes > 0 ? '${remaining.inMinutes}m left' : '';
+    final subtitle = 'Ep $ep · ${cat.toUpperCase()}';
+    final cardWidth = _AnimeContinueWatchingCard.cardWidth(context);
+    final cardHeight = _AnimeContinueWatchingCard.cardHeight(context);
+
+    return Focus(
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select)) {
+          widget.onTap();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedScale(
+            scale: _active ? 1.05 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            child: Container(
+              width: cardWidth,
+              height: cardHeight,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(
+                      color: AppTheme.bgDark,
+                      child: anime.bannerOrCover.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: anime.bannerOrCover,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.medium,
+                              placeholder: (c, u) =>
+                                  ColoredBox(color: AppTheme.bgDark),
+                            )
+                          : const Icon(
+                              Icons.movie,
+                              color: Colors.white24,
+                              size: 40,
+                            ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.1),
+                            Colors.black.withValues(alpha: 0.3),
+                            Colors.black.withValues(alpha: 0.85),
+                            Colors.black.withValues(alpha: 0.95),
+                          ],
+                          stops: const [0.0, 0.3, 0.7, 1.0],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Column(
+                        children: [
+                          ForjaCloseButton(
+                            size: 14,
+                            hitSize: 28,
+                            color: Colors.white70,
+                            onTap: widget.onRemove,
+                          ),
+                          const SizedBox(height: 4),
+                          Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              hoverColor: ForjaShellColors.inkHover,
+                              splashColor: ForjaShellColors.inkSplash,
+                              highlightColor: ForjaShellColors.inkSplash,
+                              onTap: widget.onInfo,
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.info_outline_rounded,
+                                  color: Colors.white70,
+                                  size: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  anime.displayTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    height: 1.2,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    subtitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.6),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                if (remainingText.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Text(
+                                      remainingText,
+                                      style: TextStyle(
+                                        color: ForjaShellColors.badgeLabel,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              bottom: Radius.circular(14),
+                            ),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.1),
+                              color: ForjaShellColors.sectionAccent,
+                              minHeight: 3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedOpacity(
+                          opacity: _active ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

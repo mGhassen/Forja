@@ -120,6 +120,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           setState(() {
             if (phase == 'init') _setPhase('Opening kisskh…');
             if (phase == 'loaded') _setPhase('Waiting for stream key…');
+            if (phase == 'embed') _setPhase('Extracting stream…');
+            if (phase == 'subs') _setPhase(detail);
             if (phase == 'done') _setPhase('Stream ready');
             if (phase == 'error') _statusLine = detail;
           });

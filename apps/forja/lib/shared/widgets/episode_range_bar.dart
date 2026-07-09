@@ -77,7 +77,7 @@ List<T> filterEpisodeChunkByNumber<T>(
 }
 
 /// Horizontal numbered range chips (1-50, 51-100, …) for long episode lists.
-class EpisodeRangeBar extends StatelessWidget {
+class EpisodeRangeBar extends StatefulWidget {
   const EpisodeRangeBar({
     super.key,
     required this.ranges,
@@ -94,55 +94,107 @@ class EpisodeRangeBar extends StatelessWidget {
   final bool compact;
 
   @override
+  State<EpisodeRangeBar> createState() => _EpisodeRangeBarState();
+}
+
+class _EpisodeRangeBarState extends State<EpisodeRangeBar> {
+  final _scrollController = ScrollController();
+  final _selectedKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+  }
+
+  @override
+  void didUpdateWidget(covariant EpisodeRangeBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedIndex != widget.selectedIndex ||
+        oldWidget.ranges.length != widget.ranges.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToSelected() {
+    final context = _selectedKey.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0,
+        duration: Duration.zero,
+      );
+      return;
+    }
+    if (!_scrollController.hasClients) return;
+    _scrollController.jumpTo(0);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (ranges.isEmpty) return const SizedBox.shrink();
+    if (widget.ranges.isEmpty) return const SizedBox.shrink();
 
+    final height = widget.height;
     final radius = height / 2;
-    final fontSize = compact ? 11.0 : 12.0;
+    final fontSize = widget.compact ? 11.0 : 12.0;
 
-    return SizedBox(
-      height: height,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        itemCount: ranges.length,
-        separatorBuilder: (_, _) => SizedBox(width: compact ? 6 : 8),
-        itemBuilder: (_, i) {
-          final range = ranges[i];
-          final selected = i == selectedIndex;
-          return Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(radius),
-            clipBehavior: Clip.antiAlias,
-            child: Ink(
-              decoration: shellChipDecoration(selected: selected, radius: radius),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(radius),
-                onTap: () => onSelected(range.index),
-                child: SizedBox(
-                  height: height,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12),
-                    child: Center(
-                      child: Text(
-                        range.label,
-                        style: TextStyle(
-                          color: selected
-                              ? ForjaShellColors.cinematic.textPrimary
-                              : ForjaShellColors.cinematic.textSecondary,
-                          fontSize: fontSize,
-                          fontWeight:
-                              selected ? FontWeight.w700 : FontWeight.w500,
-                          height: 1,
+    return ClipRect(
+      child: SizedBox(
+        height: height,
+        child: ListView.separated(
+          controller: _scrollController,
+          scrollDirection: Axis.horizontal,
+          itemCount: widget.ranges.length,
+          separatorBuilder: (_, _) =>
+              SizedBox(width: widget.compact ? 6 : 8),
+          itemBuilder: (_, i) {
+            final range = widget.ranges[i];
+            final selected = i == widget.selectedIndex;
+            final chip = Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(radius),
+              clipBehavior: Clip.antiAlias,
+              child: Ink(
+                decoration:
+                    shellChipDecoration(selected: selected, radius: radius),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(radius),
+                  onTap: () => widget.onSelected(range.index),
+                  child: SizedBox(
+                    height: height,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: widget.compact ? 10 : 12,
+                      ),
+                      child: Center(
+                        child: Text(
+                          range.label,
+                          style: TextStyle(
+                            color: selected
+                                ? ForjaShellColors.cinematic.textPrimary
+                                : ForjaShellColors.cinematic.textSecondary,
+                            fontSize: fontSize,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w500,
+                            height: 1,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+            if (!selected) return chip;
+            return KeyedSubtree(key: _selectedKey, child: chip);
+          },
+        ),
       ),
     );
   }
