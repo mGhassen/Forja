@@ -178,6 +178,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   bool _disposed = false;
   bool _playerAlive = false;
+  bool _audioPinned = false;
+  bool _subtitlePinned = false;
 
   static const _playerConfiguration = PlayerConfiguration(
     bufferSize: 64 * 1024 * 1024,
@@ -917,9 +919,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   double _floatingEpgTopInset(BuildContext context) {
-    final safeTop =
-        DesktopWindowChrome.isDesktop ? 0.0 : MediaQuery.paddingOf(context).top;
-    return safeTop + _topBarTopPadding(context);
+    return DesktopWindowChrome.topInset(context);
   }
 
   void _updateSubVisibility(SubtitleTrack track) {
@@ -934,6 +934,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     PlayerAudioMenu.show(
       context,
       player: _player,
+      audioPinned: _audioPinned,
+      onSelectAuto: () async {
+        setState(() => _audioPinned = false);
+        await _player.setAudioTrack(AudioTrack.auto());
+      },
+      onManualSelect: () => setState(() => _audioPinned = true),
       anchorContext: anchorContext,
       margin: EdgeInsets.only(
         left: 16,
@@ -972,11 +978,18 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       externalSubtitles: const [],
       selectedExternalSubUrl: null,
       isFetchingSubs: false,
+      subtitlePinned: _subtitlePinned,
       updateSubVisibility: _updateSubVisibility,
       onExternalUrlChanged: (_) {},
       onNativeSubtitleChanged: (_) {},
       loadOnlineSubtitle: (_) async {},
       onSubtitleSettings: _showSubtitleSettings,
+      onSelectAuto: () async {
+        setState(() => _subtitlePinned = false);
+        await _player.setSubtitleTrack(SubtitleTrack.auto());
+        _updateSubVisibility(SubtitleTrack.auto());
+      },
+      onManualSelect: () => setState(() => _subtitlePinned = true),
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 88,
@@ -1164,7 +1177,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                     key: ValueKey(_currentChannelId),
                     future: epgFuture,
                     topInset: _floatingEpgTopInset(context),
-                    maxWidth: compact ? 240 : 300,
                   ),
                 ),
               ),

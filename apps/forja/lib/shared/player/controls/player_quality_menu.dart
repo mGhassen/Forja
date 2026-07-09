@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/player/utils.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 
 class PlayerQualityMenu {
@@ -7,6 +9,8 @@ class PlayerQualityMenu {
     BuildContext context, {
     required List<HlsQuality> qualities,
     required String? currentQualityUrl,
+    required String? masterUrl,
+    required PlayerState playerState,
     required Future<void> Function(HlsQuality quality) onSelect,
     String? playbackQualityLabel,
     String? playbackQualityDetail,
@@ -45,6 +49,14 @@ class PlayerQualityMenu {
       return;
     }
 
+    final qualityAuto = isHlsQualityAuto(currentQualityUrl, masterUrl);
+    final activeLabel = qualityAuto
+        ? activeHlsQualityLabel(playerState, qualities)
+        : null;
+    final activeDetail = qualityAuto
+        ? (playbackQualityDetail ?? matchActiveHlsVariant(qualities, playerState)?.label)
+        : null;
+
     PlayerPopupPanel.show(
       context: context,
       title: 'Quality',
@@ -56,12 +68,24 @@ class PlayerQualityMenu {
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
         children: qualities.map((q) {
-          final isCurrent = q.url == currentQualityUrl;
+          if (q.isAuto) {
+            return PlayerPopupListTile(
+              badge: 'AUTO',
+              label: q.label,
+              subtitle: qualityAuto ? activeLabel : null,
+              selected: qualityAuto,
+              onTap: () async {
+                PlayerPopupPanel.dismiss();
+                if (!qualityAuto) await onSelect(q);
+              },
+            );
+          }
+
+          final isCurrent = !qualityAuto && q.url == currentQualityUrl;
           final subtitle = q.bandwidth != null
               ? '${(q.bandwidth! / 1000).round()} kbps'
-              : null;
+              : (qualityAuto && q.label == activeLabel ? activeDetail : null);
           return PlayerPopupListTile(
-            badge: q.isAuto ? 'AUTO' : null,
             label: q.label,
             subtitle: subtitle,
             selected: isCurrent,

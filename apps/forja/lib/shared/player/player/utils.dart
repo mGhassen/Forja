@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:media_kit/media_kit.dart';
+import 'package:rust/rust.dart';
 
 bool isIgnorablePlayerError(String err) {
   if (err.isEmpty) return true;
@@ -104,6 +105,98 @@ String? playbackQualityDetail(PlayerState state) {
   final h = state.videoParams.h ?? 0;
   if (w <= 0 || h <= 0) return null;
   return '$w × $h';
+}
+
+String formatPlayerTrackLabel({
+  required String id,
+  String? title,
+  String? language,
+}) {
+  final trimmedTitle = title?.trim();
+  if (trimmedTitle != null && trimmedTitle.isNotEmpty) return trimmedTitle;
+  final trimmedLanguage = language?.trim();
+  if (trimmedLanguage != null && trimmedLanguage.isNotEmpty) {
+    return trimmedLanguage;
+  }
+  return 'Track $id';
+}
+
+Future<String?> _mpvTrackProperty(Player player, String property) async {
+  if (player.platform is! NativePlayer) return null;
+  try {
+    final raw = await (player.platform as NativePlayer).getProperty(property);
+    if (raw.isEmpty || raw == 'no' || raw == 'auto') return null;
+    return raw;
+  } catch (_) {
+    return null;
+  }
+}
+
+AudioTrack? findAudioTrack(List<AudioTrack> tracks, String id) {
+  for (final track in tracks) {
+    if (track.id == id) return track;
+  }
+  return null;
+}
+
+SubtitleTrack? findSubtitleTrack(List<SubtitleTrack> tracks, String id) {
+  for (final track in tracks) {
+    if (track.id == id) return track;
+  }
+  return null;
+}
+
+Future<AudioTrack?> resolveActiveAudioTrack(Player player) async {
+  final selected = player.state.track.audio;
+  if (selected.id != 'auto' && selected.id != 'no') return selected;
+  final aid = await _mpvTrackProperty(player, 'aid');
+  if (aid != null) {
+    return findAudioTrack(player.state.tracks.audio, aid);
+  }
+  return null;
+}
+
+Future<SubtitleTrack?> resolveActiveSubtitleTrack(Player player) async {
+  final selected = player.state.track.subtitle;
+  if (selected.id != 'auto' && selected.id != 'no') return selected;
+  final sid = await _mpvTrackProperty(player, 'sid');
+  if (sid != null) {
+    return findSubtitleTrack(player.state.tracks.subtitle, sid);
+  }
+  return null;
+}
+
+bool isHlsQualityAuto(String? currentQualityUrl, String? masterUrl) {
+  if (masterUrl == null || currentQualityUrl == null) return false;
+  return currentQualityUrl == masterUrl;
+}
+
+HlsQuality? matchActiveHlsVariant(List<HlsQuality> qualities, PlayerState state) {
+  final height = state.videoParams.h ?? 0;
+  if (height > 0) {
+    for (final quality in qualities) {
+      if (quality.isAuto) continue;
+      if (quality.height == height) return quality;
+      if (quality.label == '${height}p') return quality;
+    }
+  }
+  final width = state.videoParams.w ?? 0;
+  if (width > 0) {
+    for (final quality in qualities) {
+      if (quality.isAuto) continue;
+      if (quality.label == '${width}p') return quality;
+    }
+  }
+  return null;
+}
+
+String? activeHlsQualityLabel(
+  PlayerState state,
+  List<HlsQuality> qualities,
+) {
+  final fromParams = playbackQualityLabel(state);
+  if (fromParams != null) return fromParams;
+  return matchActiveHlsVariant(qualities, state)?.label;
 }
 
 String formatDuration(Duration duration) {

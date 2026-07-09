@@ -86,13 +86,7 @@ class _AsianDramaSearchScreenState extends State<AsianDramaSearchScreen> {
     }
   }
 
-  void _open(KdramaCard a) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsianDramaDetailsScreen(drama: a),
-      ),
-    );
-  }
+  void _open(KdramaCard a) => openAsianDramaDetails(context, a);
 
   @override
   Widget build(BuildContext context) {

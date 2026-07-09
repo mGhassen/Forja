@@ -30,7 +30,7 @@ import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/player_metadata.dart';
-import 'package:forja/shared/player/controls/stream_source_panel.dart';
+import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/player_episode_menu.dart';
@@ -477,6 +477,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   int _currentFallbackSourceIndex = 0;
   bool _providerPinned = false;
   bool _sourcePinned = false;
+  bool _audioPinned = false;
+  bool _subtitlePinned = false;
   final PlayerStatusController _statusController = PlayerStatusController();
   bool _isSwitchingProvider = false;
   bool _isInitPlaybackRunning = false;
@@ -1879,17 +1881,29 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       externalSubtitles: _externalSubtitles,
       selectedExternalSubUrl: _selectedExternalSubUrl,
       isFetchingSubs: _isFetchingSubs,
+      subtitlePinned: _subtitlePinned,
       updateSubVisibility: _updateSubVisibility,
       onExternalUrlChanged: (url) => setState(() => _selectedExternalSubUrl = url),
       onNativeSubtitleChanged: (v) => setState(() => _isNativeSubtitle = v),
       loadOnlineSubtitle: _loadOnlineSubtitle,
       onSubtitleSettings: _showSubtitleSettings,
+      onSelectAuto: _selectAutoSubtitle,
+      onManualSelect: () => setState(() => _subtitlePinned = true),
       excludeKnownExternalEmbedded: true,
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 76,
       ),
     );
+  }
+
+  Future<void> _selectAutoSubtitle() async {
+    setState(() {
+      _subtitlePinned = false;
+      _selectedExternalSubUrl = null;
+    });
+    await _player.setSubtitleTrack(SubtitleTrack.auto());
+    _updateSubVisibility(SubtitleTrack.auto());
   }
 
   void _showSubtitleSettings() {
@@ -2138,12 +2152,21 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     PlayerAudioMenu.show(
       context,
       player: _player,
+      audioPinned: _audioPinned,
+      onSelectAuto: _selectAutoAudio,
+      onManualSelect: () => setState(() => _audioPinned = true),
       anchorContext: anchorContext,
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 76,
       ),
     );
+  }
+
+  Future<void> _selectAutoAudio() async {
+    setState(() => _audioPinned = false);
+    await _player.setAudioTrack(AudioTrack.auto());
+    await _applyTrackAutoSelect();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -2183,6 +2206,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       context,
       qualities: qs,
       currentQualityUrl: _currentQualityUrl,
+      masterUrl: _hlsMasterUrl,
+      playerState: _player.state,
       playbackQualityLabel: playbackQualityLabel(_player.state),
       playbackQualityDetail: playbackQualityDetail(_player.state),
       onSelect: _switchQuality,
@@ -2217,18 +2242,57 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   //  SOURCE SELECTION (for Amri provider)
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _showSourcesMenu([BuildContext? anchorContext]) {
-    if (_currentSources == null || _currentSources!.isEmpty) return;
-    final bottom = MediaQuery.paddingOf(context).bottom + 76;
-    StreamSourcePanel.show(
-      context,
-      sources: _currentSources!,
+  PlayerStreamMenuState _streamMenuState() {
+    String? activeSourceTitle;
+    final sources = _currentSources;
+    if (sources != null && sources.isNotEmpty) {
+      for (final source in sources) {
+        final isCurrent = _currentProvider == 'service111477'
+            ? source.url == _current111477FileUrl
+            : source.url == _currentUrl;
+        if (isCurrent) {
+          activeSourceTitle = source.title;
+          break;
+        }
+      }
+    }
+
+    String? activeProviderLabel;
+    final providerId = _currentProvider;
+    final providers = widget.providers;
+    if (providerId != null && providers != null && providers.containsKey(providerId)) {
+      activeProviderLabel = PlayerProviderMenu.snackbarLabel(
+        providerId,
+        providers[providerId],
+      );
+    }
+
+    return PlayerStreamMenuState(
+      currentProviderId: _currentProvider,
+      sources: _currentSources,
       currentUrl: _currentUrl,
       current111477FileUrl: _current111477FileUrl,
       is111477: _currentProvider == 'service111477',
+      providerAuto: !_providerPinned,
+      sourceAuto: !_sourcePinned,
+      activeProviderLabel: activeProviderLabel,
+      activeSourceTitle: activeSourceTitle,
+    );
+  }
+
+  void _showSourcesMenu([BuildContext? anchorContext]) {
+    if (_currentSources == null || _currentSources!.isEmpty) return;
+    final bottom = MediaQuery.paddingOf(context).bottom + 76;
+    PlayerStreamMenu.show(
+      context,
+      readState: _streamMenuState,
+      onSelectProvider: _switchProvider,
+      onSelectAutoProvider: _selectAutoProvider,
+      onSelectAutoSource: _selectAutoSource,
+      onSelectSource: _switchToStreamSource,
+      sourcesOnly: true,
       anchorContext: anchorContext,
       margin: EdgeInsets.only(right: 12, bottom: bottom),
-      onSelect: _switchToStreamSource,
     );
     _startHideTimer();
   }
@@ -2242,15 +2306,38 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       return;
     }
     final bottom = MediaQuery.paddingOf(context).bottom + 76;
-    PlayerProviderMenu.show(
+    PlayerStreamMenu.show(
       context,
-      providers: widget.providers!,
-      currentProviderId: _currentProvider,
+      providers: widget.providers,
+      readState: _streamMenuState,
+      onSelectProvider: _switchProvider,
+      onSelectAutoProvider: _selectAutoProvider,
+      onSelectAutoSource: _selectAutoSource,
+      onSelectSource: _switchToStreamSource,
+      providersEnabled: !_isSwitchingProvider,
       anchorContext: anchorContext,
       margin: EdgeInsets.only(right: 12, bottom: bottom),
-      onSelect: _switchProvider,
     );
     _startHideTimer();
+  }
+
+  Future<void> _selectAutoProvider() async {
+    if (!_providerPinned) return;
+    setState(() {
+      _providerPinned = false;
+      _sourcePinned = false;
+      _currentFallbackSourceIndex = 0;
+    });
+    await _initPlayback();
+  }
+
+  Future<void> _selectAutoSource() async {
+    if (!_sourcePinned) return;
+    setState(() {
+      _sourcePinned = false;
+      _currentFallbackSourceIndex = 0;
+    });
+    await _initPlayback();
   }
 
   Future<void> _switchToStreamSource(StreamSource source, int index) async {

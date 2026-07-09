@@ -81,11 +81,7 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
     }
   }
 
-  void _open(AnimeCard a) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AnimeDetailsScreen(anime: a)),
-    );
-  }
+  void _open(AnimeCard a) => openAnimeDetails(context, a);
 
   @override
   Widget build(BuildContext context) {

@@ -279,9 +279,7 @@ class _AnimeScreenState extends State<AnimeScreen>
   }
 
   void _openDetails(AnimeCard a) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AnimeDetailsScreen(anime: a)),
-    ).then((_) => _refreshHistory());
+    openAnimeDetails(context, a).then((_) => _refreshHistory());
   }
 
   void _openDiscover() {

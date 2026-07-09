@@ -12,6 +12,8 @@ class PlayerStreamMenuState {
     required this.is111477,
     required this.providerAuto,
     required this.sourceAuto,
+    this.activeProviderLabel,
+    this.activeSourceTitle,
   });
 
   final String? currentProviderId;
@@ -21,6 +23,8 @@ class PlayerStreamMenuState {
   final bool is111477;
   final bool providerAuto;
   final bool sourceAuto;
+  final String? activeProviderLabel;
+  final String? activeSourceTitle;
 }
 
 /// Servers → sources drill-down, same panel flow as seasons → episodes.
@@ -35,6 +39,7 @@ class PlayerStreamMenu {
     required Future<void> Function() onSelectAutoSource,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     bool providersEnabled = true,
+    bool sourcesOnly = false,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
@@ -49,6 +54,19 @@ class PlayerStreamMenu {
           content: Text('No streams available'),
           duration: Duration(seconds: 1),
         ),
+      );
+      return;
+    }
+
+    if (sourcesOnly && hasSources) {
+      await _openSources(
+        context,
+        readState: readState,
+        onSelectAutoSource: onSelectAutoSource,
+        onSelectSource: onSelectSource,
+        margin: margin,
+        anchorContext: anchorContext,
+        onBack: null,
       );
       return;
     }
@@ -108,6 +126,7 @@ class PlayerStreamMenu {
           PlayerPopupListTile(
             badge: 'AUTO',
             label: 'Auto',
+            subtitle: state.providerAuto ? state.activeProviderLabel : null,
             selected: state.providerAuto,
             onTap: () async {
               PlayerPopupPanel.dismiss();
@@ -213,6 +232,7 @@ class PlayerStreamMenu {
           PlayerPopupListTile(
             badge: 'AUTO',
             label: 'Auto',
+            subtitle: state.sourceAuto ? state.activeSourceTitle : null,
             selected: state.sourceAuto,
             onTap: () async {
               PlayerPopupPanel.dismiss();

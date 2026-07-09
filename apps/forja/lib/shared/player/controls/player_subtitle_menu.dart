@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -14,11 +15,14 @@ class PlayerSubtitleMenu {
     required List<Map<String, dynamic>> externalSubtitles,
     required String? selectedExternalSubUrl,
     required bool isFetchingSubs,
+    required bool subtitlePinned,
     required void Function(SubtitleTrack track) updateSubVisibility,
     required void Function(String? url) onExternalUrlChanged,
     required void Function(bool isNative) onNativeSubtitleChanged,
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
+    required Future<void> Function() onSelectAuto,
+    required VoidCallback onManualSelect,
     bool excludeKnownExternalEmbedded = false,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
@@ -29,11 +33,14 @@ class PlayerSubtitleMenu {
       externalSubtitles: externalSubtitles,
       selectedExternalSubUrl: selectedExternalSubUrl,
       isFetchingSubs: isFetchingSubs,
+      subtitlePinned: subtitlePinned,
       updateSubVisibility: updateSubVisibility,
       onExternalUrlChanged: onExternalUrlChanged,
       onNativeSubtitleChanged: onNativeSubtitleChanged,
       loadOnlineSubtitle: loadOnlineSubtitle,
       onSubtitleSettings: onSubtitleSettings,
+      onSelectAuto: onSelectAuto,
+      onManualSelect: onManualSelect,
       excludeKnownExternalEmbedded: excludeKnownExternalEmbedded,
       margin: margin,
       anchorContext: anchorContext,
@@ -46,16 +53,43 @@ class PlayerSubtitleMenu {
     required List<Map<String, dynamic>> externalSubtitles,
     required String? selectedExternalSubUrl,
     required bool isFetchingSubs,
+    required bool subtitlePinned,
     required void Function(SubtitleTrack track) updateSubVisibility,
     required void Function(String? url) onExternalUrlChanged,
     required void Function(bool isNative) onNativeSubtitleChanged,
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
+    required Future<void> Function() onSelectAuto,
+    required VoidCallback onManualSelect,
     required bool excludeKnownExternalEmbedded,
     required EdgeInsets margin,
     BuildContext? anchorContext,
   }) async {
     final current = player.state.track.subtitle;
+    final subtitleAuto = !subtitlePinned;
+    final active = await resolveActiveSubtitleTrack(player);
+    String? activeLabel;
+    if (subtitleAuto) {
+      if (selectedExternalSubUrl != null) {
+        Map<String, dynamic>? external;
+        for (final sub in externalSubtitles) {
+          if (sub['url'] == selectedExternalSubUrl) {
+            external = sub;
+            break;
+          }
+        }
+        activeLabel = external?['display']?.toString() ??
+            external?['language']?.toString();
+      } else if (active != null) {
+        activeLabel = formatPlayerTrackLabel(
+          id: active.id,
+          title: active.title,
+          language: active.language,
+        );
+      } else if (current.id == 'no') {
+        activeLabel = 'Off';
+      }
+    }
     final embedded = player.state.tracks.subtitle.where((t) {
       final isExternal = t.id.startsWith('http');
       final isKnownExternal = excludeKnownExternalEmbedded &&
@@ -71,6 +105,8 @@ class PlayerSubtitleMenu {
       byLang.putIfAbsent(key, () => []).add(s);
     }
     final folderKeys = byLang.keys.toList()..sort(compareLanguageCodes);
+
+    if (!context.mounted) return;
 
     await PlayerPopupPanel.show(
       context: context,
@@ -104,12 +140,23 @@ class PlayerSubtitleMenu {
             ),
           PlayerPopupListTile(
             label: 'Off',
-            selected: current.id == 'no' && selectedExternalSubUrl == null,
+            selected: subtitlePinned && current.id == 'no' && selectedExternalSubUrl == null,
             onTap: () {
+              onManualSelect();
               player.setSubtitleTrack(SubtitleTrack.no());
               updateSubVisibility(SubtitleTrack.no());
               onExternalUrlChanged(null);
-          PlayerPopupPanel.dismiss();
+              PlayerPopupPanel.dismiss();
+            },
+          ),
+          PlayerPopupListTile(
+            badge: 'AUTO',
+            label: 'Auto',
+            subtitle: subtitleAuto ? activeLabel : null,
+            selected: subtitleAuto,
+            onTap: () async {
+              PlayerPopupPanel.dismiss();
+              if (!subtitleAuto) await onSelectAuto();
             },
           ),
           PlayerPopupListTile(
@@ -120,6 +167,7 @@ class PlayerSubtitleMenu {
                 allowedExtensions: ['srt', 'ass', 'ssa', 'vtt'],
               );
               if (result != null && result.files.single.path != null) {
+                onManualSelect();
                 final file = File(result.files.single.path!);
                 final content = await file.readAsString();
                 final name = result.files.single.name;
@@ -138,22 +186,30 @@ class PlayerSubtitleMenu {
             },
           ),
           ...embedded.map((t) {
-            final sel = t.id == current.id && selectedExternalSubUrl == null;
+            final sel = subtitlePinned &&
+                t.id == current.id &&
+                selectedExternalSubUrl == null;
             return PlayerPopupListTile(
-              label: t.title ?? t.language ?? 'Track ${t.id}',
+              label: formatPlayerTrackLabel(
+                id: t.id,
+                title: t.title,
+                language: t.language,
+              ),
               subtitle: 'Embedded',
               selected: sel,
               onTap: () {
+                onManualSelect();
                 player.setSubtitleTrack(t);
                 updateSubVisibility(t);
                 onExternalUrlChanged(null);
-            PlayerPopupPanel.dismiss();
+                PlayerPopupPanel.dismiss();
               },
             );
           }),
           ...folderKeys.map((key) {
             final list = byLang[key]!;
-            final hasSelected = list.any((s) => s['url'] == selectedExternalSubUrl);
+            final hasSelected = subtitlePinned &&
+                list.any((s) => s['url'] == selectedExternalSubUrl);
             return PlayerPopupListTile(
               label: languageDisplayName(key),
               badge: '${list.length}',
@@ -168,17 +224,21 @@ class PlayerSubtitleMenu {
                   selectedExternalSubUrl: selectedExternalSubUrl,
                   loadOnlineSubtitle: loadOnlineSubtitle,
                   onExternalUrlChanged: onExternalUrlChanged,
+                  onManualSelect: onManualSelect,
                   onRoot: () => _openRoot(
                     context,
                     player: player,
                     externalSubtitles: externalSubtitles,
                     selectedExternalSubUrl: selectedExternalSubUrl,
                     isFetchingSubs: isFetchingSubs,
+                    subtitlePinned: subtitlePinned,
                     updateSubVisibility: updateSubVisibility,
                     onExternalUrlChanged: onExternalUrlChanged,
                     onNativeSubtitleChanged: onNativeSubtitleChanged,
                     loadOnlineSubtitle: loadOnlineSubtitle,
                     onSubtitleSettings: onSubtitleSettings,
+                    onSelectAuto: onSelectAuto,
+                    onManualSelect: onManualSelect,
                     excludeKnownExternalEmbedded: excludeKnownExternalEmbedded,
                     margin: margin,
                     anchorContext: anchorContext,
@@ -208,6 +268,7 @@ class PlayerSubtitleMenu {
     required String? selectedExternalSubUrl,
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required void Function(String? url) onExternalUrlChanged,
+    required VoidCallback onManualSelect,
     required Future<void> Function() onRoot,
     required EdgeInsets margin,
     BuildContext? anchorContext,
@@ -235,6 +296,7 @@ class PlayerSubtitleMenu {
             subtitle: source,
             selected: sel,
             onTap: () async {
+              onManualSelect();
               await loadOnlineSubtitle(s);
               onExternalUrlChanged(s['url']?.toString());
               if (context.mounted) PlayerPopupPanel.dismiss();

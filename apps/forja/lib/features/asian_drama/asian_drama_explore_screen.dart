@@ -93,13 +93,7 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
     }
   }
 
-  void _open(KdramaCard a) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsianDramaDetailsScreen(drama: a),
-      ),
-    );
-  }
+  void _open(KdramaCard a) => openAsianDramaDetails(context, a);
 
   // ─────────────────────────────────────────────────────────────
   @override

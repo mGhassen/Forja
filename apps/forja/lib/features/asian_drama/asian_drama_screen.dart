@@ -174,11 +174,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   }
 
   void _openDetails(KdramaCard a) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsianDramaDetailsScreen(drama: a),
-      ),
-    ).then((_) => _refreshHistory());
+    openAsianDramaDetails(context, a).then((_) => _refreshHistory());
   }
 
   void _openSearch() {
@@ -219,11 +215,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       } catch (_) {}
       ep ??= details.episodes.isNotEmpty ? details.episodes.first : null;
       if (ep == null) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => AsianDramaDetailsScreen(drama: card),
-          ),
-        );
+        openAsianDramaDetails(context, card);
         return;
       }
       Navigator.of(context).push(
