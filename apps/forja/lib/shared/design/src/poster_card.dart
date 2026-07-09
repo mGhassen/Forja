@@ -53,7 +53,7 @@ class _PosterCardState extends State<PosterCard> {
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: AppTheme.textPrimary,
+                  color: DesignTokens.textPrimary,
                 ),
               ),
             ],
@@ -64,9 +64,9 @@ class _PosterCardState extends State<PosterCard> {
   }
 
   Widget _placeholder() => Container(
-        color: AppTheme.bgCard,
+        color: DesignTokens.bgCard,
         child: const Center(
-          child: Icon(Icons.movie_outlined, color: AppTheme.textSecondary),
+          child: Icon(Icons.movie_outlined, color: DesignTokens.textSecondary),
         ),
       );
 }

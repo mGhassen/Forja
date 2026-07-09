@@ -144,7 +144,7 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Create', style: TextStyle(color: Color(0xFF00E5FF))),
+              child: Text('Create', style: TextStyle(color: AppTheme.primaryColor)),
             ),
           ],
         ),

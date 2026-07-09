@@ -42,7 +42,7 @@ class ServerGrid extends StatelessWidget {
         final p = providers[i];
         final active = p.id == activeId;
         return Material(
-          color: AppTheme.bgCard,
+          color: DesignTokens.bgCard,
           borderRadius: BorderRadius.circular(10),
           child: InkWell(
             onTap: () => onSelect(p.id),
@@ -51,7 +51,7 @@ class ServerGrid extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: active ? AppTheme.primary : AppTheme.border,
+                  color: active ? DesignTokens.primary : DesignTokens.border,
                   width: active ? 2 : 1,
                 ),
               ),
@@ -67,12 +67,12 @@ class ServerGrid extends StatelessWidget {
                           p.name,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: active ? AppTheme.primary : AppTheme.textPrimary,
+                            color: active ? DesignTokens.primary : DesignTokens.textPrimary,
                           ),
                         ),
                       ),
                       if (active)
-                        const Icon(Icons.check_circle, size: 16, color: AppTheme.primary),
+                        const Icon(Icons.check_circle, size: 16, color: DesignTokens.primary),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -80,7 +80,7 @@ class ServerGrid extends StatelessWidget {
                     active ? '✓ Active' : 'Click to switch',
                     style: TextStyle(
                       fontSize: 11,
-                      color: active ? AppTheme.primary : AppTheme.textSecondary,
+                      color: active ? DesignTokens.primary : DesignTokens.textSecondary,
                     ),
                   ),
                 ],

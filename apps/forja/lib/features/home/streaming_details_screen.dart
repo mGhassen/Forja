@@ -8,7 +8,7 @@ import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
-import 'package:forja/shared/design/design.dart' hide AppTheme;
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';

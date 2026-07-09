@@ -27,7 +27,7 @@ import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/shared/design/design.dart' hide AppTheme;
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class DetailsScreen extends StatefulWidget {
@@ -1327,7 +1327,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             ),
             TextButton(
               onPressed: () { Navigator.pop(ctx); _rateTraktItem(selected); },
-              child: const Text('Rate', style: TextStyle(color: Color(0xFF00E5FF))),
+              child: Text('Rate', style: TextStyle(color: AppTheme.primaryColor)),
             ),
           ],
         ),

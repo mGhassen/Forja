@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
 
 class MediaDetailsTrackerState {
@@ -361,7 +362,7 @@ class MediaDetailsTrackerHandlers {
                 Navigator.pop(ctx);
                 _rateTraktItem(selected);
               },
-              child: const Text('Rate', style: TextStyle(color: Color(0xFF00E5FF))),
+              child: Text('Rate', style: TextStyle(color: AppTheme.primaryColor)),
             ),
           ],
         ),

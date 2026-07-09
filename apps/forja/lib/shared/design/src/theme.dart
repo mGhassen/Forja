@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class AppTheme {
+/// Legacy design tokens for server grid / player overlay panels.
+abstract final class DesignTokens {
   static const bgDark = Color(0xFF141414);
   static const bgCard = Color(0xFF1C1C1C);
-  static const primary = Color(0xFF3B82F6);
-  static const primaryDim = Color(0xFF2563EB);
-  static const accent = Color(0xFF00E5FF);
+  static const primary = ForjaShellColors.brandGreen;
+  static const primaryDim = Color(0xFF17C972);
+  static const accent = Color(0xFF9CA3AF);
   static const textPrimary = Color(0xFFF5F5F7);
   static const textSecondary = Color(0xFF9CA3AF);
-  static const border = Color(0xFF2A2A35);
+  static const border = Color(0xFF2A2A2A);
 
   static ThemeData dark() {
     final base = ThemeData.dark(useMaterial3: true);

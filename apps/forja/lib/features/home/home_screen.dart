@@ -26,7 +26,7 @@ import 'package:forja/shared/widgets/home_movie_card.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
-import 'package:forja/shared/design/design.dart' hide AppTheme;
+import 'package:forja/shared/design/design.dart';
 
 double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
   if (!compactTop) return ShellTokens.homeSectionTitleTop;
@@ -257,7 +257,8 @@ class _HomeScreenState extends State<HomeScreen>
   late Future<List<Movie>> _nowPlayingFuture;
 
   List<({String label, Future<List<Movie>> future})> _randomCategoryRows = [];
-  
+  int _homeFeedEpoch = 0;
+
   Timer? _heroTimer;
   int _heroIndex = 0;
 
@@ -427,32 +428,52 @@ class _HomeScreenState extends State<HomeScreen>
         category,
   ) {
     final providerId = _watchProviderId;
+    final globalGenres = _genreIds;
+    final movieGenres = globalGenres.movie ?? category.movieGenres;
+    final tvGenres = globalGenres.tv ?? category.tvGenres;
     return _fetchMediaFiltered(
       movieFetch: () => _api.discoverMovies(
-        genres: category.movieGenres,
+        genres: movieGenres,
         watchProviderId: providerId,
       ),
       tvFetch: () => _api.discoverTvShows(
-        genres: category.tvGenres,
+        genres: tvGenres,
         watchProviderId: providerId,
       ),
     );
   }
 
   void _resetRandomCategoryRows() {
-    final pool = List.of(homeGenreCategories)..shuffle(math.Random());
-    _randomCategoryRows = pool.take(3).map((category) {
-      return (
-        label: category.label,
-        future: _fetchCategoryRow(category),
-      );
-    }).toList();
+    final selectedGenreId = ShellBus.homeSelectedGenreId.value;
+    final List<
+        ({
+          String id,
+          String label,
+          List<int> movieGenres,
+          List<int> tvGenres,
+        })> picked;
+    if (selectedGenreId != null) {
+      picked = homeGenreCategories
+          .where((category) => category.id == selectedGenreId)
+          .toList();
+    } else {
+      final pool = List.of(homeGenreCategories)..shuffle(math.Random());
+      picked = pool.take(3).toList();
+    }
+    _randomCategoryRows = [
+      for (final category in picked)
+        (
+          label: category.label,
+          future: _fetchCategoryRow(category),
+        ),
+    ];
   }
 
   List<Widget> _randomCategoryRowSlivers() => [
         for (final row in _randomCategoryRows)
           _homeRowSliver(
             _MovieSection(
+              key: ValueKey('${row.label}-$_homeFeedEpoch'),
               title: row.label,
               future: row.future,
               onMovieTap: _openDetails,
@@ -460,6 +481,17 @@ class _HomeScreenState extends State<HomeScreen>
             isFirstAfterHero: false,
           ),
       ];
+
+  List<Movie> _enforceMediaFilter(List<Movie> items) {
+    final filter = _mediaFilter;
+    if (filter == ShellHomeCategory.films) {
+      return items.where((movie) => movie.mediaType != 'tv').toList();
+    }
+    if (filter == ShellHomeCategory.tvShows) {
+      return items.where((movie) => movie.mediaType == 'tv').toList();
+    }
+    return items;
+  }
 
   Future<List<Movie>> _fetchMediaFiltered({
     required Future<List<Movie>> Function() movieFetch,
@@ -470,21 +502,24 @@ class _HomeScreenState extends State<HomeScreen>
     final filter = _mediaFilter;
     if (filter == ShellHomeCategory.films) {
       if (movieCache != null) {
-        onLoaded?.call(movieCache);
-        return Future.value(movieCache);
+        final movies = _enforceMediaFilter(movieCache);
+        onLoaded?.call(movies);
+        return Future.value(movies);
       }
       return movieFetch()
           .then((movies) {
-            onLoaded?.call(movies);
-            return movies;
+            final filtered = _enforceMediaFilter(movies);
+            onLoaded?.call(filtered);
+            return filtered;
           })
           .catchError((_) => <Movie>[]);
     }
     if (filter == ShellHomeCategory.tvShows) {
       return tvFetch()
           .then((movies) {
-            onLoaded?.call(movies);
-            return movies;
+            final filtered = _enforceMediaFilter(movies);
+            onLoaded?.call(filtered);
+            return filtered;
           })
           .catchError((_) => <Movie>[]);
     }
@@ -584,6 +619,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _resetHomeCategoryFeeds({bool useBootCache = false}) {
+    _homeFeedEpoch++;
     final providerId = _watchProviderId;
     final genres = _genreIds;
     final canUseBootCache = useBootCache &&
@@ -2172,6 +2208,7 @@ class _MovieSection extends StatefulWidget {
   final bool showRank;
 
   const _MovieSection({
+    super.key,
     required this.title,
     required this.future,
     required this.onMovieTap,

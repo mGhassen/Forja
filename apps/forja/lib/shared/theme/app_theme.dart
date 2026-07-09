@@ -1,163 +1,71 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
-/// A single color theme preset with its own personality.
+/// Fixed Forja theme descriptor (single preset, not user-selectable).
 class AppThemePreset {
   final String id;
   final String name;
-  final String description;
-  final IconData icon;
   final Color bgDark;
   final Color bgCard;
   final Color primaryColor;
   final Color accentColor;
-  final Color gradientTint;
 
   const AppThemePreset({
     required this.id,
     required this.name,
-    required this.description,
-    required this.icon,
     required this.bgDark,
     required this.bgCard,
     required this.primaryColor,
     required this.accentColor,
-    required this.gradientTint,
   });
-
-  BoxDecoration get backgroundDecoration => BoxDecoration(color: bgDark);
-
-  BoxDecoration get backgroundDecorationFlat => BoxDecoration(color: bgDark);
 }
 
 class AppTheme {
   static const Color appBackground = Color(0xFF141414);
   static const Color appBackgroundLight = Color(0xFFF7F7F7);
   static const Color appCardLight = Color(0xFFFFFFFF);
-  static const String defaultPresetId = 'emerald';
+  static const String defaultPresetId = 'forja';
 
-  static AppThemePreset get defaultPreset =>
-      presets.firstWhere((p) => p.id == defaultPresetId);
+  static const AppThemePreset _forjaPreset = AppThemePreset(
+    id: 'forja',
+    name: 'Forja',
+    bgDark: appBackground,
+    bgCard: Color(0xFF1C1C1C),
+    primaryColor: ForjaShellColors.brandGreen,
+    accentColor: Color(0xFF9CA3AF),
+  );
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Theme Presets
-  // ═══════════════════════════════════════════════════════════════════════════
+  static const List<AppThemePreset> presets = [_forjaPreset];
 
-  static const List<AppThemePreset> presets = [
-    AppThemePreset(
-      id: 'cinematic',
-      name: 'Cinematic',
-      description: 'Electric violet & cyan — the original vibe',
-      icon: Icons.movie_filter,
-      bgDark: appBackground,
-      bgCard: Color(0xFF1C1C1C),
-      primaryColor: Color(0xFF7C4DFF),
-      accentColor: Color(0xFF00E5FF),
-      gradientTint: appBackground,
-    ),
-    AppThemePreset(
-      id: 'midnight',
-      name: 'Midnight Black',
-      description: 'Pure AMOLED black — sleek and minimal',
-      icon: Icons.dark_mode,
-      bgDark: appBackground,
-      bgCard: Color(0xFF1C1C1C),
-      primaryColor: Color(0xFFB0B0B0),
-      accentColor: Color(0xFF4A4A4A),
-      gradientTint: appBackground,
-    ),
-    AppThemePreset(
-      id: 'royal_purple',
-      name: 'Royal Purple',
-      description: 'Deep purple with hot pink sparks',
-      icon: Icons.auto_awesome,
-      bgDark: appBackground,
-      bgCard: Color(0xFF1C1C1C),
-      primaryColor: Color(0xFFBB86FC),
-      accentColor: Color(0xFFFF4081),
-      gradientTint: appBackground,
-    ),
-    AppThemePreset(
-      id: 'crimson',
-      name: 'Crimson',
-      description: 'Dark and intense — blood red energy',
-      icon: Icons.local_fire_department,
-      bgDark: appBackground,
-      bgCard: Color(0xFF1C1C1C),
-      primaryColor: Color(0xFFFF1744),
-      accentColor: Color(0xFFFF6D00),
-      gradientTint: appBackground,
-    ),
-    AppThemePreset(
-      id: 'ocean',
-      name: 'Ocean',
-      description: 'Deep navy tones with teal highlights',
-      icon: Icons.water,
-      bgDark: appBackground,
-      bgCard: Color(0xFF1C1C1C),
-      primaryColor: Color(0xFF00BCD4),
-      accentColor: Color(0xFF26C6DA),
-      gradientTint: appBackground,
-    ),
-    AppThemePreset(
-      id: 'emerald',
-      name: 'Emerald',
-      description: 'Dark forest vibes with neon green',
-      icon: Icons.park,
-      bgDark: appBackground,
-      bgCard: Color(0xFF1C1C1C),
-      primaryColor: Color(0xFF00E676),
-      accentColor: Color(0xFF69F0AE),
-      gradientTint: appBackground,
-    ),
-    AppThemePreset(
-      id: 'sunset',
-      name: 'Sunset',
-      description: 'Warm amber tones with golden glow',
-      icon: Icons.wb_twilight,
-      bgDark: appBackground,
-      bgCard: Color(0xFF1C1C1C),
-      primaryColor: Color(0xFFFFAB00),
-      accentColor: Color(0xFFFF6D00),
-      gradientTint: appBackground,
-    ),
-  ];
+  static AppThemePreset get defaultPreset => _forjaPreset;
 
-  /// Notifier that broadcasts the current theme preset.
   static final ValueNotifier<AppThemePreset> themeNotifier =
-      ValueNotifier<AppThemePreset>(defaultPreset);
+      ValueNotifier<AppThemePreset>(_forjaPreset);
 
-  /// Current active preset (shorthand).
   static AppThemePreset get current => themeNotifier.value;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Backward-compatible const accessors (used in const contexts throughout the app)
-  // These always return the default cinematic theme colors.
-  // For theme-aware colors, use Theme.of(context).colorScheme or AppTheme.current.
-  // ═══════════════════════════════════════════════════════════════════════════
+  /// Brand accent — Play CTAs, primary highlights.
+  static const Color primaryColor = ForjaShellColors.brandGreen;
 
-  /// Default primary color (const). For dynamic theme color, use `current.primaryColor`.
-  static const Color primaryColor = Color(0xFF7C4DFF); // Electric Violet
-  /// Default accent color (const). For dynamic theme color, use `current.accentColor`.
-  static const Color accentColor = Color(0xFF00E5FF); // Cyan Accent
+  /// Muted shell accent — icons, spinners, section chrome.
+  static Color get accentColor => ForjaShellColors.sectionAccent;
 
   static Color get bgDark => isLightMode ? appBackgroundLight : current.bgDark;
   static Color get bgCard => isLightMode ? appCardLight : current.bgCard;
 
-  /// Whether light mode is currently active (cached from notifier).
   static bool get isLightMode => SettingsService.lightModeNotifier.value;
 
   static BoxDecoration get backgroundDecoration => effectiveBackground;
   static BoxDecoration get backgroundDecorationFlat => effectiveBackground;
 
-  /// Returns the correct background based on light mode state.
   static BoxDecoration get effectiveBackground =>
       BoxDecoration(color: isLightMode ? appBackgroundLight : current.bgDark);
 
   static ThemeData get themeData {
-    final preset = current;
+    const preset = _forjaPreset;
     const buttonRadius = BorderRadius.all(Radius.circular(6));
 
     if (isLightMode) {
@@ -168,7 +76,7 @@ class AppTheme {
         primaryColor: preset.primaryColor,
         colorScheme: ColorScheme.light(
           primary: preset.primaryColor,
-          secondary: preset.accentColor,
+          secondary: ForjaShellColors.sectionAccent,
           surface: appCardLight,
         ),
         textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).copyWith(
@@ -212,7 +120,7 @@ class AppTheme {
       primaryColor: preset.primaryColor,
       colorScheme: ColorScheme.dark(
         primary: preset.primaryColor,
-        secondary: preset.accentColor,
+        secondary: ForjaShellColors.sectionAccent,
         surface: preset.bgCard,
         onSurface: const Color(0xFFF5F5F7),
       ),
@@ -252,23 +160,11 @@ class AppTheme {
     );
   }
 
-  /// Hydrate the current theme from saved settings at app startup.
   static Future<void> initTheme() async {
-    final id = await SettingsService().getThemePreset();
-    final match = presets.where((p) => p.id == id);
-    if (match.isNotEmpty) {
-      themeNotifier.value = match.first;
-    }
+    themeNotifier.value = _forjaPreset;
   }
 
-  /// Change the theme and persist the choice.
-  static Future<void> setPreset(String id) async {
-    final match = presets.where((p) => p.id == id);
-    if (match.isNotEmpty) {
-      themeNotifier.value = match.first;
-      await SettingsService().setThemePreset(id);
-    }
-  }
+  static Future<void> setPreset(String id) async {}
 }
 
 class FocusableControl extends StatefulWidget {
@@ -286,7 +182,7 @@ class FocusableControl extends StatefulWidget {
     this.autoFocus = false,
     this.borderRadius = 12.0,
     this.glowColor,
-    this.scaleOnFocus = 1.0, // Changed default from 1.05 to 1.0 (no zoom)
+    this.scaleOnFocus = 1.0,
   });
 
   @override
@@ -353,7 +249,6 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         child: GestureDetector(
           onTap: widget.onTap,
           child: lightMode
-              // Light mode: no scale animation, no glow
               ? Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(widget.borderRadius),

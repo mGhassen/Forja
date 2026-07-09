@@ -9,7 +9,7 @@ import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_arabic_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/design.dart' hide AppTheme;
+import 'package:forja/shared/design/design.dart';
 
 class AnimeArabicSearchScreen extends StatefulWidget {
   const AnimeArabicSearchScreen({super.key});

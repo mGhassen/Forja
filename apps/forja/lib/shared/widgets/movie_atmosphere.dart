@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
@@ -25,10 +26,10 @@ class AtmosphereColors {
   });
 
   static const fallback = AtmosphereColors(
-    dominant: Color(0xFF7C4DFF),
-    vibrant: Color(0xFF00E5FF),
-    muted: Color(0xFF2A2A3E),
-    accent: Color(0xFF7C4DFF),
+    dominant: Color(0xFF1C1C1C),
+    vibrant: ForjaShellColors.brandGreen,
+    muted: Color(0xFF2A2A2A),
+    accent: ForjaShellColors.brandGreen,
   );
 }
 
@@ -41,7 +42,7 @@ Future<AtmosphereColors> extractAtmosphereColors(String imageUrl) async {
       maximumColorCount: 8,
     );
 
-    final dominant = generator.dominantColor?.color ?? const Color(0xFF7C4DFF);
+    final dominant = generator.dominantColor?.color ?? const Color(0xFF1C1C1C);
     final vibrant = generator.vibrantColor?.color ?? generator.lightVibrantColor?.color ?? dominant;
     final muted = generator.mutedColor?.color ?? generator.darkMutedColor?.color ?? const Color(0xFF2A2A3E);
     final accent = generator.lightVibrantColor?.color ?? generator.vibrantColor?.color ?? vibrant;
@@ -546,8 +547,8 @@ class _PosterGlowState extends State<PosterGlow> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final colors = widget.colors;
-    final dominant = colors?.dominant ?? const Color(0xFF7C4DFF);
-    final vibrant = colors?.vibrant ?? const Color(0xFF00E5FF);
+    final dominant = colors?.dominant ?? const Color(0xFF1C1C1C);
+    final vibrant = colors?.vibrant ?? ForjaShellColors.brandGreen;
     final accent = colors?.accent ?? vibrant;
     final type = _typeForGenres(widget.genres);
 

@@ -903,7 +903,7 @@ class _SectionPickView extends StatelessWidget {
                     _SectionTile(
                       icon: Icons.video_library_rounded,
                       label: 'Series',
-                      colors: const [Color(0xFF1565C0), Color(0xFF00E5FF)],
+                      colors: const [Color(0xFF374151), Color(0xFF1CE783)],
                       onTap: () => ctrl.openSection(IptvSection.series),
                     ),
                   ],

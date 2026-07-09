@@ -17,7 +17,7 @@ import 'anime_discover_screen.dart';
 import 'anime_player_screen.dart';
 import 'anime_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/design.dart' hide AppTheme;
+import 'package:forja/shared/design/design.dart';
 
 class AnimeScreen extends StatefulWidget {
   const AnimeScreen({super.key});
@@ -1081,11 +1081,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                         blurRadius: 24,
                         offset: const Offset(0, 10),
                       ),
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.10),
-                        blurRadius: 32,
-                        spreadRadius: -8,
-                      ),
                     ],
                   ),
                   child: Stack(
@@ -1431,11 +1426,6 @@ class _AnimeCardTile extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.5),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
-                  ),
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.05),
-                    blurRadius: 20,
-                    spreadRadius: -4,
                   ),
                 ],
               ),

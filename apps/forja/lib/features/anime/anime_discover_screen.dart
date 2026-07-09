@@ -8,7 +8,7 @@ import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/design.dart' hide AppTheme;
+import 'package:forja/shared/design/design.dart';
 
 class AnimeDiscoverScreen extends StatefulWidget {
   const AnimeDiscoverScreen({super.key});

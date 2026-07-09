@@ -616,7 +616,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> with WidgetsBindi
                     child: Container(
                       width: 30, height: 30,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFF7C4DFF), Color(0xFF9C6FFF)]),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor,
+                            Color.lerp(AppTheme.primaryColor, Colors.white, 0.25)!,
+                          ],
+                        ),
                         shape: BoxShape.circle,
                         boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.4), blurRadius: 8)],
                       ),

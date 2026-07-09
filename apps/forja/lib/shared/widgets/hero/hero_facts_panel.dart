@@ -150,9 +150,6 @@ class HeroFactsPanel extends StatelessWidget {
         (label: 'Revenue', value: _formatMoney(revenue)),
     ];
 
-    const headerHeight = 13.0 + 12.0; // title line + gap below
-    const verticalPadding = 32.0;
-
     final rowsWidget = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -173,19 +170,11 @@ class HeroFactsPanel extends StatelessWidget {
         final maxHeight = constraints.hasBoundedHeight && constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : null;
-        final rowsMaxHeight = maxHeight == null
-            ? null
-            : (maxHeight - verticalPadding - headerHeight).clamp(0.0, double.infinity);
-
-        Widget body = rowsWidget;
-        if (rowsMaxHeight != null && rowsMaxHeight > 0) {
-          body = ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: rowsMaxHeight),
-            child: SingleChildScrollView(child: rowsWidget),
-          );
-        }
 
         return Container(
+          constraints: maxHeight != null
+              ? BoxConstraints(maxHeight: maxHeight)
+              : const BoxConstraints(),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.45),
@@ -193,7 +182,7 @@ class HeroFactsPanel extends StatelessWidget {
             border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: maxHeight != null ? MainAxisSize.max : MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
@@ -206,7 +195,15 @@ class HeroFactsPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              body,
+              if (maxHeight != null)
+                Flexible(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: rowsWidget,
+                  ),
+                )
+              else
+                rowsWidget,
             ],
           ),
         );

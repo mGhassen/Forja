@@ -13,6 +13,7 @@ Tap **Home** in the navigation bar (first tab by default).
 ## What you can do
 
 - Browse featured and trending movies and series
+- **Films / TV Shows / Categories** (desktop hero menu) filter every Home rail — hero, featured, popular, mood row, new releases, and the three genre rows at the bottom. With no tab selected, rows mix films and series; pick **Films** or **TV Shows** to limit all rails to that type. **Categories** narrows by TMDB genre (or **All** to clear).
 - See **Featured This Month** — popular titles released in the current month
 - Use mood/genre chips to filter what appears in rails
 - See **Tonight's Pick** and **Because you watched…** (BestSimilar) suggestions

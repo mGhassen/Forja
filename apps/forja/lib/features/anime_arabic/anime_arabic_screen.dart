@@ -17,7 +17,7 @@ import 'anime_arabic_details_screen.dart';
 import 'anime_arabic_player_screen.dart';
 import 'anime_arabic_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/design.dart' hide AppTheme;
+import 'package:forja/shared/design/design.dart';
 
 class AnimeArabicScreen extends StatefulWidget {
   const AnimeArabicScreen({super.key});

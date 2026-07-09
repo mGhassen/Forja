@@ -283,11 +283,9 @@ class SettingsService {
     lightModeNotifier.value = await isLightModeEnabled();
   }
 
-  Future<String> getThemePreset() async =>
-      await kvGetString(_themePresetKey) ?? 'emerald';
+  Future<String> getThemePreset() async => 'forja';
 
-  Future<void> setThemePreset(String preset) async =>
-      kvSetString(_themePresetKey, preset);
+  Future<void> setThemePreset(String preset) async {}
 
   static const String _navbarConfigKey = 'navbar_config';
   static const String _navbarKnownIdsKey = 'navbar_known_ids';
@@ -413,7 +411,6 @@ class SettingsService {
       _prowlarrBaseUrlKey,
       _prowlarrApiKeyKey,
       _torrentCacheTypeKey,
-      _themePresetKey,
     ]) {
       final v = await kvGetString(key);
       if (v != null) prefsMap[key] = v;
@@ -477,7 +474,6 @@ class SettingsService {
       _prowlarrBaseUrlKey,
       _prowlarrApiKeyKey,
       _torrentCacheTypeKey,
-      _themePresetKey,
     ]) {
       if (prefsMap.containsKey(key)) {
         await kvSetString(key, prefsMap[key] as String);

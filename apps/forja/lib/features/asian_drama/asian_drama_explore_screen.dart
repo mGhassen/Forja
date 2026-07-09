@@ -12,7 +12,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'asian_drama_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/design.dart' hide AppTheme;
+import 'package:forja/shared/design/design.dart';
 
 class AsianDramaExploreScreen extends StatefulWidget {
   const AsianDramaExploreScreen({super.key});

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
-/// A small interactive wrapper that scales + glows on mouse hover.
-/// Cheap drop-in replacement for `GestureDetector(onTap: …)` on cards.
+/// Scales on hover with a flat cinematic shadow (no colored glow).
 class HoverScale extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
@@ -48,12 +47,12 @@ class _HoverScaleState extends State<HoverScale> {
           transformAlignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.radius),
-            boxShadow: _hover
+            boxShadow: _hover && !AppTheme.isLightMode
                 ? [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.35),
-                      blurRadius: 24,
-                      spreadRadius: -2,
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
                     ),
                   ]
                 : null,
