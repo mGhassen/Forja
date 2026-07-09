@@ -1,5 +1,5 @@
-// Anime backend — AniList GraphQL for metadata, Miruro for streams.
-// Playtorrio stack: Miruro primary + AnimeRealms fallback.
+// Anime backend — AniList GraphQL for metadata, megaplay/vidwish for streams.
+// Parallel race: Anikoto HD-1/HD-2 + Miruro + AllAnime fallbacks.
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -594,55 +594,6 @@ class AnimeService {
     );
   }
 
-  /// Miruro episode catalog for provider picker + playback IDs.
-  Future<MiruroEpisodes?> getMiruroEpisodes(int anilistId) async {
-    try {
-      final data = await _miruro.fetchEpisodes(anilistId);
-      if (data == null) return null;
-      return MiruroEpisodes.fromJson(data);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[Miruro] episodes failed: $e');
-      return null;
-    }
-  }
-
-  /// Default Miruro provider: kiwi → zoro → first available.
-  static String defaultMiruroProvider(Iterable<String> providers) {
-    final list = providers.toList();
-    if (list.isEmpty) return 'kiwi';
-    if (list.contains('kiwi')) return 'kiwi';
-    if (list.contains('zoro')) return 'zoro';
-    return list.first;
-  }
-
-  /// Build a flat episode list for the details picker from Miruro data.
-  List<AnimeEpisode> miruroEpisodesFor({
-    required MiruroEpisodes episodes,
-    required String provider,
-    required String category,
-    Map<int, String> thumbnails = const {},
-  }) {
-    final prov = episodes.providers[provider];
-    if (prov == null) return const [];
-    final raw = category == 'dub' ? prov.dubEpisodes : prov.subEpisodes;
-    return raw
-        .map(
-          (e) => AnimeEpisode(
-            number: e.number,
-            title: e.title.isEmpty ? 'Episode ${e.number}' : e.title,
-            aired: true,
-            thumbnail: thumbnails[e.number],
-            streamId: e.id,
-          ),
-        )
-        .toList();
-  }
-
-  /// Map AniList streamingEpisodes -> {episodeNumber: thumbnailUrl}.
-  Map<int, String> buildEpisodeThumbnailMap(
-          List<Map<String, String>> streamEps) =>
-      _buildEpisodeThumbnailMap(streamEps);
-
   /// Tries to parse "Episode N" / "EN" from the title; falls back to
   /// sequential ordering (1-indexed) when no number is found.
   Map<int, String> _buildEpisodeThumbnailMap(
@@ -1104,8 +1055,6 @@ class AnimeService {
     required AnimeCard anime,
     required int episodeNumber,
     String category = 'sub',
-    String? provider,
-    bool useAnimeRealms = false,
     Duration? position,
     Duration? duration,
   }) async {
@@ -1118,8 +1067,6 @@ class AnimeService {
         'animeId': anime.id,
         'episodeNumber': episodeNumber,
         'category': category,
-        if (provider != null && provider.isNotEmpty) 'provider': provider,
-        'useAnimeRealms': useAnimeRealms,
         'positionMs': position?.inMilliseconds ?? 0,
         'durationMs': duration?.inMilliseconds ?? 0,
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
@@ -1295,84 +1242,13 @@ class AnimeEpisode {
   final String title;
   final bool aired;
   final String? thumbnail;
-  /// Miruro pipe episode id — required for getSources.
-  final String? streamId;
 
   const AnimeEpisode({
     required this.number,
     required this.title,
     this.aired = true,
     this.thumbnail,
-    this.streamId,
   });
-}
-
-class MiruroEpisodes {
-  final Map<String, MiruroProvider> providers;
-
-  const MiruroEpisodes({required this.providers});
-
-  factory MiruroEpisodes.fromJson(Map<String, dynamic> json) {
-    final provs = <String, MiruroProvider>{};
-    final providersMap = json['providers'] as Map<String, dynamic>? ?? {};
-    for (final entry in providersMap.entries) {
-      provs[entry.key] = MiruroProvider.fromJson(
-        (entry.value as Map).cast<String, dynamic>(),
-      );
-    }
-    return MiruroEpisodes(providers: provs);
-  }
-}
-
-class MiruroProvider {
-  final List<MiruroPlaybackEpisode> subEpisodes;
-  final List<MiruroPlaybackEpisode> dubEpisodes;
-
-  const MiruroProvider({
-    this.subEpisodes = const [],
-    this.dubEpisodes = const [],
-  });
-
-  factory MiruroProvider.fromJson(Map<String, dynamic> json) {
-    final episodes = json['episodes'];
-    var sub = <MiruroPlaybackEpisode>[];
-    var dub = <MiruroPlaybackEpisode>[];
-    if (episodes is Map<String, dynamic>) {
-      if (episodes['sub'] is List) {
-        sub = (episodes['sub'] as List)
-            .map((e) => MiruroPlaybackEpisode.fromJson(
-                (e as Map).cast<String, dynamic>()))
-            .toList();
-      }
-      if (episodes['dub'] is List) {
-        dub = (episodes['dub'] as List)
-            .map((e) => MiruroPlaybackEpisode.fromJson(
-                (e as Map).cast<String, dynamic>()))
-            .toList();
-      }
-    }
-    return MiruroProvider(subEpisodes: sub, dubEpisodes: dub);
-  }
-}
-
-class MiruroPlaybackEpisode {
-  final String id;
-  final int number;
-  final String title;
-
-  const MiruroPlaybackEpisode({
-    required this.id,
-    required this.number,
-    this.title = '',
-  });
-
-  factory MiruroPlaybackEpisode.fromJson(Map<String, dynamic> json) {
-    return MiruroPlaybackEpisode(
-      id: (json['id'] ?? '').toString(),
-      number: (json['number'] as num?)?.toInt() ?? 0,
-      title: (json['title'] as String?) ?? '',
-    );
-  }
 }
 
 class AnimeEmbed {

@@ -8,6 +8,7 @@ alwaysApply: true
 ## Never lie
 
 - Do not claim something is fixed, done, tested, or verified unless it is true in code right now.
+- Do not claim something when you didnt checked the code
 - Do not soften or hide gaps with vague language ("should work", "mostly fixed", "addressed").
 - If uncertain, say so and verify before stating a fact.
 - Docs, issue status, commit messages, and summaries must match what actually shipped.

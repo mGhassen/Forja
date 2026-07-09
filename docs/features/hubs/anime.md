@@ -1,10 +1,10 @@
 # Anime
 
-> Dedicated anime hub — discover, search, and Miruro-based playback.
+> Dedicated anime hub — discover, search, and auto-resolved playback.
 
 ## What it is
 
-The Anime tab is a full vertical for anime: hero carousel, mood chips, continue watching, curated rails (trending, airing, etc.), discover filters, search, and a dedicated player that resolves streams through Miruro (with AnimeRealms fallback).
+The Anime tab is a full vertical for anime: hero carousel, mood chips, continue watching, curated rails (trending, airing, etc.), discover filters, search, and a dedicated player that races multiple stream sources in parallel (HD-1/HD-2 via Anikoto catalog, plus Miruro and AllAnime fallbacks).
 
 ## How to open it
 
@@ -17,15 +17,15 @@ Tap **Anime** in the navigation bar.
 - Discover with filters
 - Search anime catalog
 - Open details with episodes
-- Pick a streaming server (kiwi, zoro, etc.) on the details screen when multiple Miruro providers are available
-- Toggle SUB / DUB when the selected server offers both
-- Play in the anime player — Miruro first, AnimeRealms if Miruro has no streams
-- Track watch history per series (including server and sub/dub preference)
+- Toggle SUB / DUB before playback
+- Play in the anime player — sources resolve automatically (no manual server picker)
+- Switch sources in the player if multiple streams were found (e.g. **HD-1 · SUB**, **HD-2 · SUB**, **Miruro · SUB**)
+- Track watch history per series (including sub/dub preference)
 
 ## Tips
 
 - Anime uses its own player and history — separate from TMDB TV details
-- Default server is **kiwi**, then **zoro**, when available
+- Playback shows a backdrop + title loading screen before the player opens (same pattern as films and Asian drama)
 - Part of [content hub scrapers](../scrapers/content-hub-scrapers.md)
 
 ## Related

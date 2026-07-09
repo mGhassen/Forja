@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
@@ -64,139 +64,6 @@ SliverToBoxAdapter _homeRowSliver(
           const SizedBox(height: ShellTokens.homeRowSpacing),
         RepaintBoundary(child: section),
       ],
-    ),
-  );
-}
-
-Widget _homeShimmer(Widget child) {
-  return Shimmer.fromColors(
-    baseColor: AppTheme.bgCard,
-    highlightColor: const Color(0xFF1E1E2F),
-    child: child,
-  );
-}
-
-Widget _homeTitleBarSkeleton({double width = 140, double height = 18}) {
-  return Container(
-    height: height,
-    width: width,
-    decoration: BoxDecoration(
-      color: AppTheme.bgCard,
-      borderRadius: BorderRadius.circular(6),
-    ),
-  );
-}
-
-Widget _homeCardSkeleton(BuildContext context, {double? width}) {
-  return Container(
-    width: width ?? HomeMovieCard.cardWidth(context),
-    decoration: BoxDecoration(
-      color: AppTheme.bgCard,
-      borderRadius: BorderRadius.circular(14),
-    ),
-  );
-}
-
-double _homeContinueWatchingCardWidth(BuildContext context) {
-  final isDesktop =
-      MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-  return isDesktop
-      ? ShellTokens.shellContinueWatchingCardWidthDesktop
-      : ShellTokens.shellContinueWatchingCardWidthCompact;
-}
-
-double _homeContinueWatchingCardHeight(BuildContext context) {
-  final isDesktop =
-      MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-  return isDesktop
-      ? ShellTokens.shellContinueWatchingCardHeightDesktop
-      : ShellTokens.shellContinueWatchingCardHeightCompact;
-}
-
-Widget _homeMovieRowSkeleton(
-  BuildContext context, {
-  bool compactTop = false,
-  double titleWidth = 140,
-  int itemCount = 5,
-  bool showSubtitle = false,
-  double topPadding = 0,
-}) {
-  final top = topPadding > 0
-      ? topPadding
-      : _homeSectionTitleTop(context, compactTop: compactTop);
-  final cardHeight = HomeMovieCard.cardHeight(context);
-
-  return Padding(
-    padding: EdgeInsets.only(top: top),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _homeTitleBarSkeleton(width: titleWidth),
-              if (showSubtitle) ...[
-                const SizedBox(height: 6),
-                _homeTitleBarSkeleton(width: 90, height: 12),
-              ],
-            ],
-          ),
-        ),
-        SizedBox(
-          height: cardHeight,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: itemCount,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (_, _) => _homeCardSkeleton(context),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _homeContinueWatchingSkeleton(
-  BuildContext context, {
-  bool compactTop = false,
-}) {
-  final top = _homeSectionTitleTop(context, compactTop: compactTop);
-  final cardHeight = _homeContinueWatchingCardHeight(context);
-  final cardWidth = _homeContinueWatchingCardWidth(context);
-
-  return _homeShimmer(
-    Padding(
-      padding: EdgeInsets.only(top: top),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-            child: _homeTitleBarSkeleton(width: 160),
-          ),
-          SizedBox(
-            height: cardHeight,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              itemCount: 4,
-              separatorBuilder: (_, _) => const SizedBox(width: 14),
-              itemBuilder: (_, _) => Container(
-                width: cardWidth,
-                decoration: BoxDecoration(
-                  color: AppTheme.bgCard,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     ),
   );
 }
@@ -1542,8 +1409,8 @@ class _HomeScreenState extends State<HomeScreen>
               if (_stremioCatalogsLoading && _stremioCatalogs.isEmpty)
                 for (var i = 0; i < 2; i++)
                   _homeRowSliver(
-                    _homeShimmer(
-                      _homeMovieRowSkeleton(
+                    homeLoadingShimmer(
+                      homeMovieRowSkeleton(
                         context,
                         titleWidth: 180,
                         showSubtitle: true,
@@ -1558,8 +1425,8 @@ class _HomeScreenState extends State<HomeScreen>
                   final items = _catalogItems[key];
                   if (items == null || items.isEmpty) {
                     return _homeRowSliver(
-                      _homeShimmer(
-                        _homeMovieRowSkeleton(
+                      homeLoadingShimmer(
+                        homeMovieRowSkeleton(
                           context,
                           titleWidth: 180,
                           showSubtitle: true,
@@ -1582,8 +1449,8 @@ class _HomeScreenState extends State<HomeScreen>
               // Trakt Recommendations
               if (_traktRecsLoading)
                 _homeRowSliver(
-                  _homeShimmer(
-                    _homeMovieRowSkeleton(context, titleWidth: 180),
+                  homeLoadingShimmer(
+                    homeMovieRowSkeleton(context, titleWidth: 180),
                   ),
                   isFirstAfterHero: false,
                 )
@@ -1596,8 +1463,8 @@ class _HomeScreenState extends State<HomeScreen>
               // Trakt Calendar
               if (_traktShowsLoading)
                 _homeRowSliver(
-                  _homeShimmer(
-                    _homeMovieRowSkeleton(context, titleWidth: 170),
+                  homeLoadingShimmer(
+                    homeMovieRowSkeleton(context, titleWidth: 170),
                   ),
                   isFirstAfterHero: false,
                 )
@@ -1609,8 +1476,8 @@ class _HomeScreenState extends State<HomeScreen>
 
               if (_traktMoviesLoading)
                 _homeRowSliver(
-                  _homeShimmer(
-                    _homeMovieRowSkeleton(context, titleWidth: 160),
+                  homeLoadingShimmer(
+                    homeMovieRowSkeleton(context, titleWidth: 160),
                   ),
                   isFirstAfterHero: false,
                 )
@@ -1693,12 +1560,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildCinematicHeroShimmer({required bool compact}) {
     final height = _cinematicHeroHeight(context, compact: compact) +
         _desktopTopBarBleed(context);
-    final placeholder = Container(height: height, color: AppTheme.bgCard);
-    return Shimmer.fromColors(
-      baseColor: AppTheme.bgCard,
-      highlightColor: const Color(0xFF1E1E2F),
-      child: placeholder,
-    );
+    return homeHubHeroShimmer(height: height);
   }
 
   Widget _buildCinematicHeroBlock(List<Movie> movies, {required bool compact}) {
@@ -2241,8 +2103,8 @@ class _MovieSectionState extends State<_MovieSection> {
 
         if (loading || movies.isEmpty) {
           if (loading || !snapshot.hasData) {
-            return _homeShimmer(
-              _homeMovieRowSkeleton(
+            return homeLoadingShimmer(
+              homeMovieRowSkeleton(
                 context,
                 compactTop: widget.compactTop,
                 titleWidth: widget.title.length > 12
@@ -2776,7 +2638,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
       stream: WatchHistoryService().historyStream,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return _homeContinueWatchingSkeleton(
+          return homeContinueWatchingSkeleton(
             context,
             compactTop: widget.compactTop,
           );
@@ -3476,7 +3338,7 @@ class _MoodSectionState extends State<_MoodSection> {
             final movies = snap.data ?? const <Movie>[];
 
             if (loading) {
-              return _homeShimmer(
+              return homeLoadingShimmer(
                 Padding(
                   padding: const EdgeInsets.only(top: 0),
                   child: SizedBox(
@@ -3487,7 +3349,7 @@ class _MoodSectionState extends State<_MoodSection> {
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       itemCount: 5,
                       separatorBuilder: (_, _) => const SizedBox(width: 14),
-                      itemBuilder: (_, _) => _homeCardSkeleton(context),
+                      itemBuilder: (_, _) => homeCardSkeleton(context),
                     ),
                   ),
                 ),
@@ -3634,7 +3496,7 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
   }
 
   Widget _buildCardSkeletonRow() {
-    return _homeShimmer(
+    return homeLoadingShimmer(
       Padding(
         padding: const EdgeInsets.only(top: 0),
         child: SizedBox(
@@ -3645,7 +3507,7 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             itemCount: 5,
             separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (_, _) => _homeCardSkeleton(context),
+            itemBuilder: (_, _) => homeCardSkeleton(context),
           ),
         ),
       ),

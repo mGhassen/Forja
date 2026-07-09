@@ -19,6 +19,7 @@ import 'asian_drama_player_screen.dart';
 import 'asian_drama_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 
 class AsianDramaScreen extends StatefulWidget {
   const AsianDramaScreen({super.key});
@@ -262,15 +263,9 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return _loading
-              ? Center(
-                  child: CircularProgressIndicator(
-                    color: ForjaShellColors.sectionAccent,
-                  ),
-                )
-              : _error != null
-                  ? _buildError()
-                  : Stack(
+        return _error != null && !_loading
+              ? _buildError()
+              : Stack(
                       children: [
                         _buildAmbientBackdrop(),
                         RefreshIndicator(
@@ -312,69 +307,96 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                   const SizedBox(width: 4),
                                 ],
                               ),
-                              SliverToBoxAdapter(child: _buildHero()),
-                              if (_continueWatching.isNotEmpty)
+                              SliverToBoxAdapter(
+                                child: _loading || _spotlight.isEmpty
+                                    ? _buildHubHeroShimmer()
+                                    : _buildHero(),
+                              ),
+                              if (_loading) ...[
                                 SliverToBoxAdapter(
-                                  child: _buildContinueWatching(),
+                                  child: homeContinueWatchingSkeleton(context),
                                 ),
-                              if ((_feed?.latest ?? const [])
-                                  .isNotEmpty)
-                                SliverToBoxAdapter(
-                                  child: _buildEpisodeRail(
-                                    title: 'Latest Update',
-                                    subtitle: 'Newest episodes',
-                                    icon: Icons.skip_next_rounded,
-                                    items: _feed!.latest,
+                                for (final spec in [
+                                  (width: 180.0, subtitle: true),
+                                  (width: 150.0, subtitle: false),
+                                  (width: 140.0, subtitle: false),
+                                  (width: 160.0, subtitle: false),
+                                  (width: 130.0, subtitle: false),
+                                  (width: 145.0, subtitle: false),
+                                ])
+                                  SliverToBoxAdapter(
+                                    child: homeLoadingShimmer(
+                                      homeMovieRowSkeleton(
+                                        context,
+                                        titleWidth: spec.width,
+                                        showSubtitle: spec.subtitle,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              if ((_feed?.trending ?? const []).isNotEmpty)
-                                SliverToBoxAdapter(
-                                  child: _Rail(
-                                    title: 'Trending',
-                                    icon: Icons.trending_up_rounded,
-                                    items: _feed!.trending,
-                                    onTap: _openDetails,
+                              ] else ...[
+                                if (_continueWatching.isNotEmpty)
+                                  SliverToBoxAdapter(
+                                    child: _buildContinueWatching(),
                                   ),
-                                ),
-                              if ((_feed?.topRated ?? const [])
-                                  .isNotEmpty)
-                                SliverToBoxAdapter(
-                                  child: _Rail(
-                                    title: 'Top Rated',
-                                    icon: Icons.leaderboard_rounded,
-                                    items: _feed!.topRated,
-                                    onTap: _openDetails,
-                                    showRank: true,
+                                if ((_feed?.latest ?? const [])
+                                    .isNotEmpty)
+                                  SliverToBoxAdapter(
+                                    child: _buildEpisodeRail(
+                                      title: 'Latest Update',
+                                      subtitle: 'Newest episodes',
+                                      icon: Icons.skip_next_rounded,
+                                      items: _feed!.latest,
+                                    ),
                                   ),
-                                ),
-                              if ((_feed?.mostViewed ?? const [])
-                                  .isNotEmpty)
-                                SliverToBoxAdapter(
-                                  child: _Rail(
-                                    title: 'Most Viewed',
-                                    icon: Icons.visibility_rounded,
-                                    items: _feed!.mostViewed,
-                                    onTap: _openDetails,
+                                if ((_feed?.trending ?? const []).isNotEmpty)
+                                  SliverToBoxAdapter(
+                                    child: _Rail(
+                                      title: 'Trending',
+                                      icon: Icons.trending_up_rounded,
+                                      items: _feed!.trending,
+                                      onTap: _openDetails,
+                                    ),
                                   ),
-                                ),
-                              if ((_feed?.anime ?? const []).isNotEmpty)
-                                SliverToBoxAdapter(
-                                  child: _Rail(
-                                    title: 'Anime',
-                                    icon: Icons.auto_awesome_rounded,
-                                    items: _feed!.anime,
-                                    onTap: _openDetails,
+                                if ((_feed?.topRated ?? const [])
+                                    .isNotEmpty)
+                                  SliverToBoxAdapter(
+                                    child: _Rail(
+                                      title: 'Top Rated',
+                                      icon: Icons.leaderboard_rounded,
+                                      items: _feed!.topRated,
+                                      onTap: _openDetails,
+                                      showRank: true,
+                                    ),
                                   ),
-                                ),
-                              if ((_feed?.upcoming ?? const []).isNotEmpty)
-                                SliverToBoxAdapter(
-                                  child: _Rail(
-                                    title: 'Upcoming',
-                                    icon: Icons.event_rounded,
-                                    items: _feed!.upcoming,
-                                    onTap: _openDetails,
+                                if ((_feed?.mostViewed ?? const [])
+                                    .isNotEmpty)
+                                  SliverToBoxAdapter(
+                                    child: _Rail(
+                                      title: 'Most Viewed',
+                                      icon: Icons.visibility_rounded,
+                                      items: _feed!.mostViewed,
+                                      onTap: _openDetails,
+                                    ),
                                   ),
-                                ),
+                                if ((_feed?.anime ?? const []).isNotEmpty)
+                                  SliverToBoxAdapter(
+                                    child: _Rail(
+                                      title: 'Anime',
+                                      icon: Icons.auto_awesome_rounded,
+                                      items: _feed!.anime,
+                                      onTap: _openDetails,
+                                    ),
+                                  ),
+                                if ((_feed?.upcoming ?? const []).isNotEmpty)
+                                  SliverToBoxAdapter(
+                                    child: _Rail(
+                                      title: 'Upcoming',
+                                      icon: Icons.event_rounded,
+                                      items: _feed!.upcoming,
+                                      onTap: _openDetails,
+                                    ),
+                                  ),
+                              ],
                               const SliverToBoxAdapter(
                                 child: SizedBox(height: 80),
                               ),
@@ -473,6 +495,11 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   }
 
   // ─── Hero carousel ───────────────────────────────────────────
+  Widget _buildHubHeroShimmer() {
+    final h = MediaQuery.of(context).size.height * 0.65;
+    return homeHubHeroShimmer(height: h);
+  }
+
   Widget _buildHero() {
     final pool = _spotlight;
     if (pool.isEmpty) return const SizedBox.shrink();

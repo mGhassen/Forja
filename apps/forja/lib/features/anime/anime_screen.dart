@@ -8,7 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:palette_generator/palette_generator.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
@@ -301,15 +301,11 @@ class _AnimeScreenState extends State<AnimeScreen>
           (entry['anime'] as Map).cast<String, dynamic>());
       final epNum = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
       final cat = (entry['category'] as String?) ?? 'sub';
-      final provider = (entry['provider'] as String?) ?? 'kiwi';
-      final useAnimeRealms = entry['useAnimeRealms'] == true;
       openAnimePlayer(
         context,
         anime: anime,
         episodeNumber: epNum,
         category: cat,
-        provider: provider,
-        useAnimeRealms: useAnimeRealms,
       ).then((_) => _refreshHistory());
     } catch (_) {}
   }
@@ -331,11 +327,9 @@ class _AnimeScreenState extends State<AnimeScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return _loading
-              ? _buildLoading()
-              : _error != null
-                  ? _buildError()
-                  : Stack(
+        return _error != null && !_loading
+              ? _buildError()
+              : Stack(
                       children: [
                         _buildAmbientBackdrop(),
                         RefreshIndicator(
@@ -368,74 +362,99 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   const SizedBox(width: 4),
                                 ],
                               ),
-                              SliverToBoxAdapter(child: _buildHero()),
-                              if (_continueWatching.isNotEmpty)
+                              SliverToBoxAdapter(
+                                child: _loading || _spotlight.isEmpty
+                                    ? _buildHubHeroShimmer()
+                                    : _buildHero(),
+                              ),
+                              if (_loading) ...[
                                 SliverToBoxAdapter(
-                                  child: _buildContinueWatching(),
+                                  child: homeContinueWatchingSkeleton(context),
                                 ),
-                              SliverToBoxAdapter(child: _buildSpotlightMosaic()),
-                              SliverToBoxAdapter(child: _buildMoodChips()),
-                              SliverToBoxAdapter(
-                                child: _AnimeRail(
-                                  title: 'Trending Now',
-                                  items: _trending,
-                                  onTap: _openDetails,
-                                ),
-                              ),
-                              if (_tonightsPick != null)
+                                for (final width in [
+                                  170.0,
+                                  160.0,
+                                  150.0,
+                                  180.0,
+                                  165.0,
+                                ])
+                                  SliverToBoxAdapter(
+                                    child: homeLoadingShimmer(
+                                      homeMovieRowSkeleton(
+                                        context,
+                                        titleWidth: width,
+                                      ),
+                                    ),
+                                  ),
+                              ] else ...[
+                                if (_continueWatching.isNotEmpty)
+                                  SliverToBoxAdapter(
+                                    child: _buildContinueWatching(),
+                                  ),
+                                SliverToBoxAdapter(child: _buildSpotlightMosaic()),
+                                SliverToBoxAdapter(child: _buildMoodChips()),
                                 SliverToBoxAdapter(
-                                  child: _buildTonightsPick(),
+                                  child: _AnimeRail(
+                                    title: 'Trending Now',
+                                    items: _trending,
+                                    onTap: _openDetails,
+                                  ),
                                 ),
-                              SliverToBoxAdapter(
-                                child: _AnimeRail(
-                                  title: 'Top Airing',
-                                  items: _topAiring,
-                                  onTap: _openDetails,
+                                if (_tonightsPick != null)
+                                  SliverToBoxAdapter(
+                                    child: _buildTonightsPick(),
+                                  ),
+                                SliverToBoxAdapter(
+                                  child: _AnimeRail(
+                                    title: 'Top Airing',
+                                    items: _topAiring,
+                                    onTap: _openDetails,
+                                  ),
                                 ),
-                              ),
-                              SliverToBoxAdapter(
-                                child: _AnimeRail(
-                                  title: 'Top 10 Today',
-                                  items: _top10,
-                                  onTap: _openDetails,
-                                  showRank: true,
+                                SliverToBoxAdapter(
+                                  child: _AnimeRail(
+                                    title: 'Top 10 Today',
+                                    items: _top10,
+                                    onTap: _openDetails,
+                                    showRank: true,
+                                  ),
                                 ),
-                              ),
-                              SliverToBoxAdapter(
-                                child: _AnimeRail(
-                                  title: 'Most Popular',
-                                  items: _mostPopular,
-                                  onTap: _openDetails,
+                                SliverToBoxAdapter(
+                                  child: _AnimeRail(
+                                    title: 'Most Popular',
+                                    items: _mostPopular,
+                                    onTap: _openDetails,
+                                  ),
                                 ),
-                              ),
-                              SliverToBoxAdapter(
-                                child: _AnimeRail(
-                                  title: 'Latest Episodes',
-                                  items: _recentEpisodes,
-                                  onTap: _openDetails,
+                                SliverToBoxAdapter(
+                                  child: _AnimeRail(
+                                    title: 'Latest Episodes',
+                                    items: _recentEpisodes,
+                                    onTap: _openDetails,
+                                  ),
                                 ),
-                              ),
-                              SliverToBoxAdapter(
-                                child: _AnimeRail(
-                                  title: 'Top Rated',
-                                  items: _topRated,
-                                  onTap: _openDetails,
+                                SliverToBoxAdapter(
+                                  child: _AnimeRail(
+                                    title: 'Top Rated',
+                                    items: _topRated,
+                                    onTap: _openDetails,
+                                  ),
                                 ),
-                              ),
-                              SliverToBoxAdapter(
-                                child: _AnimeRail(
-                                  title: 'Most Favorited',
-                                  items: _mostFavorite,
-                                  onTap: _openDetails,
+                                SliverToBoxAdapter(
+                                  child: _AnimeRail(
+                                    title: 'Most Favorited',
+                                    items: _mostFavorite,
+                                    onTap: _openDetails,
+                                  ),
                                 ),
-                              ),
-                              SliverToBoxAdapter(
-                                child: _AnimeRail(
-                                  title: 'Recently Completed',
-                                  items: _latestCompleted,
-                                  onTap: _openDetails,
+                                SliverToBoxAdapter(
+                                  child: _AnimeRail(
+                                    title: 'Recently Completed',
+                                    items: _latestCompleted,
+                                    onTap: _openDetails,
+                                  ),
                                 ),
-                              ),
+                              ],
                               const SliverToBoxAdapter(
                                 child: SizedBox(height: 80),
                               ),
@@ -525,6 +544,15 @@ class _AnimeScreenState extends State<AnimeScreen>
   }
 
   // ─── Hero carousel ─────────────────────────────────────────────
+  Widget _buildHubHeroShimmer() {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    final h = isLandscape
+        ? MediaQuery.of(context).size.height * 0.65
+        : MediaQuery.of(context).size.height * 0.75;
+    return homeHubHeroShimmer(height: h);
+  }
+
   Widget _buildHero() {
     if (_spotlight.isEmpty) return const SizedBox.shrink();
     final isLandscape =
@@ -1157,57 +1185,7 @@ class _AnimeScreenState extends State<AnimeScreen>
     );
   }
 
-  // ─── Loading & error states ───────────────────────────────────
-  Widget _buildLoading() {
-    return Shimmer.fromColors(
-      baseColor: AppTheme.bgCard,
-      highlightColor: Colors.white.withValues(alpha: 0.05),
-      child: ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 80),
-        children: [
-          Container(
-            height: MediaQuery.of(context).size.height * 0.55,
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            decoration: BoxDecoration(
-              color: AppTheme.bgCard,
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Container(
-              height: 18,
-              width: 160,
-              decoration: BoxDecoration(
-                color: AppTheme.bgCard,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 240,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              itemCount: 5,
-              separatorBuilder: (_, _) => const SizedBox(width: 14),
-              itemBuilder: (_, _) => Container(
-                width: 160,
-                decoration: BoxDecoration(
-                  color: AppTheme.bgCard,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // ─── Error state ───────────────────────────────────────────────
   Widget _buildError() {
     return Center(
       child: Padding(
