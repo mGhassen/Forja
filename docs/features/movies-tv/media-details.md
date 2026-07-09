@@ -20,7 +20,7 @@ Scroll below the hero for:
 3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio, subtitles, quality, playback speed). When a trailer ends and more are available, an **Up next** prompt lets you continue to the next trailer.
 4. **More Like This** — recommendation row
 
-Torrent search, Stremio/Nuvio streams, and source picking stay in the **Sources** side panel (opened from **Play** in the hero).
+Torrent search, Stremio/Nuvio streams, **Webstreaming** (VidLink, WebStreamr, Videasy, …), and source picking stay in the **Sources** side panel (opened from **Play** in the hero).
 
 ## How to open it
 
@@ -29,7 +29,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 ## What you can do
 
 - Watch the Ken Burns backdrop (12–20s), then chromeless autoplay trailer in the hero when TMDB has one; alternates after each trailer ends (sound on, volume ramps up; mute toggle bottom-right)
-- **Play** / **Resume** opens the Sources panel to pick torrents or addon streams
+- **Play** / **Resume** opens the Sources panel to pick torrents, addon streams, or webstreaming providers
 - **Trailer** (when available) opens the in-app trailer player on the best-matching official trailer
 - Add or remove from **My List** (**+** button in hero)
 - Trakt/Simkl/collect actions via the **⋯** overflow menu in the hero

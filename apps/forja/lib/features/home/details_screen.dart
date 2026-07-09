@@ -8,6 +8,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
+import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -102,6 +103,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   /// (`'nuvio:<scraperId>'`) and the active stream list.
   String? _nuvioSelectedScraperId;
 
+  // Direct webstreaming providers (videasy, webstreamr, …) — no global mode toggle.
+  final Map<String, dynamic> _webstreamingProviders = {
+    ...StreamProviders.providers,
+  };
+  List<String> _webstreamingProviderOrder = [];
+  List<StreamSource> _webstreamingStreams = [];
+  bool _isWebstreamingFetching = false;
+  int _webstreamingFetchGen = 0;
+  bool _webstreamingFetchCancelled = false;
+  String? _webstreamingActiveProviderId;
+  final StreamProviderResolver _streamProviderResolver = StreamProviderResolver();
   int _selectedSeason = 1;
   int _selectedEpisode = 1;
   Map<String, dynamic>? _seasonData;
@@ -182,6 +194,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _fetchUserTraktRating();
     _fetchUserSimklRating();
     _fetchTraktCollectionStatus();
+    _loadWebstreamingProviders();
+    _loadWebstreamingProviderOrder();
   }
 
   @override
@@ -242,6 +256,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       _fetchAllStremioStreams();
     } else if (_isNuvioSource) {
       _fetchAllNuvioStreams();
+    } else if (_isWebstreamingSource) {
+      _refetchActiveWebstreamingProvider();
     } else {
       _fetchStremioStreams();
     }
@@ -510,8 +526,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         _playTorrent(_allTorrentResults.first, startPosition: startPosition);
         return;
       }
-      if (_isStremioFetching || _isNuvioFetching) return;
-    } else if (_isStremioFetching || _isNuvioFetching) {
+      if (_isStremioFetching || _isNuvioFetching || _isWebstreamingFetching) return;
+    } else if (_isStremioFetching || _isNuvioFetching || _isWebstreamingFetching) {
+      return;
+    }
+
+    if (_isWebstreamingSource && _webstreamingStreams.isNotEmpty) {
+      if (fromRoute) _autoPlayConsumed = true;
+      if (fromEpisode) _episodePlayPending = false;
+      _playWebstreamingStream(_webstreamingStreams.first, startPosition: startPosition);
       return;
     }
 
@@ -649,6 +672,139 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             a.scrapers.any((s) => s.enabled)).toList();
       });
     } catch (_) {}
+  }
+
+  Future<void> _loadWebstreamingProviders() async {
+    try {
+      final entries = await NuvioService.instance.getProviderEntries();
+      if (!mounted || entries.isEmpty) return;
+      setState(() => _webstreamingProviders.addAll(entries));
+    } catch (e) {
+      debugPrint('[DetailsScreen] webstreaming provider load failed: $e');
+    }
+  }
+
+  Future<void> _loadWebstreamingProviderOrder() async {
+    final order = await _settings.getStreamProviderOrder();
+    if (!mounted) return;
+    setState(() => _webstreamingProviderOrder = order);
+  }
+
+  Map<String, dynamic> get _orderedWebstreamingProviders {
+    final order = _webstreamingProviderOrder;
+    return <String, dynamic>{
+      for (final k in order)
+        if (_webstreamingProviders.containsKey(k)) k: _webstreamingProviders[k],
+      for (final k in _webstreamingProviders.keys)
+        if (!order.contains(k)) k: _webstreamingProviders[k],
+    };
+  }
+
+  String _webstreamingProviderLabel(String key) {
+    final provider = _webstreamingProviders[key];
+    final fallbackName = provider is Map ? provider['name']?.toString() : null;
+    List<String>? contentLanguage;
+    if (provider is Map && provider['contentLanguage'] is List) {
+      contentLanguage =
+          (provider['contentLanguage'] as List).map((e) => e.toString()).toList();
+    }
+    return StreamProviderDisplay.playerLabel(
+      key,
+      fallbackName: fallbackName,
+      contentLanguage: contentLanguage,
+    );
+  }
+
+  void _refetchActiveWebstreamingProvider() {
+    final providerId = _webstreamingActiveProviderId ??
+        (_selectedSourceId.startsWith('stream:')
+            ? _selectedSourceId.substring('stream:'.length)
+            : null);
+    if (providerId != null) {
+      _fetchWebstreamingProvider(providerId);
+    }
+  }
+
+  Future<void> _fetchWebstreamingProvider(String providerId) async {
+    final gen = ++_webstreamingFetchGen;
+    _webstreamingFetchCancelled = false;
+    setState(() {
+      _isWebstreamingFetching = true;
+      _errorMessage = null;
+      _webstreamingStreams = [];
+      _webstreamingActiveProviderId = providerId;
+      _selectedSourceId = 'stream:$providerId';
+    });
+    try {
+      final result = await _streamProviderResolver.resolve(
+        key: providerId,
+        movie: _movie,
+        season: _selectedSeason,
+        episode: _selectedEpisode,
+        providers: _orderedWebstreamingProviders,
+        isCancelled: () =>
+            _webstreamingFetchCancelled || gen != _webstreamingFetchGen,
+      );
+      if (!mounted || gen != _webstreamingFetchGen) return;
+      if (result == null || result.streamUrl.isEmpty) {
+        setState(() {
+          _errorMessage =
+              'No streams found from ${_webstreamingProviderLabel(providerId)}';
+        });
+        return;
+      }
+      final sources = result.sources?.isNotEmpty == true
+          ? result.sources!
+          : [
+              StreamSource(
+                url: result.streamUrl,
+                title: _webstreamingProviderLabel(providerId),
+                type: 'hls',
+                headers: result.headers,
+              ),
+            ];
+      setState(() {
+        _webstreamingStreams = sources;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      if (!mounted || gen != _webstreamingFetchGen) return;
+      setState(() => _errorMessage = 'Error: $e');
+    } finally {
+      if (mounted && gen == _webstreamingFetchGen) {
+        setState(() => _isWebstreamingFetching = false);
+        _maybeAutoPlay();
+        if (_episodePlayPending && _webstreamingStreams.isEmpty) {
+          _failEpisodePlayPending();
+        }
+      }
+    }
+  }
+
+  Future<void> _playWebstreamingStream(
+    StreamSource source, {
+    Duration? startPosition,
+  }) async {
+    final isTv = _movie.mediaType == 'tv';
+    final title = isTv
+        ? '${_movie.title} - S$_selectedSeason E$_selectedEpisode'
+        : _movie.title;
+    final providerId = _webstreamingActiveProviderId ?? 'videasy';
+    if (mounted && _sourcesPanelOpen) setState(() => _sourcesPanelOpen = false);
+    await AppRouter.openPlayer(
+      context,
+      streamUrl: source.url,
+      title: title,
+      headers: source.headers,
+      movie: _movie,
+      providers: _orderedWebstreamingProviders,
+      activeProvider: providerId,
+      selectedSeason: isTv ? _selectedSeason : null,
+      selectedEpisode: isTv ? _selectedEpisode : null,
+      startPosition: startPosition ?? widget.startPosition,
+      sources: _webstreamingStreams,
+      fadeTransition: true,
+    );
   }
 
   Future<void> _fetchExternalRatings() async {
@@ -1080,6 +1236,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _fetchAllStremioStreams();
         } else if (_isNuvioSource) {
           _fetchAllNuvioStreams();
+        } else if (_isWebstreamingSource) {
+          _refetchActiveWebstreamingProvider();
         } else {
           _fetchStremioStreams();
         }
@@ -1122,6 +1280,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       _nuvioSub?.cancel();
       _nuvioSub = null;
       _isNuvioFetching = false;
+      changed = true;
+    }
+    if (_isWebstreamingFetching) {
+      _webstreamingFetchGen++;
+      _webstreamingFetchCancelled = true;
+      _streamProviderResolver.cancelPending();
+      _isWebstreamingFetching = false;
       changed = true;
     }
     if (changed && mounted) setState(() {});
@@ -2347,7 +2512,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         const SizedBox(height: 16),
         TorrentSourceResultsHeader(
           showSort: _isTorrentSource,
-          isFetching: _isSearching || _isStremioFetching || _isNuvioFetching,
+          isFetching: _isSearching ||
+              _isStremioFetching ||
+              _isNuvioFetching ||
+              _isWebstreamingFetching,
           episodeLabel: _movie.mediaType == 'tv'
               ? 'S${_selectedSeason.toString().padLeft(2, '0')}E${_selectedEpisode.toString().padLeft(2, '0')}'
               : null,
@@ -2383,10 +2551,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       _selectedSourceId.startsWith('nuvio:') ||
       _selectedSourceId.startsWith('nuvio://');
 
+  bool get _isWebstreamingSource =>
+      _selectedSourceId == 'webstream_picker' ||
+      _selectedSourceId.startsWith('stream:');
+
   Widget _buildSourceToggle() {
     final isTorrent = _isTorrentSource;
     final isNuvio = _isNuvioSource;
-    final isStremio = !isTorrent && !isNuvio;
+    final isWebstreaming = _isWebstreamingSource;
+    final isStremio = !isTorrent && !isNuvio && !isWebstreaming;
     // On narrow phones the three labelled tabs would push past the screen
     // edge — stretch each tab to share the row equally and shrink the
     // label/icon so nothing overflows the rounded container.
@@ -2411,8 +2584,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               });
               if (_allCombinedStremioStreams.isEmpty) _fetchAllStremioStreams();
             }
-          }),
-          ),
+            }),
+            ),
           if (_hasNuvioAddons)
             Expanded(
               child: _sourceTab('Nuvio Addons', Icons.code_rounded, isNuvio, compact, () {
@@ -2426,6 +2599,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               _checkAndFetchNuvio();
             }),
             ),
+          Expanded(
+            child: _sourceTab('Webstreaming', Icons.play_circle_outline_rounded, isWebstreaming, compact, () {
+              setState(() {
+                _selectedSourceId = 'webstream_picker';
+                _webstreamingStreams = [];
+                _webstreamingActiveProviderId = null;
+                _errorMessage = null;
+              });
+            }),
+          ),
           if (_playbackProfile.builtinTorrentSearch)
             Expanded(
               child: _sourceTab('Torrent Sources', Icons.downloading_rounded, isTorrent, compact, () {
@@ -2447,7 +2630,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             ? 'Stremio'
             : label.startsWith('Nuvio')
                 ? 'Nuvio'
-                : 'Torrent')
+                : label.startsWith('Webstreaming')
+                    ? 'Stream'
+                    : 'Torrent')
         : label;
     return GestureDetector(
       onTap: onTap,
@@ -2474,6 +2659,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Widget _buildSourceChips() {
     final isTorrent = _isTorrentSource;
     final isNuvio = _isNuvioSource;
+    final isWebstreaming = _isWebstreamingSource;
     final chips = <Map<String, dynamic>>[];
     if (isTorrent) {
       chips.add({'id': 'forja', 'label': 'Forja'});
@@ -2509,6 +2695,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           if (!s.enabled) continue;
           chips.add({'id': 'nuvio:${s.id}', 'label': s.name});
         }
+      }
+    } else if (isWebstreaming) {
+      for (final key in _orderedWebstreamingProviders.keys) {
+        chips.add({
+          'id': 'stream:$key',
+          'label': _webstreamingProviderLabel(key),
+        });
       }
     } else {
       // "All" chip shows combined streams from every addon
@@ -2583,6 +2776,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                   _runSingleNuvioScraper(scraperId);
                   return;
                 }
+                if (id.startsWith('stream:')) {
+                  final providerId = id.substring('stream:'.length);
+                  _fetchWebstreamingProvider(providerId);
+                  return;
+                }
                 setState(() => _selectedSourceId = id);
                 if (id == 'forja') {
                   _autoSearch();
@@ -2647,6 +2845,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
     final isTorrent = _isTorrentSource;
     final isNuvio = _isNuvioSource;
+    final isWebstreaming = _isWebstreamingSource;
     // Pick the active stream list based on the source tab.
     final List<dynamic> visibleStreams = isNuvio
         ? (_selectedSourceId == 'all_nuvio'
@@ -2658,10 +2857,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                     .toList()
                 : <dynamic>[]))
         : _stremioStreams;
-    final count = isTorrent ? _filteredTorrentResults.length : visibleStreams.length;
+    final count = isTorrent
+        ? _filteredTorrentResults.length
+        : isWebstreaming
+            ? _webstreamingStreams.length
+            : visibleStreams.length;
     final isFetching = isTorrent
         ? _isSearching
-        : (isNuvio ? _isNuvioFetching : _isStremioFetching);
+        : isWebstreaming
+            ? _isWebstreamingFetching
+            : (isNuvio ? _isNuvioFetching : _isStremioFetching);
     if (!_isSearching && !isFetching && count == 0) {
       String msg;
       if (isTorrent && _activeAudioFilters.isNotEmpty && _allTorrentResults.isNotEmpty) {
@@ -2670,6 +2875,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         msg = _nuvioSelectedAddonUrl == null
             ? 'Pick an addon to see its providers'
             : 'Pick a provider to fetch streams';
+      } else if (isWebstreaming) {
+        msg = 'Pick a provider to fetch streams';
       } else {
         msg = 'No streams found';
       }
@@ -2695,6 +2902,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             }
           }
           return _buildTorrentTile(r, progress: prog, isResumable: resumable);
+        } else if (isWebstreaming) {
+          final source = _webstreamingStreams[i];
+          return _buildWebstreamingTile(source);
         } else {
           final s = visibleStreams[i];
           double prog = 0; bool resumable = false;
@@ -2828,6 +3038,60 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 child: LinearProgressIndicator(value: progress,
                   backgroundColor: Colors.transparent, color: AppTheme.primaryColor, minHeight: 2.5))),
         ]),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  WEBSTREAMING TILE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildWebstreamingTile(StreamSource source) {
+    final label = source.title.isNotEmpty ? source.title : 'Stream';
+    final providerLabel = _webstreamingActiveProviderId != null
+        ? _webstreamingProviderLabel(_webstreamingActiveProviderId!)
+        : null;
+
+    return FocusableControl(
+      onTap: () => _playWebstreamingStream(source, startPosition: widget.startPosition),
+      borderRadius: 10,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              const Icon(Icons.play_circle_outline_rounded,
+                  color: Color(0xFF22C55E), size: 28),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500)),
+                    if (providerLabel != null) ...[
+                      const SizedBox(height: 4),
+                      Text(providerLabel,
+                          style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                    ],
+                  ],
+                ),
+              ),
+              _iconBtn(Icons.play_arrow_rounded, true,
+                  () => _playWebstreamingStream(source, startPosition: widget.startPosition)),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -2181,6 +2181,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       context,
       qualities: qs,
       currentQualityUrl: _currentQualityUrl,
+      playbackQualityLabel: playbackQualityLabel(_player.state),
+      playbackQualityDetail: playbackQualityDetail(_player.state),
       onSelect: _switchQuality,
       anchorContext: anchorContext,
       margin: EdgeInsets.only(

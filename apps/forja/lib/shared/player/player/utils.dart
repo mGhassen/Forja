@@ -91,6 +91,21 @@ Future<bool> waitForMediaOpen(
   }
 }
 
+String? playbackQualityLabel(PlayerState state) {
+  final w = state.videoParams.w ?? 0;
+  final h = state.videoParams.h ?? 0;
+  if (w <= 0 && h <= 0) return null;
+  if (h > 0) return '${h}p';
+  return '${w}p';
+}
+
+String? playbackQualityDetail(PlayerState state) {
+  final w = state.videoParams.w ?? 0;
+  final h = state.videoParams.h ?? 0;
+  if (w <= 0 || h <= 0) return null;
+  return '$w × $h';
+}
+
 String formatDuration(Duration duration) {
   String twoDigits(int n) => n.toString().padLeft(2, "0");
   String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));

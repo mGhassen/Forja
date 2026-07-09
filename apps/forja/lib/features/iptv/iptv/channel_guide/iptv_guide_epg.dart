@@ -26,6 +26,9 @@ class IptvGuideEpgCache {
   void clear() => _cache.clear();
 }
 
+/// Stable height for the full EPG card in the channel-guide header.
+const double kIptvGuideEpgCardHeight = 132;
+
 class IptvGuideEpgCard extends StatefulWidget {
   const IptvGuideEpgCard({
     super.key,
@@ -71,16 +74,59 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
     return elapsed / total;
   }
 
+  Widget _fullCardShell({required Widget child}) {
+    return SizedBox(
+      height: kIptvGuideEpgCardHeight,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: BoxDecoration(
+          color: IptvShellStyle.surfaceMuted,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: IptvShellStyle.border),
+        ),
+        child: ClipRect(
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _fullCardPlaceholder(String message) {
+    return _fullCardShell(
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          message,
+          style: GoogleFonts.poppins(
+            color: Colors.white38,
+            fontSize: 11,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<EpgEntry>>(
       future: widget.future,
       builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const SizedBox.shrink();
+        if (widget.compact) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const SizedBox.shrink();
+          }
+          final data = snap.data ?? const [];
+          if (data.isEmpty) return const SizedBox.shrink();
+        } else {
+          if (snap.connectionState != ConnectionState.done) {
+            return _fullCardPlaceholder('Loading guide…');
+          }
+          final data = snap.data ?? const [];
+          if (data.isEmpty) return _fullCardPlaceholder('No guide data');
         }
+
         final data = snap.data ?? const [];
-        if (data.isEmpty) return const SizedBox.shrink();
 
         final nowEntry = data.cast<EpgEntry?>().firstWhere(
               (e) => e!.isNow,
@@ -95,14 +141,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
           return _CompactEpgRow(entry: nowEntry, isLive: nowEntry.isNow);
         }
 
-        return Container(
-          margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-          decoration: BoxDecoration(
-            color: IptvShellStyle.surfaceMuted,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: IptvShellStyle.border),
-          ),
+        return _fullCardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

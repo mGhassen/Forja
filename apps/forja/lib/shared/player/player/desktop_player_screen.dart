@@ -1904,6 +1904,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       context,
       qualities: qs,
       currentQualityUrl: _currentQualityUrl,
+      playbackQualityLabel: playbackQualityLabel(_player.state),
+      playbackQualityDetail: playbackQualityDetail(_player.state),
       onSelect: _switchQuality,
       anchorContext: anchorContext,
     );

@@ -17,7 +17,8 @@ import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
-import 'package:forja/shared/widgets/media_details/media_details_streaming_action_row.dart';
+import 'package:forja/shared/widgets/media_details/media_details_torrent_action_row.dart';
+import 'package:forja/shared/widgets/media_details/media_details_tracker_handlers.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
@@ -86,11 +87,23 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   };
   final SettingsService _settings = SettingsService();
   final PlaybackProfile _playbackProfile = PlatformPlayback.capabilities;
+  final MediaDetailsTrackerState _trackerState = MediaDetailsTrackerState();
+  late final MediaDetailsTrackerHandlers _trackerHandlers;
 
   @override
   void initState() {
     super.initState();
     _movie = widget.movie;
+    _trackerHandlers = MediaDetailsTrackerHandlers(
+      context: context,
+      state: _trackerState,
+      movie: () => _movie,
+      season: () => _selectedSeason,
+      episode: () => _selectedEpisode,
+      onChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
     if (widget.initialSeason != null) _selectedSeason = widget.initialSeason!;
     if (widget.initialEpisode != null) _selectedEpisode = widget.initialEpisode!;
     // Start atmosphere color extraction
@@ -100,6 +113,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     _loadWatchedEpisodes();
     _loadNuvioProviders();
     _fetchDetails();
+    _trackerHandlers.load();
   }
 
   Future<void> _loadNuvioProviders() async {
@@ -892,14 +906,18 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   Widget _buildHeroActionRow() {
     final hasResume = _lastProgress != null &&
         ((_lastProgress!['position'] as int? ?? 0) > 0);
-    return MediaDetailsStreamingActionRow(
+    return MediaDetailsTorrentActionRow(
       movie: _movie,
       hasResume: hasResume,
       isExtracting: _isExtracting,
-      onPlay: _startExtraction,
+      onOpenSources: _startExtraction,
+      onOverflowAction: _trackerHandlers.handleOverflow,
       trailers: _mediaExtras?.trailers ?? const [],
       trailerLanguageCode: _mediaExtras?.originalLanguage,
       statusMessage: _statusMessage,
+      userTraktRating: _trackerState.userTraktRating,
+      userSimklRating: _trackerState.userSimklRating,
+      isInTraktCollection: _trackerState.isInTraktCollection,
     );
   }
 

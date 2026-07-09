@@ -5,7 +5,7 @@ import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
-/// Play / My List / download / overflow actions on torrent details hero.
+/// Hero actions shared by torrent and direct-streaming details.
 class MediaDetailsTorrentActionRow extends StatelessWidget {
   const MediaDetailsTorrentActionRow({
     super.key,
@@ -18,6 +18,8 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
     this.userTraktRating,
     this.userSimklRating,
     this.isInTraktCollection = false,
+    this.isExtracting = false,
+    this.statusMessage,
   });
 
   final Movie movie;
@@ -29,6 +31,8 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   final int? userTraktRating;
   final int? userSimklRating;
   final bool isInTraktCollection;
+  final bool isExtracting;
+  final String? statusMessage;
 
   void _openBestTrailer(BuildContext context) {
     if (trailers.isEmpty) return;
@@ -41,13 +45,25 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildRow(BuildContext context) {
     return Row(
       children: [
+        if (isExtracting)
+          const Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white70,
+              ),
+            ),
+          ),
         HeroPillPlayButton(
-          label: hasResume ? 'Resume' : 'Play',
-          onTap: onOpenSources,
+          label: isExtracting ? 'Loading' : (hasResume ? 'Resume' : 'Play'),
+          icon: isExtracting ? null : Icons.play_arrow_rounded,
+          onTap: isExtracting ? null : onOpenSources,
         ),
         if (trailers.isNotEmpty) ...[
           const SizedBox(width: 10),
@@ -117,6 +133,27 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final row = _buildRow(context);
+    if (!isExtracting || statusMessage == null) return row;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        row,
+        const SizedBox(height: 8),
+        Text(
+          statusMessage!,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 12,
+          ),
         ),
       ],
     );

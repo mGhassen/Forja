@@ -149,22 +149,15 @@ class PlayerStatusOverlay extends StatelessWidget {
     Widget buildOverlay(bool buffering) {
       final entries = _entries(buffering);
       if (entries.isEmpty) return const SizedBox.shrink();
-      return Positioned(
-        left: 0,
-        right: 0,
-        top: 0,
+      return Positioned.fill(
         child: IgnorePointer(
           child: SafeArea(
-            bottom: false,
             child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: StatusRouletteView(
-                  entries: entries,
-                  header: header,
-                  centered: true,
-                ),
+              alignment: Alignment.center,
+              child: StatusRouletteView(
+                entries: entries,
+                header: header,
+                centered: true,
               ),
             ),
           ),

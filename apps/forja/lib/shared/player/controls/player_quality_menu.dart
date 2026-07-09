@@ -8,6 +8,8 @@ class PlayerQualityMenu {
     required List<HlsQuality> qualities,
     required String? currentQualityUrl,
     required Future<void> Function(HlsQuality quality) onSelect,
+    String? playbackQualityLabel,
+    String? playbackQualityDetail,
     BuildContext? anchorContext,
     Alignment alignment = Alignment.bottomLeft,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
@@ -20,13 +22,25 @@ class PlayerQualityMenu {
         alignment: alignment,
         margin: margin,
         anchorContext: anchorContext,
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: Text(
-            'No quality options for this stream',
-            style: TextStyle(color: Colors.white38),
-          ),
-        ),
+        child: playbackQualityLabel != null
+            ? ListView(
+                padding: const EdgeInsets.all(8),
+                shrinkWrap: true,
+                children: [
+                  PlayerPopupListTile(
+                    label: playbackQualityLabel,
+                    subtitle: playbackQualityDetail,
+                    selected: true,
+                  ),
+                ],
+              )
+            : const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Quality not available yet',
+                  style: TextStyle(color: Colors.white38),
+                ),
+              ),
       );
       return;
     }

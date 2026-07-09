@@ -9,7 +9,7 @@ Forja routes all video playback through a unified player. Controls use a flat ov
 - **Top bar** — back arrow, centered title, **S# E#** for TV episodes, and **Cast** and **PiP** on the top right (platform-gated)
 - **Paused overlay** — show logo, rating/year meta, and synopsis on the left when playback is paused (when TMDB metadata is available)
 - **Center actions** — large play/pause and ±10s buttons in the middle while controls are visible (desktop: mouse hover; mobile: tap to show controls)
-- **Status roulette** — right-center slide-up indicator when checking sources, switching servers, or auto-fallback (no bottom snackbars)
+- **Status roulette** — centered slide-up indicator when checking sources, switching servers, or auto-fallback (no bottom snackbars)
 - **Bottom bar** — full-width seek bar, then play/pause, ±10s, volume, and **current / total** time on the left; **Servers**, **Sources**, episodes (TV), audio, subtitles, quality, settings, and fullscreen on the right
 - **Floating menus** — servers, sources, audio, subtitles, quality, and settings open as compact popup panels anchored to the button you tapped (above or below, depending on space)
 - **Episodes panel** — TV **Episodes** opens a right-side panel with season picker, episode thumbnails, runtime, synopsis, and resume progress
@@ -40,7 +40,7 @@ On desktop, playback opens in a **full-window layer** above the app shell — th
 
 - If a stream fails, Forja may auto-try the next source in the list
 - Seek preview needs a decodable frame; live or buffering streams may show time only
-- Quality shows all detected HLS variants; single-quality streams say “No quality options”
+- Quality shows all detected HLS variants; single-quality or direct streams show the current decoded resolution (e.g. 1080p)
 - Long sessions benefit from [torrent cache settings](../settings/torrent-settings.md) when streaming magnets
 
 ## Related

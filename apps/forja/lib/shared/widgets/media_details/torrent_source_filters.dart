@@ -135,21 +135,27 @@ class TorrentSourceToggle extends StatelessWidget {
     super.key,
     required this.isStremio,
     required this.isNuvio,
+    required this.isWebstreaming,
     required this.isTorrent,
     required this.showNuvio,
+    required this.showWebstreaming,
     required this.showTorrent,
     required this.onStremioTap,
     required this.onNuvioTap,
+    required this.onWebstreamingTap,
     required this.onTorrentTap,
   });
 
   final bool isStremio;
   final bool isNuvio;
+  final bool isWebstreaming;
   final bool isTorrent;
   final bool showNuvio;
+  final bool showWebstreaming;
   final bool showTorrent;
   final VoidCallback onStremioTap;
   final VoidCallback onNuvioTap;
+  final VoidCallback onWebstreamingTap;
   final VoidCallback onTorrentTap;
 
   @override
@@ -181,6 +187,16 @@ class TorrentSourceToggle extends StatelessWidget {
                 selected: isNuvio,
                 compact: compact,
                 onTap: onNuvioTap,
+              ),
+            ),
+          if (showWebstreaming)
+            Expanded(
+              child: _SourceTab(
+                label: 'Webstreaming',
+                icon: Icons.play_circle_outline_rounded,
+                selected: isWebstreaming,
+                compact: compact,
+                onTap: onWebstreamingTap,
               ),
             ),
           if (showTorrent)
@@ -221,7 +237,9 @@ class _SourceTab extends StatelessWidget {
             ? 'Stremio'
             : label.startsWith('Nuvio')
                 ? 'Nuvio'
-                : 'Torrent')
+                : label.startsWith('Webstreaming')
+                    ? 'Stream'
+                    : 'Torrent')
         : label;
     return GestureDetector(
       onTap: onTap,

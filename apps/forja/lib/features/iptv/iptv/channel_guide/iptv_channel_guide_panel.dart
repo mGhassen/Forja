@@ -489,7 +489,11 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 topRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
                 bottomRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
               ),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              border: Border(
+                top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                right: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              ),
             ),
             clipBehavior: Clip.antiAlias,
             child: Column(
@@ -612,7 +616,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
               ),
             ),
           if (epgFuture != null && showChannelMeta)
-            IptvGuideEpgCard(future: epgFuture),
+            IptvGuideEpgCard(
+              key: ValueKey(epgChannel?.id ?? ''),
+              future: epgFuture,
+            ),
         ],
       ),
     );
@@ -815,6 +822,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
             onProbe: () => _scheduleHealthCheck(ch),
             onCancelProbe: () => _cancelHealthCheck(ch.id),
             onHover: () {
+              if (_focusColumn == _FocusColumn.channels &&
+                  _focusedChannelIndex == i) {
+                return;
+              }
               setState(() {
                 _focusedChannelIndex = i;
                 _focusColumn = _FocusColumn.channels;
@@ -890,7 +901,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       child: MouseRegion(
         onEnter: (_) {
-          setState(() => _hovered = true);
+          if (!_hovered) setState(() => _hovered = true);
           widget.onHover();
           widget.onProbe();
         },
@@ -899,7 +910,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
           if (!active && !focused) widget.onCancelProbe();
         },
         child: Material(
-          elevation: active || focused ? 2 : 0,
+          elevation: 0,
           shadowColor: Colors.black.withValues(alpha: 0.4),
           color: active
               ? _accent.withValues(alpha: 0.2)
