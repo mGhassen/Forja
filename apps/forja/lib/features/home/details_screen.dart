@@ -82,7 +82,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Map<String, dynamic>? _lastProgress;
   bool _sourcesPanelOpen = false;
   bool _autoPlayConsumed = false;
-  bool _autoPlayWebstreamingStarted = false;
   bool _episodePlayPending = false;
   bool _manualPlayPending = false;
   bool _playSourceTorrent = true;
@@ -121,9 +120,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   };
   List<String> _webstreamingProviderOrder = [];
   List<StreamSource> _webstreamingStreams = [];
-  bool _isWebstreamingFetching = false;
-  int _webstreamingFetchGen = 0;
-  bool _webstreamingFetchCancelled = false;
   String? _webstreamingActiveProviderId;
   bool _isWebstreamingOnlyExtracting = false;
   bool _webstreamingOnlyExtractionCancelled = false;
@@ -273,8 +269,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       _fetchAllStremioStreams();
     } else if (_isNuvioSource) {
       _fetchAllNuvioStreams();
-    } else if (_isWebstreamingSource) {
-      _refetchActiveWebstreamingProvider();
     } else {
       _fetchStremioStreams();
     }
@@ -284,20 +278,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     setState(() {
       _selectedEpisode = episode;
       _syncSelectedSourceToPlaySources();
-      if (_isWebstreamingOnlyPlaySource) {
-        _webstreamingStreams = [];
-        _webstreamingActiveProviderId = null;
-      } else {
+      if (_hasPanelPlaySources) {
         _sourcesPanelOpen = true;
         _episodePlayPending = true;
       }
     });
     _checkHistory();
-    if (_isWebstreamingOnlyPlaySource) {
+    if (_hasPanelPlaySources) {
+      _refreshSourcesForEpisode();
+    } else if (_playSourceWebstreaming) {
       unawaited(_startWebstreamingOnlyPlayback());
-      return;
     }
-    _refreshSourcesForEpisode();
   }
 
   bool get _panelShowTorrent =>
@@ -305,14 +296,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   bool get _panelShowStremio => _playSourceStremio;
 
-  bool get _panelShowWebstreaming => _playSourceWebstreaming;
-
   bool get _panelShowNuvio => _playSourceStremio && _hasNuvioAddons;
+
+  bool get _hasPanelPlaySources => _panelShowTorrent || _panelShowStremio;
 
   bool _isCurrentSourceAllowed() {
     if (_isTorrentSource) return _panelShowTorrent;
     if (_isNuvioSource) return _panelShowStremio;
-    if (_isWebstreamingSource) return _panelShowWebstreaming;
+    if (_isWebstreamingSource) return false;
     return _panelShowStremio;
   }
 
@@ -323,7 +314,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           ? 'all_stremio'
           : _streamAddons.first['baseUrl'] as String;
     }
-    if (_panelShowWebstreaming) return 'webstream_picker';
     return 'forja';
   }
 
@@ -340,15 +330,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   void _ensurePanelSourceLoaded() {
     if (_isTorrentSource && _panelShowTorrent) {
       if (_allTorrentResults.isEmpty && !_isSearching) _autoSearch();
-    } else if (_isWebstreamingSource && _panelShowWebstreaming) {
-      if (_webstreamingStreams.isEmpty && !_isWebstreamingFetching) {
-        final firstId = _orderedWebstreamingProviders.keys.firstOrNull;
-        if (firstId != null) _fetchWebstreamingProvider(firstId);
-      }
-    } else if (!_isTorrentSource &&
-        !_isNuvioSource &&
-        !_isWebstreamingSource &&
-        _panelShowStremio) {
+    } else if (!_isTorrentSource && !_isNuvioSource && _panelShowStremio) {
       if (_stremioStreams.isEmpty && !_isStremioFetching) {
         _fetchAllStremioStreams();
       }
@@ -356,6 +338,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   void _openSourcesPanel() {
+    if (!_hasPanelPlaySources) return;
     setState(() {
       _syncSelectedSourceToPlaySources();
       _sourcesPanelOpen = true;
@@ -363,18 +346,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _ensurePanelSourceLoaded();
   }
 
-  bool get _isWebstreamingOnlyPlaySource =>
-      _playSourceWebstreaming &&
-      !_playSourceTorrent &&
-      !_playSourceStremio;
-
   void _onHeroPlayPressed() {
-    if (_isWebstreamingOnlyPlaySource) {
-      unawaited(_startWebstreamingOnlyPlayback());
-      return;
-    }
     _manualPlayPending = true;
     _maybeAutoPlay();
+  }
+
+  void _onPlayStreamingPressed() {
+    unawaited(_startWebstreamingOnlyPlayback());
   }
 
   Future<void> _startWebstreamingOnlyPlayback() async {
@@ -386,12 +364,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       );
       return;
     }
-    if (_isWebstreamingOnlyExtracting || _isWebstreamingFetching) return;
+    if (_isWebstreamingOnlyExtracting) return;
     await _runWebstreamingOnlyExtraction(startPosition: startPosition);
   }
 
   Future<void> _runWebstreamingOnlyExtraction({Duration? startPosition}) async {
-    _isWebstreamingOnlyExtracting = true;
+    if (mounted) {
+      setState(() => _isWebstreamingOnlyExtracting = true);
+    } else {
+      _isWebstreamingOnlyExtracting = true;
+    }
     _webstreamingOnlyExtractionCancelled = false;
     final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
     final fadeOutNotifier = ValueNotifier(false);
@@ -413,7 +395,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           fadeOutNotifier: fadeOutNotifier,
           onCancel: () {
             _webstreamingOnlyExtractionCancelled = true;
-            _webstreamingFetchCancelled = true;
             WebStreamrService().cancelPending();
             VidsrcExtractor.cancelPending();
             NuvioService.instance.cancelPending();
@@ -488,7 +469,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           setState(() {
             _webstreamingStreams = sources;
             _webstreamingActiveProviderId = key;
-            _selectedSourceId = 'stream:$key';
           });
 
           final isTv = _movie.mediaType == 'tv';
@@ -542,7 +522,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         );
       }
     } finally {
-      _isWebstreamingOnlyExtracting = false;
+      if (mounted) {
+        setState(() => _isWebstreamingOnlyExtracting = false);
+      } else {
+        _isWebstreamingOnlyExtracting = false;
+      }
       fadeOutNotifier.dispose();
       probeNotifier.dispose();
     }
@@ -617,12 +601,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Widget _buildHeroActionRow() {
     final hasResume = _lastProgress != null &&
         ((_lastProgress!['position'] as int? ?? 0) > 0);
+    final showPlay = _hasPanelPlaySources;
     return MediaDetailsTorrentActionRow(
       movie: _movie,
       hasResume: hasResume,
-      isExtracting: _isWebstreamingOnlyExtracting ||
-          (_isWebstreamingOnlyPlaySource && _isWebstreamingFetching),
+      showPlay: showPlay,
+      showPlayStreaming: _playSourceWebstreaming,
+      isStreamingExtracting: _isWebstreamingOnlyExtracting,
       onOpenSources: _onHeroPlayPressed,
+      onPlayStreaming: _onPlayStreamingPressed,
       onDownload: _openSourcesPanel,
       onOverflowAction: _handleHeroOverflowAction,
       trailers: _trailers,
@@ -722,11 +709,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (_isTorrentSource) {
       return _allTorrentResults.map((r) => r.name).toList();
     }
-    if (_isWebstreamingSource) {
-      return _webstreamingStreams
-          .map((s) => s.title.isNotEmpty ? s.title : 'Stream')
-          .toList();
-    }
     final streams = _isNuvioSource
         ? (_selectedSourceId == 'all_nuvio'
             ? _nuvioStreams
@@ -810,7 +792,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   void _failEpisodePlayPending() {
     if (!_episodePlayPending || !mounted) return;
     _episodePlayPending = false;
-    if (_isWebstreamingOnlyPlaySource) {
+    if (!_hasPanelPlaySources && _playSourceWebstreaming) {
       unawaited(_startWebstreamingOnlyPlayback());
       return;
     }
@@ -819,7 +801,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   void _failAutoPlayFromRoute() {
     if (!mounted) return;
-    if (_isWebstreamingOnlyPlaySource) {
+    if (!_hasPanelPlaySources && _playSourceWebstreaming) {
       unawaited(_startWebstreamingOnlyPlayback());
       return;
     }
@@ -883,36 +865,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       }
     }
 
-    if (_playSourceWebstreaming) {
-      if (_webstreamingStreams.isNotEmpty) {
-        _consumeAutoPlayFlags(
-          fromRoute: fromRoute,
-          fromEpisode: fromEpisode,
-          fromManual: fromManual,
-        );
-        _playWebstreamingStream(
-          _webstreamingStreams.first,
-          startPosition: startPosition,
-        );
-        return;
-      }
-      if (_isWebstreamingFetching) return;
-      if (!_autoPlayWebstreamingStarted) {
-        final firstId = _orderedWebstreamingProviders.keys.firstOrNull;
-        if (firstId != null) {
-          _autoPlayWebstreamingStarted = true;
-          _fetchWebstreamingProvider(firstId);
-          return;
-        }
-      }
-    }
-
     final torrentPending =
         _playSourceTorrent && _playbackProfile.builtinTorrentSearch && _isSearching;
     final stremioPending =
         _playSourceStremio && (_isStremioFetching || _isNuvioFetching);
-    final webPending = _playSourceWebstreaming && _isWebstreamingFetching;
-    if (torrentPending || stremioPending || webPending) return;
+    if (torrentPending || stremioPending) return;
 
     if (fromEpisode) {
       _failEpisodePlayPending();
@@ -921,11 +878,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       _failAutoPlayFromRoute();
     } else if (fromManual) {
       _manualPlayPending = false;
-      if (_isWebstreamingOnlyPlaySource) {
-        unawaited(_startWebstreamingOnlyPlayback());
-      } else {
-        _openSourcesPanel();
-      }
+      _openSourcesPanel();
     }
   }
 
@@ -1095,79 +1048,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       fallbackName: fallbackName,
       contentLanguage: contentLanguage,
     );
-  }
-
-  void _refetchActiveWebstreamingProvider() {
-    final providerId = _webstreamingActiveProviderId ??
-        (_selectedSourceId.startsWith('stream:')
-            ? _selectedSourceId.substring('stream:'.length)
-            : null);
-    if (providerId != null) {
-      _fetchWebstreamingProvider(providerId);
-    }
-  }
-
-  Future<void> _fetchWebstreamingProvider(String providerId) async {
-    final gen = ++_webstreamingFetchGen;
-    _webstreamingFetchCancelled = false;
-    setState(() {
-      _isWebstreamingFetching = true;
-      _errorMessage = null;
-      _webstreamingStreams = [];
-      _webstreamingActiveProviderId = providerId;
-      _selectedSourceId = 'stream:$providerId';
-    });
-    try {
-      final result = await _streamProviderResolver.resolve(
-        key: providerId,
-        movie: _movie,
-        season: _selectedSeason,
-        episode: _selectedEpisode,
-        providers: _orderedWebstreamingProviders,
-        isCancelled: () =>
-            _webstreamingFetchCancelled || gen != _webstreamingFetchGen,
-      );
-      if (!mounted || gen != _webstreamingFetchGen) return;
-      if (result == null || result.streamUrl.isEmpty) {
-        setState(() {
-          _errorMessage =
-              'No streams found from ${_webstreamingProviderLabel(providerId)}';
-        });
-        return;
-      }
-      final sources = result.sources?.isNotEmpty == true
-          ? result.sources!
-          : [
-              StreamSource(
-                url: result.streamUrl,
-                title: _webstreamingProviderLabel(providerId),
-                type: 'hls',
-                headers: result.headers,
-              ),
-            ];
-      setState(() {
-        _webstreamingStreams = sources;
-        _errorMessage = null;
-      });
-    } catch (e) {
-      if (!mounted || gen != _webstreamingFetchGen) return;
-      setState(() => _errorMessage = 'Error: $e');
-    } finally {
-      if (mounted && gen == _webstreamingFetchGen) {
-        setState(() => _isWebstreamingFetching = false);
-        _maybeAutoPlay();
-        if (_episodePlayPending && _webstreamingStreams.isEmpty) {
-          _failEpisodePlayPending();
-        } else if (_manualPlayPending && _webstreamingStreams.isEmpty) {
-          _manualPlayPending = false;
-          if (_isWebstreamingOnlyPlaySource) {
-            unawaited(_startWebstreamingOnlyPlayback());
-          } else {
-            _openSourcesPanel();
-          }
-        }
-      }
-    }
   }
 
   Future<void> _playWebstreamingStream(
@@ -1625,8 +1505,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _fetchAllStremioStreams();
         } else if (_isNuvioSource) {
           _fetchAllNuvioStreams();
-        } else if (_isWebstreamingSource) {
-          _refetchActiveWebstreamingProvider();
         } else {
           _fetchStremioStreams();
         }
@@ -1669,13 +1547,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       _nuvioSub?.cancel();
       _nuvioSub = null;
       _isNuvioFetching = false;
-      changed = true;
-    }
-    if (_isWebstreamingFetching) {
-      _webstreamingFetchGen++;
-      _webstreamingFetchCancelled = true;
-      _streamProviderResolver.cancelPending();
-      _isWebstreamingFetching = false;
       changed = true;
     }
     if (changed && mounted) setState(() {});
@@ -2773,7 +2644,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         backgroundColor: AppTheme.bgDark,
         body: Stack(children: [
           _buildScrollLayout(),
-          if (!_isCollection)
+          if (!_isCollection && _hasPanelPlaySources)
             TorrentSourcesPanel(
               isOpen: _sourcesPanelOpen,
               onClose: () => setState(() => _sourcesPanelOpen = false),
@@ -2858,12 +2729,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           onClose: () => setState(() => _sourcesPanelOpen = false),
         ),
         TorrentSourceToggle(
-          isStremio: !_isTorrentSource && !_isNuvioSource && !_isWebstreamingSource,
+          isStremio: !_isTorrentSource && !_isNuvioSource,
           isNuvio: _isNuvioSource,
-          isWebstreaming: _isWebstreamingSource,
           isTorrent: _isTorrentSource,
           showNuvio: _panelShowNuvio,
-          showWebstreaming: _panelShowWebstreaming,
           showTorrent: _panelShowTorrent,
           showStremio: _panelShowStremio,
           onStremioTap: () {
@@ -2887,15 +2756,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               _resetPanelFilters();
             });
             _checkAndFetchNuvio();
-          },
-          onWebstreamingTap: () {
-            setState(() {
-              _selectedSourceId = 'webstream_picker';
-              _webstreamingStreams = [];
-              _webstreamingActiveProviderId = null;
-              _errorMessage = null;
-              _resetPanelFilters();
-            });
           },
           onTorrentTap: () {
             setState(() {
@@ -2921,8 +2781,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           compact: isTv,
           isFetching: _isSearching ||
               _isStremioFetching ||
-              _isNuvioFetching ||
-              _isWebstreamingFetching,
+              _isNuvioFetching,
           episodeLabel: _movie.mediaType == 'tv'
               ? 'S${_selectedSeason.toString().padLeft(2, '0')}E${_selectedEpisode.toString().padLeft(2, '0')}'
               : null,
@@ -2995,13 +2854,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   int? get _panelVisibleCount {
     final isTorrent = _isTorrentSource;
     final isNuvio = _isNuvioSource;
-    final isWebstreaming = _isWebstreamingSource;
     if (isTorrent) return _filteredTorrentResults.length;
-    if (isWebstreaming) {
-      return _webstreamingStreams
-          .where((s) => _matchesPanelFilters(s.title.isNotEmpty ? s.title : 'Stream'))
-          .length;
-    }
     final streams = isNuvio
         ? (_selectedSourceId == 'all_nuvio'
             ? _nuvioStreams
@@ -3036,7 +2889,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   List<Map<String, dynamic>> _sourceChips() {
     final isTorrent = _isTorrentSource;
     final isNuvio = _isNuvioSource;
-    final isWebstreaming = _isWebstreamingSource;
     final chips = <Map<String, dynamic>>[];
     if (isTorrent) {
       chips.add({'id': 'forja', 'label': 'Forja'});
@@ -3067,13 +2919,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           if (!s.enabled) continue;
           chips.add({'id': 'nuvio:${s.id}', 'label': s.name});
         }
-      }
-    } else if (isWebstreaming) {
-      for (final key in _orderedWebstreamingProviders.keys) {
-        chips.add({
-          'id': 'stream:$key',
-          'label': _webstreamingProviderLabel(key),
-        });
       }
     } else {
       if (_streamAddons.length > 1) {
@@ -3141,12 +2986,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       _runSingleNuvioScraper(scraperId);
       return;
     }
-    if (id.startsWith('stream:')) {
-      final providerId = id.substring('stream:'.length);
-      setState(_resetPanelFilters);
-      _fetchWebstreamingProvider(providerId);
-      return;
-    }
     setState(() {
       _selectedSourceId = id;
       _resetPanelFilters();
@@ -3193,7 +3032,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
     final isTorrent = _isTorrentSource;
     final isNuvio = _isNuvioSource;
-    final isWebstreaming = _isWebstreamingSource;
     final List<dynamic> visibleStreams = isNuvio
         ? (_selectedSourceId == 'all_nuvio'
             ? _nuvioStreams
@@ -3203,12 +3041,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                     .toList()
                 : <dynamic>[]))
         : _stremioStreams;
-    final filteredWebStreams = isWebstreaming
-        ? _webstreamingStreams
-            .where((s) => _matchesPanelFilters(s.title.isNotEmpty ? s.title : 'Stream'))
-            .toList()
-        : <StreamSource>[];
-    final filteredAddonStreams = (!isTorrent && !isWebstreaming)
+    final filteredAddonStreams = !isTorrent
         ? visibleStreams
             .where((s) => _matchesPanelFilters(
                   '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
@@ -3217,19 +3050,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         : <dynamic>[];
     final count = isTorrent
         ? _filteredTorrentResults.length
-        : isWebstreaming
-            ? filteredWebStreams.length
-            : filteredAddonStreams.length;
-    final rawCount = isTorrent
-        ? _allTorrentResults.length
-        : isWebstreaming
-            ? _webstreamingStreams.length
-            : visibleStreams.length;
+        : filteredAddonStreams.length;
+    final rawCount = isTorrent ? _allTorrentResults.length : visibleStreams.length;
     final isFetching = isTorrent
         ? _isSearching
-        : isWebstreaming
-            ? _isWebstreamingFetching
-            : (isNuvio ? _isNuvioFetching : _isStremioFetching);
+        : (isNuvio ? _isNuvioFetching : _isStremioFetching);
     if (!_isSearching && !isFetching && count == 0) {
       String msg;
       if (rawCount > 0 &&
@@ -3245,8 +3070,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         msg = _nuvioSelectedAddonUrl == null
             ? 'Pick an addon to see its providers'
             : 'Pick a provider to fetch streams';
-      } else if (isWebstreaming && _webstreamingStreams.isEmpty) {
-        msg = 'Pick a provider to fetch streams';
       } else {
         msg = 'No streams found';
       }
@@ -3298,18 +3121,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 const SnackBar(content: Text('Magnet copied'), duration: Duration(seconds: 1)),
               );
             },
-          );
-        }
-        if (isWebstreaming) {
-          final source = filteredWebStreams[i];
-          final label = source.title.isNotEmpty ? source.title : 'Stream';
-          final providerLabel = _webstreamingActiveProviderId != null
-              ? _webstreamingProviderLabel(_webstreamingActiveProviderId!)
-              : null;
-          return WebstreamingSourceTile(
-            title: label,
-            subtitle: providerLabel,
-            onPlay: () => _playWebstreamingStream(source, startPosition: widget.startPosition),
           );
         }
         final s = filteredAddonStreams[i];

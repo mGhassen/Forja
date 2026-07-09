@@ -13,13 +13,16 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
     required this.hasResume,
     required this.onOpenSources,
     this.onDownload,
+    this.onPlayStreaming,
+    this.showPlayStreaming = false,
+    this.isStreamingExtracting = false,
     required this.onOverflowAction,
     this.trailers = const [],
     this.trailerLanguageCode,
     this.userTraktRating,
     this.userSimklRating,
     this.isInTraktCollection = false,
-    this.isExtracting = false,
+    this.showPlay = true,
     this.statusMessage,
   });
 
@@ -27,13 +30,16 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   final bool hasResume;
   final VoidCallback onOpenSources;
   final VoidCallback? onDownload;
+  final VoidCallback? onPlayStreaming;
+  final bool showPlayStreaming;
+  final bool isStreamingExtracting;
   final ValueChanged<String> onOverflowAction;
   final List<MediaTrailer> trailers;
   final String? trailerLanguageCode;
   final int? userTraktRating;
   final int? userSimklRating;
   final bool isInTraktCollection;
-  final bool isExtracting;
+  final bool showPlay;
   final String? statusMessage;
 
   void _openBestTrailer(BuildContext context) {
@@ -48,9 +54,10 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   }
 
   Widget _buildRow(BuildContext context) {
+    final playLabel = hasResume ? 'Resume' : 'Play';
     return Row(
       children: [
-        if (isExtracting)
+        if (isStreamingExtracting)
           const Padding(
             padding: EdgeInsets.only(right: 8),
             child: SizedBox(
@@ -62,21 +69,36 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
               ),
             ),
           ),
-        HeroPillPlayButton(
-          label: isExtracting ? 'Loading' : (hasResume ? 'Resume' : 'Play'),
-          icon: isExtracting ? null : Icons.play_arrow_rounded,
-          onTap: isExtracting ? null : onOpenSources,
-        ),
-        if (trailers.isNotEmpty) ...[
+        if (showPlayStreaming) ...[
+          HeroPillPlayButton(
+            label: isStreamingExtracting ? 'Loading' : playLabel,
+            icon: isStreamingExtracting ? null : Icons.play_arrow_rounded,
+            tone: HeroPillPlayTone.primary,
+            onTap: isStreamingExtracting ? null : onPlayStreaming,
+          ),
           const SizedBox(width: 10),
+        ],
+        if (showPlay) ...[
+          HeroPillPlayButton(
+            label: playLabel,
+            icon: null,
+            iconWidget: const HeroMagnetIcon(),
+            tone: showPlayStreaming
+                ? HeroPillPlayTone.streaming
+                : HeroPillPlayTone.primary,
+            onTap: isStreamingExtracting ? null : onOpenSources,
+          ),
+          const SizedBox(width: 10),
+        ],
+        if (trailers.isNotEmpty) ...[
           HeroPillPlayButton(
             label: 'Trailer',
             icon: Icons.smart_display_outlined,
-            primary: false,
+            tone: HeroPillPlayTone.secondary,
             onTap: () => _openBestTrailer(context),
           ),
+          const SizedBox(width: 10),
         ],
-        const SizedBox(width: 10),
         HeroPillIconGroup(
           slots: [
             HeroPillIconSlot(
@@ -88,11 +110,12 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
               ),
               tooltip: 'Add to My List',
             ),
-            HeroPillIconSlot(
-              icon: Icons.download_outlined,
-              tooltip: 'Download',
-              onTap: onDownload ?? onOpenSources,
-            ),
+            if (showPlay)
+              HeroPillIconSlot(
+                icon: Icons.download_outlined,
+                tooltip: 'Download',
+                onTap: onDownload ?? onOpenSources,
+              ),
             HeroPillIconSlot(
               tooltip: 'More',
               child: PopupMenuButton<String>(
@@ -143,7 +166,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final row = _buildRow(context);
-    if (!isExtracting || statusMessage == null) return row;
+    if (!isStreamingExtracting || statusMessage == null) return row;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -8,7 +8,7 @@ When you open a title from Home, Discover, Search, or lists, you get the **media
 
 The hero overlay is split into two columns on wide screens:
 
-- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then **Play** / **Resume** (tries enabled play sources in order; opens **Sources** only if playback cannot start), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download (opens **Sources**), and overflow; watch progress when you have history appears below the actions.
+- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then green **Play** / **Resume** with play icon (webstreaming best extractor when enabled), white **Play** / **Resume** with magnet icon (torrent → Stremio; opens **Sources** only if playback cannot start), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download (opens **Sources**), and overflow; watch progress when you have history appears below the actions.
 - **Right:** **Production Info** panel — status, language, and TV fields (first/last aired, seasons, episodes, network, production companies, origin, creators) or movie fields (release date, runtime, production, origin, budget/revenue) from TMDB rich details.
 
 Hero text sits in the **upper** area of the hero (not pinned to the bottom). Below the hero, the page uses a **flat shell background** (same `#141414` as the left nav rail and Home catalog rows) — no blurred backdrop bleed-through.
@@ -20,7 +20,7 @@ Scroll below the hero for:
 3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio, subtitles, quality, playback speed). When a trailer ends and more are available, an **Up next** prompt lets you continue to the next trailer.
 4. **More Like This** — recommendation row
 
-Torrent search, Stremio/Nuvio streams, **Webstreaming** (VidLink, WebStreamr, Videasy, …), and source picking stay in the **Sources** side panel. Only play sources enabled in **Settings → Playback** appear there.
+Torrent search and Stremio/Nuvio streams stay in the **Sources** side panel. **Webstreaming** (VidLink, WebStreamr, Videasy, …) is started from the hero green **Play** / **Resume** (play icon) — it is not a Sources tab. Only torrent/Stremio play sources enabled in **Settings → Playback** appear in the panel.
 
 ## How to open it
 
@@ -29,8 +29,9 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 ## What you can do
 
 - Watch the Ken Burns backdrop (12–20s), then chromeless autoplay trailer in the hero when TMDB has one; alternates after each trailer ends (sound on, volume ramps up; mute toggle bottom-right)
-- **Play** / **Resume** tries enabled play sources in order (torrent → Stremio → webstreaming); opens **Sources** only if nothing could start
-- **Download** or an episode tap opens **Sources** to pick a stream manually
+- Green **Play** / **Resume** (play icon) auto-extracts the best direct webstreaming link when that play source is enabled
+- White **Play** / **Resume** (magnet icon) tries torrent → Stremio; opens **Sources** only if nothing could start
+- **Download** or an episode tap opens **Sources** to pick a torrent/Stremio stream manually
 - **Trailer** (when available) opens the in-app trailer player on the best-matching official trailer
 - Add or remove from **My List** (**+** button in hero)
 - Trakt/Simkl/collect actions via the **⋯** overflow menu in the hero
@@ -40,7 +41,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 - Search and sort torrent results in Sources (seeders, size, etc.)
 - Resolve torrents through debrid when configured
 - Mark watched / unwatched per episode
-- Use [Webstreaming](direct-streaming-mode.md) extractors from **Sources** or via **Play** when webstreaming is the only enabled source
+- Use [Webstreaming](direct-streaming-mode.md) via the hero green **Play** / **Resume** (play icon) button
 
 ## Setup (if needed)
 
@@ -52,7 +53,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 ## Tips
 
 - Sort order for torrents is set in Settings → Search & Torrents
-- Enable only **Webstreaming** under Play sources if you want **Play** to auto-extract direct links without torrent search
+- Enable only **Webstreaming** under Play sources if you want a single green **Play** / **Resume** without torrent/Stremio **Sources**
 
 ## Related
 

@@ -21,8 +21,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 
 ## Tips
 
-- Play source toggles control which backends hero/details **Play** tries, in order: torrent → Stremio → webstreaming. The **Sources** panel shows only the enabled source types.
-- When only webstreaming is enabled, **Play** auto-extracts from configured extractors (see [Webstreaming](../movies-tv/direct-streaming-mode.md)).
+- Play source toggles: green **Play** (play icon) uses webstreaming; white magnet **Play** / **Sources** use torrent + Stremio (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel shows only torrent and Stremio/Nuvio.
 - Provider order is the main lever for web link quality — see [Stream providers](../sources/stream-providers.md)
 - External player bypasses built-in subtitle UI
 

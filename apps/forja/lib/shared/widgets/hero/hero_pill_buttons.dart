@@ -15,11 +15,12 @@ BoxDecoration _heroPillDecoration({required bool hover}) {
   );
 }
 
-BoxDecoration _heroPlayDecoration({required bool hover}) {
+BoxDecoration _heroPlayDecoration({
+  required bool hover,
+  required Color color,
+}) {
   return BoxDecoration(
-    color: hover
-        ? ForjaShellColors.brandGreen.withValues(alpha: 0.92)
-        : ForjaShellColors.brandGreen,
+    color: hover ? color.withValues(alpha: 0.92) : color,
     borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
   );
 }
@@ -35,24 +36,58 @@ BorderRadius _heroPillSlotBorderRadius({
   return BorderRadius.zero;
 }
 
-/// Primary hero CTA — pill with icon + label (Play, Watch Now, Resume).
+/// Hero play CTA tone — [primary] brand green, [streaming] white fill.
+enum HeroPillPlayTone { primary, secondary, streaming }
+
+/// Primary hero CTA — pill with optional icon + label (Play, Watch Now, Resume).
 class HeroPillPlayButton extends StatelessWidget {
   const HeroPillPlayButton({
     super.key,
     required this.label,
     this.icon = Icons.play_arrow_rounded,
+    this.iconWidget,
     this.onTap,
     this.primary = true,
+    this.tone,
   });
 
   final String label;
   final IconData? icon;
+  final Widget? iconWidget;
   final VoidCallback? onTap;
   final bool primary;
+  final HeroPillPlayTone? tone;
+
+  HeroPillPlayTone get _tone =>
+      tone ?? (primary ? HeroPillPlayTone.primary : HeroPillPlayTone.secondary);
 
   @override
   Widget build(BuildContext context) {
-    final foreground = primary ? const Color(0xFF111827) : Colors.white;
+    final resolved = _tone;
+    final Color foreground;
+    late final BoxDecoration Function(bool hover) decoration;
+    switch (resolved) {
+      case HeroPillPlayTone.primary:
+        foreground = const Color(0xFF111827);
+        decoration = (hover) => _heroPlayDecoration(
+              hover: hover,
+              color: ForjaShellColors.brandGreen,
+            );
+      case HeroPillPlayTone.streaming:
+        foreground = const Color(0xFF111827);
+        decoration = (hover) => _heroPlayDecoration(
+              hover: hover,
+              color: Colors.white,
+            );
+      case HeroPillPlayTone.secondary:
+        foreground = Colors.white;
+        decoration = (hover) => _heroPillDecoration(hover: hover);
+    }
+
+    final leading = iconWidget ??
+        (icon != null
+            ? Icon(icon, size: _kHeroPillIconSize, color: foreground)
+            : null);
 
     return ForjaInteractive(
       onTap: onTap,
@@ -64,15 +99,19 @@ class HeroPillPlayButton extends StatelessWidget {
           curve: Curves.easeOutCubic,
           height: _kHeroPillHeight,
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: primary
-              ? _heroPlayDecoration(hover: hover)
-              : _heroPillDecoration(hover: hover),
+          decoration: decoration(hover),
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: _kHeroPillIconSize, color: foreground),
+              if (leading != null) ...[
+                IconTheme(
+                  data: IconThemeData(
+                    size: _kHeroPillIconSize,
+                    color: foreground,
+                  ),
+                  child: leading,
+                ),
                 const SizedBox(width: 8),
               ],
               Text(
@@ -90,6 +129,75 @@ class HeroPillPlayButton extends StatelessWidget {
       },
     );
   }
+}
+
+/// Simple magnet glyph for torrent CTAs (Material Icons has no magnet).
+class HeroMagnetIcon extends StatelessWidget {
+  const HeroMagnetIcon({super.key, this.size, this.color});
+
+  final double? size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconTheme = IconTheme.of(context);
+    final resolvedSize = size ?? iconTheme.size ?? _kHeroPillIconSize;
+    final resolvedColor = color ?? iconTheme.color ?? Colors.black;
+    return SizedBox(
+      width: resolvedSize,
+      height: resolvedSize,
+      child: CustomPaint(
+        painter: _MagnetIconPainter(color: resolvedColor),
+      ),
+    );
+  }
+}
+
+class _MagnetIconPainter extends CustomPainter {
+  _MagnetIconPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.14
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final w = size.width;
+    final h = size.height;
+    final path = Path()
+      ..moveTo(w * 0.28, h * 0.12)
+      ..lineTo(w * 0.28, h * 0.48)
+      ..cubicTo(w * 0.28, h * 0.78, w * 0.72, h * 0.78, w * 0.72, h * 0.48)
+      ..lineTo(w * 0.72, h * 0.12);
+    canvas.drawPath(path, paint);
+
+    final tip = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * 0.18, h * 0.08, w * 0.20, h * 0.16),
+        Radius.circular(w * 0.04),
+      ),
+      tip,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * 0.62, h * 0.08, w * 0.20, h * 0.16),
+        Radius.circular(w * 0.04),
+      ),
+      tip,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _MagnetIconPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class HeroPillIconSlot {

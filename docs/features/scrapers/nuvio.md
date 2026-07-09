@@ -4,7 +4,7 @@
 
 ## What it is
 
-Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Install a manifest in Settings, enable individual scrapers, and they appear as webstreaming providers on [media details](../movies-tv/media-details.md).
+Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Install a manifest in Settings, enable individual scrapers, and they feed the hero **Play streaming** path on [media details](../movies-tv/media-details.md) (and the Nuvio tab in **Sources** when used as Stremio-style addons).
 
 ## How to open it
 

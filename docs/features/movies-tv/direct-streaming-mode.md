@@ -1,26 +1,22 @@
 # Webstreaming
 
-> Direct stream links from web extractors on the media details screen.
+> Direct stream links from web extractors via the hero green **Play** / **Resume** button.
 
 ## What it is
 
-**Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a separate screen or global mode. When enabled in **Settings → Playback**, **Play** can use VidLink, VixSrc, WebStreamr, Nuvio scrapers, and other configured extractors.
+**Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Nuvio scrapers, …) and starts playback when one works (loading roulette overlay).
 
-If webstreaming is the **only** enabled play source, **Play** auto-searches extractors in your **Provider order** and starts playback when one works (with the loading roulette overlay).
-
-You can also pick links manually: **Sources** → **Webstreaming** → choose a provider → play from the list.
+The white **Play** / **Resume** with magnet icon is for torrent → Stremio. The **Sources** panel is only for those backends.
 
 ## How to open it
 
 1. Enable **Webstreaming** under **Play sources** in **Settings → Playback**
 2. Open any movie or series from Home, Discover, or Search
-3. Tap **Play**, or open **Sources** → **Webstreaming**
+3. Tap the green **Play** / **Resume** on the hero
 
 ## What you can do
 
-- See available stream links grouped by provider
-- Pick a link and play in the built-in or external player
-- Let **Play** auto-extract when webstreaming is your only source
+- Let green **Play** / **Resume** auto-extract the best working link in provider order
 - Fall through extractors in the order you set in Settings
 - While a stream is starting, a right-side roulette cycles through each server as it is checked — ✓ when one works, ✗ when it fails, spinner on the active one (★ on your top-priority server)
 
@@ -32,7 +28,7 @@ You can also pick links manually: **Sources** → **Webstreaming** → choose a 
 
 ## Tips
 
-- Combine play sources (torrent + Stremio + webstreaming) to let **Play** try each backend in order
+- Keep torrent/Stremio enabled for the magnet **Play** / **Sources**; use green **Play** when you want a direct link
 - Provider order matters — put your most reliable extractor first
 
 ## Related
