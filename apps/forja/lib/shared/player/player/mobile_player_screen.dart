@@ -3454,6 +3454,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                 streamUrl: _currentUrl,
                 title: widget.title,
                 headers: widget.headers,
+                statusController: _statusController,
               );
               _startHideTimer();
             },

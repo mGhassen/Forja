@@ -918,8 +918,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     return _epgCache!.load(stream);
   }
 
-  double _floatingEpgTopInset(BuildContext context) {
-    return DesktopWindowChrome.topInset(context);
+  double _floatingEpgBottomInset(BuildContext context, bool compact) {
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final barPad = compact ? 12.0 : 18.0;
+    const barHeight = 56.0;
+    final seekbar = _isVod ? (compact ? 48.0 : 56.0) : 0.0;
+    return safeBottom + barPad + barHeight + seekbar + 12;
   }
 
   void _updateSubVisibility(SubtitleTrack track) {
@@ -1168,15 +1172,19 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                 onClose: () => setState(() => _guideVisible = false),
               ),
             if (epgFuture != null)
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 220),
-                opacity: _controlsVisible ? 1 : 0,
-                child: IgnorePointer(
-                  ignoring: !_controlsVisible,
-                  child: IptvFloatingEpg(
-                    key: ValueKey(_currentChannelId),
-                    future: epgFuture,
-                    topInset: _floatingEpgTopInset(context),
+              Positioned(
+                right: 16,
+                bottom: _floatingEpgBottomInset(context, compact),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: _controlsVisible ? 1 : 0,
+                  child: IgnorePointer(
+                    ignoring: !_controlsVisible,
+                    child: IptvFloatingEpg(
+                      key: ValueKey(_currentChannelId),
+                      future: epgFuture,
+                      maxWidth: compact ? 280 : 320,
+                    ),
                   ),
                 ),
               ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/casting/casting.dart';
+import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/hero/hero_meta_line.dart';
@@ -189,17 +190,60 @@ class PlayerTopBarActions extends StatelessWidget {
   }
 }
 
+void _showCastFeedback(
+  BuildContext context, {
+  PlayerStatusController? statusController,
+  required String message,
+  StatusRouletteKind kind = StatusRouletteKind.info,
+}) {
+  if (statusController != null) {
+    statusController.upsert(
+      'cast',
+      message,
+      kind: kind,
+      dismissAfter: const Duration(seconds: 3),
+    );
+    return;
+  }
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 3),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
+
+String _castTargetLabel(CastTarget target) =>
+    target == CastTarget.airplay ? 'AirPlay' : 'Chromecast';
+
 Future<void> showPlayerCastPicker(
   BuildContext context, {
   required String? streamUrl,
   required String title,
   Map<String, String>? headers,
+  PlayerStatusController? statusController,
 }) async {
   final casting = CastingService.instance;
   final canCast = casting.isAirPlayAvailable || casting.isChromecastAvailable;
-  if (!canCast) return;
+  if (!canCast) {
+    _showCastFeedback(
+      context,
+      statusController: statusController,
+      message: 'Casting is not supported on this device',
+      kind: StatusRouletteKind.failed,
+    );
+    return;
+  }
 
   if (streamUrl == null || streamUrl.isEmpty) {
+    _showCastFeedback(
+      context,
+      statusController: statusController,
+      message: 'No stream to cast',
+      kind: StatusRouletteKind.failed,
+    );
     return;
   }
 
@@ -226,11 +270,38 @@ Future<void> showPlayerCastPicker(
     target = CastTarget.chromecast;
   }
 
-  await casting.castUrl(
+  final label = _castTargetLabel(target);
+  _showCastFeedback(
+    context,
+    statusController: statusController,
+    message: 'Starting $label…',
+    kind: StatusRouletteKind.loading,
+  );
+
+  final started = await casting.castUrl(
     url: streamUrl,
     target: target,
     headers: headers,
     title: title,
+  );
+
+  if (!context.mounted) return;
+
+  if (started) {
+    _showCastFeedback(
+      context,
+      statusController: statusController,
+      message: 'Casting to $label',
+      kind: StatusRouletteKind.success,
+    );
+    return;
+  }
+
+  _showCastFeedback(
+    context,
+    statusController: statusController,
+    message: '$label is not available yet',
+    kind: StatusRouletteKind.failed,
   );
 }
 

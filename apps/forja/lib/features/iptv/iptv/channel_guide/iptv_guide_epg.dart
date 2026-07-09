@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide_panel.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
@@ -304,45 +302,34 @@ class _CompactEpgRow extends StatelessWidget {
   }
 }
 
-/// Left frosted EPG card — same shell as [IptvChannelGuidePanel].
+/// Bottom-right programme guide overlay for the IPTV player.
 class IptvFloatingEpg extends StatelessWidget {
   const IptvFloatingEpg({
     super.key,
     required this.future,
-    required this.topInset,
+    required this.maxWidth,
   });
 
   final Future<List<EpgEntry>> future;
-  final double topInset;
-
-  static const Color _panelTint = Color(0x9916161F);
+  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: 0,
-      top: topInset,
-      child: IgnorePointer(
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
-            bottomRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
-          ),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-            child: Container(
-              width: IptvChannelGuidePanel.panelWidthNarrow,
-              decoration: BoxDecoration(
-                color: _panelTint,
-                border: Border(
-                  top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                  right: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                  bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                ),
+    return IgnorePointer(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
-              child: IptvGuideEpgCard(future: future),
-            ),
+            ],
           ),
+          child: IptvGuideEpgCard(future: future, compact: true),
         ),
       ),
     );

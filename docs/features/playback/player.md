@@ -31,7 +31,7 @@ On desktop, playback opens in a **full-window layer** above the app shell — th
 - Switch **audio**, **subtitles**, and **quality** from dedicated bottom-bar buttons
 - Open **Settings** popup for speed, aspect ratio, loop, hardware decode, and subtitle style
 - Use picture-in-picture on Android and desktop
-- Cast on supported platforms (AirPlay / Chromecast — stub until native channels ship)
+- Tap **Cast** on supported platforms (AirPlay on macOS/iOS, Chromecast on Android/iOS). Native casting is not wired yet — the player shows a status message (e.g. “AirPlay is not available yet”) instead of failing silently
 - Skip intro/recap/credits when IntroDB has data
 - Jump to next episode for TV content
 - Launch an external player instead of built-in (Settings)

@@ -3230,6 +3230,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                 streamUrl: _currentUrl,
                 title: widget.title,
                 headers: widget.headers,
+                statusController: _statusController,
               );
               _onMouseMove();
             },
