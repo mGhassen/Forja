@@ -68,7 +68,7 @@ jobs:
       - run: |
           sudo apt-get update -y
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libmpv-dev \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev
       - run: ./scripts/build_rust_release.sh
       - working-directory: ${{ env.APP_DIR }}
         run: |
