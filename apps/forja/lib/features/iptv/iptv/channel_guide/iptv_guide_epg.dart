@@ -29,6 +29,9 @@ class IptvGuideEpgCache {
 /// Stable height for the full EPG card in the channel-guide header.
 const double kIptvGuideEpgCardHeight = 132;
 
+/// Taller shell when the NEXT programme row is shown below the current entry.
+const double kIptvGuideEpgCardHeightWithNext = 156;
+
 class IptvGuideEpgCard extends StatefulWidget {
   const IptvGuideEpgCard({
     super.key,
@@ -74,9 +77,12 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
     return elapsed / total;
   }
 
-  Widget _fullCardShell({required Widget child}) {
+  Widget _fullCardShell({
+    required Widget child,
+    double height = kIptvGuideEpgCardHeight,
+  }) {
     return SizedBox(
-      height: kIptvGuideEpgCardHeight,
+      height: height,
       child: Container(
         margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -142,6 +148,9 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
         }
 
         return _fullCardShell(
+          height: nextEntry != null
+              ? kIptvGuideEpgCardHeightWithNext
+              : kIptvGuideEpgCardHeight,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -190,7 +199,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
                 const SizedBox(height: 6),
                 Text(
                   nowEntry.description,
-                  maxLines: 2,
+                  maxLines: nextEntry != null ? 1 : 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: Colors.white54,

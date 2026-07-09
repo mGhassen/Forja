@@ -17,6 +17,7 @@ import 'package:forja/shared/widgets/home_movie_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details/media_details_torrent_action_row.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
+import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
@@ -2436,7 +2437,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         backgroundColor: AppTheme.bgDark,
         body: Stack(children: [
           _buildScrollLayout(),
-          if (!_isCollection) _buildSourcesSlidingPanel(),
+          if (!_isCollection)
+            TorrentSourcesPanel(
+              isOpen: _sourcesPanelOpen,
+              onClose: () => setState(() => _sourcesPanelOpen = false),
+              child: _buildSourcesPanelContent(),
+            ),
           const MediaDetailsBackButton(),
         ]),
       ),
@@ -2498,67 +2504,64 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   //  SOURCES SLIDING PANEL
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildSourcesSlidingPanel() {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final panelWidth = screenWidth < 700 ? screenWidth * 0.92 : 480.0;
-
-    return Stack(
-      children: [
-        if (_sourcesPanelOpen)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => setState(() => _sourcesPanelOpen = false),
-              child: Container(color: Colors.black54),
-            ),
-          ),
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          top: 0,
-          bottom: 0,
-          right: _sourcesPanelOpen ? 0 : -panelWidth,
-          width: panelWidth,
-          child: Material(
-            color: const Color(0xFF0A0A14),
-            elevation: 12,
-            child: SafeArea(
-              left: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 12, 16),
-                child: _buildSourcesPanelContent(),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSourcesPanelContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Text(
-              'Sources',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-            const Spacer(),
-            IconButton(
-              tooltip: 'Close',
-              onPressed: () => setState(() => _sourcesPanelOpen = false),
-              icon: const Icon(Icons.close_rounded, color: Colors.white70),
-            ),
-          ],
+        TorrentSourcesPanelHeader(
+          onClose: () => setState(() => _sourcesPanelOpen = false),
         ),
-        _buildSourceToggle(),
+        TorrentSourceToggle(
+          isStremio: !_isTorrentSource && !_isNuvioSource && !_isWebstreamingSource,
+          isNuvio: _isNuvioSource,
+          isWebstreaming: _isWebstreamingSource,
+          isTorrent: _isTorrentSource,
+          showNuvio: _hasNuvioAddons,
+          showWebstreaming: true,
+          showTorrent: _playbackProfile.builtinTorrentSearch,
+          onStremioTap: () {
+            if (_streamAddons.isNotEmpty) {
+              setState(() {
+                _selectedSourceId = 'all_stremio';
+                _applyStremioFilter();
+                _errorMessage = null;
+              });
+              if (_allCombinedStremioStreams.isEmpty) _fetchAllStremioStreams();
+            }
+          },
+          onNuvioTap: () {
+            setState(() {
+              _selectedSourceId = 'nuvio_picker';
+              _nuvioSelectedAddonUrl = null;
+              _nuvioSelectedScraperId = null;
+              _nuvioStreams = [];
+              _errorMessage = null;
+            });
+            _checkAndFetchNuvio();
+          },
+          onWebstreamingTap: () {
+            setState(() {
+              _selectedSourceId = 'webstream_picker';
+              _webstreamingStreams = [];
+              _webstreamingActiveProviderId = null;
+              _errorMessage = null;
+            });
+          },
+          onTorrentTap: () {
+            setState(() => _selectedSourceId = 'forja');
+            _autoSearch();
+          },
+        ),
         const SizedBox(height: 14),
-        _buildSourceChips(),
+        TorrentSourceChips(
+          chips: _sourceChips(),
+          selectedSourceId: _selectedSourceId,
+          nuvioSelectedAddonUrl: _nuvioSelectedAddonUrl,
+          scrollController: _chipsScrollController,
+          onChipTap: _onSourceChipTap,
+          onScrollBack: _scrollChipsBack,
+          onScrollForward: _scrollChipsForward,
+        ),
         const SizedBox(height: 16),
         TorrentSourceResultsHeader(
           showSort: _isTorrentSource,
@@ -2605,108 +2608,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       _selectedSourceId == 'webstream_picker' ||
       _selectedSourceId.startsWith('stream:');
 
-  Widget _buildSourceToggle() {
-    final isTorrent = _isTorrentSource;
-    final isNuvio = _isNuvioSource;
-    final isWebstreaming = _isWebstreamingSource;
-    final isStremio = !isTorrent && !isNuvio && !isWebstreaming;
-    // On narrow phones the three labelled tabs would push past the screen
-    // edge — stretch each tab to share the row equally and shrink the
-    // label/icon so nothing overflows the rounded container.
-    final w = MediaQuery.of(context).size.width;
-    final compact = w < 420;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white12),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Row(
-        children: [
-          Expanded(
-            child: _sourceTab('Stremio Addons', Icons.extension_outlined, isStremio, compact, () {
-            if (_streamAddons.isNotEmpty) {
-              setState(() {
-                _selectedSourceId = 'all_stremio';
-                _applyStremioFilter();
-                _errorMessage = null;
-              });
-              if (_allCombinedStremioStreams.isEmpty) _fetchAllStremioStreams();
-            }
-            }),
-            ),
-          if (_hasNuvioAddons)
-            Expanded(
-              child: _sourceTab('Nuvio Addons', Icons.code_rounded, isNuvio, compact, () {
-              setState(() {
-                _selectedSourceId = 'nuvio_picker';
-                _nuvioSelectedAddonUrl = null;
-                _nuvioSelectedScraperId = null;
-                _nuvioStreams = [];
-                _errorMessage = null;
-              });
-              _checkAndFetchNuvio();
-            }),
-            ),
-          Expanded(
-            child: _sourceTab('Webstreaming', Icons.play_circle_outline_rounded, isWebstreaming, compact, () {
-              setState(() {
-                _selectedSourceId = 'webstream_picker';
-                _webstreamingStreams = [];
-                _webstreamingActiveProviderId = null;
-                _errorMessage = null;
-              });
-            }),
-          ),
-          if (_playbackProfile.builtinTorrentSearch)
-            Expanded(
-              child: _sourceTab('Torrent Sources', Icons.downloading_rounded, isTorrent, compact, () {
-              setState(() => _selectedSourceId = 'forja');
-              _autoSearch();
-            }),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sourceTab(String label, IconData icon, bool selected, bool compact, VoidCallback onTap) {
-    // "Stremio Addons" / "Torrent Sources" are too wide for ~360-400dp
-    // phones. Use a shorter label in compact mode and a FittedBox so any
-    // remaining overflow gracefully shrinks rather than clipping.
-    final shortLabel = compact
-        ? (label.startsWith('Stremio')
-            ? 'Stremio'
-            : label.startsWith('Nuvio')
-                ? 'Nuvio'
-                : label.startsWith('Webstreaming')
-                    ? 'Stream'
-                    : 'Torrent')
-        : label;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 14, color: selected ? Colors.white : Colors.white54),
-            const SizedBox(width: 5),
-            Text(shortLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : Colors.white54)),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSourceChips() {
+  List<Map<String, dynamic>> _sourceChips() {
     final isTorrent = _isTorrentSource;
     final isNuvio = _isNuvioSource;
     final isWebstreaming = _isWebstreamingSource;
@@ -2719,11 +2621,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (a['type'] == 'torrent') chips.add({'id': a['baseUrl'], 'label': a['name']});
       }
     } else if (isNuvio) {
-      // Two-level navigation:
-      //   Level 0 — addon picker: one chip per installed addon.
-      //   Level 1 — scraper picker: a "Back" chip + one chip per enabled
-      //             scraper inside the chosen addon.
-      // No scraping happens until the user actually taps a scraper chip.
       if (_nuvioSelectedAddonUrl == null) {
         for (final a in _nuvioAddons) {
           chips.add({
@@ -2754,132 +2651,103 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         });
       }
     } else {
-      // "All" chip shows combined streams from every addon
       if (_streamAddons.length > 1) {
         chips.add({'id': 'all_stremio', 'label': '⚡ All'});
       }
-      // Only show addon chips that have finished loading
       for (final a in _streamAddons) {
         if (_loadedAddonBaseUrls.contains(a['baseUrl'])) {
           chips.add({'id': a['baseUrl'], 'label': a['name']});
         }
       }
     }
-    if (chips.isEmpty) return const SizedBox.shrink();
-    return Row(
-      children: [
-        _scrollArrow(Icons.arrow_back_ios_rounded, () => _chipsScrollController.animateTo(
-          (_chipsScrollController.offset - 160).clamp(0.0, _chipsScrollController.position.maxScrollExtent),
-          duration: const Duration(milliseconds: 280), curve: Curves.easeInOut)),
-        Expanded(
-          child: SingleChildScrollView(
-            controller: _chipsScrollController,
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: chips.map((chip) {
-          final id = chip['id'] as String;
-          // Selection rules for the new Nuvio drill-down:
-          //   - addon-picker chip: selected when its addon is the active one
-          //   - back chip: never visually selected
-          //   - scraper chip: selected when its scraperId matches
-          //   - everything else: legacy `_selectedSourceId` match
-          final bool sel;
-          if (id.startsWith('nuvio_addon::')) {
-            sel = _nuvioSelectedAddonUrl ==
-                id.substring('nuvio_addon::'.length);
-          } else if (id == 'nuvio_back') {
-            sel = false;
-          } else {
-            sel = _selectedSourceId == id;
-          }
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () {
-                if (id.startsWith('nuvio_addon::')) {
-                  setState(() {
-                    _nuvioSelectedAddonUrl =
-                        id.substring('nuvio_addon::'.length);
-                    _nuvioSelectedScraperId = null;
-                    _selectedSourceId = 'nuvio_picker';
-                    _nuvioStreams = [];
-                    _errorMessage = null;
-                  });
-                  return;
-                }
-                if (id == 'nuvio_back') {
-                  setState(() {
-                    _nuvioSelectedAddonUrl = null;
-                    _nuvioSelectedScraperId = null;
-                    _selectedSourceId = 'nuvio_picker';
-                    _nuvioStreams = [];
-                    _errorMessage = null;
-                  });
-                  return;
-                }
-                if (id.startsWith('nuvio:')) {
-                  final scraperId = id.substring('nuvio:'.length);
-                  setState(() {
-                    _selectedSourceId = id;
-                    _nuvioSelectedScraperId = scraperId;
-                  });
-                  _runSingleNuvioScraper(scraperId);
-                  return;
-                }
-                if (id.startsWith('stream:')) {
-                  final providerId = id.substring('stream:'.length);
-                  _fetchWebstreamingProvider(providerId);
-                  return;
-                }
-                setState(() => _selectedSourceId = id);
-                if (id == 'forja') {
-                  _autoSearch();
-                } else if (id == 'jackett') {
-                  _searchJackett();
-                } else if (id == 'prowlarr') {
-                  _searchProwlarr();
-                } else if (id == 'all_stremio') {
-                  setState(() {
-                    _applyStremioFilter();
-                    _errorMessage = _stremioStreams.isEmpty && !_isStremioFetching
-                        ? 'No streams found from any addon' : null;
-                  });
-                } else if (id == 'all_nuvio' || id.startsWith('nuvio://')) {
-                  setState(() {
-                    _errorMessage = null;
-                  });
-                } else {
-                  // Single addon filter from cached combined results
-                  setState(() {
-                    _applyStremioFilter();
-                    _errorMessage = _stremioStreams.isEmpty && !_isStremioFetching
-                        ? 'No streams found in ${chip['label']}' : null;
-                  });
-                }
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: sel ? AppTheme.primaryColor : Colors.white.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: sel ? AppTheme.primaryColor : Colors.white.withValues(alpha: 0.2)),
-                ),
-                child: Text(chip['label'] as String,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                    color: sel ? Colors.white : Colors.white.withValues(alpha: 0.6))),
-              ),
-            ),
-          );
-              }).toList(),
-            ),
-          ),
-        ),
-        _scrollArrow(Icons.arrow_forward_ios_rounded, () => _chipsScrollController.animateTo(
-          (_chipsScrollController.offset + 160).clamp(0.0, _chipsScrollController.position.maxScrollExtent),
-          duration: const Duration(milliseconds: 280), curve: Curves.easeInOut)),
-      ],
+    return chips;
+  }
+
+  void _scrollChipsBack() {
+    _chipsScrollController.animateTo(
+      (_chipsScrollController.offset - 160).clamp(
+        0.0,
+        _chipsScrollController.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeInOut,
     );
+  }
+
+  void _scrollChipsForward() {
+    _chipsScrollController.animateTo(
+      (_chipsScrollController.offset + 160).clamp(
+        0.0,
+        _chipsScrollController.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _onSourceChipTap(String id) {
+    if (id.startsWith('nuvio_addon::')) {
+      setState(() {
+        _nuvioSelectedAddonUrl = id.substring('nuvio_addon::'.length);
+        _nuvioSelectedScraperId = null;
+        _selectedSourceId = 'nuvio_picker';
+        _nuvioStreams = [];
+        _errorMessage = null;
+      });
+      return;
+    }
+    if (id == 'nuvio_back') {
+      setState(() {
+        _nuvioSelectedAddonUrl = null;
+        _nuvioSelectedScraperId = null;
+        _selectedSourceId = 'nuvio_picker';
+        _nuvioStreams = [];
+        _errorMessage = null;
+      });
+      return;
+    }
+    if (id.startsWith('nuvio:')) {
+      final scraperId = id.substring('nuvio:'.length);
+      setState(() {
+        _selectedSourceId = id;
+        _nuvioSelectedScraperId = scraperId;
+      });
+      _runSingleNuvioScraper(scraperId);
+      return;
+    }
+    if (id.startsWith('stream:')) {
+      final providerId = id.substring('stream:'.length);
+      _fetchWebstreamingProvider(providerId);
+      return;
+    }
+    setState(() => _selectedSourceId = id);
+    if (id == 'forja') {
+      _autoSearch();
+    } else if (id == 'jackett') {
+      _searchJackett();
+    } else if (id == 'prowlarr') {
+      _searchProwlarr();
+    } else if (id == 'all_stremio') {
+      setState(() {
+        _applyStremioFilter();
+        _errorMessage = _stremioStreams.isEmpty && !_isStremioFetching
+            ? 'No streams found from any addon'
+            : null;
+      });
+    } else if (id == 'all_nuvio' || id.startsWith('nuvio://')) {
+      setState(() => _errorMessage = null);
+    } else {
+      final chip = _sourceChips().firstWhere(
+        (c) => c['id'] == id,
+        orElse: () => {'label': 'addon'},
+      );
+      setState(() {
+        _applyStremioFilter();
+        _errorMessage = _stremioStreams.isEmpty && !_isStremioFetching
+            ? 'No streams found in ${chip['label']}'
+            : null;
+      });
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -3288,12 +3156,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: highlight ? AppTheme.primaryColor.withValues(alpha: 0.4) : Colors.white12)),
       child: Icon(icon, size: 17, color: highlight ? AppTheme.primaryColor : Colors.white54)));
-
-  Widget _scrollArrow(IconData icon, VoidCallback onTap) => GestureDetector(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Icon(icon, color: Colors.white38, size: 16)));
 
   Widget _buildCollectionItemsSection() {
     return Column(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/design.dart';
 
 /// Right-side sliding panel shell for torrent / addon source picking.
 class TorrentSourcesPanel extends StatelessWidget {
@@ -35,13 +36,20 @@ class TorrentSourcesPanel extends StatelessWidget {
           right: isOpen ? 0 : -panelWidth,
           width: panelWidth,
           child: Material(
-            color: const Color(0xFF141414),
-            elevation: 12,
-            child: SafeArea(
-              left: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 12, 16),
-                child: child,
+            color: ForjaShellColors.cinematic.menuSurface,
+            elevation: 0,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
+                ),
+              ),
+              child: SafeArea(
+                left: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 12, 16),
+                  child: child,
+                ),
               ),
             ),
           ),
@@ -61,19 +69,20 @@ class TorrentSourcesPanelHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text(
+        Text(
           'Sources',
           style: TextStyle(
-            color: Colors.white,
+            color: ForjaShellColors.cinematic.textPrimary,
             fontWeight: FontWeight.w700,
             fontSize: 16,
           ),
         ),
         const Spacer(),
-        IconButton(
+        ForjaPlainIcon(
+          icon: Icons.close_rounded,
           tooltip: 'Close',
-          onPressed: onClose,
-          icon: const Icon(Icons.close_rounded, color: Colors.white70),
+          color: ForjaShellColors.cinematic.textSecondary,
+          onTap: onClose,
         ),
       ],
     );

@@ -258,14 +258,14 @@ class _SourceTab extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: selected ? Colors.white : Colors.white54),
+              Icon(icon, size: 14, color: selected ? ForjaShellColors.cinematic.textPrimary : ForjaShellColors.cinematic.textSecondary),
               const SizedBox(width: 5),
               Text(
                 shortLabel,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : Colors.white54,
+                  color: selected ? ForjaShellColors.cinematic.textPrimary : ForjaShellColors.cinematic.textSecondary,
                 ),
               ),
             ],
@@ -341,7 +341,9 @@ class TorrentSourceChips extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: selected ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                          color: selected
+                              ? ForjaShellColors.cinematic.textPrimary
+                              : ForjaShellColors.cinematic.textSecondary,
                         ),
                       ),
                     ),
@@ -386,15 +388,15 @@ class TorrentSourceResultsHeader extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              const Icon(Icons.download_rounded, color: Colors.white54, size: 16),
+              Icon(Icons.download_rounded, color: ForjaShellColors.cinematic.textSecondary, size: 16),
               const SizedBox(width: 6),
-              const Flexible(
+              Flexible(
                 child: Text(
                   'Available Sources',
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: ForjaShellColors.cinematic.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
@@ -407,7 +409,10 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                     '— $episodeLabel',
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
-                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                    style: TextStyle(
+                      color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
