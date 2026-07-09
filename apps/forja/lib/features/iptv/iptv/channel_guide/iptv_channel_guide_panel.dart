@@ -564,14 +564,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 ),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 40,
-                    ),
-                    onPressed: widget.onClose,
-                    icon: Icon(Icons.close_rounded, color: Colors.white70),
+                  child: ForjaCloseButton(
+                    color: Colors.white70,
+                    onTap: widget.onClose,
                   ),
                 ),
               ],

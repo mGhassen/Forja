@@ -176,6 +176,74 @@ class ForjaPlainIcon extends StatelessWidget {
   }
 }
 
+/// Borderless dismiss control — soft circular fill on hover, no outline.
+class ForjaCloseButton extends StatelessWidget {
+  const ForjaCloseButton({
+    super.key,
+    this.onTap,
+    this.tooltip = 'Close',
+    this.color,
+    this.size = 20,
+    this.hitSize = 36,
+    this.compact = false,
+  });
+
+  const ForjaCloseButton.compact({
+    super.key,
+    this.onTap,
+    this.tooltip = 'Close',
+    this.color,
+    this.size = 18,
+    this.hitSize = 32,
+  }) : compact = true;
+
+  final VoidCallback? onTap;
+  final String? tooltip;
+  final Color? color;
+  final double size;
+  final double hitSize;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = ForjaInteractive(
+      onTap: onTap,
+      hoverScale: 1.08,
+      pressScale: 0.94,
+      builder: (hover, pressed) {
+        final showFill = hover || pressed;
+        final fillAlpha = pressed ? 0.14 : 0.10;
+        final resolved = color ??
+            (AppTheme.isLightMode
+                ? (hover ? Colors.black87 : Colors.black54)
+                : hover
+                    ? ForjaShellColors.cinematic.textPrimary
+                    : ForjaShellColors.cinematic.textSecondary);
+        return SizedBox(
+          width: hitSize,
+          height: hitSize,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: showFill
+                  ? (AppTheme.isLightMode
+                      ? Colors.black.withValues(alpha: fillAlpha)
+                      : Colors.white.withValues(alpha: fillAlpha))
+                  : Colors.transparent,
+            ),
+            child: Icon(Icons.close_rounded, size: size, color: resolved),
+          ),
+        );
+      },
+    );
+
+    if (tooltip != null) {
+      return Tooltip(message: tooltip!, child: button);
+    }
+    return button;
+  }
+}
+
 /// Bordered square icon — use sparingly; prefer [ForjaPlainIcon] in hero chrome.
 class ForjaIconButton extends StatelessWidget {
   const ForjaIconButton({

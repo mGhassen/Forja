@@ -84,9 +84,7 @@ class TorrentSourcesPanelHeader extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        ForjaPlainIcon(
-          icon: Icons.close_rounded,
-          tooltip: 'Close',
+        ForjaCloseButton(
           color: ForjaShellColors.cinematic.textSecondary,
           onTap: onClose,
         ),

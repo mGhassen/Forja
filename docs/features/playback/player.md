@@ -11,8 +11,8 @@ Forja routes all video playback through a unified player. Controls use a flat ov
 - **Center actions** — large play/pause and ±10s buttons in the middle while controls are visible; hidden while checking sources or buffering (status roulette takes the center instead)
 - **Status roulette** — center-right slide-up indicator when checking sources, switching servers, buffering, or auto-fallback (no bottom snackbars)
 - **Bottom bar** — full-width seek bar, then play/pause, ±10s, volume, and **current / total** time on the left; **Servers**, **Sources**, episodes (TV), audio, subtitles, quality, settings, and fullscreen on the right
-- **Floating menus** — servers, sources, audio, subtitles, quality, and settings open as compact popup panels anchored to the button you tapped (above or below, depending on space)
-- **Episodes panel** — TV **Episodes** opens a right-side panel with season picker, episode thumbnails, runtime, synopsis, and resume progress
+- **Floating menus** — servers, sources, audio, subtitles, quality, and settings open as compact popup panels anchored to the button you tapped (above or below, depending on space). Dismiss with the borderless **Close** control (soft circular highlight on hover — no outline box)
+- **Episodes panel** — TV **Episodes** opens a right-side panel with season picker, episode thumbnails, runtime, synopsis, and resume progress. Close the panel with the same borderless **Close** control in the header
 
 Seek bar on desktop supports hover frame preview (timestamp fallback when preview is unavailable). **Servers** and **Sources** are separate bottom-right buttons with their own popup lists. The player handles torrent streams, direct HLS/MP4 links, debrid URLs, Jellyfin, and hub content.
 

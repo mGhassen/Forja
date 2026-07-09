@@ -538,8 +538,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
               isDense: true,
               contentPadding: EdgeInsets.zero,
               suffixIcon: _query.isNotEmpty
-                  ? ForjaPlainIcon(
-                      icon: Icons.clear,
+                  ? ForjaCloseButton.compact(
+                      tooltip: null,
                       color: ForjaShellColors.textSecondary,
                       onTap: () {
                         _controller.clear();

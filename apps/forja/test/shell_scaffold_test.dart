@@ -321,6 +321,27 @@ void main() {
     expect(find.byType(ForjaIconButton), findsNothing);
   });
 
+  testWidgets('ForjaCloseButton is borderless with circular hover fill', (tester) async {
+    await pumpScaffold(
+      tester,
+      const Scaffold(
+        body: Center(
+          child: ForjaCloseButton(onTap: null),
+        ),
+      ),
+      size: const Size(200, 120),
+    );
+
+    expect(find.byType(ForjaCloseButton), findsOneWidget);
+    final decorationFinder = find.byWidgetPredicate(
+      (widget) =>
+          widget is DecoratedBox &&
+          widget.decoration is BoxDecoration &&
+          (widget.decoration as BoxDecoration).border != null,
+    );
+    expect(decorationFinder, findsNothing);
+  });
+
   testWidgets('ShellBottomNav is flat without BackdropFilter', (tester) async {
     await pumpScaffold(
       tester,

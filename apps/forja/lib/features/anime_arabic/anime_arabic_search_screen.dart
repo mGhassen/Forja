@@ -102,10 +102,10 @@ class _AnimeArabicSearchScreenState extends State<AnimeArabicSearchScreen> {
                 TextStyle(color: Colors.white.withValues(alpha: 0.4)),
             border: InputBorder.none,
             suffixIcon: _ctrl.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.close,
-                        color: Colors.white70, size: 20),
-                    onPressed: () {
+                ? ForjaCloseButton.compact(
+                    tooltip: null,
+                    color: Colors.white70,
+                    onTap: () {
                       _ctrl.clear();
                       _onChanged('');
                     },

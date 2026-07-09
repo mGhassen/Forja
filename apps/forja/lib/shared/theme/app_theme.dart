@@ -202,7 +202,6 @@ class AppTheme {
             minimumSize: const Size(40, 40),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),
-              side: const BorderSide(color: Color(0xFFD1D5DB)),
             ),
           ),
         ),
@@ -250,7 +249,6 @@ class AppTheme {
           minimumSize: const Size(40, 40),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
-            side: const BorderSide(color: Color(0xFF4B5563)),
           ),
           foregroundColor: const Color(0xFFF5F5F7),
         ),

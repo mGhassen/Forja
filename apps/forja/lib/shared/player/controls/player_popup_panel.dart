@@ -258,9 +258,7 @@ class _PanelShell extends StatelessWidget {
                   ),
                 ),
                 if (trailing != null) trailing!,
-                ForjaPlainIcon(
-                  icon: Icons.close_rounded,
-                  size: 20,
+                ForjaCloseButton(
                   color: Colors.white54,
                   onTap: onClose,
                 ),

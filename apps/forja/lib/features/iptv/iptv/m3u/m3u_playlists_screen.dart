@@ -397,10 +397,11 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
                   color: const Color(0xFFEF4444), fontSize: 12),
             ),
           ),
-          IconButton(
-            iconSize: 18,
-            onPressed: () => setState(() => _error = null),
-            icon: Icon(Icons.close, color: Color(0xFFEF4444)),
+          ForjaCloseButton(
+            size: 16,
+            hitSize: 28,
+            color: const Color(0xFFEF4444),
+            onTap: () => setState(() => _error = null),
           ),
         ],
       ),

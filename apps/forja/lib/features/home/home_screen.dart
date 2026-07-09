@@ -2998,19 +2998,11 @@ class _HistoryCardState extends State<_HistoryCard> {
               top: 6, right: 6,
               child: Column(
                 children: [
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      hoverColor: ForjaShellColors.inkHover,
-                      splashColor: ForjaShellColors.inkSplash,
-                      onTap: widget.onRemove,
-                      child: Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
-                        child: const Icon(Icons.close_rounded, color: Colors.white70, size: 14),
-                      ),
-                    ),
+                  ForjaCloseButton(
+                    size: 14,
+                    hitSize: 28,
+                    color: Colors.white70,
+                    onTap: widget.onRemove,
                   ),
                   const SizedBox(height: 4),
                   Material(

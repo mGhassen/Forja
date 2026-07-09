@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
@@ -274,13 +274,9 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                   selectedSeason: _selectedSeason,
                   onSelected: _selectSeason,
                 ),
-              IconButton(
-                tooltip: 'Close',
-                onPressed: widget.onClose,
-                icon: Icon(
-                  Icons.close_rounded,
-                  color: ForjaShellColors.cinematic.textSecondary,
-                ),
+              ForjaCloseButton(
+                color: ForjaShellColors.cinematic.textSecondary,
+                onTap: widget.onClose,
               ),
             ],
           ),
@@ -382,10 +378,7 @@ class _SeasonDropdown extends StatelessWidget {
       }),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: const Color(0xFF2A2A2A),
-          borderRadius: BorderRadius.circular(20),
-        ),
+        decoration: shellChipDecoration(selected: true, radius: 20),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

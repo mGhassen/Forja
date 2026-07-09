@@ -2043,10 +2043,10 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                     Icon(Icons.search_rounded, color: Colors.white54),
                 suffixIcon: _query.isEmpty
                     ? null
-                    : IconButton(
-                        icon: Icon(Icons.close_rounded,
-                            color: Colors.white54),
-                        onPressed: () {
+                    : ForjaCloseButton.compact(
+                        tooltip: null,
+                        color: Colors.white54,
+                        onTap: () {
                           _searchCtrl.clear();
                           setState(() => _query = '');
                         },
@@ -2253,10 +2253,10 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                       color: Colors.white54),
                   suffixIcon: _query.isEmpty
                       ? null
-                      : IconButton(
-                          icon: Icon(Icons.close_rounded,
-                              color: Colors.white54),
-                          onPressed: () {
+                      : ForjaCloseButton.compact(
+                          tooltip: null,
+                          color: Colors.white54,
+                          onTap: () {
                             _searchCtrl.clear();
                             setState(() => _query = '');
                           },

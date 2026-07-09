@@ -953,9 +953,8 @@ class _SearchFieldState extends State<_SearchField> {
             ),
           ),
           if (widget.query.isNotEmpty)
-            ForjaPlainIcon(
-              icon: Icons.close_rounded,
-              size: 18,
+            ForjaCloseButton.compact(
+              tooltip: null,
               color: ForjaShellColors.cinematic.textSecondary,
               onTap: () => widget.onChanged(''),
             ),

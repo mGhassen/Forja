@@ -127,9 +127,10 @@ class _AsianDramaSearchScreenState extends State<AsianDramaSearchScreen> {
             ),
             actions: [
               if (_ctrl.text.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.white),
-                  onPressed: () {
+                ForjaCloseButton.compact(
+                  tooltip: null,
+                  color: Colors.white,
+                  onTap: () {
                     _ctrl.clear();
                     _onChanged('');
                   },

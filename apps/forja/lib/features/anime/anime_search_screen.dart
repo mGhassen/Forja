@@ -124,10 +124,10 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
             ),
             actions: [
               if (_controller.text.isNotEmpty)
-                IconButton(
-                  icon: Icon(Icons.close_rounded,
-                      color: Colors.white.withValues(alpha: 0.7)),
-                  onPressed: () {
+                ForjaCloseButton.compact(
+                  tooltip: null,
+                  color: Colors.white.withValues(alpha: 0.7),
+                  onTap: () {
                     _controller.clear();
                     _onChanged('');
                   },
