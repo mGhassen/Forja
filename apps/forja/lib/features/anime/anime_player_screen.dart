@@ -1,5 +1,4 @@
-// Anime player resolver: races every available source for the chosen
-// category (sub OR dub) until one returns a playable stream.
+// Anime player — Miruro-first stream resolution with AnimeRealms fallback.
 
 import 'dart:async';
 
@@ -7,8 +6,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:forja/features/anime/catalog/anime_provider_map.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/features/anime/catalog/anime_stream_servers.dart';
+import 'package:forja/features/anime/catalog/animerealms_extractor.dart';
+import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -45,6 +46,9 @@ Future<T?> openAnimePlayer<T>(
   required AnimeCard anime,
   required int episodeNumber,
   String category = 'sub',
+  String provider = 'kiwi',
+  bool useAnimeRealms = false,
+  String? episodeId,
   List<AnimeEpisode> allEpisodes = const [],
 }) {
   return Navigator.of(context, rootNavigator: true).push<T>(
@@ -53,6 +57,9 @@ Future<T?> openAnimePlayer<T>(
         anime: anime,
         episodeNumber: episodeNumber,
         category: category,
+        provider: provider,
+        useAnimeRealms: useAnimeRealms,
+        episodeId: episodeId,
         allEpisodes: allEpisodes,
       ),
     ),
@@ -63,6 +70,9 @@ class AnimePlayerScreen extends StatefulWidget {
   final AnimeCard anime;
   final int episodeNumber;
   final String category;
+  final String provider;
+  final bool useAnimeRealms;
+  final String? episodeId;
   final List<AnimeEpisode> allEpisodes;
 
   const AnimePlayerScreen({
@@ -70,6 +80,9 @@ class AnimePlayerScreen extends StatefulWidget {
     required this.anime,
     required this.episodeNumber,
     this.category = 'sub',
+    this.provider = 'kiwi',
+    this.useAnimeRealms = false,
+    this.episodeId,
     this.allEpisodes = const [],
   });
 
@@ -85,73 +98,17 @@ String _langCodeFromLabel(String label) {
     'english': 'en',
     'arabic': 'ar',
     'spanish': 'es',
-    'spanish - latin america': 'es',
-    'spanish (latin america)': 'es',
-    'spanish (spain)': 'es',
-    'european spanish': 'es',
     'french': 'fr',
     'german': 'de',
     'italian': 'it',
     'portuguese': 'pt',
-    'portuguese - brazilian': 'pt-br',
-    'portuguese (brazil)': 'pt-br',
-    'brazilian portuguese': 'pt-br',
     'russian': 'ru',
-    'turkish': 'tr',
-    'dutch': 'nl',
-    'polish': 'pl',
     'japanese': 'ja',
     'korean': 'ko',
     'chinese': 'zh',
-    'chinese - simplified': 'zh-cn',
-    'chinese - traditional': 'zh-tw',
-    'simplified chinese': 'zh-cn',
-    'traditional chinese': 'zh-tw',
-    'hindi': 'hi',
-    'indonesian': 'id',
-    'thai': 'th',
-    'vietnamese': 'vi',
-    'swedish': 'sv',
-    'danish': 'da',
-    'norwegian': 'no',
-    'finnish': 'fi',
-    'czech': 'cs',
-    'greek': 'el',
-    'hebrew': 'he',
-    'romanian': 'ro',
-    'hungarian': 'hu',
-    'ukrainian': 'uk',
-    'malay': 'ms',
-    'filipino': 'tl',
-    'tagalog': 'tl',
   };
   if (map.containsKey(l)) return map[l]!;
-  final stripped = l.replaceAll(RegExp(r'\s*\(.*\)\s*$'), '').trim();
-  if (stripped != l && map.containsKey(stripped)) return map[stripped]!;
   return l;
-}
-
-int _sourcePriority(AnimeEmbed embed) {
-  if (AnimeStreamServers.isForjaServer(embed.server)) {
-    return AnimeStreamServers.priorityIndex(embed.server);
-  }
-  switch (embed.server) {
-    case 'megaplay':
-      return 10;
-    case 'vidwish':
-      return 11;
-    case 'allanime':
-      return 20;
-    default:
-      return 30;
-  }
-}
-
-int _compareSourceHits(
-  ({AnimeEmbed embed, ExtractedMedia media}) a,
-  ({AnimeEmbed embed, ExtractedMedia media}) b,
-) {
-  return _sourcePriority(a.embed).compareTo(_sourcePriority(b.embed));
 }
 
 String _decodeEpisodeTitle(String title) => title
@@ -163,26 +120,29 @@ String _decodeEpisodeTitle(String title) => title
 
 class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   final AnimeService _service = AnimeService();
-  List<AnimeEmbed> _allEmbeds = const [];
-  AnikotoSeries? _series;
-  late String _category;
-  // ignore: unused_field
-  AnimeEmbed? _activeEmbed;
+  final MiruroExtractor _miruro = MiruroExtractor();
+  final AnimeRealmsExtractor _animeRealms = AnimeRealmsExtractor();
 
   late final ValueNotifier<String> _messageNotifier;
   late final ValueNotifier<bool> _fadeOutNotifier;
 
-  String _statusLine = '';
-  bool _failedAll = false;
+  String _activeProvider = '';
+  bool _usingAnimeRealms = false;
+  bool _failed = false;
   bool _cancelled = false;
 
   @override
   void initState() {
     super.initState();
-    _category = widget.category;
-    _messageNotifier = ValueNotifier('Looking up episode…');
+    _activeProvider = widget.provider;
+    _usingAnimeRealms = widget.useAnimeRealms;
+    _messageNotifier = ValueNotifier(
+      _usingAnimeRealms
+          ? 'Fetching from $_activeProvider…'
+          : 'Fetching stream from $_activeProvider…',
+    );
     _fadeOutNotifier = ValueNotifier(false);
-    _bootstrap();
+    _resolve();
   }
 
   @override
@@ -197,206 +157,249 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _messageNotifier.value = phase;
   }
 
-  Future<void> _bootstrap() async {
-    _setPhase('Looking up episode…');
+  Future<void> _resolve() async {
+    if (_cancelled) return;
+    setState(() => _failed = false);
+    _setPhase(
+      _usingAnimeRealms
+          ? 'Fetching from $_activeProvider…'
+          : 'Fetching stream from $_activeProvider…',
+    );
+
     if (kDebugMode) {
       debugPrint(
         '[AnimePlayer] start anilist=${widget.anime.id} '
         '"${widget.anime.displayTitle}" ep=${widget.episodeNumber} '
-        'cat=$_category',
+        'cat=${widget.category} provider=$_activeProvider '
+        'useAnimeRealms=$_usingAnimeRealms',
       );
     }
-    _series = await _service.resolveAnikoto(widget.anime);
-    if (!mounted || _cancelled) return;
-    if (_series == null) {
-      debugPrint(
-          '[AnimePlayer] Anikoto catalog miss for ${widget.anime.displayTitle} '
-          '(anilist ${widget.anime.id})');
-    } else if (kDebugMode) {
-      debugPrint(
-        '[AnimePlayer] Anikoto series ${_series!.id} '
-        '${_series!.episodes.length} eps '
-        'verified=${_series!.aniIdVerified}',
-      );
+
+    if (_usingAnimeRealms) {
+      final ok = await _tryAnimeRealms();
+      if (!mounted || _cancelled) return;
+      if (!ok) {
+        setState(() => _failed = true);
+        _setPhase('No streams available');
+      }
+      return;
     }
-    _allEmbeds = _service.buildAllEmbeds(
+
+    final miruro = await _miruro.extractWithProvider(
       anilistId: widget.anime.id,
-      episode: widget.episodeNumber,
-      series: _series,
-      animeTitles: [
-        widget.anime.titleEnglish,
-        widget.anime.titleRomaji,
-        widget.anime.titleNative,
-      ],
-      isAdult: widget.anime.isAdult,
-    );
-    await _resolveForCategory();
-  }
-
-  List<AnimeEmbed> get _currentPair =>
-      _allEmbeds.where((e) => e.category == _category).toList();
-
-  Future<void> _resolveForCategory() async {
-    if (_cancelled) return;
-    setState(() {
-      _failedAll = false;
-      _statusLine = '';
-    });
-    _setPhase('Finding a stream…');
-
-    final pair = _currentPair;
-    if (pair.isEmpty) {
-      setState(() => _failedAll = true);
-      _setPhase('No streams available');
-      return;
-    }
-
-    const graceWindow = Duration(seconds: 4);
-    final completer =
-        Completer<List<({AnimeEmbed embed, ExtractedMedia media})>>();
-    final successes = <({AnimeEmbed embed, ExtractedMedia media})>[];
-    var settled = 0;
-    final total = pair.length;
-    Timer? graceTimer;
-
-    void finishIfReady() {
-      if (completer.isCompleted) return;
-      if (settled >= total) {
-        graceTimer?.cancel();
-        completer.complete(successes);
-      }
-    }
-
-    for (final embed in pair) {
-      _tryEmbed(embed).then((media) {
-        settled++;
-        if (media != null && media.url.isNotEmpty) {
-          successes.add((embed: embed, media: media));
-          if (successes.length == 1 && !completer.isCompleted) {
-            graceTimer = Timer(graceWindow, () {
-              if (!completer.isCompleted) completer.complete(successes);
-            });
-          }
-        }
-        if (mounted && !completer.isCompleted) {
-          setState(() => _statusLine =
-              '$settled / $total checked${successes.isNotEmpty ? ' · ${successes.length} ready' : ''}');
-        }
-        finishIfReady();
-      }).catchError((_) {
-        settled++;
-        finishIfReady();
-      });
-    }
-
-    final hits = await completer.future;
-    if (!mounted || _cancelled) return;
-    if (hits.isNotEmpty) {
-      final sorted = [...hits]..sort(_compareSourceHits);
-      _activeEmbed = sorted.first.embed;
-      if (kDebugMode) {
-        final w = sorted.first;
-        debugPrint(
-          '[AnimePlayer] winner ${w.embed.displayName} (${w.embed.server}) '
-          'ep=${widget.episodeNumber} url=${w.media.url}',
-        );
-      }
-      await _launchPlayer(sorted);
-      return;
-    }
-    setState(() => _failedAll = true);
-    _setPhase(
-      _series == null &&
-              _currentPair.every(
-                  (e) => e.server != 'megaplay' && e.server != 'vidwish')
-          ? 'Catalog lookup failed'
-          : 'No streams available',
-    );
-    setState(() => _statusLine = '');
-  }
-
-  Future<ExtractedMedia?> _tryEmbed(AnimeEmbed embed) async {
-    try {
-      final direct = await _service.extractDirect(embed);
-      if (direct == null || direct.url.isEmpty) return null;
-      final headers = <String, String>{
-        'Referer': direct.referer,
-        'Origin': direct.origin,
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      };
-      final subs = direct.tracks
-          .map((t) => <String, dynamic>{
-                'url': t.url,
-                'display': t.label,
-                'language': _langCodeFromLabel(t.label),
-                'referer': direct.referer,
-                'origin': direct.origin,
-              })
-          .toList();
-      return ExtractedMedia(
-        url: direct.url,
-        headers: headers,
-        provider: embed.server,
-        sources: [
-          StreamSource(
-            url: direct.url,
-            title: embed.displayName,
-            type: 'video',
-          ),
-        ],
-        externalSubtitles: subs.isNotEmpty ? subs : null,
-      );
-    } catch (e) {
-      debugPrint('[AnimePlayer] ${embed.displayName} failed: $e');
-      return null;
-    }
-  }
-
-  Future<void> _launchPlayer(
-      List<({AnimeEmbed embed, ExtractedMedia media})> hits) async {
-    if (_cancelled || !mounted) return;
-
-    final winner = hits.first;
-    await _service.recordWatch(
-      anime: widget.anime,
       episodeNumber: widget.episodeNumber,
-      category: _category,
+      category: widget.category,
+      provider: _activeProvider,
     );
+    if (!mounted || _cancelled) return;
+    if (miruro != null && miruro.url.isNotEmpty) {
+      await _launchFromMiruro(miruro);
+      return;
+    }
 
+    debugPrint(
+        '[AnimePlayer] Miruro $_activeProvider empty, trying AnimeRealms…');
+    _usingAnimeRealms = true;
+    _setPhase('Trying AnimeRealms…');
+    final ok = await _tryAnimeRealms(
+      preferredProvider: toAnimeRealmsProvider(_activeProvider),
+    );
+    if (!mounted || _cancelled) return;
+    if (!ok) {
+      setState(() => _failed = true);
+      _setPhase('No streams available');
+    }
+  }
+
+  Future<bool> _tryAnimeRealms({String? preferredProvider}) async {
+    try {
+      final arProvider = preferredProvider ?? _activeProvider;
+      final data = await _animeRealms.getStreams(
+        provider: arProvider,
+        anilistId: widget.anime.id,
+        episodeNumber: widget.episodeNumber,
+      );
+      final streams = (data['streams'] as List?) ?? [];
+      final real = streams
+          .where((s) =>
+              s is Map &&
+              s['url'] != null &&
+              !(s['url'] as String).contains('test-streams.mux.dev'))
+          .cast<Map>()
+          .map((e) => e.cast<String, dynamic>())
+          .toList();
+      if (real.isNotEmpty) {
+        await _launchFromAnimeRealms(
+          real,
+          (data['subtitles'] as List?) ?? const [],
+          arProvider,
+        );
+        return true;
+      }
+
+      _setPhase('Trying other providers…');
+      final all = await _animeRealms.getAllSources(
+        anilistId: widget.anime.id,
+        episodeNumber: widget.episodeNumber,
+      );
+      if (!mounted || _cancelled || all.isEmpty) return false;
+      final best = all.first;
+      await _launchFromAnimeRealms(
+        (best['streams'] as List).cast<Map<String, dynamic>>(),
+        (best['subtitles'] as List?) ?? const [],
+        best['provider'] as String,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[AnimePlayer] AnimeRealms failed: $e');
+      return false;
+    }
+  }
+
+  Future<void> _launchFromMiruro(MiruroResult res) async {
+    final subs = res.tracks
+        .map((t) => <String, dynamic>{
+              'url': t.url,
+              'display': t.label,
+              'language': _langCodeFromLabel(
+                t.language.isNotEmpty ? t.language : t.label,
+              ),
+              'referer': res.referer,
+              'origin': res.origin,
+            })
+        .toList();
+
+    final headers = <String, String>{
+      'Referer': res.referer,
+      'Origin': res.origin,
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    };
+
+    var url = res.url;
+    Map<String, String>? srcHeaders = headers;
+    final ls = LocalServerService();
+    if (url.contains('.m3u8') && ls.port != 0) {
+      url = ls.getHlsProxyUrl(url, headers);
+      srcHeaders = null;
+    }
+
+    final sources = [
+      StreamSource(
+        url: url,
+        title: 'Miruro · $_activeProvider',
+        type: res.url.contains('.m3u8') ? 'hls' : 'video',
+        headers: srcHeaders,
+      ),
+    ];
+
+    await _openPlayer(
+      streamUrl: url,
+      headers: srcHeaders,
+      sources: sources,
+      providerLabel: 'miruro_$_activeProvider',
+      externalSubtitles: subs.isNotEmpty ? subs : null,
+    );
+  }
+
+  Future<void> _launchFromAnimeRealms(
+    List<Map<String, dynamic>> streams,
+    List rawSubs,
+    String provider,
+  ) async {
+    _activeProvider = provider;
+    _usingAnimeRealms = true;
+
+    final playable = streams
+        .map((s) {
+          final url = (s['url'] as String?) ?? '';
+          if (url.isEmpty) return null;
+          final hdrs = s['headers'] as Map<String, dynamic>?;
+          final referer = hdrs?['Referer'] as String?;
+          final isHls = url.contains('.m3u8');
+          return (
+            url: url,
+            referer: referer,
+            quality: (s['quality'] as String?) ?? 'Default',
+            type: isHls ? 'hls' : 'video',
+          );
+        })
+        .whereType<({String url, String? referer, String quality, String type})>()
+        .toList();
+
+    if (playable.isEmpty) return;
+
+    final best = playable.first;
+    final headers = <String, String>{};
+    if (best.referer != null && best.referer!.isNotEmpty) {
+      headers['Referer'] = best.referer!;
+    }
+
+    final ls = LocalServerService();
     final sources = <StreamSource>[];
-    for (final h in hits) {
-      final headers = Map<String, String>.from(h.media.headers)
-        ..putIfAbsent('Referer', () => '${h.embed.refererOrigin}/')
-        ..putIfAbsent('Origin', () => h.embed.refererOrigin);
+    for (final s in playable) {
+      var url = s.url;
+      Map<String, String>? srcHeaders;
+      if (s.referer != null && s.referer!.isNotEmpty) {
+        srcHeaders = {'Referer': s.referer!};
+      }
+      if (url.contains('.m3u8') && ls.port != 0 && srcHeaders != null) {
+        url = ls.getHlsProxyUrl(url, srcHeaders);
+        srcHeaders = null;
+      }
       sources.add(StreamSource(
-        url: h.media.url,
-        title: h.embed.displayName,
-        type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
-        headers: headers,
+        url: url,
+        title: '${s.quality} ($provider)',
+        type: s.type,
+        headers: srcHeaders,
       ));
     }
 
-    final seenSubs = <String>{};
-    final allSubs = <Map<String, dynamic>>[];
-    for (final h in hits) {
-      for (final s in (h.media.externalSubtitles ?? const [])) {
-        final url = s['url']?.toString() ?? '';
-        if (url.isEmpty || !seenSubs.add(url)) continue;
-        allSubs.add(s);
-      }
-    }
+    final subs = rawSubs
+        .whereType<Map>()
+        .map((s) => <String, dynamic>{
+              'url': s['url'] ?? s['file'] ?? '',
+              'display': s['label'] ?? 'Unknown',
+              'language': s['language'] ?? '',
+            })
+        .where((s) => (s['url'] as String).isNotEmpty)
+        .toList();
 
-    final winnerHeaders = sources.first.headers!;
-    final title =
-        '${widget.anime.displayTitle} • Ep ${widget.episodeNumber} (${winner.embed.displayName})';
+    await _openPlayer(
+      streamUrl: sources.first.url,
+      headers: headers.isNotEmpty ? headers : null,
+      sources: sources,
+      providerLabel: 'animerealms_$provider',
+      externalSubtitles: subs.isNotEmpty ? subs : null,
+    );
+  }
 
-    final totalEpisodes = _series?.episodes.length ??
-        (widget.allEpisodes.isNotEmpty
-            ? widget.allEpisodes.length
-            : (widget.anime.episodes ?? 0));
-    final hasNext = totalEpisodes > widget.episodeNumber;
+  Future<void> _openPlayer({
+    required String streamUrl,
+    Map<String, String>? headers,
+    required List<StreamSource> sources,
+    required String providerLabel,
+    List<Map<String, dynamic>>? externalSubtitles,
+  }) async {
+    if (_cancelled || !mounted) return;
+
+    final episodeId = widget.episodeId ??
+        widget.allEpisodes
+            .where((e) => e.number == widget.episodeNumber)
+            .map((e) => e.streamId)
+            .whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .firstOrNull;
+
+    await _service.recordWatch(
+      anime: widget.anime,
+      episodeNumber: widget.episodeNumber,
+      category: widget.category,
+      provider: _activeProvider,
+      useAnimeRealms: _usingAnimeRealms,
+      episodeId: episodeId,
+    );
 
     var episodes = widget.allEpisodes;
     if (episodes.isEmpty) {
@@ -411,17 +414,29 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
     }
 
+    final totalEpisodes = episodes.isNotEmpty
+        ? episodes.length
+        : (widget.anime.episodes ?? 0);
+    final hasNext = totalEpisodes > widget.episodeNumber;
+    final title =
+        '${widget.anime.displayTitle} • Ep ${widget.episodeNumber} ($_activeProvider)';
+
     if (!mounted || _cancelled) return;
     final navigator = Navigator.of(context, rootNavigator: true);
     final resolverRoute = ModalRoute.of(context);
 
     Future<void> openEpisode(int epNumber) async {
+      final epMatch =
+          episodes.where((e) => e.number == epNumber).firstOrNull;
       await navigator.pushReplacement(
         AppRouter.fadeRoute(
           (_) => AnimePlayerScreen(
             anime: widget.anime,
             episodeNumber: epNumber,
-            category: _category,
+            category: widget.category,
+            provider: _activeProvider,
+            useAnimeRealms: _usingAnimeRealms,
+            episodeId: epMatch?.streamId,
             allEpisodes: episodes,
           ),
         ),
@@ -431,12 +446,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _fadeOutNotifier.value = true;
     final playerFuture = AppRouter.openPlayer(
       context,
-      streamUrl: winner.media.url,
+      streamUrl: streamUrl,
       title: title,
-      headers: winnerHeaders,
+      headers: headers,
       sources: sources,
-      activeProvider: winner.embed.server,
-      externalSubtitles: allSubs.isNotEmpty ? allSubs : null,
+      activeProvider: providerLabel,
+      externalSubtitles: externalSubtitles,
       movie: _hubMovieFromAnime(widget.anime),
       hubEpisodes: hubEpisodes,
       hubEpisodeNumber: widget.episodeNumber,
@@ -448,7 +463,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         await _service.recordWatch(
           anime: widget.anime,
           episodeNumber: widget.episodeNumber,
-          category: _category,
+          category: widget.category,
+          provider: _activeProvider,
+          useAnimeRealms: _usingAnimeRealms,
+          episodeId: episodeId,
           position: pos,
           duration: dur,
         );
@@ -501,20 +519,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    if (_statusLine.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        _statusLine,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 24),
                     OutlinedButton.icon(
-                      onPressed: _resolveForCategory,
+                      onPressed: _resolve,
                       icon: const Icon(Icons.refresh),
                       label: const Text('Try again'),
                       style: OutlinedButton.styleFrom(
@@ -549,20 +556,17 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final movie = _hubMovieFromAnime(widget.anime);
-    final episodeLabel = _statusLine.isNotEmpty
-        ? 'EP ${widget.episodeNumber} · $_statusLine'
-        : 'EP ${widget.episodeNumber}';
 
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, theme, _) {
-        if (_failedAll) return _buildFailure(theme);
+        if (_failed) return _buildFailure(theme);
 
         return LoadingOverlay(
           movie: movie,
           messageNotifier: _messageNotifier,
           fadeOutNotifier: _fadeOutNotifier,
-          subtitle: episodeLabel,
+          subtitle: 'EP ${widget.episodeNumber}',
           onCancel: () {
             _cancelled = true;
             Navigator.of(context).pop();

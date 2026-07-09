@@ -338,11 +338,17 @@ class _AnimeScreenState extends State<AnimeScreen>
           (entry['anime'] as Map).cast<String, dynamic>());
       final epNum = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
       final cat = (entry['category'] as String?) ?? 'sub';
+      final provider = (entry['provider'] as String?) ?? 'kiwi';
+      final useAnimeRealms = entry['useAnimeRealms'] == true;
+      final episodeId = entry['episodeId'] as String?;
       openAnimePlayer(
         context,
         anime: anime,
         episodeNumber: epNum,
         category: cat,
+        provider: provider,
+        useAnimeRealms: useAnimeRealms,
+        episodeId: episodeId,
       ).then((_) => _refreshHistory());
     } catch (_) {}
   }

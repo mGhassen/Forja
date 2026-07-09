@@ -12,7 +12,7 @@ import 'package:forja/shared/widgets/home_movie_card.dart';
 Widget homeLoadingShimmer(Widget child) {
   return Shimmer.fromColors(
     baseColor: AppTheme.bgCard,
-    highlightColor: const Color(0xFF1E1E2F),
+    highlightColor: ForjaShellColors.borderSubtle,
     child: child,
   );
 }

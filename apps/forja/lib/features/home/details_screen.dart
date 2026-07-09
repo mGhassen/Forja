@@ -284,9 +284,19 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     setState(() {
       _selectedEpisode = episode;
       _syncSelectedSourceToPlaySources();
-      _sourcesPanelOpen = true;
+      if (_isWebstreamingOnlyPlaySource) {
+        _webstreamingStreams = [];
+        _webstreamingActiveProviderId = null;
+      } else {
+        _sourcesPanelOpen = true;
+        _episodePlayPending = true;
+      }
     });
     _checkHistory();
+    if (_isWebstreamingOnlyPlaySource) {
+      unawaited(_startWebstreamingOnlyPlayback());
+      return;
+    }
     _refreshSourcesForEpisode();
   }
 
@@ -800,6 +810,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   void _failEpisodePlayPending() {
     if (!_episodePlayPending || !mounted) return;
     _episodePlayPending = false;
+    if (_isWebstreamingOnlyPlaySource) {
+      unawaited(_startWebstreamingOnlyPlayback());
+      return;
+    }
     _openSourcesPanel();
   }
 
