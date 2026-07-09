@@ -11,7 +11,9 @@ class AnimeStreamProviders {
 
   /// Default try order — strongest / most reliable first.
   static const List<String> defaultOrder = [
-    // AllAnime direct CDNs (best quality / reliability in practice)
+    // Tofu (Miruro bee / AniKoto) — preferred first
+    'miruro:bee',
+    // AllAnime direct CDNs
     'allanime:Default',
     'allanime:S-mp4',
     // Anikoto HD embeds
@@ -27,7 +29,6 @@ class AnimeStreamProviders {
     'allanime:Luf-Mp4',
     'allanime:Uv-mp4',
     // Strong Miruro pipes
-    'miruro:bee',
     'miruro:ally',
     'animerealms:allmanga',
     'miruro:hop',

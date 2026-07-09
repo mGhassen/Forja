@@ -34,6 +34,11 @@ class TorrentSourceTile extends StatelessWidget {
       fallbackText: result.name,
     );
     final source = result.source.trim();
+    final provider = source.isNotEmpty &&
+            source.toLowerCase() != 'unknown' &&
+            !result.name.toLowerCase().contains(source.toLowerCase())
+        ? source
+        : null;
 
     return _SourceBadgeCard(
       onTap: onPlay,
@@ -41,6 +46,7 @@ class TorrentSourceTile extends StatelessWidget {
       isResumable: isResumable,
       highlightStart: highlightStart,
       title: result.name,
+      provider: provider,
       badges: [
         if (meta.quality != null)
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
@@ -57,10 +63,6 @@ class TorrentSourceTile extends StatelessWidget {
         ...meta.sourceTags.take(1).map(_SourceBadgeSpec.new),
         if (meta.flags.trim().isNotEmpty)
           _SourceBadgeSpec(meta.flags.trim()),
-        if (source.isNotEmpty &&
-            source.toLowerCase() != 'unknown' &&
-            !result.name.toLowerCase().contains(source.toLowerCase()))
-          _SourceBadgeSpec(source, tone: _SourceBadgeTone.accent),
       ],
     );
   }
@@ -121,6 +123,7 @@ class StremioSourceTile extends StatelessWidget {
     this.highlightStart = false,
     this.sizeText,
     this.seeders,
+    this.stream,
   });
 
   final String title;
@@ -136,6 +139,7 @@ class StremioSourceTile extends StatelessWidget {
   final bool highlightStart;
   final String? sizeText;
   final String? seeders;
+  final Map<String, dynamic>? stream;
 
   @override
   Widget build(BuildContext context) {
@@ -151,13 +155,16 @@ class StremioSourceTile extends StatelessWidget {
         : TorrentReleaseMetadata.parse(blob);
     final sizeLabel = isExternal
         ? null
-        : TorrentReleaseMetadata.resolveSizeLabel(
-            sizeText: sizeText,
-            fallbackText: blob,
-          );
+        : (stream != null
+            ? TorrentReleaseMetadata.resolveStreamSizeLabel(stream!)
+            : TorrentReleaseMetadata.resolveSizeLabel(
+                sizeText: sizeText,
+                fallbackText: blob,
+              ));
     final seedsRaw = seeders?.trim();
     final seedsCount =
         int.tryParse((seedsRaw ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final provider = addonName != null && showAddonName ? addonName : null;
 
     return _SourceBadgeCard(
       onTap: onTap,
@@ -169,9 +176,8 @@ class StremioSourceTile extends StatelessWidget {
           : null,
       accentBorder: isExternal ? leadingColor.withValues(alpha: 0.25) : null,
       accentFill: isExternal ? leadingColor.withValues(alpha: 0.06) : null,
-      eyebrow: addonName != null && showAddonName ? addonName : null,
-      eyebrowColor: leadingColor.withValues(alpha: 0.75),
       title: title,
+      provider: provider,
       badges: isExternal
           ? [
               if (description.trim().isNotEmpty)
@@ -273,8 +279,7 @@ class _SourceBadgeCard extends StatelessWidget {
     this.leading,
     this.accentBorder,
     this.accentFill,
-    this.eyebrow,
-    this.eyebrowColor,
+    this.provider,
   });
 
   final VoidCallback onTap;
@@ -286,14 +291,14 @@ class _SourceBadgeCard extends StatelessWidget {
   final Widget? leading;
   final Color? accentBorder;
   final Color? accentFill;
-  final String? eyebrow;
-  final Color? eyebrowColor;
+  final String? provider;
 
   @override
   Widget build(BuildContext context) {
     final isTv = ShellTokens.isTvLayout(context);
     final padV = isTv ? 14.0 : 10.0;
     final titleSize = isTv ? 15.0 : 13.0;
+    final cinematic = ForjaShellColors.cinematic;
 
     return FocusableControl(
       onTap: onTap,
@@ -333,39 +338,54 @@ class _SourceBadgeCard extends StatelessWidget {
                             child: Text(
                               'RESUME',
                               style: TextStyle(
-                                color: ForjaShellColors.cinematic.textSecondary,
+                                color: cinematic.textSecondary,
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.6,
                               ),
                             ),
                           ),
-                        if (eyebrow != null && eyebrow!.trim().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              eyebrow!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: eyebrowColor ??
-                                    ForjaShellColors.cinematic.textSecondary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
+                        // Row 1: title + provider (plain text, no badge)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                title,
+                                maxLines: isTv ? 3 : 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: cinematic.textPrimary,
+                                  fontSize: titleSize,
+                                  height: 1.25,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
-                          ),
-                        Text(
-                          title,
-                          maxLines: isTv ? 3 : 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: ForjaShellColors.cinematic.textPrimary,
-                            fontSize: titleSize,
-                            height: 1.25,
-                            fontWeight: FontWeight.w500,
-                          ),
+                            if (provider != null &&
+                                provider!.trim().isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: isTv ? 120 : 96,
+                                ),
+                                child: Text(
+                                  provider!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    color: cinematic.textSecondary,
+                                    fontSize: isTv ? 12 : 11,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
+                        // Row 2: quality / size / seeds / codec / tech
                         if (badges.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Wrap(

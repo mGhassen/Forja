@@ -47,6 +47,7 @@ class PlayerScreen extends StatefulWidget {
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
+  final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
 
   const PlayerScreen({
     super.key,
@@ -78,6 +79,7 @@ class PlayerScreen extends StatefulWidget {
     this.onPlaybackStarted,
     this.onAllSourcesExhausted,
     this.onReloadStreams,
+    this.sourcesListNotifier,
   });
 
   @override
@@ -208,6 +210,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onPlaybackStarted: widget.onPlaybackStarted,
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,
+        sourcesListNotifier: widget.sourcesListNotifier,
       );
     } else {
       return DesktopPlayerScreen(
@@ -239,6 +242,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onPlaybackStarted: widget.onPlaybackStarted,
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,
+        sourcesListNotifier: widget.sourcesListNotifier,
       );
     }
   }

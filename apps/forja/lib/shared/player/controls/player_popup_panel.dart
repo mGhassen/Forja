@@ -326,46 +326,51 @@ class PlayerPopupListTile extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
 
-  Widget? _statusIcon() {
+  static const double _statusSlot = 18;
+
+  Widget? _statusGlyph() {
     if (status == null) return null;
-    switch (status!) {
-      case PlayerSourceStatus.active:
-        return Icon(
+    final color = playerSourceStatusColor(status!);
+    final Widget glyph = switch (status!) {
+      PlayerSourceStatus.active => Icon(
           Icons.play_circle_filled_rounded,
-          color: playerSourceStatusColor(status!),
-          size: 18,
-        );
-      case PlayerSourceStatus.failed:
-        return Icon(
+          color: color,
+          size: _statusSlot,
+        ),
+      PlayerSourceStatus.failed => Icon(
           Icons.cancel_rounded,
-          color: playerSourceStatusColor(status!),
-          size: 18,
-        );
-      case PlayerSourceStatus.checking:
-        return SizedBox(
-          width: 16,
-          height: 16,
+          color: color,
+          size: _statusSlot,
+        ),
+      PlayerSourceStatus.checking => SizedBox(
+          width: 14,
+          height: 14,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: playerSourceStatusColor(status!),
+            color: color,
           ),
-        );
-      case PlayerSourceStatus.ready:
-        return Container(
+        ),
+      PlayerSourceStatus.ready => Container(
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: playerSourceStatusColor(status!),
+            color: color,
             shape: BoxShape.circle,
           ),
-        );
-    }
+        ),
+    };
+    return SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Center(child: glyph),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final failed = status == PlayerSourceStatus.failed;
     final active = status == PlayerSourceStatus.active;
+    final statusGlyph = _statusGlyph();
     final rowColor = selected
         ? Colors.white.withValues(alpha: 0.12)
         : failed
@@ -413,10 +418,6 @@ class PlayerPopupListTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-              ],
-              if (_statusIcon() != null) ...[
-                _statusIcon()!,
-                const SizedBox(width: 8),
               ],
               Expanded(
                 child: Column(
@@ -466,7 +467,13 @@ class PlayerPopupListTile extends StatelessWidget {
                 ),
               ),
               if (selected)
-                const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+                const SizedBox(
+                  width: _statusSlot,
+                  height: _statusSlot,
+                  child: Icon(Icons.check_rounded, color: Colors.white, size: 18),
+                )
+              else if (statusGlyph != null)
+                statusGlyph
               else if (trailing != null)
                 trailing!,
             ],

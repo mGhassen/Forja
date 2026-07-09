@@ -36,9 +36,10 @@ class TorrentResult {
   double get sizeInBytes {
     final s = size.toLowerCase();
     final value = double.tryParse(s.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
-    if (s.contains('gb')) return value * 1024 * 1024 * 1024;
-    if (s.contains('mb')) return value * 1024 * 1024;
-    if (s.contains('kb')) return value * 1024;
+    if (s.contains('tib') || s.contains('tb')) return value * 1024 * 1024 * 1024 * 1024;
+    if (s.contains('gib') || s.contains('gb')) return value * 1024 * 1024 * 1024;
+    if (s.contains('mib') || s.contains('mb')) return value * 1024 * 1024;
+    if (s.contains('kib') || s.contains('kb')) return value * 1024;
     return value;
   }
 

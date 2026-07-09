@@ -184,6 +184,7 @@ class SettingsService {
   /// Default anime stream try-order. Kept in sync with
   /// `AnimeStreamProviders.defaultOrder` in the host app.
   static const List<String> defaultAnimeProviderOrder = <String>[
+    'miruro:bee',
     'allanime:Default',
     'allanime:S-mp4',
     'megaplay',
@@ -195,7 +196,6 @@ class SettingsService {
     'allanime:Yt-mp4',
     'allanime:Luf-Mp4',
     'allanime:Uv-mp4',
-    'miruro:bee',
     'miruro:ally',
     'animerealms:allmanga',
     'miruro:hop',

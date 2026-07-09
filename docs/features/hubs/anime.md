@@ -19,7 +19,7 @@ Tap **Anime** in the navigation bar.
 - Open details with episodes
 - Toggle **SUB** / **DUB** before playback
 - Resume from continue watching; clear progress with the trash icon next to **Resume** on details
-- Play in the anime player — sources are probed in parallel; the highest-ranked working source from **Settings → Playback → Anime provider order** plays first (player nicknames still appear in the source switcher)
+- Play in the anime player — launches once ~4 sources work (Settings order), then keeps finding more in the background so the in-player source menu fills while you watch
 - Track watch history per series (sub/dub preference)
 
 ## Tips
@@ -27,7 +27,7 @@ Tap **Anime** in the navigation bar.
 - Anime uses its own player and history — separate from TMDB TV details
 - Reorder anime sources under **Settings → Playback → Anime provider order** (real provider names; no nicknames in that list)
 - Megaplay / Vidwish need Anikoto catalog linkage; Miruro and AnimeRealms work from AniList id alone
-- Playback shows a backdrop + title loading screen before the player opens (same pattern as films and Asian drama)
+- Playback shows a backdrop + title loading screen before the player opens (same pattern as films and Asian drama) — progress shows `N / M CHECKED · K UP` for how many sources responded successfully so far
 - Part of [content hub scrapers](../scrapers/content-hub-scrapers.md)
 
 ## Related

@@ -33,7 +33,7 @@ class TorrentReleaseMetadata {
   static const _gb = 1024.0 * 1024.0 * 1024.0;
 
   static final _sizeToken = RegExp(
-    r'(\d+(?:\.\d+)?)\s*(tb|t|gb|g|mb|m|kb|k)\b',
+    r'(\d+(?:\.\d+)?)\s*(tib|tb|t|gib|gb|g|mib|mb|m|kib|kb|k)\b',
     caseSensitive: false,
   );
 
@@ -46,11 +46,37 @@ class TorrentReleaseMetadata {
     if (match == null) return 0;
     final value = double.tryParse(match.group(1)!) ?? 0;
     final unit = match.group(2)!.toLowerCase();
-    if (unit.startsWith('t')) return value * _gb * 1024;
-    if (unit.startsWith('g')) return value * _gb;
-    if (unit.startsWith('m')) return value * 1024 * 1024;
-    if (unit.startsWith('k')) return value * 1024;
+    if (unit.startsWith('ti') || unit == 't' || unit == 'tb') {
+      return value * _gb * 1024;
+    }
+    if (unit.startsWith('gi') || unit == 'g' || unit == 'gb') {
+      return value * _gb;
+    }
+    if (unit.startsWith('mi') || unit == 'm' || unit == 'mb') {
+      return value * 1024 * 1024;
+    }
+    if (unit.startsWith('ki') || unit == 'k' || unit == 'kb') {
+      return value * 1024;
+    }
     return value;
+  }
+
+  static String? _labelFromSizeMatch(RegExpMatch match) {
+    final value = match.group(1)!;
+    final unit = match.group(2)!.toLowerCase();
+    final String normalized;
+    if (unit.startsWith('ti') || unit == 't' || unit == 'tb') {
+      normalized = 'TB';
+    } else if (unit.startsWith('gi') || unit == 'g' || unit == 'gb') {
+      normalized = 'GB';
+    } else if (unit.startsWith('mi') || unit == 'm' || unit == 'mb') {
+      normalized = 'MB';
+    } else if (unit.startsWith('ki') || unit == 'k' || unit == 'kb') {
+      normalized = 'KB';
+    } else {
+      normalized = unit.toUpperCase();
+    }
+    return '$value $normalized';
   }
 
   /// Display label for source tiles. Never returns a non-size string (avoids
@@ -61,13 +87,15 @@ class TorrentReleaseMetadata {
     String? fallbackText,
   }) {
     final primary = sizeText?.trim() ?? '';
-    if (primary.isNotEmpty) {
+    if (primary.isNotEmpty &&
+        primary.toLowerCase() != 'unknown' &&
+        primary != '0') {
       final match = _sizeToken.firstMatch(primary);
-      if (match != null) {
-        final value = match.group(1)!;
-        final unit = match.group(2)!.toUpperCase();
-        final normalized = unit.length == 1 ? '${unit}B' : unit;
-        return '$value $normalized';
+      if (match != null) return _labelFromSizeMatch(match);
+      // Raw byte count from scrapers / Torrentio behaviorHints.videoSize.
+      final asBytes = double.tryParse(primary.replaceAll(',', ''));
+      if (asBytes != null && asBytes > 1024) {
+        return formatBytes(asBytes);
       }
       if (parseSizeBytes(primary) > 0) return primary;
     }
@@ -75,10 +103,43 @@ class TorrentReleaseMetadata {
     if (fallback.isEmpty) return null;
     final match = _sizeToken.firstMatch(fallback);
     if (match == null) return null;
-    final value = match.group(1)!;
-    final unit = match.group(2)!.toUpperCase();
-    final normalized = unit.length == 1 ? '${unit}B' : unit;
-    return '$value $normalized';
+    return _labelFromSizeMatch(match);
+  }
+
+  /// Human size for scraper / Stremio byte counts (`1234567890` → `1.15 GB`).
+  static String formatBytes(double bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var v = bytes;
+    var i = 0;
+    while (v >= 1024 && i < units.length - 1) {
+      v /= 1024;
+      i++;
+    }
+    final digits = v >= 100 || i == 0 ? 0 : (v >= 10 ? 1 : 2);
+    return '${v.toStringAsFixed(digits)} ${units[i]}';
+  }
+
+  /// Size label from a Stremio/Torrentio/Nuvio stream map.
+  /// Prefers explicit `size`, then `behaviorHints.videoSize` (bytes), then
+  /// size tokens in title/description (Torrentio often embeds `💾 1.2 GB`).
+  static String? resolveStreamSizeLabel(Map<String, dynamic> stream) {
+    final explicit = stream['size']?.toString();
+    final fromExplicit = resolveSizeLabel(sizeText: explicit);
+    if (fromExplicit != null) return fromExplicit;
+
+    final hints = stream['behaviorHints'];
+    if (hints is Map) {
+      final videoSize = hints['videoSize'] ?? hints['video_size'];
+      if (videoSize != null) {
+        final fromHint = resolveSizeLabel(sizeText: videoSize.toString());
+        if (fromHint != null) return fromHint;
+      }
+    }
+
+    final blob =
+        '${stream['title'] ?? stream['name'] ?? ''} ${stream['description'] ?? ''}';
+    return resolveSizeLabel(fallbackText: blob);
   }
 
   static String? sizeRangeForBytes(double bytes) {

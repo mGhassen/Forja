@@ -175,6 +175,7 @@ class AppRouter {
     VoidCallback? onPlaybackStarted,
     VoidCallback? onAllSourcesExhausted,
     Future<List<StreamSource>?> Function()? onReloadStreams,
+    ValueNotifier<List<StreamSource>>? sourcesListNotifier,
     bool fadeTransition = false,
   }) {
     final routeBuilder = fadeTransition ? fadeRoute : slideRoute;
@@ -209,6 +210,7 @@ class AppRouter {
           onPlaybackStarted: onPlaybackStarted,
           onAllSourcesExhausted: onAllSourcesExhausted,
           onReloadStreams: onReloadStreams,
+          sourcesListNotifier: sourcesListNotifier,
         ),
       ),
     );

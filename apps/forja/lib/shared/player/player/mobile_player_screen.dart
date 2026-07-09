@@ -375,6 +375,7 @@ class MobilePlayerScreen extends StatefulWidget {
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
+  final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
 
   const MobilePlayerScreen({
     super.key,
@@ -406,6 +407,7 @@ class MobilePlayerScreen extends StatefulWidget {
     this.onPlaybackStarted,
     this.onAllSourcesExhausted,
     this.onReloadStreams,
+    this.sourcesListNotifier,
   });
 
   @override
@@ -555,6 +557,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         widget.sources!.isNotEmpty) {
       _current111477FileUrl = widget.sources!.first.url;
     }
+    widget.sourcesListNotifier?.addListener(_onLiveSourcesUpdated);
 
     // ── Lifecycle Observer ───────────────────────────────────────────────
     WidgetsBinding.instance.addObserver(this);
@@ -701,6 +704,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
   @override
   void dispose() {
+    widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
     _saveWatchHistory();
 
     _fallbackGen++;
@@ -2469,6 +2473,23 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     } finally {
       if (mounted) _isReloadingStreams.value = false;
     }
+  }
+
+  void _onLiveSourcesUpdated() {
+    if (_disposed || !mounted) return;
+    final live = widget.sourcesListNotifier?.value;
+    if (live == null || live.isEmpty) return;
+    final merged = dedupeStreamSources(live);
+    final prevLen = _currentSources?.length ?? 0;
+    if (merged.length <= prevLen &&
+        (_currentSources == null ||
+            (merged.length == prevLen &&
+                merged.every((s) =>
+                    _currentSources!.any((c) => c.url == s.url))))) {
+      return;
+    }
+    setState(() => _currentSources = merged);
+    _notifySourceMenuChanged();
   }
 
   Future<void> _probeAllSourcesInBackground() async {

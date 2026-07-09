@@ -10,8 +10,8 @@ class BackNavigationScope extends StatelessWidget {
   final Widget child;
 
   void _pop(BuildContext context) {
-    final rootNav = Navigator.of(context, rootNavigator: true);
-    if (rootNav.canPop()) {
+    final rootNav = Navigator.maybeOf(context, rootNavigator: true);
+    if (rootNav != null && rootNav.canPop()) {
       rootNav.maybePop();
       return;
     }

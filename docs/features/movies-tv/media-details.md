@@ -20,7 +20,7 @@ Scroll below the hero for:
 3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio, subtitles, quality, playback speed). When a trailer ends and more are available, an **Up next** prompt lets you continue to the next trailer.
 4. **More Like This** — recommendation row
 
-Torrent search and Stremio streams share one **Sources** list. The panel chrome is compact: **Sources** + count, then **All / Torrents / Stremio** (and **Nuvio** when installed) chips, optional provider chips when filtered, then search + filters. Each torrent/Stremio row uses the same card: release title, then compact badges for **quality**, **file size**, **seeds**, codec, and tech tags when known. **Webstreaming** is started from the hero green **Play** / **Resume** (play icon) — it is not in Sources. Only torrent/Stremio play sources enabled in **Settings → Playback** appear in the panel.
+Torrent search and Stremio streams share one **Sources** list. The panel chrome is compact: **Sources** + count, then **All / Torrents / Stremio** (and **Nuvio** when installed) chips, optional provider chips when filtered, then search + filters. Each torrent/Stremio row uses the same card: **title + provider** (plain text, e.g. Knaben / PirateBay / Torrentio addon name), then one badge row for **quality**, **file size** (scraper / Torrentio `behaviorHints.videoSize` / size token in stream title), **seeds**, codec, and tech tags when known. **Webstreaming** is started from the hero green **Play** / **Resume** (play icon) — it is not in Sources. Only torrent/Stremio play sources enabled in **Settings → Playback** appear in the panel.
 
 ## How to open it
 

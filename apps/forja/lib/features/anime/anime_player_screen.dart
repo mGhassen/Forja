@@ -469,6 +469,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   int _autoRecheckUsed = 0;
   bool _awaitingManualRecheck = false;
   bool _launchedFromSavedOrCache = false;
+  /// Once the player route is open, keep resolving remaining embeds.
+  bool _playerLaunched = false;
 
   @override
   void initState() {
@@ -482,7 +484,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
   @override
   void dispose() {
-    _cancelled = true;
+    // Don't kill a background fill still feeding the open player.
+    if (!_playerLaunched) {
+      _cancelled = true;
+    }
     _messageNotifier.dispose();
     _fadeOutNotifier.dispose();
     _probeNotifier.dispose();
@@ -513,6 +518,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   }
 
   void _setProbeStatus(AnimeEmbed embed, StreamProviderProbeStatus status) {
+    if (!mounted || _cancelled) return;
     final id = embed.sourceKey;
     final probes = _probeNotifier.value;
     final idx = probes.indexWhere((p) => p.id == id);
@@ -734,10 +740,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _setPhase('Using saved source…');
         _setStatusLine('Trying pinned source');
         _launchedFromSavedOrCache = true;
-        final prefHits = await _raceEmbeds(
+          final prefHits = await _raceEmbeds(
           preferredEmbeds,
           hardTimeout: const Duration(seconds: 10),
-          slowGrace: const Duration(milliseconds: 800),
+          launchAfterUniqueServers: 1,
         );
         if (!mounted || _cancelled || _resolverStopped) return;
         if (prefHits.isNotEmpty) {
@@ -764,14 +770,58 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _launchedFromSavedOrCache = false;
     _setPhase('Finding a stream…');
     _setStatusLine('Starting source scan…');
-    final hits = await _raceEmbeds(pair);
-    if (!mounted || _cancelled || _resolverStopped) return;
-    if (hits.isNotEmpty) {
-      final ranked = _rankHits(hits, _preferredSourceKey, _preferredSourceTitle);
-      _activeEmbed = ranked.first.embed;
-      await _launchPlayer(ranked);
+
+    final sourcesListNotifier = ValueNotifier<List<StreamSource>>(const []);
+    final urlToSourceKey = <String, String>{};
+    final titleToSourceKey = <String, String>{};
+
+    void syncLiveHits(List<({AnimeEmbed embed, ExtractedMedia media})> all) {
+      if (all.isEmpty) return;
+      final ranked =
+          _rankHits(all, _preferredSourceKey, _preferredSourceTitle);
+      for (final h in ranked) {
+        urlToSourceKey[h.media.url] = h.embed.sourceKey;
+        final t = h.media.sources?.first.title ?? h.embed.displayName;
+        titleToSourceKey[t] = h.embed.sourceKey;
+      }
+      sourcesListNotifier.value = _hitsToStreamSources(ranked);
+      _AnimeStreamSessionCache.write(
+        widget.anime.id,
+        widget.episodeNumber,
+        _category,
+        ranked,
+      );
+      unawaited(_service.cacheResolvedStreamsJson(
+        animeId: widget.anime.id,
+        episode: widget.episodeNumber,
+        category: _category,
+        hits: _hitsToJson(ranked),
+      ));
+    }
+
+    final hits = await _raceEmbeds(
+      pair,
+      onHitsUpdated: syncLiveHits,
+    );
+    if (!mounted || _cancelled) {
+      sourcesListNotifier.dispose();
       return;
     }
+    if (hits.isNotEmpty) {
+      final ranked =
+          _rankHits(hits, _preferredSourceKey, _preferredSourceTitle);
+      _activeEmbed = ranked.first.embed;
+      syncLiveHits(ranked);
+      await _launchPlayer(
+        ranked,
+        sourcesListNotifier: sourcesListNotifier,
+        urlToSourceKey: urlToSourceKey,
+        titleToSourceKey: titleToSourceKey,
+      );
+      // Notifier disposed inside _launchPlayer after the player closes.
+      return;
+    }
+    sourcesListNotifier.dispose();
     if (_autoRecheckUsed >= 1) {
       setState(() => _awaitingManualRecheck = true);
       _setPhase('No streams available');
@@ -784,11 +834,18 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     setState(() => _statusLine = '');
   }
 
+  /// Probe Settings order with limited concurrency. Launch as soon as
+  /// [launchAfterUniqueServers] distinct sources work; remaining embeds keep
+  /// resolving and call [onHitsUpdated] so the player source menu fills in.
   Future<List<({AnimeEmbed embed, ExtractedMedia media})>> _raceEmbeds(
     List<AnimeEmbed> embeds, {
-    Duration fastGrace = const Duration(milliseconds: 1200),
-    Duration slowGrace = const Duration(seconds: 4),
-    Duration hardTimeout = const Duration(seconds: 12),
+    Duration fastGrace = const Duration(milliseconds: 800),
+    Duration hardTimeout = const Duration(seconds: 14),
+    Duration absoluteTimeout = const Duration(seconds: 75),
+    int maxInFlight = 6,
+    int launchAfterUniqueServers = 4,
+    void Function(List<({AnimeEmbed embed, ExtractedMedia media})> hits)?
+        onHitsUpdated,
   }) async {
     _initProbes(embeds);
 
@@ -796,81 +853,102 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         Completer<List<({AnimeEmbed embed, ExtractedMedia media})>>();
     final successes = <({AnimeEmbed embed, ExtractedMedia media})>[];
     var settled = 0;
+    var inFlight = 0;
+    var nextIndex = 0;
     final total = embeds.length;
     Timer? graceTimer;
     late final Timer hardTimer;
+    late final Timer absoluteTimer;
+    late void Function() pump;
+
+    int uniqueServers() =>
+        successes.map((h) => h.embed.sourceKey).toSet().length;
+
+    void publishHits() {
+      onHitsUpdated?.call(List.of(successes));
+    }
 
     void completeIfOpen() {
       if (completer.isCompleted) return;
       hardTimer.cancel();
-      completer.complete(successes);
+      absoluteTimer.cancel();
+      graceTimer?.cancel();
+      publishHits();
+      completer.complete(List.of(successes));
     }
 
     void finishIfReady() {
-      if (completer.isCompleted) return;
-      if (settled >= total) {
-        graceTimer?.cancel();
-        hardTimer.cancel();
-        completer.complete(successes);
+      if (settled < total) return;
+      hardTimer.cancel();
+      absoluteTimer.cancel();
+      graceTimer?.cancel();
+      publishHits();
+      if (!completer.isCompleted) {
+        completer.complete(List.of(successes));
       }
-    }
-
-    Duration graceForHits() {
-      if (successes.isEmpty) return slowGrace;
-      final ranked = _rankHits(
-        successes,
-        _preferredSourceKey,
-        _preferredSourceTitle,
-      );
-      return _isFastLaunchWinner(ranked.first) ? fastGrace : slowGrace;
     }
 
     void scheduleGrace() {
       graceTimer?.cancel();
-      graceTimer = Timer(graceForHits(), completeIfOpen);
+      graceTimer = Timer(fastGrace, completeIfOpen);
     }
 
-    hardTimer = Timer(hardTimeout, () {
-      graceTimer?.cancel();
-      completeIfOpen();
-    });
-
-    for (final embed in embeds) {
-      _resolveEmbed(embed).then((batch) {
-        settled++;
-        _setProbeStatus(
-          embed,
-          batch.isNotEmpty
-              ? StreamProviderProbeStatus.success
-              : StreamProviderProbeStatus.failed,
-        );
-        final hadAny = successes.isNotEmpty;
+    void onBatch(
+      AnimeEmbed embed,
+      List<({AnimeEmbed embed, ExtractedMedia media})> batch,
+    ) {
+      settled++;
+      inFlight--;
+      _setProbeStatus(
+        embed,
+        batch.isNotEmpty
+            ? StreamProviderProbeStatus.success
+            : StreamProviderProbeStatus.failed,
+      );
+      if (_cancelled) {
+        finishIfReady();
+        pump();
+        return;
+      }
+      if (batch.isNotEmpty) {
         successes.addAll(batch);
-        if (batch.isNotEmpty && !completer.isCompleted) {
-          if (!hadAny) {
+        publishHits();
+        if (!completer.isCompleted) {
+          if (uniqueServers() >= launchAfterUniqueServers) {
+            completeIfOpen();
+          } else if (successes.isNotEmpty) {
             scheduleGrace();
-          } else {
-            final remaining = graceTimer?.isActive ?? false;
-            if (remaining &&
-                _isFastLaunchWinner(_rankHits(
-                  successes,
-                  _preferredSourceKey,
-                  _preferredSourceTitle,
-                ).first)) {
-              scheduleGrace();
-            }
           }
         }
-        finishIfReady();
-      }).catchError((_) {
-        settled++;
-        _setProbeStatus(embed, StreamProviderProbeStatus.failed);
-        finishIfReady();
-      });
+      }
+      finishIfReady();
+      pump();
     }
 
+    pump = () {
+      while (!_cancelled &&
+          inFlight < maxInFlight &&
+          nextIndex < embeds.length) {
+        // Keep pumping after launch so the menu fills in the background.
+        final embed = embeds[nextIndex++];
+        inFlight++;
+        _resolveEmbed(embed).then((batch) {
+          onBatch(embed, batch);
+        }).catchError((_) {
+          onBatch(embed, const []);
+        });
+      }
+    };
+
+    hardTimer = Timer(hardTimeout, () {
+      if (successes.isNotEmpty) completeIfOpen();
+    });
+    absoluteTimer = Timer(absoluteTimeout, completeIfOpen);
+
+    pump();
+
     final hits = await completer.future;
-    hardTimer.cancel();
+    // Don't cancel in-flight / queued work — onHitsUpdated keeps filling.
     return hits;
   }
 
@@ -939,18 +1017,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     }
   }
 
-  bool _isFastLaunchWinner(({AnimeEmbed embed, ExtractedMedia media}) hit) {
-    if (_preferredSourceKey != null &&
-        hit.embed.sourceKey == _preferredSourceKey) {
-      return true;
-    }
-    // Top of Settings → Anime provider order gets the short grace window.
-    if (_providerOrder.isNotEmpty) {
-      return hit.embed.sourceKey == _providerOrder.first;
-    }
-    return hit.embed.server == 'megaplay' || hit.embed.server == 'vidwish';
-  }
-
   /// Prefer Settings → Anime provider order — not whichever HTTP call finished
   /// first during the parallel race. Saved source still wins when present.
   List<({AnimeEmbed embed, ExtractedMedia media})> _rankHits(
@@ -965,6 +1031,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     List<({AnimeEmbed embed, ExtractedMedia media})> hits, {
     bool usedSavedSource = false,
     bool fromSessionCache = false,
+    ValueNotifier<List<StreamSource>>? sourcesListNotifier,
+    Map<String, String>? urlToSourceKey,
+    Map<String, String>? titleToSourceKey,
   }) async {
     if (_cancelled || !mounted) return;
 
@@ -976,7 +1045,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
     }
 
-    _resolverStopped = true;
+    // Keep filling remaining embeds after early launch.
+    _playerLaunched = true;
 
     _AnimeStreamSessionCache.write(
       widget.anime.id,
@@ -1002,30 +1072,20 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         (_preferredSourceKey != null &&
             winner.embed.sourceKey == _preferredSourceKey);
 
-    final urlToSourceKey = <String, String>{
-      for (final h in hits) h.media.url: h.embed.sourceKey,
-    };
-    final titleToSourceKey = <String, String>{
-      for (final h in hits)
-        (h.media.sources?.first.title ?? h.embed.displayName): h.embed.sourceKey,
-    };
+    final urlKeys = urlToSourceKey ??
+        <String, String>{
+          for (final h in hits) h.media.url: h.embed.sourceKey,
+        };
+    final titleKeys = titleToSourceKey ??
+        <String, String>{
+          for (final h in hits)
+            (h.media.sources?.first.title ?? h.embed.displayName):
+                h.embed.sourceKey,
+        };
 
-    final sources = <StreamSource>[];
-    for (final h in hits) {
-      final headers = Map<String, String>.from(h.media.headers);
-      if (!headers.containsKey('Referer') || headers['Referer']!.isEmpty) {
-        headers['Referer'] = '${h.embed.refererOrigin}/';
-        headers.putIfAbsent('Origin', () => h.embed.refererOrigin);
-      }
-      final sourceTitle =
-          h.media.sources?.first.title ?? h.embed.displayName;
-      sources.add(StreamSource(
-        url: h.media.url,
-        title: sourceTitle,
-        type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
-        headers: headers,
-      ));
-    }
+    final sources = sourcesListNotifier?.value.isNotEmpty == true
+        ? sourcesListNotifier!.value
+        : _hitsToStreamSources(hits);
 
     final seenSubs = <String>{};
     final allSubs = <Map<String, dynamic>>[];
@@ -1107,7 +1167,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         );
       },
       onSourcePinned: (url, title) async {
-        final key = urlToSourceKey[url] ?? titleToSourceKey[title];
+        final key = urlKeys[url] ?? titleKeys[title];
         if (key == null) {
           if (kDebugMode) {
             debugPrint('[AnimePlayer] source pin lookup miss url=$url title=$title');
@@ -1129,6 +1189,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       onNextEpisode:
           hasNext ? () => openEpisode(widget.episodeNumber + 1) : null,
       fadeTransition: true,
+      sourcesListNotifier: sourcesListNotifier,
       onPlaybackStarted: () {
         playbackStarted = true;
         _autoRecheckUsed = 0;
@@ -1150,10 +1211,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     );
     await Future<void>.delayed(loadingOverlayFadeOutDuration);
     await playerFuture;
-    if (!playbackStarted &&
-        _launchedFromSavedOrCache &&
-        mounted &&
-        !_cancelled) {
+    final shouldRecheck = !playbackStarted && _launchedFromSavedOrCache;
+    _cancelled = true;
+    sourcesListNotifier?.dispose();
+    if (shouldRecheck && mounted) {
       await _handleStaleSavedStreams();
     }
   }
