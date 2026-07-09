@@ -19,7 +19,7 @@ class TorrentReleaseMetadata {
   final String? videoCodec;
 
   static const qualityFilters = ['4K', '1080p', '720p', '480p'];
-  static const techFilters = ['HDR', 'DV', 'REMUX', 'WEB-DL', 'BluRay', '10bit'];
+  static const techFilters = ['HDR', 'DV', 'REMUX', 'WEB-DL', 'WEBRip', 'BluRay', '10bit'];
 
   static TorrentReleaseMetadata parse(String name) {
     final n = name.toUpperCase();
@@ -141,7 +141,7 @@ class TorrentReleaseMetadata {
       out.add('DV');
     }
     if (n.contains('HDR10+')) out.add('HDR10+');
-    if (n.contains('HDR10') || n.contains(' HDR ')) out.add('HDR');
+    if (n.contains('HDR10') || n.contains('HDR')) out.add('HDR');
     if (n.contains('10BIT') || n.contains('10-BIT')) out.add('10bit');
     return out;
   }
@@ -203,7 +203,6 @@ class TorrentReleaseMetadata {
       }
     }
 
-    if (out.isEmpty) add('multi');
     return out.take(3).toList();
   }
 }

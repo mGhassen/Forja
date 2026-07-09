@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/design.dart';
 
 void showSpeedMenu(BuildContext context, double currentSpeed, ValueChanged<double> onSpeedChanged) {
   showModalBottomSheet(
     context: context,
     useRootNavigator: false,
-    backgroundColor: const Color(0xFF141414),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    backgroundColor: ForjaShellColors.cinematic.menuSurface,
+    shape: RoundedRectangleBorder(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      side: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
     ),
     builder: (context) {
       final speeds = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+      final cinematic = ForjaShellColors.cinematic;
       return SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -19,13 +22,20 @@ void showSpeedMenu(BuildContext context, double currentSpeed, ValueChanged<doubl
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: cinematic.borderSubtle,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16.0),
-              child: Text("Playback Speed", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Text(
+                'Playback Speed',
+                style: TextStyle(
+                  color: cinematic.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -44,16 +54,24 @@ void showSpeedMenu(BuildContext context, double currentSpeed, ValueChanged<doubl
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.07),
-                        border: Border.all(color: isSelected ? Colors.white38 : Colors.white12),
+                        color: isSelected
+                            ? ForjaShellColors.chipSelectedBg
+                            : Colors.white.withValues(alpha: 0.07),
+                        border: Border.all(
+                          color: isSelected
+                              ? ForjaShellColors.chipSelectedBorder
+                              : cinematic.borderSubtle,
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        "${speed}x",
+                        '${speed}x',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: isSelected
+                              ? cinematic.textPrimary
+                              : cinematic.textSecondary,
                           fontSize: 14,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                         ),
                       ),
                     ),
@@ -73,11 +91,13 @@ void showTracksMenu(BuildContext context, String title, List<String> tracks, int
   showModalBottomSheet(
     context: context,
     useRootNavigator: false,
-    backgroundColor: const Color(0xFF141414),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    backgroundColor: ForjaShellColors.cinematic.menuSurface,
+    shape: RoundedRectangleBorder(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      side: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
     ),
     builder: (context) {
+      final cinematic = ForjaShellColors.cinematic;
       return SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -89,16 +109,23 @@ void showTracksMenu(BuildContext context, String title, List<String> tracks, int
                 height: 4,
                 margin: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: cinematic.borderSubtle,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: cinematic.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-            const Divider(color: Colors.white10),
+            Divider(color: cinematic.borderSubtle, height: 1),
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -107,14 +134,22 @@ void showTracksMenu(BuildContext context, String title, List<String> tracks, int
                   final isSelected = index == selectedIndex;
                   return ListTile(
                     leading: Icon(
-                      Icons.subtitles_outlined, // Generic icon, can be passed
-                      color: isSelected ? Colors.white : Colors.white54,
+                      Icons.subtitles_outlined,
+                      color: isSelected
+                          ? cinematic.textPrimary
+                          : cinematic.textSecondary,
                     ),
                     title: Text(
                       tracks[index],
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      style: TextStyle(
+                        color: cinematic.textPrimary,
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      ),
                     ),
-                    trailing: isSelected ? const Icon(Icons.check, color: Colors.white) : null,
+                    trailing: isSelected
+                        ? Icon(Icons.check_rounded, color: ForjaShellColors.chipSelectedIcon)
+                        : null,
                     onTap: () {
                       onTrackSelected(index);
                       Navigator.pop(context);

@@ -17,6 +17,8 @@ import 'package:forja/shared/widgets/home_movie_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details/media_details_torrent_action_row.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
+import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
+import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
@@ -68,6 +70,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   String _sortPreference = 'Seeders (High to Low)';
   Set<String> _activeAudioFilters = {};
+  Set<String> _activeQualityFilters = {};
+  Set<String> _activeLanguageFilters = {};
+  Set<String> _activeTechFilters = {};
+  String _sourceSearchQuery = '';
   List<TorrentResult> _allTorrentResults = [];
   bool _isSearching = false;
   int _torrentSearchGen = 0;
@@ -432,34 +438,56 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   // ─── audio filter helpers ────────────────────────────────────────────────
 
-  /// Returns every audio tag found in [name] (upper-cased for matching).
-  static List<String> _detectAudioTags(String name) {
-    final n = name.toUpperCase();
-    final found = <String>[];
-    // Order matters – more specific tags must be checked before their substrings
-    if (n.contains('ATMOS')) found.add('Atmos');
-    if (n.contains('TRUEHD')) found.add('TrueHD');
-    if (n.contains('DTS:X') || n.contains('DTSX')) found.add('DTS:X');
-    if (!found.contains('DTS:X') && (n.contains('DTS-HD') || n.contains('DTSHD'))) found.add('DTS-HD');
-    if (!found.contains('DTS:X') && !found.contains('DTS-HD') && n.contains('DTS')) found.add('DTS');
-    if (n.contains('DD+') || n.contains('EAC3') || n.contains('E-AC-3') || n.contains('DDPLUS')) found.add('DD+');
-    if (!found.contains('DD+') && (n.contains(' DD ') || n.contains('AC3') || n.contains('DOLBY DIGITAL'))) found.add('DD');
-    if (n.contains('AAC')) found.add('AAC');
-    if (n.contains('7.1')) found.add('7.1');
-    if (!found.contains('7.1') && n.contains('5.1')) found.add('5.1');
-    if (n.contains(' 2.0') || n.contains('.2.0')) found.add('2.0');
-    return found;
+  /// Torrent results after applying panel filters.
+  List<TorrentResult> get _filteredTorrentResults => filterTorrentResults(
+        _allTorrentResults,
+        searchQuery: _sourceSearchQuery,
+        qualityFilters: _activeQualityFilters,
+        languageFilters: _activeLanguageFilters,
+        techFilters: _activeTechFilters,
+        audioFilters: _activeAudioFilters,
+      );
+
+  List<String> get _panelFilterNames {
+    if (_isTorrentSource) {
+      return _allTorrentResults.map((r) => r.name).toList();
+    }
+    if (_isWebstreamingSource) {
+      return _webstreamingStreams
+          .map((s) => s.title.isNotEmpty ? s.title : 'Stream')
+          .toList();
+    }
+    final streams = _isNuvioSource
+        ? (_selectedSourceId == 'all_nuvio'
+            ? _nuvioStreams
+            : (_selectedSourceId.startsWith('nuvio:')
+                ? _nuvioStreams
+                    .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
+                    .toList()
+                : <dynamic>[]))
+        : _stremioStreams;
+    return streams
+        .map((s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}')
+        .toList();
   }
 
-  /// Torrent results after applying the active audio filters.
-  List<TorrentResult> get _filteredTorrentResults {
-    if (_activeAudioFilters.isEmpty) return _allTorrentResults;
-    return _allTorrentResults.where((r) {
-      final tags = _detectAudioTags(r.name);
-      // Show the result if it matches ANY of the selected tags
-      return tags.any((t) => _activeAudioFilters.contains(t));
-    }).toList();
-  }
+  Set<String> get _panelAvailableQualities =>
+      collectQualities(_panelFilterNames);
+
+  Set<String> get _panelAvailableLanguages =>
+      collectLanguages(_panelFilterNames);
+
+  Set<String> get _panelAvailableTech => collectTechTags(_panelFilterNames);
+
+  bool _matchesPanelFilters(String name) =>
+      TorrentReleaseMetadata.parse(name).matchesFiltersForName(
+        name,
+        searchQuery: _sourceSearchQuery,
+        qualityFilters: _activeQualityFilters,
+        languageFilters: _activeLanguageFilters,
+        techFilters: _activeTechFilters,
+        audioFilters: _activeAudioFilters,
+      );
 
   Future<void> _checkIndexerConfiguration() async {
     final jackettConfigured = await _settings.isJackettConfigured();
@@ -2525,6 +2553,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 _selectedSourceId = 'all_stremio';
                 _applyStremioFilter();
                 _errorMessage = null;
+                _resetPanelFilters();
               });
               if (_allCombinedStremioStreams.isEmpty) _fetchAllStremioStreams();
             }
@@ -2536,6 +2565,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               _nuvioSelectedScraperId = null;
               _nuvioStreams = [];
               _errorMessage = null;
+              _resetPanelFilters();
             });
             _checkAndFetchNuvio();
           },
@@ -2545,10 +2575,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               _webstreamingStreams = [];
               _webstreamingActiveProviderId = null;
               _errorMessage = null;
+              _resetPanelFilters();
             });
           },
           onTorrentTap: () {
-            setState(() => _selectedSourceId = 'forja');
+            setState(() {
+              _selectedSourceId = 'forja';
+              _resetPanelFilters();
+            });
             _autoSearch();
           },
         ),
@@ -2572,6 +2606,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           episodeLabel: _movie.mediaType == 'tv'
               ? 'S${_selectedSeason.toString().padLeft(2, '0')}E${_selectedEpisode.toString().padLeft(2, '0')}'
               : null,
+          resultCount: _panelVisibleCount,
           sortPreference: _sortPreference,
           activeAudioFilters: _activeAudioFilters,
           onSortChanged: (val) {
@@ -2584,6 +2619,21 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               setState(() => _activeAudioFilters = updated),
         ),
         const SizedBox(height: 10),
+        TorrentSourcePanelToolbar(
+          searchQuery: _sourceSearchQuery,
+          onSearchChanged: (q) => setState(() => _sourceSearchQuery = q),
+          availableQualities: _panelAvailableQualities,
+          availableLanguages: _panelAvailableLanguages,
+          availableTech: _panelAvailableTech,
+          activeQualityFilters: _activeQualityFilters,
+          activeLanguageFilters: _activeLanguageFilters,
+          activeTechFilters: _activeTechFilters,
+          onQualityFiltersChanged: (v) => setState(() => _activeQualityFilters = v),
+          onLanguageFiltersChanged: (v) => setState(() => _activeLanguageFilters = v),
+          onTechFiltersChanged: (v) => setState(() => _activeTechFilters = v),
+          showFilters: _panelFilterNames.isNotEmpty,
+        ),
+        const SizedBox(height: 10),
         Expanded(child: _buildStreamList(inPanel: true)),
       ],
     );
@@ -2592,6 +2642,40 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // ═══════════════════════════════════════════════════════════════════════════
   //  SOURCE TOGGLE + CHIPS (sliding source panel)
   // ═══════════════════════════════════════════════════════════════════════════
+
+  void _resetPanelFilters() {
+    _sourceSearchQuery = '';
+    _activeQualityFilters = {};
+    _activeLanguageFilters = {};
+    _activeTechFilters = {};
+    _activeAudioFilters = {};
+  }
+
+  int? get _panelVisibleCount {
+    final isTorrent = _isTorrentSource;
+    final isNuvio = _isNuvioSource;
+    final isWebstreaming = _isWebstreamingSource;
+    if (isTorrent) return _filteredTorrentResults.length;
+    if (isWebstreaming) {
+      return _webstreamingStreams
+          .where((s) => _matchesPanelFilters(s.title.isNotEmpty ? s.title : 'Stream'))
+          .length;
+    }
+    final streams = isNuvio
+        ? (_selectedSourceId == 'all_nuvio'
+            ? _nuvioStreams
+            : (_selectedSourceId.startsWith('nuvio:')
+                ? _nuvioStreams
+                    .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
+                    .toList()
+                : <dynamic>[]))
+        : _stremioStreams;
+    return streams
+        .where((s) => _matchesPanelFilters(
+              '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
+            ))
+        .length;
+  }
 
   bool get _isTorrentSource =>
       _selectedSourceId == 'forja' ||
@@ -2711,16 +2795,21 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       setState(() {
         _selectedSourceId = id;
         _nuvioSelectedScraperId = scraperId;
+        _resetPanelFilters();
       });
       _runSingleNuvioScraper(scraperId);
       return;
     }
     if (id.startsWith('stream:')) {
       final providerId = id.substring('stream:'.length);
+      setState(_resetPanelFilters);
       _fetchWebstreamingProvider(providerId);
       return;
     }
-    setState(() => _selectedSourceId = id);
+    setState(() {
+      _selectedSourceId = id;
+      _resetPanelFilters();
+    });
     if (id == 'forja') {
       _autoSearch();
     } else if (id == 'jackett') {
@@ -2764,19 +2853,34 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final isTorrent = _isTorrentSource;
     final isNuvio = _isNuvioSource;
     final isWebstreaming = _isWebstreamingSource;
-    // Pick the active stream list based on the source tab.
     final List<dynamic> visibleStreams = isNuvio
         ? (_selectedSourceId == 'all_nuvio'
             ? _nuvioStreams
             : (_selectedSourceId.startsWith('nuvio:')
                 ? _nuvioStreams
-                    .where((s) =>
-                        s['_addonBaseUrl'] == _selectedSourceId)
+                    .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
                     .toList()
                 : <dynamic>[]))
         : _stremioStreams;
+    final filteredWebStreams = isWebstreaming
+        ? _webstreamingStreams
+            .where((s) => _matchesPanelFilters(s.title.isNotEmpty ? s.title : 'Stream'))
+            .toList()
+        : <StreamSource>[];
+    final filteredAddonStreams = (!isTorrent && !isWebstreaming)
+        ? visibleStreams
+            .where((s) => _matchesPanelFilters(
+                  '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
+                ))
+            .toList()
+        : <dynamic>[];
     final count = isTorrent
         ? _filteredTorrentResults.length
+        : isWebstreaming
+            ? filteredWebStreams.length
+            : filteredAddonStreams.length;
+    final rawCount = isTorrent
+        ? _allTorrentResults.length
         : isWebstreaming
             ? _webstreamingStreams.length
             : visibleStreams.length;
@@ -2787,20 +2891,32 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             : (isNuvio ? _isNuvioFetching : _isStremioFetching);
     if (!_isSearching && !isFetching && count == 0) {
       String msg;
-      if (isTorrent && _activeAudioFilters.isNotEmpty && _allTorrentResults.isNotEmpty) {
+      if (rawCount > 0 &&
+          (_sourceSearchQuery.isNotEmpty ||
+              _activeAudioFilters.isNotEmpty ||
+              _activeQualityFilters.isNotEmpty ||
+              _activeLanguageFilters.isNotEmpty ||
+              _activeTechFilters.isNotEmpty)) {
+        msg = 'No results match your filters';
+      } else if (isTorrent && _activeAudioFilters.isNotEmpty && _allTorrentResults.isNotEmpty) {
         msg = 'No results match the audio filter';
       } else if (isNuvio && _nuvioSelectedScraperId == null) {
         msg = _nuvioSelectedAddonUrl == null
             ? 'Pick an addon to see its providers'
             : 'Pick a provider to fetch streams';
-      } else if (isWebstreaming) {
+      } else if (isWebstreaming && _webstreamingStreams.isEmpty) {
         msg = 'Pick a provider to fetch streams';
       } else {
         msg = 'No streams found';
       }
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: Text(msg, style: const TextStyle(color: Colors.white38))),
+        child: Center(
+          child: Text(
+            msg,
+            style: TextStyle(color: ForjaShellColors.cinematic.textSecondary),
+          ),
+        ),
       );
     }
     return ListView.separated(
@@ -2811,312 +2927,93 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       itemBuilder: (_, i) {
         if (isTorrent) {
           final r = _filteredTorrentResults[i];
-          double prog = 0; bool resumable = false;
+          double prog = 0;
+          var resumable = false;
           if (_lastProgress != null && _lastProgress!['method'] == 'torrent') {
             if (_getHash(r.magnet) == _getHash(_lastProgress!['sourceId'])) {
               final pos = _lastProgress!['position'] as int;
               final dur = _lastProgress!['duration'] as int;
-              if (dur > 0) { prog = (pos / dur).clamp(0.0, 1.0); resumable = true; }
-            }
-          }
-          return _buildTorrentTile(r, progress: prog, isResumable: resumable);
-        } else if (isWebstreaming) {
-          final source = _webstreamingStreams[i];
-          return _buildWebstreamingTile(source);
-        } else {
-          final s = visibleStreams[i];
-          double prog = 0; bool resumable = false;
-          if (_lastProgress != null) {
-            final String? sid = s['infoHash'] != null
-                ? 'magnet:?xt=urn:btih:${s['infoHash']}' : s['url'];
-            if (sid != null) {
-              final hs = _lastProgress!['sourceId'] as String;
-              final match = s['infoHash'] != null
-                  ? _getHash(hs) == _getHash(sid) : hs == sid;
-              if (match) {
-                final pos = _lastProgress!['position'] as int;
-                final dur = _lastProgress!['duration'] as int;
-                if (dur > 0) { prog = (pos / dur).clamp(0.0, 1.0); resumable = true; }
+              if (dur > 0) {
+                prog = (pos / dur).clamp(0.0, 1.0);
+                resumable = true;
               }
             }
           }
-          return _buildStremioTile(
-            stream: s,
-            title: s['title'] ?? s['name'] ?? 'Unknown Stream',
-            description: s['description'] ?? '',
-            progress: prog, isResumable: resumable);
-        }
-      },
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  TORRENT TILE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildTorrentTile(TorrentResult result, {double progress = 0, bool isResumable = false}) {
-    final n = result.name.toUpperCase();
-    String quality = '?'; Color qColor = Colors.grey;
-    if (n.contains('2160') || n.contains('4K') || n.contains('UHD')) {
-      quality = '4K'; qColor = const Color(0xFF7C3AED);
-    } else if (n.contains('1080')) {
-      quality = '1080p'; qColor = const Color(0xFF1D4ED8);
-    } else if (n.contains('720')) {
-      quality = '720p'; qColor = const Color(0xFF0369A1);
-    } else if (n.contains('480')) {
-      quality = '480p'; qColor = Colors.grey.shade700;
-    }
-
-    String? codec;
-    if (n.contains('HEVC') || n.contains('X265') || n.contains('H.265')) {
-      codec = 'HEVC';
-    } else if (n.contains('X264') || n.contains('H.264') || n.contains('H264') || n.contains('AVC')) {
-      codec = 'h264';
-    } else if (n.contains('AV1')) {
-      codec = 'AV1';
-    }
-
-    final tracker = _getTrackerName(result);
-
-    return FocusableControl(
-      onTap: () => _playTorrent(result,
-        startPosition: isResumable ? Duration(milliseconds: _lastProgress!['position'] as int) : widget.startPosition),
-      borderRadius: 10,
-      child: Container(
-        decoration: BoxDecoration(
-          color: (isResumable || widget.startPosition != null) ? AppTheme.primaryColor.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isResumable
-              ? AppTheme.primaryColor.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.07)),
-        ),
-        child: Stack(children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 52,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _qualityBadge(quality, qColor),
-                      if (codec != null) ...[const SizedBox(height: 4), _codecBadge(codec)],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (isResumable)
-                        const Text('RESUME', style: TextStyle(color: AppTheme.primaryColor,
-                          fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
-                      Text(result.name, maxLines: 3, overflow: TextOverflow.visible,
-                        style: const TextStyle(color: Colors.white, fontSize: 12,
-                          height: 1.35, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 8, runSpacing: 2,
-                        children: [
-                          Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.arrow_upward_rounded, size: 11, color: Color(0xFF22C55E)),
-                            const SizedBox(width: 2),
-                            Text(result.seeders, style: const TextStyle(color: Color(0xFF22C55E), fontSize: 11)),
-                          ]),
-                          Text(result.size, style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                          if (tracker.isNotEmpty)
-                            Text(tracker, style: const TextStyle(color: Color(0xFF60A5FA), fontSize: 11),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(children: [
-                  _iconBtn(Icons.content_copy_rounded, false, () {
-                    Clipboard.setData(ClipboardData(text: result.magnet));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Magnet copied'), duration: Duration(seconds: 1)));
-                  }),
-                  const SizedBox(height: 6),
-                  _iconBtn(Icons.play_arrow_rounded, true, () => _playTorrent(result,
-                    startPosition: isResumable ? Duration(milliseconds: _lastProgress!['position'] as int) : widget.startPosition)),
-                ]),
-              ],
+          return TorrentSourceTile(
+            result: r,
+            trackerName: _getTrackerName(r),
+            progress: prog,
+            isResumable: resumable,
+            highlightStart: widget.startPosition != null,
+            onPlay: () => _playTorrent(
+              r,
+              startPosition: resumable
+                  ? Duration(milliseconds: _lastProgress!['position'] as int)
+                  : widget.startPosition,
             ),
+            onCopyMagnet: () {
+              Clipboard.setData(ClipboardData(text: r.magnet));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Magnet copied'), duration: Duration(seconds: 1)),
+              );
+            },
+          );
+        }
+        if (isWebstreaming) {
+          final source = filteredWebStreams[i];
+          final label = source.title.isNotEmpty ? source.title : 'Stream';
+          final providerLabel = _webstreamingActiveProviderId != null
+              ? _webstreamingProviderLabel(_webstreamingActiveProviderId!)
+              : null;
+          return WebstreamingSourceTile(
+            title: label,
+            subtitle: providerLabel,
+            onPlay: () => _playWebstreamingStream(source, startPosition: widget.startPosition),
+          );
+        }
+        final s = filteredAddonStreams[i];
+        final title = s['title'] ?? s['name'] ?? 'Unknown Stream';
+        final description = s['description'] ?? '';
+        double prog = 0;
+        var resumable = false;
+        if (_lastProgress != null) {
+          final String? sid =
+              s['infoHash'] != null ? 'magnet:?xt=urn:btih:${s['infoHash']}' : s['url'];
+          if (sid != null) {
+            final hs = _lastProgress!['sourceId'] as String;
+            final match =
+                s['infoHash'] != null ? _getHash(hs) == _getHash(sid) : hs == sid;
+            if (match) {
+              final pos = _lastProgress!['position'] as int;
+              final dur = _lastProgress!['duration'] as int;
+              if (dur > 0) {
+                prog = (pos / dur).clamp(0.0, 1.0);
+                resumable = true;
+              }
+            }
+          }
+        }
+        final presentation = stremioTilePresentation(s, isResumable: resumable);
+        return StremioSourceTile(
+          title: title,
+          description: description,
+          leadingIcon: presentation.leadingIcon,
+          leadingColor: presentation.leadingColor,
+          actionIcon: presentation.actionIcon,
+          isExternal: presentation.isExternal,
+          addonName: s['_addonName']?.toString(),
+          showAddonName: _selectedSourceId == 'all_stremio',
+          progress: prog,
+          isResumable: resumable,
+          highlightStart: widget.startPosition != null,
+          onTap: () => _playStremioStream(
+            s,
+            startPosition: resumable
+                ? Duration(milliseconds: _lastProgress!['position'] as int)
+                : widget.startPosition,
           ),
-          if (isResumable && progress > 0)
-            Positioned(bottom: 0, left: 0, right: 0,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-                child: LinearProgressIndicator(value: progress,
-                  backgroundColor: Colors.transparent, color: AppTheme.primaryColor, minHeight: 2.5))),
-        ]),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  WEBSTREAMING TILE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildWebstreamingTile(StreamSource source) {
-    final label = source.title.isNotEmpty ? source.title : 'Stream';
-    final providerLabel = _webstreamingActiveProviderId != null
-        ? _webstreamingProviderLabel(_webstreamingActiveProviderId!)
-        : null;
-
-    return FocusableControl(
-      onTap: () => _playWebstreamingStream(source, startPosition: widget.startPosition),
-      borderRadius: 10,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              const Icon(Icons.play_circle_outline_rounded,
-                  color: Color(0xFF22C55E), size: 28),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500)),
-                    if (providerLabel != null) ...[
-                      const SizedBox(height: 4),
-                      Text(providerLabel,
-                          style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                    ],
-                  ],
-                ),
-              ),
-              _iconBtn(Icons.play_arrow_rounded, true,
-                  () => _playWebstreamingStream(source, startPosition: widget.startPosition)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  STREMIO TILE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildStremioTile({
-    required Map<String, dynamic> stream,
-    required String title,
-    required String description,
-    double progress = 0,
-    bool isResumable = false,
-  }) {
-    // Determine if this is an external-link stream (e.g. "More Like This" addon)
-    final externalUrl = stream['externalUrl']?.toString();
-    final isExternal = externalUrl != null && externalUrl.isNotEmpty;
-    final bool isStremioLink = isExternal && externalUrl.startsWith('stremio://');
-    final bool isWebLink = isExternal && (externalUrl.startsWith('http://') || externalUrl.startsWith('https://'));
-    final String? addonName = stream['_addonName']?.toString();
-
-    // Choose icon based on link type
-    IconData leadingIcon;
-    Color leadingColor;
-    IconData actionIcon;
-    if (isStremioLink) {
-      final parsed = StremioService.parseMetaLink(externalUrl);
-      final action = parsed?['action'];
-      if (action == 'detail') {
-        leadingIcon = Icons.movie_outlined;
-        leadingColor = Colors.amberAccent;
-        actionIcon = Icons.open_in_new_rounded;
-      } else if (action == 'search') {
-        leadingIcon = Icons.search_rounded;
-        leadingColor = Colors.cyanAccent;
-        actionIcon = Icons.search_rounded;
-      } else {
-        leadingIcon = Icons.explore_outlined;
-        leadingColor = Colors.tealAccent;
-        actionIcon = Icons.open_in_new_rounded;
-      }
-    } else if (isWebLink) {
-      leadingIcon = Icons.language_rounded;
-      leadingColor = Colors.lightBlueAccent;
-      actionIcon = Icons.open_in_browser_rounded;
-    } else if (isResumable) {
-      leadingIcon = Icons.play_circle_filled_rounded;
-      leadingColor = AppTheme.primaryColor;
-      actionIcon = Icons.play_arrow_rounded;
-    } else {
-      leadingIcon = Icons.extension_rounded;
-      leadingColor = Colors.blueAccent;
-      actionIcon = Icons.play_arrow_rounded;
-    }
-
-    return FocusableControl(
-      onTap: () => _playStremioStream(stream,
-        startPosition: isResumable ? Duration(milliseconds: _lastProgress!['position'] as int) : widget.startPosition),
-      borderRadius: 10,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isExternal
-              ? leadingColor.withValues(alpha: 0.06)
-              : ((isResumable || widget.startPosition != null) ? AppTheme.primaryColor.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.04)),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isExternal
-              ? leadingColor.withValues(alpha: 0.25)
-              : (isResumable ? AppTheme.primaryColor.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.07))),
-        ),
-        child: Stack(children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Icon(leadingIcon, color: leadingColor, size: 28),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  if (isResumable && !isExternal)
-                    const Text('RESUME', style: TextStyle(color: AppTheme.primaryColor,
-                      fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
-                  if (addonName != null && _selectedSourceId == 'all_stremio')
-                    Text(addonName, style: TextStyle(color: leadingColor.withValues(alpha: 0.7),
-                      fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-                  Text(title, maxLines: 4, overflow: TextOverflow.visible,
-                    style: const TextStyle(color: Colors.white, fontSize: 12,
-                      height: 1.35, fontWeight: FontWeight.w500)),
-                  if (description.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(description, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                  ],
-                ]),
-              ),
-              const SizedBox(width: 8),
-              _iconBtn(actionIcon, true, () => _playStremioStream(stream,
-                startPosition: isResumable ? Duration(milliseconds: _lastProgress!['position'] as int) : widget.startPosition)),
-            ]),
-          ),
-          if (isResumable && progress > 0 && !isExternal)
-            Positioned(bottom: 0, left: 0, right: 0,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-                child: LinearProgressIndicator(value: progress,
-                  backgroundColor: Colors.transparent, color: AppTheme.primaryColor, minHeight: 2.5))),
-        ]),
-      ),
+        );
+      },
     );
   }
 
@@ -3134,28 +3031,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         ),
       );
 
-  Widget _qualityBadge(String q, Color c) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-    decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(5)),
-    child: Text(q, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)));
-
-  Widget _codecBadge(String codec) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(5),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.2))),
-    child: Text(codec,
-      style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10, fontWeight: FontWeight.w600)));
-
-  Widget _iconBtn(IconData icon, bool highlight, VoidCallback onTap) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 32, height: 32,
-      decoration: BoxDecoration(
-        color: highlight ? AppTheme.primaryColor.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: highlight ? AppTheme.primaryColor.withValues(alpha: 0.4) : Colors.white12)),
-      child: Icon(icon, size: 17, color: highlight ? AppTheme.primaryColor : Colors.white54)));
 
   Widget _buildCollectionItemsSection() {
     return Column(

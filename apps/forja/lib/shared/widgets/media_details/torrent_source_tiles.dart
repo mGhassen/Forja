@@ -1,7 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:rust/rust.dart';
+
+class SourceBadge extends StatelessWidget {
+  const SourceBadge({
+    super.key,
+    required this.label,
+    this.accent = false,
+    this.color,
+  });
+
+  final String label;
+  final bool accent;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color ??
+            (accent
+                ? ForjaShellColors.chipSelectedBg
+                : Colors.white.withValues(alpha: 0.1)),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(
+          color: accent
+              ? ForjaShellColors.chipSelectedBorder
+              : Colors.white.withValues(alpha: 0.14),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: accent
+              ? ForjaShellColors.cinematic.textPrimary
+              : ForjaShellColors.cinematic.textSecondary,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class SourceMetadataRow extends StatelessWidget {
+  const SourceMetadataRow({super.key, required this.metadata});
+
+  final TorrentReleaseMetadata metadata;
+
+  @override
+  Widget build(BuildContext context) {
+    final flags = metadata.flags;
+    final badges = metadata.badgeLabels;
+    if (flags.isEmpty && badges.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (flags.isNotEmpty)
+          Text(
+            flags,
+            style: const TextStyle(fontSize: 14, height: 1.1),
+          ),
+        ...badges.map((b) => SourceBadge(label: b, accent: b == metadata.quality)),
+      ],
+    );
+  }
+}
 
 class TorrentSourceTile extends StatelessWidget {
   const TorrentSourceTile({
@@ -25,31 +95,7 @@ class TorrentSourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final n = result.name.toUpperCase();
-    String quality = '?';
-    Color qColor = Colors.grey;
-    if (n.contains('2160') || n.contains('4K') || n.contains('UHD')) {
-      quality = '4K';
-      qColor = const Color(0xFF7C3AED);
-    } else if (n.contains('1080')) {
-      quality = '1080p';
-      qColor = const Color(0xFF1D4ED8);
-    } else if (n.contains('720')) {
-      quality = '720p';
-      qColor = const Color(0xFF0369A1);
-    } else if (n.contains('480')) {
-      quality = '480p';
-      qColor = Colors.grey.shade700;
-    }
-
-    String? codec;
-    if (n.contains('HEVC') || n.contains('X265') || n.contains('H.265')) {
-      codec = 'HEVC';
-    } else if (n.contains('X264') || n.contains('H.264') || n.contains('H264') || n.contains('AVC')) {
-      codec = 'h264';
-    } else if (n.contains('AV1')) {
-      codec = 'AV1';
-    }
+    final metadata = TorrentReleaseMetadata.parse(result.name);
 
     return FocusableControl(
       onTap: onPlay,
@@ -69,78 +115,79 @@ class TorrentSourceTile extends StatelessWidget {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 52,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _qualityBadge(quality, qColor),
-                        if (codec != null) ...[
-                          const SizedBox(height: 4),
-                          _codecBadge(codec),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        SourceMetadataRow(metadata: metadata),
+                        if (metadata.badgeLabels.isNotEmpty || metadata.flags.isNotEmpty)
+                          const SizedBox(height: 6),
                         if (isResumable)
-                          Text(
-                            'RESUME',
-                            style: TextStyle(
-                              color: ForjaShellColors.textPrimary,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.8,
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              'RESUME',
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textPrimary,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.8,
+                              ),
                             ),
                           ),
                         Text(
                           result.name,
-                          maxLines: 3,
-                          overflow: TextOverflow.visible,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ForjaShellColors.cinematic.textPrimary,
                             fontSize: 12,
                             height: 1.35,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Wrap(
-                          spacing: 8,
+                          spacing: 10,
                           runSpacing: 2,
                           children: [
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.arrow_upward_rounded,
-                                    size: 11, color: Color(0xFF22C55E)),
+                                const Icon(
+                                  Icons.arrow_upward_rounded,
+                                  size: 11,
+                                  color: Color(0xFF22C55E),
+                                ),
                                 const SizedBox(width: 2),
                                 Text(
                                   result.seeders,
                                   style: const TextStyle(
                                     color: Color(0xFF22C55E),
                                     fontSize: 11,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
                             ),
                             Text(
                               result.size,
-                              style: const TextStyle(color: Colors.white38, fontSize: 11),
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textSecondary,
+                                fontSize: 11,
+                              ),
                             ),
                             if (trackerName.isNotEmpty)
                               Text(
                                 trackerName,
-                                style: const TextStyle(color: Color(0xFF60A5FA), fontSize: 11),
+                                style: const TextStyle(
+                                  color: Color(0xFF60A5FA),
+                                  fontSize: 11,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -182,6 +229,74 @@ class TorrentSourceTile extends StatelessWidget {
   }
 }
 
+class WebstreamingSourceTile extends StatelessWidget {
+  const WebstreamingSourceTile({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.onPlay,
+  });
+
+  final String title;
+  final String? subtitle;
+  final VoidCallback onPlay;
+
+  @override
+  Widget build(BuildContext context) {
+    final metadata = TorrentReleaseMetadata.parse(title);
+
+    return FocusableControl(
+      onTap: onPlay,
+      borderRadius: 10,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SourceMetadataRow(metadata: metadata),
+                    if (metadata.badgeLabels.isNotEmpty || metadata.flags.isNotEmpty)
+                      const SizedBox(height: 6),
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: ForjaShellColors.cinematic.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (subtitle != null && subtitle!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        style: TextStyle(
+                          color: ForjaShellColors.cinematic.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              _iconBtn(Icons.play_arrow_rounded, true, onPlay),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class StremioSourceTile extends StatelessWidget {
   const StremioSourceTile({
     super.key,
@@ -214,6 +329,8 @@ class StremioSourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metadata = TorrentReleaseMetadata.parse('$title $description');
+
     return FocusableControl(
       onTap: onTap,
       borderRadius: 10,
@@ -238,22 +355,32 @@ class StremioSourceTile extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(leadingIcon, color: leadingColor, size: 28),
-                  const SizedBox(width: 12),
+                  if (isExternal)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10, top: 2),
+                      child: Icon(leadingIcon, color: leadingColor, size: 24),
+                    ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (!isExternal) SourceMetadataRow(metadata: metadata),
+                        if (!isExternal &&
+                            (metadata.badgeLabels.isNotEmpty || metadata.flags.isNotEmpty))
+                          const SizedBox(height: 6),
                         if (isResumable && !isExternal)
-                          Text(
-                            'RESUME',
-                            style: TextStyle(
-                              color: ForjaShellColors.textPrimary,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.8,
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              'RESUME',
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textPrimary,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.8,
+                              ),
                             ),
                           ),
                         if (addonName != null && showAddonName)
@@ -268,10 +395,10 @@ class StremioSourceTile extends StatelessWidget {
                           ),
                         Text(
                           title,
-                          maxLines: 4,
-                          overflow: TextOverflow.visible,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ForjaShellColors.cinematic.textPrimary,
                             fontSize: 12,
                             height: 1.35,
                             fontWeight: FontWeight.w500,
@@ -283,7 +410,10 @@ class StremioSourceTile extends StatelessWidget {
                             description,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white38, fontSize: 11),
+                            style: TextStyle(
+                              color: ForjaShellColors.cinematic.textSecondary,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ],
@@ -316,32 +446,6 @@ class StremioSourceTile extends StatelessWidget {
   }
 }
 
-Widget _qualityBadge(String q, Color c) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(5)),
-      child: Text(
-        q,
-        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-      ),
-    );
-
-Widget _codecBadge(String codec) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        codec,
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.6),
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-
 Widget _iconBtn(IconData icon, bool highlight, VoidCallback onTap) => GestureDetector(
       onTap: onTap,
       child: Container(
@@ -351,13 +455,17 @@ Widget _iconBtn(IconData icon, bool highlight, VoidCallback onTap) => GestureDet
           color: highlight ? ForjaShellColors.chipSelectedBg : Colors.white.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: highlight ? ForjaShellColors.chipSelectedBorder : Colors.white12,
+            color: highlight
+                ? ForjaShellColors.chipSelectedBorder
+                : ForjaShellColors.cinematic.borderSubtle,
           ),
         ),
         child: Icon(
           icon,
           size: 17,
-          color: highlight ? ForjaShellColors.iconActive : Colors.white54,
+          color: highlight
+              ? ForjaShellColors.chipSelectedIcon
+              : ForjaShellColors.cinematic.textSecondary,
         ),
       ),
     );
