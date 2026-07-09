@@ -3042,7 +3042,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
     final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
 
-    return Stack(children: [
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
       const Positioned(
         top: 0, left: 0, right: 0,
         child: PlayerOverlayGradient(isTop: true)),
@@ -3317,14 +3319,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   const SizedBox(width: 6),
                   ValueListenableBuilder<double>(
                     valueListenable: _volumeNotifier,
-                    builder: (context, vol, _) => PlayerFlatIconButton(
-                      icon: vol == 0
-                          ? Icons.volume_off_rounded
-                          : vol < 50
-                              ? Icons.volume_down_rounded
-                              : Icons.volume_up_rounded,
-                      tooltip: 'Volume',
-                      onPressed: () => _player.setVolume(vol > 0 ? 0.0 : 100.0),
+                    builder: (context, vol, _) => PlayerVolumeControl(
+                      volume: vol,
+                      maxVolume: 150,
+                      onVolumeChanged: _player.setVolume,
+                      onInteraction: _onMouseMove,
+                      onDragStart: () => _hideTimer?.cancel(),
+                      onDragEnd: _startHideTimer,
                     ),
                   ),
                   const SizedBox(width: 8),

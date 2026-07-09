@@ -468,6 +468,202 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
   }
 }
 
+/// Desktop volume button with a vertical slider popup on hover.
+class PlayerVolumeControl extends StatefulWidget {
+  const PlayerVolumeControl({
+    super.key,
+    required this.volume,
+    required this.onVolumeChanged,
+    this.maxVolume = 150,
+    this.onInteraction,
+    this.onDragStart,
+    this.onDragEnd,
+    this.size = 40,
+    this.iconSize = 22,
+  });
+
+  final double volume;
+  final ValueChanged<double> onVolumeChanged;
+  final double maxVolume;
+  final VoidCallback? onInteraction;
+  final VoidCallback? onDragStart;
+  final VoidCallback? onDragEnd;
+  final double size;
+  final double iconSize;
+
+  @override
+  State<PlayerVolumeControl> createState() => _PlayerVolumeControlState();
+}
+
+class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
+  bool _hovering = false;
+  double? _volumeBeforeMute;
+
+  IconData _iconFor(double vol) {
+    if (vol == 0) return Icons.volume_off_rounded;
+    if (vol < 50) return Icons.volume_down_rounded;
+    return Icons.volume_up_rounded;
+  }
+
+  void _setVolume(double v) {
+    widget.onVolumeChanged(v.clamp(0, widget.maxVolume));
+    widget.onInteraction?.call();
+  }
+
+  void _toggleMute() {
+    if (widget.volume > 0) {
+      _volumeBeforeMute = widget.volume;
+      _setVolume(0);
+    } else {
+      _setVolume(_volumeBeforeMute ?? 100);
+    }
+  }
+
+  void _volumeFromDy(double dy, double trackHeight) {
+    final frac = (1 - dy / trackHeight).clamp(0.0, 1.0);
+    _setVolume(frac * widget.maxVolume);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final volFrac = (widget.volume / widget.maxVolume).clamp(0.0, 1.0);
+    const popupGap = 6.0;
+    final expandedHeight =
+        _VolumeSliderPopup._height + popupGap + widget.size;
+
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: OverflowBox(
+        minWidth: widget.size,
+        maxWidth: widget.size,
+        minHeight: widget.size,
+        maxHeight: expandedHeight,
+        alignment: Alignment.bottomCenter,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovering = true),
+          onExit: (_) => setState(() => _hovering = false),
+          child: SizedBox(
+            width: widget.size,
+            height: _hovering ? expandedHeight : widget.size,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                if (_hovering)
+                  Positioned(
+                    bottom: widget.size + popupGap,
+                    child: _VolumeSliderPopup(
+                      volumeFraction: volFrac,
+                      onVolumeFromDy: _volumeFromDy,
+                      onDragStart: widget.onDragStart,
+                      onDragEnd: widget.onDragEnd,
+                    ),
+                  ),
+                PlayerFlatIconButton(
+                  icon: _iconFor(widget.volume),
+                  size: widget.size,
+                  iconSize: widget.iconSize,
+                  onPressed: _toggleMute,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VolumeSliderPopup extends StatelessWidget {
+  const _VolumeSliderPopup({
+    required this.volumeFraction,
+    required this.onVolumeFromDy,
+    this.onDragStart,
+    this.onDragEnd,
+  });
+
+  final double volumeFraction;
+  final void Function(double dy, double trackHeight) onVolumeFromDy;
+  final VoidCallback? onDragStart;
+  final VoidCallback? onDragEnd;
+
+  static const _height = 110.0;
+  static const _width = 36.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: _width,
+      height: _height,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final trackH = constraints.maxHeight;
+          final fillH = trackH * volumeFraction;
+          final thumbBottom = (fillH - 6).clamp(0.0, trackH - 12);
+
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragStart: (d) {
+              onDragStart?.call();
+              onVolumeFromDy(d.localPosition.dy, trackH);
+            },
+            onVerticalDragUpdate: (d) =>
+                onVolumeFromDy(d.localPosition.dy, trackH),
+            onVerticalDragEnd: (_) => onDragEnd?.call(),
+            onTapDown: (d) {
+              onDragStart?.call();
+              onVolumeFromDy(d.localPosition.dy, trackH);
+              onDragEnd?.call();
+            },
+            child: Stack(
+              alignment: Alignment.bottomCenter,
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 4,
+                  height: trackH,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    width: 4,
+                    height: fillH,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: thumbBottom,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class PlayerOverlayGradient extends StatelessWidget {
   const PlayerOverlayGradient({super.key, required this.isTop});
 

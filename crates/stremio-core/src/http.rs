@@ -55,15 +55,7 @@ fn fetch_with_headers(
     RUNTIME.block_on(async {
         utils::engine_cancel::with_cancel(async {
             let timeout = Duration::from_secs(timeout_secs.max(1));
-            let client = if headers.is_empty() && body.is_none() {
-                CLIENT.clone()
-            } else {
-                reqwest::Client::builder()
-                    .timeout(timeout)
-                    .redirect(reqwest::redirect::Policy::limited(8))
-                    .build()
-                    .map_err(|e| e.to_string())?
-            };
+            let client = CLIENT.clone();
             let mut req = if let Some(body) = body {
                 client.post(url).body(body.to_string())
             } else {
@@ -102,5 +94,16 @@ mod tests {
             fetch_get("https://torrentio.strem.fun/stream/movie/tt0114709.json", 15).unwrap();
         assert_eq!(resp.status, 200);
         assert!(resp.body.contains("\"streams\""));
+    }
+
+    #[test]
+    fn post_with_headers_reuses_shared_client() {
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".into(), "application/json".into());
+        let body = r#"{"query":"query { Page(page: 1, perPage: 1) { media(sort: TRENDING_DESC, type: ANIME) { id } } }"}"#;
+        let resp = fetch_post_with_headers("https://graphql.anilist.co", 15, &headers, body)
+            .unwrap();
+        assert_eq!(resp.status, 200);
+        assert!(resp.body.contains("\"data\""));
     }
 }

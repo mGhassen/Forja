@@ -88,8 +88,7 @@ class _AnimeScreenState extends State<AnimeScreen>
     WidgetsBinding.instance.addObserver(this);
     AppTheme.themeNotifier.addListener(_onTheme);
     AnimeService.watchHistoryRevision.addListener(_onHistoryChanged);
-    _moodFuture = _loadMood(_selectedMood);
-    _load();
+    unawaited(_load());
   }
 
   @override
@@ -130,56 +129,79 @@ class _AnimeScreenState extends State<AnimeScreen>
     if (mounted) setState(() {});
   }
 
+  Future<List<AnimeCard>> _safeSection(
+    Future<List<AnimeCard>> future,
+    String name,
+  ) async {
+    try {
+      return await future;
+    } catch (e) {
+      debugPrint('[AnimeScreen] $name load failed: $e');
+      return const [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _safeHistory() async {
+    try {
+      return await _service.getWatchHistory();
+    } catch (e) {
+      debugPrint('[AnimeScreen] watch history load failed: $e');
+      return const [];
+    }
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
+      _moodFuture = null;
     });
-    try {
-      final results = await Future.wait([
-        _service.getSpotlight(),
-        _service.getTrending(),
-        _service.getTopAiring(),
-        _service.getMostPopular(),
-        _service.getMostFavorite(),
-        _service.getTopRated(),
-        _service.getLatestCompleted(),
-        _service.getTop10Today(),
-        _service.getRecentEpisodes(),
-        _service.getWatchHistory(),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _spotlight = (results[0] as List<AnimeCard>).take(5).toList();
-        _trending = results[1] as List<AnimeCard>;
-        _topAiring = results[2] as List<AnimeCard>;
-        _mostPopular = results[3] as List<AnimeCard>;
-        _mostFavorite = results[4] as List<AnimeCard>;
-        _topRated = results[5] as List<AnimeCard>;
-        _latestCompleted = results[6] as List<AnimeCard>;
-        _top10 = results[7] as List<AnimeCard>;
-        _recentEpisodes = results[8] as List<AnimeCard>;
-        _continueWatching =
-            (results[9] as List<Map<String, dynamic>>).take(10).toList();
+    final results = await Future.wait([
+      _safeSection(_service.getSpotlight(), 'spotlight'),
+      _safeSection(_service.getTrending(), 'trending'),
+      _safeSection(_service.getTopAiring(), 'top airing'),
+      _safeSection(_service.getMostPopular(), 'most popular'),
+      _safeSection(_service.getMostFavorite(), 'most favorite'),
+      _safeSection(_service.getTopRated(), 'top rated'),
+      _safeSection(_service.getLatestCompleted(), 'latest completed'),
+      _safeSection(_service.getTop10Today(), 'top 10'),
+      _safeSection(_service.getRecentEpisodes(), 'recent episodes'),
+      _safeHistory(),
+    ]);
+    if (!mounted) return;
 
-        if (_trending.length > 4) {
-          final pool = _trending.skip(3).toList();
-          _tonightsPick = pool[math.Random().nextInt(pool.length)];
-        }
-        _loading = false;
-      });
+    final spotlight = results[0] as List<AnimeCard>;
+    final trending = results[1] as List<AnimeCard>;
+    final hasCatalog = results
+        .take(9)
+        .cast<List<AnimeCard>>()
+        .any((section) => section.isNotEmpty);
 
-      if (_spotlight.isNotEmpty) {
-        _extractAmbient(_spotlight.first);
-        _startHeroTimer();
+    setState(() {
+      _spotlight = spotlight.take(5).toList();
+      _trending = trending;
+      _topAiring = results[2] as List<AnimeCard>;
+      _mostPopular = results[3] as List<AnimeCard>;
+      _mostFavorite = results[4] as List<AnimeCard>;
+      _topRated = results[5] as List<AnimeCard>;
+      _latestCompleted = results[6] as List<AnimeCard>;
+      _top10 = results[7] as List<AnimeCard>;
+      _recentEpisodes = results[8] as List<AnimeCard>;
+      _continueWatching =
+          (results[9] as List<Map<String, dynamic>>).take(10).toList();
+
+      if (_trending.length > 4) {
+        final pool = _trending.skip(3).toList();
+        _tonightsPick = pool[math.Random().nextInt(pool.length)];
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = 'Failed to load anime: $e';
-        });
-      }
+      _loading = false;
+      _error = hasCatalog ? null : 'Failed to load anime — check your connection';
+      _moodFuture = _loadMood(_selectedMood);
+    });
+
+    if (_spotlight.isNotEmpty) {
+      _extractAmbient(_spotlight.first);
+      _startHeroTimer();
     }
   }
 
@@ -960,8 +982,11 @@ class _AnimeScreenState extends State<AnimeScreen>
   }
 
   Widget _buildMoodSection() {
+    final future = _moodFuture;
+    if (future == null) return const SizedBox.shrink();
+
     return FutureBuilder<List<AnimeCard>>(
-      future: _moodFuture,
+      future: future,
       builder: (context, snap) {
         if (!snap.hasData) {
           return SizedBox(
@@ -1240,7 +1265,7 @@ class _AnimeScreenState extends State<AnimeScreen>
   Widget _buildLoading() {
     return Shimmer.fromColors(
       baseColor: AppTheme.bgCard,
-      highlightColor: const Color(0xFF1E1E2F),
+      highlightColor: Colors.white.withValues(alpha: 0.05),
       child: ListView(
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 80),

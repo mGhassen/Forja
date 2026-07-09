@@ -302,49 +302,140 @@ class _CompactEpgRow extends StatelessWidget {
   }
 }
 
-/// Top-left programme guide overlay for the IPTV player.
-class IptvFloatingEpg extends StatelessWidget {
+/// Slim top-right programme overlay for the IPTV player.
+class IptvFloatingEpg extends StatefulWidget {
   const IptvFloatingEpg({
     super.key,
     required this.future,
     required this.topInset,
-    required this.leftInset,
-    required this.cardWidth,
+    required this.maxWidth,
   });
 
   final Future<List<EpgEntry>> future;
   final double topInset;
-  final double leftInset;
-  final double cardWidth;
+  final double maxWidth;
+
+  @override
+  State<IptvFloatingEpg> createState() => _IptvFloatingEpgState();
+}
+
+class _IptvFloatingEpgState extends State<IptvFloatingEpg> {
+  Timer? _tick;
+
+  static String _fmtTime(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+  static double _progress(EpgEntry e) {
+    final now = DateTime.now();
+    final total = e.stop.difference(e.start).inSeconds;
+    if (total <= 0) return 0;
+    final elapsed = now.difference(e.start).inSeconds.clamp(0, total);
+    return elapsed / total;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<EpgEntry>>(
-      future: future,
+      future: widget.future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
           return const SizedBox.shrink();
         }
-        if ((snap.data ?? const []).isEmpty) return const SizedBox.shrink();
+        final data = snap.data ?? const [];
+        if (data.isEmpty) return const SizedBox.shrink();
+
+        final nowEntry = data.cast<EpgEntry?>().firstWhere(
+              (e) => e!.isNow,
+              orElse: () => data.first,
+            )!;
 
         return Positioned(
-          left: leftInset,
-          top: topInset,
+          right: 16,
+          top: widget.topInset,
           child: IgnorePointer(
-            child: SizedBox(
-              width: cardWidth,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: widget.maxWidth),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  color: IptvShellStyle.surfaceMuted.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: IptvShellStyle.border),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.45),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
-                child: IptvGuideEpgCard(future: future),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          _Badge(
+                            label: nowEntry.isNow ? 'LIVE' : 'NEXT',
+                            color: nowEntry.isNow
+                                ? IptvShellStyle.liveBadge
+                                : IptvShellStyle.accent,
+                            small: true,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${_fmtTime(nowEntry.start)} – ${_fmtTime(nowEntry.stop)}',
+                            style: GoogleFonts.spaceMono(
+                              color: Colors.white60,
+                              fontSize: 10,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        nowEntry.title.isEmpty ? '—' : nowEntry.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (nowEntry.isNow) ...[
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: LinearProgressIndicator(
+                            value: _progress(nowEntry).clamp(0.0, 1.0),
+                            minHeight: 2,
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.12),
+                            color: IptvShellStyle.accent,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

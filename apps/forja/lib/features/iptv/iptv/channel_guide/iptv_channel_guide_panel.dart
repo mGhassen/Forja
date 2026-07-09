@@ -830,13 +830,9 @@ class _GuideChannelTile extends StatefulWidget {
 }
 
 class _GuideChannelTileState extends State<_GuideChannelTile> {
-  bool _hovered = false;
-
   static Color get _accent => IptvShellStyle.accent;
   static const Color _alive = Color(0xFF22C55E);
   static const Color _dead = Color(0xFFEF4444);
-
-  bool get _showHealth => _hovered;
 
   @override
   Widget build(BuildContext context) {
@@ -846,14 +842,10 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       child: MouseRegion(
         onEnter: (_) {
-          if (!_hovered) setState(() => _hovered = true);
           widget.onHover();
           widget.onProbe();
         },
-        onExit: (_) {
-          setState(() => _hovered = false);
-          widget.onCancelProbe();
-        },
+        onExit: (_) => widget.onCancelProbe(),
         child: Material(
           elevation: 0,
           shadowColor: Colors.black.withValues(alpha: 0.4),
@@ -888,7 +880,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                     clipBehavior: Clip.none,
                     children: [
                       _ChannelLogo(url: widget.channel.logoUrl ?? ''),
-                      if (_showHealth && widget.health != null)
+                      if (widget.health != null)
                         Positioned(
                           top: -2,
                           right: -2,

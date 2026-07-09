@@ -916,11 +916,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     return _epgCache!.load(stream);
   }
 
-  double _floatingEpgTopInset(BuildContext context, bool compact) {
+  double _floatingEpgTopInset(BuildContext context) {
     final safeTop =
         DesktopWindowChrome.isDesktop ? 0.0 : MediaQuery.paddingOf(context).top;
-    final barHeight = compact ? 44.0 : 52.0;
-    return safeTop + _topBarTopPadding(context) + barHeight + 8;
+    return safeTop + _topBarTopPadding(context);
   }
 
   void _updateSubVisibility(SubtitleTrack track) {
@@ -1164,9 +1163,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                   child: IptvFloatingEpg(
                     key: ValueKey(_currentChannelId),
                     future: epgFuture,
-                    topInset: _floatingEpgTopInset(context, compact),
-                    leftInset: _topBarLeftPadding(context),
-                    cardWidth: size.width * 0.4,
+                    topInset: _floatingEpgTopInset(context),
+                    maxWidth: compact ? 240 : 300,
                   ),
                 ),
               ),

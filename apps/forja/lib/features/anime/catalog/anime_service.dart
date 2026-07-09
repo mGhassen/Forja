@@ -19,19 +19,31 @@ class AnimeService {
 
   // ─── GraphQL helper ─────────────────────────────────────────────
   Future<dynamic> _query(String query, [Map<String, dynamic>? vars]) async {
-    final raw = await runAnilistQueryJson(
-      query,
-      variablesJson: jsonEncode(vars ?? {}),
-    );
-    final decoded = jsonDecode(raw);
-    if (decoded is Map<String, dynamic> && decoded['error'] != null) {
-      throw Exception(decoded['error']);
+    const maxAttempts = 3;
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final raw = await runAnilistQueryJson(
+          query,
+          variablesJson: jsonEncode(vars ?? {}),
+        );
+        final decoded = jsonDecode(raw);
+        if (decoded is Map<String, dynamic> && decoded['error'] != null) {
+          throw Exception(decoded['error']);
+        }
+        final data = decoded as Map<String, dynamic>;
+        if (data['errors'] != null) {
+          throw Exception('AniList: ${data['errors']}');
+        }
+        return data['data'];
+      } catch (e) {
+        lastError = e;
+        if (attempt < maxAttempts) {
+          await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+        }
+      }
     }
-    final data = decoded as Map<String, dynamic>;
-    if (data['errors'] != null) {
-      throw Exception('AniList: ${data['errors']}');
-    }
-    return data['data'];
+    throw lastError ?? Exception('AniList query failed');
   }
 
   static const String _mediaFields = '''

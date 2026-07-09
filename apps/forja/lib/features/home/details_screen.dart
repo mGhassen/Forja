@@ -10,6 +10,7 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
+import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
@@ -125,6 +126,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   int _webstreamingFetchGen = 0;
   bool _webstreamingFetchCancelled = false;
   String? _webstreamingActiveProviderId;
+  bool _isWebstreamingOnlyExtracting = false;
+  bool _webstreamingOnlyExtractionCancelled = false;
   final StreamProviderResolver _streamProviderResolver = StreamProviderResolver();
   int _selectedSeason = 1;
   int _selectedEpisode = 1;
@@ -351,9 +354,189 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _ensurePanelSourceLoaded();
   }
 
+  bool get _isWebstreamingOnlyPlaySource =>
+      _playSourceWebstreaming &&
+      !_playSourceTorrent &&
+      !_playSourceStremio;
+
   void _onHeroPlayPressed() {
+    if (_isWebstreamingOnlyPlaySource) {
+      unawaited(_startWebstreamingOnlyPlayback());
+      return;
+    }
     _manualPlayPending = true;
     _maybeAutoPlay();
+  }
+
+  Future<void> _startWebstreamingOnlyPlayback() async {
+    final startPosition = _startPositionForAutoPlay(fromRoute: false);
+    if (_webstreamingStreams.isNotEmpty) {
+      await _playWebstreamingStream(
+        _webstreamingStreams.first,
+        startPosition: startPosition,
+      );
+      return;
+    }
+    if (_isWebstreamingOnlyExtracting || _isWebstreamingFetching) return;
+    await _runWebstreamingOnlyExtraction(startPosition: startPosition);
+  }
+
+  Future<void> _runWebstreamingOnlyExtraction({Duration? startPosition}) async {
+    _isWebstreamingOnlyExtracting = true;
+    _webstreamingOnlyExtractionCancelled = false;
+    final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
+    final fadeOutNotifier = ValueNotifier(false);
+    BuildContext? loadingDialogContext;
+
+    void dismissLoading() {
+      final ctx = loadingDialogContext;
+      if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
+      loadingDialogContext = null;
+    }
+
+    showLoadingOverlayDialog(
+      context,
+      builder: (dialogContext) {
+        loadingDialogContext = dialogContext;
+        return LoadingOverlay(
+          movie: _movie,
+          providerProbesNotifier: probeNotifier,
+          fadeOutNotifier: fadeOutNotifier,
+          onCancel: () {
+            _webstreamingOnlyExtractionCancelled = true;
+            _webstreamingFetchCancelled = true;
+            WebStreamrService().cancelPending();
+            VidsrcExtractor.cancelPending();
+            NuvioService.instance.cancelPending();
+            dismissLoading();
+          },
+        );
+      },
+    );
+
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) {
+      dismissLoading();
+      _isWebstreamingOnlyExtracting = false;
+      fadeOutNotifier.dispose();
+      probeNotifier.dispose();
+      return;
+    }
+
+    final providers = _orderedWebstreamingProviders;
+    var found = false;
+    var isFirst = true;
+
+    try {
+      for (final key in providers.keys) {
+        if (!mounted || _webstreamingOnlyExtractionCancelled) break;
+
+        probeNotifier.value = [
+          ...probeNotifier.value,
+          StreamProviderProbe(
+            id: key,
+            label: _webstreamingProviderLabel(key),
+            status: StreamProviderProbeStatus.trying,
+            isPreferred: isFirst,
+          ),
+        ];
+        isFirst = false;
+
+        final result = await _streamProviderResolver.resolve(
+          key: key,
+          movie: _movie,
+          season: _selectedSeason,
+          episode: _selectedEpisode,
+          providers: providers,
+          isCancelled: () => _webstreamingOnlyExtractionCancelled,
+        );
+
+        if (!mounted || _webstreamingOnlyExtractionCancelled) break;
+
+        if (result != null && result.streamUrl.isNotEmpty) {
+          found = true;
+          probeNotifier.value = probeNotifier.value
+              .map(
+                (probe) => probe.id == key
+                    ? probe.copyWith(status: StreamProviderProbeStatus.success)
+                    : probe,
+              )
+              .toList();
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+
+          final sources = result.sources?.isNotEmpty == true
+              ? result.sources!
+              : [
+                  StreamSource(
+                    url: result.streamUrl,
+                    title: _webstreamingProviderLabel(key),
+                    type: 'hls',
+                    headers: result.headers,
+                  ),
+                ];
+
+          if (!mounted) break;
+          setState(() {
+            _webstreamingStreams = sources;
+            _webstreamingActiveProviderId = key;
+            _selectedSourceId = 'stream:$key';
+          });
+
+          final isTv = _movie.mediaType == 'tv';
+          final title = isTv
+              ? '${_movie.title} - S$_selectedSeason E$_selectedEpisode'
+              : _movie.title;
+          final ctx = loadingDialogContext;
+          if (ctx != null && ctx.mounted) {
+            await crossfadeLoadingOverlayToPlayer(
+              loadingDialogContext: ctx,
+              fadeOutNotifier: fadeOutNotifier,
+              openPlayer: () => AppRouter.openPlayer(
+                context,
+                streamUrl: result.streamUrl,
+                audioUrl: result.audioUrl,
+                title: title,
+                headers: result.headers,
+                movie: _movie,
+                providers: providers,
+                activeProvider: key,
+                selectedSeason: isTv ? _selectedSeason : null,
+                selectedEpisode: isTv ? _selectedEpisode : null,
+                startPosition: startPosition ?? widget.startPosition,
+                sources: sources,
+                externalSubtitles: result.subtitles,
+                fadeTransition: true,
+              ),
+            );
+          } else {
+            await _playWebstreamingStream(
+              sources.first,
+              startPosition: startPosition,
+            );
+          }
+          break;
+        }
+
+        probeNotifier.value = probeNotifier.value
+            .map(
+              (probe) => probe.id == key
+                  ? probe.copyWith(status: StreamProviderProbeStatus.failed)
+                  : probe,
+            )
+            .toList();
+      }
+
+      if (!found && mounted && !_webstreamingOnlyExtractionCancelled) {
+        dismissLoading();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to find a working stream.')),
+        );
+      }
+    } finally {
+      _isWebstreamingOnlyExtracting = false;
+      fadeOutNotifier.dispose();
+      probeNotifier.dispose();
+    }
   }
 
   void _onSeasonSelected(int season) {
@@ -428,6 +611,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     return MediaDetailsTorrentActionRow(
       movie: _movie,
       hasResume: hasResume,
+      isExtracting: _isWebstreamingOnlyExtracting ||
+          (_isWebstreamingOnlyPlaySource && _isWebstreamingFetching),
       onOpenSources: _onHeroPlayPressed,
       onDownload: _openSourcesPanel,
       onOverflowAction: _handleHeroOverflowAction,
@@ -621,6 +806,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   void _failAutoPlayFromRoute() {
     if (!mounted) return;
+    if (_isWebstreamingOnlyPlaySource) {
+      unawaited(_startWebstreamingOnlyPlayback());
+      return;
+    }
     _openSourcesPanel();
   }
 
@@ -719,7 +908,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       _failAutoPlayFromRoute();
     } else if (fromManual) {
       _manualPlayPending = false;
-      _openSourcesPanel();
+      if (_isWebstreamingOnlyPlaySource) {
+        unawaited(_startWebstreamingOnlyPlayback());
+      } else {
+        _openSourcesPanel();
+      }
     }
   }
 
@@ -954,7 +1147,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _failEpisodePlayPending();
         } else if (_manualPlayPending && _webstreamingStreams.isEmpty) {
           _manualPlayPending = false;
-          _openSourcesPanel();
+          if (_isWebstreamingOnlyPlaySource) {
+            unawaited(_startWebstreamingOnlyPlayback());
+          } else {
+            _openSourcesPanel();
+          }
         }
       }
     }
