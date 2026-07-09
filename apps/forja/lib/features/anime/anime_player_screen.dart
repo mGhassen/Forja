@@ -154,6 +154,106 @@ List<_AnimeResolvedHit>? _hitsFromJson(List<Map<String, dynamic>>? raw) {
   return out.isEmpty ? null : out;
 }
 
+String _animeStreamSourceTitle(AnimeEmbed embed, AnimeStreamResult direct) {
+  final tag = direct.streamLabel?.trim();
+  if (tag != null && tag.isNotEmpty) {
+    return '${embed.displayName} · $tag';
+  }
+  return embed.displayName;
+}
+
+Future<List<_AnimeResolvedHit>> _quietResolveEmbed(
+  AnimeService service,
+  AnimeEmbed embed,
+) async {
+  try {
+    final candidates = await service.extractDirectCandidates(embed);
+    final out = <_AnimeResolvedHit>[];
+    final maxMirrors = embed.server == 'miruro' ? 2 : candidates.length;
+    var mirrors = 0;
+    for (final direct in candidates) {
+      if (mirrors >= maxMirrors) break;
+      if (direct.url.isEmpty) continue;
+      final headers = <String, String>{
+        'Referer': direct.referer,
+        'Origin': direct.origin,
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      };
+      final title = _animeStreamSourceTitle(embed, direct);
+      final subs = direct.tracks
+          .map((t) => <String, dynamic>{
+                'url': t.url,
+                'display': t.label,
+                'language': _langCodeFromLabel(t.label),
+                'referer': direct.referer,
+                'origin': direct.origin,
+              })
+          .toList();
+      final isHls = direct.url.contains('.m3u8');
+      out.add((
+        embed: embed,
+        media: ExtractedMedia(
+          url: direct.url,
+          headers: headers,
+          provider: embed.server,
+          sources: [
+            StreamSource(
+              url: direct.url,
+              title: title,
+              type: isHls ? 'hls' : 'video',
+              headers: headers,
+            ),
+          ],
+          externalSubtitles: subs.isNotEmpty ? subs : null,
+        ),
+      ));
+      mirrors++;
+    }
+    return out;
+  } catch (e) {
+    debugPrint('[AnimePlayer] reload ${embed.displayName} failed: $e');
+    return const [];
+  }
+}
+
+List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) {
+  final sources = <StreamSource>[];
+  for (final h in hits) {
+    final headers = Map<String, String>.from(h.media.headers);
+    if (!headers.containsKey('Referer') || headers['Referer']!.isEmpty) {
+      headers['Referer'] = '${h.embed.refererOrigin}/';
+      headers.putIfAbsent('Origin', () => h.embed.refererOrigin);
+    }
+    final sourceTitle =
+        h.media.sources?.first.title ?? h.embed.displayName;
+    sources.add(StreamSource(
+      url: h.media.url,
+      title: sourceTitle,
+      type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
+      headers: headers,
+    ));
+  }
+  return sources;
+}
+
+Future<List<StreamSource>?> reloadAnimeEpisodeStreams({
+  required AnimeService service,
+  required List<AnimeEmbed> allEmbeds,
+  required String category,
+}) async {
+  final pair = allEmbeds.where((e) => e.category == category).toList();
+  if (pair.isEmpty) return null;
+
+  final batches = await Future.wait(
+    pair.map((embed) => _quietResolveEmbed(service, embed)),
+  );
+  final hits = batches.expand((batch) => batch).toList();
+  if (hits.isEmpty) return null;
+  return _hitsToStreamSources(hits);
+}
+
 Movie _hubMovieFromAnime(AnimeCard anime) => Movie(
       id: -anime.id,
       title: anime.displayTitle,
@@ -1012,6 +1112,11 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       onAllSourcesExhausted: () {
         if (navigator.canPop()) navigator.pop();
       },
+      onReloadStreams: () => reloadAnimeEpisodeStreams(
+        service: _service,
+        allEmbeds: List<AnimeEmbed>.from(_allEmbeds),
+        category: _category,
+      ),
     );
     await Future<void>.delayed(loadingOverlayFadeOutDuration);
     await playerFuture;
