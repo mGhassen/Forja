@@ -17,7 +17,7 @@ When **Direct streaming mode** is on (Settings → Playback), tapping a movie or
 - Pick a link and play in the built-in or external player
 - Mark TV episodes as watched
 - Fall through providers in the order you set in Settings
-- While a stream is starting, the loading screen lists each server as it is tried — ✓ when one works, ✗ when it does not, spinner + “Trying…” on the active one (★ on your top-priority server)
+- While a stream is starting, a right-side roulette cycles through each server as it is checked — ✓ when one works, ✗ when it fails, spinner on the active one (★ on your top-priority server)
 
 ## Setup (if needed)
 

@@ -134,15 +134,15 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         child: Stack(
           fit: StackFit.expand,
           children: [
-          if (backdropUrl.isNotEmpty)
-            CachedNetworkImage(
-              imageUrl: backdropUrl,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(color: Colors.black),
-              errorWidget: (context, url, error) => Container(color: Colors.black),
-            )
-          else
-            const ColoredBox(color: Colors.black),
+            if (backdropUrl.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: backdropUrl,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: Colors.black),
+                errorWidget: (context, url, error) => Container(color: Colors.black),
+              )
+            else
+              const ColoredBox(color: Colors.black),
             Container(
               color: Colors.black.withValues(
                 alpha: AppTheme.isLightMode ? 0.8 : 0.72,
@@ -162,103 +162,83 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                     : _titleFallback(),
               ),
             ),
-          Positioned(
-            bottom: 80,
-            left: 0,
-            right: 0,
-            child: Column(
-              children: [
-                if (_showProviderProbes) ...[
-                  Text(
-                    'STARTING STREAM',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 3,
-                      fontFamily: 'Poppins',
+            if (_showProviderProbes)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: SafeArea(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 28),
+                      child: _ProviderProbeRoulette(probes: _probes),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  _ProviderProbeList(probes: _probes),
-                ] else ...[
-                  const CircularProgressIndicator(
-                    color: AppTheme.primaryColor,
-                    strokeWidth: 3,
-                  ),
-                  const SizedBox(height: 32),
-                  Text(
-                    _message,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 4,
-                      fontFamily: 'Poppins',
+                ),
+              ),
+            Positioned(
+              bottom: 48,
+              left: 0,
+              right: 0,
+              child: Column(
+                children: [
+                  if (!_showProviderProbes) ...[
+                    const CircularProgressIndicator(
+                      color: AppTheme.primaryColor,
+                      strokeWidth: 3,
                     ),
-                  ),
-                ],
-                if (widget.subtitle != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.subtitle!.toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 2,
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                ],
-                if (widget.onCancel != null) ...[
-                  const SizedBox(height: 24),
-                  TextButton(
-                    onPressed: widget.onCancel,
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white.withValues(alpha: 0.7),
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                      ),
-                    ),
-                    child: const Text(
-                      'CANCEL',
+                    const SizedBox(height: 32),
+                    Text(
+                      _message,
                       style: TextStyle(
-                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 3,
+                        letterSpacing: 4,
                         fontFamily: 'Poppins',
                       ),
                     ),
-                  ),
+                  ],
+                  if (widget.subtitle != null) ...[
+                    if (!_showProviderProbes) const SizedBox(height: 8),
+                    Text(
+                      widget.subtitle!.toUpperCase(),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                  ],
+                  if (widget.onCancel != null) ...[
+                    const SizedBox(height: 24),
+                    TextButton(
+                      onPressed: widget.onCancel,
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white.withValues(alpha: 0.7),
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                        ),
+                      ),
+                      child: const Text(
+                        'CANCEL',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 3,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProviderProbeList extends StatelessWidget {
-  const _ProviderProbeList({required this.probes});
-
-  final List<StreamProviderProbe> probes;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.center,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 300),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final probe in probes) _ProviderProbeRow(probe: probe),
           ],
         ),
       ),
@@ -266,92 +246,217 @@ class _ProviderProbeList extends StatelessWidget {
   }
 }
 
-class _ProviderProbeRow extends StatelessWidget {
-  const _ProviderProbeRow({required this.probe});
+class _ProviderProbeRoulette extends StatelessWidget {
+  const _ProviderProbeRoulette({required this.probes});
+
+  final List<StreamProviderProbe> probes;
+
+  StreamProviderProbe? get _activeProbe {
+    for (final probe in probes) {
+      if (probe.status == StreamProviderProbeStatus.trying) return probe;
+    }
+    return probes.isNotEmpty ? probes.last : null;
+  }
+
+  StreamProviderProbe? get _previousProbe {
+    final active = _activeProbe;
+    if (active == null) return null;
+    final idx = probes.indexOf(active);
+    if (idx <= 0) return null;
+    return probes[idx - 1];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _activeProbe;
+    if (active == null) return const SizedBox.shrink();
+
+    final previous = _previousProbe;
+    final triedCount = probes.where((p) => p.status != StreamProviderProbeStatus.trying).length;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          'CHECKING SOURCES',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.35),
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2.5,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 72,
+          width: 220,
+          child: ClipRect(
+            child: Stack(
+              alignment: Alignment.centerRight,
+              clipBehavior: Clip.hardEdge,
+              children: [
+                if (previous != null &&
+                    previous.status != StreamProviderProbeStatus.trying)
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: _RouletteRow(
+                        probe: previous,
+                        dimmed: true,
+                        compact: true,
+                      ),
+                    ),
+                  ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 420),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  layoutBuilder: (current, previous) => Stack(
+                    alignment: Alignment.centerRight,
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      ...previous,
+                      if (current != null) current,
+                    ],
+                  ),
+                  transitionBuilder: (child, animation) {
+                    final slide = Tween<Offset>(
+                      begin: const Offset(0, 0.55),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ));
+                    return ClipRect(
+                      child: SlideTransition(
+                        position: slide,
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: child,
+                        ),
+                      ),
+                    );
+                  },
+                  child: _RouletteRow(
+                    key: ValueKey('${active.id}-${active.status.name}'),
+                    probe: active,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          triedCount > 0 ? '$triedCount checked' : 'Starting…',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.28),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            fontFamily: 'Poppins',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RouletteRow extends StatelessWidget {
+  const _RouletteRow({
+    super.key,
+    required this.probe,
+    this.dimmed = false,
+    this.compact = false,
+  });
 
   final StreamProviderProbe probe;
+  final bool dimmed;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final isTrying = probe.status == StreamProviderProbeStatus.trying;
     final isFailed = probe.status == StreamProviderProbeStatus.failed;
-    final nameColor = isTrying
-        ? Colors.white
-        : Colors.white.withValues(alpha: isFailed ? 0.35 : 0.85);
+    final alpha = dimmed ? 0.28 : (isFailed ? 0.45 : 0.92);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!compact) ...[
           SizedBox(
-            width: 18,
-            height: 18,
-            child: _ProbeIcon(status: probe.status),
+            width: 16,
+            height: 16,
+            child: _ProbeIcon(status: probe.status, dimmed: dimmed),
           ),
           const SizedBox(width: 10),
-          if (probe.isPreferred) ...[
-            Icon(
-              Icons.star_rounded,
-              size: 14,
-              color: Colors.amber.withValues(alpha: isFailed ? 0.45 : 0.9),
-            ),
-            const SizedBox(width: 4),
-          ],
-          Expanded(
-            child: Text(
-              probe.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: nameColor,
-                fontSize: 14,
-                fontWeight: isTrying ? FontWeight.w600 : FontWeight.w500,
-                fontFamily: 'Poppins',
-              ),
+        ],
+        if (probe.isPreferred && !dimmed) ...[
+          Icon(
+            Icons.star_rounded,
+            size: compact ? 11 : 13,
+            color: Colors.amber.withValues(alpha: isFailed ? 0.4 : 0.85),
+          ),
+          const SizedBox(width: 4),
+        ],
+        Flexible(
+          child: Text(
+            probe.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: alpha),
+              fontSize: compact ? 12 : 15,
+              fontWeight: isTrying && !dimmed ? FontWeight.w600 : FontWeight.w500,
+              fontFamily: 'Poppins',
             ),
           ),
-          if (isTrying) ...[
-            const SizedBox(width: 8),
-            Text(
-              'Trying…',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.35),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Poppins',
-              ),
+        ),
+        if (isTrying && !dimmed) ...[
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.6,
+              color: Colors.white.withValues(alpha: 0.75),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }
 
 class _ProbeIcon extends StatelessWidget {
-  const _ProbeIcon({required this.status});
+  const _ProbeIcon({required this.status, this.dimmed = false});
 
   final StreamProviderProbeStatus status;
+  final bool dimmed;
 
   @override
   Widget build(BuildContext context) {
+    final alpha = dimmed ? 0.35 : 1.0;
     switch (status) {
       case StreamProviderProbeStatus.trying:
         return CircularProgressIndicator(
           strokeWidth: 1.8,
-          color: Colors.white.withValues(alpha: 0.9),
+          color: Colors.white.withValues(alpha: 0.9 * alpha),
         );
       case StreamProviderProbeStatus.failed:
         return Icon(
           Icons.close_rounded,
           size: 16,
-          color: Colors.red.shade400,
+          color: Colors.red.shade400.withValues(alpha: alpha),
         );
       case StreamProviderProbeStatus.success:
-        return const Icon(
+        return Icon(
           Icons.check_rounded,
           size: 16,
-          color: Color(0xFF22C55E),
+          color: Color(0xFF22C55E).withValues(alpha: alpha),
         );
     }
   }
