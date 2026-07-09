@@ -365,6 +365,8 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     return 1.0;
   }
 
+  bool get _showPlayOverlay => _hovered || widget.selected;
+
   @override
   Widget build(BuildContext context) {
     final thumbHeight = _EpisodeCard.cardWidth * 9 / 16;
@@ -468,6 +470,31 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                                 color: Colors.white.withValues(alpha: 0.9),
                               ),
                             ),
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: AnimatedOpacity(
+                                opacity: _showPlayOverlay ? 1.0 : 0.0,
+                                duration: const Duration(milliseconds: 200),
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.5),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.play_arrow_rounded,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),

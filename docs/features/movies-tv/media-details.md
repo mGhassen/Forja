@@ -33,7 +33,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 - Add or remove from **My List** (**+** button in hero)
 - Trakt/Simkl/collect actions via the **⋯** overflow menu in the hero
 - See resume progress in the hero for movies and the selected TV episode
-- For TV: pick a season from square cards, then an episode from the expandable rail
+- For TV: pick a season from square cards, then an episode from the expandable rail — hover or select an episode to see a centered play icon on its thumbnail
 - Browse main cast and “More Like This” recommendations below the hero
 - Search and sort torrent results in Sources (seeders, size, etc.)
 - Resolve torrents through debrid when configured

@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
@@ -60,10 +61,9 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A24),
+          backgroundColor: IptvShellStyle.surface,
           title: Text('Add M3U Playlist',
-              style: GoogleFonts.bebasNeue(
-                  color: Colors.white, fontSize: 26, letterSpacing: 1.4)),
+              style: IptvShellStyle.pageTitle.copyWith(fontSize: 26)),
           content: SizedBox(
             width: 380,
             child: Column(
@@ -89,7 +89,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0)),
+                  backgroundColor: IptvShellStyle.chipSelectedBg),
               onPressed: busy
                   ? null
                   : () async {
@@ -241,10 +241,9 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A24),
+        backgroundColor: IptvShellStyle.surface,
         title: Text('Delete playlist?',
-            style: GoogleFonts.bebasNeue(
-                color: Colors.white, fontSize: 24, letterSpacing: 1.2)),
+            style: IptvShellStyle.pageTitle.copyWith(fontSize: 24)),
         content: Text(
           '"${p.name}" will be removed. ${p.sourceUrl == null ? "You'll need to re-upload the file to add it again." : "You can re-add it from the URL anytime."}',
           style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13),
@@ -305,13 +304,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF141414), Color(0xFF141414), Color(0xFF141414)],
-          ),
-        ),
+        decoration: BoxDecoration(color: IptvShellStyle.surface),
         child: SafeArea(
           child: Column(
             children: [
@@ -319,9 +312,9 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
               if (_error != null) _buildErrorBanner(),
               Expanded(
                 child: _loading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(
-                            color: Color(0xFF00E5FF)))
+                            color: IptvShellStyle.accent))
                     : _playlists.isEmpty
                         ? _buildEmpty()
                         : _buildList(),
@@ -346,7 +339,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+            icon: Icon(Icons.arrow_back_ios_new_rounded,
                 color: Colors.white70, size: 20),
           ),
           Expanded(
@@ -356,11 +349,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
               children: [
                 Text(
                   'M3U Playlists',
-                  style: GoogleFonts.bebasNeue(
-                    color: Colors.white,
-                    fontSize: 28,
-                    letterSpacing: 1.6,
-                  ),
+                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 28),
                 ),
                 Text(
                   _playlists.isEmpty
@@ -373,13 +362,13 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
             ),
           ),
           if (_busy)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Color(0xFF00E5FF)),
+                    strokeWidth: 2, color: IptvShellStyle.accent),
               ),
             ),
         ],
@@ -394,7 +383,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
       color: const Color(0xFFEF4444).withValues(alpha: 0.15),
       child: Row(
         children: [
-          const Icon(Icons.error_outline,
+          Icon(Icons.error_outline,
               color: Color(0xFFEF4444), size: 18),
           const SizedBox(width: 10),
           Expanded(
@@ -407,7 +396,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
           IconButton(
             iconSize: 18,
             onPressed: () => setState(() => _error = null),
-            icon: const Icon(Icons.close, color: Color(0xFFEF4444)),
+            icon: Icon(Icons.close, color: Color(0xFFEF4444)),
           ),
         ],
       ),
@@ -421,14 +410,11 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.playlist_play_rounded,
-                size: 80, color: Color(0xFF00E5FF)),
+            Icon(Icons.playlist_play_rounded,
+                size: 80, color: IptvShellStyle.accent),
             const SizedBox(height: 24),
             Text('No playlists yet',
-                style: GoogleFonts.bebasNeue(
-                    color: Colors.white,
-                    fontSize: 36,
-                    letterSpacing: 1.6)),
+                style: IptvShellStyle.pageTitle.copyWith(fontSize: 36)),
             const SizedBox(height: 8),
             Text(
               'Add an M3U / M3U8 playlist by URL,\nor upload one from your device.',
@@ -536,11 +522,7 @@ class _PlaylistCard extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF141414), Color(0xFF141414)],
-          ),
+          color: IptvShellStyle.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           boxShadow: [
@@ -561,14 +543,14 @@ class _PlaylistCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
+                    color: IptvShellStyle.accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     p.sourceUrl == null
                         ? Icons.insert_drive_file_rounded
                         : Icons.cloud_rounded,
-                    color: const Color(0xFF00E5FF),
+                    color: IptvShellStyle.accent,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -598,7 +580,7 @@ class _PlaylistCard extends StatelessWidget {
                       Text(
                         '${p.channels.length} channels',
                         style: GoogleFonts.poppins(
-                            color: const Color(0xFF00E5FF), fontSize: 11),
+                            color: IptvShellStyle.accent, fontSize: 11),
                       ),
                     ],
                   ),
@@ -607,13 +589,13 @@ class _PlaylistCard extends StatelessWidget {
                   IconButton(
                     tooltip: 'Refresh from URL',
                     onPressed: onRefresh,
-                    icon: const Icon(Icons.refresh_rounded,
+                    icon: Icon(Icons.refresh_rounded,
                         color: Colors.white70),
                   ),
                 IconButton(
                   tooltip: 'Delete',
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline_rounded,
+                  icon: Icon(Icons.delete_outline_rounded,
                       color: Color(0xFFEF4444)),
                 ),
               ],
@@ -644,7 +626,7 @@ class _PrimaryBtn extends StatelessWidget {
       style: FilledButton.styleFrom(
         backgroundColor: subtle
             ? Colors.white.withValues(alpha: 0.08)
-            : const Color(0xFF1565C0),
+            : IptvShellStyle.chipSelectedBg,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         shape:
@@ -685,12 +667,13 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
   @override
   void initState() {
     super.initState();
-    final groupSet = <String>{};
+    final groupOrder = <String>[];
+    final seenGroups = <String>{};
     for (final c in widget.playlist.channels) {
-      if (c.group.isNotEmpty) groupSet.add(c.group);
+      if (c.group.isEmpty) continue;
+      if (seenGroups.add(c.group)) groupOrder.add(c.group);
     }
-    final sorted = groupSet.toList()..sort();
-    _groups = sorted;
+    _groups = groupOrder;
     _groupScrollCtrl.addListener(_updateScrollArrows);
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateScrollArrows());
   }
@@ -763,13 +746,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF141414), Color(0xFF141414), Color(0xFF141414)],
-          ),
-        ),
+        decoration: BoxDecoration(color: IptvShellStyle.surface),
         child: SafeArea(
           child: Column(
             children: [
@@ -811,7 +788,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+            icon: Icon(Icons.arrow_back_ios_new_rounded,
                 color: Colors.white70, size: 20),
           ),
           Expanded(
@@ -823,10 +800,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
                   widget.playlist.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.bebasNeue(
-                      color: Colors.white,
-                      fontSize: 26,
-                      letterSpacing: 1.4),
+                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 26),
                 ),
                 Text(
                   '${widget.playlist.channels.length} channels',
@@ -852,7 +826,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
             style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
             decoration: InputDecoration(
               prefixIcon:
-                  const Icon(Icons.search, color: Colors.white54, size: 20),
+                  Icon(Icons.search, color: Colors.white54, size: 20),
               hintText: 'Search channels...',
               hintStyle:
                   GoogleFonts.poppins(color: Colors.white38, fontSize: 13),
@@ -949,19 +923,7 @@ class _GroupChip extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Ink(
-        decoration: BoxDecoration(
-          gradient: selected
-              ? const LinearGradient(
-                  colors: [Color(0xFF1565C0), Color(0xFF00E5FF)])
-              : null,
-          color: selected ? null : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected
-                ? Colors.transparent
-                : Colors.white.withValues(alpha: 0.1),
-          ),
-        ),
+        decoration: IptvShellStyle.chipDecoration(selected: selected),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
@@ -1089,8 +1051,8 @@ class _ChannelTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.play_arrow_rounded,
-                    color: Color(0xFF00E5FF)),
+                Icon(Icons.play_arrow_rounded,
+                    color: IptvShellStyle.accent),
               ],
             ),
           ),
@@ -1133,7 +1095,7 @@ class _ChannelLogo extends StatelessWidget {
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(Icons.live_tv_rounded,
+      child: Icon(Icons.live_tv_rounded,
           color: Colors.white38, size: 20),
     );
   }

@@ -54,27 +54,7 @@ double _heroTextTopInset(BuildContext context) {
 SliverToBoxAdapter _homeRowSliver(
   Widget section, {
   required bool isFirstAfterHero,
-  double heroOverlapPull = 0,
-  double? overlapLayoutHeight,
 }) {
-  Widget child = RepaintBoundary(child: section);
-  if (heroOverlapPull > 0 && overlapLayoutHeight != null) {
-    child = SizedBox(
-      height: overlapLayoutHeight - heroOverlapPull,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            top: -heroOverlapPull,
-            left: 0,
-            right: 0,
-            child: section,
-          ),
-        ],
-      ),
-    );
-  }
-
   return SliverToBoxAdapter(
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -82,7 +62,7 @@ SliverToBoxAdapter _homeRowSliver(
       children: [
         if (!isFirstAfterHero)
           const SizedBox(height: ShellTokens.homeRowSpacing),
-        child,
+        RepaintBoundary(child: section),
       ],
     ),
   );
@@ -1482,13 +1462,7 @@ class _HomeScreenState extends State<HomeScreen>
                     onMovieTap: _openDetails,
                     compactTop: true,
                   ),
-                  isFirstAfterHero: true,
-                  heroOverlapPull: fullHero
-                      ? _desktopHeroFirstRowOverlap(context)
-                      : 0,
-                  overlapLayoutHeight: fullHero
-                      ? _MovieSection.sectionHeight(context, compactTop: true)
-                      : null,
+                  isFirstAfterHero: false,
                 ),
 
               if (usesShellHome)
@@ -1666,11 +1640,6 @@ class _HomeScreenState extends State<HomeScreen>
     return (value * dpr).round() / dpr;
   }
 
-  double _desktopHeroFirstRowOverlap(BuildContext context) {
-    return _MovieSection.sectionHeight(context, compactTop: true) *
-        ShellTokens.heroFirstRowOverlapFraction;
-  }
-
   double _cinematicHeroHeight(BuildContext context, {required bool compact}) {
     if (compact) {
       final screenH = MediaQuery.sizeOf(context).height;
@@ -1692,10 +1661,11 @@ class _HomeScreenState extends State<HomeScreen>
     final topBar = _desktopTopBarBleed(context);
     final firstRowHeight =
         _MovieSection.sectionHeight(context, compactTop: true);
-    final firstRowOverlap = _desktopHeroFirstRowOverlap(context);
     final nextRowPeek = _MovieSection.sectionHeight(context) *
         ShellTokens.heroNextRowPeekFraction;
-    final reservedBelow = firstRowHeight - firstRowOverlap + nextRowPeek;
+    final reservedBelow = ShellTokens.homeRowSpacing +
+        firstRowHeight +
+        nextRowPeek;
     final target = screenH * ShellTokens.heroHeightFractionDesktop;
     final maxHero = screenH - topBar - reservedBelow;
     return _snapToDevicePixels(
@@ -2277,6 +2247,7 @@ class _MovieSectionState extends State<_MovieSection> {
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             ShellSectionTitle(
               title: widget.title,

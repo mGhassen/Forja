@@ -33,6 +33,8 @@ class IptvChannelGuide {
   final String initialChannelId;
   final String initialGroupId;
   final VerifiedPortal? xtreamPortal;
+  /// Known stream health from the browser (`streamId` → alive).
+  final Map<String, bool> streamHealth;
 
   const IptvChannelGuide({
     required this.groups,
@@ -40,6 +42,7 @@ class IptvChannelGuide {
     required this.initialChannelId,
     required this.initialGroupId,
     this.xtreamPortal,
+    this.streamHealth = const {},
   });
 
   List<IptvGuideChannel> channelsForGroup(String groupId) =>
@@ -57,6 +60,7 @@ class IptvChannelGuide {
     required List<IptvCategory> categories,
     required List<IptvStream> streams,
     required IptvStream initialStream,
+    Map<String, bool> streamHealth = const {},
   }) {
     final liveStreams =
         streams.where((s) => s.kind == 'live').toList(growable: false);
@@ -88,7 +92,6 @@ class IptvChannelGuide {
             : 'Uncategorized',
       ));
     }
-    groups.sort((a, b) => a.name.compareTo(b.name));
 
     final guideChannels = liveStreams
         .map(
@@ -108,6 +111,7 @@ class IptvChannelGuide {
       initialChannelId: initialStream.streamId,
       initialGroupId: initialStream.categoryId,
       xtreamPortal: portal,
+      streamHealth: streamHealth,
     );
   }
 
@@ -115,20 +119,21 @@ class IptvChannelGuide {
     List<M3uChannel> channels, {
     required M3uChannel initialChannel,
   }) {
-    final groupIds = <String>{};
+    final groupOrder = <String>[];
+    final seenGroups = <String>{};
     for (final c in channels) {
-      groupIds.add(c.group.isEmpty ? '' : c.group);
+      final g = c.group.isEmpty ? '' : c.group;
+      if (seenGroups.add(g)) groupOrder.add(g);
     }
 
-    final groups = groupIds
+    final groups = groupOrder
         .map(
           (g) => IptvGuideGroup(
             id: g,
             name: g.isEmpty ? 'Uncategorized' : g,
           ),
         )
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+        .toList(growable: false);
 
     final guideChannels = channels
         .map(

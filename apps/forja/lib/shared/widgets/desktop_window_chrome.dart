@@ -7,6 +7,9 @@ import 'package:forja/shared/theme/app_theme.dart';
 /// macOS title-bar drag strip height (traffic lights float above the sidebar).
 const double kMacTitleBarHeight = 34;
 
+/// Horizontal space for the macOS traffic-light cluster (hidden title bar).
+const double kMacLeadingInset = 78;
+
 class DesktopWindowChrome {
   DesktopWindowChrome._();
 
@@ -17,6 +20,12 @@ class DesktopWindowChrome {
     if (!isDesktop) return 0;
     if (Platform.isMacOS) return kMacTitleBarHeight;
     return kWindowCaptionHeight;
+  }
+
+  /// Left inset so panel chrome clears macOS traffic lights.
+  static double leadingInset(BuildContext context) {
+    if (!Platform.isMacOS) return 0;
+    return kMacLeadingInset;
   }
 
   /// Wraps the main shell: hidden macOS title bar with drag strip, or a

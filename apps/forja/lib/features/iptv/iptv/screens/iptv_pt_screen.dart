@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
@@ -151,7 +152,7 @@ class _PtAppBar extends StatelessWidget {
           if (onBack != null)
             IconButton(
               onPressed: onBack,
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              icon: Icon(Icons.arrow_back_ios_new_rounded,
                   color: Colors.white70, size: 20),
             ),
           Expanded(
@@ -163,11 +164,7 @@ class _PtAppBar extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.bebasNeue(
-                    color: Colors.white,
-                    fontSize: 28,
-                    letterSpacing: 1.6,
-                  ),
+                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 28),
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty)
                   Text(
@@ -211,12 +208,7 @@ class _SourceChip extends StatelessWidget {
         color: Colors.transparent,
         child: Ink(
           decoration: BoxDecoration(
-            gradient: selected
-                ? const LinearGradient(
-                    colors: [Color(0xFF1565C0), Color(0xFF00E5FF)],
-                  )
-                : null,
-            color: selected ? null : Colors.white.withValues(alpha: 0.04),
+            color: selected ? IptvShellStyle.chipSelectedBg : Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected
@@ -247,7 +239,7 @@ class _SourceChip extends StatelessWidget {
                     style: GoogleFonts.poppins(
                       color: selected
                           ? Colors.white
-                          : const Color(0xFF00E5FF),
+                          : IptvShellStyle.accent,
                       fontWeight: FontWeight.w500,
                       fontSize: 11,
                     ),
@@ -282,16 +274,7 @@ class _PrimaryButton extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          gradient: subtle
-              ? LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.06),
-                    Colors.white.withValues(alpha: 0.03),
-                  ],
-                )
-              : const LinearGradient(
-                  colors: [Color(0xFF1565C0), Color(0xFF00E5FF)],
-                ),
+          color: subtle ? IptvShellStyle.surfaceMuted : IptvShellStyle.chipSelectedBg,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: subtle
@@ -361,14 +344,14 @@ class _PortalListView extends StatelessWidget {
                     builder: (_) => const M3uPlaylistsScreen(),
                   ),
                 ),
-                icon: const Icon(Icons.playlist_play_rounded,
-                    color: Color(0xFF00E5FF)),
+                icon: Icon(Icons.playlist_play_rounded,
+                    color: IptvShellStyle.accent),
               ),
               IconButton(
                 tooltip: 'Add portal',
                 onPressed: () => _showAddDialog(context),
-                icon: const Icon(Icons.add_rounded,
-                    color: Color(0xFF00E5FF)),
+                icon: Icon(Icons.add_rounded,
+                    color: IptvShellStyle.accent),
               ),
               if (ctrl.verified.isNotEmpty)
                 IconButton(
@@ -377,7 +360,7 @@ class _PortalListView extends StatelessWidget {
                   icon: Icon(
                     ctrl.editMode ? Icons.check_rounded : Icons.edit_rounded,
                     color: ctrl.editMode
-                        ? const Color(0xFF00E5FF)
+                        ? IptvShellStyle.accent
                         : Colors.white70,
                   ),
                 ),
@@ -400,19 +383,19 @@ class _PortalListView extends StatelessWidget {
     final allSelected = ctrl.selected.length == ctrl.verified.length;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: const Color(0xFF1565C0).withValues(alpha: 0.15),
+      color: IptvShellStyle.chipSelectedBg.withValues(alpha: 0.35),
       child: Row(
         children: [
           TextButton.icon(
             onPressed: ctrl.toggleSelectAll,
             icon: Icon(
               allSelected ? Icons.deselect : Icons.select_all,
-              color: const Color(0xFF00E5FF),
+              color: IptvShellStyle.accent,
               size: 18,
             ),
             label: Text(
               allSelected ? 'Clear' : 'All',
-              style: GoogleFonts.poppins(color: const Color(0xFF00E5FF)),
+              style: GoogleFonts.poppins(color: IptvShellStyle.accent),
             ),
           ),
           const Spacer(),
@@ -443,14 +426,11 @@ class _PortalListView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.satellite_alt_rounded,
-                size: 80, color: Color(0xFF00E5FF)),
+            Icon(Icons.satellite_alt_rounded,
+                size: 80, color: IptvShellStyle.accent),
             const SizedBox(height: 24),
             Text('No portals yet',
-                style: GoogleFonts.bebasNeue(
-                    color: Colors.white,
-                    fontSize: 36,
-                    letterSpacing: 1.6)),
+                style: IptvShellStyle.pageTitle.copyWith(fontSize: 36)),
             const SizedBox(height: 8),
             Text(
               ctrl.statusText.isEmpty
@@ -604,10 +584,9 @@ class _PortalListView extends StatelessWidget {
       builder: (ctx) => AnimatedBuilder(
         animation: ctrl,
         builder: (_, _) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A24),
+          backgroundColor: IptvShellStyle.surface,
           title: Text('Add Portal',
-              style: GoogleFonts.bebasNeue(
-                  color: Colors.white, fontSize: 26, letterSpacing: 1.4)),
+              style: IptvShellStyle.pageTitle.copyWith(fontSize: 26)),
           content: SizedBox(
             width: 360,
             child: Column(
@@ -640,7 +619,7 @@ class _PortalListView extends StatelessWidget {
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0)),
+                  backgroundColor: IptvShellStyle.chipSelectedBg),
               onPressed: ctrl.isAdding
                   ? null
                   : () async {
@@ -719,15 +698,11 @@ class _PortalCard extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF141414), Color(0xFF141414)],
-          ),
+          color: IptvShellStyle.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected
-                ? const Color(0xFF00E5FF)
+                ? IptvShellStyle.accent
                 : Colors.white.withValues(alpha: 0.08),
             width: selected ? 2 : 1,
           ),
@@ -753,7 +728,7 @@ class _PortalCard extends StatelessWidget {
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked,
                     color: selected
-                        ? const Color(0xFF00E5FF)
+                        ? IptvShellStyle.accent
                         : Colors.white30,
                   ),
                   const SizedBox(width: 12),
@@ -761,12 +736,10 @@ class _PortalCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1565C0), Color(0xFF00E5FF)],
-                      ),
+                      color: IptvShellStyle.chipSelectedBg,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.tv_rounded,
+                    child: Icon(Icons.tv_rounded,
                         color: Colors.white, size: 22),
                   ),
                 const SizedBox(width: 12),
@@ -819,7 +792,7 @@ class _PortalCard extends StatelessWidget {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.copy_rounded, color: Colors.white54, size: 20),
+                    icon: Icon(Icons.copy_rounded, color: Colors.white54, size: 20),
                   ),
                   IconButton(
                     tooltip: isFavorite ? 'Unfavorite' : 'Favorite',
@@ -914,19 +887,16 @@ class _SectionPickView extends StatelessWidget {
                     _SectionTile(
                       icon: Icons.live_tv_rounded,
                       label: 'Live TV',
-                      colors: const [Color(0xFFEF4444), Color(0xFF7C2D12)],
                       onTap: () => ctrl.openSection(IptvSection.live),
                     ),
                     _SectionTile(
                       icon: Icons.movie_rounded,
                       label: 'Movies',
-                      colors: const [Color(0xFFEC4899), Color(0xFF8B5CF6)],
                       onTap: () => ctrl.openSection(IptvSection.vod),
                     ),
                     _SectionTile(
                       icon: Icons.video_library_rounded,
                       label: 'Series',
-                      colors: const [Color(0xFF1565C0), Color(0xFF00E5FF)],
                       onTap: () => ctrl.openSection(IptvSection.series),
                     ),
                   ],
@@ -943,12 +913,10 @@ class _SectionPickView extends StatelessWidget {
 class _SectionTile extends StatelessWidget {
   final IconData icon;
   final String label;
-  final List<Color> colors;
   final VoidCallback onTap;
   const _SectionTile({
     required this.icon,
     required this.label,
-    required this.colors,
     required this.onTap,
   });
 
@@ -958,17 +926,14 @@ class _SectionTile extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: colors,
-          ),
+          color: IptvShellStyle.surfaceMuted,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: IptvShellStyle.border),
           boxShadow: [
             BoxShadow(
-              color: colors.first.withValues(alpha: 0.5),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -982,10 +947,7 @@ class _SectionTile extends StatelessWidget {
                 Icon(icon, color: Colors.white, size: 56),
                 const SizedBox(height: 14),
                 Text(label,
-                    style: GoogleFonts.bebasNeue(
-                        color: Colors.white,
-                        fontSize: 28,
-                        letterSpacing: 1.6)),
+                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 28)),
               ],
             ),
           ),
@@ -1117,8 +1079,8 @@ class _BrowserViewState extends State<_BrowserView> {
                   onPressed: ctrl.isLoading
                       ? null
                       : () => ctrl.openSection(IptvSection.live),
-                  icon: const Icon(Icons.refresh_rounded,
-                      color: Color(0xFF00E5FF)),
+                  icon: Icon(Icons.refresh_rounded,
+                      color: IptvShellStyle.accent),
                 ),
                 IconButton(
                   tooltip: ctrl.isVerifyingAlive
@@ -1131,7 +1093,7 @@ class _BrowserViewState extends State<_BrowserView> {
                     ctrl.isVerifyingAlive
                         ? Icons.stop_circle_rounded
                         : Icons.verified_outlined,
-                    color: const Color(0xFF00E5FF),
+                    color: IptvShellStyle.accent,
                   ),
                 ),
               ],
@@ -1151,8 +1113,8 @@ class _BrowserViewState extends State<_BrowserView> {
             ),
           Expanded(
             child: ctrl.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF00E5FF)))
+                ? Center(
+                    child: CircularProgressIndicator(color: IptvShellStyle.accent))
                 : _buildContent(),
           ),
         ],
@@ -1168,7 +1130,7 @@ class _BrowserViewState extends State<_BrowserView> {
         onChanged: widget.ctrl.setBrowserSearch,
         style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
         decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search_rounded, color: Colors.white60),
+          prefixIcon: Icon(Icons.search_rounded, color: Colors.white60),
           hintText: 'Search channels or categories…',
           hintStyle: GoogleFonts.poppins(color: Colors.white30, fontSize: 13),
           filled: true,
@@ -1216,7 +1178,7 @@ class _BrowserViewState extends State<_BrowserView> {
                 minHeight: 4,
                 backgroundColor: Colors.white12,
                 valueColor:
-                    const AlwaysStoppedAnimation(Color(0xFF00E5FF)),
+                    AlwaysStoppedAnimation(IptvShellStyle.accent),
               ),
             ),
           ],
@@ -1237,7 +1199,7 @@ class _BrowserViewState extends State<_BrowserView> {
             children: [
               Switch(
                 value: ctrl.liveOnly,
-                activeThumbColor: const Color(0xFF00E5FF),
+                activeThumbColor: IptvShellStyle.accent,
                 onChanged: hasCache ? ctrl.setLiveOnly : null,
               ),
               const SizedBox(width: 8),
@@ -1303,12 +1265,12 @@ class _BrowserViewState extends State<_BrowserView> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: selected
-                    ? const Color(0xFF00E5FF).withValues(alpha: 0.12)
+                    ? IptvShellStyle.accent.withValues(alpha: 0.12)
                     : Colors.transparent,
                 border: Border(
                   left: BorderSide(
                     color: selected
-                        ? const Color(0xFF00E5FF)
+                        ? IptvShellStyle.accent
                         : Colors.transparent,
                     width: 3,
                   ),
@@ -1356,7 +1318,7 @@ class _BrowserViewState extends State<_BrowserView> {
               selected: selected,
               showCheckmark: false,
               backgroundColor: Colors.white.withValues(alpha: 0.06),
-              selectedColor: const Color(0xFF00E5FF),
+              selectedColor: IptvShellStyle.accent,
               onSelected: (_) => ctrl.selectBrowserCategory(c.id),
             ),
           );
@@ -1385,7 +1347,7 @@ class _BrowserViewState extends State<_BrowserView> {
                 onPressed: ctrl.activeSection == null
                     ? null
                     : () => ctrl.openSection(ctrl.activeSection!),
-                icon: const Icon(Icons.refresh_rounded),
+                icon: Icon(Icons.refresh_rounded),
                 label: const Text('Reload'),
               ),
             ],
@@ -1447,6 +1409,7 @@ class _BrowserViewState extends State<_BrowserView> {
             categories: ctrl.categories,
             streams: ctrl.browserAllStreams,
             initialStream: s,
+            streamHealth: Map<String, bool>.from(ctrl.streamHealth),
           )
         : null;
     Navigator.of(context).push(MaterialPageRoute(
@@ -1691,7 +1654,7 @@ class _EpgNowFooter extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: now.isNow
                       ? const Color(0xFFEF4444)
-                      : const Color(0xFF00E5FF).withValues(alpha: 0.6),
+                      : IptvShellStyle.accent.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: Text(
@@ -1764,11 +1727,11 @@ class _EpgSheet extends StatelessWidget {
                     ),
                     builder: (_, snap) {
                       if (snap.connectionState != ConnectionState.done) {
-                        return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
+                        return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
                       child: CircularProgressIndicator(
-                          color: Color(0xFF00E5FF), strokeWidth: 2),
+                          color: IptvShellStyle.accent, strokeWidth: 2),
                     ),
                   );
                 }
@@ -1881,8 +1844,8 @@ class _EpisodeListView extends StatelessWidget {
           ),
           Expanded(
             child: ctrl.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF00E5FF)))
+                ? Center(
+                    child: CircularProgressIndicator(color: IptvShellStyle.accent))
                 : ctrl.episodes.isEmpty
                     ? Center(
                         child: Text('No episodes found',
@@ -1916,10 +1879,7 @@ class _EpisodeListView extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 child: Text('Season $season',
-                    style: GoogleFonts.bebasNeue(
-                        color: Colors.white,
-                        fontSize: 22,
-                        letterSpacing: 1.2)),
+                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 22)),
               ),
               ...eps.map((e) => _EpisodeTile(episode: e, ctrl: ctrl)),
             ],
@@ -2005,8 +1965,8 @@ class _EpisodeTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.play_circle_outline_rounded,
-                  color: Color(0xFF00E5FF)),
+              Icon(Icons.play_circle_outline_rounded,
+                  color: IptvShellStyle.accent),
             ],
           ),
         ),
@@ -2068,11 +2028,11 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                 hintStyle:
                     GoogleFonts.poppins(color: Colors.white38, fontSize: 14),
                 prefixIcon:
-                    const Icon(Icons.search_rounded, color: Colors.white54),
+                    Icon(Icons.search_rounded, color: Colors.white54),
                 suffixIcon: _query.isEmpty
                     ? null
                     : IconButton(
-                        icon: const Icon(Icons.close_rounded,
+                        icon: Icon(Icons.close_rounded,
                             color: Colors.white54),
                         onPressed: () {
                           _searchCtrl.clear();
@@ -2094,7 +2054,7 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: Color(0xFF00E5FF), width: 1.2),
+                      BorderSide(color: IptvShellStyle.accent, width: 1.2),
                 ),
               ),
             ),
@@ -2148,19 +2108,9 @@ class _ChannelTile extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: channel.gradient,
-          ),
+          color: IptvShellStyle.surfaceMuted,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: channel.gradient.first.withValues(alpha: 0.4),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          border: Border.all(color: IptvShellStyle.border),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -2171,17 +2121,7 @@ class _ChannelTile extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(channel.short,
-                    style: GoogleFonts.bebasNeue(
-                      color: Colors.white,
-                      fontSize: 36,
-                      letterSpacing: 1.4,
-                      shadows: const [
-                        Shadow(
-                            color: Colors.black54,
-                            blurRadius: 6,
-                            offset: Offset(0, 2)),
-                      ],
-                    )),
+                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 36)),
                 const SizedBox(height: 4),
                 Text(channel.name,
                     maxLines: 1,
@@ -2280,7 +2220,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                   icon: Icon(
                     _editMode ? Icons.check_rounded : Icons.edit_rounded,
                     color: _editMode
-                        ? const Color(0xFF00E5FF)
+                        ? IptvShellStyle.accent
                         : Colors.white70,
                   ),
                 ),
@@ -2297,12 +2237,12 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                   hintText: 'Search hits…',
                   hintStyle: GoogleFonts.poppins(
                       color: Colors.white38, fontSize: 14),
-                  prefixIcon: const Icon(Icons.search_rounded,
+                  prefixIcon: Icon(Icons.search_rounded,
                       color: Colors.white54),
                   suffixIcon: _query.isEmpty
                       ? null
                       : IconButton(
-                          icon: const Icon(Icons.close_rounded,
+                          icon: Icon(Icons.close_rounded,
                               color: Colors.white54),
                           onPressed: () {
                             _searchCtrl.clear();
@@ -2323,8 +2263,8 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                        color: Color(0xFF00E5FF), width: 1.2),
+                    borderSide: BorderSide(
+                        color: IptvShellStyle.accent, width: 1.2),
                   ),
                 ),
               ),
@@ -2332,7 +2272,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
           if (_editMode && ctrl.channelResults.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: const Color(0xFF1565C0).withValues(alpha: 0.15),
+              color: IptvShellStyle.chipSelectedBg.withValues(alpha: 0.35),
               child: Row(
                 children: [
                   Text(
@@ -2363,7 +2303,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                                   displayed.map((h) => h.streamUrl))
                           ? Icons.deselect_rounded
                           : Icons.select_all_rounded,
-                      color: const Color(0xFF00E5FF),
+                      color: IptvShellStyle.accent,
                       size: 18,
                     ),
                     label: Text(
@@ -2373,7 +2313,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                           ? 'Clear'
                           : 'Select all',
                       style: GoogleFonts.poppins(
-                          color: const Color(0xFF00E5FF),
+                          color: IptvShellStyle.accent,
                           fontSize: 12,
                           fontWeight: FontWeight.w600),
                     ),
@@ -2399,7 +2339,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                           _editMode = false;
                         });
                       },
-                      icon: const Icon(Icons.delete_rounded,
+                      icon: Icon(Icons.delete_rounded,
                           color: Color(0xFFEF4444)),
                     ),
                 ],
@@ -2435,11 +2375,11 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
       ),
       child: Row(
         children: [
-          const SizedBox(
+          SizedBox(
             width: 16,
             height: 16,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: Color(0xFF00E5FF)),
+                strokeWidth: 2, color: IptvShellStyle.accent),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -2470,15 +2410,12 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off_rounded,
-                size: 80, color: Color(0xFF00E5FF)),
+            Icon(Icons.search_off_rounded,
+                size: 80, color: IptvShellStyle.accent),
             const SizedBox(height: 16),
             Text(
               ctrl.channelIsRunning ? 'Searching…' : 'No hits yet',
-              style: GoogleFonts.bebasNeue(
-                  color: Colors.white,
-                  fontSize: 28,
-                  letterSpacing: 1.4),
+              style: IptvShellStyle.pageTitle.copyWith(fontSize: 28),
             ),
             const SizedBox(height: 8),
             Text(
@@ -2625,7 +2562,7 @@ class _ChannelHitCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected
-                ? const Color(0xFF00E5FF)
+                ? IptvShellStyle.accent
                 : Colors.white.withValues(alpha: 0.08),
             width: selected ? 2 : 1,
           ),
@@ -2644,7 +2581,7 @@ class _ChannelHitCard extends StatelessWidget {
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked,
                     color: selected
-                        ? const Color(0xFF00E5FF)
+                        ? IptvShellStyle.accent
                         : Colors.white30,
                   ),
                   const SizedBox(width: 8),
@@ -2710,8 +2647,8 @@ class _ChannelHitCard extends StatelessWidget {
                     ),
                   ),
                 if (!editMode)
-                  const Icon(Icons.play_circle_outline_rounded,
-                      color: Color(0xFF00E5FF)),
+                  Icon(Icons.play_circle_outline_rounded,
+                      color: IptvShellStyle.accent),
               ],
             ),
           ),
@@ -2758,7 +2695,7 @@ class _HitEpgNowRow extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: now.isNow
                       ? const Color(0xFFEF4444)
-                      : const Color(0xFF00E5FF).withValues(alpha: 0.6),
+                      : IptvShellStyle.accent.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: Text(

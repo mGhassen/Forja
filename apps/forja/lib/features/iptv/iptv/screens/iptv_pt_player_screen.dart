@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -13,6 +14,11 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide_panel.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
+import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_audio_menu.dart';
+import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 
 /// Single source for the IPTV player.
 class IptvPlaySource {
@@ -93,11 +99,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   late VideoController _controller;
 
   StreamSubscription? _posSub, _playingSub, _bufferingSub, _errorSub, _logSub;
-  StreamSubscription? _durSub;
+  StreamSubscription? _durSub, _bufferSub;
 
   // VOD seekbar state — duration is 0 for live streams, > 0 for VOD.
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  Duration _buffered = Duration.zero;
   bool _isSeeking = false;
   double _seekPreview = 0.0;
   bool get _isVod => _duration.inSeconds > 1;
@@ -118,6 +125,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   bool _guideVisible = false;
   late String _selectedGroupId;
   late String _currentChannelId;
+  double _subtitleDelay = 0;
 
   // Watchdog state
   Timer? _watchdog;
@@ -173,12 +181,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     WakelockPlus.enable();
     _player = Player(
       configuration: const PlayerConfiguration(
-        // Generous libmpv-side buffer. Most IPTV stalls are caused by tiny
-        // buffers running dry on jittery upstream feeds — at 64 MB we can
-        // ride out a ~5–10 s upstream stall on a 1080p stream without
-        // showing the user a single buffering icon.
         bufferSize: 64 * 1024 * 1024,
         logLevel: MPVLogLevel.warn,
+        libass: true,
       ),
     );
     _controller = VideoController(_player);
@@ -214,6 +219,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       // Larger audio buffer too — audio underruns are the most jarring
       // form of buffering on IPTV feeds.
       await p.setProperty('audio-buffer', '1.0');
+
+      await p.setProperty('sub-auto', 'all');
+      await p.setProperty('sub-visibility', 'no');
 
       // Don't quit on EOF / brief disconnect — let us recover
       await p.setProperty('keep-open', 'yes');
@@ -332,6 +340,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _durSub = _player.stream.duration.listen((dur) {
       if (!mounted) return;
       if (dur != _duration) setState(() => _duration = dur);
+    });
+    _bufferSub = _player.stream.buffer.listen((buf) {
+      if (!mounted) return;
+      _buffered = buf;
     });
     _playingSub = _player.stream.playing.listen((p) {
       if (!mounted) return;
@@ -714,6 +726,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     await _bufferingSub?.cancel();
     await _errorSub?.cancel();
     await _logSub?.cancel();
+    await _bufferSub?.cancel();
     try {
       await _player.dispose();
     } catch (_) {}
@@ -771,6 +784,128 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         _scheduleHideControls();
       }
     });
+  }
+
+  void _updateSubVisibility(SubtitleTrack track) {
+    if (_player.platform is! NativePlayer) return;
+    final on = track.id != 'no';
+    (_player.platform as NativePlayer)
+        .setProperty('sub-visibility', on ? 'yes' : 'no');
+  }
+
+  void _showAudioMenu(BuildContext anchorContext) {
+    _scheduleHideControls();
+    PlayerAudioMenu.show(
+      context,
+      player: _player,
+      anchorContext: anchorContext,
+      margin: EdgeInsets.only(
+        left: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 88,
+      ),
+    );
+  }
+
+  void _showStatsMenu(BuildContext anchorContext) {
+    _scheduleHideControls();
+    IptvPlayerStatsPanel.show(
+      context,
+      player: _player,
+      anchorContext: anchorContext,
+      margin: EdgeInsets.only(
+        left: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 88,
+      ),
+      snapshot: () => IptvPlayerStatsSnapshot(
+        playing: _playing,
+        buffering: _buffering,
+        sourceLabel: _sources[_sourceIdx].label,
+        retryAttempt: _retryAttempt,
+        volume: _volume,
+        buffered: _buffered,
+      ),
+    );
+  }
+
+  void _showSubtitleMenu(BuildContext anchorContext) {
+    _scheduleHideControls();
+    PlayerSubtitleMenu.show(
+      context,
+      player: _player,
+      anchorContext: anchorContext,
+      externalSubtitles: const [],
+      selectedExternalSubUrl: null,
+      isFetchingSubs: false,
+      updateSubVisibility: _updateSubVisibility,
+      onExternalUrlChanged: (_) {},
+      onNativeSubtitleChanged: (_) {},
+      loadOnlineSubtitle: (_) async {},
+      onSubtitleSettings: _showSubtitleSettings,
+      margin: EdgeInsets.only(
+        left: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 88,
+      ),
+    );
+  }
+
+  void _showSubtitleSettings() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          backgroundColor: const Color(0xFF141414),
+          title: const Text(
+            'Subtitle delay',
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: Icon(Icons.remove, color: Colors.white70),
+                onPressed: () {
+                  setDialog(() {
+                    _subtitleDelay =
+                        double.parse((_subtitleDelay - 0.1).toStringAsFixed(1));
+                  });
+                  if (_player.platform is NativePlayer) {
+                    (_player.platform as NativePlayer).setProperty(
+                      'sub-delay',
+                      _subtitleDelay.toString(),
+                    );
+                  }
+                },
+              ),
+              Text(
+                '${_subtitleDelay.toStringAsFixed(1)}s',
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              IconButton(
+                icon: Icon(Icons.add, color: Colors.white70),
+                onPressed: () {
+                  setDialog(() {
+                    _subtitleDelay =
+                        double.parse((_subtitleDelay + 0.1).toStringAsFixed(1));
+                  });
+                  if (_player.platform is NativePlayer) {
+                    (_player.platform as NativePlayer).setProperty(
+                      'sub-delay',
+                      _subtitleDelay.toString(),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _scheduleHideControls() {
@@ -873,17 +1008,17 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.4)),
+            border: Border.all(color: IptvShellStyle.accent.withValues(alpha: 0.4)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xFF00E5FF),
+                  color: IptvShellStyle.accent,
                 ),
               ),
               const SizedBox(width: 12),
@@ -930,14 +1065,37 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     );
   }
 
+  double _topBarTopPadding(BuildContext context) {
+    if (DesktopWindowChrome.isDesktop) {
+      return DesktopWindowChrome.topInset(context) + 8;
+    }
+    return 8;
+  }
+
+  double _topBarLeftPadding(BuildContext context) {
+    if (DesktopWindowChrome.isDesktop && Platform.isMacOS) {
+      return DesktopWindowChrome.leadingInset(context) + 4;
+    }
+    return 8;
+  }
+
   Widget _buildTopBar(bool compact) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+      padding: EdgeInsets.fromLTRB(
+        _topBarLeftPadding(context),
+        _topBarTopPadding(context),
+        16,
+        0,
+      ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+          ForjaPlainIcon(
+            icon: Icons.arrow_back_rounded,
+            onTap: () => Navigator.of(context).maybePop(),
+            color: Colors.white,
+            size: 26,
+            hoverScale: 1.15,
+            tooltip: 'Back',
           ),
           if ((_logoUrl ?? '').isNotEmpty)
             Padding(
@@ -962,10 +1120,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                   _title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.bebasNeue(
-                    color: Colors.white,
+                  style: IptvShellStyle.overlayTitle.copyWith(
                     fontSize: compact ? 18 : 22,
-                    letterSpacing: 1,
                   ),
                 ),
                 if ((_subtitle ?? '').isNotEmpty)
@@ -1029,11 +1185,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           // Slider
           Expanded(
             child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: const Color(0xFF00E5FF),
-                inactiveTrackColor: Colors.white.withValues(alpha: 0.18),
-                thumbColor: Colors.white,
-                overlayColor: const Color(0x3300E5FF),
+              data: IptvShellStyle.sliderTheme(context).copyWith(
                 trackHeight: 3.5,
                 thumbShape: const RoundSliderThumbShape(
                   enabledThumbRadius: 7,
@@ -1162,11 +1314,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                 child: Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: const Color(0xFF00E5FF),
+                    data: IptvShellStyle.sliderTheme(context).copyWith(
                       inactiveTrackColor: Colors.white24,
-                      thumbColor: Colors.white,
-                      overlayColor: const Color(0x3300E5FF),
                       trackHeight: 3,
                       thumbShape: const RoundSliderThumbShape(
                           enabledThumbRadius: 7),
@@ -1188,6 +1337,27 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                   ),
                 ),
               ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Builder(
+            builder: (btnCtx) => _RoundIcon(
+              icon: Icons.subtitles_outlined,
+              onTap: () => _showSubtitleMenu(btnCtx),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Builder(
+            builder: (btnCtx) => _RoundIcon(
+              icon: Icons.audiotrack_rounded,
+              onTap: () => _showAudioMenu(btnCtx),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Builder(
+            builder: (btnCtx) => _RoundIcon(
+              icon: Icons.monitor_heart_outlined,
+              onTap: () => _showStatsMenu(btnCtx),
             ),
           ),
           const Spacer(),
@@ -1243,7 +1413,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   void _showSourcePicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A24),
+      backgroundColor: IptvShellStyle.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1257,11 +1427,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                 padding: const EdgeInsets.all(12),
                 child: Text(
                   'Choose source',
-                  style: GoogleFonts.bebasNeue(
-                    color: Colors.white,
-                    fontSize: 22,
-                    letterSpacing: 1.2,
-                  ),
+                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 22),
                 ),
               ),
               ConstrainedBox(
@@ -1277,7 +1443,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                     return ListTile(
                       leading: Icon(
                         active ? Icons.radio_button_checked : Icons.radio_button_off,
-                        color: active ? const Color(0xFF00E5FF) : Colors.white54,
+                        color: active ? IptvShellStyle.accent : Colors.white54,
                       ),
                       title: Text(
                         s.label,
@@ -1358,13 +1524,13 @@ class _SourceChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.5)),
+          border: Border.all(color: IptvShellStyle.accent.withValues(alpha: 0.5)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.swap_horiz_rounded,
-                color: Color(0xFF00E5FF), size: 16),
+            Icon(Icons.swap_horiz_rounded,
+                color: IptvShellStyle.accent, size: 16),
             const SizedBox(width: 6),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 120),
