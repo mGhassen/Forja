@@ -100,6 +100,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     with WidgetsBindingObserver {
   late Player _player;
   late VideoController _controller;
+  bool _playerReady = false;
+  int _videoEpoch = 0;
+  bool _softwareDecodeForced = false;
 
   StreamSubscription? _posSub, _playingSub, _bufferingSub, _errorSub, _logSub;
   StreamSubscription? _durSub, _bufferSub;
@@ -181,8 +184,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   );
 
   void _initPlayerInstances() {
+    _videoEpoch++;
     _player = Player(configuration: _playerConfiguration);
-    _controller = VideoController(_player);
+    _controller = VideoController(
+      _player,
+      configuration: VideoControllerConfiguration(
+        enableHardwareAcceleration: !_softwareDecodeForced,
+        hwdec: _softwareDecodeForced ? 'no' : 'auto-safe',
+      ),
+    );
     _playerAlive = true;
     _bind();
   }
@@ -191,6 +201,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     await MpvExclusiveSession.instance.prepareForVideoPlayer();
     if (_disposed) return;
     _initPlayerInstances();
+    if (mounted) setState(() => _playerReady = true);
     await _applyMpvTunables();
     await _openCurrent();
     _startWatchdog();
@@ -222,6 +233,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     try {
       final p = _player.platform;
       if (p is! NativePlayer) return;
+
+      // Prefer safe GPU decode with software fallback — raw `auto` can stick on
+      // a broken VideoToolbox session on macOS (black texture, audio OK).
+      await p.setProperty('hwdec', _softwareDecodeForced ? 'no' : 'auto-safe');
+      await p.setProperty('vd-lavc-dr', 'yes');
+      await p.setProperty('vd-lavc-threads', '0');
 
       // Network: fail fast so the watchdog can step in
       await p.setProperty('network-timeout', '15');
@@ -427,10 +444,18 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     // watchdog only sees the resulting position freeze and tries gentle
     // recoveries that can't fix a dead socket.
     _logSub = _player.stream.log.listen((l) {
+      final text = l.text.toLowerCase();
+      if (!_softwareDecodeForced &&
+          (text.contains('hardware accelerator failed') ||
+              text.contains('vt decoder cb') ||
+              text.contains('output image buffer is null'))) {
+        debugPrint('[IPTV Player] hw decode failed — falling back to software');
+        unawaited(_forceSoftwareDecode());
+        return;
+      }
       if (l.level != 'error' && l.level != 'fatal' && l.level != 'warn') {
         return;
       }
-      final text = l.text.toLowerCase();
       if (text.contains('ends prematurely') ||
           text.contains('end of file') ||
           text.contains('connection reset') ||
@@ -718,13 +743,27 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     }
   }
 
+  Future<void> _forceSoftwareDecode() async {
+    if (_disposed || _softwareDecodeForced) return;
+    _softwareDecodeForced = true;
+    _retryAttempt = 0;
+    if (mounted) {
+      setState(() => _statusBanner = 'Switching to software decode…');
+    }
+    // If a recovery is already running it will pick up the flag on recreate.
+    if (_recoveryInFlight) return;
+    await _triggerRecovery(reason: 'hardware decode failed', forceHard: true);
+  }
+
   Future<bool> _recreatePlayer() async {
+    if (mounted) setState(() => _playerReady = false);
     await _disposePlayer();
     if (_disposed) return false;
     await MpvExclusiveSession.instance.prepareForVideoPlayer();
     if (_disposed) return false;
     _initPlayerInstances();
     await _applyMpvTunables();
+    if (mounted) setState(() => _playerReady = true);
     return true;
   }
 
@@ -1023,6 +1062,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (!_playerReady) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white54),
+        ),
+      );
+    }
+
     final size = MediaQuery.sizeOf(context);
     final compact = size.shortestSide < 600;
     final epgFuture = (!_guideVisible && !_searchVisible)
@@ -1039,8 +1087,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             // Video
             Center(
               child: Video(
+                key: ValueKey(_videoEpoch),
                 controller: _controller,
                 fit: BoxFit.contain,
+                fill: Colors.black,
                 controls: NoVideoControls,
               ),
             ),
