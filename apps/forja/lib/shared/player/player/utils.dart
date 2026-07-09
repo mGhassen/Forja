@@ -4,16 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 
-/// Hub players (Asian drama, anime Arabic, …) pass an already-resolved URL.
-bool hasPreResolvedStreamSources({
-  Movie? movie,
-  Map<String, dynamic>? providers,
-  List<StreamSource>? sources,
-}) =>
-    movie == null &&
-    providers == null &&
-    sources != null &&
-    sources.isNotEmpty;
+/// mpv must see Referer / User-Agent before `open`, not after.
+Future<void> applyMediaHttpHeaders(
+  Player player,
+  Map<String, String>? headers,
+) async {
+  if (headers == null || headers.isEmpty) return;
+  if (player.platform is! NativePlayer) return;
+  final native = player.platform as NativePlayer;
+  final referer = headers['Referer'] ?? headers['referer'];
+  if (referer != null) await native.setProperty('referrer', referer);
+  final ua = headers['User-Agent'] ?? headers['user-agent'];
+  if (ua != null) await native.setProperty('user-agent', ua);
+}
 
 /// Avoid opening mpv while a route fade is still covering the player surface.
 Future<void> waitForRouteTransition(BuildContext context) async {

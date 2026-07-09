@@ -853,6 +853,123 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   //  PLAYBACK INITIALIZATION
   // ─────────────────────────────────────────────────────────────────────────
 
+  Future<bool> _trySourcesFromIndex(
+    int startIndex, {
+    int? chainGen,
+    Duration? seekAfterOpen,
+  }) async {
+    if (_currentSources == null || _currentSources!.isEmpty) return false;
+
+    final triedUrls = <String>{};
+    _currentFallbackSourceIndex = startIndex;
+
+    while (_currentFallbackSourceIndex < _currentSources!.length) {
+      if (chainGen != null && _fallbackAborted(chainGen)) return false;
+
+      final i = _currentFallbackSourceIndex;
+      var source = _currentSources![i];
+
+      if (triedUrls.contains(source.url)) {
+        debugPrint('[Player] Skipping duplicate URL at index $i');
+        _currentFallbackSourceIndex++;
+        continue;
+      }
+      triedUrls.add(source.url);
+
+      debugPrint(
+        '[Player] Trying source ${i + 1}/${_currentSources!.length}: ${source.title}',
+      );
+      _statusController.upsert(
+        'source-$i',
+        source.title,
+        kind: StatusRouletteKind.loading,
+      );
+
+      if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
+        debugPrint('[Player] Extracting arabic embed: ${source.title}');
+        final result = await ArabicService.extractStreamUrl(source.url);
+        if (result == null) {
+          debugPrint('[Player] Arabic extract failed for ${source.title}');
+          _statusController.upsert(
+            'source-$i',
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(milliseconds: 1200),
+          );
+          _currentFallbackSourceIndex++;
+          continue;
+        }
+        source = StreamSource(
+          url: result.url,
+          title: source.title,
+          type: result.url.contains('.m3u8')
+              ? 'hls'
+              : result.url.contains('.mpd')
+                  ? 'dash'
+                  : 'mp4',
+        );
+        _currentSources![i] = source;
+      }
+
+      try {
+        _subscribeToStreams();
+        await _configureMpvProperties();
+
+        var openUrl = source.url;
+        if (_currentProvider == 'service111477') {
+          if (!site111477_proxy.is111477ProxyRunning ||
+              _current111477FileUrl != source.url) {
+            if (site111477_proxy.is111477ProxyRunning) {
+              await site111477_proxy.stop111477Proxy();
+            }
+            openUrl = await site111477_proxy.start111477Proxy(source.url);
+            _current111477FileUrl = source.url;
+          } else {
+            openUrl = site111477_proxy.site111477ProxyUrl!;
+          }
+        }
+
+        final srcHeaders = source.headers ?? widget.headers;
+        await applyMediaHttpHeaders(_player, srcHeaders);
+        await _player.open(Media(openUrl, httpHeaders: srcHeaders));
+        _player.setVolume(_volumeNotifier.value);
+        final opened = await waitForMediaOpen(_player);
+        if (!opened) {
+          debugPrint('[Player] Source $i failed to open: $openUrl');
+          await _player.stop();
+          _statusController.upsert(
+            'source-$i',
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(milliseconds: 500),
+          );
+          _currentFallbackSourceIndex++;
+          continue;
+        }
+        if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
+          await _player.seek(seekAfterOpen);
+        }
+        _detectHlsQualities(openUrl, source.headers ?? widget.headers);
+        setState(() {
+          _currentUrl = openUrl;
+        });
+        _playbackConfirmed = true;
+        _statusController.complete();
+        return true;
+      } catch (e) {
+        debugPrint('[Player] Source $i catch error: $e');
+        _statusController.upsert(
+          'source-$i',
+          source.title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(milliseconds: 500),
+        );
+        _currentFallbackSourceIndex++;
+      }
+    }
+    return false;
+  }
+
   Future<void> _initPlayback() async {
     if (_disposed) return;
     if (_isInitPlaybackRunning) return; // Prevent re-entrant calls during async extraction
@@ -860,126 +977,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _playbackConfirmed = false;
     
     try {
-    final showSourceProbe = !hasPreResolvedStreamSources(
-      movie: widget.movie,
-      providers: widget.providers,
-      sources: widget.sources,
-    );
-
     setState(() {
       _hasError = false;
       _errorMessage = '';
     });
 
-    // 1. Try sources in current provider list
     if (_currentSources != null && _currentSources!.isNotEmpty) {
-      final triedUrls = <String>{};
-      while (_currentFallbackSourceIndex < _currentSources!.length) {
-        final i = _currentFallbackSourceIndex;
-        var source = _currentSources![i];
+      final played = await _trySourcesFromIndex(0);
+      if (played) return;
 
-        if (triedUrls.contains(source.url)) {
-          debugPrint('[Player] Skipping duplicate URL at index $i');
-          _currentFallbackSourceIndex++;
-          continue;
-        }
-        triedUrls.add(source.url);
-
-        debugPrint('[Player] Trying source ${i + 1}/${_currentSources!.length}: ${source.title}');
-        if (showSourceProbe) {
-          _statusController.upsert(
-            'source-$i',
-            source.title,
-            kind: StatusRouletteKind.loading,
-          );
-        }
-
-        // Arabic embed sources need on-demand extraction first
-        if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
-          debugPrint('[Player] Extracting arabic embed: ${source.title}');
-          final result = await ArabicService.extractStreamUrl(source.url);
-          if (result == null) {
-            debugPrint('[Player] Arabic extract failed for ${source.title}');
-            if (showSourceProbe) {
-              _statusController.upsert(
-                'source-$i',
-                source.title,
-                kind: StatusRouletteKind.failed,
-                dismissAfter: const Duration(milliseconds: 1200),
-              );
-            }
-            _currentFallbackSourceIndex++;
-            continue;
-          }
-          // Update the source with the real stream URL
-          source = StreamSource(
-            url: result.url,
-            title: source.title,
-            type: result.url.contains('.m3u8') ? 'hls' : result.url.contains('.mpd') ? 'dash' : 'mp4',
-          );
-          _currentSources![i] = source;
-        }
-        
-        try {
-          _subscribeToStreams();
-          await _configureMpvProperties();
-
-          // For 111477 sources, source.url is the upstream file URL — we
-          // must route it through the local proxy. Reuse the running proxy
-          // if it's already serving this exact file, otherwise restart.
-          var openUrl = source.url;
-          if (_currentProvider == 'service111477') {
-            if (!site111477_proxy.is111477ProxyRunning ||
-                _current111477FileUrl != source.url) {
-              if (site111477_proxy.is111477ProxyRunning) {
-                await site111477_proxy.stop111477Proxy();
-              }
-              openUrl = await site111477_proxy.start111477Proxy(source.url);
-              _current111477FileUrl = source.url;
-            } else {
-              openUrl = site111477_proxy.site111477ProxyUrl!;
-            }
-          }
-
-          await _player.open(Media(openUrl, httpHeaders: source.headers ?? widget.headers));
-          _player.setVolume(_volumeNotifier.value);
-          final opened = await waitForMediaOpen(_player);
-          if (!opened) {
-            debugPrint('[Player] Source $i failed to open: $openUrl');
-            await _player.stop();
-            if (showSourceProbe) {
-              _statusController.upsert(
-                'source-$i',
-                source.title,
-                kind: StatusRouletteKind.failed,
-                dismissAfter: const Duration(milliseconds: 500),
-              );
-            }
-            _currentFallbackSourceIndex++;
-            continue;
-          }
-          _detectHlsQualities(openUrl, source.headers ?? widget.headers);
-          setState(() {
-            _currentUrl = openUrl;
-          });
-          _playbackConfirmed = true;
-          if (showSourceProbe) _statusController.complete();
-          return;
-        } catch (e) {
-          debugPrint('[Player] Source $i catch error: $e');
-          if (showSourceProbe) {
-            _statusController.upsert(
-              'source-$i',
-              source.title,
-              kind: StatusRouletteKind.failed,
-              dismissAfter: const Duration(milliseconds: 500),
-            );
-          }
-          _currentFallbackSourceIndex++;
-        }
-      }
-      
-      // All sources in current provider failed
       if (!_providerPinned) {
         await _autoFallbackToNextProvider();
       } else if (mounted) {
@@ -1186,28 +1192,53 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       
       if (_fallbackAborted(gen)) return false;
       if (streamUrl != null && streamUrl.isNotEmpty) {
-        final currentPos = _positionNotifier.value;
-        // Reset any stale mpv referrer set by the previous provider/quality
-        // selection — then re-apply from the new headers if present.
-        if (_player.platform is NativePlayer) {
-          final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
-          await (_player.platform as NativePlayer).setProperty('referrer', ref);
-        }
-        await _player.open(Media(streamUrl, httpHeaders: headers));
-        if (_fallbackAborted(gen)) return false;
-        if (currentPos.inSeconds > 0) await _player.seek(currentPos);
-        _detectHlsQualities(streamUrl, headers);
-        
+        final resolvedSources = sources != null && sources.isNotEmpty
+            ? dedupeStreamSources(sources)
+            : [
+                StreamSource(
+                  url: streamUrl,
+                  title: providerLabel,
+                  type: streamUrl.toLowerCase().contains('.m3u8')
+                      ? 'hls'
+                      : streamUrl.toLowerCase().contains('.mpd')
+                          ? 'dash'
+                          : 'mp4',
+                  headers: headers,
+                ),
+              ];
+
+        _statusController.upsert(
+          'provider-$newProvider',
+          providerLabel,
+          kind: StatusRouletteKind.success,
+        );
+
         setState(() {
           _currentProvider = newProvider;
-          _currentSources = sources == null ? null : dedupeStreamSources(sources);
-          _currentUrl = streamUrl;
-          _currentFallbackSourceIndex = 0; // Reset for the new provider
+          _currentSources = resolvedSources;
+          _currentFallbackSourceIndex = 0;
           _hasError = false;
           _errorMessage = '';
+          if (newProvider == 'service111477' && resolvedSources.isNotEmpty) {
+            _current111477FileUrl = resolvedSources.first.url;
+          }
         });
-        _statusController.complete();
-        return true;
+
+        final currentPos = _positionNotifier.value;
+        final played = await _trySourcesFromIndex(
+          0,
+          chainGen: gen,
+          seekAfterOpen: currentPos,
+        );
+        if (played) return true;
+
+        _statusController.upsert(
+          'provider-$newProvider',
+          providerLabel,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(milliseconds: 1200),
+        );
+        return false;
       }
     } catch (e) {
       debugPrint('[Player] Silent fallback to $newProvider failed: $e');

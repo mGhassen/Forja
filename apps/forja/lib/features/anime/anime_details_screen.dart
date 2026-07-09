@@ -2,12 +2,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/features/anime/catalog/animerealms_extractor.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
+import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
@@ -51,15 +51,6 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   String _category = 'sub';
   int _selectedEpisode = 1;
 
-  MiruroEpisodes? _miruroEpisodes;
-  List<String> _availableProviders = [];
-  String _selectedProvider = 'kiwi';
-  bool _usingAnimeRealms = false;
-  bool _hasSub = true;
-  bool _hasDub = false;
-  bool _loadingStreams = true;
-  Map<int, String> _thumbnails = const {};
-
   @override
   void initState() {
     super.initState();
@@ -87,14 +78,12 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     setState(() {
       _error = null;
       _episodes = _synthEpisodes(widget.anime);
-      _loadingStreams = true;
     });
 
     _service.getDetails(widget.anime.id).then((d) {
       if (!mounted) return;
       setState(() {
         _full = d;
-        _thumbnails = _service.buildEpisodeThumbnailMap(d.streamingEpisodes);
         if (_episodes.isEmpty || _episodes.length < (d.episodes ?? 0)) {
           _episodes = _synthEpisodes(d);
         }
@@ -103,7 +92,10 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       if (mounted && _full == null) setState(() => _error = 'Failed to load: $e');
     });
 
-    _loadMiruroEpisodes();
+    _service.getEpisodes(widget.anime).then((eps) {
+      if (!mounted || eps.isEmpty) return;
+      setState(() => _episodes = eps);
+    }).catchError((_) {});
 
     _service.getRelations(widget.anime.id).then((r) {
       if (!mounted) return;
@@ -112,7 +104,11 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
     _service.getProgress(widget.anime.id).then((p) {
       if (!mounted) return;
-      setState(() => _progress = p);
+      setState(() {
+        _progress = p;
+        final ep = (p?['episodeNumber'] as num?)?.toInt();
+        if (ep != null && ep > 0) _selectedEpisode = ep;
+      });
     }).catchError((_) {});
 
     _service.getSeasons(widget.anime.id).then((s) {
@@ -121,163 +117,12 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     }).catchError((_) {});
   }
 
-  Future<void> _loadMiruroEpisodes() async {
-    try {
-      final episodes = await _service.getMiruroEpisodes(widget.anime.id);
-      if (!mounted) return;
-      if (episodes == null || episodes.providers.isEmpty) {
-        await _loadFromAnimeRealms();
-        return;
-      }
-
-      final providers = episodes.providers.keys.toList();
-      final defaultProvider = AnimeService.defaultMiruroProvider(providers);
-      final prov = episodes.providers[defaultProvider];
-      final hasSub = prov != null && prov.subEpisodes.isNotEmpty;
-      final hasDub = prov != null && prov.dubEpisodes.isNotEmpty;
-      if (!hasSub && !hasDub) {
-        await _loadFromAnimeRealms();
-        return;
-      }
-
-      final category = hasSub ? 'sub' : 'dub';
-      setState(() {
-        _miruroEpisodes = episodes;
-        _availableProviders = providers;
-        _selectedProvider = defaultProvider;
-        _usingAnimeRealms = false;
-        _hasSub = hasSub;
-        _hasDub = hasDub;
-        _category = category;
-        _episodes = _service.miruroEpisodesFor(
-          episodes: episodes,
-          provider: defaultProvider,
-          category: category,
-          thumbnails: _thumbnails,
-        );
-        _loadingStreams = false;
-      });
-      await _applyProgressPreferences();
-    } catch (e) {
-      debugPrint('[AnimeDetails] Miruro failed: $e');
-      if (mounted) await _loadFromAnimeRealms();
-    }
-  }
-
-  Future<void> _loadFromAnimeRealms() async {
-    try {
-      final extractor = AnimeRealmsExtractor();
-      final mappings = await extractor.getMappings(widget.anime.id);
-      final providers = AnimeRealmsExtractor.getProviderNames(mappings);
-      if (!mounted) return;
-
-      final count = _data.episodes ?? widget.anime.episodes ?? 0;
-      final n = count > 0 ? count : 1;
-      final episodes = List.generate(
-        n,
-        (i) => AnimeEpisode(
-          number: i + 1,
-          title: 'Episode ${i + 1}',
-          aired: true,
-          thumbnail: _thumbnails[i + 1],
-        ),
-      );
-
-      setState(() {
-        _usingAnimeRealms = true;
-        _miruroEpisodes = null;
-        _availableProviders = providers;
-        _selectedProvider =
-            providers.contains('hianime') ? 'hianime' : providers.first;
-        _hasSub = true;
-        _hasDub = false;
-        _category = 'sub';
-        _episodes = episodes;
-        _loadingStreams = false;
-      });
-      await _applyProgressPreferences();
-    } catch (e) {
-      debugPrint('[AnimeDetails] AnimeRealms failed: $e');
-      if (mounted) setState(() => _loadingStreams = false);
-    }
-  }
-
-  Future<void> _applyProgressPreferences() async {
-    final p = _progress ?? await _service.getProgress(widget.anime.id);
-    if (!mounted || p == null) return;
-    final prov = (p['provider'] as String?)?.trim();
-    if (prov != null && prov.isNotEmpty && _availableProviders.contains(prov)) {
-      _onProviderChanged(prov);
-    }
-    final cat = p['category'] as String?;
-    if (cat == 'sub' || cat == 'dub') {
-      _onCategoryChanged(cat!);
-    }
-    final ep = (p['episodeNumber'] as num?)?.toInt();
-    if (ep != null && ep > 0) {
-      setState(() => _selectedEpisode = ep);
-    }
-  }
-
-  void _onProviderChanged(String provider) {
-    if (_usingAnimeRealms) {
-      setState(() => _selectedProvider = provider);
-      return;
-    }
-    final episodes = _miruroEpisodes;
-    if (episodes == null) return;
-    final prov = episodes.providers[provider];
-    final hasSub = prov != null && prov.subEpisodes.isNotEmpty;
-    final hasDub = prov != null && prov.dubEpisodes.isNotEmpty;
-    var category = _category;
-    if (category == 'sub' && !hasSub && hasDub) category = 'dub';
-    if (category == 'dub' && !hasDub && hasSub) category = 'sub';
-    setState(() {
-      _selectedProvider = provider;
-      _hasSub = hasSub;
-      _hasDub = hasDub;
-      _category = category;
-      _episodes = _service.miruroEpisodesFor(
-        episodes: episodes,
-        provider: provider,
-        category: category,
-        thumbnails: _thumbnails,
-      );
-    });
-  }
-
-  void _onCategoryChanged(String category) {
-    if (category == _category) return;
-    if (category == 'sub' && !_hasSub) return;
-    if (category == 'dub' && !_hasDub) return;
-    setState(() => _category = category);
-    if (_usingAnimeRealms || _miruroEpisodes == null) return;
-    setState(() {
-      _episodes = _service.miruroEpisodesFor(
-        episodes: _miruroEpisodes!,
-        provider: _selectedProvider,
-        category: category,
-        thumbnails: _thumbnails,
-      );
-    });
-  }
-
-  String? _streamIdFor(int episodeNumber) {
-    for (final e in _episodes) {
-      if (e.number == episodeNumber) return e.streamId;
-    }
-    return null;
-  }
-
   void _play(int epNumber) {
     openAnimePlayer(
       context,
       anime: _data,
       episodeNumber: epNumber,
       category: _category,
-      provider: _selectedProvider,
-      useAnimeRealms: _usingAnimeRealms,
-      episodeId: _streamIdFor(epNumber),
       allEpisodes: _episodes,
     );
   }
@@ -451,7 +296,22 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                   onPlay: () => _play(resumeEp ?? 1),
                 ),
                 const SizedBox(width: 10),
-                _buildCategoryToggle(compact: true),
+                HeroPillSegmentedChoice<String>(
+                  selected: _category,
+                  onSelected: (cat) => setState(() => _category = cat),
+                  segments: const [
+                    HeroPillSegment(
+                      value: 'sub',
+                      label: 'SUB',
+                      icon: Icons.subtitles_rounded,
+                    ),
+                    HeroPillSegment(
+                      value: 'dub',
+                      label: 'DUB',
+                      icon: Icons.mic_rounded,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -466,22 +326,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                   _buildSeasonsRail(),
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
-                if (_availableProviders.length > 1) ...[
-                  _buildProviderPicker(),
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
-                ],
-                if (_loadingStreams)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  )
-                else if (_episodes.isNotEmpty)
+                if (_episodes.isNotEmpty)
                   TvSeasonEpisodePicker(
                     tmdbId: a.id,
                     seasonCount: 1,
@@ -529,128 +374,6 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       .replaceAll('&amp;', '&')
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>');
-
-  Widget _buildCategoryToggle({bool compact = false}) {
-    if (!_hasSub && !_hasDub) return const SizedBox.shrink();
-    final radius = compact ? 20.0 : 24.0;
-    final innerRadius = compact ? 16.0 : 20.0;
-    final height = compact ? 40.0 : null;
-    return Container(
-      height: height,
-      padding: const EdgeInsets.all(3),
-      decoration: shellChipDecoration(selected: false, radius: radius),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_hasSub)
-            _categoryButton('sub', 'SUB', Icons.subtitles_rounded,
-                compact: compact, radius: innerRadius),
-          if (_hasDub)
-            _categoryButton('dub', 'DUB', Icons.mic_rounded,
-                compact: compact, radius: innerRadius),
-        ],
-      ),
-    );
-  }
-
-  Widget _categoryButton(
-    String id,
-    String label,
-    IconData icon, {
-    bool compact = false,
-    required double radius,
-  }) {
-    final selected = _category == id;
-    final cinematic = ForjaShellColors.cinematic;
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(radius),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(radius),
-        onTap: () => _onCategoryChanged(id),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 10 : 16,
-            vertical: compact ? 8 : 10,
-          ),
-          decoration: shellChipDecoration(selected: selected, radius: radius),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: compact ? 14 : 16,
-                color:
-                    selected ? cinematic.textPrimary : cinematic.textSecondary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color:
-                      selected ? cinematic.textPrimary : cinematic.textSecondary,
-                  fontSize: compact ? 11 : 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProviderPicker() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'SERVER',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.35),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 36,
-          child: HorizontalScroller(
-            height: 36,
-            itemCount: _availableProviders.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (_, i) {
-              final p = _availableProviders[i];
-              final selected = _selectedProvider == p;
-              return HoverScale(
-                radius: 10,
-                onTap: () => _onProviderChanged(p),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  alignment: Alignment.center,
-                  decoration: shellChipDecoration(selected: selected, radius: 10),
-                  child: Text(
-                    p.toUpperCase(),
-                    style: TextStyle(
-                      color: selected
-                          ? ForjaShellColors.cinematic.textPrimary
-                          : ForjaShellColors.cinematic.textSecondary,
-                      fontSize: 12,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildSeasonsRail() {
     final currentId = widget.anime.id;

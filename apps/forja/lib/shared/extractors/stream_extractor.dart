@@ -370,13 +370,42 @@ class StreamExtractor {
   void _completeWithCaptured(String referer) {
     if (_cancelled) return;
     if (_completer != null && !_completer!.isCompleted) {
+      final headers = _capturedHeaders ?? _buildHeaders(referer);
       _completer!.complete(ExtractedMedia(
         url: _capturedVideo!,
         audioUrl: _capturedAudio,
-        headers: _capturedHeaders ?? _buildHeaders(referer),
+        headers: headers,
+        sources: _buildCapturedSources(headers),
       ));
       _cleanup();
     }
+  }
+
+  List<StreamSource> _buildCapturedSources(Map<String, String> headers) {
+    final urls = _detectedVideoUrls.isNotEmpty
+        ? List<String>.from(_detectedVideoUrls)
+        : (_capturedVideo != null ? [_capturedVideo!] : const <String>[]);
+    return urls.map((url) {
+      final lower = url.toLowerCase();
+      final type = lower.contains('.m3u8')
+          ? 'hls'
+          : lower.contains('.mpd')
+              ? 'dash'
+              : 'mp4';
+      final title = lower.contains('h265') || lower.contains('hevc')
+          ? 'HEVC'
+          : lower.contains('1080')
+              ? '1080p'
+              : lower.contains('720')
+                  ? '720p'
+                  : 'Stream';
+      return StreamSource(
+        url: url,
+        title: title,
+        type: type,
+        headers: headers,
+      );
+    }).toList();
   }
 
   String _getRawSpyJs() {

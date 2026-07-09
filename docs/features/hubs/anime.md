@@ -1,10 +1,10 @@
 # Anime
 
-> Dedicated anime hub — discover, search, and provider-targeted playback.
+> Dedicated anime hub — discover, search, and multi-server playback.
 
 ## What it is
 
-The Anime tab is a full vertical for anime: hero carousel, mood chips, continue watching, curated rails (trending, airing, etc.), discover filters, search, and a dedicated player that resolves streams from your chosen server (Miruro providers such as ZORO/KIWI, with AnimeRealms fallback for HiAnime when Miruro fails).
+The Anime tab is a full vertical for anime: hero carousel, mood chips, continue watching, curated rails (trending, airing, etc.), discover filters, search, and a dedicated player that races every available stream source in parallel (HD-1/HD-2 via Anikoto, plus Forja servers neko/momo/kumo/…).
 
 ## How to open it
 
@@ -13,19 +13,18 @@ Tap **Anime** in the navigation bar.
 ## What you can do
 
 - Browse hero and mood-based rails
-- Continue watching in-progress series (resumes the same server and sub/dub)
+- Continue watching in-progress series
 - Discover with filters
 - Search anime catalog
 - Open details with episodes
-- Pick a **SERVER** on the details screen (Miruro providers or AnimeRealms providers when Miruro catalog is unavailable)
-- Toggle **SUB** / **DUB** when the selected server offers both
-- Play in the anime player — streams resolve for the selected server (Miruro first, AnimeRealms fallback when needed)
-- Track watch history per series (server, sub/dub, and episode)
+- Toggle **SUB** / **DUB** before playback
+- Play in the anime player — all servers are tried in parallel; switch sources in the player (e.g. **HD-1 · SUB**, **neko · SUB**, **momo · SUB**)
+- Track watch history per series (sub/dub preference)
 
 ## Tips
 
 - Anime uses its own player and history — separate from TMDB TV details
-- **ZORO** is HiAnime via Miruro; if that server fails, playback falls back to AnimeRealms **hianime**
+- **HD-1** / **HD-2** need Anikoto catalog linkage; Forja servers (neko, momo, …) work from AniList id alone
 - Playback shows a backdrop + title loading screen before the player opens (same pattern as films and Asian drama)
 - Part of [content hub scrapers](../scrapers/content-hub-scrapers.md)
 

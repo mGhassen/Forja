@@ -28,6 +28,20 @@ class MiruroExtractor {
     'animedunya': 'AnimeDunya',
   };
 
+  /// Pipe keys raced by [AnimeStreamServers] (kept for legacy miruro:// URLs).
+  static const List<String> knownProviders = [
+    'zoro',
+    'kiwi',
+    'bee',
+    'hop',
+    'bonk',
+    'ally',
+    'moo',
+    'animedunya',
+    'arc',
+    'jet',
+  ];
+
   static String upstreamLabel(String pipeKey) =>
       upstreamSources[pipeKey.toLowerCase()] ?? pipeKey;
 

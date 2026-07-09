@@ -1,16 +1,22 @@
-// Anime backend — AniList GraphQL for metadata; Miruro + AnimeRealms playback.
+// Anime backend — AniList GraphQL for metadata, megaplay/vidwish for streams.
+// Parallel race: Anikoto HD-1/HD-2 + Forja stream servers + AllAnime fallbacks.
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:forja/features/anime/catalog/allanime_extractor.dart';
+import 'package:forja/features/anime/catalog/watchhentai_extractor.dart';
+import 'package:forja/features/anime/catalog/hentaini_extractor.dart';
+import 'package:forja/features/anime/catalog/anime_stream_servers.dart';
 import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 
 class AnimeService {
   static const String _anikotoUa =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+  static final RegExp _megaPathIdRe = RegExp(r'/stream/s-2/(\d+)/');
 
   // ─── GraphQL helper ─────────────────────────────────────────────
   Future<dynamic> _query(String query, [Map<String, dynamic>? vars]) async {
@@ -344,10 +350,7 @@ class AnimeService {
           final m = (raw as Map).cast<String, dynamic>();
           final ani = (m['ani_id'] ?? '').toString();
           if (ani == anime.id.toString()) {
-            return _loadAnikotoSeries(
-              m['id'] as int,
-              expectedAnilistId: anime.id,
-            );
+            return _loadAnikotoSeries(m['id'] as int);
           }
         }
         if (data.length < perPage) break; // last page
@@ -361,24 +364,24 @@ class AnimeService {
     // search page. The API itself has no search endpoint, so we scrape slugs
     // from the search results, lift the numeric data-id from each watch page,
     // then verify against AniList ID through /series/{id}.
+    final candidates = <String>{};
     final queries = <String>[
       anime.titleEnglish,
       anime.titleRomaji,
     ].where((q) => q.trim().isNotEmpty).toSet();
-    final candidates = <String>[];
-    final seenSlugs = <String>{};
     for (final q in queries) {
-      for (final slug in await _anikotoSearchSlugs(q)) {
-        if (seenSlugs.add(slug)) candidates.add(slug);
-      }
+      candidates.addAll(await _anikotoSearchSlugs(q));
+      if (candidates.length >= 10) break;
     }
-    // Walk search results in rank order. One Piece's main TV entry is often
-    // past the first page of specials — stopping at 8 slugs mapped to the
-    // wrong 1-ep movie/OVA while the user picked ep 1 of the real series.
+    // Probe the first ~8 candidates. /series/{id} returns ani_id and an
+    // episodes list. We collect (slug, id, epCount) for every candidate —
+    // including ani_id matches — because anikoto frequently links the same
+    // AniList ID to a 1-episode special AND the real multi-episode series
+    // (Demon Slayer S1's "Sibling's Bond" special vs the 26-ep main show).
+    final probe = candidates.take(8).toList();
     final resolved = <_AnikotoCandidate>[];
     final aniIdMatches = <_AnikotoCandidate>[];
-    final expected = anime.episodes ?? 0;
-    for (final slug in candidates) {
+    for (final slug in probe) {
       final id = await _anikotoIdFromSlug(slug);
       if (id == null) continue;
       try {
@@ -388,17 +391,6 @@ class AnimeService {
         final cand = _AnikotoCandidate(slug: slug, id: id, episodes: epCount);
         if (aniId == anime.id.toString()) {
           aniIdMatches.add(cand);
-          if (expected > 0 && epCount >= (expected * 0.85).floor()) {
-            if (kDebugMode) {
-              debugPrint(
-                  '[Anikoto] ani_id match ${cand.slug} id=${cand.id} '
-                  'eps=$epCount (expected $expected)');
-            }
-            return _loadAnikotoSeries(
-              cand.id,
-              expectedAnilistId: anime.id,
-            );
-          }
         } else {
           resolved.add(cand);
         }
@@ -409,6 +401,7 @@ class AnimeService {
     // total, prefer the candidate closest to it (and at least half of it).
     // Otherwise prefer the one with the most episodes.
     if (aniIdMatches.isNotEmpty) {
+      final expected = anime.episodes ?? 0;
       _AnikotoCandidate best;
       if (expected > 0) {
         aniIdMatches.sort((a, b) {
@@ -424,28 +417,11 @@ class AnimeService {
           // Treat the ani_id matches as ordinary candidates for fuzzy too.
           resolved.addAll(aniIdMatches);
         } else {
-          if (kDebugMode) {
-            debugPrint(
-                '[Anikoto] ani_id match ${best.slug} id=${best.id} '
-                'eps=${best.episodes} (expected $expected)');
-          }
-          return _loadAnikotoSeries(
-            best.id,
-            expectedAnilistId: anime.id,
-          );
+          return _loadAnikotoSeries(best.id);
         }
       } else {
         aniIdMatches.sort((a, b) => b.episodes.compareTo(a.episodes));
-        final best = aniIdMatches.first;
-        if (kDebugMode) {
-          debugPrint(
-              '[Anikoto] ani_id match ${best.slug} id=${best.id} '
-              'eps=${best.episodes}');
-        }
-        return _loadAnikotoSeries(
-          best.id,
-          expectedAnilistId: anime.id,
-        );
+        return _loadAnikotoSeries(aniIdMatches.first.id);
       }
     }
 
@@ -479,22 +455,8 @@ class AnimeService {
           }
         }
         if (best != null && bestScore >= 0.40) {
-          if (expected > 5 && best.episodes < (expected / 2).ceil()) {
-            if (kDebugMode) {
-              debugPrint(
-                  '[Anikoto] reject fuzzy ${best.slug}: ${best.episodes} eps '
-                  'vs expected $expected');
-            }
-            return null;
-          }
-          debugPrint(
-              '[Anikoto] fuzzy match ${best.slug} score=${bestScore.toStringAsFixed(2)} '
-              'eps=${best.episodes}');
-          return _loadAnikotoSeries(
-            best.id,
-            expectedAnilistId: anime.id,
-            fuzzyMatch: true,
-          );
+          debugPrint('[Anikoto] fuzzy match ${best.slug} score=${bestScore.toStringAsFixed(2)}');
+          return _loadAnikotoSeries(best.id);
         }
       }
     }
@@ -514,32 +476,21 @@ class AnimeService {
       .where((t) => t.length > 1)
       .toSet();
 
-  static const int _anikotoSearchMaxSlugs = 40;
-  static const int _anikotoSearchMaxPages = 4;
-
   // Scrape https://anikototv.to/search?keyword=… for unique watch slugs.
   Future<List<String>> _anikotoSearchSlugs(String query) async {
     try {
+      final url =
+          'https://anikototv.to/search?keyword=${Uri.encodeQueryComponent(query)}';
+      final res = await animeHttp('GET', url, headers: {
+        'User-Agent': _anikotoUa,
+        'Accept': 'text/html',
+      });
+      if (res.status != 200) return const [];
+      final matches = RegExp(r'/watch/([a-z0-9-]+)').allMatches(res.body);
       final seen = <String>{};
-      for (var page = 1;
-          page <= _anikotoSearchMaxPages && seen.length < _anikotoSearchMaxSlugs;
-          page++) {
-        final base =
-            'https://anikototv.to/search?keyword=${Uri.encodeQueryComponent(query)}';
-        final url = page == 1 ? base : '$base&page=$page';
-        final res = await animeHttp('GET', url, headers: {
-          'User-Agent': _anikotoUa,
-          'Accept': 'text/html',
-        });
-        if (res.status != 200) break;
-        final matches = RegExp(r'/watch/([a-z0-9-]+)').allMatches(res.body);
-        var added = 0;
-        for (final m in matches) {
-          final slug = m.group(1)!;
-          if (seen.add(slug)) added++;
-          if (seen.length >= _anikotoSearchMaxSlugs) break;
-        }
-        if (added == 0) break;
+      for (final m in matches) {
+        final slug = m.group(1)!;
+        if (seen.add(slug) && seen.length >= 12) break;
       }
       return seen.toList();
     } catch (e) {
@@ -565,41 +516,14 @@ class AnimeService {
     }
   }
 
-  Future<AnikotoSeries?> _loadAnikotoSeries(
-    int anikotoId, {
-    int? expectedAnilistId,
-    bool fuzzyMatch = false,
-  }) async {
+  Future<AnikotoSeries?> _loadAnikotoSeries(int anikotoId) async {
     try {
       final j = await _anikotoGet('/series/$anikotoId');
-      final loadedAniId =
-          (j?['data']?['anime']?['ani_id'] ?? '').toString().trim();
-      if (expectedAnilistId != null &&
-          loadedAniId.isNotEmpty &&
-          loadedAniId != expectedAnilistId.toString()) {
-        if (kDebugMode) {
-          debugPrint(
-              '[Anikoto] reject series $anikotoId: ani_id=$loadedAniId '
-              '!= $expectedAnilistId');
-        }
-        return null;
-      }
       final eps = ((j?['data']?['episodes'] as List?) ?? const [])
           .cast<Map>()
           .map((e) => AnikotoEpisode.fromJson(e.cast<String, dynamic>()))
           .toList();
-      final verified = expectedAnilistId != null &&
-          loadedAniId == expectedAnilistId.toString();
-      if (kDebugMode && fuzzyMatch && !verified) {
-        debugPrint(
-            '[Anikoto] fuzzy series $anikotoId (${eps.length} eps) — '
-            'megaplay disabled (no ani_id link)');
-      }
-      return AnikotoSeries(
-        id: anikotoId,
-        episodes: eps,
-        aniIdVerified: verified,
-      );
+      return AnikotoSeries(id: anikotoId, episodes: eps);
     } catch (e) {
       debugPrint('[Anikoto] /series/$anikotoId failed: $e');
       return null;
@@ -696,53 +620,430 @@ class AnimeService {
     return out;
   }
 
-  Map<int, String> buildEpisodeThumbnailMap(
-          List<Map<String, String>> streamEps) =>
-      _buildEpisodeThumbnailMap(streamEps);
+  // ─── Stream embed URLs (the 4 servers enma.lol uses) ───────────
+  // HD-1 = megaplay.buzz, HD-2 = vidwish.live. Both expose:
+  //   /stream/s-2/{anikoto_embed_id}/{sub|dub}   ← preferred (catalog ID)
+  //   /stream/ani/{anilist_id}/{ep}/{sub|dub}    ← fallback (mapping incomplete)
+  //
+  // Direct access to embeds is disabled by megaplay/vidwish; they only respond
+  // when loaded as an iframe with a referer from an embedding site. We pass
+  // `referer: https://www.enma.lol/` to the extractor for that reason.
 
-  // ─── Miruro catalog (PlayTorrio playback path) ──────────────────
-  final MiruroExtractor _miruro = MiruroExtractor();
+  String? _embed({
+    required String host, // 'megaplay.buzz' | 'vidwish.live'
+    required int anilistId,
+    required int episode,
+    required String category,
+    String? embedId, // anikoto episode_embed_id
+  }) {
+    // /stream/ani/{anilistId}/{ep}/{cat} consistently 404s — the only
+    // reliable URL pattern is /stream/s-2/{embedId}/{cat}. If we don't
+    // have an embedId from Anikoto, return null so the caller can skip
+    // this server entirely instead of building a dead URL.
+    if (embedId == null || embedId.isEmpty) return null;
+    return 'https://$host/stream/s-2/$embedId/$category?autoPlay=1';
+  }
 
-  Future<MiruroEpisodes?> getMiruroEpisodes(int anilistId) async {
+  /// Build all 4 server embeds for a given episode. Requires [series]
+  /// (Anikoto resolution) — without it the `/stream/s-2/` URL can't be
+  /// built and the returned list is empty.
+  List<AnimeEmbed> buildAllEmbeds({
+    required int anilistId,
+    required int episode,
+    AnikotoSeries? series,
+    String? category, // null = all 4; else filtered pair
+    List<String> animeTitles = const [],
+    bool isAdult = false,
+  }) {
+    AnikotoEpisode? anikotoEp;
+    if (series != null) {
+      for (final e in series.episodes) {
+        if (e.number == episode) {
+          anikotoEp = e;
+          break;
+        }
+      }
+    }
+    final embedId = anikotoEp?.embedId;
+
+    final all = <AnimeEmbed>[];
+    if (embedId != null && embedId.isNotEmpty) {
+      void addPair(String cat) {
+        final megaUrl = cat == 'sub'
+            ? anikotoEp?.embedUrlSub
+            : anikotoEp?.embedUrlDub;
+        final mega = megaUrl ??
+            _embed(
+              host: 'megaplay.buzz',
+              anilistId: anilistId,
+              episode: episode,
+              category: cat,
+              embedId: embedId,
+            );
+        final vid = _embed(
+          host: 'vidwish.live',
+          anilistId: anilistId,
+          episode: episode,
+          category: cat,
+          embedId: embedId,
+        );
+        if (mega != null) {
+          all.add(AnimeEmbed(
+            label: 'HD-1',
+            server: 'megaplay',
+            category: cat,
+            url: mega,
+          ));
+        }
+        if (vid != null) {
+          all.add(AnimeEmbed(
+            label: 'HD-2',
+            server: 'vidwish',
+            category: cat,
+            url: vid,
+          ));
+        }
+      }
+
+      addPair('sub');
+      addPair('dub');
+    }
+    // Forja stream servers (neko, momo, …) — one embed per server per category.
+    for (final cat in const ['sub', 'dub']) {
+      for (final srv in AnimeStreamServers.all) {
+        all.add(AnimeEmbed(
+          label: srv.id,
+          server: srv.id,
+          category: cat,
+          url: AnimeStreamServers.streamUrl(
+            anilistId: anilistId,
+            episode: episode,
+            category: cat,
+            server: srv,
+          ),
+        ));
+      }
+    }
+    // AllAnime (allmanga.to) fallback — same parallel-race pattern. Only emit
+    // if at least one title was provided so the extractor can search.
+    final titles = animeTitles
+        .where((t) => t.trim().isNotEmpty)
+        .map((t) => Uri.encodeComponent(t.trim()))
+        .join(',');
+    if (titles.isNotEmpty) {
+      for (final cat in const ['sub', 'dub']) {
+        for (final prov in AllAnimeExtractor.knownProviders) {
+          all.add(AnimeEmbed(
+            label: 'AllAnime·$prov',
+            server: 'allanime',
+            category: cat,
+            url: 'allanime://search/$episode/$cat/$prov?t=$titles',
+          ));
+        }
+      }
+    }
+    // WatchHentai — only for adult titles. Single embed; the extractor
+    // searches watchhentai.net's catalog for any of the provided titles.
+    if (isAdult && titles.isNotEmpty) {
+      all.add(AnimeEmbed(
+        label: 'WatchHentai',
+        server: 'watchhentai',
+        category: 'sub',
+        url: 'watchhentai://discover/$episode?t=$titles',
+      ));
+      all.add(AnimeEmbed(
+        label: 'Hentaini',
+        server: 'hentaini',
+        category: 'sub',
+        url: 'hentaini://discover/$episode?t=$titles',
+      ));
+    }
+    if (category == null) return all;
+    return all.where((e) => e.category == category).toList();
+  }
+
+  /// Referer to spoof when extracting megaplay/vidwish embeds. They block
+  /// direct page loads — extraction only works when this header is present.
+  static const String embedReferer = 'https://www.enma.lol/';
+
+  /// megaplay / vidwish: GET /stream/getSources?id={id} → JSON stream.
+  /// The catalog id in `/stream/s-2/{id}/` works directly — no HTML scrape.
+  Future<AnimeStreamResult?> _fetchMegaSources({
+    required String origin,
+    required String embedPageUrl,
+    required String dataId,
+  }) async {
+    const ua =
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+    final apiUrl = '$origin/stream/getSources?id=$dataId';
+    final apiRes = await animeHttp('GET', apiUrl, headers: {
+      'Referer': embedPageUrl,
+      'Origin': origin,
+      'X-Requested-With': 'XMLHttpRequest',
+      'User-Agent': ua,
+      'Accept': 'application/json, text/plain, */*',
+    }, maxRetries: 0);
+    if (apiRes.status != 200) return null;
+    final json = jsonDecode(apiRes.body);
+    if (json is! Map) return null;
+    final file =
+        (json['sources'] is Map ? json['sources']['file'] : null) as String?;
+    if (file == null || file.isEmpty) return null;
+
+    final tracks = <AnimeTrack>[];
+    final rawTracks = json['tracks'];
+    if (rawTracks is List) {
+      for (final t in rawTracks) {
+        if (t is Map &&
+            t['file'] is String &&
+            ((t['kind'] ?? 'captions') == 'captions' ||
+                (t['kind'] ?? '') == 'subtitles')) {
+          tracks.add(AnimeTrack(
+            url: t['file'] as String,
+            label: (t['label'] as String?) ?? 'Unknown',
+            isDefault: t['default'] == true,
+          ));
+        }
+      }
+    }
+    return AnimeStreamResult(
+      url: file,
+      referer: '$origin/',
+      origin: origin,
+      tracks: tracks,
+    );
+  }
+
+  Future<AnimeStreamResult?> extractDirect(AnimeEmbed embed) async {
+    if (AnimeStreamServers.isForjaServer(embed.server)) {
+      return _extractStreamServer(embed);
+    }
+    if (embed.server == 'miruro') {
+      return _extractMiruro(embed);
+    }
+    if (embed.server == 'allanime') {
+      return _extractAllAnime(embed);
+    }
+    if (embed.server == 'watchhentai') {
+      return _extractWatchHentai(embed);
+    }
+    if (embed.server == 'hentaini') {
+      return _extractHentaini(embed);
+    }
     try {
-      final data = await _miruro.fetchEpisodes(anilistId);
-      if (data == null) return null;
-      return MiruroEpisodes.fromJson(data);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[Miruro] episodes failed: $e');
+      final embedUri = Uri.parse(embed.url);
+      final origin = '${embedUri.scheme}://${embedUri.host}';
+      const ua =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+
+      final pathId = _megaPathIdRe.firstMatch(embedUri.path)?.group(1);
+      final tried = <String>{};
+
+      Future<AnimeStreamResult?> tryId(String? id) async {
+        if (id == null || id.isEmpty || !tried.add(id)) return null;
+        return _fetchMegaSources(
+          origin: origin,
+          embedPageUrl: embed.url,
+          dataId: id,
+        );
+      }
+
+      var result = await tryId(pathId);
+      if (result != null) {
+        if (kDebugMode) {
+          debugPrint(
+              '[extractDirect] OK via path id=$pathId tracks=${result.tracks.length}');
+        }
+        return result;
+      }
+
+      // Fallback: scrape HTML for a different internal player id.
+      final pageRes = await animeHttp('GET', embed.url, headers: {
+        'Referer': embedReferer,
+        'User-Agent': ua,
+        'Accept':
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      }, maxRetries: 0);
+      if (pageRes.status == 200) {
+        final htmlId =
+            RegExp(r'data-id\s*=\s*"(\d+)"').firstMatch(pageRes.body)?.group(1);
+        result = await tryId(htmlId);
+        if (result != null) {
+          if (kDebugMode) {
+            debugPrint(
+                '[extractDirect] OK via html id=$htmlId tracks=${result.tracks.length}');
+          }
+          return result;
+        }
+      } else if (kDebugMode) {
+        debugPrint('[extractDirect] embed page HTTP ${pageRes.status}');
+      }
+
+      if (kDebugMode) {
+        debugPrint('[extractDirect] no stream for ${embed.displayName}');
+      }
+      return null;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('[extractDirect] error: $e\n$st');
       return null;
     }
   }
 
-  /// Default Miruro provider: kiwi → zoro → first available.
-  static String defaultMiruroProvider(Iterable<String> providers) {
-    final list = providers.toList();
-    if (list.isEmpty) return 'kiwi';
-    if (list.contains('kiwi')) return 'kiwi';
-    if (list.contains('zoro')) return 'zoro';
-    return list.first;
+  // Pipe transport for Forja stream servers (neko → zoro, momo → kiwi, …).
+  final MiruroExtractor _miruro = MiruroExtractor();
+
+  Future<AnimeStreamResult?> _extractStreamServer(AnimeEmbed embed) async {
+    final parsed = AnimeStreamServers.parseUrl(embed.url);
+    if (parsed == null) return null;
+
+    final res = await _miruro.extractWithProvider(
+      anilistId: parsed.anilistId,
+      episodeNumber: parsed.episode,
+      category: parsed.category,
+      provider: parsed.server.pipeKey,
+    );
+    if (res == null) return null;
+
+    return AnimeStreamResult(
+      url: res.url,
+      referer: res.referer,
+      origin: res.origin,
+      tracks: res.tracks
+          .map((t) => AnimeTrack(
+                url: t.url,
+                label: t.label.isNotEmpty
+                    ? t.label
+                    : (t.language.isNotEmpty ? t.language : 'Unknown'),
+                isDefault: t.isDefault,
+              ))
+          .toList(),
+    );
   }
 
-  List<AnimeEpisode> miruroEpisodesFor({
-    required MiruroEpisodes episodes,
-    required String provider,
-    required String category,
-    Map<int, String> thumbnails = const {},
-  }) {
-    final prov = episodes.providers[provider];
-    if (prov == null) return const [];
-    final raw = category == 'dub' ? prov.dubEpisodes : prov.subEpisodes;
-    return raw
-        .map(
-          (e) => AnimeEpisode(
-            number: e.number,
-            title: e.title.isEmpty ? 'Episode ${e.number}' : e.title,
-            aired: true,
-            thumbnail: thumbnails[e.number],
-            streamId: e.id,
-          ),
-        )
+  Future<AnimeStreamResult?> _extractMiruro(AnimeEmbed embed) async {
+    final m = RegExp(r'^miruro://anilist/(\d+)/(\d+)/(sub|dub)/([a-z0-9]+)$')
+        .firstMatch(embed.url);
+    if (m == null) return null;
+    final anilistId = int.parse(m.group(1)!);
+    final ep = int.parse(m.group(2)!);
+    final cat = m.group(3)!;
+    final provider = m.group(4)!;
+
+    final res = await _miruro.extractWithProvider(
+      anilistId: anilistId,
+      episodeNumber: ep,
+      category: cat,
+      provider: provider,
+    );
+    if (res == null) return null;
+
+    return AnimeStreamResult(
+      url: res.url,
+      referer: res.referer,
+      origin: res.origin,
+      tracks: res.tracks
+          .map((t) => AnimeTrack(
+                url: t.url,
+                label: t.label.isNotEmpty
+                    ? t.label
+                    : (t.language.isNotEmpty ? t.language : 'Unknown'),
+                isDefault: t.isDefault,
+              ))
+          .toList(),
+    );
+  }
+
+  // AllAnime extractor — sentinel URL format:
+  //   allanime://search/{episode}/{category}/{provider}?t={enc_title1},{enc_title2}
+  final AllAnimeExtractor _allanime = AllAnimeExtractor();
+  final WatchHentaiExtractor _watchHentai = WatchHentaiExtractor();
+  final HentainiExtractor _hentaini = HentainiExtractor();
+
+  Future<AnimeStreamResult?> _extractAllAnime(AnimeEmbed embed) async {
+    final m = RegExp(r'^allanime://search/(\d+)/(sub|dub)/([^?]+)\?t=(.+)$')
+        .firstMatch(embed.url);
+    if (m == null) return null;
+    final ep = int.parse(m.group(1)!);
+    final cat = m.group(2)!;
+    final provider = m.group(3)!;
+    final titles = m
+        .group(4)!
+        .split(',')
+        .map(Uri.decodeComponent)
+        .where((t) => t.isNotEmpty)
         .toList();
+    if (titles.isEmpty) return null;
+
+    final res = await _allanime.extractWithProvider(
+      titleCandidates: titles,
+      episodeNumber: ep,
+      category: cat,
+      provider: provider,
+    );
+    if (res == null) return null;
+
+    return AnimeStreamResult(
+      url: res.url,
+      referer: res.referer,
+      origin: res.origin,
+      tracks: res.tracks
+          .map((t) => AnimeTrack(
+                url: t.url,
+                label: t.label.isNotEmpty ? t.label : 'Unknown',
+                isDefault: t.isDefault,
+              ))
+          .toList(),
+    );
+  }
+
+  Future<AnimeStreamResult?> _extractWatchHentai(AnimeEmbed embed) async {
+    final m = RegExp(r'^watchhentai://discover/(\d+)\?t=(.+)$')
+        .firstMatch(embed.url);
+    if (m == null) return null;
+    final ep = int.parse(m.group(1)!);
+    final titles = m
+        .group(2)!
+        .split(',')
+        .map(Uri.decodeComponent)
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (titles.isEmpty) return null;
+    final res = await _watchHentai.extract(
+      titleCandidates: titles,
+      episode: ep,
+    );
+    if (res == null) return null;
+    return AnimeStreamResult(
+      url: res.url,
+      referer: res.referer,
+      origin: res.origin,
+    );
+  }
+
+  Future<AnimeStreamResult?> _extractHentaini(AnimeEmbed embed) async {
+    final m = RegExp(r'^hentaini://discover/(\d+)\?t=(.+)$')
+        .firstMatch(embed.url);
+    if (m == null) return null;
+    final ep = int.parse(m.group(1)!);
+    final titles = m
+        .group(2)!
+        .split(',')
+        .map(Uri.decodeComponent)
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (titles.isEmpty) return null;
+    final res = await _hentaini.extract(
+      titleCandidates: titles,
+      episode: ep,
+    );
+    if (res == null) return null;
+    return AnimeStreamResult(
+      url: res.url,
+      referer: res.referer,
+      origin: res.origin,
+    );
   }
 
 
@@ -786,9 +1087,6 @@ class AnimeService {
     required AnimeCard anime,
     required int episodeNumber,
     String category = 'sub',
-    String? provider,
-    bool useAnimeRealms = false,
-    String? episodeId,
     Duration? position,
     Duration? duration,
   }) async {
@@ -801,9 +1099,6 @@ class AnimeService {
         'animeId': anime.id,
         'episodeNumber': episodeNumber,
         'category': category,
-        if (provider != null && provider.isNotEmpty) 'provider': provider,
-        'useAnimeRealms': useAnimeRealms,
-        if (episodeId != null && episodeId.isNotEmpty) 'episodeId': episodeId,
         'positionMs': position?.inMilliseconds ?? 0,
         'durationMs': duration?.inMilliseconds ?? 0,
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
@@ -979,95 +1274,86 @@ class AnimeEpisode {
   final String title;
   final bool aired;
   final String? thumbnail;
-  final String? streamId;
 
   const AnimeEpisode({
     required this.number,
     required this.title,
     this.aired = true,
     this.thumbnail,
-    this.streamId,
   });
 }
 
-class MiruroEpisodes {
-  final Map<String, MiruroProvider> providers;
+class AnimeEmbed {
+  final String label;     // 'HD-1' | 'HD-2'
+  final String server;    // 'megaplay' | 'vidwish'
+  final String category;  // 'sub' | 'dub'
+  final String url;
 
-  const MiruroEpisodes({required this.providers});
+  const AnimeEmbed({
+    required this.label,
+    required this.server,
+    required this.category,
+    required this.url,
+  });
 
-  factory MiruroEpisodes.fromJson(Map<String, dynamic> json) {
-    final provs = <String, MiruroProvider>{};
-    final providersMap = json['providers'] as Map<String, dynamic>? ?? {};
-    for (final entry in providersMap.entries) {
-      provs[entry.key] = MiruroProvider.fromJson(
-        (entry.value as Map).cast<String, dynamic>(),
-      );
+  String get displayName {
+    switch (server) {
+      case 'allanime':
+        return 'AllAnime · ${category.toUpperCase()}';
+      case 'watchhentai':
+        return 'WatchHentai';
+      case 'hentaini':
+        return 'Hentaini';
+      default:
+        return '$label · ${category.toUpperCase()}';
     }
-    return MiruroEpisodes(providers: provs);
   }
-}
-
-class MiruroProvider {
-  final List<MiruroPlaybackEpisode> subEpisodes;
-  final List<MiruroPlaybackEpisode> dubEpisodes;
-
-  const MiruroProvider({
-    this.subEpisodes = const [],
-    this.dubEpisodes = const [],
-  });
-
-  factory MiruroProvider.fromJson(Map<String, dynamic> json) {
-    final episodes = json['episodes'];
-    var sub = <MiruroPlaybackEpisode>[];
-    var dub = <MiruroPlaybackEpisode>[];
-    if (episodes is Map<String, dynamic>) {
-      if (episodes['sub'] is List) {
-        sub = (episodes['sub'] as List)
-            .map((e) => MiruroPlaybackEpisode.fromJson(
-                (e as Map).cast<String, dynamic>()))
-            .toList();
-      }
-      if (episodes['dub'] is List) {
-        dub = (episodes['dub'] as List)
-            .map((e) => MiruroPlaybackEpisode.fromJson(
-                (e as Map).cast<String, dynamic>()))
-            .toList();
-      }
+  String get refererOrigin {
+    switch (server) {
+      case 'vidwish':
+        return 'https://vidwish.live';
+      case 'allanime':
+        return 'https://allmanga.to';
+      case 'watchhentai':
+        return 'https://watchhentai.net';
+      case 'hentaini':
+        return 'https://hentaini.com';
+      default:
+        return 'https://megaplay.buzz';
     }
-    return MiruroProvider(subEpisodes: sub, dubEpisodes: dub);
   }
 }
 
-class MiruroPlaybackEpisode {
-  final String id;
-  final int number;
-  final String title;
+/// Result of a successful stream extraction.
+class AnimeStreamResult {
+  final String url;       // m3u8 / mp4
+  final String referer;   // header to send to CDN
+  final String origin;    // header to send to CDN
+  final List<AnimeTrack> tracks;
 
-  const MiruroPlaybackEpisode({
-    required this.id,
-    required this.number,
-    this.title = '',
+  const AnimeStreamResult({
+    required this.url,
+    required this.referer,
+    required this.origin,
+    this.tracks = const [],
   });
+}
 
-  factory MiruroPlaybackEpisode.fromJson(Map<String, dynamic> json) {
-    return MiruroPlaybackEpisode(
-      id: (json['id'] ?? '').toString(),
-      number: (json['number'] as num?)?.toInt() ?? 0,
-      title: (json['title'] as String?) ?? '',
-    );
-  }
+class AnimeTrack {
+  final String url;
+  final String label;
+  final bool isDefault;
+  const AnimeTrack({
+    required this.url,
+    required this.label,
+    this.isDefault = false,
+  });
 }
 
 class AnikotoSeries {
   final int id;
   final List<AnikotoEpisode> episodes;
-  /// True when Anikoto's `ani_id` matches the AniList card we resolved for.
-  final bool aniIdVerified;
-  const AnikotoSeries({
-    required this.id,
-    required this.episodes,
-    this.aniIdVerified = false,
-  });
+  const AnikotoSeries({required this.id, required this.episodes});
 }
 
 class _AnikotoCandidate {

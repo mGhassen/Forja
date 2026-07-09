@@ -1,18 +1,15 @@
-// kisskh.co (Asian Drama) hub — mirrors `AnimeArabicScreen` visual style.
-// Hero carousel + ambient gradient backdrop + continue-watching rail
-// + multiple horizontal poster rails sourced from kisskh's category APIs.
+// kisskh.co (Asian Drama) hub — cinematic hero + poster rows (same shell as Home).
 
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:palette_generator/palette_generator.dart';
 
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
-import 'package:forja/shared/widgets/horizontal_scroller.dart';
-import 'package:forja/shared/widgets/hover_scale.dart';
+import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
+import 'package:forja/shared/widgets/hub/hub_cinematic_hero.dart';
+import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'asian_drama_details_screen.dart';
 import 'asian_drama_explore_screen.dart';
 import 'asian_drama_player_screen.dart';
@@ -31,21 +28,13 @@ class AsianDramaScreen extends StatefulWidget {
 class _AsianDramaScreenState extends State<AsianDramaScreen>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   final KissKhService _service = KissKhService();
-  final PageController _heroCtrl = PageController();
   final ScrollController _scroll = ScrollController();
-
-  Timer? _heroTimer;
-  int _heroIndex = 0;
 
   KdramaHomeFeed? _feed;
   bool _loading = true;
   String? _error;
 
   List<Map<String, dynamic>> _continueWatching = [];
-
-  Color _ambientPrimary = AppTheme.primaryColor;
-  Color _ambientSecondary = AppTheme.accentColor;
-  final Map<int, ({Color primary, Color secondary})> _ambientCache = {};
 
   @override
   bool get wantKeepAlive => true;
@@ -64,8 +53,6 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     WidgetsBinding.instance.removeObserver(this);
     AppTheme.themeNotifier.removeListener(_onTheme);
     KissKhService.watchHistoryRevision.removeListener(_onHistoryChanged);
-    _heroTimer?.cancel();
-    _heroCtrl.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -109,11 +96,6 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             (results[1] as List<Map<String, dynamic>>).take(10).toList();
         _loading = false;
       });
-      final pool = _spotlight;
-      if (pool.isNotEmpty) {
-        _extractAmbient(pool.first);
-        _startHeroTimer(pool.length);
-      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -129,50 +111,6 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     if (f.spotlight.isNotEmpty) return f.spotlight.take(8).toList();
     if (f.latest.isNotEmpty) return f.latest.take(8).toList();
     return f.trending.take(8).toList();
-  }
-
-  void _startHeroTimer(int count) {
-    _heroTimer?.cancel();
-    if (count < 2) return;
-    _heroTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (!mounted || !_heroCtrl.hasClients) return;
-      final next = (_heroIndex + 1) % count;
-      _heroCtrl.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 1000),
-        curve: Curves.fastOutSlowIn,
-      );
-    });
-  }
-
-  Future<void> _extractAmbient(KdramaCard a) async {
-    if (_ambientCache.containsKey(a.id)) {
-      final c = _ambientCache[a.id]!;
-      if (!mounted) return;
-      setState(() {
-        _ambientPrimary = c.primary;
-        _ambientSecondary = c.secondary;
-      });
-      return;
-    }
-    if (a.cover.isEmpty) return;
-    try {
-      final palette = await PaletteGenerator.fromImageProvider(
-        CachedNetworkImageProvider(a.cover),
-        size: const Size(180, 100),
-        maximumColorCount: 12,
-      );
-      if (!mounted) return;
-      final p = palette.dominantColor?.color ?? AppTheme.primaryColor;
-      final s = palette.vibrantColor?.color ??
-          palette.lightVibrantColor?.color ??
-          AppTheme.accentColor;
-      _ambientCache[a.id] = (primary: p, secondary: s);
-      setState(() {
-        _ambientPrimary = p;
-        _ambientSecondary = s;
-      });
-    } catch (_) {}
   }
 
   void _openDetails(KdramaCard a) {
@@ -256,6 +194,33 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     );
   }
 
+  HubPosterCard _dramaPosterCard(KdramaCard card, {int? rank}) {
+    final subtitle = card.episodesCount > 0 ? '${card.episodesCount} eps' : null;
+    return HubPosterCard(
+      imageUrl: card.cover,
+      title: card.title,
+      subtitle: subtitle,
+      badge: card.label,
+      rank: rank,
+      onTap: () => _openDetails(card),
+    );
+  }
+
+  List<HubHeroSlide> _heroSlides(List<KdramaCard> spotlight) {
+    return spotlight
+        .map(
+          (a) => HubHeroSlide(
+            id: '${a.id}',
+            title: a.title,
+            imageUrl: a.cover,
+            badge: a.episodesCount > 0 ? '${a.episodesCount} EP' : a.label,
+            onPlay: () => _openDetails(a),
+            onDetails: () => _openDetails(a),
+          ),
+        )
+        .toList();
+  }
+
   // ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -265,17 +230,13 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       builder: (context, _, _) {
         return _error != null && !_loading
               ? _buildError()
-              : Stack(
-                      children: [
-                        Positioned.fill(
-                          child: ColoredBox(color: AppTheme.bgDark),
-                        ),
-                        if (!_loading) _buildAmbientBackdrop(),
-                        RefreshIndicator(
+              : RefreshIndicator(
                           color: ForjaShellColors.sectionAccent,
                           backgroundColor: AppTheme.bgCard,
                           onRefresh: _load,
-                          child: CustomScrollView(
+                          child: ColoredBox(
+                            color: AppTheme.bgDark,
+                            child: CustomScrollView(
                             controller: _scroll,
                             physics: const BouncingScrollPhysics(
                               parent: AlwaysScrollableScrollPhysics(),
@@ -313,72 +274,84 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                               if (_loading)
                                 ...homeHubLoadingSlivers(
                                   context,
-                                  heroShimmer: _buildHubHeroShimmer(),
+                                  heroShimmer: homeCinematicHeroShimmer(context),
                                   rows: kHomeHubAsianDramaLoadingRows,
                                 )
                               else ...[
-                                SliverToBoxAdapter(child: _buildHero()),
-                                if (_continueWatching.isNotEmpty)
-                                  SliverToBoxAdapter(
-                                    child: _buildContinueWatching(),
+                                SliverToBoxAdapter(
+                                  child: HubCinematicHero(
+                                    slides: _heroSlides(_spotlight),
                                   ),
-                                if ((_feed?.latest ?? const [])
-                                    .isNotEmpty)
-                                  SliverToBoxAdapter(
-                                    child: _buildEpisodeRail(
+                                ),
+                                if (_continueWatching.isNotEmpty)
+                                  hubRowSliver(
+                                    _buildContinueWatching(),
+                                    isFirstAfterHero: true,
+                                  ),
+                                if ((_feed?.latest ?? const []).isNotEmpty)
+                                  hubRowSliver(
+                                    HubCatalogSection<KdramaCard>(
                                       title: 'Latest Update',
-                                      subtitle: 'Newest episodes',
-                                      icon: Icons.skip_next_rounded,
                                       items: _feed!.latest,
+                                      compactTop: _continueWatching.isEmpty,
+                                      cardBuilder: (context, card, index) =>
+                                          _dramaPosterCard(card),
                                     ),
+                                    isFirstAfterHero: _continueWatching.isEmpty,
                                   ),
                                 if ((_feed?.trending ?? const []).isNotEmpty)
-                                  SliverToBoxAdapter(
-                                    child: _Rail(
+                                  hubRowSliver(
+                                    HubCatalogSection<KdramaCard>(
                                       title: 'Trending',
-                                      icon: Icons.trending_up_rounded,
                                       items: _feed!.trending,
-                                      onTap: _openDetails,
+                                      cardBuilder: (context, card, index) =>
+                                          _dramaPosterCard(card),
                                     ),
+                                    isFirstAfterHero: false,
                                   ),
-                                if ((_feed?.topRated ?? const [])
-                                    .isNotEmpty)
-                                  SliverToBoxAdapter(
-                                    child: _Rail(
+                                if ((_feed?.topRated ?? const []).isNotEmpty)
+                                  hubRowSliver(
+                                    HubCatalogSection<KdramaCard>(
                                       title: 'Top Rated',
-                                      icon: Icons.leaderboard_rounded,
                                       items: _feed!.topRated,
-                                      onTap: _openDetails,
                                       showRank: true,
+                                      cardBuilder: (context, card, index) =>
+                                          _dramaPosterCard(
+                                        card,
+                                        rank: index + 1,
+                                      ),
                                     ),
+                                    isFirstAfterHero: false,
                                   ),
-                                if ((_feed?.mostViewed ?? const [])
-                                    .isNotEmpty)
-                                  SliverToBoxAdapter(
-                                    child: _Rail(
+                                if ((_feed?.mostViewed ?? const []).isNotEmpty)
+                                  hubRowSliver(
+                                    HubCatalogSection<KdramaCard>(
                                       title: 'Most Viewed',
-                                      icon: Icons.visibility_rounded,
                                       items: _feed!.mostViewed,
-                                      onTap: _openDetails,
+                                      cardBuilder: (context, card, index) =>
+                                          _dramaPosterCard(card),
                                     ),
+                                    isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.anime ?? const []).isNotEmpty)
-                                  SliverToBoxAdapter(
-                                    child: _Rail(
+                                  hubRowSliver(
+                                    HubCatalogSection<KdramaCard>(
                                       title: 'Anime',
-                                      icon: Icons.auto_awesome_rounded,
                                       items: _feed!.anime,
-                                      onTap: _openDetails,
+                                      cardBuilder: (context, card, index) =>
+                                          _dramaPosterCard(card),
                                     ),
+                                    isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.upcoming ?? const []).isNotEmpty)
-                                  SliverToBoxAdapter(
-                                    child: _Rail(
+                                  hubRowSliver(
+                                    HubCatalogSection<KdramaCard>(
                                       title: 'Upcoming',
-                                      icon: Icons.event_rounded,
                                       items: _feed!.upcoming,
-                                      onTap: _openDetails,
+                                      cardBuilder: (context, card, index) =>
+                                          _dramaPosterCard(card),
                                     ),
+                                    isFirstAfterHero: false,
                                   ),
                               ],
                               const SliverToBoxAdapter(
@@ -386,9 +359,8 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    );
+                          ),
+                        );
       },
     );
   }
@@ -427,239 +399,6 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       ),
     );
   }
-
-  // ─── Ambient backdrop ────────────────────────────────────────
-  Widget _buildAmbientBackdrop() {
-    return Positioned.fill(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 1400),
-        curve: Curves.easeOutCubic,
-        child: Stack(
-          children: [
-            Container(color: AppTheme.bgDark),
-            Positioned(
-              top: -120,
-              right: -160,
-              child: Container(
-                width: 520,
-                height: 520,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _ambientPrimary.withValues(alpha: 0.40),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -140,
-              left: -160,
-              child: Container(
-                width: 480,
-                height: 480,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _ambientSecondary.withValues(alpha: 0.30),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Container(color: AppTheme.bgDark.withValues(alpha: 0.35)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Hero carousel ───────────────────────────────────────────
-  Widget _buildHubHeroShimmer() {
-    final h = MediaQuery.of(context).size.height * 0.65;
-    return homeHubHeroShimmer(height: h);
-  }
-
-  Widget _buildHero() {
-    final pool = _spotlight;
-    if (pool.isEmpty) return const SizedBox.shrink();
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    final h = MediaQuery.of(context).size.height * 0.65;
-
-    return SizedBox(
-      height: h,
-      child: Stack(
-        children: [
-          PageView.builder(
-            controller: _heroCtrl,
-            itemCount: pool.length,
-            onPageChanged: (i) {
-              setState(() => _heroIndex = i);
-              _extractAmbient(pool[i]);
-            },
-            itemBuilder: (_, i) => _buildHeroSlide(pool[i], isLandscape),
-          ),
-          Positioned(
-            bottom: 22,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                pool.length,
-                (i) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutCubic,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  height: 3,
-                  width: i == _heroIndex ? 28 : 8,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
-                    color: i == _heroIndex
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.2),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroSlide(KdramaCard a, bool isLandscape) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (a.cover.isNotEmpty)
-          CachedNetworkImage(
-            imageUrl: a.cover,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            placeholder: (_, _) => Container(color: AppTheme.bgCard),
-            errorWidget: (_, _, _) => Container(color: AppTheme.bgCard),
-          ),
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                Colors.transparent,
-                AppTheme.bgDark.withValues(alpha: 0.3),
-                AppTheme.bgDark.withValues(alpha: 0.85),
-                AppTheme.bgDark,
-              ],
-              stops: const [0.0, 0.25, 0.55, 0.8, 1.0],
-            ),
-          ),
-        ),
-        Positioned(
-          left: 24,
-          right: 24,
-          bottom: 60,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                a.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isLandscape ? 36 : 28,
-                  fontWeight: FontWeight.w900,
-                  height: 1.05,
-                  letterSpacing: -0.5,
-                  shadows: [
-                    Shadow(
-                      blurRadius: 20,
-                      color: Colors.black.withValues(alpha: 0.6),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  if (a.label != null && a.label!.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFFFB300),
-                            Color(0xFFFF8F00),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        a.label!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  if (a.episodesCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.4),
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${a.episodesCount} EP',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  ForjaGhostButton(
-                    label: 'Watch Now',
-                    icon: Icons.play_arrow_rounded,
-                    onTap: () => _openDetails(a),
-                  ),
-                  const SizedBox(width: 16),
-                  ForjaPlainIcon(
-                    icon: Icons.info_outline_rounded,
-                    tooltip: 'Details',
-                    onTap: () => _openDetails(a),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   // ─── Continue Watching ────────────────────────────────────────
   Widget _buildContinueWatching() {
     final w = MediaQuery.of(context).size.width;
@@ -669,7 +408,14 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       children: [
         ShellSectionTitle(
           title: 'Continue Watching',
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            homeUsesShellLayout(context)
+                ? ShellTokens.homeSectionTitleTopCompactDesktop
+                : ShellTokens.homeSectionTitleTopCompactMobile,
+            24,
+            16,
+          ),
         ),
         SizedBox(
           height: _AsianDramaContinueWatchingCard.cardHeight(context),
@@ -695,363 +441,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       ],
     );
   }
-
-  // ─── Episode rail (latest landscape thumbs) ──────────────────
-  Widget _buildEpisodeRail({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required List<KdramaCard> items,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: ForjaShellColors.sectionIconBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon,
-                      color: ForjaShellColors.sectionAccent, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          HorizontalScroller(
-            height: 175,
-            itemCount: items.length,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemBuilder: (_, i) {
-              final item = items[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _episodeRailCard(item),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _episodeRailCard(KdramaCard a) {
-    return SizedBox(
-      width: 270,
-      child: HoverScale(
-        onTap: () => _openDetails(a),
-        radius: 12,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (a.cover.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: a.cover,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) =>
-                            Container(color: AppTheme.bgCard),
-                        errorWidget: (_, _, _) =>
-                            Container(color: AppTheme.bgCard),
-                      )
-                    else
-                      Container(color: AppTheme.bgCard),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.78),
-                          ],
-                          stops: const [0.45, 1.0],
-                        ),
-                      ),
-                    ),
-                    if (a.episodesCount > 0)
-                      Positioned(
-                        left: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: ForjaShellColors.sectionIconBg,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
-                          ),
-                          child: Text(
-                            'EP ${a.episodesCount}',
-                            style: TextStyle(
-                              color: ForjaShellColors.sectionAccent,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    Positioned(
-                      left: 10,
-                      right: 10,
-                      bottom: 8,
-                      child: Text(
-                        a.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
-
-// ════════════════════════════════════════════════════════════════════
-//  Generic poster rail
-// ════════════════════════════════════════════════════════════════════
-class _Rail extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<KdramaCard> items;
-  final void Function(KdramaCard) onTap;
-  final bool showRank;
-
-  const _Rail({
-    required this.title,
-    required this.icon,
-    required this.items,
-    required this.onTap,
-    this.showRank = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: ForjaShellColors.sectionIconBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon,
-                      color: ForjaShellColors.sectionAccent, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          HorizontalScroller(
-            height: 220,
-            itemCount: items.length,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemBuilder: (_, i) {
-              final c = items[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _PosterCard(
-                  card: c,
-                  rank: showRank ? i + 1 : null,
-                  onTap: () => onTap(c),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PosterCard extends StatelessWidget {
-  final KdramaCard card;
-  final int? rank;
-  final VoidCallback onTap;
-
-  const _PosterCard({
-    required this.card,
-    required this.onTap,
-    this.rank,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 130,
-      child: HoverScale(
-        onTap: onTap,
-        radius: 10,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (card.cover.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: card.cover,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) =>
-                            Container(color: AppTheme.bgCard),
-                        errorWidget: (_, _, _) =>
-                            Container(color: AppTheme.bgCard),
-                      )
-                    else
-                      Container(color: AppTheme.bgCard),
-                    if (card.label != null && card.label!.isNotEmpty)
-                      Positioned(
-                        left: 6,
-                        top: 6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            card.label!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (card.episodesCount > 0)
-                      Positioned(
-                        right: 6,
-                        top: 6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFFFB300),
-                                Color(0xFFFF8F00),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'EP ${card.episodesCount}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (rank != null)
-                      Positioned(
-                        left: 8,
-                        bottom: 8,
-                        child: Text(
-                          '#$rank',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 38,
-                            fontWeight: FontWeight.w900,
-                            height: 1.0,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withValues(alpha: 0.7),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              card.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _AsianDramaContinueWatchingCard extends StatefulWidget {
   final Map<String, dynamic> entry;
   final VoidCallback onTap;

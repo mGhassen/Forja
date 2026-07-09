@@ -218,23 +218,23 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final foreground = selected
         ? Colors.white
-        : Colors.white.withValues(alpha: 0.68);
+        : Colors.white.withValues(alpha: 0.55);
 
     return ForjaInteractive(
       onTap: onTap,
-      hoverScale: 1.02,
-      pressScale: 0.98,
+      hoverScale: 1.06,
+      pressScale: 0.94,
       builder: (hover, pressed) {
-        final highlight = selected || hover || pressed;
+        final active = selected || hover || pressed;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           height: _kHeroPillHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: highlight
-                ? Colors.white.withValues(alpha: pressed ? 0.14 : 0.1)
+            color: active
+                ? Colors.white.withValues(alpha: pressed ? 0.12 : 0.08)
                 : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(
               isFirst: isFirst,
@@ -250,9 +250,9 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
                 segment.label,
                 style: GoogleFonts.inter(
                   color: foreground,
-                  fontSize: 15,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  letterSpacing: 0.2,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
                 ),
               ),
             ],

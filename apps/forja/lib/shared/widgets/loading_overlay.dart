@@ -158,15 +158,20 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   Widget _titleFallback() {
-    return Text(
-      widget.movie.title,
-      textAlign: TextAlign.center,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 48,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 2,
-        fontFamily: 'Poppins',
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Text(
+        widget.movie.title,
+        textAlign: TextAlign.center,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          fontFamily: 'Poppins',
+        ),
       ),
     );
   }

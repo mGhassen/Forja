@@ -6,7 +6,7 @@ import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/forja_logo.dart';
 
-const splashSlogan = 'THE RAKSHA YOU DESERVE';
+const splashSlogan = 'Relax, Look at the sun';
 
 const _logoAspectRatio = forjaLogoAspectRatio;
 const _maxLogoHeight = 320.0;

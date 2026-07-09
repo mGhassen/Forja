@@ -1,18 +1,15 @@
-// Anime hub — built to mirror the look & feel of HomeScreen.
-// Hero carousel + horizontal poster rails + ambient backdrop + mood chips.
+// Anime hub — cinematic hero + poster rows (same shell as Home).
 
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:palette_generator/palette_generator.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
+import 'package:forja/shared/widgets/hub/hub_cinematic_hero.dart';
+import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/shared/widgets/horizontal_scroller.dart';
-import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_details_screen.dart';
 import 'anime_discover_screen.dart';
 import 'anime_player_screen.dart';
@@ -30,24 +27,10 @@ class AnimeScreen extends StatefulWidget {
 class _AnimeScreenState extends State<AnimeScreen>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   final AnimeService _service = AnimeService();
-  final PageController _heroController = PageController();
   final ScrollController _cwScrollController = ScrollController();
   final ScrollController _scroll = ScrollController();
 
-  Timer? _heroTimer;
-  int _heroIndex = 0;
-
-  // Section data
-  List<AnimeCard> _spotlight = [];
-  List<AnimeCard> _trending = [];
-  List<AnimeCard> _topAiring = [];
-  List<AnimeCard> _mostPopular = [];
-  List<AnimeCard> _mostFavorite = [];
-  List<AnimeCard> _topRated = [];
-  List<AnimeCard> _latestCompleted = [];
-  List<AnimeCard> _top10 = [];
-  List<AnimeCard> _recentEpisodes = [];
-
+  // Section futures
   Future<List<AnimeCard>>? _spotlightFuture;
   Future<List<AnimeCard>>? _trendingFuture;
   Future<List<AnimeCard>>? _topAiringFuture;
@@ -65,17 +48,9 @@ class _AnimeScreenState extends State<AnimeScreen>
   // Continue watching
   List<Map<String, dynamic>> _continueWatching = [];
 
-  // Tonight's Pick
-  AnimeCard? _tonightsPick;
-
   // Mood / genre filter
   String _selectedMood = 'shonen';
   Future<List<AnimeCard>>? _moodFuture;
-
-  // Ambient backdrop colors derived from the active hero poster.
-  Color _ambientPrimary = AppTheme.primaryColor;
-  Color _ambientSecondary = AppTheme.accentColor;
-  final Map<int, ({Color primary, Color secondary})> _ambientCache = {};
 
   static const List<({String id, String label, IconData icon, String? genre})>
       _moods = [
@@ -108,8 +83,6 @@ class _AnimeScreenState extends State<AnimeScreen>
     WidgetsBinding.instance.removeObserver(this);
     AppTheme.themeNotifier.removeListener(_onTheme);
     AnimeService.watchHistoryRevision.removeListener(_onHistoryChanged);
-    _heroTimer?.cancel();
-    _heroController.dispose();
     _cwScrollController.dispose();
     _scroll.dispose();
     super.dispose();
@@ -208,39 +181,19 @@ class _AnimeScreenState extends State<AnimeScreen>
     ]);
     if (!mounted) return;
 
-    final spotlight = results[0] as List<AnimeCard>;
-    final trending = results[1] as List<AnimeCard>;
     final hasCatalog = results
         .take(9)
         .cast<List<AnimeCard>>()
         .any((section) => section.isNotEmpty);
 
     setState(() {
-      _spotlight = spotlight.take(5).toList();
-      _trending = trending;
-      _topAiring = results[2] as List<AnimeCard>;
-      _mostPopular = results[3] as List<AnimeCard>;
-      _mostFavorite = results[4] as List<AnimeCard>;
-      _topRated = results[5] as List<AnimeCard>;
-      _latestCompleted = results[6] as List<AnimeCard>;
-      _top10 = results[7] as List<AnimeCard>;
-      _recentEpisodes = results[8] as List<AnimeCard>;
       _continueWatching =
           (results[9] as List<Map<String, dynamic>>).take(10).toList();
 
-      if (_trending.length > 4) {
-        final pool = _trending.skip(3).toList();
-        _tonightsPick = pool[math.Random().nextInt(pool.length)];
-      }
       _catalogResolved = true;
       _error = hasCatalog ? null : 'Failed to load anime — check your connection';
       _moodFuture = _loadMood(_selectedMood);
     });
-
-    if (_spotlight.isNotEmpty) {
-      _extractAmbient(_spotlight.first);
-      _startHeroTimer();
-    }
   }
 
   Future<List<AnimeCard>> _loadMood(String id) async {
@@ -265,57 +218,6 @@ class _AnimeScreenState extends State<AnimeScreen>
     });
   }
 
-  void _shuffleTonight() {
-    if (_trending.length < 4) return;
-    final pool = _trending.skip(3).toList();
-    setState(() => _tonightsPick = pool[math.Random().nextInt(pool.length)]);
-  }
-
-  void _startHeroTimer() {
-    _heroTimer?.cancel();
-    if (_spotlight.length < 2) return;
-    _heroTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (!mounted || !_heroController.hasClients) return;
-      final next = (_heroIndex + 1) % _spotlight.length;
-      _heroController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 1000),
-        curve: Curves.fastOutSlowIn,
-      );
-    });
-  }
-
-  Future<void> _extractAmbient(AnimeCard a) async {
-    if (_ambientCache.containsKey(a.id)) {
-      final c = _ambientCache[a.id]!;
-      if (!mounted) return;
-      setState(() {
-        _ambientPrimary = c.primary;
-        _ambientSecondary = c.secondary;
-      });
-      return;
-    }
-    final url = a.bannerOrCover;
-    if (url.isEmpty) return;
-    try {
-      final palette = await PaletteGenerator.fromImageProvider(
-        CachedNetworkImageProvider(url),
-        size: const Size(180, 100),
-        maximumColorCount: 12,
-      );
-      if (!mounted) return;
-      final p = palette.dominantColor?.color ?? AppTheme.primaryColor;
-      final s = palette.vibrantColor?.color ??
-          palette.lightVibrantColor?.color ??
-          AppTheme.accentColor;
-      _ambientCache[a.id] = (primary: p, secondary: s);
-      setState(() {
-        _ambientPrimary = p;
-        _ambientSecondary = s;
-      });
-    } catch (_) {}
-  }
-
   void _openDetails(AnimeCard a) {
     openAnimeDetails(context, a).then((_) => _refreshHistory());
   }
@@ -338,17 +240,11 @@ class _AnimeScreenState extends State<AnimeScreen>
           (entry['anime'] as Map).cast<String, dynamic>());
       final epNum = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
       final cat = (entry['category'] as String?) ?? 'sub';
-      final provider = (entry['provider'] as String?) ?? 'kiwi';
-      final useAnimeRealms = entry['useAnimeRealms'] == true;
-      final episodeId = entry['episodeId'] as String?;
       openAnimePlayer(
         context,
         anime: anime,
         episodeNumber: epNum,
         category: cat,
-        provider: provider,
-        useAnimeRealms: useAnimeRealms,
-        episodeId: episodeId,
       ).then((_) => _refreshHistory());
     } catch (_) {}
   }
@@ -363,6 +259,42 @@ class _AnimeScreenState extends State<AnimeScreen>
     });
   }
 
+  List<HubHeroSlide> _heroSlides(List<AnimeCard> spotlight) {
+    return spotlight
+        .map(
+          (a) => HubHeroSlide(
+            id: '${a.id}',
+            title: a.displayTitle,
+            imageUrl: a.bannerOrCover,
+            overview: a.cleanDescription,
+            rating: (a.averageScore ?? 0) > 0 ? (a.averageScore! / 10) : null,
+            year: a.seasonYear?.toString(),
+            badge: a.format,
+            genres: a.genres,
+            onPlay: () => _openDetails(a),
+            onDetails: () => _openDetails(a),
+          ),
+        )
+        .toList();
+  }
+
+  HubPosterCard _animePosterCard(AnimeCard anime, {int? rank}) {
+    final subtitle = [
+      if (anime.seasonYear != null) '${anime.seasonYear}',
+      if (anime.episodes != null) '${anime.episodes} eps',
+    ].join(' · ');
+
+    return HubPosterCard(
+      imageUrl: anime.coverUrl,
+      title: anime.displayTitle,
+      subtitle: subtitle.isEmpty ? null : subtitle,
+      rating: (anime.averageScore ?? 0) > 0 ? (anime.averageScore! / 10) : null,
+      badge: anime.format,
+      rank: rank,
+      onTap: () => _openDetails(anime),
+    );
+  }
+
   // ──────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -372,14 +304,7 @@ class _AnimeScreenState extends State<AnimeScreen>
       builder: (context, _, _) {
         return _error != null && _catalogResolved
               ? _buildError()
-              : Stack(
-                      children: [
-                        Positioned.fill(
-                          child: ColoredBox(color: AppTheme.bgDark),
-                        ),
-                        if (_catalogResolved && _spotlight.isNotEmpty)
-                          _buildAmbientBackdrop(),
-                        RefreshIndicator(
+              : RefreshIndicator(
                           color: ForjaShellColors.sectionAccent,
                           backgroundColor: AppTheme.bgCard,
                           onRefresh: _load,
@@ -421,106 +346,111 @@ class _AnimeScreenState extends State<AnimeScreen>
                                         snap.data!.isEmpty) {
                                       return homeCinematicHeroShimmer(context);
                                     }
-                                    return _buildHero(
-                                      snap.data!.take(5).toList(),
+                                    return HubCinematicHero(
+                                      slides: _heroSlides(
+                                        snap.data!.take(5).toList(),
+                                      ),
                                     );
                                   },
                                 ),
                               ),
-                              SliverToBoxAdapter(
-                                child: FutureBuilder<
-                                    List<Map<String, dynamic>>>(
-                                  future: _historyFuture,
-                                  builder: (context, snap) {
-                                    if (snap.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return homeContinueWatchingSkeleton(
-                                        context,
-                                      );
-                                    }
-                                    if (_continueWatching.isEmpty) {
+                              if (_continueWatching.isNotEmpty)
+                                hubRowSliver(
+                                  _buildContinueWatching(),
+                                  isFirstAfterHero: true,
+                                )
+                              else
+                                hubRowSliver(
+                                  FutureBuilder<List<Map<String, dynamic>>>(
+                                    future: _historyFuture,
+                                    builder: (context, snap) {
+                                      if (snap.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return homeContinueWatchingSkeleton(
+                                          context,
+                                        );
+                                      }
                                       return const SizedBox.shrink();
-                                    }
-                                    return _buildContinueWatching();
-                                  },
+                                    },
+                                  ),
+                                  isFirstAfterHero: true,
                                 ),
-                              ),
-                              SliverToBoxAdapter(
-                                child: FutureBuilder<List<AnimeCard>>(
-                                  future: _spotlightFuture,
-                                  builder: (context, snap) {
-                                    final items = snap.data;
-                                    if (items == null || items.length < 5) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    return _AnimeMosaicSpotlight(
-                                      items: items.take(5).toList(),
-                                      onTap: _openDetails,
-                                    );
-                                  },
-                                ),
-                              ),
-                              SliverToBoxAdapter(child: _buildMoodChips()),
-                              SliverToBoxAdapter(
-                                child: _AnimeCatalogSection(
+                              hubRowSliver(_buildMoodChips(), isFirstAfterHero: false),
+                              hubRowSliver(
+                                HubCatalogSection<AnimeCard>(
                                   title: 'Trending Now',
                                   future: _trendingFuture,
-                                  onTap: _openDetails,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(anime),
                                 ),
+                                isFirstAfterHero: false,
                               ),
-                              if (_tonightsPick != null)
-                                SliverToBoxAdapter(
-                                  child: _buildTonightsPick(),
-                                ),
-                              SliverToBoxAdapter(
-                                child: _AnimeCatalogSection(
+                              hubRowSliver(
+                                HubCatalogSection<AnimeCard>(
                                   title: 'Top Airing',
                                   future: _topAiringFuture,
-                                  onTap: _openDetails,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(anime),
                                 ),
+                                isFirstAfterHero: false,
                               ),
-                              SliverToBoxAdapter(
-                                child: _AnimeCatalogSection(
+                              hubRowSliver(
+                                HubCatalogSection<AnimeCard>(
                                   title: 'Top 10 Today',
                                   future: _top10Future,
-                                  onTap: _openDetails,
                                   showRank: true,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(
+                                    anime,
+                                    rank: index + 1,
+                                  ),
                                 ),
+                                isFirstAfterHero: false,
                               ),
-                              SliverToBoxAdapter(
-                                child: _AnimeCatalogSection(
+                              hubRowSliver(
+                                HubCatalogSection<AnimeCard>(
                                   title: 'Most Popular',
                                   future: _mostPopularFuture,
-                                  onTap: _openDetails,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(anime),
                                 ),
+                                isFirstAfterHero: false,
                               ),
-                              SliverToBoxAdapter(
-                                child: _AnimeCatalogSection(
+                              hubRowSliver(
+                                HubCatalogSection<AnimeCard>(
                                   title: 'Latest Episodes',
                                   future: _recentEpisodesFuture,
-                                  onTap: _openDetails,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(anime),
                                 ),
+                                isFirstAfterHero: false,
                               ),
-                              SliverToBoxAdapter(
-                                child: _AnimeCatalogSection(
+                              hubRowSliver(
+                                HubCatalogSection<AnimeCard>(
                                   title: 'Top Rated',
                                   future: _topRatedFuture,
-                                  onTap: _openDetails,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(anime),
                                 ),
+                                isFirstAfterHero: false,
                               ),
-                              SliverToBoxAdapter(
-                                child: _AnimeCatalogSection(
+                              hubRowSliver(
+                                HubCatalogSection<AnimeCard>(
                                   title: 'Most Favorited',
                                   future: _mostFavoriteFuture,
-                                  onTap: _openDetails,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(anime),
                                 ),
+                                isFirstAfterHero: false,
                               ),
-                              SliverToBoxAdapter(
-                                child: _AnimeCatalogSection(
+                              hubRowSliver(
+                                HubCatalogSection<AnimeCard>(
                                   title: 'Recently Completed',
                                   future: _latestCompletedFuture,
-                                  onTap: _openDetails,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(anime),
                                 ),
+                                isFirstAfterHero: false,
                               ),
                               const SliverToBoxAdapter(
                                 child: SizedBox(height: 80),
@@ -528,315 +458,8 @@ class _AnimeScreenState extends State<AnimeScreen>
                             ],
                           ),
                           ),
-                        ),
-                      ],
-                    );
+                        );
       },
-    );
-  }
-
-  // ─── Ambient backdrop ──────────────────────────────────────────
-  Widget _buildAmbientBackdrop() {
-    return Positioned.fill(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 1400),
-        curve: Curves.easeOutCubic,
-        child: Stack(
-          children: [
-            Container(color: AppTheme.bgDark),
-            Positioned(
-              top: -120,
-              right: -160,
-              child: Container(
-                width: 520,
-                height: 520,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _ambientPrimary.withValues(alpha: 0.40),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -140,
-              left: -160,
-              child: Container(
-                width: 480,
-                height: 480,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _ambientSecondary.withValues(alpha: 0.30),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 280,
-              right: -100,
-              child: Container(
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _ambientPrimary.withValues(alpha: 0.18),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Container(color: AppTheme.bgDark.withValues(alpha: 0.35)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Spotlight (mosaic, mirrors home page) ─────────────────────
-
-  // ─── Hero carousel ─────────────────────────────────────────────
-  Widget _buildHero(List<AnimeCard> spotlight) {
-    if (spotlight.isEmpty) return const SizedBox.shrink();
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    final h = isLandscape
-        ? MediaQuery.of(context).size.height * 0.65
-        : MediaQuery.of(context).size.height * 0.75;
-
-    return SizedBox(
-      height: h,
-      child: Stack(
-        children: [
-          PageView.builder(
-            controller: _heroController,
-            itemCount: spotlight.length,
-            onPageChanged: (i) {
-              setState(() => _heroIndex = i);
-              _extractAmbient(spotlight[i]);
-            },
-            itemBuilder: (_, i) =>
-                _buildHeroSlide(spotlight[i], isLandscape),
-          ),
-          // Dot indicator
-          Positioned(
-            bottom: 22,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                spotlight.length,
-                (i) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutCubic,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  height: 3,
-                  width: i == _heroIndex ? 28 : 8,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
-                    color: i == _heroIndex
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.2),
-                    boxShadow: i == _heroIndex
-                        ? [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                            )
-                          ]
-                        : null,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroSlide(AnimeCard a, bool isLandscape) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (a.bannerOrCover.isNotEmpty)
-          CachedNetworkImage(
-            imageUrl: a.bannerOrCover,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            placeholder: (_, _) => Container(color: AppTheme.bgCard),
-            errorWidget: (_, _, _) => Container(color: AppTheme.bgCard),
-          ),
-        // Gradient overlay
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                Colors.transparent,
-                AppTheme.bgDark.withValues(alpha: 0.3),
-                AppTheme.bgDark.withValues(alpha: 0.85),
-                AppTheme.bgDark,
-              ],
-              stops: const [0.0, 0.25, 0.55, 0.8, 1.0],
-            ),
-          ),
-        ),
-        // Content
-        Positioned(
-          left: 24,
-          right: 24,
-          bottom: 60,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                a.displayTitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isLandscape ? 36 : 28,
-                  fontWeight: FontWeight.w900,
-                  height: 1.05,
-                  letterSpacing: -0.5,
-                  shadows: [
-                    Shadow(
-                      blurRadius: 20,
-                      color: Colors.black.withValues(alpha: 0.6),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildHeroMeta(a),
-              if (a.cleanDescription.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  a.cleanDescription,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 13.5,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  ForjaGhostButton(
-                    label: 'Watch Now',
-                    icon: Icons.play_arrow_rounded,
-                    onTap: () => _openDetails(a),
-                  ),
-                  const SizedBox(width: 16),
-                  ForjaPlainIcon(
-                    icon: Icons.info_outline_rounded,
-                    tooltip: 'Details',
-                    onTap: () => _openDetails(a),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeroMeta(AnimeCard a) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        if ((a.averageScore ?? 0) > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star_rounded,
-                    color: Colors.white, size: 14),
-                const SizedBox(width: 3),
-                Text(
-                  ((a.averageScore ?? 0) / 10).toStringAsFixed(1),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        if (a.seasonYear != null)
-          Text(
-            '${a.seasonYear}',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        if (a.format != null && a.format!.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.4),
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              a.format!,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-        if (a.episodes != null)
-          Text(
-            '${a.episodes} eps',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 13,
-            ),
-          ),
-        if (a.genres.isNotEmpty)
-          Text(
-            a.genres.take(3).join(' · '),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 12,
-            ),
-          ),
-      ],
     );
   }
 
@@ -881,7 +504,14 @@ class _AnimeScreenState extends State<AnimeScreen>
       children: [
         ShellSectionTitle(
           title: 'Continue Watching',
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            homeUsesShellLayout(context)
+                ? ShellTokens.homeSectionTitleTopCompactDesktop
+                : ShellTokens.homeSectionTitleTopCompactMobile,
+            24,
+            16,
+          ),
           trailing: [
             GestureDetector(
               onTap: _cwScrollLeft,
@@ -924,36 +554,36 @@ class _AnimeScreenState extends State<AnimeScreen>
 
   // ─── Mood chips ────────────────────────────────────────────────
   Widget _buildMoodChips() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionHeader('Pick your vibe'),
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              itemCount: _moods.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final m = _moods[i];
-                final selected = m.id == _selectedMood;
-                return ForjaShellChip(
-                  label: m.label,
-                  selected: selected,
-                  icon: m.icon,
-                  onTap: () => _selectMood(m.id),
-                );
-              },
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const ShellSectionTitle(
+          title: 'Pick your vibe',
+          padding: EdgeInsets.fromLTRB(24, 0, 24, 16),
+        ),
+        SizedBox(
+          height: 40,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            itemCount: _moods.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              final m = _moods[i];
+              final selected = m.id == _selectedMood;
+              return ForjaShellChip(
+                label: m.label,
+                selected: selected,
+                icon: m.icon,
+                onTap: () => _selectMood(m.id),
+              );
+            },
           ),
-          const SizedBox(height: 16),
-          _buildMoodSection(),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        _buildMoodSection(),
+      ],
     );
   }
 
@@ -961,271 +591,13 @@ class _AnimeScreenState extends State<AnimeScreen>
     final future = _moodFuture;
     if (future == null) return const SizedBox.shrink();
 
-    return FutureBuilder<List<AnimeCard>>(
+    return HubCatalogSection<AnimeCard>(
+      title: 'In the mood',
       future: future,
-      builder: (context, snap) {
-        if (!snap.hasData) {
-          return homeLoadingShimmer(homeCatalogCardRowSkeleton(context));
-        }
-        return _AnimeRail(
-          title: 'In the mood',
-          items: snap.data!,
-          onTap: _openDetails,
-          topPadding: 0,
-          hideHeader: true,
-        );
-      },
+      cardBuilder: (context, anime, index) => _animePosterCard(anime),
     );
   }
 
-  // ─── Tonight's Pick ────────────────────────────────────────────
-  Widget _buildTonightsPick() {
-    final a = _tonightsPick!;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 36, 24, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: ForjaShellColors.sectionIconBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.nights_stay_rounded,
-                    color: ForjaShellColors.sectionAccent,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  "Tonight's Pick",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const Spacer(),
-                Material(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: _shuffleTonight,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 7),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.shuffle_rounded,
-                            size: 14,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Shuffle',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          LayoutBuilder(
-            builder: (context, c) {
-              final w = c.maxWidth;
-              final isWide = w > 700;
-              final h = (w / (isWide ? 2.6 : 1.9)).clamp(260.0, 420.0);
-              final img = a.bannerOrCover;
-              return InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => _openDetails(a),
-                child: Container(
-                  height: h,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: AppTheme.bgCard,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.06)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (img.isNotEmpty)
-                        CachedNetworkImage(
-                          imageUrl: img,
-                          fit: BoxFit.cover,
-                          alignment: const Alignment(0, -0.15),
-                        ),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomLeft,
-                            end: Alignment.topRight,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.92),
-                              Colors.black.withValues(alpha: 0.55),
-                              Colors.black.withValues(alpha: 0.10),
-                            ],
-                            stops: const [0.0, 0.55, 1.0],
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Row(
-                              children: [
-                                if ((a.averageScore ?? 0) > 0) ...[
-                                  const Icon(Icons.star_rounded,
-                                      size: 16, color: Colors.amber),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    ((a.averageScore ?? 0) / 10)
-                                        .toStringAsFixed(1),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                ],
-                                if (a.seasonYear != null)
-                                  Text(
-                                    '${a.seasonYear}',
-                                    style: TextStyle(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.6),
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                if (a.genres.isNotEmpty) ...[
-                                  Text(
-                                    '  ·  ',
-                                    style: TextStyle(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.4),
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  Text(
-                                    a.genres.take(2).join(' · '),
-                                    style: TextStyle(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.5),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              a.displayTitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isWide ? 28 : 22,
-                                fontWeight: FontWeight.w900,
-                                height: 1.05,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            if (a.cleanDescription.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                a.cleanDescription,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white
-                                      .withValues(alpha: 0.72),
-                                  fontSize: 13,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 14),
-                            Material(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(24),
-                                onTap: () => _openDetails(a),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 18, vertical: 10),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.play_arrow_rounded,
-                                          color: Colors.black, size: 22),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Play',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Section header (re-usable) ───────────────────────────────
-  Widget _sectionHeader(String title) {
-    return ShellSectionTitle(
-      title: title,
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-    );
-  }
-
-  // ─── Error state ───────────────────────────────────────────────
   Widget _buildError() {
     return Center(
       child: Padding(
@@ -1260,634 +632,6 @@ class _AnimeScreenState extends State<AnimeScreen>
     );
   }
 }
-
-// ──────────────────────────────────────────────────────────────────
-// Reusable horizontal poster rail
-// ──────────────────────────────────────────────────────────────────
-class _AnimeCatalogSection extends StatelessWidget {
-  final String title;
-  final Future<List<AnimeCard>>? future;
-  final void Function(AnimeCard) onTap;
-  final bool showRank;
-  final double topPadding;
-
-  const _AnimeCatalogSection({
-    required this.title,
-    required this.future,
-    required this.onTap,
-    this.showRank = false,
-    this.topPadding = 32,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final sectionFuture = future;
-    if (sectionFuture == null) return const SizedBox.shrink();
-
-    return FutureBuilder<List<AnimeCard>>(
-      future: sectionFuture,
-      builder: (context, snap) {
-        final loading = snap.connectionState == ConnectionState.waiting;
-        final items = snap.data ?? const <AnimeCard>[];
-
-        if (loading) {
-          return homeLoadingShimmer(
-            homeMovieRowSkeleton(
-              context,
-              titleWidth: title.length > 12 ? 180 : title.length * 11.0,
-              topPadding: topPadding,
-            ),
-          );
-        }
-        if (items.isEmpty) return const SizedBox.shrink();
-
-        return _AnimeRail(
-          title: title,
-          items: items,
-          onTap: onTap,
-          showRank: showRank,
-          topPadding: topPadding,
-        );
-      },
-    );
-  }
-}
-
-class _AnimeRail extends StatelessWidget {
-  final String title;
-  final List<AnimeCard> items;
-  final void Function(AnimeCard) onTap;
-  final bool showRank;
-  final double topPadding;
-  final bool hideHeader;
-
-  const _AnimeRail({
-    required this.title,
-    required this.items,
-    required this.onTap,
-    this.showRank = false,
-    this.topPadding = 32,
-    this.hideHeader = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
-    final w = MediaQuery.of(context).size.width;
-    // Three breakpoints: phone (<600), tablet (<1100), desktop (≥1100).
-    final cardW = w < 600 ? 150.0 : (w < 1100 ? 175.0 : 200.0);
-    final cardH = cardW * 1.5;
-    final railH = cardH + 64; // poster + title block
-    final hPad = w < 380 ? 14.0 : 24.0;
-
-    return Padding(
-      padding: EdgeInsets.only(top: topPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!hideHeader)
-            ShellSectionTitle(
-              title: title,
-              padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 16),
-            ),
-          SizedBox(
-            height: railH,
-            child: HorizontalScroller(
-              height: railH,
-              padding: EdgeInsets.symmetric(
-                  horizontal: showRank ? (hPad - 6).clamp(8.0, 24.0) : hPad),
-              itemCount: items.length,
-              separatorBuilder: (_, _) =>
-                  SizedBox(width: showRank ? 6 : 14),
-              itemBuilder: (_, i) => _AnimeCardTile(
-                anime: items[i],
-                width: cardW,
-                height: cardH,
-                rank: showRank ? i + 1 : null,
-                onTap: () => onTap(items[i]),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AnimeCardTile extends StatelessWidget {
-  final AnimeCard anime;
-  final double width;
-  final double height;
-  final int? rank;
-  final VoidCallback onTap;
-
-  const _AnimeCardTile({
-    required this.anime,
-    required this.width,
-    required this.height,
-    required this.onTap,
-    this.rank,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final card = HoverScale(
-      onTap: onTap,
-      radius: 14,
-      child: SizedBox(
-        width: width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: height,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: AppTheme.bgCard,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  width: 0.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (anime.coverUrl.isNotEmpty)
-                    CachedNetworkImage(
-                      imageUrl: anime.coverUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) =>
-                          Container(color: AppTheme.bgCard),
-                      errorWidget: (_, _, _) => Container(
-                        color: AppTheme.bgCard,
-                        child: const Icon(Icons.broken_image,
-                            color: Colors.white24),
-                      ),
-                    ),
-                  // Bottom gradient
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.55),
-                        ],
-                        stops: const [0.55, 1.0],
-                      ),
-                    ),
-                  ),
-                  if ((anime.averageScore ?? 0) > 0)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.08),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star_rounded,
-                                size: 12, color: Colors.amber),
-                            const SizedBox(width: 3),
-                            Text(
-                              ((anime.averageScore ?? 0) / 10)
-                                  .toStringAsFixed(1),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  if (anime.format != null && anime.format!.isNotEmpty)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: ForjaShellColors.progressFill
-                              .withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          anime.format!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              anime.displayTitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
-              ),
-            ),
-            if (anime.seasonYear != null || anime.episodes != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  [
-                    if (anime.seasonYear != null) '${anime.seasonYear}',
-                    if (anime.episodes != null) '${anime.episodes} eps',
-                  ].join(' · '),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-
-    if (rank == null) return card;
-
-    return SizedBox(
-      width: width + 50,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 50),
-            child: card,
-          ),
-          Positioned(
-            left: -4,
-            bottom: 60,
-            child: Text(
-              '$rank',
-              style: TextStyle(
-                color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.85),
-                fontSize: 88,
-                fontWeight: FontWeight.w900,
-                height: 1,
-                letterSpacing: -4,
-                shadows: [
-                  Shadow(
-                    blurRadius: 12,
-                    color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.35),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════
-//  Mosaic Spotlight — port of home page's _MosaicSpotlight, adapted
-//  for AnimeCard. 1 large featured tile + 4 smaller tiles.
-// ════════════════════════════════════════════════════════════════════
-class _AnimeMosaicSpotlight extends StatelessWidget {
-  final List<AnimeCard> items;
-  final void Function(AnimeCard) onTap;
-  const _AnimeMosaicSpotlight({required this.items, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.length < 5) return const SizedBox.shrink();
-    final featured = items.first;
-    final small = items.skip(1).take(4).toList();
-
-    return LayoutBuilder(builder: (context, c) {
-      final w = c.maxWidth;
-      final isWide = w > 720;
-      final hPad = w < 380 ? 14.0 : (w < 520 ? 18.0 : 24.0);
-      final headerTopPad = w < 380 ? 24.0 : 36.0;
-      final headerBotPad = w < 380 ? 12.0 : 16.0;
-
-      final header = Padding(
-        padding: EdgeInsets.fromLTRB(hPad, headerTopPad, hPad, headerBotPad),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: ForjaShellColors.sectionIconBg,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.auto_awesome_rounded,
-                  color: ForjaShellColors.sectionAccent, size: 18),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Spotlight',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ),
-            if (w >= 380)
-              Text(
-                '${items.length} trending now',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-          ],
-        ),
-      );
-
-      if (isWide) {
-        final featuredW = (w - hPad * 2 - 14) * 0.58;
-        final smallW = (w - hPad * 2 - 14) * 0.42;
-        final tileH = featuredW * 0.58;
-        final smallTileH = (tileH - 12) / 2;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            header,
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: hPad),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: featuredW,
-                    height: tileH,
-                    child: _AnimeMosaicTile(
-                      anime: featured,
-                      onTap: () => onTap(featured),
-                      big: true,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  SizedBox(
-                    width: smallW,
-                    height: tileH,
-                    child: GridView.count(
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: (smallW / 2 - 6) / smallTileH,
-                      children: small
-                          .map((m) => _AnimeMosaicTile(
-                                anime: m,
-                                onTap: () => onTap(m),
-                              ))
-                          .toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      }
-
-      final featuredAvail = w - hPad * 2;
-      final featuredH = (featuredAvail * 0.56).clamp(170.0, 320.0);
-      final smallTileW = w < 380
-          ? (w * 0.62).clamp(180.0, 240.0)
-          : (w < 520 ? 200.0 : 220.0);
-      final smallTileH = w < 380 ? 110.0 : 130.0;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          header,
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: hPad),
-            child: SizedBox(
-              height: featuredH,
-              child: _AnimeMosaicTile(
-                anime: featured,
-                onTap: () => onTap(featured),
-                big: true,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: smallTileH,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: hPad),
-              itemCount: small.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
-              itemBuilder: (_, i) => SizedBox(
-                width: smallTileW,
-                child: _AnimeMosaicTile(
-                  anime: small[i],
-                  onTap: () => onTap(small[i]),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    });
-  }
-}
-
-class _AnimeMosaicTile extends StatelessWidget {
-  final AnimeCard anime;
-  final VoidCallback onTap;
-  final bool big;
-  const _AnimeMosaicTile({
-    required this.anime,
-    required this.onTap,
-    this.big = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl = anime.bannerOrCover;
-    return HoverScale(
-      onTap: onTap,
-      radius: 16,
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: AppTheme.bgCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.06),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (imageUrl.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (_, _) => Container(color: AppTheme.bgCard),
-                errorWidget: (_, _, _) =>
-                    Container(color: AppTheme.bgCard),
-              ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.25),
-                    Colors.black.withValues(alpha: 0.85),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
-                ),
-              ),
-            ),
-            if (big)
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: const Text(
-                    '#1 TRENDING',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                ),
-              ),
-            if ((anime.averageScore ?? 0) > 0)
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.15),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded,
-                          color: Colors.amber, size: 12),
-                      const SizedBox(width: 3),
-                      Text(
-                        ((anime.averageScore ?? 0) / 10).toStringAsFixed(1),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            Positioned(
-              left: 14,
-              right: 14,
-              bottom: 14,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    anime.displayTitle,
-                    maxLines: big ? 2 : 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: big ? 20 : 14,
-                      fontWeight: FontWeight.w800,
-                      height: 1.15,
-                      letterSpacing: -0.3,
-                      shadows: const [
-                        Shadow(blurRadius: 10, color: Colors.black87),
-                      ],
-                    ),
-                  ),
-                  if (big) const SizedBox(height: 6),
-                  if (big)
-                    Text(
-                      [
-                        if (anime.format != null) anime.format!,
-                        if (anime.seasonYear != null) '${anime.seasonYear}',
-                        if (anime.episodes != null)
-                          '${anime.episodes} eps',
-                      ].join(' · '),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _AnimeContinueWatchingCard extends StatefulWidget {
   final Map<String, dynamic> entry;
   final VoidCallback onTap;
