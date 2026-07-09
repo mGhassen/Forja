@@ -303,15 +303,11 @@ class _AnimeScreenState extends State<AnimeScreen>
       // Don't await getEpisodes here — push the player immediately so it
       // can start resolving streams in parallel. The player can fetch
       // its own episode list when the user opens the episode picker.
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => AnimePlayerScreen(
-            anime: anime,
-            episodeNumber: epNum,
-            category: cat,
-            allEpisodes: const [],
-          ),
-        ),
+      openAnimePlayer(
+        context,
+        anime: anime,
+        episodeNumber: epNum,
+        category: cat,
       ).then((_) => _refreshHistory());
     } catch (_) {}
   }

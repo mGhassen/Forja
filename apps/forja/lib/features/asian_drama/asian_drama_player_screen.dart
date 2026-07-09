@@ -4,12 +4,38 @@
 
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/asian_drama/catalog/kisskh_extractor.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:rust/rust.dart';
+
+Movie _hubMovieFromDrama(KdramaCard drama, {String overview = ''}) => Movie(
+      id: -drama.id,
+      title: drama.title,
+      posterPath: drama.cover,
+      backdropPath: drama.cover,
+      voteAverage: 0,
+      releaseDate: '',
+      overview: overview,
+      mediaType: 'tv',
+      numberOfEpisodes: drama.episodesCount,
+    );
+
+List<PlayerHubEpisode> _hubEpisodesFromDrama(List<KdramaEpisode> episodes) =>
+    episodes
+        .map(
+          (e) => PlayerHubEpisode(
+            number: e.number,
+            title: 'Episode ${e.displayNumber}',
+          ),
+        )
+        .toList();
 
 Future<T?> openAsianDramaPlayer<T>(
   BuildContext context, {
@@ -49,36 +75,36 @@ class AsianDramaPlayerScreen extends StatefulWidget {
       _AsianDramaPlayerScreenState();
 }
 
-class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
-    with TickerProviderStateMixin {
+class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   final KissKhService _service = KissKhService();
   final KissKhExtractor _extractor = KissKhExtractor();
 
-  String _phase = 'Fetching streams…';
+  late final ValueNotifier<String> _messageNotifier;
+  late final ValueNotifier<bool> _fadeOutNotifier;
+
   String _statusLine = '';
-  bool _resolving = true;
   bool _failedAll = false;
   bool _cancelled = false;
-  int _subsFound = 0;
-
-  late final AnimationController _pulseCtrl;
 
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
+    _messageNotifier = ValueNotifier('Fetching streams…');
+    _fadeOutNotifier = ValueNotifier(false);
     _bootstrap();
   }
 
   @override
   void dispose() {
     _cancelled = true;
-    _pulseCtrl.dispose();
+    _messageNotifier.dispose();
+    _fadeOutNotifier.dispose();
     unawaited(_extractor.cancel());
     super.dispose();
+  }
+
+  void _setPhase(String phase) {
+    _messageNotifier.value = phase;
   }
 
   Future<void> _bootstrap() async {
@@ -92,9 +118,9 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
         onProgress: (phase, detail) {
           if (!mounted) return;
           setState(() {
-            if (phase == 'init') _phase = 'Opening kisskh…';
-            if (phase == 'loaded') _phase = 'Waiting for stream key…';
-            if (phase == 'done') _phase = 'Stream ready';
+            if (phase == 'init') _setPhase('Opening kisskh…');
+            if (phase == 'loaded') _setPhase('Waiting for stream key…');
+            if (phase == 'done') _setPhase('Stream ready');
             if (phase == 'error') _statusLine = detail;
           });
         },
@@ -103,20 +129,17 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
       if (!mounted) return;
       if (stream == null) {
         setState(() {
-          _resolving = false;
           _failedAll = true;
-          _phase = 'No stream available';
+          _setPhase('No stream available');
         });
         return;
       }
-      _subsFound = stream.subtitles.length;
       await _launchPlayer(stream);
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _resolving = false;
         _failedAll = true;
-        _phase = 'Resolver crashed';
+        _setPhase('Resolver crashed');
         _statusLine = '$e';
       });
     }
@@ -139,25 +162,25 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
     await _service.recordWatch(
       drama: widget.drama,
       episodeNumber: widget.episode.number,
-              totalEpisodes: episodes.isNotEmpty
-                  ? episodes.length
-                  : widget.episode.number.toInt(),
+      totalEpisodes: episodes.isNotEmpty
+          ? episodes.length
+          : widget.episode.number.toInt(),
     );
 
     final title =
         '${widget.drama.title} • EP ${widget.episode.displayNumber}';
 
     KdramaEpisode? nextFromList;
-    if (widget.allEpisodes.isNotEmpty) {
-      for (final e in widget.allEpisodes) {
+    if (episodes.isNotEmpty) {
+      for (final e in episodes) {
         if (e.number == widget.episode.number + 1) {
           nextFromList = e;
           break;
         }
       }
     }
-    final hasNext =
-        widget.allEpisodes.isEmpty ? true : nextFromList != null;
+    final hasNext = episodes.isEmpty ? true : nextFromList != null;
+    final hubEpisodes = _hubEpisodesFromDrama(episodes);
 
     if (!mounted) return;
     final navigator = Navigator.of(context, rootNavigator: true);
@@ -165,7 +188,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
 
     Future<void> goNext() async {
       var ep = nextFromList;
-      var list = widget.allEpisodes;
+      var list = episodes;
       if (ep == null) {
         try {
           final det = await _service.getDetails(widget.drama.id);
@@ -190,22 +213,46 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
       );
     }
 
-    await AppRouter.openPlayer(
+    _fadeOutNotifier.value = true;
+    final playerFuture = AppRouter.openPlayer(
       context,
       streamUrl: sources.first.url,
       title: title,
       headers: sources.first.headers,
       sources: sources,
       activeProvider: 'kisskh',
+      movie: _hubMovieFromDrama(widget.drama, overview: overview),
       startPosition: widget.startPosition,
       externalSubtitles: subs.isNotEmpty ? subs : null,
+      hubEpisodes: hubEpisodes,
+      hubEpisodeNumber: widget.episode.number,
+      episodeOverview: 'Episode ${widget.episode.displayNumber}',
+      onHubEpisodeSelected: (ep) async {
+        KdramaEpisode? target;
+        for (final e in episodes) {
+          if (e.number == ep.number) {
+            target = e;
+            break;
+          }
+        }
+        if (target == null) return;
+        await navigator.pushReplacement(
+          AppRouter.fadeRoute(
+            (_) => AsianDramaPlayerScreen(
+              drama: widget.drama,
+              episode: target!,
+              allEpisodes: episodes,
+            ),
+          ),
+        );
+      },
       onSaveProgress: (pos, dur) async {
         await _service.recordWatch(
           drama: widget.drama,
           episodeNumber: widget.episode.number,
-              totalEpisodes: episodes.isNotEmpty
-                  ? episodes.length
-                  : widget.episode.number.toInt(),
+          totalEpisodes: episodes.isNotEmpty
+              ? episodes.length
+              : widget.episode.number.toInt(),
           position: pos,
           duration: dur,
         );
@@ -214,115 +261,66 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
       onNextEpisode: hasNext ? goNext : null,
       fadeTransition: true,
     );
+    await Future<void>.delayed(loadingOverlayFadeOutDuration);
     if (resolverRoute != null) {
       navigator.removeRoute(resolverRoute);
     }
+    await playerFuture;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<AppThemePreset>(
-      valueListenable: AppTheme.themeNotifier,
-      builder: (context, theme, _) {
-        return Scaffold(
-          backgroundColor: theme.bgDark,
-          appBar: AppBar(
-            backgroundColor: theme.bgDark,
-            elevation: 0,
-            iconTheme: const IconThemeData(color: Colors.white),
-            title: Text(
-              '${widget.drama.title} • EP ${widget.episode.displayNumber}',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_resolving) ...[
-                    AnimatedBuilder(
-                      animation: _pulseCtrl,
-                      builder: (_, child) => Transform.scale(
-                        scale: 0.92 + (_pulseCtrl.value * 0.18),
-                        child: child,
-                      ),
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              theme.primaryColor.withValues(alpha: 0.45),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 36,
-                            height: 36,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.4,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                  ] else if (_failedAll) ...[
+  Widget _buildFailure(AppThemePreset theme) {
+    final backdropUrl = widget.drama.cover;
+    return Material(
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (backdropUrl.isNotEmpty)
+            CachedNetworkImage(
+              imageUrl: backdropUrl,
+              fit: BoxFit.cover,
+              placeholder: (_, _) => const ColoredBox(color: Colors.black),
+              errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
+            )
+          else
+            const ColoredBox(color: Colors.black),
+          Container(color: Colors.black.withValues(alpha: 0.72)),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Icon(Icons.error_outline,
                         color: theme.primaryColor, size: 56),
                     const SizedBox(height: 14),
-                  ],
-                  Text(
-                    _phase,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (_statusLine.isNotEmpty) ...[
-                    const SizedBox(height: 8),
                     Text(
-                      _statusLine,
+                      _messageNotifier.value,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ],
-                  if (_subsFound > 0) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      '$_subsFound subtitle'
-                      '${_subsFound > 1 ? 's' : ''} loaded',
-                      style: TextStyle(
-                        color: theme.primaryColor.withValues(alpha: 0.9),
-                        fontSize: 12,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ],
-                  if (_failedAll) ...[
+                    if (_statusLine.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _statusLine,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.65),
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     OutlinedButton.icon(
                       onPressed: () {
                         setState(() {
-                          _resolving = true;
                           _failedAll = false;
-                          _phase = 'Fetching streams…';
+                          _setPhase('Fetching streams…');
                           _statusLine = '';
                         });
                         _bootstrap();
@@ -349,10 +347,35 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen>
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final movie = _hubMovieFromDrama(widget.drama);
+    final episodeLabel = 'EP ${widget.episode.displayNumber}';
+
+    return ValueListenableBuilder<AppThemePreset>(
+      valueListenable: AppTheme.themeNotifier,
+      builder: (context, theme, _) {
+        if (_failedAll) return _buildFailure(theme);
+
+        return LoadingOverlay(
+          movie: movie,
+          messageNotifier: _messageNotifier,
+          fadeOutNotifier: _fadeOutNotifier,
+          subtitle: episodeLabel,
+          onCancel: () {
+            _cancelled = true;
+            unawaited(_extractor.cancel());
+            Navigator.of(context).pop();
+          },
         );
       },
     );

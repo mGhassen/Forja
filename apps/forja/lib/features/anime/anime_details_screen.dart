@@ -117,15 +117,12 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   }
 
   void _play(int epNumber) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AnimePlayerScreen(
-          anime: _data,
-          episodeNumber: epNumber,
-          category: _category,
-          allEpisodes: _episodes,
-        ),
-      ),
+    openAnimePlayer(
+      context,
+      anime: _data,
+      episodeNumber: epNumber,
+      category: _category,
+      allEpisodes: _episodes,
     );
   }
 

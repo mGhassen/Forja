@@ -175,17 +175,17 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
       .toList();
 
   List<EpisodeRange> get _episodeRanges =>
-      buildEpisodeRanges(_episodes.length, episodeNumbers: _episodeNumbers);
+      buildEpisodeRangesForNumbers(_episodeNumbers);
 
   List<Map<String, dynamic>> get _visibleEpisodes =>
-      sliceEpisodeChunk(_episodes, _episodeChunk);
+      filterEpisodeChunkByNumber(
+        _episodes,
+        (ep) => ep['episode_number'] as int? ?? 0,
+        _episodeChunk,
+      );
 
-  int _chunkIndexForEpisode(int episode) {
-    final index = _episodes.indexWhere(
-      (ep) => (ep['episode_number'] as int? ?? 0) == episode,
-    );
-    return episodeChunkIndex(index);
-  }
+  int _chunkIndexForEpisode(int episode) =>
+      episodeChunkIndexForNumber(episode);
 
   @override
   void initState() {
@@ -306,33 +306,23 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
           padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
           child: Row(
             children: [
-              Text(
-                'Episodes',
-                style: TextStyle(
-                  color: ForjaShellColors.cinematic.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                ),
-              ),
-              if (!_loading && _episodeRanges.length > 1) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: EpisodeRangeBar(
-                    ranges: _episodeRanges,
-                    selectedIndex: _episodeChunk,
-                    onSelected: _selectChunk,
-                    compact: true,
+              Expanded(
+                child: Text(
+                  'Episodes',
+                  style: TextStyle(
+                    color: ForjaShellColors.cinematic.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                   ),
                 ),
-              ] else
-                const Spacer(),
+              ),
               if ((_seasonCount ?? 0) > 1) ...[
-                const SizedBox(width: 8),
                 _SeasonDropdown(
                   seasonCount: _seasonCount!,
                   selectedSeason: _selectedSeason,
                   onSelected: _selectSeason,
                 ),
+                const SizedBox(width: 8),
               ],
               ForjaCloseButton(
                 color: ForjaShellColors.cinematic.textSecondary,
@@ -341,6 +331,16 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
             ],
           ),
         ),
+        if (!_loading && showEpisodeRangeBar(_episodeNumbers))
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: EpisodeRangeBar(
+              ranges: _episodeRanges,
+              selectedIndex: _episodeChunk,
+              onSelected: _selectChunk,
+              compact: true,
+            ),
+          ),
         Divider(
           height: 1,
           color: ForjaShellColors.cinematic.borderSubtle,
@@ -640,18 +640,18 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
       .map((e) => e.number is int ? e.number as int : e.number.toInt())
       .toList();
 
-  List<EpisodeRange> get _episodeRanges => buildEpisodeRanges(
-        widget.episodes.length,
-        episodeNumbers: _episodeNumbers,
-      );
+  List<EpisodeRange> get _episodeRanges =>
+      buildEpisodeRangesForNumbers(_episodeNumbers);
 
   List<PlayerHubEpisode> get _visibleEpisodes =>
-      sliceEpisodeChunk(widget.episodes, _episodeChunk);
+      filterEpisodeChunkByNumber(
+        widget.episodes,
+        (e) => e.number is int ? e.number as int : e.number.toInt(),
+        _episodeChunk,
+      );
 
-  int _chunkIndexForEpisode(num episode) {
-    final index = widget.episodes.indexWhere((e) => e.number == episode);
-    return episodeChunkIndex(index);
-  }
+  int _chunkIndexForEpisode(num episode) =>
+      episodeChunkIndexForNumber(episode);
 
   @override
   void initState() {
@@ -727,26 +727,16 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
           padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
           child: Row(
             children: [
-              Text(
-                'Episodes',
-                style: TextStyle(
-                  color: ForjaShellColors.cinematic.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                ),
-              ),
-              if (_episodeRanges.length > 1) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: EpisodeRangeBar(
-                    ranges: _episodeRanges,
-                    selectedIndex: _episodeChunk,
-                    onSelected: _selectChunk,
-                    compact: true,
+              Expanded(
+                child: Text(
+                  'Episodes',
+                  style: TextStyle(
+                    color: ForjaShellColors.cinematic.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                   ),
                 ),
-              ] else
-                const Spacer(),
+              ),
               ForjaCloseButton(
                 color: ForjaShellColors.cinematic.textSecondary,
                 onTap: widget.onClose,
@@ -754,6 +744,16 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
             ],
           ),
         ),
+        if (showEpisodeRangeBar(_episodeNumbers))
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: EpisodeRangeBar(
+              ranges: _episodeRanges,
+              selectedIndex: _episodeChunk,
+              onSelected: _selectChunk,
+              compact: true,
+            ),
+          ),
         Divider(
           height: 1,
           color: ForjaShellColors.cinematic.borderSubtle,

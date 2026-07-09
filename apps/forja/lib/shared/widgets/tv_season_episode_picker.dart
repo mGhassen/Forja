@@ -102,17 +102,16 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       _sortedEpisodes.map(_episodeNumberAt).toList();
 
   List<EpisodeRange> get _episodeRanges =>
-      buildEpisodeRanges(_sortedEpisodes.length, episodeNumbers: _episodeNumbers);
+      buildEpisodeRangesForNumbers(_episodeNumbers);
 
-  List<dynamic> get _visibleEpisodes =>
-      sliceEpisodeChunk(_sortedEpisodes, _episodeChunk);
+  List<dynamic> get _visibleEpisodes => filterEpisodeChunkByNumber(
+        _sortedEpisodes,
+        _episodeNumberAt,
+        _episodeChunk,
+      );
 
-  int _chunkIndexForEpisode(int episode) {
-    final index = _sortedEpisodes.indexWhere(
-      (ep) => _episodeNumberAt(ep) == episode,
-    );
-    return episodeChunkIndex(index);
-  }
+  int _chunkIndexForEpisode(int episode) =>
+      episodeChunkIndexForNumber(episode);
 
   void _selectChunk(int chunk) {
     if (chunk == _episodeChunk) return;
@@ -221,17 +220,6 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                 ],
               ),
             ),
-            if (_episodeRanges.length > 1) ...[
-              const SizedBox(width: 10),
-              Expanded(
-                child: EpisodeRangeBar(
-                  ranges: _episodeRanges,
-                  selectedIndex: _episodeChunk,
-                  onSelected: _selectChunk,
-                  compact: true,
-                ),
-              ),
-            ],
             const SizedBox(width: 10),
             _SeasonPill(
               seasonCount: widget.seasonCount,
@@ -243,6 +231,14 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
             ),
           ],
         ),
+        if (showEpisodeRangeBar(_episodeNumbers)) ...[
+          const SizedBox(height: 12),
+          EpisodeRangeBar(
+            ranges: _episodeRanges,
+            selectedIndex: _episodeChunk,
+            onSelected: _selectChunk,
+          ),
+        ],
         const SizedBox(height: 20),
         if (widget.isLoadingSeason)
           SizedBox(

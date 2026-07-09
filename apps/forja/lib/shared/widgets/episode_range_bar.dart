@@ -17,22 +17,25 @@ class EpisodeRange {
   String get label => '$labelStart - $labelEnd';
 }
 
-List<EpisodeRange> buildEpisodeRanges(
-  int episodeCount, {
+int maxEpisodeNumber(Iterable<int> episodeNumbers) {
+  var max = 0;
+  for (final n in episodeNumbers) {
+    if (n > max) max = n;
+  }
+  return max;
+}
+
+/// Ranges like 1-50, 51-100 from the highest episode number in the list.
+List<EpisodeRange> buildEpisodeRangesForNumbers(
+  Iterable<int> episodeNumbers, {
   int chunkSize = kEpisodeRangeChunkSize,
-  List<int>? episodeNumbers,
 }) {
-  if (episodeCount <= 0) return const [];
-  final chunks = (episodeCount / chunkSize).ceil();
+  final max = maxEpisodeNumber(episodeNumbers);
+  if (max <= chunkSize) return const [];
+  final chunks = (max / chunkSize).ceil();
   return List.generate(chunks, (i) {
-    final startIdx = i * chunkSize;
-    final endIdx = ((i + 1) * chunkSize).clamp(0, episodeCount);
-    final labelStart = episodeNumbers != null && episodeNumbers.isNotEmpty
-        ? episodeNumbers[startIdx]
-        : startIdx + 1;
-    final labelEnd = episodeNumbers != null && episodeNumbers.isNotEmpty
-        ? episodeNumbers[endIdx - 1]
-        : endIdx;
+    final labelStart = i * chunkSize + 1;
+    final labelEnd = ((i + 1) * chunkSize).clamp(0, max);
     return EpisodeRange(
       index: i,
       labelStart: labelStart,
@@ -41,20 +44,36 @@ List<EpisodeRange> buildEpisodeRanges(
   });
 }
 
-int episodeChunkIndex(int listIndex, {int chunkSize = kEpisodeRangeChunkSize}) {
-  if (listIndex < 0) return 0;
-  return listIndex ~/ chunkSize;
+bool showEpisodeRangeBar(
+  Iterable<int> episodeNumbers, {
+  int chunkSize = kEpisodeRangeChunkSize,
+}) {
+  return maxEpisodeNumber(episodeNumbers) > chunkSize;
 }
 
-List<T> sliceEpisodeChunk<T>(
+int episodeChunkIndexForNumber(
+  num episodeNumber, {
+  int chunkSize = kEpisodeRangeChunkSize,
+}) {
+  final n = episodeNumber is int ? episodeNumber : episodeNumber.floor();
+  if (n <= 0) return 0;
+  return (n - 1) ~/ chunkSize;
+}
+
+List<T> filterEpisodeChunkByNumber<T>(
   List<T> items,
+  int Function(T item) episodeNumberAt,
   int chunkIndex, {
   int chunkSize = kEpisodeRangeChunkSize,
 }) {
-  final start = chunkIndex * chunkSize;
-  if (start >= items.length) return const [];
-  final end = (start + chunkSize).clamp(0, items.length);
-  return items.sublist(start, end);
+  final start = chunkIndex * chunkSize + 1;
+  final end = (chunkIndex + 1) * chunkSize;
+  return items
+      .where((e) {
+        final n = episodeNumberAt(e);
+        return n >= start && n <= end;
+      })
+      .toList();
 }
 
 /// Horizontal numbered range chips (1-50, 51-100, …) for long episode lists.
@@ -76,7 +95,7 @@ class EpisodeRangeBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (ranges.length <= 1) return const SizedBox.shrink();
+    if (ranges.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
       height: height,

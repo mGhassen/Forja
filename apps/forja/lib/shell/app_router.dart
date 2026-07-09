@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
 import 'package:forja/features/home/streaming_details_screen.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/trailer_player_screen.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
@@ -182,6 +183,10 @@ class AppRouter {
           stremioAddonBaseUrl: stremioAddonBaseUrl,
           onNextEpisode: onNextEpisode,
           hasNextEpisode: hasNextEpisode,
+          hubEpisodes: hubEpisodes,
+          hubEpisodeNumber: hubEpisodeNumber,
+          onHubEpisodeSelected: onHubEpisodeSelected,
+          episodeOverview: episodeOverview,
           onSaveProgress: onSaveProgress,
         ),
       ),

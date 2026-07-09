@@ -11,6 +11,7 @@ import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/app_router.dart';
 
 Movie _hubMovieFromAnime(AnimeCard anime) => Movie(
       id: -anime.id,
@@ -36,6 +37,25 @@ List<PlayerHubEpisode> _hubEpisodesFromAnime(List<AnimeEpisode> episodes) =>
           ),
         )
         .toList();
+
+Future<T?> openAnimePlayer<T>(
+  BuildContext context, {
+  required AnimeCard anime,
+  required int episodeNumber,
+  String category = 'sub',
+  List<AnimeEpisode> allEpisodes = const [],
+}) {
+  return Navigator.of(context, rootNavigator: true).push<T>(
+    MaterialPageRoute(
+      builder: (_) => AnimePlayerScreen(
+        anime: anime,
+        episodeNumber: episodeNumber,
+        category: category,
+        allEpisodes: allEpisodes,
+      ),
+    ),
+  );
+}
 
 class AnimePlayerScreen extends StatefulWidget {
   final AnimeCard anime;
@@ -354,10 +374,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     }
 
     if (!mounted) return;
-    final navigator = Navigator.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
     await navigator.pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => PlayerScreen(
+      AppRouter.fadeRoute(
+        (_) => PlayerScreen(
           streamUrl: winnerSource.url,
           title: title,
           headers: winnerSource.headers,
@@ -370,8 +390,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           episodeOverview: currentEp?.title,
           onHubEpisodeSelected: (ep) async {
             await navigator.pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => AnimePlayerScreen(
+              AppRouter.fadeRoute(
+                (_) => AnimePlayerScreen(
                   anime: widget.anime,
                   episodeNumber: ep.number.toInt(),
                   category: _category,
@@ -393,8 +413,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           onNextEpisode: hasNext
               ? () async {
                   await navigator.pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => AnimePlayerScreen(
+                    AppRouter.fadeRoute(
+                      (_) => AnimePlayerScreen(
                         anime: widget.anime,
                         episodeNumber: widget.episodeNumber + 1,
                         category: _category,
