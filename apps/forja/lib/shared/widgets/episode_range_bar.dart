@@ -83,7 +83,7 @@ class EpisodeRangeBar extends StatelessWidget {
     required this.ranges,
     required this.selectedIndex,
     required this.onSelected,
-    this.height = 36,
+    this.height = 30,
     this.compact = false,
   });
 
@@ -97,6 +97,9 @@ class EpisodeRangeBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (ranges.isEmpty) return const SizedBox.shrink();
 
+    final radius = height / 2;
+    final fontSize = compact ? 11.0 : 12.0;
+
     return SizedBox(
       height: height,
       child: ListView.separated(
@@ -109,25 +112,31 @@ class EpisodeRangeBar extends StatelessWidget {
           final selected = i == selectedIndex;
           return Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: () => onSelected(range.index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 10 : 12,
-                  vertical: compact ? 6 : 8,
-                ),
-                decoration: shellChipDecoration(selected: selected, radius: 18),
-                child: Text(
-                  range.label,
-                  style: TextStyle(
-                    color: selected
-                        ? ForjaShellColors.cinematic.textPrimary
-                        : ForjaShellColors.cinematic.textSecondary,
-                    fontSize: compact ? 11 : 12,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            borderRadius: BorderRadius.circular(radius),
+            clipBehavior: Clip.antiAlias,
+            child: Ink(
+              decoration: shellChipDecoration(selected: selected, radius: radius),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(radius),
+                onTap: () => onSelected(range.index),
+                child: SizedBox(
+                  height: height,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12),
+                    child: Center(
+                      child: Text(
+                        range.label,
+                        style: TextStyle(
+                          color: selected
+                              ? ForjaShellColors.cinematic.textPrimary
+                              : ForjaShellColors.cinematic.textSecondary,
+                          fontSize: fontSize,
+                          fontWeight:
+                              selected ? FontWeight.w700 : FontWeight.w500,
+                          height: 1,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

@@ -915,7 +915,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     if (!_iptvEpgEnabled || _epgCache == null) return null;
     final stream = _currentGuideChannel()?.xtreamStream;
     if (stream == null) return null;
-    return _epgCache!.load(stream);
+    return _epgCache!.load(stream, limit: 8);
   }
 
   double _floatingEpgBottomInset(BuildContext context, bool compact) {
@@ -1183,7 +1183,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                     child: IptvFloatingEpg(
                       key: ValueKey(_currentChannelId),
                       future: epgFuture,
-                      maxWidth: compact ? 280 : 320,
+                      maxWidth: compact ? 360 : 420,
                     ),
                   ),
                 ),
