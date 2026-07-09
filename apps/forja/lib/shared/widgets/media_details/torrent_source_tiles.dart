@@ -22,152 +22,46 @@ class TorrentSourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTv = ShellTokens.isTvLayout(context);
-    final metadata = TorrentReleaseMetadata.parse(result.name);
-    final quality = metadata.quality ?? '?';
-    final meta = metadata.compactMetaLine;
-    final titleSize = isTv ? 15.0 : 13.0;
-    final padV = isTv ? 14.0 : 10.0;
+    final meta = TorrentReleaseMetadata.parse(result.name);
     final seeds = result.seedersCount > 0
         ? '${result.seedersCount}'
-        : (result.seeders.trim().isEmpty ? '0' : result.seeders.trim());
+        : (result.seeders.trim().isEmpty ? null : result.seeders.trim());
     final hasSeeds = result.seedersCount > 0 ||
-        (int.tryParse(result.seeders.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0) > 0;
+        (int.tryParse(result.seeders.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0) >
+            0;
+    final sizeLabel = TorrentReleaseMetadata.resolveSizeLabel(
+      sizeText: result.size,
+      fallbackText: result.name,
+    );
+    final source = result.source.trim();
 
-    return FocusableControl(
+    return _SourceBadgeCard(
       onTap: onPlay,
-      borderRadius: 10,
-      child: Container(
-        decoration: BoxDecoration(
-          color: (isResumable || highlightStart)
-              ? ForjaShellColors.chipSelectedBg
-              : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isResumable
-                ? ForjaShellColors.chipSelectedBorder
-                : Colors.white.withValues(alpha: 0.07),
+      progress: progress,
+      isResumable: isResumable,
+      highlightStart: highlightStart,
+      title: result.name,
+      badges: [
+        if (meta.quality != null)
+          _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
+        if (sizeLabel != null)
+          _SourceBadgeSpec(sizeLabel, tone: _SourceBadgeTone.size),
+        if (seeds != null)
+          _SourceBadgeSpec(
+            '$seeds seeds',
+            tone: hasSeeds ? _SourceBadgeTone.seeds : _SourceBadgeTone.muted,
           ),
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(12, padV, 12, padV),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: isTv ? 56 : 52,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          quality,
-                          style: TextStyle(
-                            color: ForjaShellColors.cinematic.textPrimary,
-                            fontSize: isTv ? 13 : 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          seeds,
-                          style: TextStyle(
-                            color: hasSeeds
-                                ? const Color(0xFF22C55E)
-                                : ForjaShellColors.cinematic.textSecondary,
-                            fontSize: isTv ? 15 : 13,
-                            fontWeight: FontWeight.w700,
-                            height: 1,
-                          ),
-                        ),
-                        Text(
-                          'seeds',
-                          style: TextStyle(
-                            color: ForjaShellColors.cinematic.textSecondary,
-                            fontSize: isTv ? 10 : 9,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (result.size.trim().isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            result.size.trim(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: ForjaShellColors.cinematic.textSecondary,
-                              fontSize: isTv ? 11 : 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (isResumable)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              'RESUME',
-                              style: TextStyle(
-                                color: ForjaShellColors.cinematic.textSecondary,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.6,
-                              ),
-                            ),
-                          ),
-                        Text(
-                          result.name,
-                          maxLines: isTv ? 2 : 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: ForjaShellColors.cinematic.textPrimary,
-                            fontSize: titleSize,
-                            height: 1.25,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (meta.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            meta,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: ForjaShellColors.cinematic.textSecondary,
-                              fontSize: isTv ? 12 : 11,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isResumable && progress > 0)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.transparent,
-                    color: ForjaShellColors.progressFill,
-                    minHeight: 2.5,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+        if (meta.videoCodec != null) _SourceBadgeSpec(meta.videoCodec!),
+        ...meta.audioTags.take(1).map(_SourceBadgeSpec.new),
+        ...meta.techTags.take(2).map(_SourceBadgeSpec.new),
+        ...meta.sourceTags.take(1).map(_SourceBadgeSpec.new),
+        if (meta.flags.trim().isNotEmpty)
+          _SourceBadgeSpec(meta.flags.trim()),
+        if (source.isNotEmpty &&
+            source.toLowerCase() != 'unknown' &&
+            !result.name.toLowerCase().contains(source.toLowerCase()))
+          _SourceBadgeSpec(source, tone: _SourceBadgeTone.accent),
+      ],
     );
   }
 }
@@ -186,54 +80,27 @@ class WebstreamingSourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTv = ShellTokens.isTvLayout(context);
-    final meta = TorrentReleaseMetadata.parse(title).compactMetaLine;
+    final meta = TorrentReleaseMetadata.parse(title);
+    final sizeLabel = TorrentReleaseMetadata.resolveSizeLabel(
+      sizeText: subtitle,
+      fallbackText: title,
+    );
 
-    return FocusableControl(
+    return _SourceBadgeCard(
       onTap: onPlay,
-      borderRadius: 10,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: isTv ? 14 : 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: isTv ? 2 : 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ForjaShellColors.cinematic.textPrimary,
-                      fontSize: isTv ? 15 : 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (meta.isNotEmpty || subtitle != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      [if (meta.isNotEmpty) meta, if (subtitle != null) subtitle]
-                          .join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: ForjaShellColors.cinematic.textSecondary,
-                        fontSize: isTv ? 12 : 11,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      title: title,
+      badges: [
+        if (meta.quality != null)
+          _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
+        if (sizeLabel != null)
+          _SourceBadgeSpec(sizeLabel, tone: _SourceBadgeTone.size),
+        if (meta.videoCodec != null) _SourceBadgeSpec(meta.videoCodec!),
+        ...meta.techTags.take(2).map(_SourceBadgeSpec.new),
+        if (subtitle != null &&
+            subtitle!.trim().isNotEmpty &&
+            sizeLabel == null)
+          _SourceBadgeSpec(subtitle!.trim()),
+      ],
     );
   }
 }
@@ -252,6 +119,8 @@ class StremioSourceTile extends StatelessWidget {
     this.isResumable = false,
     this.isExternal = false,
     this.highlightStart = false,
+    this.sizeText,
+    this.seeders,
   });
 
   final String title;
@@ -265,127 +134,79 @@ class StremioSourceTile extends StatelessWidget {
   final bool isResumable;
   final bool isExternal;
   final bool highlightStart;
+  final String? sizeText;
+  final String? seeders;
 
   @override
   Widget build(BuildContext context) {
-    final isTv = ShellTokens.isTvLayout(context);
+    final blob = '$title $description ${sizeText ?? ''}';
     final meta = isExternal
-        ? ''
-        : TorrentReleaseMetadata.parse('$title $description').compactMetaLine;
+        ? const TorrentReleaseMetadata(
+            quality: null,
+            languageCodes: [],
+            audioTags: [],
+            techTags: [],
+            sourceTags: [],
+          )
+        : TorrentReleaseMetadata.parse(blob);
+    final sizeLabel = isExternal
+        ? null
+        : TorrentReleaseMetadata.resolveSizeLabel(
+            sizeText: sizeText,
+            fallbackText: blob,
+          );
+    final seedsRaw = seeders?.trim();
+    final seedsCount =
+        int.tryParse((seedsRaw ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
-    return FocusableControl(
+    return _SourceBadgeCard(
       onTap: onTap,
-      borderRadius: 10,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isExternal
-              ? leadingColor.withValues(alpha: 0.06)
-              : ((isResumable || highlightStart)
-                  ? ForjaShellColors.chipSelectedBg
-                  : Colors.white.withValues(alpha: 0.04)),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isExternal
-                ? leadingColor.withValues(alpha: 0.25)
-                : (isResumable
-                    ? ForjaShellColors.chipSelectedBorder
-                    : Colors.white.withValues(alpha: 0.07)),
-          ),
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: isTv ? 14 : 10),
-              child: Row(
-                children: [
-                  if (isExternal)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: Icon(leadingIcon, color: leadingColor, size: isTv ? 26 : 22),
-                    ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (isResumable && !isExternal)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              'RESUME',
-                              style: TextStyle(
-                                color: ForjaShellColors.cinematic.textSecondary,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        if (addonName != null && showAddonName)
-                          Text(
-                            addonName!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: leadingColor.withValues(alpha: 0.75),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        Text(
-                          title,
-                          maxLines: isTv ? 2 : 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: ForjaShellColors.cinematic.textPrimary,
-                            fontSize: isTv ? 15 : 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (meta.isNotEmpty || description.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            meta.isNotEmpty ? meta : description,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: ForjaShellColors.cinematic.textSecondary,
-                              fontSize: isTv ? 12 : 11,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isResumable && progress > 0 && !isExternal)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.transparent,
-                    color: ForjaShellColors.progressFill,
-                    minHeight: 2.5,
-                  ),
+      progress: progress,
+      isResumable: isResumable && !isExternal,
+      highlightStart: highlightStart && !isExternal,
+      leading: isExternal
+          ? Icon(leadingIcon, color: leadingColor, size: ShellTokens.isTvLayout(context) ? 26 : 22)
+          : null,
+      accentBorder: isExternal ? leadingColor.withValues(alpha: 0.25) : null,
+      accentFill: isExternal ? leadingColor.withValues(alpha: 0.06) : null,
+      eyebrow: addonName != null && showAddonName ? addonName : null,
+      eyebrowColor: leadingColor.withValues(alpha: 0.75),
+      title: title,
+      badges: isExternal
+          ? [
+              if (description.trim().isNotEmpty)
+                _SourceBadgeSpec(description.trim()),
+            ]
+          : [
+              if (meta.quality != null)
+                _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
+              if (sizeLabel != null)
+                _SourceBadgeSpec(sizeLabel, tone: _SourceBadgeTone.size),
+              if (seedsCount > 0)
+                _SourceBadgeSpec(
+                  '$seedsCount seeds',
+                  tone: _SourceBadgeTone.seeds,
                 ),
-              ),
-          ],
-        ),
-      ),
+              if (meta.videoCodec != null) _SourceBadgeSpec(meta.videoCodec!),
+              ...meta.audioTags.take(1).map(_SourceBadgeSpec.new),
+              ...meta.techTags.take(2).map(_SourceBadgeSpec.new),
+              ...meta.sourceTags.take(1).map(_SourceBadgeSpec.new),
+              if (meta.flags.trim().isNotEmpty)
+                _SourceBadgeSpec(meta.flags.trim()),
+            ],
     );
   }
 }
 
-StremioTilePresentation stremioTilePresentation(Map<String, dynamic> stream, {required bool isResumable}) {
+StremioTilePresentation stremioTilePresentation(
+  Map<String, dynamic> stream, {
+  required bool isResumable,
+}) {
   final externalUrl = stream['externalUrl']?.toString();
   final isExternal = externalUrl != null && externalUrl.isNotEmpty;
   final isStremioLink = isExternal && externalUrl.startsWith('stremio://');
-  final isWebLink =
-      isExternal && (externalUrl.startsWith('http://') || externalUrl.startsWith('https://'));
+  final isWebLink = isExternal &&
+      (externalUrl.startsWith('http://') || externalUrl.startsWith('https://'));
 
   IconData leadingIcon;
   Color leadingColor;
@@ -430,4 +251,217 @@ class StremioTilePresentation {
   final IconData leadingIcon;
   final Color leadingColor;
   final bool isExternal;
+}
+
+enum _SourceBadgeTone { muted, emphasis, size, seeds, accent }
+
+class _SourceBadgeSpec {
+  const _SourceBadgeSpec(this.label, {this.tone = _SourceBadgeTone.muted});
+
+  final String label;
+  final _SourceBadgeTone tone;
+}
+
+class _SourceBadgeCard extends StatelessWidget {
+  const _SourceBadgeCard({
+    required this.onTap,
+    required this.title,
+    required this.badges,
+    this.progress = 0,
+    this.isResumable = false,
+    this.highlightStart = false,
+    this.leading,
+    this.accentBorder,
+    this.accentFill,
+    this.eyebrow,
+    this.eyebrowColor,
+  });
+
+  final VoidCallback onTap;
+  final String title;
+  final List<_SourceBadgeSpec> badges;
+  final double progress;
+  final bool isResumable;
+  final bool highlightStart;
+  final Widget? leading;
+  final Color? accentBorder;
+  final Color? accentFill;
+  final String? eyebrow;
+  final Color? eyebrowColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final isTv = ShellTokens.isTvLayout(context);
+    final padV = isTv ? 14.0 : 10.0;
+    final titleSize = isTv ? 15.0 : 13.0;
+
+    return FocusableControl(
+      onTap: onTap,
+      borderRadius: 10,
+      child: Container(
+        decoration: BoxDecoration(
+          color: accentFill ??
+              ((isResumable || highlightStart)
+                  ? ForjaShellColors.chipSelectedBg
+                  : Colors.white.withValues(alpha: 0.04)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: accentBorder ??
+                (isResumable
+                    ? ForjaShellColors.chipSelectedBorder
+                    : Colors.white.withValues(alpha: 0.07)),
+          ),
+        ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(12, padV, 12, padV),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (leading != null) ...[
+                    leading!,
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isResumable)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              'RESUME',
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textSecondary,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ),
+                        if (eyebrow != null && eyebrow!.trim().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              eyebrow!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: eyebrowColor ??
+                                    ForjaShellColors.cinematic.textSecondary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        Text(
+                          title,
+                          maxLines: isTv ? 3 : 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ForjaShellColors.cinematic.textPrimary,
+                            fontSize: titleSize,
+                            height: 1.25,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (badges.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              for (final badge in badges)
+                                _SourceMetaBadge(badge: badge, isTv: isTv),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isResumable && progress > 0)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(10),
+                  ),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.transparent,
+                    color: ForjaShellColors.progressFill,
+                    minHeight: 2.5,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SourceMetaBadge extends StatelessWidget {
+  const _SourceMetaBadge({required this.badge, required this.isTv});
+
+  final _SourceBadgeSpec badge;
+  final bool isTv;
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    late final Color fg;
+    late final Color bg;
+    late final Color border;
+
+    switch (badge.tone) {
+      case _SourceBadgeTone.emphasis:
+        fg = cinematic.textPrimary;
+        bg = Colors.white.withValues(alpha: 0.14);
+        border = Colors.white.withValues(alpha: 0.22);
+      case _SourceBadgeTone.size:
+        fg = cinematic.textPrimary;
+        bg = Colors.white.withValues(alpha: 0.10);
+        border = Colors.white.withValues(alpha: 0.18);
+      case _SourceBadgeTone.seeds:
+        fg = const Color(0xFF22C55E);
+        bg = const Color(0xFF22C55E).withValues(alpha: 0.12);
+        border = const Color(0xFF22C55E).withValues(alpha: 0.28);
+      case _SourceBadgeTone.accent:
+        fg = const Color(0xFF60A5FA);
+        bg = const Color(0xFF60A5FA).withValues(alpha: 0.10);
+        border = const Color(0xFF60A5FA).withValues(alpha: 0.24);
+      case _SourceBadgeTone.muted:
+        fg = cinematic.textSecondary;
+        bg = Colors.white.withValues(alpha: 0.06);
+        border = Colors.white.withValues(alpha: 0.10);
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isTv ? 8 : 7,
+        vertical: isTv ? 4 : 3,
+      ),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border),
+      ),
+      child: Text(
+        badge.label,
+        style: TextStyle(
+          color: fg,
+          fontSize: isTv ? 12 : 11,
+          fontWeight: FontWeight.w600,
+          height: 1.1,
+        ),
+      ),
+    );
+  }
 }

@@ -32,19 +32,18 @@ class TorrentReleaseMetadata {
 
   static const _gb = 1024.0 * 1024.0 * 1024.0;
 
+  static final _sizeToken = RegExp(
+    r'(\d+(?:\.\d+)?)\s*(tb|t|gb|g|mb|m|kb|k)\b',
+    caseSensitive: false,
+  );
+
   /// Parses a human size string (`1.4 GB`, `850 MB`) or the first size token
   /// found inside a longer title/description. Returns `0` when unknown.
   static double parseSizeBytes(String raw) {
     final s = raw.trim();
     if (s.isEmpty) return 0;
-    final match = RegExp(
-      r'(\d+(?:\.\d+)?)\s*(tb|t|gb|g|mb|m|kb|k)\b',
-      caseSensitive: false,
-    ).firstMatch(s);
-    if (match == null) {
-      final value = double.tryParse(s.replaceAll(RegExp(r'[^0-9.]'), ''));
-      return value ?? 0;
-    }
+    final match = _sizeToken.firstMatch(s);
+    if (match == null) return 0;
     final value = double.tryParse(match.group(1)!) ?? 0;
     final unit = match.group(2)!.toLowerCase();
     if (unit.startsWith('t')) return value * _gb * 1024;
@@ -52,6 +51,34 @@ class TorrentReleaseMetadata {
     if (unit.startsWith('m')) return value * 1024 * 1024;
     if (unit.startsWith('k')) return value * 1024;
     return value;
+  }
+
+  /// Display label for source tiles. Never returns a non-size string (avoids
+  /// showing truncated titles in the size slot). Prefers [sizeText], then the
+  /// first size token in [fallbackText].
+  static String? resolveSizeLabel({
+    String? sizeText,
+    String? fallbackText,
+  }) {
+    final primary = sizeText?.trim() ?? '';
+    if (primary.isNotEmpty) {
+      final match = _sizeToken.firstMatch(primary);
+      if (match != null) {
+        final value = match.group(1)!;
+        final unit = match.group(2)!.toUpperCase();
+        final normalized = unit.length == 1 ? '${unit}B' : unit;
+        return '$value $normalized';
+      }
+      if (parseSizeBytes(primary) > 0) return primary;
+    }
+    final fallback = fallbackText?.trim() ?? '';
+    if (fallback.isEmpty) return null;
+    final match = _sizeToken.firstMatch(fallback);
+    if (match == null) return null;
+    final value = match.group(1)!;
+    final unit = match.group(2)!.toUpperCase();
+    final normalized = unit.length == 1 ? '${unit}B' : unit;
+    return '$value $normalized';
   }
 
   static String? sizeRangeForBytes(double bytes) {

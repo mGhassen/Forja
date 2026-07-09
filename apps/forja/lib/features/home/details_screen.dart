@@ -3189,6 +3189,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       isExternal: presentation.isExternal,
       addonName: s['_addonName']?.toString(),
       showAddonName: showAddonName,
+      sizeText: s['size']?.toString(),
+      seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
       progress: prog,
       isResumable: resumable,
       highlightStart: widget.startPosition != null,
