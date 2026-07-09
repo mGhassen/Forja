@@ -84,7 +84,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   bool _sourcesPanelOpen = false;
   bool _autoPlayConsumed = false;
   bool _episodePlayPending = false;
-  bool _manualPlayPending = false;
   bool _playSourceTorrent = true;
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
@@ -409,11 +408,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _ensurePanelSourceLoaded();
   }
 
-  void _onHeroPlayPressed() {
-    _manualPlayPending = true;
-    _maybeAutoPlay();
-  }
-
   void _onPlayStreamingPressed() {
     unawaited(_startWebstreamingOnlyPlayback());
   }
@@ -671,7 +665,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       showPlay: showPlay,
       showPlayStreaming: _playSourceWebstreaming,
       isStreamingExtracting: _isWebstreamingOnlyExtracting,
-      onOpenSources: _onHeroPlayPressed,
+      onOpenSources: _openSourcesPanel,
       onPlayStreaming: _onPlayStreamingPressed,
       onDownload: _openSourcesPanel,
       onOverflowAction: _handleHeroOverflowAction,
@@ -979,18 +973,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   void _consumeAutoPlayFlags({
     required bool fromRoute,
     required bool fromEpisode,
-    bool fromManual = false,
   }) {
     if (fromRoute) _autoPlayConsumed = true;
     if (fromEpisode) _episodePlayPending = false;
-    if (fromManual) _manualPlayPending = false;
   }
 
   void _maybeAutoPlay() {
     final fromRoute = widget.autoPlay && !_autoPlayConsumed;
     final fromEpisode = _episodePlayPending;
-    final fromManual = _manualPlayPending;
-    if (!fromRoute && !fromEpisode && !fromManual) return;
+    if (!fromRoute && !fromEpisode) return;
     if (!mounted || _isLoading) return;
 
     final startPosition = _startPositionForAutoPlay(fromRoute: fromRoute);
@@ -1001,7 +992,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         _consumeAutoPlayFlags(
           fromRoute: fromRoute,
           fromEpisode: fromEpisode,
-          fromManual: fromManual,
         );
         _playTorrent(_allTorrentResults.first, startPosition: startPosition);
         return;
@@ -1017,7 +1007,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _consumeAutoPlayFlags(
             fromRoute: fromRoute,
             fromEpisode: fromEpisode,
-            fromManual: fromManual,
           );
           _playStremioStream(stream, startPosition: startPosition);
           return;
@@ -1036,9 +1025,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     } else if (fromRoute) {
       _consumeAutoPlayFlags(fromRoute: true, fromEpisode: false);
       _failAutoPlayFromRoute();
-    } else if (fromManual) {
-      _manualPlayPending = false;
-      _openSourcesPanel();
     }
   }
 

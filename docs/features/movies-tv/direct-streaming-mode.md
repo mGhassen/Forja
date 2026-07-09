@@ -6,7 +6,7 @@
 
 **Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Nuvio scrapers, …) and starts playback when one works (loading roulette overlay).
 
-The white **Play** / **Resume** with magnet icon is for torrent → Stremio. The **Sources** panel is only for those backends.
+The white **Play** / **Resume** with magnet icon opens **Sources** (torrent / Stremio). The **Sources** panel is only for those backends.
 
 ## How to open it
 
