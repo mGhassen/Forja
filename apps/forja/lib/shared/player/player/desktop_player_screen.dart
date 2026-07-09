@@ -416,6 +416,7 @@ class DesktopPlayerScreen extends StatefulWidget {
   final bool pinSource;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
+  final Future<List<StreamSource>?> Function()? onReloadStreams;
 
   const DesktopPlayerScreen({
     super.key,
@@ -446,6 +447,7 @@ class DesktopPlayerScreen extends StatefulWidget {
     this.pinSource = false,
     this.onPlaybackStarted,
     this.onAllSourcesExhausted,
+    this.onReloadStreams,
   });
 
   @override
@@ -527,8 +529,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   bool _subtitlePinned = false;
   final PlayerStatusController _statusController = PlayerStatusController();
   final Set<int> _failedSourceIndices = {};
-  int? _checkingSourceIndex;
+  final Set<int> _checkingSourceIndices = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
+  final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
   bool _isSwitchingProvider = false;
   bool _isInitPlaybackRunning = false;
   bool _allSourcesExhaustedNotified = false;
@@ -706,6 +709,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _volumeNotifier.dispose();
     _statusController.dispose();
     _sourceMenuRevision.dispose();
+    _isReloadingStreams.dispose();
 
     if (_playerReady) {
       MpvExclusiveSession.instance.untrackPlayer(_player);
@@ -2149,26 +2153,87 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   void _markSourceChecking(int index) {
-    _checkingSourceIndex = index;
+    _checkingSourceIndices
+      ..clear()
+      ..add(index);
     _notifySourceMenuChanged();
   }
 
   void _markSourceFailed(int index) {
     _failedSourceIndices.add(index);
-    _checkingSourceIndex = null;
+    _checkingSourceIndices.remove(index);
     _notifySourceMenuChanged();
   }
 
   void _markSourceActive(int index) {
     _failedSourceIndices.remove(index);
-    _checkingSourceIndex = null;
+    _checkingSourceIndices.remove(index);
     _notifySourceMenuChanged();
+  }
+
+  bool _isCurrentSourceIndex(int index) {
+    final sources = _currentSources;
+    if (sources == null || index < 0 || index >= sources.length) return false;
+    final source = sources[index];
+    return _currentProvider == 'service111477'
+        ? source.url == _current111477FileUrl
+        : source.url == _currentUrl;
+  }
+
+  Future<void> _reloadStreamMenu() async {
+    if (_isReloadingStreams.value) return;
+    _isReloadingStreams.value = true;
+    try {
+      if (widget.onReloadStreams != null) {
+        final fresh = await widget.onReloadStreams!();
+        if (!mounted) return;
+        if (fresh != null && fresh.isNotEmpty) {
+          setState(() {
+            _currentSources = fresh;
+            _failedSourceIndices.clear();
+            _checkingSourceIndices.clear();
+          });
+          _notifySourceMenuChanged();
+        }
+      }
+      await _probeAllSourcesInBackground();
+    } finally {
+      if (mounted) _isReloadingStreams.value = false;
+    }
+  }
+
+  Future<void> _probeAllSourcesInBackground() async {
+    final sources = _currentSources;
+    if (sources == null || sources.isEmpty) return;
+
+    final toCheck = <int>[];
+    for (var i = 0; i < sources.length; i++) {
+      if (_isCurrentSourceIndex(i) && _playbackConfirmed) continue;
+      toCheck.add(i);
+    }
+    if (toCheck.isEmpty) return;
+
+    _failedSourceIndices.removeAll(toCheck);
+    _checkingSourceIndices.addAll(toCheck);
+    _notifySourceMenuChanged();
+
+    for (final i in toCheck) {
+      if (!mounted) return;
+      final source = sources[i];
+      final ok = await probeStreamSourceUrl(source.url, source.headers);
+      if (!mounted) return;
+      _checkingSourceIndices.remove(i);
+      if (!ok) _failedSourceIndices.add(i);
+      _notifySourceMenuChanged();
+    }
   }
 
   List<PlayerSourceStatus> _buildSourceStatuses() {
     final sources = _currentSources ?? const [];
     return List.generate(sources.length, (i) {
-      if (_checkingSourceIndex == i) return PlayerSourceStatus.checking;
+      if (_checkingSourceIndices.contains(i)) {
+        return PlayerSourceStatus.checking;
+      }
       final source = sources[i];
       final isCurrent = _currentProvider == 'service111477'
           ? source.url == _current111477FileUrl
@@ -2230,7 +2295,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       sourcesOnly: true,
       anchorContext: anchorContext,
       refreshListenable:
-          Listenable.merge([_statusController, _sourceMenuRevision]),
+          Listenable.merge([_statusController, _sourceMenuRevision, _isReloadingStreams]),
+      onReload: _reloadStreamMenu,
+      isReloading: _isReloadingStreams,
     );
     _onMouseMove();
   }
@@ -2254,7 +2321,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       providersEnabled: !_isSwitchingProvider,
       anchorContext: anchorContext,
       refreshListenable:
-          Listenable.merge([_statusController, _sourceMenuRevision]),
+          Listenable.merge([_statusController, _sourceMenuRevision, _isReloadingStreams]),
+      onReload: _reloadStreamMenu,
+      isReloading: _isReloadingStreams,
     );
     _onMouseMove();
   }
@@ -2275,7 +2344,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       _sourcePinned = false;
       _currentFallbackSourceIndex = 0;
       _failedSourceIndices.clear();
-      _checkingSourceIndex = null;
+      _checkingSourceIndices.clear();
     });
     _notifySourceMenuChanged();
     await _initPlayback();

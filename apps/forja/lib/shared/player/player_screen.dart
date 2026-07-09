@@ -46,6 +46,7 @@ class PlayerScreen extends StatefulWidget {
   final bool pinSource;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
+  final Future<List<StreamSource>?> Function()? onReloadStreams;
 
   const PlayerScreen({
     super.key,
@@ -76,6 +77,7 @@ class PlayerScreen extends StatefulWidget {
     this.pinSource = false,
     this.onPlaybackStarted,
     this.onAllSourcesExhausted,
+    this.onReloadStreams,
   });
 
   @override
@@ -205,6 +207,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         pinSource: widget.pinSource,
         onPlaybackStarted: widget.onPlaybackStarted,
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
+        onReloadStreams: widget.onReloadStreams,
       );
     } else {
       return DesktopPlayerScreen(
@@ -235,6 +238,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         pinSource: widget.pinSource,
         onPlaybackStarted: widget.onPlaybackStarted,
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
+        onReloadStreams: widget.onReloadStreams,
       );
     }
   }

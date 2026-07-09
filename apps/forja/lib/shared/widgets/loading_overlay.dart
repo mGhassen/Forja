@@ -4,8 +4,6 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
-import 'package:forja/shared/player/controls/player_status_roulette.dart';
-
 const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
 
 Future<T?> showLoadingOverlayDialog<T>(
@@ -162,6 +160,13 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   double get _probeProgress =>
       _probeTotal > 0 ? _probeChecked / _probeTotal : 0;
 
+  StreamProviderProbe? get _tryingProbe {
+    for (final probe in _probes) {
+      if (probe.status == StreamProviderProbeStatus.trying) return probe;
+    }
+    return null;
+  }
+
   Widget _probeProgressFooter() {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -215,6 +220,19 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             fontFamily: 'Poppins',
           ),
         ),
+        if (_tryingProbe != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _tryingProbe!.label.toUpperCase(),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 2,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         SizedBox(
           width: 220,
@@ -335,25 +353,6 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                 ),
               ),
               DesktopWindowChrome.overlayDragStrip(),
-              if (_showProviderProbes)
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        top: DesktopWindowChrome.topInset(context),
-                        right: 28,
-                      ),
-                      child: StatusRouletteView(
-                        entries: statusEntriesFromProbes(_probes),
-                        header: 'CHECKING SOURCES',
-                      ),
-                    ),
-                  ),
-                ),
               Positioned(
                 bottom: 48,
                 left: 0,

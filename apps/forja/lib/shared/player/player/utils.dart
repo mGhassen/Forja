@@ -332,3 +332,42 @@ String formatDuration(Duration duration) {
     return "$twoDigitMinutes:$twoDigitSeconds";
   }
 }
+
+/// Lightweight reachability check for stream menu reload.
+Future<bool> probeStreamSourceUrl(
+  String url,
+  Map<String, String>? headers,
+) async {
+  if (url.isEmpty) return false;
+  final hdrs = headers ?? const <String, String>{};
+  try {
+    if (url.contains('.m3u8')) {
+      final res = await animeHttp(
+        'GET',
+        url,
+        headers: hdrs,
+        maxRetries: 0,
+        timeoutSecs: 8,
+      );
+      return res.status == 200 && res.body.contains('#EXTM3U');
+    }
+    var res = await animeHttp(
+      'HEAD',
+      url,
+      headers: hdrs,
+      maxRetries: 0,
+      timeoutSecs: 8,
+    );
+    if (res.status >= 200 && res.status < 400) return true;
+    res = await animeHttp(
+      'GET',
+      url,
+      headers: {...hdrs, 'Range': 'bytes=0-0'},
+      maxRetries: 0,
+      timeoutSecs: 8,
+    );
+    return res.status == 200 || res.status == 206;
+  } catch (_) {
+    return false;
+  }
+}

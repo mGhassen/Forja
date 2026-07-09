@@ -174,6 +174,7 @@ class AppRouter {
     bool pinSource = false,
     VoidCallback? onPlaybackStarted,
     VoidCallback? onAllSourcesExhausted,
+    Future<List<StreamSource>?> Function()? onReloadStreams,
     bool fadeTransition = false,
   }) {
     final routeBuilder = fadeTransition ? fadeRoute : slideRoute;
@@ -207,6 +208,7 @@ class AppRouter {
           pinSource: pinSource,
           onPlaybackStarted: onPlaybackStarted,
           onAllSourcesExhausted: onAllSourcesExhausted,
+          onReloadStreams: onReloadStreams,
         ),
       ),
     );

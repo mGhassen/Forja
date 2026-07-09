@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:rust/rust.dart';
 
@@ -31,6 +34,40 @@ class PlayerStreamMenuState {
 
 /// Servers → sources drill-down, same panel flow as seasons → episodes.
 class PlayerStreamMenu {
+  static Widget? reloadTrailing({
+    required Future<void> Function()? onReload,
+    ValueListenable<bool>? isReloading,
+  }) {
+    if (onReload == null) return null;
+    Widget buildButton(bool loading) {
+      if (loading) {
+        return const Padding(
+          padding: EdgeInsets.only(right: 4),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white38,
+            ),
+          ),
+        );
+      }
+      return ForjaPlainIcon(
+        icon: Icons.refresh_rounded,
+        size: 20,
+        color: Colors.white54,
+        onTap: () => unawaited(onReload()),
+      );
+    }
+
+    if (isReloading == null) return buildButton(false);
+    return ValueListenableBuilder<bool>(
+      valueListenable: isReloading,
+      builder: (context, loading, _) => buildButton(loading),
+    );
+  }
+
   static Future<void> show(
     BuildContext context, {
     Map<String, dynamic>? providers,
@@ -45,6 +82,8 @@ class PlayerStreamMenu {
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
     Listenable? refreshListenable,
+    Future<void> Function()? onReload,
+    ValueListenable<bool>? isReloading,
   }) async {
     final initial = readState();
     final hasProviders = providers != null && providers.isNotEmpty;
@@ -71,6 +110,8 @@ class PlayerStreamMenu {
         anchorContext: anchorContext,
         onBack: null,
         refreshListenable: refreshListenable,
+        onReload: onReload,
+        isReloading: isReloading,
       );
       return;
     }
@@ -88,6 +129,8 @@ class PlayerStreamMenu {
         margin: margin,
         anchorContext: anchorContext,
         refreshListenable: refreshListenable,
+        onReload: onReload,
+        isReloading: isReloading,
       );
     } else {
       await _openSources(
@@ -99,6 +142,8 @@ class PlayerStreamMenu {
         anchorContext: anchorContext,
         onBack: null,
         refreshListenable: refreshListenable,
+        onReload: onReload,
+        isReloading: isReloading,
       );
     }
   }
@@ -116,6 +161,8 @@ class PlayerStreamMenu {
     required EdgeInsets margin,
     BuildContext? anchorContext,
     Listenable? refreshListenable,
+    Future<void> Function()? onReload,
+    ValueListenable<bool>? isReloading,
   }) async {
     final state = readState();
 
@@ -126,6 +173,7 @@ class PlayerStreamMenu {
       alignment: Alignment.bottomLeft,
       margin: margin,
       anchorContext: anchorContext,
+      trailing: reloadTrailing(onReload: onReload, isReloading: isReloading),
       child: ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
@@ -192,6 +240,8 @@ class PlayerStreamMenu {
                   margin: margin,
                   anchorContext: anchorContext,
                   refreshListenable: refreshListenable,
+                  onReload: onReload,
+                  isReloading: isReloading,
                   onBack: () => _openServers(
                     context,
                     providers: providers,
@@ -204,6 +254,8 @@ class PlayerStreamMenu {
                     margin: margin,
                     anchorContext: anchorContext,
                     refreshListenable: refreshListenable,
+                    onReload: onReload,
+                    isReloading: isReloading,
                   ),
                 );
               },
@@ -223,6 +275,8 @@ class PlayerStreamMenu {
     BuildContext? anchorContext,
     required VoidCallback? onBack,
     Listenable? refreshListenable,
+    Future<void> Function()? onReload,
+    ValueListenable<bool>? isReloading,
   }) async {
     Widget buildList() {
       final state = readState();
@@ -277,6 +331,7 @@ class PlayerStreamMenu {
       margin: margin,
       anchorContext: anchorContext,
       onBack: onBack,
+      trailing: reloadTrailing(onReload: onReload, isReloading: isReloading),
       child: refreshListenable == null
           ? buildList()
           : ListenableBuilder(
