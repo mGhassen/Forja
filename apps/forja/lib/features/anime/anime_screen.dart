@@ -48,7 +48,18 @@ class _AnimeScreenState extends State<AnimeScreen>
   List<AnimeCard> _top10 = [];
   List<AnimeCard> _recentEpisodes = [];
 
-  bool _loading = true;
+  Future<List<AnimeCard>>? _spotlightFuture;
+  Future<List<AnimeCard>>? _trendingFuture;
+  Future<List<AnimeCard>>? _topAiringFuture;
+  Future<List<AnimeCard>>? _mostPopularFuture;
+  Future<List<AnimeCard>>? _mostFavoriteFuture;
+  Future<List<AnimeCard>>? _topRatedFuture;
+  Future<List<AnimeCard>>? _latestCompletedFuture;
+  Future<List<AnimeCard>>? _top10Future;
+  Future<List<AnimeCard>>? _recentEpisodesFuture;
+  Future<List<Map<String, dynamic>>>? _historyFuture;
+
+  bool _catalogResolved = false;
   String? _error;
 
   // Continue watching
@@ -152,22 +163,48 @@ class _AnimeScreenState extends State<AnimeScreen>
   }
 
   Future<void> _load() async {
+    final spotlightFuture = _safeSection(_service.getSpotlight(), 'spotlight');
+    final trendingFuture = _safeSection(_service.getTrending(), 'trending');
+    final topAiringFuture = _safeSection(_service.getTopAiring(), 'top airing');
+    final mostPopularFuture =
+        _safeSection(_service.getMostPopular(), 'most popular');
+    final mostFavoriteFuture =
+        _safeSection(_service.getMostFavorite(), 'most favorite');
+    final topRatedFuture = _safeSection(_service.getTopRated(), 'top rated');
+    final latestCompletedFuture =
+        _safeSection(_service.getLatestCompleted(), 'latest completed');
+    final top10Future = _safeSection(_service.getTop10Today(), 'top 10');
+    final recentEpisodesFuture =
+        _safeSection(_service.getRecentEpisodes(), 'recent episodes');
+    final historyFuture = _safeHistory();
+
     setState(() {
-      _loading = true;
       _error = null;
       _moodFuture = null;
+      _catalogResolved = false;
+      _spotlightFuture = spotlightFuture;
+      _trendingFuture = trendingFuture;
+      _topAiringFuture = topAiringFuture;
+      _mostPopularFuture = mostPopularFuture;
+      _mostFavoriteFuture = mostFavoriteFuture;
+      _topRatedFuture = topRatedFuture;
+      _latestCompletedFuture = latestCompletedFuture;
+      _top10Future = top10Future;
+      _recentEpisodesFuture = recentEpisodesFuture;
+      _historyFuture = historyFuture;
     });
+
     final results = await Future.wait([
-      _safeSection(_service.getSpotlight(), 'spotlight'),
-      _safeSection(_service.getTrending(), 'trending'),
-      _safeSection(_service.getTopAiring(), 'top airing'),
-      _safeSection(_service.getMostPopular(), 'most popular'),
-      _safeSection(_service.getMostFavorite(), 'most favorite'),
-      _safeSection(_service.getTopRated(), 'top rated'),
-      _safeSection(_service.getLatestCompleted(), 'latest completed'),
-      _safeSection(_service.getTop10Today(), 'top 10'),
-      _safeSection(_service.getRecentEpisodes(), 'recent episodes'),
-      _safeHistory(),
+      spotlightFuture,
+      trendingFuture,
+      topAiringFuture,
+      mostPopularFuture,
+      mostFavoriteFuture,
+      topRatedFuture,
+      latestCompletedFuture,
+      top10Future,
+      recentEpisodesFuture,
+      historyFuture,
     ]);
     if (!mounted) return;
 
@@ -195,7 +232,7 @@ class _AnimeScreenState extends State<AnimeScreen>
         final pool = _trending.skip(3).toList();
         _tonightsPick = pool[math.Random().nextInt(pool.length)];
       }
-      _loading = false;
+      _catalogResolved = true;
       _error = hasCatalog ? null : 'Failed to load anime — check your connection';
       _moodFuture = _loadMood(_selectedMood);
     });
@@ -327,19 +364,22 @@ class _AnimeScreenState extends State<AnimeScreen>
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return _error != null && !_loading
+        return _error != null && _catalogResolved
               ? _buildError()
               : Stack(
                       children: [
                         Positioned.fill(
                           child: ColoredBox(color: AppTheme.bgDark),
                         ),
-                        if (!_loading) _buildAmbientBackdrop(),
+                        if (_catalogResolved && _spotlight.isNotEmpty)
+                          _buildAmbientBackdrop(),
                         RefreshIndicator(
                           color: ForjaShellColors.sectionAccent,
                           backgroundColor: AppTheme.bgCard,
                           onRefresh: _load,
-                          child: CustomScrollView(
+                          child: ColoredBox(
+                            color: AppTheme.bgDark,
+                            child: CustomScrollView(
                             controller: _scroll,
                             physics: const BouncingScrollPhysics(
                               parent: AlwaysScrollableScrollPhysics(),
@@ -365,85 +405,122 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   const SizedBox(width: 4),
                                 ],
                               ),
-                              if (_loading)
-                                ...homeHubLoadingSlivers(
-                                  context,
-                                  heroShimmer: _buildHubHeroShimmer(),
-                                )
-                              else ...[
-                                SliverToBoxAdapter(child: _buildHero()),
-                                if (_continueWatching.isNotEmpty)
-                                  SliverToBoxAdapter(
-                                    child: _buildContinueWatching(),
-                                  ),
-                                SliverToBoxAdapter(child: _buildSpotlightMosaic()),
-                                SliverToBoxAdapter(child: _buildMoodChips()),
-                                SliverToBoxAdapter(
-                                  child: _AnimeRail(
-                                    title: 'Trending Now',
-                                    items: _trending,
-                                    onTap: _openDetails,
-                                  ),
+                              SliverToBoxAdapter(
+                                child: FutureBuilder<List<AnimeCard>>(
+                                  future: _spotlightFuture,
+                                  builder: (context, snap) {
+                                    if (snap.connectionState ==
+                                            ConnectionState.waiting ||
+                                        !snap.hasData ||
+                                        snap.data!.isEmpty) {
+                                      return homeCinematicHeroShimmer(context);
+                                    }
+                                    return _buildHero(
+                                      snap.data!.take(5).toList(),
+                                    );
+                                  },
                                 ),
-                                if (_tonightsPick != null)
-                                  SliverToBoxAdapter(
-                                    child: _buildTonightsPick(),
-                                  ),
-                                SliverToBoxAdapter(
-                                  child: _AnimeRail(
-                                    title: 'Top Airing',
-                                    items: _topAiring,
-                                    onTap: _openDetails,
-                                  ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: FutureBuilder<
+                                    List<Map<String, dynamic>>>(
+                                  future: _historyFuture,
+                                  builder: (context, snap) {
+                                    if (snap.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return homeContinueWatchingSkeleton(
+                                        context,
+                                      );
+                                    }
+                                    if (_continueWatching.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return _buildContinueWatching();
+                                  },
                                 ),
-                                SliverToBoxAdapter(
-                                  child: _AnimeRail(
-                                    title: 'Top 10 Today',
-                                    items: _top10,
-                                    onTap: _openDetails,
-                                    showRank: true,
-                                  ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: FutureBuilder<List<AnimeCard>>(
+                                  future: _spotlightFuture,
+                                  builder: (context, snap) {
+                                    final items = snap.data;
+                                    if (items == null || items.length < 5) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return _AnimeMosaicSpotlight(
+                                      items: items.take(5).toList(),
+                                      onTap: _openDetails,
+                                    );
+                                  },
                                 ),
-                                SliverToBoxAdapter(
-                                  child: _AnimeRail(
-                                    title: 'Most Popular',
-                                    items: _mostPopular,
-                                    onTap: _openDetails,
-                                  ),
+                              ),
+                              SliverToBoxAdapter(child: _buildMoodChips()),
+                              SliverToBoxAdapter(
+                                child: _AnimeCatalogSection(
+                                  title: 'Trending Now',
+                                  future: _trendingFuture,
+                                  onTap: _openDetails,
                                 ),
+                              ),
+                              if (_tonightsPick != null)
                                 SliverToBoxAdapter(
-                                  child: _AnimeRail(
-                                    title: 'Latest Episodes',
-                                    items: _recentEpisodes,
-                                    onTap: _openDetails,
-                                  ),
+                                  child: _buildTonightsPick(),
                                 ),
-                                SliverToBoxAdapter(
-                                  child: _AnimeRail(
-                                    title: 'Top Rated',
-                                    items: _topRated,
-                                    onTap: _openDetails,
-                                  ),
+                              SliverToBoxAdapter(
+                                child: _AnimeCatalogSection(
+                                  title: 'Top Airing',
+                                  future: _topAiringFuture,
+                                  onTap: _openDetails,
                                 ),
-                                SliverToBoxAdapter(
-                                  child: _AnimeRail(
-                                    title: 'Most Favorited',
-                                    items: _mostFavorite,
-                                    onTap: _openDetails,
-                                  ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: _AnimeCatalogSection(
+                                  title: 'Top 10 Today',
+                                  future: _top10Future,
+                                  onTap: _openDetails,
+                                  showRank: true,
                                 ),
-                                SliverToBoxAdapter(
-                                  child: _AnimeRail(
-                                    title: 'Recently Completed',
-                                    items: _latestCompleted,
-                                    onTap: _openDetails,
-                                  ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: _AnimeCatalogSection(
+                                  title: 'Most Popular',
+                                  future: _mostPopularFuture,
+                                  onTap: _openDetails,
                                 ),
-                              ],
+                              ),
+                              SliverToBoxAdapter(
+                                child: _AnimeCatalogSection(
+                                  title: 'Latest Episodes',
+                                  future: _recentEpisodesFuture,
+                                  onTap: _openDetails,
+                                ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: _AnimeCatalogSection(
+                                  title: 'Top Rated',
+                                  future: _topRatedFuture,
+                                  onTap: _openDetails,
+                                ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: _AnimeCatalogSection(
+                                  title: 'Most Favorited',
+                                  future: _mostFavoriteFuture,
+                                  onTap: _openDetails,
+                                ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: _AnimeCatalogSection(
+                                  title: 'Recently Completed',
+                                  future: _latestCompletedFuture,
+                                  onTap: _openDetails,
+                                ),
+                              ),
                               const SliverToBoxAdapter(
                                 child: SizedBox(height: 80),
                               ),
                             ],
+                          ),
                           ),
                         ),
                       ],
@@ -520,26 +597,10 @@ class _AnimeScreenState extends State<AnimeScreen>
   }
 
   // ─── Spotlight (mosaic, mirrors home page) ─────────────────────
-  Widget _buildSpotlightMosaic() {
-    if (_spotlight.length < 5) return const SizedBox.shrink();
-    return _AnimeMosaicSpotlight(
-      items: _spotlight.take(5).toList(),
-      onTap: _openDetails,
-    );
-  }
 
   // ─── Hero carousel ─────────────────────────────────────────────
-  Widget _buildHubHeroShimmer() {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    final h = isLandscape
-        ? MediaQuery.of(context).size.height * 0.65
-        : MediaQuery.of(context).size.height * 0.75;
-    return homeHubHeroShimmer(height: h);
-  }
-
-  Widget _buildHero() {
-    if (_spotlight.isEmpty) return const SizedBox.shrink();
+  Widget _buildHero(List<AnimeCard> spotlight) {
+    if (spotlight.isEmpty) return const SizedBox.shrink();
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     final h = isLandscape
@@ -552,13 +613,13 @@ class _AnimeScreenState extends State<AnimeScreen>
         children: [
           PageView.builder(
             controller: _heroController,
-            itemCount: _spotlight.length,
+            itemCount: spotlight.length,
             onPageChanged: (i) {
               setState(() => _heroIndex = i);
-              _extractAmbient(_spotlight[i]);
+              _extractAmbient(spotlight[i]);
             },
             itemBuilder: (_, i) =>
-                _buildHeroSlide(_spotlight[i], isLandscape),
+                _buildHeroSlide(spotlight[i], isLandscape),
           ),
           // Dot indicator
           Positioned(
@@ -568,7 +629,7 @@ class _AnimeScreenState extends State<AnimeScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
-                _spotlight.length,
+                spotlight.length,
                 (i) => AnimatedContainer(
                   duration: const Duration(milliseconds: 400),
                   curve: Curves.easeOutCubic,
@@ -898,19 +959,7 @@ class _AnimeScreenState extends State<AnimeScreen>
       future: future,
       builder: (context, snap) {
         if (!snap.hasData) {
-          return SizedBox(
-            height: 290,
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: ForjaShellColors.sectionAccent,
-                ),
-              ),
-            ),
-          );
+          return homeLoadingShimmer(homeCatalogCardRowSkeleton(context));
         }
         return _AnimeRail(
           title: 'In the mood',
@@ -1209,6 +1258,55 @@ class _AnimeScreenState extends State<AnimeScreen>
 // ──────────────────────────────────────────────────────────────────
 // Reusable horizontal poster rail
 // ──────────────────────────────────────────────────────────────────
+class _AnimeCatalogSection extends StatelessWidget {
+  final String title;
+  final Future<List<AnimeCard>>? future;
+  final void Function(AnimeCard) onTap;
+  final bool showRank;
+  final double topPadding;
+
+  const _AnimeCatalogSection({
+    required this.title,
+    required this.future,
+    required this.onTap,
+    this.showRank = false,
+    this.topPadding = 32,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sectionFuture = future;
+    if (sectionFuture == null) return const SizedBox.shrink();
+
+    return FutureBuilder<List<AnimeCard>>(
+      future: sectionFuture,
+      builder: (context, snap) {
+        final loading = snap.connectionState == ConnectionState.waiting;
+        final items = snap.data ?? const <AnimeCard>[];
+
+        if (loading) {
+          return homeLoadingShimmer(
+            homeMovieRowSkeleton(
+              context,
+              titleWidth: title.length > 12 ? 180 : title.length * 11.0,
+              topPadding: topPadding,
+            ),
+          );
+        }
+        if (items.isEmpty) return const SizedBox.shrink();
+
+        return _AnimeRail(
+          title: title,
+          items: items,
+          onTap: onTap,
+          showRank: showRank,
+          topPadding: topPadding,
+        );
+      },
+    );
+  }
+}
+
 class _AnimeRail extends StatelessWidget {
   final String title;
   final List<AnimeCard> items;

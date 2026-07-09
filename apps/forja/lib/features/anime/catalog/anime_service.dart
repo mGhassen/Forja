@@ -1,5 +1,5 @@
 // Anime backend — AniList GraphQL for metadata, megaplay/vidwish for streams.
-// Parallel race: Anikoto HD-1/HD-2 + Miruro + AllAnime fallbacks.
+// Parallel race: Anikoto HD-1/HD-2 + Forja stream servers + AllAnime fallbacks.
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/anime/catalog/allanime_extractor.dart';
 import 'package:forja/features/anime/catalog/watchhentai_extractor.dart';
 import 'package:forja/features/anime/catalog/hentaini_extractor.dart';
+import 'package:forja/features/anime/catalog/anime_stream_servers.dart';
 import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 
 class AnimeService {
@@ -349,7 +350,10 @@ class AnimeService {
           final m = (raw as Map).cast<String, dynamic>();
           final ani = (m['ani_id'] ?? '').toString();
           if (ani == anime.id.toString()) {
-            return _loadAnikotoSeries(m['id'] as int);
+            return _loadAnikotoSeries(
+              m['id'] as int,
+              expectedAnilistId: anime.id,
+            );
           }
         }
         if (data.length < perPage) break; // last page
@@ -363,24 +367,24 @@ class AnimeService {
     // search page. The API itself has no search endpoint, so we scrape slugs
     // from the search results, lift the numeric data-id from each watch page,
     // then verify against AniList ID through /series/{id}.
-    final candidates = <String>{};
     final queries = <String>[
       anime.titleEnglish,
       anime.titleRomaji,
     ].where((q) => q.trim().isNotEmpty).toSet();
+    final candidates = <String>[];
+    final seenSlugs = <String>{};
     for (final q in queries) {
-      candidates.addAll(await _anikotoSearchSlugs(q));
-      if (candidates.length >= 10) break;
+      for (final slug in await _anikotoSearchSlugs(q)) {
+        if (seenSlugs.add(slug)) candidates.add(slug);
+      }
     }
-    // Probe the first ~8 candidates. /series/{id} returns ani_id and an
-    // episodes list. We collect (slug, id, epCount) for every candidate —
-    // including ani_id matches — because anikoto frequently links the same
-    // AniList ID to a 1-episode special AND the real multi-episode series
-    // (Demon Slayer S1's "Sibling's Bond" special vs the 26-ep main show).
-    final probe = candidates.take(8).toList();
+    // Walk search results in rank order. One Piece's main TV entry is often
+    // past the first page of specials — stopping at 8 slugs mapped to the
+    // wrong 1-ep movie/OVA while the user picked ep 1 of the real series.
     final resolved = <_AnikotoCandidate>[];
     final aniIdMatches = <_AnikotoCandidate>[];
-    for (final slug in probe) {
+    final expected = anime.episodes ?? 0;
+    for (final slug in candidates) {
       final id = await _anikotoIdFromSlug(slug);
       if (id == null) continue;
       try {
@@ -390,6 +394,17 @@ class AnimeService {
         final cand = _AnikotoCandidate(slug: slug, id: id, episodes: epCount);
         if (aniId == anime.id.toString()) {
           aniIdMatches.add(cand);
+          if (expected > 0 && epCount >= (expected * 0.85).floor()) {
+            if (kDebugMode) {
+              debugPrint(
+                  '[Anikoto] ani_id match ${cand.slug} id=${cand.id} '
+                  'eps=$epCount (expected $expected)');
+            }
+            return _loadAnikotoSeries(
+              cand.id,
+              expectedAnilistId: anime.id,
+            );
+          }
         } else {
           resolved.add(cand);
         }
@@ -400,7 +415,6 @@ class AnimeService {
     // total, prefer the candidate closest to it (and at least half of it).
     // Otherwise prefer the one with the most episodes.
     if (aniIdMatches.isNotEmpty) {
-      final expected = anime.episodes ?? 0;
       _AnikotoCandidate best;
       if (expected > 0) {
         aniIdMatches.sort((a, b) {
@@ -416,11 +430,28 @@ class AnimeService {
           // Treat the ani_id matches as ordinary candidates for fuzzy too.
           resolved.addAll(aniIdMatches);
         } else {
-          return _loadAnikotoSeries(best.id);
+          if (kDebugMode) {
+            debugPrint(
+                '[Anikoto] ani_id match ${best.slug} id=${best.id} '
+                'eps=${best.episodes} (expected $expected)');
+          }
+          return _loadAnikotoSeries(
+            best.id,
+            expectedAnilistId: anime.id,
+          );
         }
       } else {
         aniIdMatches.sort((a, b) => b.episodes.compareTo(a.episodes));
-        return _loadAnikotoSeries(aniIdMatches.first.id);
+        final best = aniIdMatches.first;
+        if (kDebugMode) {
+          debugPrint(
+              '[Anikoto] ani_id match ${best.slug} id=${best.id} '
+              'eps=${best.episodes}');
+        }
+        return _loadAnikotoSeries(
+          best.id,
+          expectedAnilistId: anime.id,
+        );
       }
     }
 
@@ -454,8 +485,22 @@ class AnimeService {
           }
         }
         if (best != null && bestScore >= 0.40) {
-          debugPrint('[Anikoto] fuzzy match ${best.slug} score=${bestScore.toStringAsFixed(2)}');
-          return _loadAnikotoSeries(best.id);
+          if (expected > 5 && best.episodes < (expected / 2).ceil()) {
+            if (kDebugMode) {
+              debugPrint(
+                  '[Anikoto] reject fuzzy ${best.slug}: ${best.episodes} eps '
+                  'vs expected $expected');
+            }
+            return null;
+          }
+          debugPrint(
+              '[Anikoto] fuzzy match ${best.slug} score=${bestScore.toStringAsFixed(2)} '
+              'eps=${best.episodes}');
+          return _loadAnikotoSeries(
+            best.id,
+            expectedAnilistId: anime.id,
+            fuzzyMatch: true,
+          );
         }
       }
     }
@@ -475,21 +520,32 @@ class AnimeService {
       .where((t) => t.length > 1)
       .toSet();
 
+  static const int _anikotoSearchMaxSlugs = 40;
+  static const int _anikotoSearchMaxPages = 4;
+
   // Scrape https://anikototv.to/search?keyword=… for unique watch slugs.
   Future<List<String>> _anikotoSearchSlugs(String query) async {
     try {
-      final url =
-          'https://anikototv.to/search?keyword=${Uri.encodeQueryComponent(query)}';
-      final res = await animeHttp('GET', url, headers: {
-        'User-Agent': _anikotoUa,
-        'Accept': 'text/html',
-      });
-      if (res.status != 200) return const [];
-      final matches = RegExp(r'/watch/([a-z0-9-]+)').allMatches(res.body);
       final seen = <String>{};
-      for (final m in matches) {
-        final slug = m.group(1)!;
-        if (seen.add(slug) && seen.length >= 12) break;
+      for (var page = 1;
+          page <= _anikotoSearchMaxPages && seen.length < _anikotoSearchMaxSlugs;
+          page++) {
+        final base =
+            'https://anikototv.to/search?keyword=${Uri.encodeQueryComponent(query)}';
+        final url = page == 1 ? base : '$base&page=$page';
+        final res = await animeHttp('GET', url, headers: {
+          'User-Agent': _anikotoUa,
+          'Accept': 'text/html',
+        });
+        if (res.status != 200) break;
+        final matches = RegExp(r'/watch/([a-z0-9-]+)').allMatches(res.body);
+        var added = 0;
+        for (final m in matches) {
+          final slug = m.group(1)!;
+          if (seen.add(slug)) added++;
+          if (seen.length >= _anikotoSearchMaxSlugs) break;
+        }
+        if (added == 0) break;
       }
       return seen.toList();
     } catch (e) {
@@ -515,14 +571,41 @@ class AnimeService {
     }
   }
 
-  Future<AnikotoSeries?> _loadAnikotoSeries(int anikotoId) async {
+  Future<AnikotoSeries?> _loadAnikotoSeries(
+    int anikotoId, {
+    int? expectedAnilistId,
+    bool fuzzyMatch = false,
+  }) async {
     try {
       final j = await _anikotoGet('/series/$anikotoId');
+      final loadedAniId =
+          (j?['data']?['anime']?['ani_id'] ?? '').toString().trim();
+      if (expectedAnilistId != null &&
+          loadedAniId.isNotEmpty &&
+          loadedAniId != expectedAnilistId.toString()) {
+        if (kDebugMode) {
+          debugPrint(
+              '[Anikoto] reject series $anikotoId: ani_id=$loadedAniId '
+              '!= $expectedAnilistId');
+        }
+        return null;
+      }
       final eps = ((j?['data']?['episodes'] as List?) ?? const [])
           .cast<Map>()
           .map((e) => AnikotoEpisode.fromJson(e.cast<String, dynamic>()))
           .toList();
-      return AnikotoSeries(id: anikotoId, episodes: eps);
+      final verified = expectedAnilistId != null &&
+          loadedAniId == expectedAnilistId.toString();
+      if (kDebugMode && fuzzyMatch && !verified) {
+        debugPrint(
+            '[Anikoto] fuzzy series $anikotoId (${eps.length} eps) — '
+            'megaplay disabled (no ani_id link)');
+      }
+      return AnikotoSeries(
+        id: anikotoId,
+        episodes: eps,
+        aniIdVerified: verified,
+      );
     } catch (e) {
       debugPrint('[Anikoto] /series/$anikotoId failed: $e');
       return null;
@@ -666,7 +749,12 @@ class AnimeService {
     final embedId = anikotoEp?.embedId;
 
     final all = <AnimeEmbed>[];
-    if (embedId != null && embedId.isNotEmpty) {
+    // megaplay/vidwish embed IDs come from Anikoto's catalog. Only trust them
+    // when the resolved series is linked to this AniList id — otherwise Miruro
+    // (anilist-keyed) is safer than a fuzzy title match on a wrong special.
+    if (embedId != null &&
+        embedId.isNotEmpty &&
+        (series?.aniIdVerified ?? false)) {
       void addPair(String cat) {
         final megaUrl = cat == 'sub'
             ? anikotoEp?.embedUrlSub
@@ -707,17 +795,19 @@ class AnimeService {
       addPair('sub');
       addPair('dub');
     }
-    // Miruro fallback — emit one embed per known provider per category. The
-    // resolver fans them all out in parallel; whichever returns a stream
-    // first wins. The episodes lookup is cached inside MiruroExtractor so all
-    // parallel attempts share a single network round-trip.
+    // Forja stream servers (neko, momo, …) — one embed per server per category.
     for (final cat in const ['sub', 'dub']) {
-      for (final prov in MiruroExtractor.knownProviders) {
+      for (final srv in AnimeStreamServers.all) {
         all.add(AnimeEmbed(
-          label: 'Miruro·$prov',
-          server: 'miruro',
+          label: srv.id,
+          server: srv.id,
           category: cat,
-          url: 'miruro://anilist/$anilistId/$episode/$cat/$prov',
+          url: AnimeStreamServers.streamUrl(
+            anilistId: anilistId,
+            episode: episode,
+            category: cat,
+            server: srv,
+          ),
         ));
       }
     }
@@ -813,8 +903,8 @@ class AnimeService {
   }
 
   Future<AnimeStreamResult?> extractDirect(AnimeEmbed embed) async {
-    if (embed.server == 'miruro') {
-      return _extractMiruro(embed);
+    if (AnimeStreamServers.isForjaServer(embed.server)) {
+      return _extractStreamServer(embed);
     }
     if (embed.server == 'allanime') {
       return _extractAllAnime(embed);
@@ -885,25 +975,18 @@ class AnimeService {
     }
   }
 
-  // Miruro extractor — uses the secure-pipe API to resolve a direct HLS
-  // stream + subtitle tracks from any AniList episode/category. Sentinel URL
-  // format is `miruro://anilist/{anilistId}/{episode}/{category}`.
+  // Pipe transport for Forja stream servers (neko → zoro, momo → kiwi, …).
   final MiruroExtractor _miruro = MiruroExtractor();
 
-  Future<AnimeStreamResult?> _extractMiruro(AnimeEmbed embed) async {
-    final m = RegExp(r'^miruro://anilist/(\d+)/(\d+)/(sub|dub)/([a-z0-9]+)$')
-        .firstMatch(embed.url);
-    if (m == null) return null;
-    final anilistId = int.parse(m.group(1)!);
-    final ep = int.parse(m.group(2)!);
-    final cat = m.group(3)!;
-    final provider = m.group(4)!;
+  Future<AnimeStreamResult?> _extractStreamServer(AnimeEmbed embed) async {
+    final parsed = AnimeStreamServers.parseUrl(embed.url);
+    if (parsed == null) return null;
 
     final res = await _miruro.extractWithProvider(
-      anilistId: anilistId,
-      episodeNumber: ep,
-      category: cat,
-      provider: provider,
+      anilistId: parsed.anilistId,
+      episodeNumber: parsed.episode,
+      category: parsed.category,
+      provider: parsed.server.pipeKey,
     );
     if (res == null) return null;
 
@@ -1266,8 +1349,6 @@ class AnimeEmbed {
 
   String get displayName {
     switch (server) {
-      case 'miruro':
-        return 'Miruro · ${category.toUpperCase()}';
       case 'allanime':
         return 'AllAnime · ${category.toUpperCase()}';
       case 'watchhentai':
@@ -1282,8 +1363,6 @@ class AnimeEmbed {
     switch (server) {
       case 'vidwish':
         return 'https://vidwish.live';
-      case 'miruro':
-        return 'https://www.miruro.tv';
       case 'allanime':
         return 'https://allmanga.to';
       case 'watchhentai':
@@ -1325,7 +1404,13 @@ class AnimeTrack {
 class AnikotoSeries {
   final int id;
   final List<AnikotoEpisode> episodes;
-  const AnikotoSeries({required this.id, required this.episodes});
+  /// True when Anikoto's `ani_id` matches the AniList card we resolved for.
+  final bool aniIdVerified;
+  const AnikotoSeries({
+    required this.id,
+    required this.episodes,
+    this.aniIdVerified = false,
+  });
 }
 
 class _AnikotoCandidate {

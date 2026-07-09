@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -159,6 +160,40 @@ Widget homeContinueWatchingSkeleton(
       ),
     ),
   );
+}
+
+Widget homeCatalogCardRowSkeleton(BuildContext context, {int itemCount = 5}) {
+  return SizedBox(
+    height: HomeMovieCard.cardHeight(context),
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      itemCount: itemCount,
+      separatorBuilder: (_, _) => const SizedBox(width: 14),
+      itemBuilder: (_, _) => homeCardSkeleton(context),
+    ),
+  );
+}
+
+double homeCinematicHeroBodyHeight(
+  BuildContext context, {
+  required bool compact,
+}) {
+  if (compact) {
+    final screenH = MediaQuery.sizeOf(context).height;
+    final target = screenH * ShellTokens.heroHeightFractionCompact;
+    return math.max(ShellTokens.heroMinHeightCompact, target);
+  }
+  return MediaQuery.sizeOf(context).height * ShellTokens.heroHeightFractionDesktop;
+}
+
+Widget homeCinematicHeroShimmer(BuildContext context) {
+  final compact =
+      MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
+  final height = homeCinematicHeroBodyHeight(context, compact: compact) +
+      MediaQuery.paddingOf(context).top;
+  return homeHubHeroShimmer(height: height);
 }
 
 Widget homeHubHeroShimmer({required double height}) {

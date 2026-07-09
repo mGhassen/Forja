@@ -14,19 +14,22 @@ class MiruroExtractor {
   static const String _pipeObfKeyHex = '71951034f8fbcf53d89db52ceb3dc22c';
   static const List<String> _protocolVersions = ['0.2.0', '0.1.0'];
 
-  /// Every provider the upstream API may expose. The resolver fires one
-  /// extract attempt per provider in parallel, so order doesn't matter much.
-  static const List<String> knownProviders = [
-    'zoro',
-    'kiwi',
-    'arc',
-    'jet',
-    'hop',
-    'bee',
-    'bun',
-    'kuz',
-    'telli',
-  ];
+  /// Pipe key → upstream (debug logs only).
+  static const Map<String, String> upstreamSources = {
+    'kiwi': 'AnimePahe',
+    'ally': 'AllManga',
+    'bonk': 'AnimeDao',
+    'bee': 'AniKoto',
+    'moo': 'AnimeGG',
+    'hop': 'Miruro',
+    'arc': 'Miruro internal',
+    'zoro': 'HiAnime',
+    'jet': 'Miruro internal',
+    'animedunya': 'AnimeDunya',
+  };
+
+  static String upstreamLabel(String pipeKey) =>
+      upstreamSources[pipeKey.toLowerCase()] ?? pipeKey;
 
   static final Uint8List _obfKey = Uint8List.fromList(
     RegExp(r'.{2}')
@@ -126,8 +129,8 @@ class MiruroExtractor {
 
       if (kDebugMode) {
         debugPrint(
-            '[Miruro] OK provider=$provider ep=$episodeNumber cat=$category '
-            'tracks=${tracks.length}');
+            '[Miruro] OK $provider (${upstreamLabel(provider)}) ep=$episodeNumber '
+            'cat=$category tracks=${tracks.length}');
       }
       return MiruroResult(
         url: url,

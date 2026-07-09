@@ -7,6 +7,7 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
+import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
@@ -295,7 +296,22 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                   onPlay: () => _play(resumeEp ?? 1),
                 ),
                 const SizedBox(width: 10),
-                _buildCategoryToggle(compact: true),
+                HeroPillSegmentedChoice<String>(
+                  selected: _category,
+                  onSelected: (cat) => setState(() => _category = cat),
+                  segments: const [
+                    HeroPillSegment(
+                      value: 'sub',
+                      label: 'Sub',
+                      icon: Icons.subtitles_rounded,
+                    ),
+                    HeroPillSegment(
+                      value: 'dub',
+                      label: 'Dub',
+                      icon: Icons.mic_rounded,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -358,73 +374,6 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       .replaceAll('&amp;', '&')
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>');
-
-  Widget _buildCategoryToggle({bool compact = false}) {
-    final radius = compact ? 20.0 : 24.0;
-    final innerRadius = compact ? 16.0 : 20.0;
-    final height = compact ? 40.0 : null;
-    return Container(
-      height: height,
-      padding: const EdgeInsets.all(3),
-      decoration: shellChipDecoration(selected: false, radius: radius),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _categoryButton('sub', 'SUB', Icons.subtitles_rounded,
-              compact: compact, radius: innerRadius),
-          _categoryButton('dub', 'DUB', Icons.mic_rounded,
-              compact: compact, radius: innerRadius),
-        ],
-      ),
-    );
-  }
-
-  Widget _categoryButton(
-    String id,
-    String label,
-    IconData icon, {
-    bool compact = false,
-    required double radius,
-  }) {
-    final selected = _category == id;
-    final cinematic = ForjaShellColors.cinematic;
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(radius),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(radius),
-        onTap: () => setState(() => _category = id),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 10 : 16,
-            vertical: compact ? 8 : 10,
-          ),
-          decoration: shellChipDecoration(selected: selected, radius: radius),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: compact ? 14 : 16,
-                color: selected ? cinematic.textPrimary : cinematic.textSecondary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? cinematic.textPrimary : cinematic.textSecondary,
-                  fontSize: compact ? 11 : 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildSeasonsRail() {
     final currentId = widget.anime.id;

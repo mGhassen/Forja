@@ -142,6 +142,127 @@ class HeroPillIconGroup extends StatelessWidget {
   }
 }
 
+class HeroPillSegment<T> {
+  const HeroPillSegment({
+    required this.value,
+    required this.label,
+    required this.icon,
+  });
+
+  final T value;
+  final String label;
+  final IconData icon;
+}
+
+/// Segmented hero pill (e.g. SUB | DUB) — matches [HeroPillIconGroup] chrome.
+class HeroPillSegmentedChoice<T> extends StatelessWidget {
+  const HeroPillSegmentedChoice({
+    super.key,
+    required this.segments,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<HeroPillSegment<T>> segments;
+  final T selected;
+  final ValueChanged<T> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (segments.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      height: _kHeroPillHeight,
+      clipBehavior: Clip.antiAlias,
+      decoration: _heroPillDecoration(hover: false),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < segments.length; i++) ...[
+            if (i > 0)
+              Container(
+                width: 1,
+                height: 18,
+                color: Colors.white.withValues(alpha: 0.22),
+              ),
+            _HeroPillSegmentButton<T>(
+              segment: segments[i],
+              selected: segments[i].value == selected,
+              isFirst: i == 0,
+              isLast: i == segments.length - 1,
+              onTap: () => onSelected(segments[i].value),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroPillSegmentButton<T> extends StatelessWidget {
+  const _HeroPillSegmentButton({
+    required this.segment,
+    required this.selected,
+    required this.isFirst,
+    required this.isLast,
+    required this.onTap,
+  });
+
+  final HeroPillSegment<T> segment;
+  final bool selected;
+  final bool isFirst;
+  final bool isLast;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected
+        ? Colors.white
+        : Colors.white.withValues(alpha: 0.68);
+
+    return ForjaInteractive(
+      onTap: onTap,
+      hoverScale: 1.02,
+      pressScale: 0.98,
+      builder: (hover, pressed) {
+        final highlight = selected || hover || pressed;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          height: _kHeroPillHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: highlight
+                ? Colors.white.withValues(alpha: pressed ? 0.14 : 0.1)
+                : Colors.transparent,
+            borderRadius: _heroPillSlotBorderRadius(
+              isFirst: isFirst,
+              isLast: isLast,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(segment.icon, size: _kHeroPillIconSize, color: foreground),
+              const SizedBox(width: 6),
+              Text(
+                segment.label,
+                style: GoogleFonts.inter(
+                  color: foreground,
+                  fontSize: 15,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _HeroPillIconSlotButton extends StatelessWidget {
   const _HeroPillIconSlotButton({
     required this.slot,

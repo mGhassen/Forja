@@ -4,9 +4,11 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/features/anime/catalog/anime_stream_servers.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -130,18 +132,26 @@ String _langCodeFromLabel(String label) {
 }
 
 int _sourcePriority(AnimeEmbed embed) {
+  if (AnimeStreamServers.isForjaServer(embed.server)) {
+    return AnimeStreamServers.priorityIndex(embed.server);
+  }
   switch (embed.server) {
     case 'megaplay':
-      return 0;
+      return 10;
     case 'vidwish':
-      return 1;
-    case 'miruro':
-      return 2;
+      return 11;
     case 'allanime':
-      return 3;
+      return 20;
     default:
-      return 4;
+      return 30;
   }
+}
+
+int _compareSourceHits(
+  ({AnimeEmbed embed, ExtractedMedia media}) a,
+  ({AnimeEmbed embed, ExtractedMedia media}) b,
+) {
+  return _sourcePriority(a.embed).compareTo(_sourcePriority(b.embed));
 }
 
 String _decodeEpisodeTitle(String title) => title
@@ -189,12 +199,25 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
   Future<void> _bootstrap() async {
     _setPhase('Looking up episode…');
+    if (kDebugMode) {
+      debugPrint(
+        '[AnimePlayer] start anilist=${widget.anime.id} '
+        '"${widget.anime.displayTitle}" ep=${widget.episodeNumber} '
+        'cat=$_category',
+      );
+    }
     _series = await _service.resolveAnikoto(widget.anime);
     if (!mounted || _cancelled) return;
     if (_series == null) {
       debugPrint(
           '[AnimePlayer] Anikoto catalog miss for ${widget.anime.displayTitle} '
           '(anilist ${widget.anime.id})');
+    } else if (kDebugMode) {
+      debugPrint(
+        '[AnimePlayer] Anikoto series ${_series!.id} '
+        '${_series!.episodes.length} eps '
+        'verified=${_series!.aniIdVerified}',
+      );
     }
     _allEmbeds = _service.buildAllEmbeds(
       anilistId: widget.anime.id,
@@ -269,10 +292,15 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final hits = await completer.future;
     if (!mounted || _cancelled) return;
     if (hits.isNotEmpty) {
-      final sorted = [...hits]
-        ..sort((a, b) =>
-            _sourcePriority(a.embed).compareTo(_sourcePriority(b.embed)));
+      final sorted = [...hits]..sort(_compareSourceHits);
       _activeEmbed = sorted.first.embed;
+      if (kDebugMode) {
+        final w = sorted.first;
+        debugPrint(
+          '[AnimePlayer] winner ${w.embed.displayName} (${w.embed.server}) '
+          'ep=${widget.episodeNumber} url=${w.media.url}',
+        );
+      }
       await _launchPlayer(sorted);
       return;
     }
