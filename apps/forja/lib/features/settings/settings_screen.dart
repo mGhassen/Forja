@@ -23,6 +23,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/src/shell_tab_header.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 
 /// Settings tab — RFC-024 R24-A13: local prefs only; no ShellTabRefresh / API stale policy.
 class SettingsScreen extends StatefulWidget {
@@ -122,6 +123,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<String> _streamProviderOrder = [];
   Map<String, Map<String, dynamic>> _nuvioProviderEntries = {};
 
+  // Anime stream provider order
+  List<String> _animeProviderOrder = [];
+
   @override
   void initState() {
     super.initState();
@@ -208,6 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Load stream provider order
     final streamOrder = await _settings.getStreamProviderOrder();
+    final animeOrder = await _settings.getAnimeProviderOrder();
 
     // Load track auto-select preferences
     final preferredAudio = await _settings.getPreferredAudioLanguage();
@@ -255,6 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _navbarVisible = navVisible;
         _navbarOrder = navOrder;
         _streamProviderOrder = streamOrder;
+        _animeProviderOrder = animeOrder;
         _preferredAudioLang = kTrackLanguageDisplayNames.contains(preferredAudio)
             ? preferredAudio
             : 'None';
@@ -447,6 +453,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           },
                         ),
                         _buildStreamProviderOrder(),
+                        _buildAnimeProviderOrder(),
                         _buildFocusableDropdown(
                           'Video Player',
                           'Choose which player opens videos.',
@@ -3009,6 +3016,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsService.defaultStreamProviderOrder);
                 await _settings.setStreamProviderOrder(defaults);
                 setState(() => _streamProviderOrder = defaults);
+              },
+              icon: const Icon(Icons.restore_rounded, size: 16),
+              label: const Text('Reset to default'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.current.primaryColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnimeProviderOrder() {
+    final catalog = AnimeStreamProviders.catalog;
+    final order = SettingsService.mergeProviderOrder(
+      _animeProviderOrder,
+      catalog.keys,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Anime Provider Order',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          const Text(
+            'Order in which the anime player prefers each source. Sources are '
+            'probed in parallel; the highest-ranked working one plays first.',
+            style: TextStyle(fontSize: 13, color: Colors.white54),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              itemCount: order.length,
+              onReorderItem: (oldIndex, newIndex) async {
+                final item = order.removeAt(oldIndex);
+                order.insert(newIndex, item);
+                setState(() => _animeProviderOrder = List<String>.from(order));
+                await _settings.setAnimeProviderOrder(order);
+              },
+              itemBuilder: (context, i) {
+                final key = order[i];
+                final name = catalog[key] ?? key;
+                return ListTile(
+                  key: ValueKey(key),
+                  leading: Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppTheme.current.primaryColor.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${i + 1}',
+                      style: TextStyle(
+                        color: AppTheme.current.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  title: Text(name,
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w600)),
+                  subtitle: Text(key,
+                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                  trailing: ReorderableDragStartListener(
+                    index: i,
+                    child: const Icon(Icons.drag_handle_rounded, color: Colors.white54),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () async {
+                final defaults = List<String>.from(
+                    SettingsService.defaultAnimeProviderOrder);
+                await _settings.setAnimeProviderOrder(defaults);
+                setState(() => _animeProviderOrder = defaults);
               },
               icon: const Icon(Icons.restore_rounded, size: 16),
               label: const Text('Reset to default'),

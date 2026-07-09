@@ -49,6 +49,8 @@ class AnimeStreamNicknames {
         return forMiruroPipe(key ?? '');
       case 'allanime':
         return forAllAnime(key ?? '');
+      case 'animerealms':
+        return key ?? 'AnimeRealms';
       case 'watchhentai':
         return watchhentai;
       case 'hentaini':

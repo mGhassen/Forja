@@ -287,6 +287,7 @@ abstract final class Engine {
     migrateStringList('forja_enabled_providers');
     migrateString('forja_last_provider');
     migrateStringList('stream_provider_order');
+    migrateStringList('anime_provider_order');
 
     final stremio = prefs.getStringList('stremio_addons');
     if (stremio != null && stremio.isNotEmpty) {

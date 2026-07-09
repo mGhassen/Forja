@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/features/anime/catalog/miruro_extractor.dart';
+import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -242,16 +242,73 @@ Future<List<StreamSource>?> reloadAnimeEpisodeStreams({
   required AnimeService service,
   required List<AnimeEmbed> allEmbeds,
   required String category,
+  List<String> providerOrder = const [],
 }) async {
   final pair = allEmbeds.where((e) => e.category == category).toList();
   if (pair.isEmpty) return null;
 
+  final order = providerOrder.isEmpty
+      ? await SettingsService().getAnimeProviderOrder()
+      : providerOrder;
+  final sorted = _sortEmbedsByProviderOrder(pair, order);
+
   final batches = await Future.wait(
-    pair.map((embed) => _quietResolveEmbed(service, embed)),
+    sorted.map((embed) => _quietResolveEmbed(service, embed)),
   );
   final hits = batches.expand((batch) => batch).toList();
   if (hits.isEmpty) return null;
-  return _hitsToStreamSources(hits);
+  final ranked = _rankHitsByOrder(hits, order, null, null);
+  return _hitsToStreamSources(ranked);
+}
+
+List<AnimeEmbed> _sortEmbedsByProviderOrder(
+  List<AnimeEmbed> embeds,
+  List<String> order,
+) {
+  if (order.isEmpty) return embeds;
+  final keyed = embeds.map((e) => e.sourceKey).toList();
+  final sortedKeys = AnimeStreamProviders.sortKeys(keyed, order);
+  final byKey = <String, List<AnimeEmbed>>{};
+  for (final e in embeds) {
+    byKey.putIfAbsent(e.sourceKey, () => []).add(e);
+  }
+  final out = <AnimeEmbed>[];
+  for (final k in sortedKeys) {
+    out.addAll(byKey[k] ?? const []);
+  }
+  return out;
+}
+
+List<({AnimeEmbed embed, ExtractedMedia media})> _rankHitsByOrder(
+  List<({AnimeEmbed embed, ExtractedMedia media})> hits,
+  List<String> order,
+  String? preferredKey,
+  String? preferredTitle,
+) {
+  int rank(({AnimeEmbed embed, ExtractedMedia media}) hit) {
+    final title = hit.media.sources?.first.title ?? '';
+    if (preferredKey != null && hit.embed.sourceKey == preferredKey) {
+      if (preferredTitle != null &&
+          preferredTitle.isNotEmpty &&
+          title == preferredTitle) {
+        return -2;
+      }
+      return -1;
+    }
+    final idx = order.indexOf(hit.embed.sourceKey);
+    return idx >= 0 ? idx : 1000;
+  }
+
+  final sorted = List<({AnimeEmbed embed, ExtractedMedia media})>.from(hits)
+    ..sort((a, b) {
+      final ra = rank(a);
+      final rb = rank(b);
+      if (ra != rb) return ra.compareTo(rb);
+      final ta = a.media.sources?.first.title ?? '';
+      final tb = b.media.sources?.first.title ?? '';
+      return ta.compareTo(tb);
+    });
+  return sorted;
 }
 
 Movie _hubMovieFromAnime(AnimeCard anime) => Movie(
@@ -389,7 +446,11 @@ String _decodeEpisodeTitle(String title) => title
 
 class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   final AnimeService _service = AnimeService();
+  final SettingsService _settings = SettingsService();
   List<AnimeEmbed> _allEmbeds = const [];
+  List<String> _providerOrder = List<String>.from(
+    AnimeStreamProviders.defaultOrder,
+  );
   AnikotoSeries? _series;
   late String _category;
   String? _preferredSourceKey;
@@ -543,6 +604,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       animeId: widget.anime.id,
       category: _category,
     );
+    final orderFuture = _settings.getAnimeProviderOrder();
 
     var cached = _AnimeStreamSessionCache.read(
       widget.anime.id,
@@ -559,6 +621,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     }
 
     final pref = await prefFuture;
+    _providerOrder = await orderFuture;
     _preferredSourceKey = pref?.sourceKey;
     _preferredSourceTitle = pref?.sourceTitle;
 
@@ -644,8 +707,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _resolveForCategory(fresh: true);
   }
 
-  List<AnimeEmbed> get _currentPair =>
-      _allEmbeds.where((e) => e.category == _category).toList();
+  List<AnimeEmbed> get _currentPair => _sortEmbedsByProviderOrder(
+        _allEmbeds.where((e) => e.category == _category).toList(),
+        _providerOrder,
+      );
 
   Future<void> _resolveForCategory({bool fresh = false}) async {
     if (_cancelled) return;
@@ -879,57 +944,21 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         hit.embed.sourceKey == _preferredSourceKey) {
       return true;
     }
+    // Top of Settings → Anime provider order gets the short grace window.
+    if (_providerOrder.isNotEmpty) {
+      return hit.embed.sourceKey == _providerOrder.first;
+    }
     return hit.embed.server == 'megaplay' || hit.embed.server == 'vidwish';
   }
 
-  /// Prefer reliable embed hosts, then Miruro pipe order — not whichever HTTP
-  /// call finished first during the parallel race.
+  /// Prefer Settings → Anime provider order — not whichever HTTP call finished
+  /// first during the parallel race. Saved source still wins when present.
   List<({AnimeEmbed embed, ExtractedMedia media})> _rankHits(
     List<({AnimeEmbed embed, ExtractedMedia media})> hits,
     String? preferredKey,
     String? preferredTitle,
   ) {
-    int rank(({AnimeEmbed embed, ExtractedMedia media}) hit) {
-      final title = hit.media.sources?.first.title ?? '';
-      if (preferredKey != null && hit.embed.sourceKey == preferredKey) {
-        if (preferredTitle != null &&
-            preferredTitle.isNotEmpty &&
-            title == preferredTitle) {
-          return -2;
-        }
-        return -1;
-      }
-      switch (hit.embed.server) {
-        case 'megaplay':
-          return 0;
-        case 'vidwish':
-          return 1;
-        case 'allanime':
-          return 10;
-        case 'miruro':
-          final m = RegExp(r'/([a-z0-9]+)$').firstMatch(hit.embed.url);
-          final prov = m?.group(1) ?? '';
-          final idx = MiruroExtractor.knownProviders.indexOf(prov);
-          return 20 + (idx >= 0 ? idx : 50);
-        case 'watchhentai':
-          return 40;
-        case 'hentaini':
-          return 41;
-        default:
-          return 60;
-      }
-    }
-
-    final sorted = List<({AnimeEmbed embed, ExtractedMedia media})>.from(hits)
-      ..sort((a, b) {
-        final ra = rank(a);
-        final rb = rank(b);
-        if (ra != rb) return ra.compareTo(rb);
-        final ta = a.media.sources?.first.title ?? '';
-        final tb = b.media.sources?.first.title ?? '';
-        return ta.compareTo(tb);
-      });
-    return sorted;
+    return _rankHitsByOrder(hits, _providerOrder, preferredKey, preferredTitle);
   }
 
   Future<void> _launchPlayer(
@@ -1116,6 +1145,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         service: _service,
         allEmbeds: List<AnimeEmbed>.from(_allEmbeds),
         category: _category,
+        providerOrder: _providerOrder,
       ),
     );
     await Future<void>.delayed(loadingOverlayFadeOutDuration);

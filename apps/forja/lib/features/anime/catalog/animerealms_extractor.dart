@@ -56,6 +56,57 @@ class AnimeRealmsExtractor {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  /// Resolve streams for a single provider (used by the parallel embed race).
+  Future<AnimeRealmsResult?> extractWithProvider({
+    required int anilistId,
+    required int episodeNumber,
+    required String provider,
+  }) async {
+    try {
+      final data = await getStreams(
+        provider: provider,
+        anilistId: anilistId,
+        episodeNumber: episodeNumber,
+      );
+      final streams = data['streams'] as List?;
+      if (streams == null || streams.isEmpty) return null;
+      final real = streams
+          .where((s) =>
+              s is Map &&
+              s['url'] != null &&
+              !(s['url'] as String).contains('test-streams.mux.dev'))
+          .cast<Map>()
+          .toList();
+      if (real.isEmpty) return null;
+      final first = real.first;
+      final url = first['url'] as String;
+      final tracks = <AnimeRealmsTrack>[];
+      final subs = data['subtitles'];
+      if (subs is List) {
+        for (final t in subs) {
+          if (t is! Map) continue;
+          final su = t['url']?.toString();
+          if (su == null || su.isEmpty) continue;
+          tracks.add(AnimeRealmsTrack(
+            url: su,
+            label: (t['lang'] ?? t['label'] ?? 'Unknown').toString(),
+            isDefault: t['default'] == true,
+          ));
+        }
+      }
+      return AnimeRealmsResult(
+        url: url,
+        referer: '$_baseUrl/',
+        origin: _baseUrl,
+        provider: provider,
+        tracks: tracks,
+      );
+    } catch (e) {
+      debugPrint('[AnimeRealms] $provider failed: $e');
+      return null;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getAllSources({
     required int anilistId,
     required int episodeNumber,
@@ -104,14 +155,14 @@ class AnimeRealmsExtractor {
   }
 
   static List<String> getProviderNames(Map<String, dynamic> mappings) {
-    if (mappings.isEmpty) return _defaultProviders;
+    if (mappings.isEmpty) return defaultProviders;
     final names = mappings.keys
         .where((k) => mappings[k] is String || mappings[k] is num)
         .toList();
-    return names.isNotEmpty ? names : _defaultProviders;
+    return names.isNotEmpty ? names : defaultProviders;
   }
 
-  static const List<String> _defaultProviders = [
+  static const List<String> defaultProviders = [
     'hianime',
     'allmanga',
     'gogoanime',
@@ -124,4 +175,32 @@ class AnimeRealmsExtractor {
     'febbox',
     'hanime-tv',
   ];
+}
+
+class AnimeRealmsResult {
+  final String url;
+  final String referer;
+  final String origin;
+  final String provider;
+  final List<AnimeRealmsTrack> tracks;
+
+  const AnimeRealmsResult({
+    required this.url,
+    required this.referer,
+    required this.origin,
+    required this.provider,
+    this.tracks = const [],
+  });
+}
+
+class AnimeRealmsTrack {
+  final String url;
+  final String label;
+  final bool isDefault;
+
+  const AnimeRealmsTrack({
+    required this.url,
+    required this.label,
+    this.isDefault = false,
+  });
 }

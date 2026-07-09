@@ -10,6 +10,7 @@ import 'package:forja/features/anime/catalog/allanime_extractor.dart';
 import 'package:forja/features/anime/catalog/watchhentai_extractor.dart';
 import 'package:forja/features/anime/catalog/hentaini_extractor.dart';
 import 'package:forja/features/anime/catalog/anime_stream_nicknames.dart';
+import 'package:forja/features/anime/catalog/animerealms_extractor.dart';
 import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 
 class AnimeService {
@@ -715,6 +716,18 @@ class AnimeService {
         }
       }
     }
+    // AnimeRealms — one embed per known provider per category. API has no
+    // sub/dub split; both categories share the same watch endpoint.
+    for (final cat in const ['sub', 'dub']) {
+      for (final prov in AnimeRealmsExtractor.defaultProviders) {
+        all.add(AnimeEmbed(
+          label: AnimeStreamNicknames.forServer('animerealms', key: prov),
+          server: 'animerealms',
+          category: cat,
+          url: 'animerealms://anilist/$anilistId/$episode/$prov',
+        ));
+      }
+    }
     // WatchHentai — only for adult titles. Single embed; the extractor
     // searches watchhentai.net's catalog for any of the provided titles.
     if (isAdult && titles.isNotEmpty) {
@@ -760,6 +773,9 @@ class AnimeService {
     }
     if (embed.server == 'allanime') {
       return _extractAllAnime(embed);
+    }
+    if (embed.server == 'animerealms') {
+      return _extractAnimeRealms(embed);
     }
     if (embed.server == 'watchhentai') {
       return _extractWatchHentai(embed);
@@ -892,6 +908,7 @@ class AnimeService {
   // AllAnime extractor — sentinel URL format:
   //   allanime://search/{episode}/{category}/{provider}?t={enc_title1},{enc_title2}
   final AllAnimeExtractor _allanime = AllAnimeExtractor();
+  final AnimeRealmsExtractor _animeRealms = AnimeRealmsExtractor();
   final WatchHentaiExtractor _watchHentai = WatchHentaiExtractor();
   final HentainiExtractor _hentaini = HentainiExtractor();
 
@@ -926,6 +943,32 @@ class AnimeService {
           .map((t) => AnimeTrack(
                 url: t.url,
                 label: t.label.isNotEmpty ? t.label : 'Unknown',
+                isDefault: t.isDefault,
+              ))
+          .toList(),
+    );
+  }
+
+  // AnimeRealms — sentinel URL:
+  //   animerealms://anilist/{anilistId}/{episode}/{provider}
+  Future<AnimeStreamResult?> _extractAnimeRealms(AnimeEmbed embed) async {
+    final m = RegExp(r'^animerealms://anilist/(\d+)/(\d+)/([a-z0-9-]+)$')
+        .firstMatch(embed.url);
+    if (m == null) return null;
+    final res = await _animeRealms.extractWithProvider(
+      anilistId: int.parse(m.group(1)!),
+      episodeNumber: int.parse(m.group(2)!),
+      provider: m.group(3)!,
+    );
+    if (res == null) return null;
+    return AnimeStreamResult(
+      url: res.url,
+      referer: res.referer,
+      origin: res.origin,
+      tracks: res.tracks
+          .map((t) => AnimeTrack(
+                url: t.url,
+                label: t.label,
                 isDefault: t.isDefault,
               ))
           .toList(),
@@ -1500,6 +1543,10 @@ class AnimeEmbed {
         final segs = uri.pathSegments;
         if (segs.length >= 4) return 'allanime:${segs[3]}';
         return 'allanime:default';
+      case 'animerealms':
+        final uri = Uri.parse(url.replaceFirst('animerealms://', 'https://'));
+        final prov = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+        return 'animerealms:$prov';
       default:
         return server;
     }
@@ -1513,6 +1560,8 @@ class AnimeEmbed {
         return 'https://www.miruro.to';
       case 'allanime':
         return 'https://allmanga.to';
+      case 'animerealms':
+        return 'https://www.animerealms.org';
       case 'watchhentai':
         return 'https://watchhentai.net';
       case 'hentaini':

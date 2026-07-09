@@ -179,6 +179,58 @@ class SettingsService {
   Future<void> setStreamProviderOrder(List<String> order) async =>
       kvSetStringList(_streamProviderOrderKey, order);
 
+  static const String _animeProviderOrderKey = 'anime_provider_order';
+
+  /// Default anime stream try-order. Kept in sync with
+  /// `AnimeStreamProviders.defaultOrder` in the host app.
+  static const List<String> defaultAnimeProviderOrder = <String>[
+    'megaplay',
+    'vidwish',
+    'miruro:zoro',
+    'miruro:kiwi',
+    'miruro:bee',
+    'miruro:hop',
+    'miruro:bonk',
+    'miruro:ally',
+    'miruro:moo',
+    'miruro:animedunya',
+    'miruro:arc',
+    'miruro:jet',
+    'miruro:bun',
+    'miruro:kuz',
+    'miruro:telli',
+    'allanime:Default',
+    'allanime:S-mp4',
+    'allanime:Yt-mp4',
+    'allanime:Luf-Mp4',
+    'allanime:Uv-mp4',
+    'animerealms:hianime',
+    'animerealms:allmanga',
+    'animerealms:gogoanime',
+    'animerealms:zencloud',
+    'animerealms:animepahe',
+    'animerealms:animez',
+    'animerealms:animekai',
+    'animerealms:kickassanime',
+    'animerealms:anizone',
+    'animerealms:febbox',
+    'animerealms:hanime-tv',
+    'watchhentai',
+    'hentaini',
+  ];
+
+  Future<List<String>> getAnimeProviderOrder() async {
+    final saved =
+        await kvGetStringList(_animeProviderOrderKey, fallback: const []);
+    if (saved.isEmpty) {
+      return List<String>.from(defaultAnimeProviderOrder);
+    }
+    return mergeProviderOrder(saved, defaultAnimeProviderOrder);
+  }
+
+  Future<void> setAnimeProviderOrder(List<String> order) async =>
+      kvSetStringList(_animeProviderOrderKey, order);
+
   Future<String> getSortPreference() async =>
       await kvGetString(_sortPreferenceKey) ?? 'Seeders (High to Low)';
 
@@ -431,6 +483,13 @@ class SettingsService {
     if (streamOrder.isNotEmpty) {
       prefsMap[_streamProviderOrderKey] = streamOrder;
     }
+    final animeOrder = await kvGetStringList(
+      _animeProviderOrderKey,
+      fallback: const [],
+    );
+    if (animeOrder.isNotEmpty) {
+      prefsMap[_animeProviderOrderKey] = animeOrder;
+    }
 
     final secureMap = <String, String>{};
     for (final key in _secureKeys) {
@@ -507,6 +566,12 @@ class SettingsService {
       await kvSetStringList(
         _streamProviderOrderKey,
         (prefsMap[_streamProviderOrderKey] as List).cast<String>(),
+      );
+    }
+    if (prefsMap.containsKey(_animeProviderOrderKey)) {
+      await kvSetStringList(
+        _animeProviderOrderKey,
+        (prefsMap[_animeProviderOrderKey] as List).cast<String>(),
       );
     }
 
