@@ -1141,10 +1141,6 @@ class _HomeScreenState extends State<HomeScreen>
     await AppRouter.openMovie(context, movie: movie, autoPlay: true);
   }
 
-  void _openSearch() {
-    ShellBus.requestTab.value = 'search';
-  }
-
   Future<void> _loadStremioCatalogs() async {
     if (mounted) setState(() => _stremioCatalogsLoading = true);
     try {
@@ -1620,17 +1616,6 @@ class _HomeScreenState extends State<HomeScreen>
                       );
                     },
                   ),
-          ),
-          Positioned(
-            top: textTop,
-            right: ShellTokens.bodyHorizontalPadding,
-            child: ForjaPlainIcon(
-              icon: Icons.search_rounded,
-              color: Colors.white,
-              size: 30,
-              hitSize: 44,
-              onTap: _openSearch,
-            ),
           ),
           Positioned(
             right: 20,

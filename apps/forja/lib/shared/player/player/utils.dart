@@ -72,6 +72,55 @@ bool isMediaOpenReady(PlayerState state) {
   return false;
 }
 
+bool sourceExpectsDuration(String url, {String? type}) {
+  final normalizedType = type?.toLowerCase() ?? '';
+  if (normalizedType == 'hls' ||
+      normalizedType == 'video' ||
+      normalizedType == 'mp4' ||
+      normalizedType == 'dash') {
+    return true;
+  }
+  final lower = url.toLowerCase();
+  return lower.contains('.m3u8') ||
+      lower.contains('.mp4') ||
+      lower.contains('.mkv') ||
+      lower.contains('.webm') ||
+      lower.contains('.mpd');
+}
+
+/// VOD streams need a known duration before the seekbar can work.
+Future<bool> waitForSeekableDuration(
+  Player player, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  if (player.state.duration.inMilliseconds > 0) return true;
+  try {
+    await player.stream.duration
+        .firstWhere((d) => d.inMilliseconds > 0)
+        .timeout(timeout);
+    return true;
+  } catch (_) {
+    return player.state.duration.inMilliseconds > 0;
+  }
+}
+
+void syncPlayerProgressNotifiers(
+  Player player, {
+  required ValueNotifier<Duration> duration,
+  required ValueNotifier<Duration> position,
+  required ValueNotifier<Duration> buffered,
+}) {
+  duration.value = player.state.duration;
+  position.value = player.state.position;
+  buffered.value = player.state.buffer;
+}
+
+bool isNaturalPlaybackEnd(PlayerState state) {
+  final dur = state.duration.inMilliseconds;
+  if (dur <= 0) return false;
+  return state.position.inMilliseconds >= dur - 1000;
+}
+
 /// Clears stale duration/buffer from a prior failed open before trying again.
 Future<void> resetPlayerForOpen(Player player) async {
   await player.stop();

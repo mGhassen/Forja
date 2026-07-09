@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
@@ -11,8 +10,28 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 class AppRouter {
   AppRouter._();
 
-  static Route<T> slideRoute<T>(WidgetBuilder builder) =>
-      CupertinoPageRoute<T>(builder: builder);
+  static Route<T> slideRoute<T>(WidgetBuilder builder) {
+    return PageRouteBuilder<T>(
+      opaque: true,
+      pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+      transitionDuration: const Duration(milliseconds: 350),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        );
+      },
+    );
+  }
 
   static Route<T> fadeRoute<T>(
     WidgetBuilder builder, {

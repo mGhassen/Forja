@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/anime/catalog/allanime_extractor.dart';
 import 'package:forja/features/anime/catalog/watchhentai_extractor.dart';
 import 'package:forja/features/anime/catalog/hentaini_extractor.dart';
+import 'package:forja/features/anime/catalog/anime_stream_nicknames.dart';
 import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 
 class AnimeService {
@@ -665,19 +666,19 @@ class AnimeService {
     if (embedId != null && embedId.isNotEmpty) {
       all.addAll([
         AnimeEmbed(
-          label: 'HD-1', server: 'megaplay', category: 'sub',
+          label: AnimeStreamNicknames.megaplay, server: 'megaplay', category: 'sub',
           url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
         ),
         AnimeEmbed(
-          label: 'HD-2', server: 'vidwish', category: 'sub',
+          label: AnimeStreamNicknames.vidwish, server: 'vidwish', category: 'sub',
           url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
         ),
         AnimeEmbed(
-          label: 'HD-1', server: 'megaplay', category: 'dub',
+          label: AnimeStreamNicknames.megaplay, server: 'megaplay', category: 'dub',
           url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
         ),
         AnimeEmbed(
-          label: 'HD-2', server: 'vidwish', category: 'dub',
+          label: AnimeStreamNicknames.vidwish, server: 'vidwish', category: 'dub',
           url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
         ),
       ]);
@@ -689,7 +690,7 @@ class AnimeService {
     for (final cat in const ['sub', 'dub']) {
       for (final prov in MiruroExtractor.knownProviders) {
         all.add(AnimeEmbed(
-          label: 'Miruro·$prov',
+          label: AnimeStreamNicknames.forMiruroPipe(prov),
           server: 'miruro',
           category: cat,
           url: 'miruro://anilist/$anilistId/$episode/$cat/$prov',
@@ -706,7 +707,7 @@ class AnimeService {
       for (final cat in const ['sub', 'dub']) {
         for (final prov in AllAnimeExtractor.knownProviders) {
           all.add(AnimeEmbed(
-            label: 'AllAnime·$prov',
+            label: AnimeStreamNicknames.forAllAnime(prov),
             server: 'allanime',
             category: cat,
             url: 'allanime://search/$episode/$cat/$prov?t=$titles',
@@ -718,13 +719,13 @@ class AnimeService {
     // searches watchhentai.net's catalog for any of the provided titles.
     if (isAdult && titles.isNotEmpty) {
       all.add(AnimeEmbed(
-        label: 'WatchHentai',
+        label: AnimeStreamNicknames.watchhentai,
         server: 'watchhentai',
         category: 'sub',
         url: 'watchhentai://discover/$episode?t=$titles',
       ));
       all.add(AnimeEmbed(
-        label: 'Hentaini',
+        label: AnimeStreamNicknames.hentaini,
         server: 'hentaini',
         category: 'sub',
         url: 'hentaini://discover/$episode?t=$titles',
@@ -1203,7 +1204,7 @@ class AnimeEpisode {
 }
 
 class AnimeEmbed {
-  final String label;     // 'HD-1' | 'HD-2'
+  final String label;     // e.g. Kaiju, Ronin, Chibi
   final String server;    // 'megaplay' | 'vidwish'
   final String category;  // 'sub' | 'dub'
   final String url;
@@ -1215,26 +1216,13 @@ class AnimeEmbed {
     required this.url,
   });
 
-  String get displayName {
-    switch (server) {
-      case 'miruro':
-        return 'Miruro · ${category.toUpperCase()}';
-      case 'allanime':
-        return 'AllAnime · ${category.toUpperCase()}';
-      case 'watchhentai':
-        return 'WatchHentai';
-      case 'hentaini':
-        return 'Hentaini';
-      default:
-        return '$label · ${category.toUpperCase()}';
-    }
-  }
+  String get displayName => '$label · ${category.toUpperCase()}';
   String get refererOrigin {
     switch (server) {
       case 'vidwish':
         return 'https://vidwish.live';
       case 'miruro':
-        return 'https://www.miruro.tv';
+        return 'https://www.miruro.to';
       case 'allanime':
         return 'https://allmanga.to';
       case 'watchhentai':

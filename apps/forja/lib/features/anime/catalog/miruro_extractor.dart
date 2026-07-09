@@ -5,25 +5,52 @@ import 'dart:io' show gzip, zlib;
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 
-/// Direct extractor for the miruro.tv "secure pipe" API.
-class MiruroExtractor {
-  static const String _baseUrl = 'https://www.miruro.tv';
-  static const String _pipeObfKeyHex = '71951034f8fbcf53d89db52ceb3dc22c';
-  static const String _protocolVersion = '0.2.0';
+import 'miruro_pipe_session.dart';
+import 'anime_stream_nicknames.dart';
 
-  /// Every provider the upstream API may expose. The resolver fires one
-  /// extract attempt per provider in parallel, so order doesn't matter much.
+/// Direct extractor for Miruro's secure pipe API (official domain mirrors).
+class MiruroExtractor {
+  static const String _pipeObfKeyHex = '71951034f8fbcf53d89db52ceb3dc22c';
+  static const List<String> _protocolVersions = ['0.2.0', '0.1.0'];
+
+  String? _activeBase;
+  String get _baseUrl => _activeBase ?? MiruroDomains.primary;
+
+  /// Pipe key → upstream (debug logs only).
+  static const Map<String, String> upstreamSources = {
+    'kiwi': 'AnimePahe',
+    'ally': 'AllManga',
+    'bonk': 'AnimeDao',
+    'bee': 'AniKoto',
+    'moo': 'AnimeGG',
+    'hop': 'Miruro',
+    'arc': 'Miruro internal',
+    'zoro': 'HiAnime',
+    'jet': 'Miruro internal',
+    'animedunya': 'AnimeDunya',
+    'bun': 'Miruro',
+    'kuz': 'Miruro',
+    'telli': 'Miruro',
+  };
+
   static const List<String> knownProviders = [
     'zoro',
     'kiwi',
+    'bee',
+    'hop',
+    'bonk',
+    'ally',
+    'moo',
+    'animedunya',
     'arc',
     'jet',
-    'hop',
-    'bee',
     'bun',
     'kuz',
     'telli',
   ];
+
+  static String upstreamLabel(String pipeKey) =>
+      upstreamSources[pipeKey.toLowerCase()] ?? pipeKey;
 
   static final Uint8List _obfKey = Uint8List.fromList(
     RegExp(r'.{2}')
@@ -32,11 +59,9 @@ class MiruroExtractor {
         .toList(),
   );
 
-  /// Cache of in-flight / completed `episodes?anilistId=…` lookups so all
-  /// parallel per-provider extracts share a single network call.
   final Map<int, Future<Map<String, dynamic>?>> _epsCache = {};
 
-  Future<Map<String, dynamic>?> _episodes(int anilistId) {
+  Future<Map<String, dynamic>?> fetchEpisodes(int anilistId) {
     return _epsCache.putIfAbsent(
       anilistId,
       () => _apiGet('episodes', query: {'anilistId': '$anilistId'})
@@ -44,9 +69,6 @@ class MiruroExtractor {
     );
   }
 
-  /// Extract a stream from a specific Miruro provider. Returns null if the
-  /// provider doesn't exist for this anime, doesn't carry the requested
-  /// episode/category, or the upstream `sources` call yields nothing usable.
   Future<MiruroResult?> extractWithProvider({
     required int anilistId,
     required int episodeNumber,
@@ -54,7 +76,7 @@ class MiruroExtractor {
     required String provider,
   }) async {
     try {
-      final epData = await _episodes(anilistId);
+      final epData = await fetchEpisodes(anilistId);
       final providersMap =
           (epData?['providers'] as Map?)?.cast<String, dynamic>() ?? {};
       final prov = (providersMap[provider] as Map?)?.cast<String, dynamic>();
@@ -122,7 +144,8 @@ class MiruroExtractor {
 
       if (kDebugMode) {
         debugPrint(
-            '[Miruro] OK provider=$provider ep=$episodeNumber cat=$category '
+            '[Miruro] OK ${AnimeStreamNicknames.forMiruroPipe(provider)} '
+            '($provider) ep=$episodeNumber cat=$category url=$url '
             'tracks=${tracks.length}');
       }
       return MiruroResult(
@@ -140,40 +163,100 @@ class MiruroExtractor {
     }
   }
 
-  // ─── secure pipe transport ──────────────────────────────────────
+  Map<String, String> _pipeHeadersFor(String base) => {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Referer': '$base/',
+        'Origin': base,
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+      };
+
+  Iterable<String> get _domainOrder sync* {
+    if (_activeBase != null) yield _activeBase!;
+    for (final d in MiruroDomains.official) {
+      if (d != _activeBase) yield d;
+    }
+  }
 
   Future<dynamic> _apiGet(String path, {Map<String, String>? query}) async {
-    final payload = jsonEncode({
+    for (final version in _protocolVersions) {
+      final result = await _apiGetVersion(path, query: query, version: version);
+      if (result != null) return result;
+    }
+    return null;
+  }
+
+  Future<dynamic> _apiGetVersion(
+    String path, {
+    Map<String, String>? query,
+    required String version,
+  }) async {
+    final payload = {
       'path': path,
       'method': 'GET',
       'query': query ?? const <String, String>{},
       'body': null,
-      'version': _protocolVersion,
-    });
-    final encoded =
-        base64Url.encode(utf8.encode(payload)).replaceAll('=', '');
-    final uri = '$_baseUrl/api/secure/pipe?e=$encoded';
+      'version': version,
+    };
+    final encoded = miruroEncodePipeRequest(payload);
 
-    final res = await animeHttp('GET', uri, headers: {
-      'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-          '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Referer': '$_baseUrl/',
-      'Origin': _baseUrl,
-      'Accept': 'application/json, text/plain, */*',
-    }, maxRetries: 0);
-    if (res.status != 200) {
-      if (kDebugMode) {
-        debugPrint('[Miruro] $path HTTP ${res.status}');
+    for (final base in _domainOrder) {
+      final uri = '$base/api/secure/pipe?e=$encoded';
+
+      final direct = await animeHttp(
+        'GET',
+        uri,
+        headers: _pipeHeadersFor(base),
+        maxRetries: 0,
+      );
+      if (direct.status == 200) {
+        final decoded =
+            _decodePipeBody(direct.body, direct.headers['x-obfuscated']);
+        if (decoded != null) {
+          _activeBase = base;
+          return decoded;
+        }
       }
-      return null;
+
+      if (direct.status != 403 && kDebugMode) {
+        debugPrint('[Miruro] $path HTTP ${direct.status} on $base (v$version)');
+      }
+
+      if (direct.status == 403 || direct.body.contains('cloudflare')) {
+        final viaBrowser = await MiruroPipeSession.instance.get(uri);
+        if (viaBrowser != null && viaBrowser.status == 200) {
+          final decoded = _decodePipeBody(viaBrowser.body, viaBrowser.xObf);
+          if (decoded != null) {
+            _activeBase = base;
+            if (kDebugMode) {
+              debugPrint('[Miruro] $path OK via WebView on $base (v$version)');
+            }
+            return decoded;
+          }
+        }
+        if (kDebugMode && viaBrowser != null) {
+          debugPrint(
+              '[Miruro] $path WebView HTTP ${viaBrowser.status} on $base');
+        }
+        continue;
+      }
     }
 
-    final xObf = res.headers['x-obfuscated'];
+    return null;
+  }
+
+  dynamic _decodePipeBody(String body, String? xObfHeader) {
+    if (body.isEmpty) return null;
+    final xObf = xObfHeader?.trim();
     if (xObf == null || xObf.isEmpty) {
-      return jsonDecode(res.body);
+      return jsonDecode(body);
     }
-    return jsonDecode(_deobfuscate(res.body, xObf));
+    return jsonDecode(_deobfuscate(body, xObf));
   }
 
   String _deobfuscate(String body, String level) {

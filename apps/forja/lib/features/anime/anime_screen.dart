@@ -558,6 +558,7 @@ class _AnimeScreenState extends State<AnimeScreen>
             },
           ),
         ),
+        const SizedBox(height: 16),
         _buildMoodSection(),
       ],
     );

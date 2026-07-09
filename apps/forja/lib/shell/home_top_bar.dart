@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Sentinel for the "All" entry in the categories popup menu.
@@ -112,6 +111,35 @@ class _HomeTopBarState extends State<HomeTopBar> {
     }
   }
 
+  void _openSearch() {
+    ShellBus.requestTab.value = 'search';
+  }
+
+  Widget _buildSearchAction() {
+    return SizedBox(
+      height: 34,
+      child: Center(
+        child: ForjaPlainIcon(
+          icon: Icons.search_rounded,
+          color: Colors.white,
+          size: 30,
+          hitSize: 44,
+          onTap: _openSearch,
+        ),
+      ),
+    );
+  }
+
+  Widget _wrapMenuRow(Widget menu) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: menu),
+        _buildSearchAction(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compactNav =
@@ -192,31 +220,35 @@ class _HomeTopBarState extends State<HomeTopBar> {
                     );
 
                     if (!compactNav) {
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const ClampingScrollPhysics(),
-                        child: tabs,
+                      return _wrapMenuRow(
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const ClampingScrollPhysics(),
+                          child: tabs,
+                        ),
                       );
                     }
 
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const ClampingScrollPhysics(),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            height: 34,
-                            child: Center(
-                              child: ShellNavMenuButton(
-                                onPressed: () =>
-                                    Scaffold.of(context).openDrawer(),
+                    return _wrapMenuRow(
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const ClampingScrollPhysics(),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              height: 34,
+                              child: Center(
+                                child: ShellNavMenuButton(
+                                  onPressed: () =>
+                                      Scaffold.of(context).openDrawer(),
+                                ),
                               ),
                             ),
-                          ),
-                          SizedBox(width: tabGap),
-                          ...tabs.children,
-                        ],
+                            SizedBox(width: tabGap),
+                            ...tabs.children,
+                          ],
+                        ),
                       ),
                     );
                   },

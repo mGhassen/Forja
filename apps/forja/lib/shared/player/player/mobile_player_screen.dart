@@ -961,7 +961,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       }
 
       try {
-        _subscribeToStreams();
+        _durationNotifier.value = Duration.zero;
+        _positionNotifier.value = Duration.zero;
+        _bufferedNotifier.value = Duration.zero;
         await _configureMpvProperties();
         final srcHeaders = source.headers ?? widget.headers;
 
@@ -996,6 +998,25 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
+        if (sourceExpectsDuration(openUrl, type: source.type) &&
+            !await waitForSeekableDuration(_player)) {
+          debugPrint('[Player] Source $i opened without duration: $openUrl');
+          await _player.stop();
+          _statusController.upsert(
+            'source-$i',
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(milliseconds: 1200),
+          );
+          _currentFallbackSourceIndex++;
+          continue;
+        }
+        syncPlayerProgressNotifiers(
+          _player,
+          duration: _durationNotifier,
+          position: _positionNotifier,
+          buffered: _bufferedNotifier,
+        );
         if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
           await _player.seek(seekAfterOpen);
         }
@@ -1021,7 +1042,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     return false;
   }
 
-  Future<void> _initPlayback() async {
+  Future<void> _initPlayback({int sourceStartIndex = 0}) async {
     if (_disposed) return;
     if (_isInitPlaybackRunning) return; // Prevent re-entrant calls during async extraction
     _isInitPlaybackRunning = true;
@@ -1034,7 +1055,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     });
 
     if (_currentSources != null && _currentSources!.isNotEmpty) {
-      final played = await _trySourcesFromIndex(0);
+      _subscribeToStreams();
+      final played = await _trySourcesFromIndex(sourceStartIndex);
       if (played) return;
 
       if (!_providerPinned) {
@@ -1454,14 +1476,30 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         });
         return;
       }
-      debugPrint('[Player] Fatal error detected on source $_currentFallbackSourceIndex, progressing fallback...');
-      _currentFallbackSourceIndex++;
-      _initPlayback();
+      final next = _currentFallbackSourceIndex + 1;
+      if (_currentSources != null && next < _currentSources!.length) {
+        debugPrint(
+          '[Player] Fatal error on source $_currentFallbackSourceIndex, trying $next...',
+        );
+        _initPlayback(sourceStartIndex: next);
+        return;
+      }
+      if (!_providerPinned) {
+        debugPrint('[Player] Fatal error — no more sources, trying next provider...');
+        _autoFallbackToNextProvider();
+        return;
+      }
+      setState(() {
+        _hasError = true;
+        _showControls = true;
+        _errorMessage = 'Playback failed on all sources.';
+      });
     });
 
     _completedSub = _player.stream.completed.listen((completed) {
       if (_disposed || !completed) return;
       if (!_playbackConfirmed || _isInitPlaybackRunning) return;
+      if (!isNaturalPlaybackEnd(_player.state)) return;
       if (mounted) setState(() => _showControls = true);
     });
 
@@ -2506,6 +2544,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
 
     if (currentPos.inSeconds > 0) await _player.seek(currentPos);
+    syncPlayerProgressNotifiers(
+      _player,
+      duration: _durationNotifier,
+      position: _positionNotifier,
+      buffered: _bufferedNotifier,
+    );
     _playbackConfirmed = true;
     _statusController.complete();
   }
