@@ -39,6 +39,10 @@ class SettingsService {
   static const String _subFontKey = 'sub_font';
   static const String _preferredAudioLangKey = 'preferred_audio_lang';
   static const String _avoidUnsupportedAudioKey = 'avoid_unsupported_audio';
+  static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
+
+  static final ValueNotifier<bool> iptvEpgEnabledNotifier =
+      ValueNotifier<bool>(true);
 
   Future<String> getPreferredAudioLanguage() async =>
       await kvGetString(_preferredAudioLangKey) ?? 'None';
@@ -51,6 +55,14 @@ class SettingsService {
 
   Future<void> setAvoidUnsupportedAudio(bool v) async =>
       kvSetBool(_avoidUnsupportedAudioKey, v);
+
+  Future<bool> isIptvEpgEnabled() async =>
+      kvGetBool(_iptvEpgEnabledKey, fallback: true);
+
+  Future<void> setIptvEpgEnabled(bool enabled) async {
+    await kvSetBool(_iptvEpgEnabledKey, enabled);
+    iptvEpgEnabledNotifier.value = enabled;
+  }
 
   Future<double> getSubSize({bool isDesktop = false}) async =>
       kvGetDouble(_subSizeKey, fallback: isDesktop ? 44.0 : 24.0);

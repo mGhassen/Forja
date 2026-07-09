@@ -17,6 +17,7 @@ Core playback preferences: whether to default to torrent or streaming details, w
 - Select **External player** (built-in or VLC, mpv, etc.)
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
+- Toggle **IPTV programme guide (EPG)** — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
 - Reorder **Stream providers** (drag list)
 
 ## Tips

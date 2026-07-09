@@ -11,6 +11,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_guide_epg.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide_panel.dart';
@@ -134,6 +135,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   late String _currentChannelId;
   IptvGuideEpgCache? _epgCache;
   double _subtitleDelay = 0;
+  bool _iptvEpgEnabled = true;
 
   // Watchdog state
   Timer? _watchdog;
@@ -222,6 +224,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _currentChannelId = guide?.initialChannelId ?? '';
     final portal = guide?.xtreamPortal;
     if (portal != null) _epgCache = IptvGuideEpgCache(portal);
+    _iptvEpgEnabled = SettingsService.iptvEpgEnabledNotifier.value;
+    SettingsService.iptvEpgEnabledNotifier.addListener(_onIptvEpgPrefChanged);
+    unawaited(_loadIptvEpgPref());
     WidgetsBinding.instance.addObserver(this);
     _initOrientationAndChrome();
     WakelockPlus.enable();
@@ -892,19 +897,30 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     return null;
   }
 
+  Future<void> _loadIptvEpgPref() async {
+    final enabled = await SettingsService().isIptvEpgEnabled();
+    SettingsService.iptvEpgEnabledNotifier.value = enabled;
+  }
+
+  void _onIptvEpgPrefChanged() {
+    if (!mounted) return;
+    setState(
+      () => _iptvEpgEnabled = SettingsService.iptvEpgEnabledNotifier.value,
+    );
+  }
+
   Future<List<EpgEntry>>? _floatingEpgFuture() {
-    if (_epgCache == null) return null;
+    if (!_iptvEpgEnabled || _epgCache == null) return null;
     final stream = _currentGuideChannel()?.xtreamStream;
     if (stream == null) return null;
     return _epgCache!.load(stream);
   }
 
-  double _floatingEpgBottomInset(BuildContext context, bool compact) {
-    final safeBottom = MediaQuery.paddingOf(context).bottom;
-    final barVerticalPad = compact ? 24.0 : 36.0;
-    final barHeight = compact ? 44.0 : 56.0;
-    final seekbarHeight = _isVod ? (compact ? 44.0 : 52.0) : 0.0;
-    return safeBottom + barVerticalPad + barHeight + seekbarHeight + 12;
+  double _floatingEpgTopInset(BuildContext context, bool compact) {
+    final safeTop =
+        DesktopWindowChrome.isDesktop ? 0.0 : MediaQuery.paddingOf(context).top;
+    final barHeight = compact ? 44.0 : 52.0;
+    return safeTop + _topBarTopPadding(context) + barHeight + 8;
   }
 
   void _updateSubVisibility(SubtitleTrack track) {
@@ -1047,6 +1063,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   @override
   void dispose() {
     _disposed = true;
+    SettingsService.iptvEpgEnabledNotifier
+        .removeListener(_onIptvEpgPrefChanged);
     WidgetsBinding.instance.removeObserver(this);
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();
@@ -1146,7 +1164,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                   child: IptvFloatingEpg(
                     key: ValueKey(_currentChannelId),
                     future: epgFuture,
-                    bottomInset: _floatingEpgBottomInset(context, compact),
+                    topInset: _floatingEpgTopInset(context, compact),
+                    leftInset: _topBarLeftPadding(context),
                     cardWidth: size.width * 0.4,
                   ),
                 ),
@@ -1232,12 +1251,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     return 8;
   }
 
-  double _topBarLeftPadding(BuildContext context) {
-    if (DesktopWindowChrome.isDesktop && Platform.isMacOS) {
-      return DesktopWindowChrome.leadingInset(context) + 4;
-    }
-    return 8;
-  }
+  double _topBarLeftPadding(BuildContext context) => 8;
 
   Widget _buildTopBar(bool compact) {
     return Padding(
@@ -1257,21 +1271,22 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             hoverScale: 1.15,
             tooltip: 'Back',
           ),
-          if ((_logoUrl ?? '').isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.network(
-                  _logoUrl!,
-                  width: 32,
-                  height: 32,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                ),
+          if ((_logoUrl ?? '').isNotEmpty) ...[
+            const SizedBox(width: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.network(
+                _logoUrl!,
+                width: 32,
+                height: 32,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
-          Expanded(
+          ],
+          const SizedBox(width: 8),
+          Flexible(
+            fit: FlexFit.loose,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1298,7 +1313,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             ),
           ),
           if (_sources.length > 1) ...[
-            const SizedBox(width: 8),
+            const Spacer(),
             _SourceChip(
               label: _sources[_sourceIdx].label,
               onTap: _showSourcePicker,

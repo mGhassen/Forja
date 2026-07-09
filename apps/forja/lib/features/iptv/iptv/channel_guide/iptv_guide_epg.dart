@@ -302,17 +302,19 @@ class _CompactEpgRow extends StatelessWidget {
   }
 }
 
-/// Bottom-right programme guide overlay for the IPTV player.
+/// Top-left programme guide overlay for the IPTV player.
 class IptvFloatingEpg extends StatelessWidget {
   const IptvFloatingEpg({
     super.key,
     required this.future,
-    required this.bottomInset,
+    required this.topInset,
+    required this.leftInset,
     required this.cardWidth,
   });
 
   final Future<List<EpgEntry>> future;
-  final double bottomInset;
+  final double topInset;
+  final double leftInset;
   final double cardWidth;
 
   @override
@@ -326,8 +328,8 @@ class IptvFloatingEpg extends StatelessWidget {
         if ((snap.data ?? const []).isEmpty) return const SizedBox.shrink();
 
         return Positioned(
-          right: 16,
-          bottom: bottomInset,
+          left: leftInset,
+          top: topInset,
           child: IgnorePointer(
             child: SizedBox(
               width: cardWidth,

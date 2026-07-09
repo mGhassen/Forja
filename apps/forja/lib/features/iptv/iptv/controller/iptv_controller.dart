@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
@@ -116,10 +117,38 @@ class IptvController extends ChangeNotifier {
   /// change. Wrapped in a Future so concurrent card builds dedupe to one call.
   final Map<String, Future<List<EpgEntry>>> _epgCache = {};
 
+  bool _epgEnabled = true;
+
+  IptvController() {
+    _epgEnabled = SettingsService.iptvEpgEnabledNotifier.value;
+    SettingsService.iptvEpgEnabledNotifier.addListener(_onEpgPrefChanged);
+    unawaited(_syncEpgPref());
+  }
+
+  bool get epgEnabled => _epgEnabled;
+
+  Future<void> _syncEpgPref() async {
+    final enabled = await SettingsService().isIptvEpgEnabled();
+    SettingsService.iptvEpgEnabledNotifier.value = enabled;
+    _epgEnabled = enabled;
+  }
+
+  void _onEpgPrefChanged() {
+    final enabled = SettingsService.iptvEpgEnabledNotifier.value;
+    if (_epgEnabled == enabled) return;
+    _epgEnabled = enabled;
+    if (!enabled) {
+      _epgCache.clear();
+      _hitEpgCache.clear();
+    }
+    notifyListeners();
+  }
+
   /// Lazy EPG fetch for a live stream. Returns the cached future (or fires a
   /// new request) so multiple `_StreamCard`s for the same id share one call.
   /// Safe to call from `FutureBuilder` — the Future is stable across rebuilds.
-  Future<List<EpgEntry>> epgFor(IptvStream s) {
+  Future<List<EpgEntry>> epgFor(IptvStream s, {int limit = 2}) {
+    if (!_epgEnabled) return Future.value(const []);
     final p = activePortal;
     if (p == null || s.kind != 'live') {
       return Future.value(const []);
@@ -127,17 +156,17 @@ class IptvController extends ChangeNotifier {
     if (s.streamId.isEmpty && s.epgChannelId.isEmpty) {
       return Future.value(const []);
     }
-    final cacheKey = s.streamId.isEmpty ? s.epgChannelId : s.streamId;
+    final cacheKey = '${s.streamId.isEmpty ? s.epgChannelId : s.streamId}:$limit';
     return _epgCache.putIfAbsent(
       cacheKey,
       () async {
         if (s.streamId.isNotEmpty) {
           final rows =
-              await IptvClient.shortEpg(p.portal, s.streamId, limit: 2);
+              await IptvClient.shortEpg(p.portal, s.streamId, limit: limit);
           if (rows.isNotEmpty) return rows;
         }
         if (s.epgChannelId.isNotEmpty && s.epgChannelId != s.streamId) {
-          return IptvClient.shortEpg(p.portal, s.epgChannelId, limit: 2);
+          return IptvClient.shortEpg(p.portal, s.epgChannelId, limit: limit);
         }
         return const [];
       },
@@ -152,7 +181,8 @@ class IptvController extends ChangeNotifier {
 
   /// Lazy EPG fetch for a hardcoded-channel hit. Same dedupe semantics as
   /// [epgFor] but keyed per (portal, stream).
-  Future<List<EpgEntry>> epgForHit(ChannelHit h) {
+  Future<List<EpgEntry>> epgForHit(ChannelHit h, {int limit = 2}) {
+    if (!_epgEnabled) return Future.value(const []);
     if (h.stream.kind != 'live') {
       return Future.value(const []);
     }
@@ -161,7 +191,8 @@ class IptvController extends ChangeNotifier {
     if (streamId.isEmpty && epgId.isEmpty) {
       return Future.value(const []);
     }
-    final key = '${h.portal.key}|${streamId.isEmpty ? epgId : streamId}|$epgId';
+    final key =
+        '${h.portal.key}|${streamId.isEmpty ? epgId : streamId}|$epgId|$limit';
     return _hitEpgCache.putIfAbsent(
       key,
       () async {
@@ -169,12 +200,12 @@ class IptvController extends ChangeNotifier {
           final rows = await IptvClient.shortEpg(
             h.portal.portal,
             streamId,
-            limit: 2,
+            limit: limit,
           );
           if (rows.isNotEmpty) return rows;
         }
         if (epgId.isNotEmpty && epgId != streamId) {
-          return IptvClient.shortEpg(h.portal.portal, epgId, limit: 2);
+          return IptvClient.shortEpg(h.portal.portal, epgId, limit: limit);
         }
         return const [];
       },
@@ -972,6 +1003,8 @@ class IptvController extends ChangeNotifier {
 
   @override
   void dispose() {
+    SettingsService.iptvEpgEnabledNotifier
+        .removeListener(_onEpgPrefChanged);
     cancelAllLazyChecks();
     super.dispose();
   }

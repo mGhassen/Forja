@@ -1,9 +1,16 @@
-# Forja — multi-platform CI smoke (builds from apps/forja)
-# Release packaging: .github/workflows/release.yml
+# Forja — multi-platform CI (builds from apps/forja)
+# Runs on every push to main. Artifacts only — no version bump, no GitHub Release.
+# Release packaging: .github/workflows/release.yml (manual)
 name: Build Forja
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FLUTTER_CHANNEL: stable

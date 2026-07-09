@@ -15,7 +15,7 @@ Tap **IPTV** in the navigation bar → add or select an Xtream portal.
 - Add multiple Xtream portals
 - Browse live channels by category
 - Watch VOD movies and series with seasons/episodes
-- View EPG (program guide) when the portal provides it
+- View EPG (program guide) when the portal provides it — disable in **Settings → Playback → IPTV programme guide (EPG)** to skip loading guide data
 - Favorite channels
 - Search hardcoded branded channel names
 - Play in the IPTV player screen
@@ -34,6 +34,7 @@ Tap **IPTV** in the navigation bar → add or select an Xtream portal.
 
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide — pick a category on the left (desktop) or from the list (phone), then tap a channel to zap without leaving playback
 - Tap the **search** icon next to the guide to open a centered channel search — type to filter by channel or category name, then tap a result to switch
+- Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
 - Portal quality varies — timeouts usually mean provider or network issues
 - Series VOD uses the same player as live with seek support when the stream allows
 

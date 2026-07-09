@@ -1,9 +1,20 @@
 name: Release Forja
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Semver bump
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      prerelease:
+        description: Mark as pre-release
+        type: boolean
+        default: false
 
 concurrency:
   group: release-${{ github.ref }}
@@ -20,9 +31,6 @@ jobs:
   bump_version:
     name: Bump version and tag
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      !startsWith(github.event.head_commit.message, 'chore: release v')
     outputs:
       version: ${{ steps.bump.outputs.version }}
     steps:
@@ -36,11 +44,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump patch version
+      - name: Bump version
         id: bump
         run: |
           chmod +x scripts/bump_version.sh
-          NEW="$(./scripts/bump_version.sh patch)"
+          NEW="$(./scripts/bump_version.sh "${{ inputs.bump }}")"
           echo "version=$NEW" >> "$GITHUB_OUTPUT"
           echo "Bumped to $NEW"
 
@@ -199,9 +207,6 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: List release assets
-        run: find release-assets -type f
-
       - name: Flatten release assets
         run: |
           mkdir -p release-flat
@@ -212,5 +217,6 @@ jobs:
         with:
           tag_name: v${{ needs.bump_version.outputs.version }}
           name: Forja ${{ needs.bump_version.outputs.version }}
+          prerelease: ${{ inputs.prerelease }}
           generate_release_notes: true
           files: release-flat/*

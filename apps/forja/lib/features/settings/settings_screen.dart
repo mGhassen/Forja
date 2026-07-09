@@ -48,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Track auto-select
   String _preferredAudioLang = 'None';
   bool _avoidUnsupportedAudio = true;
+  bool _iptvEpgEnabled = true;
   List<Map<String, dynamic>> _installedAddons = [];
   bool _isInstalling = false;
   
@@ -213,6 +214,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Load track auto-select preferences
     final preferredAudio = await _settings.getPreferredAudioLanguage();
     final avoidUnsupported = await _settings.getAvoidUnsupportedAudio();
+    final iptvEpgEnabled = await _settings.isIptvEpgEnabled();
+    SettingsService.iptvEpgEnabledNotifier.value = iptvEpgEnabled;
 
     if (mounted) {
       setState(() {
@@ -259,6 +262,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? preferredAudio
             : 'None';
         _avoidUnsupportedAudio = avoidUnsupported;
+        _iptvEpgEnabled = iptvEpgEnabled;
       });
     }
     // Pull dynamic Nuvio scrapers (one entry per enabled scraper) so they
@@ -489,6 +493,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           (val) async {
                             await _settings.setAvoidUnsupportedAudio(val);
                             setState(() => _avoidUnsupportedAudio = val);
+                          },
+                        ),
+                        _buildFocusableToggle(
+                          'IPTV programme guide (EPG)',
+                          'Load and show NOW / NEXT programme info in the IPTV player and channel browser.',
+                          _iptvEpgEnabled,
+                          (val) async {
+                            await _settings.setIptvEpgEnabled(val);
+                            setState(() => _iptvEpgEnabled = val);
                           },
                         ),
                       ],

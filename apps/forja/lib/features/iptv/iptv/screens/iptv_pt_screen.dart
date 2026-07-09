@@ -1475,7 +1475,7 @@ class _StreamCard extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: onTap,
-              onLongPress: stream.kind == 'live'
+              onLongPress: stream.kind == 'live' && ctrl.epgEnabled
                   ? () => _showEpgSheet(context)
                   : null,
               child: Column(
@@ -1731,12 +1731,7 @@ class _EpgSheet extends StatelessWidget {
               Flexible(
                 child: SingleChildScrollView(
                   child: FutureBuilder<List<EpgEntry>>(
-                    // Re-request with a higher limit for the sheet view.
-                    future: IptvClient.shortEpg(
-                      ctrl.activePortal!.portal,
-                      stream.streamId,
-                      limit: 8,
-                    ),
+                    future: ctrl.epgFor(stream, limit: 8),
                     builder: (_, snap) {
                       if (snap.connectionState != ConnectionState.done) {
                         return Padding(

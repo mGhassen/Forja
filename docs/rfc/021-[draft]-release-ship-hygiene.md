@@ -90,7 +90,9 @@ Output artifact name per [RFC-015](015-[partial]-in-app-updates.md): `Forja-{ver
 
 ## 3. CI pipeline
 
-[`.github/workflows/release.yml`](../../.github/workflows/release.yml) on every push to `main` (auto patch bump; skips `chore: release v*` commits):
+[`.github/workflows/build.yml`](../../.github/workflows/build.yml) on every push to `main` (CI smoke builds, artifacts only).
+
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml) manual dispatch — bump version (patch/minor/major), tag `v*`, publish installers:
 
 | Job | Output |
 |-----|--------|
