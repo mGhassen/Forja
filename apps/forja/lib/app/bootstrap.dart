@@ -12,10 +12,10 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:forja/shared/audio/audio_handler.dart';
 import 'package:forja/shared/audio/audiobook_player_service.dart';
-import 'package:rust/rust.dart';
-import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
+import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/services/tracker_sync.dart';
 import 'package:forja/shared/services/player_pool_service.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
@@ -27,6 +27,22 @@ import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+
+bool _appShutdownStarted = false;
+
+/// Stop all media_kit (MPV) players before native teardown.
+/// Without this, mpv core threads segfault on macOS/Windows close.
+Future<void> _shutdownMediaKitPlayers() async {
+  try {
+    await MusicPlayerService().dispose();
+  } catch (_) {}
+  try {
+    await AudiobookPlayerService().dispose();
+  } catch (_) {}
+  try {
+    await PlayerPoolService().dispose();
+  } catch (_) {}
+}
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -182,6 +198,8 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
     final bool isPreventClose = await windowManager.isPreventClose();
     if (!isPreventClose) return;
+    if (_appShutdownStarted) return;
+    _appShutdownStarted = true;
 
     // Graceful shutdown — calling exit(0) while media_kit (mpv)
     // / WebView2 native threads are still running races their teardown and
@@ -190,7 +208,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     // first, then ask windowManager to destroy the window which lets Flutter
     // shut down its engine cleanly.
     try {
-      await PlayerPoolService().dispose();
+      await _shutdownMediaKitPlayers();
     } catch (_) {}
     try {
       await TorrentStreamService().cleanup();
@@ -232,7 +250,9 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
-      PlayerPoolService().dispose();
+      if (_appShutdownStarted) return;
+      _appShutdownStarted = true;
+      unawaited(_shutdownMediaKitPlayers());
       TorrentStreamService().cleanup();
       WebViewCleanup.cleanupWebView2Cache();
       site111477_proxy.purge111477Cache();

@@ -1242,19 +1242,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _watchNow(Movie movie) async {
     if (!mounted) return;
-    final history = await WatchHistoryService().getHistory();
-    Map<String, dynamic>? historyItem;
-    for (final item in history) {
-      if (item['tmdbId'] == movie.id) {
-        historyItem = item;
-        break;
-      }
-    }
-    if (!mounted) return;
-    if (historyItem != null) {
-      await resumePlaybackFromHistory(context, historyItem);
-      return;
-    }
     await AppRouter.openMovie(context, movie: movie, autoPlay: true);
   }
 

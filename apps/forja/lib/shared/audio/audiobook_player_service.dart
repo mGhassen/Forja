@@ -241,8 +241,14 @@ class AudiobookPlayerService {
     await prefs.setStringList('audiobook_liked', likedStrings);
   }
 
-  void dispose() {
-    for (var s in _subscriptions) { s.cancel(); }
-    _player.dispose();
+  bool _disposed = false;
+
+  Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+    for (final s in _subscriptions) {
+      s.cancel();
+    }
+    await _player.dispose();
   }
 }

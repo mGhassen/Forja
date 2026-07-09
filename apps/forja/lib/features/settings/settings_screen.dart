@@ -40,6 +40,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final ProwlarrService _prowlarr = ProwlarrService();
   
   bool _isStreamingMode = false;
+  bool _playSourceTorrent = true;
+  bool _playSourceStremio = true;
+  bool _playSourceWebstreaming = true;
   String _externalPlayer = 'Built-in Player';
   String _sortPreference = 'Seeders (High to Low)';
   // Track auto-select
@@ -141,6 +144,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final streaming = await _settings.isStreamingModeEnabled();
+    final playSourceTorrent = await _settings.isPlaySourceTorrentEnabled();
+    final playSourceStremio = await _settings.isPlaySourceStremioEnabled();
+    final playSourceWebstreaming =
+        await _settings.isPlaySourceWebstreamingEnabled();
     final externalPlayer = await _settings.getExternalPlayer();
     final sort = await _settings.getSortPreference();
     final useDebrid = await _settings.useDebridForStreams();
@@ -222,6 +229,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() {
         _isStreamingMode = streaming;
+        _playSourceTorrent = playSourceTorrent;
+        _playSourceStremio = playSourceStremio;
+        _playSourceWebstreaming = playSourceWebstreaming;
         // Ensure saved value is in the current platform's player list
         final validNames = ExternalPlayerService.playerNames;
         _externalPlayer = validNames.contains(externalPlayer)
@@ -442,6 +452,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             setState(() => _isStreamingMode = val);
                           },
                         ),
+                        if (!_isStreamingMode) ...[
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              'PLAY SOURCES',
+                              style: TextStyle(
+                                color: AppTheme.current.primaryColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          _buildFocusableToggle(
+                            'Direct torrent',
+                            'Search and play from built-in torrent indexers.',
+                            _playSourceTorrent,
+                            (val) async {
+                              await _settings.setPlaySourceTorrentEnabled(val);
+                              setState(() => _playSourceTorrent = val);
+                            },
+                          ),
+                          _buildFocusableToggle(
+                            'Stremio',
+                            'Play from installed Stremio and Nuvio addon streams.',
+                            _playSourceStremio,
+                            (val) async {
+                              await _settings.setPlaySourceStremioEnabled(val);
+                              setState(() => _playSourceStremio = val);
+                            },
+                          ),
+                          _buildFocusableToggle(
+                            'Webstreaming',
+                            'Play from web stream extractors (Videasy, WebStreamr, …).',
+                            _playSourceWebstreaming,
+                            (val) async {
+                              await _settings
+                                  .setPlaySourceWebstreamingEnabled(val);
+                              setState(() => _playSourceWebstreaming = val);
+                            },
+                          ),
+                        ],
                         _buildStreamProviderOrder(),
                         _buildFocusableDropdown(
                           'Video Player',

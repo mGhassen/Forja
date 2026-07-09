@@ -337,8 +337,12 @@ class MusicPlayerService {
     playTrack(playlist.value[_currentIndex]);
   }
 
-  void dispose() {
-    _player.dispose();
+  bool _disposed = false;
+
+  Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+    await _player.dispose();
     _musicService.dispose();
   }
 }

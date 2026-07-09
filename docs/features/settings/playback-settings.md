@@ -13,6 +13,7 @@ Core playback preferences: whether to default to torrent or streaming details, w
 ## What you can do
 
 - Toggle **Direct streaming mode** (streaming details vs torrent details)
+- When torrent mode is on, enable **Play sources**: direct torrent, Stremio, and webstreaming (all on by default)
 - Select **External player** (built-in or VLC, mpv, etc.)
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
@@ -21,6 +22,7 @@ Core playback preferences: whether to default to torrent or streaming details, w
 ## Tips
 
 - Streaming mode + provider order is the main lever for link quality — see [Stream providers](../sources/stream-providers.md)
+- Play source toggles control which backends hero/details **Play** tries, in order: torrent → Stremio → webstreaming
 - External player bypasses built-in subtitle UI
 
 ## Related

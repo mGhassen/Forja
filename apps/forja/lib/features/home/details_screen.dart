@@ -75,7 +75,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Map<String, dynamic>? _lastProgress;
   bool _sourcesPanelOpen = false;
   bool _autoPlayConsumed = false;
+  bool _autoPlayWebstreamingStarted = false;
   bool _episodePlayPending = false;
+  bool _playSourceTorrent = true;
+  bool _playSourceStremio = true;
+  bool _playSourceWebstreaming = true;
 
   String _selectedSourceId = 'forja';
   List<Map<String, dynamic>> _streamAddons = [];
@@ -510,6 +514,24 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     setState(() => _sourcesPanelOpen = true);
   }
 
+  void _failAutoPlayFromRoute() {
+    if (!mounted) return;
+    setState(() => _sourcesPanelOpen = true);
+  }
+
+  List<dynamic> _streamsForAutoPlay() {
+    if (_isNuvioSource || _selectedSourceId == 'all_nuvio') return _nuvioStreams;
+    if (_selectedSourceId == 'all_stremio' || _isTorrentSource) {
+      return _allCombinedStremioStreams;
+    }
+    return _stremioStreams;
+  }
+
+  void _consumeAutoPlayFlags({required bool fromRoute, required bool fromEpisode}) {
+    if (fromRoute) _autoPlayConsumed = true;
+    if (fromEpisode) _episodePlayPending = false;
+  }
+
   void _maybeAutoPlay() {
     final fromRoute = widget.autoPlay && !_autoPlayConsumed;
     final fromEpisode = _episodePlayPending;
@@ -518,47 +540,70 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     final startPosition = _startPositionForAutoPlay(fromRoute: fromRoute);
 
-    if (_playbackProfile.builtinTorrentSearch) {
+    if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
       if (_isSearching) return;
       if (_allTorrentResults.isNotEmpty) {
-        if (fromRoute) _autoPlayConsumed = true;
-        if (fromEpisode) _episodePlayPending = false;
+        _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
         _playTorrent(_allTorrentResults.first, startPosition: startPosition);
         return;
       }
-      if (_isStremioFetching || _isNuvioFetching || _isWebstreamingFetching) return;
-    } else if (_isStremioFetching || _isNuvioFetching || _isWebstreamingFetching) {
-      return;
     }
 
-    if (_isWebstreamingSource && _webstreamingStreams.isNotEmpty) {
-      if (fromRoute) _autoPlayConsumed = true;
-      if (fromEpisode) _episodePlayPending = false;
-      _playWebstreamingStream(_webstreamingStreams.first, startPosition: startPosition);
-      return;
+    if (_playSourceStremio) {
+      if (_isStremioFetching || _isNuvioFetching) return;
+      final streams = _streamsForAutoPlay();
+      if (streams.isNotEmpty) {
+        final stream = streams.first;
+        if (stream is Map<String, dynamic>) {
+          _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+          _playStremioStream(stream, startPosition: startPosition);
+          return;
+        }
+      }
     }
 
-    final streams = _isNuvioSource || _selectedSourceId == 'all_nuvio'
-        ? _nuvioStreams
-        : (_selectedSourceId == 'all_stremio'
-            ? _allCombinedStremioStreams
-            : _stremioStreams);
-    if (streams.isEmpty) {
-      if (fromEpisode) _failEpisodePlayPending();
-      return;
+    if (_playSourceWebstreaming) {
+      if (_webstreamingStreams.isNotEmpty) {
+        _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+        _playWebstreamingStream(
+          _webstreamingStreams.first,
+          startPosition: startPosition,
+        );
+        return;
+      }
+      if (_isWebstreamingFetching) return;
+      if (!_autoPlayWebstreamingStarted) {
+        final firstId = _orderedWebstreamingProviders.keys.firstOrNull;
+        if (firstId != null) {
+          _autoPlayWebstreamingStarted = true;
+          _fetchWebstreamingProvider(firstId);
+          return;
+        }
+      }
     }
-    final stream = streams.first;
-    if (stream is! Map<String, dynamic>) {
-      if (fromEpisode) _failEpisodePlayPending();
-      return;
+
+    final torrentPending =
+        _playSourceTorrent && _playbackProfile.builtinTorrentSearch && _isSearching;
+    final stremioPending =
+        _playSourceStremio && (_isStremioFetching || _isNuvioFetching);
+    final webPending = _playSourceWebstreaming && _isWebstreamingFetching;
+    if (torrentPending || stremioPending || webPending) return;
+
+    if (fromEpisode) {
+      _failEpisodePlayPending();
+    } else if (fromRoute) {
+      _consumeAutoPlayFlags(fromRoute: true, fromEpisode: false);
+      _failAutoPlayFromRoute();
     }
-    if (fromRoute) _autoPlayConsumed = true;
-    if (fromEpisode) _episodePlayPending = false;
-    _playStremioStream(stream, startPosition: startPosition);
   }
 
   Future<void> _fetchDetails() async {
     final stremioItem = widget.stremioItem;
+    _playSourceTorrent = await _settings.isPlaySourceTorrentEnabled();
+    _playSourceStremio = await _settings.isPlaySourceStremioEnabled();
+    _playSourceWebstreaming = await _settings.isPlaySourceWebstreamingEnabled();
+    if (!mounted) return;
+
     final bool isCustomId = stremioItem != null &&
         !(stremioItem['id']?.toString().startsWith('tt') ?? true);
 
@@ -649,9 +694,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 : streamAddons.first['baseUrl'] as String;
           }
         });
-        if (_playbackProfile.builtinTorrentSearch) _autoSearch();
-        _fetchAllStremioStreams();
-        _checkAndFetchNuvio();
+        if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
+          _autoSearch();
+        }
+        if (_playSourceStremio) {
+          _fetchAllStremioStreams();
+          _checkAndFetchNuvio();
+        }
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -1321,6 +1370,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (pendingCount <= 0) {
           setState(() {
             _isStremioFetching = false;
+            if (_isTorrentSource) _applyStremioFilter();
             if (_allCombinedStremioStreams.isEmpty &&
                 _selectedSourceId == 'all_stremio') {
               _errorMessage = 'No streams found from any addon';

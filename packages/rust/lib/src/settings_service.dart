@@ -13,6 +13,10 @@ class SettingsService {
   static final ValueNotifier<int> addonChangeNotifier = ValueNotifier<int>(0);
 
   static const String _streamingModeKey = 'streaming_mode';
+  static const String _playSourceTorrentKey = 'play_source_torrent_enabled';
+  static const String _playSourceStremioKey = 'play_source_stremio_enabled';
+  static const String _playSourceWebstreamingKey =
+      'play_source_webstreaming_enabled';
   static const String _sortPreferenceKey = 'sort_preference';
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
@@ -104,6 +108,24 @@ class SettingsService {
 
   Future<void> setStreamingMode(bool enabled) async =>
       kvSetBool(_streamingModeKey, enabled);
+
+  Future<bool> isPlaySourceTorrentEnabled() async =>
+      kvGetBool(_playSourceTorrentKey, fallback: true);
+
+  Future<void> setPlaySourceTorrentEnabled(bool enabled) async =>
+      kvSetBool(_playSourceTorrentKey, enabled);
+
+  Future<bool> isPlaySourceStremioEnabled() async =>
+      kvGetBool(_playSourceStremioKey, fallback: true);
+
+  Future<void> setPlaySourceStremioEnabled(bool enabled) async =>
+      kvSetBool(_playSourceStremioKey, enabled);
+
+  Future<bool> isPlaySourceWebstreamingEnabled() async =>
+      kvGetBool(_playSourceWebstreamingKey, fallback: true);
+
+  Future<void> setPlaySourceWebstreamingEnabled(bool enabled) async =>
+      kvSetBool(_playSourceWebstreamingKey, enabled);
 
   static const String _streamProviderOrderKey = 'stream_provider_order';
   static const List<String> defaultStreamProviderOrder = <String>[
@@ -374,9 +396,14 @@ class SettingsService {
     const secure = FlutterSecureStorage();
     final prefsMap = <String, dynamic>{};
 
-    for (final key in [_streamingModeKey, _useDebridKey, _lightModeKey]) {
-      prefsMap[key] = await kvGetBool(key, fallback: false);
-    }
+    prefsMap[_streamingModeKey] =
+        await kvGetBool(_streamingModeKey, fallback: false);
+    prefsMap[_useDebridKey] = await kvGetBool(_useDebridKey, fallback: false);
+    prefsMap[_lightModeKey] = await kvGetBool(_lightModeKey, fallback: false);
+    prefsMap[_playSourceTorrentKey] = await isPlaySourceTorrentEnabled();
+    prefsMap[_playSourceStremioKey] = await isPlaySourceStremioEnabled();
+    prefsMap[_playSourceWebstreamingKey] =
+        await isPlaySourceWebstreamingEnabled();
     for (final key in [
       _sortPreferenceKey,
       _debridServiceKey,
@@ -429,7 +456,14 @@ class SettingsService {
     const secure = FlutterSecureStorage();
     final prefsMap = data['shared_preferences'] as Map<String, dynamic>? ?? {};
 
-    for (final key in [_streamingModeKey, _useDebridKey, _lightModeKey]) {
+    for (final key in [
+      _streamingModeKey,
+      _useDebridKey,
+      _lightModeKey,
+      _playSourceTorrentKey,
+      _playSourceStremioKey,
+      _playSourceWebstreamingKey,
+    ]) {
       if (prefsMap.containsKey(key)) {
         await kvSetBool(key, prefsMap[key] as bool);
       }
