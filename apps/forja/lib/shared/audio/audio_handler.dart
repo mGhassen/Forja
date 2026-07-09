@@ -5,19 +5,14 @@ import 'package:forja/shared/audio/music_player_service.dart';
 enum AudioPlayerType { music, audiobook }
 
 class AppAudioHandler extends BaseAudioHandler with SeekHandler {
-  final mk.Player _musicPlayer;
   AudioPlayerType _currentType = AudioPlayerType.music;
   dynamic _activePlayer;
 
-  AppAudioHandler(this._musicPlayer) {
-    _activePlayer = _musicPlayer;
-    // Bind music player events
-    _musicPlayer.stream.position.listen((p) => _updateState());
-    _musicPlayer.stream.duration.listen((d) => _updateState());
-    _musicPlayer.stream.playing.listen((pl) => _updateState());
-    _musicPlayer.stream.buffering.listen((b) => _updateState());
-    _musicPlayer.stream.completed.listen((c) => _updateState());
+  AppAudioHandler() {
+    MusicPlayerService().bindAudioHandlerState(_updateState);
   }
+
+  mk.Player get _musicPlayer => MusicPlayerService().player;
 
   void setPlayerType(AudioPlayerType type, dynamic player) {
     _currentType = type;
@@ -27,6 +22,7 @@ class AppAudioHandler extends BaseAudioHandler with SeekHandler {
 
   void _updateState() {
     if (_currentType != AudioPlayerType.music) return;
+    if (!MusicPlayerService().hasMpvPlayer) return;
 
     playbackState.add(PlaybackState(
       controls: [
@@ -108,7 +104,9 @@ class AppAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> stop() async {
     if (_currentType == AudioPlayerType.music) {
-      await _musicPlayer.stop();
+      if (MusicPlayerService().hasMpvPlayer) {
+        await _musicPlayer.stop();
+      }
     } else {
       await _activePlayer.stop();
     }

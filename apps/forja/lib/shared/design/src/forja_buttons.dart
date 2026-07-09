@@ -177,7 +177,7 @@ class ForjaPlainIcon extends StatelessWidget {
 }
 
 /// Borderless dismiss control — soft circular fill on hover, no outline.
-class ForjaCloseButton extends StatelessWidget {
+class ForjaCloseButton extends StatefulWidget {
   const ForjaCloseButton({
     super.key,
     this.onTap,
@@ -205,40 +205,69 @@ class ForjaCloseButton extends StatelessWidget {
   final bool compact;
 
   @override
+  State<ForjaCloseButton> createState() => _ForjaCloseButtonState();
+}
+
+class _ForjaCloseButtonState extends State<ForjaCloseButton> {
+  bool _hover = false;
+  bool _pressed = false;
+
+  Color _resolveIconColor() {
+    return widget.color ??
+        (AppTheme.isLightMode
+            ? (_hover ? Colors.black87 : Colors.black54)
+            : _hover
+                ? ForjaShellColors.cinematic.textPrimary
+                : ForjaShellColors.cinematic.textSecondary);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final button = ForjaInteractive(
-      onTap: onTap,
-      hoverScale: 1.08,
-      pressScale: 0.94,
-      builder: (hover, pressed) {
-        final showFill = hover || pressed;
-        final fillAlpha = pressed ? 0.14 : 0.10;
-        final resolved = color ??
-            (AppTheme.isLightMode
-                ? (hover ? Colors.black87 : Colors.black54)
-                : hover
-                    ? ForjaShellColors.cinematic.textPrimary
-                    : ForjaShellColors.cinematic.textSecondary);
-        return SizedBox(
-          width: hitSize,
-          height: hitSize,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: showFill
-                  ? (AppTheme.isLightMode
-                      ? Colors.black.withValues(alpha: fillAlpha)
-                      : Colors.white.withValues(alpha: fillAlpha))
-                  : Colors.transparent,
+    final scale = _pressed ? 0.94 : (_hover ? 1.08 : 1.0);
+    final fillAlpha = _pressed ? 0.14 : 0.10;
+    final fillColor = AppTheme.isLightMode
+        ? Colors.black.withValues(alpha: fillAlpha)
+        : Colors.white.withValues(alpha: fillAlpha);
+
+    final button = MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() {
+        _hover = false;
+        _pressed = false;
+      }),
+      cursor: SystemMouseCursors.click,
+      child: AnimatedScale(
+        scale: scale,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: SizedBox(
+          width: widget.hitSize,
+          height: widget.hitSize,
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: widget.onTap,
+              onHighlightChanged: (pressed) =>
+                  setState(() => _pressed = pressed),
+              hoverColor: fillColor,
+              splashColor: fillColor,
+              highlightColor: fillColor,
+              child: Icon(
+                Icons.close_rounded,
+                size: widget.size,
+                color: _resolveIconColor(),
+              ),
             ),
-            child: Icon(Icons.close_rounded, size: size, color: resolved),
           ),
-        );
-      },
+        ),
+      ),
     );
 
-    if (tooltip != null) {
-      return Tooltip(message: tooltip!, child: button);
+    if (widget.tooltip != null) {
+      return Tooltip(message: widget.tooltip!, child: button);
     }
     return button;
   }

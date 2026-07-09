@@ -355,49 +355,81 @@ class _SeasonDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<int>(
-      initialValue: selectedSeason,
-      tooltip: 'Select season',
-      color: ForjaShellColors.cinematic.menuSurface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      onSelected: onSelected,
-      itemBuilder: (context) => List.generate(seasonCount, (i) {
+    const radius = 20.0;
+    final borderRadius = BorderRadius.circular(radius);
+
+    return MenuAnchor(
+      alignmentOffset: const Offset(0, 4),
+      style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(
+          ForjaShellColors.cinematic.menuSurface,
+        ),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      ),
+      menuChildren: List.generate(seasonCount, (i) {
         final n = i + 1;
-        return PopupMenuItem<int>(
-          value: n,
-          child: Text(
-            'Season $n',
-            style: TextStyle(
-              color: n == selectedSeason
+        final isSelected = n == selectedSeason;
+        return MenuItemButton(
+          onPressed: () => onSelected(n),
+          style: ButtonStyle(
+            foregroundColor: WidgetStatePropertyAll(
+              isSelected
                   ? ForjaShellColors.cinematic.textPrimary
                   : ForjaShellColors.cinematic.textSecondary,
-              fontWeight: n == selectedSeason ? FontWeight.w600 : FontWeight.w400,
+            ),
+            textStyle: WidgetStatePropertyAll(
+              TextStyle(
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+          child: Text('Season $n'),
+        );
+      }),
+      builder: (context, controller, child) {
+        return Material(
+          color: Colors.transparent,
+          borderRadius: borderRadius,
+          clipBehavior: Clip.antiAlias,
+          child: Ink(
+            decoration: shellChipDecoration(selected: true, radius: radius),
+            child: InkWell(
+              borderRadius: borderRadius,
+              onTap: () {
+                if (controller.isOpen) {
+                  controller.close();
+                } else {
+                  controller.open();
+                }
+              },
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Season $selectedSeason',
+                      style: TextStyle(
+                        color: ForjaShellColors.cinematic.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: ForjaShellColors.cinematic.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         );
-      }),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: shellChipDecoration(selected: true, radius: 20),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Season $selectedSeason',
-              style: TextStyle(
-                color: ForjaShellColors.cinematic.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 20,
-              color: ForjaShellColors.cinematic.textSecondary,
-            ),
-          ],
-        ),
-      ),
+      },
     );
   }
 }

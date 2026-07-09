@@ -122,7 +122,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   
   debugPrint('[Boot] Initializing AudioService...');
   final audioHandler = await AudioService.init(
-    builder: () => AppAudioHandler(MusicPlayerService().player),
+    builder: () => AppAudioHandler(),
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'com.forja.app.channel.audio',
       androidNotificationChannelName: 'Music Playback',

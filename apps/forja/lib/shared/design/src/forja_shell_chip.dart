@@ -48,36 +48,40 @@ class ForjaShellChip extends StatelessWidget {
     final cinematic = ForjaShellColors.cinematic;
     final fg = selected ? cinematic.textPrimary : cinematic.textSecondary;
 
+    final borderRadius = BorderRadius.circular(radius);
+
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(radius),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(radius),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: padding,
-          decoration: shellChipDecoration(selected: selected, radius: radius),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 14, color: fg),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  color: fg,
-                  fontSize: fontSize,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+      borderRadius: borderRadius,
+      clipBehavior: Clip.antiAlias,
+      child: Ink(
+        decoration: shellChipDecoration(selected: selected, radius: radius),
+        child: InkWell(
+          borderRadius: borderRadius,
+          onTap: onTap,
+          child: Padding(
+            padding: padding,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 14, color: fg),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    color: fg,
+                    fontSize: fontSize,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
-              ),
-              if (trailing != null) ...[
-                const SizedBox(width: 4),
-                trailing!,
+                if (trailing != null) ...[
+                  const SizedBox(width: 4),
+                  trailing!,
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

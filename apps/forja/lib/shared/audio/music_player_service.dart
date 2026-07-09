@@ -9,19 +9,56 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/audio/music_storage_service.dart';
 import 'package:forja/shared/audio/audio_handler.dart';
 import 'package:forja/shared/audio/lyrics_service.dart';
+import 'package:forja/shared/audio/audiobook_player_service.dart';
+import 'package:forja/shared/services/mpv_exclusive_session.dart';
 
 class MusicPlayerService {
   static final MusicPlayerService _instance = MusicPlayerService._internal();
   factory MusicPlayerService() => _instance;
   MusicPlayerService._internal();
 
-  final Player _player = Player();
+  Player? _player;
+  bool _playerListenersAttached = false;
+  void Function()? _audioHandlerStateSink;
   final MusicService _musicService = MusicService();
   final MusicStorageService _storageService = MusicStorageService();
   AppAudioHandler? _handler;
   final LyricsService _lyricsService = LyricsService();
 
-  Player get player => _player;
+  Player get player {
+    _ensurePlayer();
+    return _player!;
+  }
+
+  bool get hasMpvPlayer => _player != null;
+
+  void bindAudioHandlerState(void Function() onState) {
+    _audioHandlerStateSink = onState;
+    if (_playerListenersAttached) onState();
+  }
+
+  void _ensurePlayer() {
+    if (_disposed) return;
+    if (_player != null) return;
+    _player = Player();
+    if (_initialized) {
+      _attachPlayerListeners();
+    }
+  }
+
+  Future<void> releaseMpvForVideo() async {
+    if (_player == null) return;
+    try {
+      await _player!.stop();
+    } catch (_) {}
+    try {
+      await _player!.dispose();
+    } catch (_) {}
+    _player = null;
+    _playerListenersAttached = false;
+    isPlaying.value = false;
+    isBuffering.value = false;
+  }
 
   void setHandler(BaseAudioHandler handler) {
     _handler = handler as AppAudioHandler;
@@ -77,32 +114,47 @@ class MusicPlayerService {
     // Initialize storage notifiers
     await _storageService.init();
 
+    if (_player != null) {
+      _attachPlayerListeners();
+    }
+  }
+
+  void _attachPlayerListeners() {
+    if (_player == null || _playerListenersAttached) return;
+    _playerListenersAttached = true;
+
     // Listen to player state streams
-    _player.stream.playing.listen((p) {
+    _player!.stream.playing.listen((p) {
       debugPrint('MusicPlayerService: playing state changed -> $p');
       isPlaying.value = p;
+      _audioHandlerStateSink?.call();
       // Request audio focus when starting to play
       if (p) {
         AudioSession.instance.then((s) => s.setActive(true));
       }
     });
-    _player.stream.buffering.listen((b) {
+    _player!.stream.buffering.listen((b) {
       debugPrint('MusicPlayerService: buffering -> $b');
       isBuffering.value = b;
+      _audioHandlerStateSink?.call();
     });
-    _player.stream.position.listen((p) => position.value = p);
-    _player.stream.duration.listen((d) {
+    _player!.stream.position.listen((p) {
+      position.value = p;
+      _audioHandlerStateSink?.call();
+    });
+    _player!.stream.duration.listen((d) {
       if (d != Duration.zero) {
         debugPrint('MusicPlayerService: duration loaded -> $d');
       }
       duration.value = d;
+      _audioHandlerStateSink?.call();
     });
-    _player.stream.playlistMode.listen((m) => loopMode.value = m);
+    _player!.stream.playlistMode.listen((m) => loopMode.value = m);
 
-    _player.stream.error.listen((e) {
+    _player!.stream.error.listen((e) {
       debugPrint('MusicPlayerService: PLAYER ERROR -> $e');
     });
-    _player.stream.log.listen((l) {
+    _player!.stream.log.listen((l) {
       // mpv-level logs (warn/error only to keep noise down).
       // NOTE: media_kit's libmpv log callback is shared globally across all
       // Player instances in the process — meaning logs from the IPTV player
@@ -115,16 +167,20 @@ class MusicPlayerService {
       }
     });
 
-    _player.stream.completed.listen((completed) {
+    _player!.stream.completed.listen((completed) {
       debugPrint('MusicPlayerService: completed -> $completed');
       if (completed && !_isLoadingTrack) {
         next();
       }
+      _audioHandlerStateSink?.call();
     });
   }
 
   Future<void> playTrack(MusicTrack track, {List<MusicTrack>? newPlaylist}) async {
     debugPrint('MusicPlayerService: Preparing to play: ${track.title} by ${track.artist}');
+    if (MpvExclusiveSession.required) {
+      await AudiobookPlayerService().releaseMpvForVideo();
+    }
     
     _isLoadingTrack = true;
     final generation = ++_playGeneration; // Cancel any in-flight extraction
@@ -135,7 +191,7 @@ class MusicPlayerService {
       debugPrint('MusicPlayerService: audio session active=$sessionOk');
 
       debugPrint('MusicPlayerService: stopping previous playback');
-      await _player.stop();
+      await player.stop();
 
       if (newPlaylist != null) {
         playlist.value = newPlaylist;
@@ -177,7 +233,7 @@ class MusicPlayerService {
         if (await file.exists()) {
           debugPrint('MusicPlayerService: Playing from local storage: ${track.localPath}');
           try {
-            await _player.open(Media(track.localPath!));
+            await player.open(Media(track.localPath!));
             debugPrint('MusicPlayerService: open() returned for local file');
           } catch (e, st) {
             debugPrint('MusicPlayerService: open() THREW for local file: $e\n$st');
@@ -218,8 +274,8 @@ class MusicPlayerService {
 
       try {
         debugPrint('MusicPlayerService: calling player.open()');
-        await _player.open(Media(streamUrl));
-        debugPrint('MusicPlayerService: open() returned, playing=${_player.state.playing}');
+        await player.open(Media(streamUrl));
+        debugPrint('MusicPlayerService: open() returned, playing=${player.state.playing}');
       } catch (e, st) {
         debugPrint('MusicPlayerService: open() THREW: $e\n$st');
         rethrow;
@@ -272,12 +328,13 @@ class MusicPlayerService {
     }
   }
 
-  void play() => _player.play();
-  void pause() => _player.pause();
-  void togglePlay() => _player.playOrPause();
+  void play() => player.play();
+  void pause() => player.pause();
+  void togglePlay() => player.playOrPause();
 
   Future<void> stop() async {
-    await _player.stop();
+    if (_player == null) return;
+    await player.stop();
     currentTrack.value = null;
     playlist.value = [];
     _currentIndex = -1;
@@ -296,11 +353,11 @@ class MusicPlayerService {
 
   void toggleLoop() async {
     final modes = [PlaylistMode.none, PlaylistMode.loop, PlaylistMode.single];
-    final nextIndex = (modes.indexOf(_player.state.playlistMode) + 1) % modes.length;
-    await _player.setPlaylistMode(modes[nextIndex]);
+    final nextIndex = (modes.indexOf(player.state.playlistMode) + 1) % modes.length;
+    await player.setPlaylistMode(modes[nextIndex]);
   }
 
-  void seek(Duration pos) => _player.seek(pos);
+  void seek(Duration pos) => player.seek(pos);
 
   void next() {
     if (playlist.value.isEmpty) return;
@@ -342,7 +399,7 @@ class MusicPlayerService {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    await _player.dispose();
+    await releaseMpvForVideo();
     _musicService.dispose();
   }
 }

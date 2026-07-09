@@ -10,6 +10,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide_panel.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_search_overlay.dart';
@@ -184,6 +185,16 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _bind();
   }
 
+  Future<void> _bootPlayer() async {
+    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    if (_disposed) return;
+    _initPlayerInstances();
+    await _applyMpvTunables();
+    await _openCurrent();
+    _startWatchdog();
+    _scheduleHideControls();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -197,11 +208,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     WidgetsBinding.instance.addObserver(this);
     _initOrientationAndChrome();
     WakelockPlus.enable();
-    _initPlayerInstances();
-    _applyMpvTunables();
-    _openCurrent();
-    _startWatchdog();
-    _scheduleHideControls();
+    unawaited(_bootPlayer());
   }
 
   /// Set libmpv/FFmpeg properties that turn media_kit into a real IPTV player.
@@ -710,6 +717,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   Future<bool> _recreatePlayer() async {
     await _disposePlayer();
     if (_disposed) return false;
+    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    if (_disposed) return false;
     _initPlayerInstances();
     await _applyMpvTunables();
     return true;
@@ -740,7 +749,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       await _player.stop();
     } catch (_) {}
     try {
-      await _player.dispose();
+      final disposeFuture = _player.dispose();
+      MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+      await disposeFuture;
     } catch (_) {}
   }
 

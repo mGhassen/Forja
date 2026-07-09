@@ -6,13 +6,16 @@ import 'package:audio_service/audio_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/audiobooks/catalog/audiobook_service.dart';
 import 'package:forja/shared/audio/audio_handler.dart';
+import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:forja/shared/services/mpv_exclusive_session.dart';
 
 class AudiobookPlayerService {
   static final AudiobookPlayerService _instance = AudiobookPlayerService._internal();
   factory AudiobookPlayerService() => _instance;
   AudiobookPlayerService._internal();
 
-  final Player _player = Player();
+  Player? _player;
+  bool _playerListenersAttached = false;
   AppAudioHandler? _handler;
   
   // State
@@ -28,34 +31,75 @@ class AudiobookPlayerService {
   final List<StreamSubscription> _subscriptions = [];
   bool _isResuming = false;
 
+  Player get player {
+    _ensurePlayer();
+    return _player!;
+  }
+
+  bool get hasMpvPlayer => _player != null;
+
+  void _ensurePlayer() {
+    if (_disposed) return;
+    if (_player != null) return;
+    _player = Player();
+    if (_handler != null) {
+      _attachPlayerListeners();
+    }
+  }
+
+  Future<void> releaseMpvForVideo() async {
+    if (_player == null) return;
+    for (final s in _subscriptions) {
+      await s.cancel();
+    }
+    _subscriptions.clear();
+    try {
+      await _player!.stop();
+    } catch (_) {}
+    try {
+      await _player!.dispose();
+    } catch (_) {}
+    _player = null;
+    _playerListenersAttached = false;
+    isPlaying.value = false;
+    isBuffering.value = false;
+  }
+
   void init(BaseAudioHandler handler) {
     _handler = handler as AppAudioHandler;
-    
-    _subscriptions.add(_player.stream.position.listen((p) {
+    if (_player != null) {
+      _attachPlayerListeners();
+    }
+  }
+
+  void _attachPlayerListeners() {
+    if (_player == null || _playerListenersAttached) return;
+    _playerListenersAttached = true;
+
+    _subscriptions.add(_player!.stream.position.listen((p) {
       position.value = p;
       _updateSystemState();
-      // Only save if we are not currently in the middle of a resume seek
       if (!_isResuming && p > Duration.zero) {
         _saveProgress();
       }
     }));
     
-    _subscriptions.add(_player.stream.duration.listen((d) {
+    _subscriptions.add(_player!.stream.duration.listen((d) {
       duration.value = d;
       _updateSystemState();
     }));
     
-    _subscriptions.add(_player.stream.playing.listen((pl) {
+    _subscriptions.add(_player!.stream.playing.listen((pl) {
       isPlaying.value = pl;
       _updateSystemState();
     }));
     
-    _subscriptions.add(_player.stream.buffering.listen((b) {
+    _subscriptions.add(_player!.stream.buffering.listen((b) {
       isBuffering.value = b;
       _updateSystemState();
     }));
 
-    _subscriptions.add(_player.stream.completed.listen((completed) {
+    _subscriptions.add(_player!.stream.completed.listen((completed) {
       if (completed && autoplay.value) {
         final nextIdx = currentChapterIndex.value + 1;
         if (nextIdx < _currentChapters.length) {
@@ -85,17 +129,20 @@ class AudiobookPlayerService {
       playing: isPlaying.value,
       updatePosition: position.value,
       bufferedPosition: position.value,
-      speed: _player.state.rate,
+      speed: player.state.rate,
     ));
   }
 
   Future<void> loadBook(Audiobook book, List<AudiobookChapter> chapters, {int initialChapter = 0, Duration? resumePosition}) async {
+    if (MpvExclusiveSession.required) {
+      await MusicPlayerService().releaseMpvForVideo();
+    }
     _isResuming = resumePosition != null && resumePosition > Duration.zero;
     currentBook.value = book;
     _currentChapters = chapters;
     currentChapterIndex.value = initialChapter;
     
-    _handler?.setPlayerType(AudioPlayerType.audiobook, _player);
+    _handler?.setPlayerType(AudioPlayerType.audiobook, player);
     
     String artist = 'Tokybook';
     if (book.source == 'audiozaic') artist = 'Audiozaic';
@@ -112,60 +159,55 @@ class AudiobookPlayerService {
       artUri: Uri.tryParse(book.thumbUrl),
     ));
 
-    // Optimize for streaming audiobooks
-    if (_player.platform is NativePlayer) {
-      final p = _player.platform as NativePlayer;
-      await p.setProperty('hr-seek', 'yes'); // 'yes' is faster than 'always' for streams
+    if (player.platform is NativePlayer) {
+      final p = player.platform as NativePlayer;
+      await p.setProperty('hr-seek', 'yes');
       await p.setProperty('cache', 'yes');
-      await p.setProperty('demuxer-max-bytes', '50000000'); // 50MB cache
+      await p.setProperty('demuxer-max-bytes', '50000000');
       await p.setProperty('demuxer-max-back-bytes', '50000000');
       await p.setProperty('demuxer-readahead-secs', '30');
     }
 
-    // Open without auto-playing first to allow seek to settle
-    await _player.open(Media(chapters[initialChapter].url, httpHeaders: chapters[initialChapter].headers), play: false);
+    await player.open(Media(chapters[initialChapter].url, httpHeaders: chapters[initialChapter].headers), play: false);
     
     if (_isResuming) {
       debugPrint('AudiobookPlayerService: Resuming at $resumePosition');
       
-      // Wait for duration to be valid (stream meta loaded)
       Completer<void> ready = Completer();
       late StreamSubscription durSub;
-      durSub = _player.stream.duration.listen((d) {
+      durSub = player.stream.duration.listen((d) {
         if (d > Duration.zero && !ready.isCompleted) {
           ready.complete();
         }
       });
 
-      // Timeout after 8s
       await ready.future.timeout(const Duration(seconds: 8), onTimeout: () {});
       await durSub.cancel();
 
-      // Perform the seek
-      await _player.seek(resumePosition!);
+      await player.seek(resumePosition!);
       
-      // Small buffer delay before allowing saves and starting playback
       await Future.delayed(const Duration(milliseconds: 800));
       _isResuming = false;
     }
     
-    _player.play();
+    player.play();
   }
 
-  void playOrPause() => _player.playOrPause();
-  void seek(Duration p) => _player.seek(p);
-  void setRate(double r) => _player.setRate(r);
+  void playOrPause() => player.playOrPause();
+  void seek(Duration p) => player.seek(p);
+  void setRate(double r) => player.setRate(r);
 
   Future<void> stop() async {
-    await _player.stop();
+    if (_player == null) return;
+    await player.stop();
     _updateSystemState();
   }
 
   Future<void> changeChapter(int index) async {
     if (index < 0 || index >= _currentChapters.length) return;
     currentChapterIndex.value = index;
-    await _player.open(Media(_currentChapters[index].url, httpHeaders: _currentChapters[index].headers));
-    _player.play();
+    await player.open(Media(_currentChapters[index].url, httpHeaders: _currentChapters[index].headers));
+    player.play();
   }
 
   // --- Persistence (History) ---
@@ -246,9 +288,6 @@ class AudiobookPlayerService {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    for (final s in _subscriptions) {
-      s.cancel();
-    }
-    await _player.dispose();
+    await releaseMpvForVideo();
   }
 }

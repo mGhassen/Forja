@@ -3007,15 +3007,25 @@ class _HistoryCardState extends State<_HistoryCard> {
                   const SizedBox(height: 4),
                   Material(
                     color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
+                      customBorder: const CircleBorder(),
                       hoverColor: ForjaShellColors.inkHover,
                       splashColor: ForjaShellColors.inkSplash,
+                      highlightColor: ForjaShellColors.inkSplash,
                       onTap: widget.onInfo,
                       child: Container(
                         padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
-                        child: const Icon(Icons.info_outline_rounded, color: Colors.white70, size: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.info_outline_rounded,
+                          color: Colors.white70,
+                          size: 14,
+                        ),
                       ),
                     ),
                   ),

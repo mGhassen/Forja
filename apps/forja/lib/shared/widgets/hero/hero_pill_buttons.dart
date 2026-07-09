@@ -174,7 +174,9 @@ class _HeroPillIconSlotButton extends StatelessWidget {
           height: _kHeroPillHeight,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: hover ? Colors.white.withValues(alpha: 0.08) : Colors.transparent,
+            color: (hover || pressed)
+                ? Colors.white.withValues(alpha: pressed ? 0.12 : 0.08)
+                : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(
               isFirst: isFirst,
               isLast: isLast,

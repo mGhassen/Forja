@@ -275,8 +275,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   void _onEpisodeSelected(int episode) {
-    setState(() => _selectedEpisode = episode);
-    _episodePlayPending = true;
+    setState(() {
+      _selectedEpisode = episode;
+      _sourcesPanelOpen = true;
+    });
     _checkHistory();
     _refreshSourcesForEpisode();
   }

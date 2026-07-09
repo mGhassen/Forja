@@ -19,6 +19,7 @@ import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/extractors/arabic_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
@@ -37,6 +38,7 @@ import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
+import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shell/app_router.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2386,8 +2388,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     return (season: nextSeason, episode: nextEpisode);
   }
 
-  String _episodeSwitchStatusLabel(int season, int episode) {
-    final key = _currentProvider ?? widget.activeProvider;
+  String _episodeSwitchStatusLabel(int season, int episode, {String? providerKey}) {
+    final key = providerKey ?? _currentProvider ?? widget.activeProvider;
     if (key != null) {
       return PlayerProviderMenu.snackbarLabel(key, widget.providers?[key]);
     }
@@ -2395,10 +2397,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     return 'S$season E$episode';
   }
 
-  void _showEpisodeSwitchStatus(int season, int episode) {
+  void _showEpisodeSwitchStatus(int season, int episode, {String? providerKey}) {
     _statusController.upsert(
       'episode-switch',
-      _episodeSwitchStatusLabel(season, episode),
+      _episodeSwitchStatusLabel(season, episode, providerKey: providerKey),
       kind: StatusRouletteKind.loading,
     );
   }
@@ -2412,198 +2414,44 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       debugPrint('[EpSwitch] Playing S${season}E$episode');
       _saveWatchHistory();
 
-      String? streamUrl;
-      String? magnetLink;
-      int? fileIndex;
-      Map<String, String>? headers;
-      List<StreamSource>? nextSources;
-      String? activeProvider = widget.activeProvider;
-
-      final isTorrent = widget.magnetLink != null &&
-          widget.activeProvider != 'stremio_direct';
-      final isStremioDirect = widget.activeProvider == 'stremio_direct';
-      final isWebStreamr = widget.activeProvider == 'webstreamr';
-      final isAmri = widget.activeProvider == 'amri';
-      final isService111477 = widget.activeProvider == 'service111477';
-
-      if (isStremioDirect && widget.stremioAddonBaseUrl != null) {
-        final stremio = StremioService();
-        final stremioId = widget.stremioId ?? widget.movie!.imdbId;
-        if (stremioId == null) throw Exception('No Stremio ID available');
-
-        final epId = '$stremioId:$season:$episode';
-        final streams = await stremio.getStreams(
-          baseUrl: widget.stremioAddonBaseUrl!,
-          type: 'series',
-          id: epId,
-        );
-
-        if (streams.isEmpty) throw Exception('No streams found for S${season}E$episode');
-
-        final stream = streams.first as Map<String, dynamic>;
-
-        if (stream['url'] != null) {
-          streamUrl = stream['url'] as String;
-          final proxyHeaders = stream['behaviorHints']?['proxyHeaders']?['request'];
-          if (proxyHeaders is Map) {
-            headers = Map<String, String>.from(proxyHeaders);
-          }
-        } else if (stream['infoHash'] != null) {
-          final infoHash = stream['infoHash'] as String;
-          final streamTitle = (stream['title'] ?? stream['name'] ?? '').toString();
-          final dn = streamTitle.isNotEmpty ? '&dn=${Uri.encodeComponent(streamTitle)}' : '';
-          final sourcesList = stream['sources'];
-          final trackerParams = StringBuffer();
-          if (sourcesList is List) {
-            for (final src in sourcesList) {
-              if (src is String && src.startsWith('tracker:')) {
-                trackerParams.write('&tr=${Uri.encodeComponent(src.substring(8))}');
-              }
-            }
-          }
-          magnetLink = 'magnet:?xt=urn:btih:$infoHash$dn$trackerParams';
-
-          final settings = SettingsService();
-          final useDebrid = await settings.useDebridForStreams();
-          final debridService = await settings.getDebridService();
-
-          final playback = await resolveMagnetForPlayback(
-            magnet: magnetLink,
-            useDebrid: useDebrid,
-            debridService: debridService,
-            localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
-            season: season,
-            episode: episode,
-          );
-          if (playback != null) {
-            streamUrl = playback.url;
-            fileIndex = playback.fileIndex;
-          }
-          activeProvider = 'torrent';
-        }
-      } else if (isTorrent) {
-        final s = season.toString().padLeft(2, '0');
-        final e = episode.toString().padLeft(2, '0');
-        final query = '${widget.movie!.title} S${s}E$e';
-        debugPrint('[EpSwitch] Searching torrents: $query');
-
-        final results = (await Engine.searchTorrents(query))
-            .map(TorrentResult.fromJson)
-            .toList();
-        final filtered = (await Engine.filterTorrents(
-          results.map((e) => e.toJson()).toList(),
-          widget.movie!.title,
-          requiredSeason: season,
-          requiredEpisode: episode,
-        )).map(TorrentResult.fromJson).toList();
-
-        if (filtered.isEmpty) throw Exception('No torrents found for S${s}E$e');
-
-        filtered.sort((a, b) => b.seeders.compareTo(a.seeders));
-        magnetLink = filtered.first.magnet;
-
-        final settings = SettingsService();
-        final useDebrid = await settings.useDebridForStreams();
-        final debridService = await settings.getDebridService();
-
-        final playback = await resolveMagnetForPlayback(
-          magnet: magnetLink,
-          useDebrid: useDebrid,
-          debridService: debridService,
-          localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
-          season: season,
-          episode: episode,
-        );
-        if (playback != null) {
-          streamUrl = playback.url;
-          fileIndex = playback.fileIndex;
-        }
-      } else if (isWebStreamr) {
-        final imdbId = widget.movie!.imdbId;
-        if (imdbId == null || imdbId.isEmpty) throw Exception('No IMDB ID for WebStreamr');
-
-        final webStreamr = WebStreamrService();
-        final sources = await webStreamr.getStreams(
-          imdbId: imdbId,
-          isMovie: false,
-          season: season,
-          episode: episode,
-        );
-        if (sources.isEmpty) throw Exception('No WebStreamr sources for S${season}E$episode');
-        streamUrl = sources.first.url;
-      } else if (isService111477) {
-        final svc = Site111477Service();
-        final hits = await svc.findEpisodeSources(
-          showTitle: widget.movie!.title,
-          season: season,
-          episode: episode,
-        );
-        if (hits.isEmpty) {
-          throw Exception('No 111477 file for S${season}E$episode');
-        }
-        if (site111477_proxy.is111477ProxyRunning) {
-          await site111477_proxy.stop111477Proxy();
-        }
-        streamUrl = await site111477_proxy.start111477Proxy(hits.first.fileUrl);
-        nextSources = Site111477Service.toStreamSources(hits);
-      } else if (isAmri) {
-        final extractor = StreamExtractor();
-        final result = await extractor.extractWithAmri(
-          tmdbId: widget.movie!.id.toString(),
-          isMovie: false,
-          season: season,
-          episode: episode,
-        );
-        if (result == null) throw Exception('AMRI extraction failed for S${season}E$episode');
-        streamUrl = result.url;
-        headers = result.headers.isNotEmpty ? result.headers : null;
-      } else if (widget.activeProvider != null &&
-          widget.activeProvider!.startsWith('nuvio:')) {
-        final scraperId = widget.activeProvider!.substring(6);
-        final results = await NuvioService.instance.runOneScraper(
-          scraperId: scraperId,
-          tmdbId: widget.movie!.id.toString(),
-          type: 'tv',
-          season: season,
-          episode: episode,
-        );
-        if (results.isEmpty) {
-          throw Exception('Nuvio: no streams for S${season}E$episode');
-        }
-        final first = results.first;
-        streamUrl = first.url;
-        headers = first.headers.isNotEmpty ? first.headers : null;
-        nextSources = results
-            .map((r) => StreamSource(
-                  url: r.url,
-                  title: r.title.isNotEmpty ? r.title : r.name,
-                  type: r.url.toLowerCase().contains('.m3u8')
-                      ? 'hls'
-                      : r.url.toLowerCase().contains('.mpd')
-                          ? 'dash'
-                          : 'mp4',
-                  headers: r.headers.isEmpty ? null : r.headers,
-                ))
-            .toList();
-      } else if (widget.activeProvider != null) {
-        final provider = StreamProviders.providers[widget.activeProvider];
-        if (provider == null || provider['tv'] == null) {
-          throw Exception('Provider ${widget.activeProvider} does not support TV');
-        }
-
-        final providerUrl = provider['tv'](
-          widget.movie!.id.toString(),
-          season,
-          episode,
-        );
-        final extractor = StreamExtractor();
-        final result = await extractor.extract(providerUrl, timeout: const Duration(seconds: 20));
-        if (result == null) throw Exception('Extraction failed for S${season}E$episode');
-        streamUrl = result.url;
-        headers = result.headers.isNotEmpty ? result.headers : null;
+      final chain = episodeProviderChain(
+        providers: widget.providers,
+        activeProvider: widget.activeProvider,
+        currentProvider: _currentProvider,
+        magnetLink: widget.magnetLink,
+      );
+      if (chain.isEmpty) {
+        throw Exception('No provider available for S${season}E$episode');
       }
 
-      if (streamUrl == null || streamUrl.isEmpty) {
+      final resolver = StreamProviderResolver();
+      EpisodeSwitchResult? resolved;
+      Object? lastError;
+
+      for (final providerKey in chain) {
+        _showEpisodeSwitchStatus(season, episode, providerKey: providerKey);
+        debugPrint('[EpSwitch] Trying provider: $providerKey');
+        try {
+          resolved = await resolveEpisodeForProvider(
+            providerKey: providerKey,
+            movie: widget.movie!,
+            season: season,
+            episode: episode,
+            providers: widget.providers,
+            magnetLink: widget.magnetLink,
+            stremioId: widget.stremioId,
+            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+            providerResolver: resolver,
+          );
+          if (resolved != null && resolved.streamUrl.isNotEmpty) break;
+        } catch (e) {
+          lastError = e;
+          debugPrint('[EpSwitch] $providerKey failed: $e');
+        }
+      }
+
+      if (resolved == null || resolved.streamUrl.isEmpty) {
+        if (lastError != null) throw lastError;
         throw Exception('Could not find stream for S${season}E$episode');
       }
 
@@ -2613,19 +2461,19 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       Navigator.of(context, rootNavigator: true).pushReplacement(
         AppRouter.slideRoute(
           (_) => PlayerScreen(
-            streamUrl: streamUrl!,
+            streamUrl: resolved!.streamUrl,
             title: nextTitle,
-            headers: headers,
+            headers: resolved.headers,
             movie: widget.movie,
             selectedSeason: season,
             selectedEpisode: episode,
-            magnetLink: magnetLink,
-            fileIndex: fileIndex,
-            activeProvider: activeProvider,
+            magnetLink: resolved.magnetLink,
+            fileIndex: resolved.fileIndex,
+            activeProvider: resolved.activeProvider,
             stremioId: widget.stremioId,
             stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
             providers: widget.providers,
-            sources: nextSources,
+            sources: resolved.sources,
           ),
         ),
       );

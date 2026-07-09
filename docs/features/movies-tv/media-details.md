@@ -34,7 +34,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 - Add or remove from **My List** (**+** button in hero)
 - Trakt/Simkl/collect actions via the **⋯** overflow menu in the hero
 - See resume progress in the hero for movies and the selected TV episode
-- For TV: pick a season from square cards, then tap an episode in the rail to play it (resume position when you have history). If no source is ready yet, **Sources** opens so you can pick one
+- For TV: pick a season from square cards, then tap an episode in the rail to select it and open **Sources** (resume position when you have history is applied when you pick a stream)
 - Browse main cast and “More Like This” recommendations below the hero
 - Search and sort torrent results in Sources (seeders, size, etc.)
 - Resolve torrents through debrid when configured
