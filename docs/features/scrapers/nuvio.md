@@ -4,7 +4,7 @@
 
 ## What it is
 
-Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Install a manifest in Settings, enable individual scrapers, and they appear as providers when [Direct streaming mode](../movies-tv/direct-streaming-mode.md) is on.
+Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Install a manifest in Settings, enable individual scrapers, and they appear as webstreaming providers on [media details](../movies-tv/media-details.md).
 
 ## How to open it
 

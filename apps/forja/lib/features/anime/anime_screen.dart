@@ -300,14 +300,15 @@ class _AnimeScreenState extends State<AnimeScreen>
           (entry['anime'] as Map).cast<String, dynamic>());
       final epNum = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
       final cat = (entry['category'] as String?) ?? 'sub';
-      // Don't await getEpisodes here — push the player immediately so it
-      // can start resolving streams in parallel. The player can fetch
-      // its own episode list when the user opens the episode picker.
+      final provider = (entry['provider'] as String?) ?? 'kiwi';
+      final useAnimeRealms = entry['useAnimeRealms'] == true;
       openAnimePlayer(
         context,
         anime: anime,
         episodeNumber: epNum,
         category: cat,
+        provider: provider,
+        useAnimeRealms: useAnimeRealms,
       ).then((_) => _refreshHistory());
     } catch (_) {}
   }

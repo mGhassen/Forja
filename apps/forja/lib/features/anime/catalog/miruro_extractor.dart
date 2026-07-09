@@ -39,7 +39,8 @@ class MiruroExtractor {
   /// parallel per-provider extracts share a single network call.
   final Map<int, Future<Map<String, dynamic>?>> _epsCache = {};
 
-  Future<Map<String, dynamic>?> _episodes(int anilistId) {
+  /// Cached `episodes?anilistId=…` lookup shared by catalog + playback.
+  Future<Map<String, dynamic>?> fetchEpisodes(int anilistId) {
     return _epsCache.putIfAbsent(
       anilistId,
       () => _apiGet('episodes', query: {'anilistId': '$anilistId'})
@@ -57,7 +58,7 @@ class MiruroExtractor {
     required String provider,
   }) async {
     try {
-      final epData = await _episodes(anilistId);
+      final epData = await fetchEpisodes(anilistId);
       final providersMap =
           (epData?['providers'] as Map?)?.cast<String, dynamic>() ?? {};
       final prov = (providersMap[provider] as Map?)?.cast<String, dynamic>();

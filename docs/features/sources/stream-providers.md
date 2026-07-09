@@ -1,14 +1,14 @@
 # Stream providers
 
-> Direct link providers for movies and TV — order and failover in streaming mode.
+> Direct link extractors for movies and TV — order and failover when webstreaming plays.
 
 ## What it is
 
-In [Direct streaming mode](../movies-tv/direct-streaming-mode.md), Forja tries multiple **stream providers** in sequence until one returns playable links. Built-in providers include Videasy, VidLink, VixSrc, Vidnest, 111477, WebStreamr, and each enabled [Nuvio](../scrapers/nuvio.md) scraper.
+When [Webstreaming](../movies-tv/direct-streaming-mode.md) is enabled, Forja tries multiple **stream providers** in sequence until one returns playable links. Built-in providers include Videasy, VidLink, VixSrc, Vidnest, 111477, WebStreamr, and each enabled [Nuvio](../scrapers/nuvio.md) scraper.
 
 ## How to open it
 
-**Settings → Playback → Stream provider order** — drag to reorder.
+**Settings → Playback → Provider order** — drag to reorder.
 
 ## What you can do
 
@@ -28,7 +28,7 @@ Videasy · VidLink · VixSrc · Vidnest · 111477 · WebStreamr · (your Nuvio s
 
 ## Related
 
-- [Direct streaming mode](../movies-tv/direct-streaming-mode.md)
+- [Webstreaming](../movies-tv/direct-streaming-mode.md)
 - [WebStreamr settings](../scrapers/webstreamr-settings.md)
 - [Nuvio scrapers](../scrapers/nuvio.md)
 - [Playback settings](../settings/playback-settings.md)

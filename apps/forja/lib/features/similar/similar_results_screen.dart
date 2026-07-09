@@ -6,7 +6,7 @@
 //   • bestsimilar.com: hero info + ~30 similar items via [BestSimilarScraper]
 //   • TMDB: high-res poster/backdrop enrichment per similar item (parallel)
 //
-// Tap a card → resolve TMDB → push StreamingDetailsScreen or DetailsScreen
+// Tap a card → resolve TMDB → push DetailsScreen
 // based on the user's setting.
 
 import 'dart:math' as math;

@@ -1,12 +1,12 @@
-// Anime player resolver: cascades through every available source for the
-// chosen category (sub OR dub) until one returns a playable stream.
-// No UI for switching audio or picking servers — just a loader.
+// Anime player — Miruro-first stream resolution with AnimeRealms fallback.
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/features/anime/catalog/animerealms_extractor.dart';
+import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/player/player_screen.dart';
@@ -43,6 +43,9 @@ Future<T?> openAnimePlayer<T>(
   required AnimeCard anime,
   required int episodeNumber,
   String category = 'sub',
+  String provider = 'kiwi',
+  bool useAnimeRealms = false,
+  String? episodeId,
   List<AnimeEpisode> allEpisodes = const [],
 }) {
   return Navigator.of(context, rootNavigator: true).push<T>(
@@ -51,6 +54,9 @@ Future<T?> openAnimePlayer<T>(
         anime: anime,
         episodeNumber: episodeNumber,
         category: category,
+        provider: provider,
+        useAnimeRealms: useAnimeRealms,
+        episodeId: episodeId,
         allEpisodes: allEpisodes,
       ),
     ),
@@ -60,7 +66,10 @@ Future<T?> openAnimePlayer<T>(
 class AnimePlayerScreen extends StatefulWidget {
   final AnimeCard anime;
   final int episodeNumber;
-  final String category; // initial 'sub' | 'dub'
+  final String category;
+  final String provider;
+  final bool useAnimeRealms;
+  final String? episodeId;
   final List<AnimeEpisode> allEpisodes;
 
   const AnimePlayerScreen({
@@ -68,6 +77,9 @@ class AnimePlayerScreen extends StatefulWidget {
     required this.anime,
     required this.episodeNumber,
     this.category = 'sub',
+    this.provider = 'kiwi',
+    this.useAnimeRealms = false,
+    this.episodeId,
     this.allEpisodes = const [],
   });
 
@@ -75,290 +87,274 @@ class AnimePlayerScreen extends StatefulWidget {
   State<AnimePlayerScreen> createState() => _AnimePlayerScreenState();
 }
 
-// Best-effort mapping of human-readable subtitle labels (as returned by
-// megaplay/vidwish) to ISO 639-1 codes so the player UI can group them.
 String _langCodeFromLabel(String label) {
   final l = label.trim().toLowerCase();
   if (l.isEmpty) return 'und';
-  // Already a 2/3-letter code or a region tag like en-US
   if (RegExp(r'^[a-z]{2,3}([-_][a-z0-9]+)?$').hasMatch(l)) return l;
   const map = <String, String>{
     'english': 'en',
     'arabic': 'ar',
     'spanish': 'es',
-    'spanish - latin america': 'es',
-    'spanish (latin america)': 'es',
-    'spanish (spain)': 'es',
-    'european spanish': 'es',
     'french': 'fr',
     'german': 'de',
     'italian': 'it',
     'portuguese': 'pt',
-    'portuguese - brazilian': 'pt-br',
-    'portuguese (brazil)': 'pt-br',
-    'brazilian portuguese': 'pt-br',
     'russian': 'ru',
-    'turkish': 'tr',
-    'dutch': 'nl',
-    'polish': 'pl',
     'japanese': 'ja',
     'korean': 'ko',
     'chinese': 'zh',
-    'chinese - simplified': 'zh-cn',
-    'chinese - traditional': 'zh-tw',
-    'simplified chinese': 'zh-cn',
-    'traditional chinese': 'zh-tw',
-    'hindi': 'hi',
-    'indonesian': 'id',
-    'thai': 'th',
-    'vietnamese': 'vi',
-    'swedish': 'sv',
-    'danish': 'da',
-    'norwegian': 'no',
-    'finnish': 'fi',
-    'czech': 'cs',
-    'greek': 'el',
-    'hebrew': 'he',
-    'romanian': 'ro',
-    'hungarian': 'hu',
-    'ukrainian': 'uk',
-    'malay': 'ms',
-    'filipino': 'tl',
-    'tagalog': 'tl',
   };
   if (map.containsKey(l)) return map[l]!;
-  // Strip parenthetical region suffix and retry (e.g. "Spanish (Spain)" → "spanish")
-  final stripped = l.replaceAll(RegExp(r'\s*\(.*\)\s*$'), '').trim();
-  if (stripped != l && map.containsKey(stripped)) return map[stripped]!;
   return l;
 }
 
 class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   final AnimeService _service = AnimeService();
-  List<AnimeEmbed> _allEmbeds = const [];
-  AnikotoSeries? _series;
-  late String _category;
-  // ignore: unused_field
-  AnimeEmbed? _activeEmbed;
+  final MiruroExtractor _miruro = MiruroExtractor();
+  final AnimeRealmsExtractor _animeRealms = AnimeRealmsExtractor();
+
   String _phase = 'Loading…';
-  String _statusLine = '';
-  bool _failedAll = false;
+  bool _failed = false;
   bool _resolving = false;
+  String _activeProvider = '';
+  bool _usingAnimeRealms = false;
 
   @override
   void initState() {
     super.initState();
-    _category = widget.category;
-    _bootstrap();
+    _activeProvider = widget.provider;
+    _usingAnimeRealms = widget.useAnimeRealms;
+    _resolve();
   }
 
-  Future<void> _bootstrap() async {
+  Future<void> _resolve() async {
     setState(() {
       _resolving = true;
-      _phase = 'Looking up episode…';
+      _failed = false;
+      _phase = _usingAnimeRealms
+          ? 'Fetching from $_activeProvider…'
+          : 'Fetching stream from $_activeProvider…';
     });
-    // Resolve Anikoto series first so we can build /stream/s-2/{embedId}/...
-    // URLs (much more reliable than the anilist-mapped /stream/ani/... ones).
-    _series = await _service.resolveAnikoto(widget.anime);
-    if (!mounted) return;
-    if (_series == null) {
-      debugPrint(
-          '[AnimePlayer] Anikoto catalog miss for ${widget.anime.displayTitle} '
-          '(anilist ${widget.anime.id})');
+
+    if (_usingAnimeRealms) {
+      final ok = await _tryAnimeRealms();
+      if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _resolving = false;
+          _failed = true;
+          _phase = 'No streams available';
+        });
+      }
+      return;
     }
-    _allEmbeds = _service.buildAllEmbeds(
+
+    final miruro = await _miruro.extractWithProvider(
       anilistId: widget.anime.id,
-      episode: widget.episodeNumber,
-      series: _series,
-      animeTitles: [
-        widget.anime.titleEnglish,
-        widget.anime.titleRomaji,
-        widget.anime.titleNative,
-      ],
-      isAdult: widget.anime.isAdult,
+      episodeNumber: widget.episodeNumber,
+      category: widget.category,
+      provider: _activeProvider,
     );
-    setState(() {});
-    await _resolveForCategory();
-  }
+    if (!mounted) return;
+    if (miruro != null && miruro.url.isNotEmpty) {
+      await _launchFromMiruro(miruro);
+      return;
+    }
 
-  List<AnimeEmbed> get _currentPair =>
-      _allEmbeds.where((e) => e.category == _category).toList();
-
-  Future<void> _resolveForCategory() async {
+    debugPrint(
+        '[AnimePlayer] Miruro $_activeProvider empty, trying AnimeRealms…');
     setState(() {
-      _resolving = true;
-      _failedAll = false;
-      _statusLine = '';
-      _phase = 'Finding a stream…';
+      _usingAnimeRealms = true;
+      _phase = 'Trying AnimeRealms…';
     });
-    final pair = _currentPair;
-    if (pair.isEmpty) {
+    final ok = await _tryAnimeRealms();
+    if (!mounted) return;
+    if (!ok) {
       setState(() {
         _resolving = false;
-        _failedAll = true;
+        _failed = true;
         _phase = 'No streams available';
       });
-      return;
     }
-
-    // Race every source in parallel. The FIRST success starts a short grace
-    // window during which we wait for slower extractors to land — those become
-    // automatic fallbacks if the winner's CDN is dead (Miruro's rrr.pro25zone
-    // links 404 frequently). After the grace expires, we launch with whatever
-    // succeeded, ordered: winner first, then the rest in completion order.
-    const graceWindow = Duration(seconds: 4);
-    final completer =
-        Completer<List<({AnimeEmbed embed, ExtractedMedia media})>>();
-    final successes = <({AnimeEmbed embed, ExtractedMedia media})>[];
-    var settled = 0;
-    final total = pair.length;
-    Timer? graceTimer;
-
-    void finishIfReady() {
-      if (completer.isCompleted) return;
-      if (settled >= total) {
-        graceTimer?.cancel();
-        completer.complete(successes);
-      }
-    }
-
-    for (final embed in pair) {
-      _tryEmbed(embed).then((media) {
-        settled++;
-        if (media != null && media.url.isNotEmpty) {
-          successes.add((embed: embed, media: media));
-          // First hit → start grace window for backups.
-          if (successes.length == 1 && !completer.isCompleted) {
-            graceTimer = Timer(graceWindow, () {
-              if (!completer.isCompleted) completer.complete(successes);
-            });
-          }
-        }
-        if (mounted && !completer.isCompleted) {
-          setState(() => _statusLine =
-              '$settled / $total checked${successes.isNotEmpty ? ' \u00b7 ${successes.length} ready' : ''}');
-        }
-        finishIfReady();
-      }).catchError((_) {
-        settled++;
-        finishIfReady();
-      });
-    }
-
-    final hits = await completer.future;
-    if (!mounted) return;
-    if (hits.isNotEmpty) {
-      _activeEmbed = hits.first.embed;
-      await _launchPlayer(hits);
-      return;
-    }
-    setState(() {
-      _resolving = false;
-      _failedAll = true;
-      _phase = _series == null && _currentPair.every((e) => e.server != 'megaplay' && e.server != 'vidwish')
-          ? 'Catalog lookup failed'
-          : 'No streams available';
-      _statusLine = '';
-    });
   }
 
-  Future<ExtractedMedia?> _tryEmbed(AnimeEmbed embed) async {
-    // megaplay & vidwish expose /stream/getSources?id={dataId}
-    // returning the m3u8 directly. Pure HTTP — no webview.
+  Future<bool> _tryAnimeRealms() async {
     try {
-      final direct = await _service.extractDirect(embed);
-      if (direct == null || direct.url.isEmpty) return null;
-      final headers = <String, String>{
-        'Referer': direct.referer,
-        'Origin': direct.origin,
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      };
-      final subs = direct.tracks
-          .map((t) => <String, dynamic>{
-                'url': t.url,
-                'display': t.label,
-                'language': _langCodeFromLabel(t.label),
-                // Subtitle CDNs (megacloud, vid-cdn, etc.) gate on the
-                // embed's Referer/Origin — not the sub URL's own host.
-                'referer': direct.referer,
-                'origin': direct.origin,
-              })
-          .toList();
-      return ExtractedMedia(
-        url: direct.url,
-        headers: headers,
-        provider: embed.server,
-        sources: [
-          StreamSource(
-            url: direct.url,
-            title: embed.displayName,
-            type: 'video',
-          ),
-        ],
-        externalSubtitles: subs.isNotEmpty ? subs : null,
+      final data = await _animeRealms.getStreams(
+        provider: _activeProvider,
+        anilistId: widget.anime.id,
+        episodeNumber: widget.episodeNumber,
       );
+      final streams = (data['streams'] as List?) ?? [];
+      final real = streams
+          .where((s) =>
+              s is Map &&
+              s['url'] != null &&
+              !(s['url'] as String).contains('test-streams.mux.dev'))
+          .cast<Map>()
+          .map((e) => e.cast<String, dynamic>())
+          .toList();
+      if (real.isNotEmpty) {
+        await _launchFromAnimeRealms(
+          real,
+          (data['subtitles'] as List?) ?? const [],
+          _activeProvider,
+        );
+        return true;
+      }
+
+      setState(() => _phase = 'Trying other providers…');
+      final all = await _animeRealms.getAllSources(
+        anilistId: widget.anime.id,
+        episodeNumber: widget.episodeNumber,
+      );
+      if (!mounted || all.isEmpty) return false;
+      final best = all.first;
+      await _launchFromAnimeRealms(
+        (best['streams'] as List).cast<Map<String, dynamic>>(),
+        (best['subtitles'] as List?) ?? const [],
+        best['provider'] as String,
+      );
+      return true;
     } catch (e) {
-      debugPrint('[AnimePlayer] ${embed.displayName} failed: $e');
-      return null;
+      debugPrint('[AnimePlayer] AnimeRealms failed: $e');
+      return false;
     }
   }
 
-  Future<void> _launchPlayer(
-      List<({AnimeEmbed embed, ExtractedMedia media})> hits) async {
-    final winner = hits.first;
-    await _service.recordWatch(
-      anime: widget.anime,
-      episodeNumber: widget.episodeNumber,
-      category: _category,
-    );
+  Future<void> _launchFromMiruro(MiruroResult res) async {
+    final subs = res.tracks
+        .map((t) => <String, dynamic>{
+              'url': t.url,
+              'display': t.label,
+              'language': _langCodeFromLabel(
+                t.language.isNotEmpty ? t.language : t.label,
+              ),
+              'referer': res.referer,
+              'origin': res.origin,
+            })
+        .toList();
 
-    // Megaplay/vidwish HLS CDNs gate segment requests on embed-host headers.
-    // Route through the local hls-proxy so every playlist/segment fetch gets
-    // Referer/Origin injected (mpv direct open only sends them on the master).
+    final headers = <String, String>{
+      'Referer': res.referer,
+      'Origin': res.origin,
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    };
+
+    final ls = LocalServerService();
+    var url = res.url;
+    Map<String, String>? srcHeaders = headers;
+    if (url.contains('.m3u8') && ls.port != 0) {
+      url = ls.getHlsProxyUrl(url, headers);
+      srcHeaders = null;
+    }
+
+    final sources = [
+      StreamSource(
+        url: url,
+        title: 'Miruro · $_activeProvider',
+        type: res.url.contains('.m3u8') ? 'hls' : 'video',
+        headers: srcHeaders,
+      ),
+    ];
+
+    await _openPlayer(
+      streamUrl: url,
+      headers: srcHeaders,
+      sources: sources,
+      providerLabel: 'miruro_$_activeProvider',
+      externalSubtitles: subs.isNotEmpty ? subs : null,
+    );
+  }
+
+  Future<void> _launchFromAnimeRealms(
+    List<Map<String, dynamic>> streams,
+    List rawSubs,
+    String provider,
+  ) async {
+    _activeProvider = provider;
+    _usingAnimeRealms = true;
+
+    final playable = streams
+        .map((s) {
+          final url = (s['url'] as String?) ?? '';
+          if (url.isEmpty) return null;
+          final hdrs = s['headers'] as Map<String, dynamic>?;
+          final referer = hdrs?['Referer'] as String?;
+          final isHls = url.contains('.m3u8');
+          return (
+            url: url,
+            referer: referer,
+            quality: (s['quality'] as String?) ?? 'Default',
+            type: isHls ? 'hls' : 'video',
+          );
+        })
+        .whereType<({String url, String? referer, String quality, String type})>()
+        .toList();
+
+    if (playable.isEmpty) return;
+
+    final best = playable.first;
+    final headers = <String, String>{};
+    if (best.referer != null && best.referer!.isNotEmpty) {
+      headers['Referer'] = best.referer!;
+    }
+
     final ls = LocalServerService();
     final sources = <StreamSource>[];
-    for (final h in hits) {
-      final headers = Map<String, String>.from(h.media.headers)
-        ..putIfAbsent('Referer', () => '${h.embed.refererOrigin}/')
-        ..putIfAbsent('Origin', () => h.embed.refererOrigin);
-      var url = h.media.url;
-      Map<String, String>? srcHeaders = headers;
-      if (url.contains('.m3u8') && ls.port != 0) {
-        url = ls.getHlsProxyUrl(url, headers);
+    for (final s in playable) {
+      var url = s.url;
+      Map<String, String>? srcHeaders;
+      if (s.referer != null && s.referer!.isNotEmpty) {
+        srcHeaders = {'Referer': s.referer!};
+      }
+      if (url.contains('.m3u8') && ls.port != 0 && srcHeaders != null) {
+        url = ls.getHlsProxyUrl(url, srcHeaders);
         srcHeaders = null;
       }
       sources.add(StreamSource(
         url: url,
-        title: h.embed.displayName,
-        type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
+        title: '${s.quality} ($provider)',
+        type: s.type,
         headers: srcHeaders,
       ));
     }
 
-    // Aggregate subtitle tracks across all hits. Most extractors return
-    // the same set, but a stale/dead source's subs would be lost if we
-    // only kept the winner's.
-    final seenSubs = <String>{};
-    final allSubs = <Map<String, dynamic>>[];
-    for (final h in hits) {
-      for (final s in (h.media.externalSubtitles ?? const [])) {
-        final url = s['url']?.toString() ?? '';
-        if (url.isEmpty || !seenSubs.add(url)) continue;
-        allSubs.add(s);
-      }
-    }
+    final subs = rawSubs
+        .whereType<Map>()
+        .map((s) => <String, dynamic>{
+              'url': s['url'] ?? s['file'] ?? '',
+              'display': s['label'] ?? 'Unknown',
+              'language': s['language'] ?? '',
+            })
+        .where((s) => (s['url'] as String).isNotEmpty)
+        .toList();
 
-    final winnerSource = sources.first;
-    final title =
-        '${widget.anime.displayTitle} \u2022 Ep ${widget.episodeNumber} (${winner.embed.displayName})';
+    await _openPlayer(
+      streamUrl: sources.first.url,
+      headers: headers.isNotEmpty ? headers : null,
+      sources: sources,
+      providerLabel: 'animerealms_$provider',
+      externalSubtitles: subs.isNotEmpty ? subs : null,
+    );
+  }
 
-    final totalEpisodes = _series?.episodes.length ??
-        (widget.allEpisodes.isNotEmpty
-            ? widget.allEpisodes.length
-            : (widget.anime.episodes ?? 0));
-    final hasNext = totalEpisodes > widget.episodeNumber;
+  Future<void> _openPlayer({
+    required String streamUrl,
+    Map<String, String>? headers,
+    required List<StreamSource> sources,
+    required String providerLabel,
+    List<Map<String, dynamic>>? externalSubtitles,
+  }) async {
+    await _service.recordWatch(
+      anime: widget.anime,
+      episodeNumber: widget.episodeNumber,
+      category: widget.category,
+      provider: _activeProvider,
+      useAnimeRealms: _usingAnimeRealms,
+    );
 
     var episodes = widget.allEpisodes;
     if (episodes.isEmpty) {
@@ -373,17 +369,25 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
     }
 
+    final totalEpisodes = episodes.isNotEmpty
+        ? episodes.length
+        : (widget.anime.episodes ?? 0);
+    final hasNext = totalEpisodes > widget.episodeNumber;
+
+    final title =
+        '${widget.anime.displayTitle} • Ep ${widget.episodeNumber} ($_activeProvider)';
+
     if (!mounted) return;
     final navigator = Navigator.of(context, rootNavigator: true);
     await navigator.pushReplacement(
       AppRouter.fadeRoute(
         (_) => PlayerScreen(
-          streamUrl: winnerSource.url,
+          streamUrl: streamUrl,
           title: title,
-          headers: winnerSource.headers,
+          headers: headers,
           sources: sources,
-          activeProvider: winner.embed.server,
-          externalSubtitles: allSubs.isNotEmpty ? allSubs : null,
+          activeProvider: providerLabel,
+          externalSubtitles: externalSubtitles,
           movie: _hubMovieFromAnime(widget.anime),
           hubEpisodes: hubEpisodes,
           hubEpisodeNumber: widget.episodeNumber,
@@ -394,7 +398,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
                 (_) => AnimePlayerScreen(
                   anime: widget.anime,
                   episodeNumber: ep.number.toInt(),
-                  category: _category,
+                  category: widget.category,
+                  provider: _activeProvider,
+                  useAnimeRealms: _usingAnimeRealms,
                   allEpisodes: episodes,
                 ),
               ),
@@ -404,7 +410,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
             await _service.recordWatch(
               anime: widget.anime,
               episodeNumber: widget.episodeNumber,
-              category: _category,
+              category: widget.category,
+              provider: _activeProvider,
+              useAnimeRealms: _usingAnimeRealms,
               position: pos,
               duration: dur,
             );
@@ -417,7 +425,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
                       (_) => AnimePlayerScreen(
                         anime: widget.anime,
                         episodeNumber: widget.episodeNumber + 1,
-                        category: _category,
+                        category: widget.category,
+                        provider: _activeProvider,
+                        useAnimeRealms: _usingAnimeRealms,
                         allEpisodes: episodes,
                       ),
                     ),
@@ -453,26 +463,24 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (_resolving) ...[
-                    CircularProgressIndicator(color: theme.primaryColor, strokeWidth: 2.5),
+                    CircularProgressIndicator(
+                        color: theme.primaryColor, strokeWidth: 2.5),
                     const SizedBox(height: 18),
-                  ] else if (_failedAll) ...[
-                    Icon(Icons.error_outline, color: theme.primaryColor, size: 48),
+                  ] else if (_failed) ...[
+                    Icon(Icons.error_outline,
+                        color: theme.primaryColor, size: 48),
                     const SizedBox(height: 12),
                   ],
-                  Text(_phase, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                  if (_statusLine.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(_statusLine,
-                        style: const TextStyle(color: Colors.white54, fontSize: 11),
-                        textAlign: TextAlign.center),
-                  ],
-                  if (_failedAll) ...[
+                  Text(_phase,
+                      style: const TextStyle(color: Colors.white, fontSize: 14)),
+                  if (_failed) ...[
                     const SizedBox(height: 22),
                     TextButton.icon(
-                      onPressed: _resolveForCategory,
+                      onPressed: _resolve,
                       icon: const Icon(Icons.refresh, size: 16),
                       label: const Text('Retry'),
-                      style: TextButton.styleFrom(foregroundColor: theme.primaryColor),
+                      style: TextButton.styleFrom(
+                          foregroundColor: theme.primaryColor),
                     ),
                   ],
                 ],
@@ -484,4 +492,3 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     );
   }
 }
-

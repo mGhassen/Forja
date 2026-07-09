@@ -2395,12 +2395,13 @@ Future<void> resumePlaybackFromHistory(
           genres: [],
           imdbId: item['imdbId'],
         );
-        await AppRouter.openStreamingDetails(
+        await AppRouter.openDetails(
           context,
           movie: movie,
           initialSeason: season,
           initialEpisode: episode,
           startPosition: startPos,
+          autoPlay: true,
         );
       }
       return;
@@ -2585,25 +2586,13 @@ Future<void> resumePlaybackFromHistory(
           genres: [],
           imdbId: item['imdbId'],
         );
-        final isStreaming = await SettingsService().isStreamingModeEnabled();
-        if (!context.mounted) return;
-        if (isStreaming) {
-          await AppRouter.openStreamingDetails(
-            context,
-            movie: movie,
-            initialSeason: season,
-            initialEpisode: episode,
-            startPosition: startPos,
-          );
-        } else {
-          await AppRouter.openDetails(
-            context,
-            movie: movie,
-            initialSeason: season,
-            initialEpisode: episode,
-            startPosition: startPos,
-          );
-        }
+        await AppRouter.openDetails(
+          context,
+          movie: movie,
+          initialSeason: season,
+          initialEpisode: episode,
+          startPosition: startPos,
+        );
       }
       return;
     }
@@ -2754,55 +2743,30 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
       imdbId: item['imdbId'],
     );
 
-    final isStreamingMode = await SettingsService().isStreamingModeEnabled();
-    
-    // Determine which screen to open based on streaming mode and item type
-    if (isStreamingMode) {
-      if (mounted) {
-        await AppRouter.openStreamingDetails(
-          context,
-          movie: movie,
-          initialSeason: season,
-          initialEpisode: episode,
-        );
-      }
-    } else {
-      // Streaming mode OFF
-      // Check if it's a Stremio addon with custom ID
-      final stremioItemId = item['stremioId'] as String?;
-      final stremioAddonBase = item['stremioAddonBaseUrl'] as String?;
-      final isCustomId = stremioItemId != null && 
-                         stremioAddonBase != null && 
-                         !stremioItemId.startsWith('tt');
-      
-      if (isCustomId) {
-        // Stremio addon with custom ID -> open DetailsScreen (torrent mode)
-        Map<String, dynamic>? stremioItem = {
-          'id': stremioItemId,
-          '_addonBaseUrl': stremioAddonBase,
-          'type': item['stremioType'] ?? (season != null ? 'series' : 'movie'),
-          'name': title,
-        };
-        
-        if (mounted) {
-          await AppRouter.openDetails(
-            context,
-            movie: movie,
-            stremioItem: stremioItem,
-            initialSeason: season,
-            initialEpisode: episode,
-          );
-        }
-      } else {
-        if (mounted) {
-          await AppRouter.openDetails(
-            context,
-            movie: movie,
-            initialSeason: season,
-            initialEpisode: episode,
-          );
-        }
-      }
+    final stremioItemId = item['stremioId'] as String?;
+    final stremioAddonBase = item['stremioAddonBaseUrl'] as String?;
+    final isCustomId = stremioItemId != null &&
+        stremioAddonBase != null &&
+        !stremioItemId.startsWith('tt');
+
+    Map<String, dynamic>? stremioItem;
+    if (isCustomId) {
+      stremioItem = {
+        'id': stremioItemId,
+        '_addonBaseUrl': stremioAddonBase,
+        'type': item['stremioType'] ?? (season != null ? 'series' : 'movie'),
+        'name': title,
+      };
+    }
+
+    if (mounted) {
+      await AppRouter.openDetails(
+        context,
+        movie: movie,
+        stremioItem: stremioItem,
+        initialSeason: season,
+        initialEpisode: episode,
+      );
     }
   }
 

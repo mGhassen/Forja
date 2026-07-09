@@ -20,7 +20,7 @@ Your cinema universe in one app. This guide explains every feature — what it d
 - [Search](movies-tv/search.md)
 - [Similar](movies-tv/similar.md)
 - [Media details](movies-tv/media-details.md)
-- [Direct streaming mode](movies-tv/direct-streaming-mode.md)
+- [Webstreaming](movies-tv/direct-streaming-mode.md)
 - [Stremio catalog](movies-tv/stremio-catalog.md)
 - [My List](movies-tv/my-list.md)
 - [Watch history](movies-tv/watch-history.md)
@@ -145,7 +145,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 | Goal | Start here |
 |------|------------|
 | Watch a movie from torrents | [Media details](movies-tv/media-details.md) → [Torrent scrapers](scrapers/torrent.md) → [Debrid](sources/debrid.md) |
-| Watch without torrents | [Direct streaming mode](movies-tv/direct-streaming-mode.md) → [Stream providers](sources/stream-providers.md) |
+| Watch without torrents | [Webstreaming](movies-tv/direct-streaming-mode.md) → [Stream providers](sources/stream-providers.md) |
 | Add more stream sources | [Nuvio scrapers](scrapers/nuvio.md) · [WebStreamr settings](scrapers/webstreamr-settings.md) |
 | Watch live sports | [Live Matches](live/live-matches.md) |
 | Connect my home server | [Jellyfin](jellyfin/jellyfin.md) |

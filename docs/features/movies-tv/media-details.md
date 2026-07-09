@@ -4,7 +4,7 @@
 
 ## What it is
 
-When you open a title from Home, Discover, or Search (with torrent mode enabled), you get the **torrent details** screen. A **cinematic hero** (~82% of the viewport for movies, ~68% for TV so the episode rail sits higher on the first screen) shows Ken Burns backdrop animation, then a chromeless YouTube trailer after a random **12–20 seconds** (preloaded for a smooth crossfade). After each trailer finishes, the backdrop returns for another random 12–20 seconds, then the trailer plays again. Trailer audio is on by default and fades from quiet to full volume over 3 seconds. A **mute** button in the bottom-right of the hero toggles sound.
+When you open a title from Home, Discover, Search, or lists, you get the **media details** screen — one screen for torrents, Stremio/Nuvio, and webstreaming. A **cinematic hero** (~82% of the viewport for movies, ~68% for TV so the episode rail sits higher on the first screen) shows Ken Burns backdrop animation, then a chromeless YouTube trailer after a random **12–20 seconds** (preloaded for a smooth crossfade). After each trailer finishes, the backdrop returns for another random 12–20 seconds, then the trailer plays again. Trailer audio is on by default and fades from quiet to full volume over 3 seconds. A **mute** button in the bottom-right of the hero toggles sound.
 
 The hero overlay is split into two columns on wide screens:
 
@@ -24,12 +24,12 @@ Torrent search, Stremio/Nuvio streams, **Webstreaming** (VidLink, WebStreamr, Vi
 
 ## How to open it
 
-Tap any movie or series poster from Home, Discover, Search, or lists — when **Direct streaming mode** is off in Settings.
+Tap any movie or series poster from Home, Discover, Search, or lists.
 
 ## What you can do
 
 - Watch the Ken Burns backdrop (12–20s), then chromeless autoplay trailer in the hero when TMDB has one; alternates after each trailer ends (sound on, volume ramps up; mute toggle bottom-right)
-- **Play** / **Resume** tries enabled play sources in order; opens **Sources** only if nothing could start
+- **Play** / **Resume** tries enabled play sources in order (torrent → Stremio → webstreaming); opens **Sources** only if nothing could start
 - **Download** or an episode tap opens **Sources** to pick a stream manually
 - **Trailer** (when available) opens the in-app trailer player on the best-matching official trailer
 - Add or remove from **My List** (**+** button in hero)
@@ -40,21 +40,24 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 - Search and sort torrent results in Sources (seeders, size, etc.)
 - Resolve torrents through debrid when configured
 - Mark watched / unwatched per episode
+- Use [Webstreaming](direct-streaming-mode.md) extractors from **Sources** or via **Play** when webstreaming is the only enabled source
 
 ## Setup (if needed)
 
 - [Torrent scrapers](../scrapers/torrent.md), [Jackett](../scrapers/jackett.md), [Prowlarr](../scrapers/prowlarr.md) for more torrent results
 - [Debrid](../sources/debrid.md) for instant cached playback
 - [Stremio addons](../sources/stremio-addons.md) for addon streams
+- [Stream providers](../sources/stream-providers.md) — webstreaming extractor order
 
 ## Tips
 
 - Sort order for torrents is set in Settings → Search & Torrents
-- Enable **Direct streaming mode** to use the [streaming details](direct-streaming-mode.md) screen instead (same hero layout; **Play** starts stream extraction; **Trailer** works the same way)
+- Enable only **Webstreaming** under Play sources if you want **Play** to auto-extract direct links without torrent search
 
 ## Related
 
-- [Direct streaming mode](direct-streaming-mode.md)
+- [Webstreaming](direct-streaming-mode.md)
+- [Playback settings](../settings/playback-settings.md)
 - [Torrent playback](../playback/torrent-playback.md)
 - [Watch history](watch-history.md)
 - [My List](my-list.md)

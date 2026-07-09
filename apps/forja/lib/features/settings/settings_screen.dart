@@ -39,7 +39,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final JackettService _jackett = JackettService();
   final ProwlarrService _prowlarr = ProwlarrService();
   
-  bool _isStreamingMode = false;
   bool _playSourceTorrent = true;
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
@@ -119,7 +118,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<String> _navbarVisible = [];
   List<String> _navbarOrder = [];
 
-  // Stream provider order (Direct Streaming Mode)
+  // Stream provider order (webstreaming extractors)
   List<String> _streamProviderOrder = [];
   Map<String, Map<String, dynamic>> _nuvioProviderEntries = {};
 
@@ -138,7 +137,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final streaming = await _settings.isStreamingModeEnabled();
     final playSourceTorrent = await _settings.isPlaySourceTorrentEnabled();
     final playSourceStremio = await _settings.isPlaySourceStremioEnabled();
     final playSourceWebstreaming =
@@ -219,7 +217,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (mounted) {
       setState(() {
-        _isStreamingMode = streaming;
         _playSourceTorrent = playSourceTorrent;
         _playSourceStremio = playSourceStremio;
         _playSourceWebstreaming = playSourceWebstreaming;
@@ -408,59 +405,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.play_circle_outline_rounded,
                       title: 'Playback',
                       children: [
-                        _buildFocusableToggle(
-                          'Direct Streaming Mode',
-                          'Use direct stream links instead of torrents by default.',
-                          _isStreamingMode,
-                          (val) async {
-                            await _settings.setStreamingMode(val);
-                            setState(() => _isStreamingMode = val);
-                          },
-                        ),
-                        if (!_isStreamingMode) ...[
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              'PLAY SOURCES',
-                              style: TextStyle(
-                                color: AppTheme.current.primaryColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.5,
-                              ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            'PLAY SOURCES',
+                            style: TextStyle(
+                              color: AppTheme.current.primaryColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          _buildFocusableToggle(
-                            'Direct torrent',
-                            'Search and play from built-in torrent indexers.',
-                            _playSourceTorrent,
-                            (val) async {
-                              await _settings.setPlaySourceTorrentEnabled(val);
-                              setState(() => _playSourceTorrent = val);
-                            },
-                          ),
-                          _buildFocusableToggle(
-                            'Stremio',
-                            'Play from installed Stremio and Nuvio addon streams.',
-                            _playSourceStremio,
-                            (val) async {
-                              await _settings.setPlaySourceStremioEnabled(val);
-                              setState(() => _playSourceStremio = val);
-                            },
-                          ),
-                          _buildFocusableToggle(
-                            'Webstreaming',
-                            'Play from web stream extractors (Videasy, WebStreamr, …).',
-                            _playSourceWebstreaming,
-                            (val) async {
-                              await _settings
-                                  .setPlaySourceWebstreamingEnabled(val);
-                              setState(() => _playSourceWebstreaming = val);
-                            },
-                          ),
-                        ],
+                        ),
+                        const SizedBox(height: 4),
+                        _buildFocusableToggle(
+                          'Direct torrent',
+                          'Search and play from built-in torrent indexers.',
+                          _playSourceTorrent,
+                          (val) async {
+                            await _settings.setPlaySourceTorrentEnabled(val);
+                            setState(() => _playSourceTorrent = val);
+                          },
+                        ),
+                        _buildFocusableToggle(
+                          'Stremio',
+                          'Play from installed Stremio and Nuvio addon streams.',
+                          _playSourceStremio,
+                          (val) async {
+                            await _settings.setPlaySourceStremioEnabled(val);
+                            setState(() => _playSourceStremio = val);
+                          },
+                        ),
+                        _buildFocusableToggle(
+                          'Webstreaming',
+                          'Play from web stream extractors (Videasy, WebStreamr, …).',
+                          _playSourceWebstreaming,
+                          (val) async {
+                            await _settings
+                                .setPlaySourceWebstreamingEnabled(val);
+                            setState(() => _playSourceWebstreaming = val);
+                          },
+                        ),
                         _buildStreamProviderOrder(),
                         _buildFocusableDropdown(
                           'Video Player',
@@ -2960,8 +2945,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           const Text(
-            'Order in which Direct Streaming Mode tries each provider. The '
-            'first one that works wins; the rest become in-player fallbacks.',
+            'Order in which webstreaming tries each extractor. The first one '
+            'that works wins; the rest become in-player fallbacks.',
             style: TextStyle(fontSize: 13, color: Colors.white54),
           ),
           const SizedBox(height: 12),

@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
-import 'package:forja/features/home/streaming_details_screen.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/trailer_player_screen.dart';
@@ -61,6 +60,7 @@ class AppRouter {
     );
   }
 
+  /// Legacy alias — all titles use [openDetails].
   static Future<T?> openStreamingDetails<T>(
     BuildContext context, {
     required Movie movie,
@@ -69,17 +69,13 @@ class AppRouter {
     Duration? startPosition,
     bool autoPlay = false,
   }) {
-    return pushShellRoute<T>(
+    return openDetails<T>(
       context,
-      slideRoute(
-        (_) => StreamingDetailsScreen(
-          movie: movie,
-          initialSeason: initialSeason,
-          initialEpisode: initialEpisode,
-          startPosition: startPosition,
-          autoPlay: autoPlay,
-        ),
-      ),
+      movie: movie,
+      initialSeason: initialSeason,
+      initialEpisode: initialEpisode,
+      startPosition: startPosition,
+      autoPlay: autoPlay,
     );
   }
 
@@ -91,19 +87,7 @@ class AppRouter {
     int? initialEpisode,
     Duration? startPosition,
     bool autoPlay = false,
-  }) async {
-    final streaming = await SettingsService().isStreamingModeEnabled();
-    if (!context.mounted) return null;
-    if (streaming) {
-      return openStreamingDetails<T>(
-        context,
-        movie: movie,
-        initialSeason: initialSeason,
-        initialEpisode: initialEpisode,
-        startPosition: startPosition,
-        autoPlay: autoPlay,
-      );
-    }
+  }) {
     return openDetails<T>(
       context,
       movie: movie,
