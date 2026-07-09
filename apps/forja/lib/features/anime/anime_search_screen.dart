@@ -8,6 +8,7 @@ import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class AnimeSearchScreen extends StatefulWidget {
   const AnimeSearchScreen({super.key});
@@ -161,7 +162,7 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
     }
     if (_loading) {
       return Center(
-        child: CircularProgressIndicator(color: AppTheme.primaryColor),
+        child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
       );
     }
     if (_error != null) {
@@ -293,7 +294,7 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor
+                          color: ForjaShellColors.progressFill
                               .withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(4),
                         ),

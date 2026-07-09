@@ -10,6 +10,7 @@ import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_arabic_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class AnimeArabicDetailsScreen extends StatefulWidget {
   final ArabicAnimeCard anime;
@@ -110,7 +111,7 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                     if (_loading)
                       Center(
                         child: CircularProgressIndicator(
-                          color: AppTheme.primaryColor,
+                          color: ForjaShellColors.sectionAccent,
                         ),
                       )
                     else
@@ -166,7 +167,7 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline_rounded,
-                color: AppTheme.primaryColor, size: 48),
+                color: ForjaShellColors.sectionAccent, size: 48),
             const SizedBox(height: 16),
             Text(
               'Failed to load: $_error',
@@ -180,10 +181,10 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
             ElevatedButton(
               onPressed: _load,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
               ),
-              child: const Text('Retry',
-                  style: TextStyle(color: Colors.white)),
+              child: const Text('Retry'),
             ),
           ],
         ),
@@ -422,7 +423,7 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
         children: [
           Expanded(
             child: Material(
-              color: AppTheme.primaryColor,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(28),
               child: InkWell(
                 borderRadius: BorderRadius.circular(28),
@@ -435,14 +436,14 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.play_arrow_rounded,
-                          color: Colors.white, size: 24),
+                          color: Colors.black, size: 24),
                       const SizedBox(width: 6),
                       Text(
                         resumeEp != null
                             ? 'استئناف الحلقة ${resumeEp.number}'
                             : 'تشغيل الحلقة 1',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Colors.black,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.3,
@@ -526,7 +527,7 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                 child: Text(
                   _synopsisExpanded ? 'عرض أقل' : 'عرض المزيد',
                   style: TextStyle(
-                    color: AppTheme.primaryColor,
+                    color: ForjaShellColors.cinematic.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -550,18 +551,11 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
               (g) => Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color:
-                      AppTheme.primaryColor.withValues(alpha: 0.15),
-                  border: Border.all(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                  ),
-                ),
+                decoration: shellChipDecoration(selected: false, radius: 20),
                 child: Text(
                   g,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: ForjaShellColors.cinematic.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -760,8 +754,11 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isCurrent
-                      ? AppTheme.primaryColor
+                      ? ForjaShellColors.chipSelectedBg
                       : Colors.black.withValues(alpha: 0.5),
+                  border: isCurrent
+                      ? Border.all(color: ForjaShellColors.chipSelectedBorder)
+                      : null,
                 ),
                 child: Icon(
                   isCurrent
@@ -780,13 +777,13 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor,
+                  color: ForjaShellColors.sectionIconBg,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   'EP ${ep.number}',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: ForjaShellColors.sectionAccent,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                   ),
@@ -826,7 +823,7 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
       child: Column(
         children: [
           Icon(Icons.error_outline_rounded,
-              color: AppTheme.primaryColor.withValues(alpha: 0.6),
+              color: ForjaShellColors.cinematic.textSecondary,
               size: 36),
           const SizedBox(height: 8),
           Text(

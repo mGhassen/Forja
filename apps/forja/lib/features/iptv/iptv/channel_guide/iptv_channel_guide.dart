@@ -55,6 +55,16 @@ class IptvChannelGuide {
     return null;
   }
 
+  List<IptvGuideChannel> searchChannels(String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return const [];
+    return channels.where((ch) {
+      if (ch.name.toLowerCase().contains(q)) return true;
+      final groupName = groupById(ch.groupId)?.name.toLowerCase() ?? '';
+      return groupName.contains(q);
+    }).toList(growable: false);
+  }
+
   factory IptvChannelGuide.fromXtreamLive({
     required VerifiedPortal portal,
     required List<IptvCategory> categories,

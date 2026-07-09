@@ -9,6 +9,7 @@ import 'package:forja/shared/widgets/hover_scale.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'anime_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class AnimeDetailsScreen extends StatefulWidget {
   final AnimeCard anime;
@@ -228,7 +229,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline_rounded,
-                color: AppTheme.primaryColor, size: 48),
+                color: ForjaShellColors.sectionAccent, size: 48),
             const SizedBox(height: 16),
             Text(
               _error!,
@@ -242,10 +243,10 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             ElevatedButton(
               onPressed: _load,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
               ),
-              child: const Text('Retry',
-                  style: TextStyle(color: Colors.white)),
+              child: const Text('Retry'),
             ),
           ],
         ),
@@ -515,7 +516,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
         children: [
           Expanded(
             child: Material(
-              color: AppTheme.primaryColor,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(28),
               child: InkWell(
                 borderRadius: BorderRadius.circular(28),
@@ -528,14 +529,14 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.play_arrow_rounded,
-                          color: Colors.white, size: 24),
+                          color: Colors.black, size: 24),
                       const SizedBox(width: 6),
                       Text(
                         hasProgress
                             ? 'Resume Ep $resumeEp'
                             : 'Play Ep 1',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Colors.black,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.3,
@@ -674,13 +675,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
       child: Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.06),
-          ),
-        ),
+        decoration: shellChipDecoration(selected: false, radius: 24),
         child: Row(
           children: [
             _categoryButton('sub', 'SUB', Icons.subtitles_rounded),
@@ -693,36 +688,33 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
   Widget _categoryButton(String id, String label, IconData icon) {
     final selected = _category == id;
+    final cinematic = ForjaShellColors.cinematic;
     return Expanded(
       child: Material(
-        color: selected
-            ? AppTheme.primaryColor
-            : Colors.transparent,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () => setState(() => _category = id),
-          child: Padding(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: shellChipDecoration(selected: selected, radius: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   icon,
                   size: 16,
-                  color: selected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.7),
+                  color: selected ? cinematic.textPrimary : cinematic.textSecondary,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   label,
                   style: TextStyle(
-                    color: selected
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.7),
+                    color: selected ? cinematic.textPrimary : cinematic.textSecondary,
                     fontSize: 13,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -744,11 +736,11 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.15),
+              color: ForjaShellColors.sectionIconBg,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(Icons.playlist_play_rounded,
-                color: AppTheme.primaryColor, size: 18),
+                color: ForjaShellColors.sectionAccent, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -772,8 +764,8 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                     borderRadius: BorderRadius.circular(2),
                     gradient: LinearGradient(
                       colors: [
-                        AppTheme.primaryColor,
-                        AppTheme.primaryColor.withValues(alpha: 0.0),
+                        ForjaShellColors.cinematic.navUnderline,
+                        ForjaShellColors.cinematic.navUnderline.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
@@ -826,8 +818,8 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                       'Episodes $start–$end',
                       style: TextStyle(
                         color: i == _episodeChunk
-                            ? AppTheme.primaryColor
-                            : Colors.white,
+                            ? ForjaShellColors.cinematic.textPrimary
+                            : ForjaShellColors.cinematic.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -870,29 +862,20 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
 
   Widget _episodeTile(AnimeEpisode ep, bool isCurrent) {
     return Material(
-      color: isCurrent
-          ? AppTheme.primaryColor.withValues(alpha: 0.25)
-          : Colors.white.withValues(alpha: 0.05),
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: ep.aired ? () => _play(ep.number) : null,
         child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isCurrent
-                  ? AppTheme.primaryColor.withValues(alpha: 0.6)
-                  : Colors.white.withValues(alpha: 0.06),
-            ),
-          ),
+          decoration: shellChipDecoration(selected: isCurrent, radius: 10),
           child: Center(
             child: Text(
               '${ep.number}',
               style: TextStyle(
                 color: ep.aired
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.3),
+                    ? ForjaShellColors.cinematic.textPrimary
+                    : ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.45),
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
               ),
@@ -929,23 +912,15 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? AppTheme.primaryColor.withValues(alpha: 0.22)
-                      : Colors.white.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: selected
-                        ? AppTheme.primaryColor.withValues(alpha: 0.55)
-                        : Colors.white.withValues(alpha: 0.08),
-                  ),
-                ),
+                decoration: shellChipDecoration(selected: selected, radius: 18),
                 child: Text(
                   'S${i + 1}\u00a0\u00b7\u00a0${s.displayTitle}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: selected ? Colors.white : Colors.white70,
+                    color: selected
+                        ? ForjaShellColors.cinematic.textPrimary
+                        : ForjaShellColors.cinematic.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1005,11 +980,11 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                  color: ForjaShellColors.sectionIconBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(Icons.collections_bookmark_rounded,
-                    color: AppTheme.primaryColor, size: 18),
+                    color: ForjaShellColors.sectionAccent, size: 18),
               ),
               const SizedBox(width: 10),
               const Expanded(

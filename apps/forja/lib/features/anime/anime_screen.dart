@@ -321,7 +321,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                       children: [
                         _buildAmbientBackdrop(),
                         RefreshIndicator(
-                          color: AppTheme.primaryColor,
+                          color: ForjaShellColors.sectionAccent,
                           backgroundColor: AppTheme.bgCard,
                           onRefresh: _load,
                           child: CustomScrollView(
@@ -873,7 +873,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                             Text(
                               'Ep $ep · ${cat.toUpperCase()}',
                               style: TextStyle(
-                                color: AppTheme.primaryColor,
+                                color: ForjaShellColors.sectionAccent,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -943,53 +943,11 @@ class _AnimeScreenState extends State<AnimeScreen>
               itemBuilder: (_, i) {
                 final m = _moods[i];
                 final selected = m.id == _selectedMood;
-                return Material(
-                  color: selected
-                      ? AppTheme.primaryColor.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(24),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(24),
-                    onTap: () => _selectMood(m.id),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: selected
-                              ? AppTheme.primaryColor
-                                  .withValues(alpha: 0.7)
-                              : Colors.white.withValues(alpha: 0.08),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            m.icon,
-                            size: 14,
-                            color: selected
-                                ? AppTheme.primaryColor
-                                : Colors.white.withValues(alpha: 0.7),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            m.label,
-                            style: TextStyle(
-                              color: selected
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.75),
-                              fontSize: 12.5,
-                              fontWeight: selected
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                return ForjaShellChip(
+                  label: m.label,
+                  selected: selected,
+                  icon: m.icon,
+                  onTap: () => _selectMood(m.id),
                 );
               },
             ),
@@ -1014,7 +972,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                 height: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppTheme.primaryColor,
+                  color: ForjaShellColors.sectionAccent,
                 ),
               ),
             ),
@@ -1046,12 +1004,12 @@ class _AnimeScreenState extends State<AnimeScreen>
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    color: ForjaShellColors.sectionIconBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.nights_stay_rounded,
-                    color: AppTheme.primaryColor,
+                    color: ForjaShellColors.sectionAccent,
                     size: 18,
                   ),
                 ),
@@ -1342,7 +1300,7 @@ class _AnimeScreenState extends State<AnimeScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline_rounded,
-                color: AppTheme.primaryColor, size: 48),
+                color: ForjaShellColors.sectionAccent, size: 48),
             const SizedBox(height: 16),
             Text(
               _error ?? 'Something went wrong',
@@ -1358,8 +1316,8 @@ class _AnimeScreenState extends State<AnimeScreen>
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
               ),
             ),
           ],
@@ -1551,7 +1509,7 @@ class _AnimeCardTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor
+                          color: ForjaShellColors.progressFill
                               .withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -1617,7 +1575,7 @@ class _AnimeCardTile extends StatelessWidget {
             child: Text(
               '$rank',
               style: TextStyle(
-                color: AppTheme.primaryColor.withValues(alpha: 0.85),
+                color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.85),
                 fontSize: 88,
                 fontWeight: FontWeight.w900,
                 height: 1,
@@ -1625,7 +1583,7 @@ class _AnimeCardTile extends StatelessWidget {
                 shadows: [
                   Shadow(
                     blurRadius: 12,
-                    color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                    color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.35),
                   ),
                 ],
               ),
@@ -1666,11 +1624,11 @@ class _AnimeMosaicSpotlight extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                color: ForjaShellColors.sectionIconBg,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(Icons.auto_awesome_rounded,
-                  color: AppTheme.primaryColor, size: 18),
+                  color: ForjaShellColors.sectionAccent, size: 18),
             ),
             const SizedBox(width: 10),
             const Expanded(

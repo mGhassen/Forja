@@ -17,6 +17,7 @@ Besides Xtream portals, Forja supports plain **M3U/M3U8 playlists**. Import from
 - Browse channels from each playlist
 - Play a channel in the IPTV player
 - Change channels from the in-player guide (groups + channel list overlay)
+- Search channels from the in-player search overlay
 - Switch audio tracks and load subtitle files when the stream supports them
 - Manage multiple playlists
 
@@ -27,6 +28,7 @@ Obtain an M3U URL from your provider or export a `.m3u` file.
 ## Tips
 
 - While watching, tap the grid icon in the player to open groups and channels from your playlist
+- Tap the **search** icon next to the guide to find a channel by name or group
 - Large playlists may take a moment to parse
 - Channel logos and groups depend on what's in the M3U metadata
 

@@ -20,6 +20,7 @@ Tap **IPTV** in the navigation bar → add or select an Xtream portal.
 - Search hardcoded branded channel names
 - Play in the IPTV player screen
 - Change live channels from the in-player channel guide (groups + channel list overlay)
+- Search channels from the in-player search overlay (matches name or category)
 - View programme guide (NOW / NEXT with progress) in the guide when your portal provides EPG
 - Switch audio tracks and subtitles from the player controls when the stream provides them
 
@@ -32,6 +33,7 @@ Tap **IPTV** in the navigation bar → add or select an Xtream portal.
 ## Tips
 
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide — pick a category on the left (desktop) or from the list (phone), then tap a channel to zap without leaving playback
+- Tap the **search** icon next to the guide to open a centered channel search — type to filter by channel or category name, then tap a result to switch
 - Portal quality varies — timeouts usually mean provider or network issues
 - Series VOD uses the same player as live with seek support when the stream allows
 

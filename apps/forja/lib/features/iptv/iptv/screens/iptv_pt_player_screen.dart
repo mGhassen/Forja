@@ -12,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide_panel.dart';
+import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_search_overlay.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
@@ -123,6 +124,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   Timer? _hideControlsTimer;
 
   bool _guideVisible = false;
+  bool _searchVisible = false;
   late String _selectedGroupId;
   late String _currentChannelId;
   double _subtitleDelay = 0;
@@ -166,6 +168,22 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
+  bool _disposed = false;
+  bool _playerAlive = false;
+
+  static const _playerConfiguration = PlayerConfiguration(
+    bufferSize: 64 * 1024 * 1024,
+    logLevel: MPVLogLevel.warn,
+    libass: true,
+  );
+
+  void _initPlayerInstances() {
+    _player = Player(configuration: _playerConfiguration);
+    _controller = VideoController(_player);
+    _playerAlive = true;
+    _bind();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -179,15 +197,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     WidgetsBinding.instance.addObserver(this);
     _initOrientationAndChrome();
     WakelockPlus.enable();
-    _player = Player(
-      configuration: const PlayerConfiguration(
-        bufferSize: 64 * 1024 * 1024,
-        logLevel: MPVLogLevel.warn,
-        libass: true,
-      ),
-    );
-    _controller = VideoController(_player);
-    _bind();
+    _initPlayerInstances();
     _applyMpvTunables();
     _openCurrent();
     _startWatchdog();
@@ -316,7 +326,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   void _bind() {
     _posSub = _player.stream.position.listen((pos) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       if (!_isSeeking && pos != _position) {
         // Don't pump setState on every tick if duration is 0 (pure live).
         if (_isVod) {
@@ -338,15 +348,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       }
     });
     _durSub = _player.stream.duration.listen((dur) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       if (dur != _duration) setState(() => _duration = dur);
     });
     _bufferSub = _player.stream.buffer.listen((buf) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       _buffered = buf;
     });
     _playingSub = _player.stream.playing.listen((p) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       setState(() => _playing = p);
       if (p) {
         _readyNotPlayingSince = null;
@@ -484,7 +494,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   void _startWatchdog() {
     _watchdog = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       final now = DateTime.now();
 
       // Healthy streak resets retry counter
@@ -562,7 +572,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     required String reason,
     bool forceHard = false,
   }) async {
-    if (_recoveryInFlight) return;
+    if (_disposed || _recoveryInFlight) return;
     final now = DateTime.now();
     if (_lastRecoveryAt != null &&
         now.difference(_lastRecoveryAt!) <
@@ -575,6 +585,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         '[IPTV Watchdog] recovery (#${_retryAttempt + 1}, hard=$forceHard): $reason');
 
     try {
+      if (_disposed) return;
+
       if (_retryAttempt >= _maxRetries) {
         // Rotate to the next source if we have one.
         if (_sourceIdx < _sources.length - 1) {
@@ -595,22 +607,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               'Stream offline — retrying every ${_coldRetryInterval.inSeconds}s…');
         }
         await Future.delayed(_coldRetryInterval);
+        if (_disposed) return;
         try {
-          await _disposePlayer();
-          _player = Player(
-            configuration: const PlayerConfiguration(
-              bufferSize: 64 * 1024 * 1024,
-              logLevel: MPVLogLevel.warn,
-            ),
-          );
-          _controller = VideoController(_player);
-          _bind();
-          await _applyMpvTunables();
+          if (!await _recreatePlayer()) return;
         } catch (e) {
           debugPrint('[IPTV] cold-retry recreate failed: $e');
         }
         // Reset the retry ladder so the next ladder run gets fresh backoff.
         _retryAttempt = 0;
+        if (_disposed || !_playerAlive) return;
         try {
           await _player.open(
             Media(_sources[_sourceIdx].url,
@@ -639,22 +644,14 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       }
 
       await Future.delayed(Duration(milliseconds: delay));
+      if (_disposed) return;
 
       // Fast path: silent self-pause on a live stream means the feed is
       // gone. A seek/reload won't bring it back — jump straight to the
       // "recreate the player" tier so we get a fully fresh socket.
       if (forceHard) {
         try {
-          await _disposePlayer();
-          _player = Player(
-            configuration: const PlayerConfiguration(
-              bufferSize: 64 * 1024 * 1024,
-              logLevel: MPVLogLevel.warn,
-            ),
-          );
-          _controller = VideoController(_player);
-          _bind();
-          await _applyMpvTunables();
+          if (!await _recreatePlayer()) return;
           await _player.open(
             Media(_sources[_sourceIdx].url,
                 httpHeaders: const {'User-Agent': _ua}),
@@ -689,16 +686,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       } else {
         // Recreate
         try {
-          await _disposePlayer();
-          _player = Player(
-            configuration: const PlayerConfiguration(
-              bufferSize: 64 * 1024 * 1024,
-              logLevel: MPVLogLevel.warn,
-            ),
-          );
-          _controller = VideoController(_player);
-          _bind();
-          await _applyMpvTunables();
+          if (!await _recreatePlayer()) return;
           await _player.open(
             Media(_sources[_sourceIdx].url,
                 httpHeaders: const {'User-Agent': _ua}),
@@ -719,7 +707,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     }
   }
 
-  Future<void> _disposePlayer() async {
+  Future<bool> _recreatePlayer() async {
+    await _disposePlayer();
+    if (_disposed) return false;
+    _initPlayerInstances();
+    await _applyMpvTunables();
+    return true;
+  }
+
+  Future<void> _cancelPlayerSubscriptions() async {
     await _posSub?.cancel();
     await _durSub?.cancel();
     await _playingSub?.cancel();
@@ -727,9 +723,32 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     await _errorSub?.cancel();
     await _logSub?.cancel();
     await _bufferSub?.cancel();
+    _posSub = null;
+    _durSub = null;
+    _playingSub = null;
+    _bufferingSub = null;
+    _errorSub = null;
+    _logSub = null;
+    _bufferSub = null;
+  }
+
+  Future<void> _disposePlayer() async {
+    if (!_playerAlive) return;
+    _playerAlive = false;
+    await _cancelPlayerSubscriptions();
+    try {
+      await _player.stop();
+    } catch (_) {}
     try {
       await _player.dispose();
     } catch (_) {}
+  }
+
+  Future<void> _finalizeExit() async {
+    while (_recoveryInFlight) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+    await _disposePlayer();
   }
 
   void _switchSource(int idx) async {
@@ -778,12 +797,33 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     setState(() {
       _guideVisible = !_guideVisible;
       if (_guideVisible) {
+        _searchVisible = false;
         _controlsVisible = true;
         _hideControlsTimer?.cancel();
       } else {
         _scheduleHideControls();
       }
     });
+  }
+
+  void _toggleSearch() {
+    if (widget.channelGuide == null) return;
+    setState(() {
+      _searchVisible = !_searchVisible;
+      if (_searchVisible) {
+        _guideVisible = false;
+        _controlsVisible = true;
+        _hideControlsTimer?.cancel();
+      } else {
+        _scheduleHideControls();
+      }
+    });
+  }
+
+  void _onSearchChannelSelected(IptvGuideChannel ch) {
+    setState(() => _searchVisible = false);
+    _switchChannel(ch);
+    _scheduleHideControls();
   }
 
   void _updateSubVisibility(SubtitleTrack track) {
@@ -910,7 +950,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   void _scheduleHideControls() {
     _hideControlsTimer?.cancel();
-    if (_guideVisible) return;
+    if (_guideVisible || _searchVisible) return;
     _hideControlsTimer =
         Timer(const Duration(seconds: 4), () {
       if (!mounted) return;
@@ -925,11 +965,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   @override
   void dispose() {
+    _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
-    _disposePlayer();
+    unawaited(_finalizeExit());
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
@@ -976,10 +1017,20 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               duration: const Duration(milliseconds: 220),
               opacity: _controlsVisible ? 1 : 0,
               child: IgnorePointer(
-                ignoring: !_controlsVisible || _guideVisible,
+                ignoring: !_controlsVisible || _guideVisible || _searchVisible,
                 child: _buildOverlay(compact),
               ),
             ),
+            if (_searchVisible && widget.channelGuide != null)
+              IptvChannelSearchOverlay(
+                guide: widget.channelGuide!,
+                currentChannelId: _currentChannelId,
+                onChannelSelected: _onSearchChannelSelected,
+                onClose: () => setState(() {
+                  _searchVisible = false;
+                  _scheduleHideControls();
+                }),
+              ),
             if (_guideVisible && widget.channelGuide != null)
               IptvChannelGuidePanel(
                 guide: widget.channelGuide!,
@@ -1362,6 +1413,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           ),
           const Spacer(),
           if (widget.channelGuide != null) ...[
+            _RoundIcon(
+              icon: Icons.search_rounded,
+              onTap: _toggleSearch,
+            ),
+            const SizedBox(width: 14),
             _RoundIcon(
               icon: Icons.grid_view_rounded,
               onTap: _toggleGuide,

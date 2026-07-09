@@ -9,6 +9,7 @@ import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_arabic_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class AnimeArabicSearchScreen extends StatefulWidget {
   const AnimeArabicSearchScreen({super.key});
@@ -124,7 +125,7 @@ class _AnimeArabicSearchScreenState extends State<AnimeArabicSearchScreen> {
   Widget _buildBody(bool isLandscape) {
     if (_loading) {
       return Center(
-          child: CircularProgressIndicator(color: AppTheme.primaryColor));
+          child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent));
     }
     if (_error != null) {
       return Center(
@@ -146,7 +147,7 @@ class _AnimeArabicSearchScreenState extends State<AnimeArabicSearchScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.search,
-                  color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                  color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.4),
                   size: 56),
               const SizedBox(height: 12),
               Text(

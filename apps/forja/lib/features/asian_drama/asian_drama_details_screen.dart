@@ -14,6 +14,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'asian_drama_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class AsianDramaDetailsScreen extends StatefulWidget {
   final KdramaCard drama;
@@ -141,7 +142,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
           body: _loading
               ? Center(
                   child: CircularProgressIndicator(
-                    color: AppTheme.primaryColor,
+                    color: ForjaShellColors.sectionAccent,
                   ),
                 )
               : _error != null
@@ -174,7 +175,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline_rounded,
-                color: AppTheme.primaryColor, size: 56),
+                color: ForjaShellColors.sectionAccent, size: 56),
             const SizedBox(height: 14),
             Text(
               'Failed to load:\n$_error',
@@ -190,8 +191,8 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
               ),
             ),
             const SizedBox(height: 8),
@@ -281,8 +282,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
               if (det.year != null) _chip(det.year!),
               if (det.country.isNotEmpty) _chip(det.country),
               if (det.type.isNotEmpty) _chip(det.type),
-              if (det.status.isNotEmpty)
-                _chip(det.status, accent: AppTheme.primaryColor),
+              if (det.status.isNotEmpty) _chip(det.status),
               if (det.episodesCount > 0) _chip('${det.episodesCount} EP'),
               if (det.label != null && det.label!.isNotEmpty)
                 _chip(det.label!,
@@ -295,27 +295,34 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   }
 
   Widget _chip(String label, {Color? accent}) {
-    final c = accent ?? Colors.white.withValues(alpha: 0.18);
+    if (accent != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.2),
+          border: Border.all(color: accent.withValues(alpha: 0.6), width: 1),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: accent,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: accent != null
-            ? c.withValues(alpha: 0.2)
-            : Colors.white.withValues(alpha: 0.08),
-        border: Border.all(
-          color: accent != null
-              ? c.withValues(alpha: 0.6)
-              : Colors.white.withValues(alpha: 0.18),
-          width: 1,
-        ),
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: shellChipDecoration(selected: false, radius: 6),
       child: Text(
         label,
         style: TextStyle(
-          color: accent != null ? c : Colors.white,
+          color: ForjaShellColors.cinematic.textSecondary,
           fontSize: 11,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
           letterSpacing: 0.3,
         ),
       ),
@@ -453,7 +460,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
                 child: Text(
                   _synopsisExpanded ? 'Show less' : 'Show more',
                   style: TextStyle(
-                    color: AppTheme.primaryColor,
+                    color: ForjaShellColors.cinematic.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -577,13 +584,13 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
             padding:
                 const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.18),
+              color: ForjaShellColors.sectionIconBg,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               '${eps.length}',
               style: TextStyle(
-                color: AppTheme.primaryColor,
+                color: ForjaShellColors.sectionAccent,
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
               ),
@@ -610,13 +617,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
-                  ),
-                ),
+                decoration: shellChipDecoration(selected: true, radius: 8),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -680,17 +681,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
               onTap: () => _play(ep),
               radius: 10,
               child: Container(
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? AppTheme.primaryColor.withValues(alpha: 0.25)
-                      : AppTheme.bgCard.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isActive
-                        ? AppTheme.primaryColor.withValues(alpha: 0.7)
-                        : Colors.white.withValues(alpha: 0.06),
-                  ),
-                ),
+                decoration: shellChipDecoration(selected: isActive, radius: 10),
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

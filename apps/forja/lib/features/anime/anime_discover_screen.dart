@@ -8,6 +8,7 @@ import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'anime_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class AnimeDiscoverScreen extends StatefulWidget {
   const AnimeDiscoverScreen({super.key});
@@ -129,7 +130,7 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
                             .pop(_PickResult<T>(null, true)),
                         child: Text('Clear',
                             style: TextStyle(
-                                color: AppTheme.primaryColor,
+                                color: ForjaShellColors.cinematic.textPrimary,
                                 fontWeight: FontWeight.w700)),
                       ),
                   ],
@@ -146,14 +147,14 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
                       title: Text(label(v),
                           style: TextStyle(
                               color: selected
-                                  ? AppTheme.primaryColor
-                                  : Colors.white,
+                                  ? ForjaShellColors.cinematic.textPrimary
+                                  : ForjaShellColors.cinematic.textSecondary,
                               fontWeight: selected
-                                  ? FontWeight.w800
+                                  ? FontWeight.w600
                                   : FontWeight.w500)),
                       trailing: selected
                           ? Icon(Icons.check_rounded,
-                              color: AppTheme.primaryColor)
+                              color: ForjaShellColors.chipSelectedIcon)
                           : null,
                       onTap: () => Navigator.of(context)
                           .pop(_PickResult<T>(v, false)),
@@ -322,53 +323,17 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: Material(
-        color: active
-            ? AppTheme.primaryColor.withValues(alpha: 0.2)
-            : Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: active
-                    ? AppTheme.primaryColor.withValues(alpha: 0.6)
-                    : Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon,
-                      size: 14,
-                      color: Colors.white.withValues(alpha: 0.7)),
-                  const SizedBox(width: 6),
-                ],
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: active
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.8),
-                    fontSize: 13,
-                    fontWeight:
-                        active ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(Icons.expand_more_rounded,
-                    size: 14,
-                    color: Colors.white.withValues(alpha: 0.5)),
-              ],
-            ),
-          ),
+      child: ForjaShellChip(
+        label: label,
+        selected: active,
+        icon: icon,
+        trailing: Icon(
+          Icons.expand_more_rounded,
+          size: 14,
+          color: ForjaShellColors.cinematic.textSecondary,
         ),
+        onTap: onTap,
+        fontSize: 13,
       ),
     );
   }
@@ -380,7 +345,7 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
         if (!snap.hasData) {
           return Center(
             child: CircularProgressIndicator(
-              color: AppTheme.primaryColor,
+              color: ForjaShellColors.sectionAccent,
             ),
           );
         }
@@ -392,7 +357,7 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.error_outline_rounded,
-                      color: AppTheme.primaryColor, size: 48),
+                      color: ForjaShellColors.sectionAccent, size: 48),
                   const SizedBox(height: 16),
                   Text(
                     'Failed to load',
@@ -569,16 +534,13 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
           Container(
             padding: const EdgeInsets.symmetric(
                 horizontal: 18, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
+            decoration: shellChipDecoration(selected: true, radius: 20),
             child: Text(
               'Page $_page',
               style: TextStyle(
-                color: AppTheme.primaryColor,
+                color: ForjaShellColors.cinematic.textPrimary,
                 fontSize: 13,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),

@@ -46,6 +46,22 @@ class TorrentReleaseMetadata {
         ...sourceTags.take(1),
       ];
 
+  /// Single-line meta for list tiles — flags + key tags, no pill chrome.
+  String get compactMetaLine {
+    final parts = <String>[];
+    final f = flags.trim();
+    if (f.isNotEmpty) parts.add(f);
+    if (quality != null) parts.add(quality!);
+    if (videoCodec != null) parts.add(videoCodec!);
+    if (audioTags.isNotEmpty) parts.add(audioTags.first);
+    for (final t in techTags) {
+      if (parts.length >= 5) break;
+      parts.add(t);
+    }
+    if (sourceTags.isNotEmpty && parts.length < 5) parts.add(sourceTags.first);
+    return parts.join(' · ');
+  }
+
   static bool nameContains({required String name, required String query}) {
     if (query.trim().isEmpty) return true;
     return name.toLowerCase().contains(query.trim().toLowerCase());

@@ -4,75 +4,6 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:rust/rust.dart';
 
-class SourceBadge extends StatelessWidget {
-  const SourceBadge({
-    super.key,
-    required this.label,
-    this.accent = false,
-    this.color,
-  });
-
-  final String label;
-  final bool accent;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: color ??
-            (accent
-                ? ForjaShellColors.chipSelectedBg
-                : Colors.white.withValues(alpha: 0.1)),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(
-          color: accent
-              ? ForjaShellColors.chipSelectedBorder
-              : Colors.white.withValues(alpha: 0.14),
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: accent
-              ? ForjaShellColors.cinematic.textPrimary
-              : ForjaShellColors.cinematic.textSecondary,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class SourceMetadataRow extends StatelessWidget {
-  const SourceMetadataRow({super.key, required this.metadata});
-
-  final TorrentReleaseMetadata metadata;
-
-  @override
-  Widget build(BuildContext context) {
-    final flags = metadata.flags;
-    final badges = metadata.badgeLabels;
-    if (flags.isEmpty && badges.isEmpty) return const SizedBox.shrink();
-
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        if (flags.isNotEmpty)
-          Text(
-            flags,
-            style: const TextStyle(fontSize: 14, height: 1.1),
-          ),
-        ...badges.map((b) => SourceBadge(label: b, accent: b == metadata.quality)),
-      ],
-    );
-  }
-}
-
 class TorrentSourceTile extends StatelessWidget {
   const TorrentSourceTile({
     super.key,
@@ -95,7 +26,17 @@ class TorrentSourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isTv = ShellTokens.isTvLayout(context);
     final metadata = TorrentReleaseMetadata.parse(result.name);
+    final quality = metadata.quality ?? '?';
+    final meta = metadata.compactMetaLine;
+    final titleSize = isTv ? 15.0 : 13.0;
+    final padV = isTv ? 14.0 : 10.0;
+    final seeds = result.seedersCount > 0
+        ? '${result.seedersCount}'
+        : (result.seeders.trim().isEmpty ? '0' : result.seeders.trim());
+    final hasSeeds = result.seedersCount > 0 ||
+        (int.tryParse(result.seeders.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0) > 0;
 
     return FocusableControl(
       onTap: onPlay,
@@ -115,95 +56,96 @@ class TorrentSourceTile extends StatelessWidget {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              padding: EdgeInsets.fromLTRB(12, padV, 12, padV),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SizedBox(
+                    width: isTv ? 48 : 44,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          quality,
+                          style: TextStyle(
+                            color: ForjaShellColors.cinematic.textPrimary,
+                            fontSize: isTv ? 13 : 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          seeds,
+                          style: TextStyle(
+                            color: hasSeeds
+                                ? const Color(0xFF22C55E)
+                                : ForjaShellColors.cinematic.textSecondary,
+                            fontSize: isTv ? 15 : 13,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                          ),
+                        ),
+                        Text(
+                          'seeds',
+                          style: TextStyle(
+                            color: ForjaShellColors.cinematic.textSecondary,
+                            fontSize: isTv ? 10 : 9,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SourceMetadataRow(metadata: metadata),
-                        if (metadata.badgeLabels.isNotEmpty || metadata.flags.isNotEmpty)
-                          const SizedBox(height: 6),
                         if (isResumable)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.only(bottom: 2),
                             child: Text(
                               'RESUME',
                               style: TextStyle(
-                                color: ForjaShellColors.cinematic.textPrimary,
+                                color: ForjaShellColors.cinematic.textSecondary,
                                 fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.8,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
                               ),
                             ),
                           ),
                         Text(
                           result.name,
-                          maxLines: 2,
+                          maxLines: isTv ? 2 : 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: ForjaShellColors.cinematic.textPrimary,
-                            fontSize: 12,
-                            height: 1.35,
+                            fontSize: titleSize,
+                            height: 1.25,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 2,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.arrow_upward_rounded,
-                                  size: 11,
-                                  color: Color(0xFF22C55E),
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  result.seeders,
-                                  style: const TextStyle(
-                                    color: Color(0xFF22C55E),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              result.size,
-                              style: TextStyle(
-                                color: ForjaShellColors.cinematic.textSecondary,
-                                fontSize: 11,
-                              ),
-                            ),
-                            if (trackerName.isNotEmpty)
-                              Text(
-                                trackerName,
-                                style: const TextStyle(
-                                  color: Color(0xFF60A5FA),
-                                  fontSize: 11,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                          ],
+                        const SizedBox(height: 4),
+                        Text(
+                          [
+                            if (meta.isNotEmpty) meta,
+                            result.size,
+                            if (trackerName.isNotEmpty) trackerName,
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ForjaShellColors.cinematic.textSecondary,
+                            fontSize: isTv ? 12 : 11,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Column(
-                    children: [
-                      _iconBtn(Icons.content_copy_rounded, false, onCopyMagnet),
-                      const SizedBox(height: 6),
-                      _iconBtn(Icons.play_arrow_rounded, true, onPlay),
-                    ],
-                  ),
+                  if (!isTv) ...[
+                    const SizedBox(width: 6),
+                    _iconBtn(Icons.content_copy_rounded, false, onCopyMagnet),
+                    const SizedBox(width: 6),
+                  ],
+                  _iconBtn(Icons.play_arrow_rounded, true, onPlay, large: isTv),
                 ],
               ),
             ),
@@ -243,54 +185,53 @@ class WebstreamingSourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metadata = TorrentReleaseMetadata.parse(title);
+    final isTv = ShellTokens.isTvLayout(context);
+    final meta = TorrentReleaseMetadata.parse(title).compactMetaLine;
 
     return FocusableControl(
       onTap: onPlay,
       borderRadius: 10,
       child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: isTv ? 14 : 10),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SourceMetadataRow(metadata: metadata),
-                    if (metadata.badgeLabels.isNotEmpty || metadata.flags.isNotEmpty)
-                      const SizedBox(height: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: isTv ? 2 : 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: ForjaShellColors.cinematic.textPrimary,
+                      fontSize: isTv ? 15 : 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (meta.isNotEmpty || subtitle != null) ...[
+                    const SizedBox(height: 4),
                     Text(
-                      title,
-                      maxLines: 2,
+                      [if (meta.isNotEmpty) meta, if (subtitle != null) subtitle]
+                          .join(' · '),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: ForjaShellColors.cinematic.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        color: ForjaShellColors.cinematic.textSecondary,
+                        fontSize: isTv ? 12 : 11,
                       ),
                     ),
-                    if (subtitle != null && subtitle!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle!,
-                        style: TextStyle(
-                          color: ForjaShellColors.cinematic.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-              _iconBtn(Icons.play_arrow_rounded, true, onPlay),
-            ],
-          ),
+            ),
+            _iconBtn(Icons.play_arrow_rounded, true, onPlay, large: isTv),
+          ],
         ),
       ),
     );
@@ -329,7 +270,10 @@ class StremioSourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metadata = TorrentReleaseMetadata.parse('$title $description');
+    final isTv = ShellTokens.isTvLayout(context);
+    final meta = isExternal
+        ? ''
+        : TorrentReleaseMetadata.parse('$title $description').compactMetaLine;
 
     return FocusableControl(
       onTap: onTap,
@@ -353,74 +297,67 @@ class StremioSourceTile extends StatelessWidget {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: isTv ? 14 : 10),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (isExternal)
                     Padding(
-                      padding: const EdgeInsets.only(right: 10, top: 2),
-                      child: Icon(leadingIcon, color: leadingColor, size: 24),
+                      padding: const EdgeInsets.only(right: 10),
+                      child: Icon(leadingIcon, color: leadingColor, size: isTv ? 26 : 22),
                     ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (!isExternal) SourceMetadataRow(metadata: metadata),
-                        if (!isExternal &&
-                            (metadata.badgeLabels.isNotEmpty || metadata.flags.isNotEmpty))
-                          const SizedBox(height: 6),
                         if (isResumable && !isExternal)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.only(bottom: 2),
                             child: Text(
                               'RESUME',
                               style: TextStyle(
-                                color: ForjaShellColors.cinematic.textPrimary,
+                                color: ForjaShellColors.cinematic.textSecondary,
                                 fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.8,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
                         if (addonName != null && showAddonName)
                           Text(
                             addonName!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: leadingColor.withValues(alpha: 0.7),
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
+                              color: leadingColor.withValues(alpha: 0.75),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         Text(
                           title,
-                          maxLines: 2,
+                          maxLines: isTv ? 2 : 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: ForjaShellColors.cinematic.textPrimary,
-                            fontSize: 12,
-                            height: 1.35,
+                            fontSize: isTv ? 15 : 13,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        if (description.isNotEmpty) ...[
-                          const SizedBox(height: 3),
+                        if (meta.isNotEmpty || description.isNotEmpty) ...[
+                          const SizedBox(height: 4),
                           Text(
-                            description,
-                            maxLines: 2,
+                            meta.isNotEmpty ? meta : description,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: ForjaShellColors.cinematic.textSecondary,
-                              fontSize: 11,
+                              fontSize: isTv ? 12 : 11,
                             ),
                           ),
                         ],
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  _iconBtn(actionIcon, true, onTap),
+                  _iconBtn(actionIcon, true, onTap, large: isTv),
                 ],
               ),
             ),
@@ -446,26 +383,28 @@ class StremioSourceTile extends StatelessWidget {
   }
 }
 
-Widget _iconBtn(IconData icon, bool highlight, VoidCallback onTap) => GestureDetector(
+Widget _iconBtn(
+  IconData icon,
+  bool highlight,
+  VoidCallback onTap, {
+  bool large = false,
+}) =>
+    GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 32,
-        height: 32,
+        width: large ? 40 : 32,
+        height: large ? 40 : 32,
         decoration: BoxDecoration(
           color: highlight ? ForjaShellColors.chipSelectedBg : Colors.white.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: highlight
-                ? ForjaShellColors.chipSelectedBorder
-                : ForjaShellColors.cinematic.borderSubtle,
+            color: highlight ? ForjaShellColors.chipSelectedBorder : Colors.white12,
           ),
         ),
         child: Icon(
           icon,
-          size: 17,
-          color: highlight
-              ? ForjaShellColors.chipSelectedIcon
-              : ForjaShellColors.cinematic.textSecondary,
+          size: large ? 22 : 17,
+          color: highlight ? ForjaShellColors.iconActive : Colors.white54,
         ),
       ),
     );

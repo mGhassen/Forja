@@ -11,6 +11,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'asian_drama_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class AsianDramaSearchScreen extends StatefulWidget {
   const AsianDramaSearchScreen({super.key});
@@ -114,7 +115,7 @@ class _AsianDramaSearchScreenState extends State<AsianDramaSearchScreen> {
               onChanged: _onChanged,
               onSubmitted: (v) => _runSearch(v.trim()),
               style: const TextStyle(color: Colors.white, fontSize: 15),
-              cursorColor: AppTheme.primaryColor,
+              cursorColor: ForjaShellColors.sectionAccent,
               decoration: InputDecoration(
                 hintText: 'Search dramas, movies…',
                 hintStyle: TextStyle(
@@ -146,7 +147,7 @@ class _AsianDramaSearchScreenState extends State<AsianDramaSearchScreen> {
     if (_loading) {
       return Center(
         child: CircularProgressIndicator(
-          color: AppTheme.primaryColor,
+          color: ForjaShellColors.sectionAccent,
         ),
       );
     }
@@ -158,7 +159,7 @@ class _AsianDramaSearchScreenState extends State<AsianDramaSearchScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.error_outline_rounded,
-                  color: AppTheme.primaryColor, size: 48),
+                  color: ForjaShellColors.sectionAccent, size: 48),
               const SizedBox(height: 12),
               Text(
                 _error!,
@@ -173,8 +174,8 @@ class _AsianDramaSearchScreenState extends State<AsianDramaSearchScreen> {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
                 ),
               ),
             ],
@@ -276,7 +277,7 @@ class _AsianDramaSearchScreenState extends State<AsianDramaSearchScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
+                    color: ForjaShellColors.progressFill,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(

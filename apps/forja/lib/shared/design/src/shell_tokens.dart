@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 
 /// Layout constants for the app shell nav chrome.
@@ -251,4 +253,12 @@ abstract final class ShellTokens {
 
   @Deprecated('Use navRailWidth')
   static const double navRailExpandedWidth = navRailWidth;
+
+  /// Android TV / leanback: wide landscape with tablet-class shortest side.
+  static bool isTvLayout(BuildContext context) {
+    if (!Platform.isAndroid) return false;
+    final size = MediaQuery.sizeOf(context);
+    if (size.shortestSide < 600) return false;
+    return size.longestSide >= 960 && size.width > size.height;
+  }
 }

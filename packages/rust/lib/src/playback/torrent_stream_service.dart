@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
@@ -232,6 +233,55 @@ class TorrentStreamService {
       _rustEnginePort = 0;
       _setState(EngineState.stopped);
       _log('Engine cleaned up (Rust).');
+    }
+  }
+
+  /// librqbit session download dir — `{temp}/torrent` (see `crates/torrent`).
+  static Directory cacheDirectory() =>
+      Directory('${Directory.systemTemp.path}${Platform.pathSeparator}torrent');
+
+  /// Total bytes on disk under [cacheDirectory] (stream cache, not search results).
+  Future<int> cacheDirectoryBytes() async {
+    if (!PlatformPlayback.capabilities.localTorrentEngine) return 0;
+    final dir = cacheDirectory();
+    if (!await dir.exists()) return 0;
+    return _directorySizeBytes(dir);
+  }
+
+  static String formatStorageBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var value = bytes.toDouble();
+    var unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    if (unit == 0) return '${value.round()} ${units[unit]}';
+    return '${value.toStringAsFixed(1)} ${units[unit]}';
+  }
+
+  static Future<int> _directorySizeBytes(Directory dir) async {
+    var total = 0;
+    await for (final entity in dir.list(recursive: true, followLinks: false)) {
+      if (entity is! File) continue;
+      try {
+        total += await entity.length();
+      } catch (_) {}
+    }
+    return total;
+  }
+
+  Future<void> clearCacheDirectory() async {
+    final dir = cacheDirectory();
+    if (!await dir.exists()) return;
+    await stop();
+    try {
+      await dir.delete(recursive: true);
+      _log('Cleared torrent stream cache (${dir.path})');
+    } catch (e) {
+      _log('Failed to clear torrent cache: $e');
+      rethrow;
     }
   }
 

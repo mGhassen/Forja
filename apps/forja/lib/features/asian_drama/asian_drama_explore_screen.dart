@@ -12,6 +12,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
 import 'asian_drama_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 class AsianDramaExploreScreen extends StatefulWidget {
   const AsianDramaExploreScreen({super.key});
@@ -279,54 +280,18 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
     final active = value != 'All';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Material(
-        color: active
-            ? AppTheme.primaryColor.withValues(alpha: 0.18)
-            : Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: active
-                    ? AppTheme.primaryColor.withValues(alpha: 0.7)
-                    : Colors.white.withValues(alpha: 0.12),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 14,
-                  color: active
-                      ? AppTheme.primaryColor
-                      : Colors.white.withValues(alpha: 0.7),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  active ? value : label,
-                  style: TextStyle(
-                    color: active ? Colors.white : Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Icon(
-                  Icons.expand_more_rounded,
-                  size: 16,
-                  color: Colors.white.withValues(alpha: 0.6),
-                ),
-              ],
-            ),
-          ),
+      child: ForjaShellChip(
+        label: active ? value : label,
+        selected: active,
+        icon: icon,
+        trailing: Icon(
+          Icons.expand_more_rounded,
+          size: 16,
+          color: ForjaShellColors.cinematic.textSecondary,
         ),
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        fontSize: 12,
       ),
     );
   }
@@ -390,7 +355,7 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
                       ),
                       trailing: isSel
                           ? Icon(Icons.check_rounded,
-                              color: AppTheme.primaryColor)
+                              color: ForjaShellColors.chipSelectedIcon)
                           : null,
                       onTap: () => Navigator.of(ctx).pop(i),
                     );
@@ -410,7 +375,7 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
   Widget _buildGrid(bool isLandscape) {
     if (_loading) {
       return Center(
-        child: CircularProgressIndicator(color: AppTheme.primaryColor),
+        child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
       );
     }
     if (_error != null) {
@@ -421,7 +386,7 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.error_outline_rounded,
-                  color: AppTheme.primaryColor, size: 48),
+                  color: ForjaShellColors.sectionAccent, size: 48),
               const SizedBox(height: 12),
               Text(
                 _error!,
@@ -436,8 +401,8 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
                 ),
               ),
             ],
@@ -466,7 +431,7 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
     }
     final cols = isLandscape ? 6 : 3;
     return RefreshIndicator(
-      color: AppTheme.primaryColor,
+      color: ForjaShellColors.sectionAccent,
       backgroundColor: AppTheme.bgCard,
       onRefresh: _reload,
       child: GridView.builder(
@@ -552,28 +517,17 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
     required VoidCallback onTap,
     bool trailing = false,
   }) {
-    final color = enabled
-        ? AppTheme.primaryColor
-        : Colors.white.withValues(alpha: 0.18);
-    final fg = enabled ? Colors.white : Colors.white.withValues(alpha: 0.35);
+    final cinematic = ForjaShellColors.cinematic;
+    final fg = enabled ? cinematic.textPrimary : cinematic.textSecondary.withValues(alpha: 0.45);
     return Material(
-      color: enabled
-          ? AppTheme.primaryColor.withValues(alpha: 0.18)
-          : Colors.white.withValues(alpha: 0.04),
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: enabled ? onTap : null,
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: color.withValues(alpha: enabled ? 0.7 : 0.4),
-              width: 1,
-            ),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: shellChipDecoration(selected: enabled, radius: 20),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: trailing
@@ -582,7 +536,7 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
                         style: TextStyle(
                             color: fg,
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w700)),
+                            fontWeight: FontWeight.w600)),
                     const SizedBox(width: 4),
                     Icon(icon, size: 18, color: fg),
                   ]
@@ -593,7 +547,7 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
                         style: TextStyle(
                             color: fg,
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w700)),
+                            fontWeight: FontWeight.w600)),
                   ],
           ),
         ),

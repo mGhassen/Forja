@@ -2533,6 +2533,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildSourcesPanelContent() {
+    final isTv = ShellTokens.isTvLayout(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2586,7 +2587,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             _autoSearch();
           },
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: isTv ? 10 : 14),
         TorrentSourceChips(
           chips: _sourceChips(),
           selectedSourceId: _selectedSourceId,
@@ -2596,9 +2597,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           onScrollBack: _scrollChipsBack,
           onScrollForward: _scrollChipsForward,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: isTv ? 10 : 16),
         TorrentSourceResultsHeader(
           showSort: _isTorrentSource,
+          compact: isTv,
           isFetching: _isSearching ||
               _isStremioFetching ||
               _isNuvioFetching ||
@@ -2618,7 +2620,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           onAudioFiltersChanged: (updated) =>
               setState(() => _activeAudioFilters = updated),
         ),
-        const SizedBox(height: 10),
+        if (_isTorrentSource && _playbackProfile.localTorrentEngine) ...[
+          SizedBox(height: isTv ? 6 : 8),
+          TorrentCacheStorageLine(
+            refreshToken: Object.hash(
+              _sourcesPanelOpen,
+              _allTorrentResults.length,
+              _isSearching,
+            ),
+          ),
+        ],
+        SizedBox(height: isTv ? 8 : 10),
         TorrentSourcePanelToolbar(
           searchQuery: _sourceSearchQuery,
           onSearchChanged: (q) => setState(() => _sourceSearchQuery = q),
@@ -2632,8 +2644,19 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           onLanguageFiltersChanged: (v) => setState(() => _activeLanguageFilters = v),
           onTechFiltersChanged: (v) => setState(() => _activeTechFilters = v),
           showFilters: _panelFilterNames.isNotEmpty,
+          showAudioFilters: _isTorrentSource,
+          activeAudioFilters: _activeAudioFilters,
+          onAudioFiltersChanged: (v) => setState(() => _activeAudioFilters = v),
+          sortPreference: _isTorrentSource ? _sortPreference : null,
+          onSortChanged: _isTorrentSource
+              ? (val) {
+                  setState(() => _sortPreference = val);
+                  _settings.setSortPreference(val);
+                  _sortResults();
+                }
+              : null,
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: isTv ? 8 : 10),
         Expanded(child: _buildStreamList(inPanel: true)),
       ],
     );

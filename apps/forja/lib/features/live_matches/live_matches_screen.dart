@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
-import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
@@ -372,7 +372,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
       child: Row(
         children: [
-          const Icon(Icons.sports_soccer_rounded, color: AppTheme.primaryColor, size: 28),
+          Icon(Icons.sports_soccer_rounded, color: ForjaShellColors.sectionAccent, size: 28),
           const SizedBox(width: 10),
           const Text(
             'Live Matches',
@@ -397,18 +397,18 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     return TabBar(
       controller: _tabController,
       isScrollable: true,
-      indicatorColor: AppTheme.primaryColor,
-      labelColor: Colors.white,
-      unselectedLabelColor: Colors.white38,
+      indicatorColor: ForjaShellColors.cinematic.navUnderline,
+      labelColor: ForjaShellColors.cinematic.textPrimary,
+      unselectedLabelColor: ForjaShellColors.cinematic.textSecondary,
       tabAlignment: TabAlignment.start,
-      dividerColor: Colors.white12,
+      dividerColor: ForjaShellColors.cinematic.borderSubtle,
       tabs: tabs,
     );
   }
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
+      return Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent));
     }
     if (_error != null) {
       return Center(
@@ -423,7 +423,10 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
               onPressed: _load,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+              ),
             ),
           ],
         ),
@@ -489,9 +492,17 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Row(
               children: [
-                _ModeChip(label: '📺 Channels', active: _cdnShowChannels, onTap: () => setState(() => _cdnShowChannels = true)),
+                ForjaShellChip(
+                  label: '📺 Channels',
+                  selected: _cdnShowChannels,
+                  onTap: () => setState(() => _cdnShowChannels = true),
+                ),
                 const SizedBox(width: 8),
-                _ModeChip(label: '⚽ Sports', active: !_cdnShowChannels, onTap: () => setState(() => _cdnShowChannels = false)),
+                ForjaShellChip(
+                  label: '⚽ Sports',
+                  selected: !_cdnShowChannels,
+                  onTap: () => setState(() => _cdnShowChannels = false),
+                ),
               ],
             ),
           ),
@@ -538,9 +549,17 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Row(
               children: [
-                _ModeChip(label: '📺 Channels', active: _cdnShowChannels, onTap: () => setState(() => _cdnShowChannels = true)),
+                ForjaShellChip(
+                  label: '📺 Channels',
+                  selected: _cdnShowChannels,
+                  onTap: () => setState(() => _cdnShowChannels = true),
+                ),
                 const SizedBox(width: 8),
-                _ModeChip(label: '⚽ Sports', active: !_cdnShowChannels, onTap: () => setState(() => _cdnShowChannels = false)),
+                ForjaShellChip(
+                  label: '⚽ Sports',
+                  selected: !_cdnShowChannels,
+                  onTap: () => setState(() => _cdnShowChannels = false),
+                ),
               ],
             ),
           ),
@@ -618,35 +637,6 @@ enum _DataProvider { damiTv, cdnLive }
 
 // ─── Chips ────────────────────────────────────────────────────────────────────
 
-class _ModeChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  const _ModeChip({required this.label, required this.active, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? AppTheme.primaryColor : Colors.white10,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: active ? AppTheme.primaryColor : Colors.white24, width: 1.5),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                color: active ? Colors.white : Colors.white60,
-                fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                fontSize: 13)),
-      ),
-    );
-  }
-}
-
  
 class _TeamBadge extends StatelessWidget {
   final String? badge;
@@ -715,11 +705,13 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
             borderRadius: BorderRadius.circular(16),
             color: _hovered ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: _hovered ? AppTheme.primaryColor.withValues(alpha: 0.6) : Colors.white12,
+              color: _hovered
+                  ? ForjaShellColors.chipSelectedBorder
+                  : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
             ),
             boxShadow: _hovered
-                ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.25), blurRadius: 16, spreadRadius: 2)]
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
                 : null,
           ),
           child: ClipRRect(
@@ -777,9 +769,9 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.85),
+                            color: Colors.white.withValues(alpha: 0.9),
                             shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                        child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 28),
                       ),
                     ),
                   ),
@@ -821,11 +813,13 @@ class _CdnSportCardState extends State<_CdnSportCard> {
             borderRadius: BorderRadius.circular(16),
             color: _hovered ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: _hovered ? AppTheme.primaryColor.withValues(alpha: 0.6) : Colors.white12,
+              color: _hovered
+                  ? ForjaShellColors.chipSelectedBorder
+                  : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
             ),
             boxShadow: _hovered
-                ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.25), blurRadius: 16, spreadRadius: 2)]
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
                 : null,
           ),
           child: ClipRRect(
@@ -918,9 +912,9 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.85),
+                            color: Colors.white.withValues(alpha: 0.9),
                             shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                        child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 28),
                       ),
                     ),
                   ),
@@ -960,8 +954,8 @@ class _CdnChannelSheet extends StatelessWidget {
             onTap: () => onChannelSelected(ch),
             leading: ch.image.isNotEmpty
                 ? CachedNetworkImage(imageUrl: ch.image, width: 32, height: 32, fit: BoxFit.contain,
-                    errorWidget: (_, _, _) => const Icon(Icons.tv_rounded, color: AppTheme.primaryColor))
-                : const Icon(Icons.tv_rounded, color: AppTheme.primaryColor),
+                    errorWidget: (_, _, _) => Icon(Icons.tv_rounded, color: ForjaShellColors.sectionAccent))
+                : Icon(Icons.tv_rounded, color: ForjaShellColors.sectionAccent),
             title: Text(ch.name,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
             subtitle: ch.viewers > 0
@@ -1069,7 +1063,7 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
             },
           ),
           if (_loading)
-            const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+            Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent)),
         ],
       ),
     );
@@ -1108,11 +1102,13 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
             borderRadius: BorderRadius.circular(16),
             color: _hovered ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: _hovered ? AppTheme.primaryColor.withValues(alpha: 0.6) : Colors.white12,
+              color: _hovered
+                  ? ForjaShellColors.chipSelectedBorder
+                  : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
             ),
             boxShadow: _hovered
-                ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.25), blurRadius: 16, spreadRadius: 2)]
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
                 : null,
           ),
           child: ClipRRect(
@@ -1237,9 +1233,9 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.85),
+                            color: Colors.white.withValues(alpha: 0.9),
                             shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                        child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 28),
                       ),
                     ),
                   ),
@@ -1346,7 +1342,7 @@ class _DamiTvPlayerScreenState extends State<_DamiTvPlayerScreen> {
             },
           ),
           if (_loading)
-            const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+            Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent)),
         ],
       ),
     );

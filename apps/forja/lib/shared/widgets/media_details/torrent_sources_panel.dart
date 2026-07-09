@@ -17,7 +17,13 @@ class TorrentSourcesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final panelWidth = screenWidth < 700 ? screenWidth * 0.92 : 480.0;
+    final isTv = ShellTokens.isTvLayout(context);
+    final panelWidth = isTv
+        ? (screenWidth * 0.42).clamp(520.0, 720.0)
+        : (screenWidth < 700 ? screenWidth * 0.92 : 480.0);
+    final padding = isTv
+        ? const EdgeInsets.fromLTRB(16, 8, 12, 12)
+        : const EdgeInsets.fromLTRB(20, 8, 12, 16);
 
     return Stack(
       children: [
@@ -47,7 +53,7 @@ class TorrentSourcesPanel extends StatelessWidget {
               child: SafeArea(
                 left: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 12, 16),
+                  padding: padding,
                   child: child,
                 ),
               ),

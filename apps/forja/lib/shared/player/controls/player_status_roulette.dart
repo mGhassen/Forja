@@ -118,6 +118,21 @@ List<StatusRouletteEntry> statusEntriesFromProbes(List<StreamProviderProbe> prob
       .toList();
 }
 
+Listenable playerStatusOverlayListenable(
+  PlayerStatusController controller,
+  ValueListenable<bool>? bufferingListenable,
+) {
+  if (bufferingListenable == null) return controller;
+  return Listenable.merge([controller, bufferingListenable]);
+}
+
+bool playerStatusOverlayVisible(
+  PlayerStatusController controller,
+  bool buffering,
+) {
+  return controller.entries.isNotEmpty || buffering;
+}
+
 class PlayerStatusOverlay extends StatelessWidget {
   const PlayerStatusOverlay({
     super.key,
@@ -149,23 +164,18 @@ class PlayerStatusOverlay extends StatelessWidget {
     Widget buildOverlay(bool buffering) {
       final entries = _entries(buffering);
       if (entries.isEmpty) return const SizedBox.shrink();
+      final overlayHeader =
+          controller.entries.isNotEmpty ? header : 'BUFFERING';
       return Positioned(
-        left: 0,
-        right: 0,
         top: 0,
+        right: 12,
+        bottom: 0,
         child: IgnorePointer(
-          child: SafeArea(
-            bottom: false,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: StatusRouletteView(
-                  entries: entries,
-                  header: header,
-                  centered: true,
-                ),
-              ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: StatusRouletteView(
+              entries: entries,
+              header: overlayHeader,
             ),
           ),
         ),
@@ -180,7 +190,7 @@ class PlayerStatusOverlay extends StatelessWidget {
     }
 
     return ListenableBuilder(
-      listenable: Listenable.merge([controller, bufferingListenable!]),
+      listenable: playerStatusOverlayListenable(controller, bufferingListenable),
       builder: (context, _) => buildOverlay(bufferingListenable!.value),
     );
   }

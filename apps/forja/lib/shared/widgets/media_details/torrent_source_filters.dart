@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
@@ -399,6 +400,7 @@ class TorrentSourceResultsHeader extends StatelessWidget {
     required this.onSortChanged,
     required this.onCancelFetch,
     required this.onAudioFiltersChanged,
+    this.compact = false,
   });
 
   final bool showSort;
@@ -410,6 +412,7 @@ class TorrentSourceResultsHeader extends StatelessWidget {
   final ValueChanged<String> onSortChanged;
   final VoidCallback onCancelFetch;
   final ValueChanged<Set<String>> onAudioFiltersChanged;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -487,7 +490,7 @@ class TorrentSourceResultsHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (showSort)
+        if (showSort && !compact)
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerRight,
@@ -630,13 +633,117 @@ class _ScrollArrow extends StatelessWidget {
   }
 }
 
+class TorrentCacheStorageLine extends StatefulWidget {
+  const TorrentCacheStorageLine({super.key, this.refreshToken = 0});
+
+  final int refreshToken;
+
+  @override
+  State<TorrentCacheStorageLine> createState() => _TorrentCacheStorageLineState();
+}
+
+class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
+  String _label = '…';
+  bool _clearing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant TorrentCacheStorageLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) _load();
+  }
+
+  Future<void> _load() async {
+    final bytes = await TorrentStreamService().cacheDirectoryBytes();
+    if (!mounted) return;
+    setState(() {
+      _label = TorrentStreamService.formatStorageBytes(bytes);
+    });
+  }
+
+  Future<void> _clear() async {
+    if (_clearing) return;
+    setState(() => _clearing = true);
+    try {
+      await TorrentStreamService().clearCacheDirectory();
+      await _load();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not clear stream cache'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _clearing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    final isTv = ShellTokens.isTvLayout(context);
+    final hasData = _label != '0 B';
+
+    return Row(
+      children: [
+        Icon(Icons.storage_rounded, size: isTv ? 16 : 14, color: cinematic.textSecondary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'Stream cache: $_label',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: cinematic.textSecondary,
+              fontSize: isTv ? 12 : 11,
+            ),
+          ),
+        ),
+        if (hasData && !_clearing)
+          FocusableControl(
+            onTap: _clear,
+            borderRadius: 6,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: Text(
+                'Clear',
+                style: TextStyle(
+                  color: cinematic.textSecondary,
+                  fontSize: isTv ? 12 : 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        if (_clearing)
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: cinematic.textSecondary,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 String _languageChipLabel(String code) {
   final flag = StreamProviderDisplay.flagForCountry(code);
   if (flag.isEmpty) return code.toUpperCase();
   return '$flag ${code.toUpperCase()}';
 }
 
-class TorrentSourcePanelToolbar extends StatefulWidget {
+class TorrentSourcePanelToolbar extends StatelessWidget {
   const TorrentSourcePanelToolbar({
     super.key,
     required this.searchQuery,
@@ -651,6 +758,11 @@ class TorrentSourcePanelToolbar extends StatefulWidget {
     required this.onLanguageFiltersChanged,
     required this.onTechFiltersChanged,
     this.showFilters = true,
+    this.showAudioFilters = false,
+    this.activeAudioFilters = const {},
+    this.onAudioFiltersChanged,
+    this.sortPreference,
+    this.onSortChanged,
   });
 
   final String searchQuery;
@@ -665,195 +777,405 @@ class TorrentSourcePanelToolbar extends StatefulWidget {
   final ValueChanged<Set<String>> onLanguageFiltersChanged;
   final ValueChanged<Set<String>> onTechFiltersChanged;
   final bool showFilters;
+  final bool showAudioFilters;
+  final Set<String> activeAudioFilters;
+  final ValueChanged<Set<String>>? onAudioFiltersChanged;
+  final String? sortPreference;
+  final ValueChanged<String>? onSortChanged;
 
-  @override
-  State<TorrentSourcePanelToolbar> createState() => _TorrentSourcePanelToolbarState();
-}
+  int get _activeCount =>
+      activeQualityFilters.length +
+      activeLanguageFilters.length +
+      activeTechFilters.length +
+      activeAudioFilters.length;
 
-class _TorrentSourcePanelToolbarState extends State<TorrentSourcePanelToolbar> {
-  late final TextEditingController _searchController;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchController = TextEditingController(text: widget.searchQuery);
-  }
-
-  @override
-  void didUpdateWidget(covariant TorrentSourcePanelToolbar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.searchQuery != _searchController.text) {
-      _searchController.text = widget.searchQuery;
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  Future<void> _openFilters(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: ForjaShellColors.cinematic.menuSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => _TorrentSourceFilterSheet(
+        availableQualities: availableQualities,
+        availableLanguages: availableLanguages,
+        availableTech: availableTech,
+        activeQualityFilters: activeQualityFilters,
+        activeLanguageFilters: activeLanguageFilters,
+        activeTechFilters: activeTechFilters,
+        activeAudioFilters: activeAudioFilters,
+        showAudioFilters: showAudioFilters,
+        sortPreference: sortPreference,
+        onQualityFiltersChanged: onQualityFiltersChanged,
+        onLanguageFiltersChanged: onLanguageFiltersChanged,
+        onTechFiltersChanged: onTechFiltersChanged,
+        onAudioFiltersChanged: onAudioFiltersChanged,
+        onSortChanged: onSortChanged,
+        onClearAll: () {
+          onQualityFiltersChanged({});
+          onLanguageFiltersChanged({});
+          onTechFiltersChanged({});
+          onAudioFiltersChanged?.call({});
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final showFilters = widget.showFilters &&
-        (widget.availableQualities.isNotEmpty ||
-            widget.availableLanguages.isNotEmpty ||
-            widget.availableTech.isNotEmpty);
+    final isTv = ShellTokens.isTvLayout(context);
+    final canFilter = showFilters &&
+        (availableQualities.isNotEmpty ||
+            availableLanguages.isNotEmpty ||
+            availableTech.isNotEmpty ||
+            showAudioFilters ||
+            sortPreference != null);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          decoration: _torrentPanelControlDecoration(active: false, radius: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+    if (isTv) {
+      if (!canFilter) return const SizedBox.shrink();
+      return FocusableControl(
+        onTap: () => _openFilters(context),
+        borderRadius: 10,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: _torrentPanelControlDecoration(active: _activeCount > 0, radius: 10),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.search_rounded,
-                size: 18,
-                color: ForjaShellColors.cinematic.textSecondary,
-              ),
+              Icon(Icons.tune_rounded, size: 20, color: ForjaShellColors.cinematic.textPrimary),
               const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: widget.onSearchChanged,
-                  style: TextStyle(
-                    color: ForjaShellColors.cinematic.textPrimary,
-                    fontSize: 13,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Search sources…',
-                    hintStyle: TextStyle(
-                      color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.7),
-                      fontSize: 13,
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
+              Text(
+                _activeCount > 0 ? 'Filters ($_activeCount)' : 'Filters & sort',
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              if (widget.searchQuery.isNotEmpty)
-                ForjaPlainIcon(
-                  icon: Icons.close_rounded,
-                  size: 18,
-                  color: ForjaShellColors.cinematic.textSecondary,
-                  onTap: () => widget.onSearchChanged(''),
-                ),
             ],
           ),
         ),
-        if (showFilters) ...[
-          const SizedBox(height: 10),
-          _FilterChipRow(
-            label: 'Quality',
-            chips: TorrentReleaseMetadata.qualityFilters
-                .where(widget.availableQualities.contains)
-                .toList(),
-            active: widget.activeQualityFilters,
-            onChanged: widget.onQualityFiltersChanged,
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: _SearchField(query: searchQuery, onChanged: onSearchChanged)),
+        if (canFilter) ...[
+          const SizedBox(width: 8),
+          FocusableControl(
+            onTap: () => _openFilters(context),
+            borderRadius: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: _torrentPanelControlDecoration(active: _activeCount > 0, radius: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.tune_rounded, size: 18, color: ForjaShellColors.cinematic.textPrimary),
+                  if (_activeCount > 0) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '$_activeCount',
+                      style: TextStyle(
+                        color: ForjaShellColors.cinematic.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
-          if (widget.availableLanguages.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _FilterChipRow(
-              label: 'Language',
-              chips: widget.availableLanguages.toList()..sort(),
-              active: widget.activeLanguageFilters,
-              onChanged: widget.onLanguageFiltersChanged,
-              labelBuilder: _languageChipLabel,
-            ),
-          ],
-          if (widget.availableTech.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _FilterChipRow(
-              label: 'Tech',
-              chips: TorrentReleaseMetadata.techFilters
-                  .where(widget.availableTech.contains)
-                  .toList(),
-              active: widget.activeTechFilters,
-              onChanged: widget.onTechFiltersChanged,
-            ),
-          ],
         ],
       ],
     );
   }
 }
 
-class _FilterChipRow extends StatelessWidget {
-  const _FilterChipRow({
-    required this.label,
-    required this.chips,
-    required this.active,
-    required this.onChanged,
-    this.labelBuilder,
-  });
+class _SearchField extends StatefulWidget {
+  const _SearchField({required this.query, required this.onChanged});
 
-  final String label;
-  final List<String> chips;
-  final Set<String> active;
-  final ValueChanged<Set<String>> onChanged;
-  final String Function(String code)? labelBuilder;
+  final String query;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_SearchField> createState() => _SearchFieldState();
+}
+
+class _SearchFieldState extends State<_SearchField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.query);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SearchField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.query != _controller.text) _controller.text = widget.query;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (chips.isEmpty) return const SizedBox.shrink();
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 62,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: ForjaShellColors.cinematic.textSecondary,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+    return Container(
+      decoration: _torrentPanelControlDecoration(active: false, radius: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        children: [
+          Icon(Icons.search_rounded, size: 18, color: ForjaShellColors.cinematic.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              onChanged: widget.onChanged,
+              style: TextStyle(color: ForjaShellColors.cinematic.textPrimary, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Search',
+                hintStyle: TextStyle(
+                  color: ForjaShellColors.cinematic.textSecondary.withValues(alpha: 0.7),
+                  fontSize: 13,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
               ),
             ),
           ),
-        ),
-        Expanded(
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: chips.map((chip) {
-              final selected = active.contains(chip);
-              final text = labelBuilder?.call(chip) ?? chip;
-              return GestureDetector(
-                onTap: () {
-                  final next = Set<String>.from(active);
-                  if (selected) {
-                    next.remove(chip);
-                  } else {
-                    next.add(chip);
-                  }
-                  onChanged(next);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: _torrentPanelChipDecoration(selected: selected, radius: 16),
-                  child: Text(
-                    text,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: selected
-                          ? ForjaShellColors.cinematic.textPrimary
-                          : ForjaShellColors.cinematic.textSecondary,
-                    ),
+          if (widget.query.isNotEmpty)
+            ForjaPlainIcon(
+              icon: Icons.close_rounded,
+              size: 18,
+              color: ForjaShellColors.cinematic.textSecondary,
+              onTap: () => widget.onChanged(''),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TorrentSourceFilterSheet extends StatefulWidget {
+  const _TorrentSourceFilterSheet({
+    required this.availableQualities,
+    required this.availableLanguages,
+    required this.availableTech,
+    required this.activeQualityFilters,
+    required this.activeLanguageFilters,
+    required this.activeTechFilters,
+    required this.activeAudioFilters,
+    required this.showAudioFilters,
+    required this.onQualityFiltersChanged,
+    required this.onLanguageFiltersChanged,
+    required this.onTechFiltersChanged,
+    required this.onClearAll,
+    this.sortPreference,
+    this.onSortChanged,
+    this.onAudioFiltersChanged,
+  });
+
+  final Set<String> availableQualities;
+  final Set<String> availableLanguages;
+  final Set<String> availableTech;
+  final Set<String> activeQualityFilters;
+  final Set<String> activeLanguageFilters;
+  final Set<String> activeTechFilters;
+  final Set<String> activeAudioFilters;
+  final bool showAudioFilters;
+  final String? sortPreference;
+  final ValueChanged<Set<String>> onQualityFiltersChanged;
+  final ValueChanged<Set<String>> onLanguageFiltersChanged;
+  final ValueChanged<Set<String>> onTechFiltersChanged;
+  final ValueChanged<Set<String>>? onAudioFiltersChanged;
+  final ValueChanged<String>? onSortChanged;
+  final VoidCallback onClearAll;
+
+  @override
+  State<_TorrentSourceFilterSheet> createState() => _TorrentSourceFilterSheetState();
+}
+
+class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
+  late Set<String> _quality;
+  late Set<String> _language;
+  late Set<String> _tech;
+  late Set<String> _audio;
+  late String? _sort;
+
+  @override
+  void initState() {
+    super.initState();
+    _quality = Set<String>.from(widget.activeQualityFilters);
+    _language = Set<String>.from(widget.activeLanguageFilters);
+    _tech = Set<String>.from(widget.activeTechFilters);
+    _audio = Set<String>.from(widget.activeAudioFilters);
+    _sort = widget.sortPreference;
+  }
+
+  void _toggle(Set<String> set, String value, void Function(Set<String>) emit) {
+    setState(() {
+      if (set.contains(value)) {
+        set.remove(value);
+      } else {
+        set.add(value);
+      }
+      emit(Set<String>.from(set));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isTv = ShellTokens.isTvLayout(context);
+    final cinematic = ForjaShellColors.cinematic;
+    final pad = isTv ? 24.0 : 16.0;
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(pad, 12, pad, pad),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Filters',
+                  style: TextStyle(
+                    color: cinematic.textPrimary,
+                    fontSize: isTv ? 18 : 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              );
-            }).toList(),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    widget.onClearAll();
+                    Navigator.pop(context);
+                  },
+                  child: Text('Clear', style: TextStyle(color: cinematic.textSecondary)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (widget.sortPreference != null && widget.onSortChanged != null)
+              _sheetSection(
+                'Sort',
+                [
+                  'Seeders (High to Low)',
+                  'Seeders (Low to High)',
+                  'Quality (High to Low)',
+                  'Quality (Low to High)',
+                  'Size (High to Low)',
+                  'Size (Low to High)',
+                ].map((s) => _sheetChip(
+                      label: s,
+                      selected: _sort == s,
+                      onTap: () {
+                        setState(() => _sort = s);
+                        widget.onSortChanged!(s);
+                      },
+                    )),
+              ),
+            if (widget.availableQualities.isNotEmpty)
+              _sheetSection(
+                'Quality',
+                TorrentReleaseMetadata.qualityFilters
+                    .where(widget.availableQualities.contains)
+                    .map((q) => _sheetChip(
+                          label: q,
+                          selected: _quality.contains(q),
+                          onTap: () => _toggle(_quality, q, widget.onQualityFiltersChanged),
+                        )),
+              ),
+            if (widget.availableLanguages.isNotEmpty)
+              _sheetSection(
+                'Language',
+                (widget.availableLanguages.toList()..sort()).map((code) => _sheetChip(
+                      label: _languageChipLabel(code),
+                      selected: _language.contains(code),
+                      onTap: () => _toggle(_language, code, widget.onLanguageFiltersChanged),
+                    )),
+              ),
+            if (widget.availableTech.isNotEmpty)
+              _sheetSection(
+                'Tech',
+                TorrentReleaseMetadata.techFilters
+                    .where(widget.availableTech.contains)
+                    .map((t) => _sheetChip(
+                          label: t,
+                          selected: _tech.contains(t),
+                          onTap: () => _toggle(_tech, t, widget.onTechFiltersChanged),
+                        )),
+              ),
+            if (widget.showAudioFilters && widget.onAudioFiltersChanged != null)
+              _sheetSection(
+                'Audio',
+                kTorrentAudioTags.map((tag) => _sheetChip(
+                      label: tag,
+                      selected: _audio.contains(tag),
+                      onTap: () => _toggle(_audio, tag, widget.onAudioFiltersChanged!),
+                    )),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetSection(String title, Iterable<Widget> chips) {
+    final list = chips.toList();
+    if (list.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: ForjaShellColors.cinematic.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: list),
+        ],
+      ),
+    );
+  }
+
+  Widget _sheetChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final isTv = ShellTokens.isTvLayout(context);
+    return FocusableControl(
+      onTap: onTap,
+      borderRadius: 16,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: isTv ? 16 : 12, vertical: isTv ? 10 : 8),
+        decoration: _torrentPanelChipDecoration(selected: selected),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected
+                ? ForjaShellColors.cinematic.textPrimary
+                : ForjaShellColors.cinematic.textSecondary,
+            fontSize: isTv ? 14 : 12,
+            fontWeight: FontWeight.w600,
           ),
         ),
-      ],
+      ),
     );
   }
 }

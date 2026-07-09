@@ -3239,54 +3239,63 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           ),
         ),
 
-      Positioned.fill(
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              PlayerCenterActionButton(
-                icon: Icons.replay_10_rounded,
-                onPressed: () {
-                  final pos =
-                      _positionNotifier.value - const Duration(seconds: 10);
-                  _player.seek(pos < Duration.zero ? Duration.zero : pos);
-                  _onMouseMove();
-                },
-              ),
-              const SizedBox(width: 28),
-              ValueListenableBuilder<bool>(
-                valueListenable: _isPlayingNotifier,
-                builder: (context, playing, _) =>
-                    ValueListenableBuilder<bool>(
-                  valueListenable: _isBufferingNotifier,
-                  builder: (context, buffering, _) => PlayerCenterActionButton(
-                    icon: playing
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
-                    size: 80,
-                    iconSize: 44,
-                    showSpinner: buffering,
+      ListenableBuilder(
+        listenable: playerStatusOverlayListenable(
+          _statusController,
+          _isBufferingNotifier,
+        ),
+        builder: (context, _) {
+          if (playerStatusOverlayVisible(
+            _statusController,
+            _isBufferingNotifier.value,
+          )) {
+            return const SizedBox.shrink();
+          }
+          return Positioned.fill(
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PlayerCenterActionButton(
+                    icon: Icons.replay_10_rounded,
                     onPressed: () {
-                      _player.playOrPause();
+                      final pos =
+                          _positionNotifier.value - const Duration(seconds: 10);
+                      _player.seek(pos < Duration.zero ? Duration.zero : pos);
                       _onMouseMove();
                     },
                   ),
-                ),
+                  const SizedBox(width: 28),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _isPlayingNotifier,
+                    builder: (context, playing, _) => PlayerCenterActionButton(
+                      icon: playing
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 80,
+                      iconSize: 44,
+                      onPressed: () {
+                        _player.playOrPause();
+                        _onMouseMove();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 28),
+                  PlayerCenterActionButton(
+                    icon: Icons.forward_10_rounded,
+                    onPressed: () {
+                      final dur = _durationNotifier.value;
+                      final pos =
+                          _positionNotifier.value + const Duration(seconds: 10);
+                      _player.seek(pos > dur ? dur : pos);
+                      _onMouseMove();
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(width: 28),
-              PlayerCenterActionButton(
-                icon: Icons.forward_10_rounded,
-                onPressed: () {
-                  final dur = _durationNotifier.value;
-                  final pos =
-                      _positionNotifier.value + const Duration(seconds: 10);
-                  _player.seek(pos > dur ? dur : pos);
-                  _onMouseMove();
-                },
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
 
       if (_activeSkipLabel != null && !_skipDismissed)
