@@ -12,6 +12,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
     required this.movie,
     required this.hasResume,
     required this.onOpenSources,
+    this.onDownload,
     required this.onOverflowAction,
     this.trailers = const [],
     this.trailerLanguageCode,
@@ -25,6 +26,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   final Movie movie;
   final bool hasResume;
   final VoidCallback onOpenSources;
+  final VoidCallback? onDownload;
   final ValueChanged<String> onOverflowAction;
   final List<MediaTrailer> trailers;
   final String? trailerLanguageCode;
@@ -89,7 +91,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
             HeroPillIconSlot(
               icon: Icons.download_outlined,
               tooltip: 'Download',
-              onTap: onOpenSources,
+              onTap: onDownload ?? onOpenSources,
             ),
             HeroPillIconSlot(
               tooltip: 'More',

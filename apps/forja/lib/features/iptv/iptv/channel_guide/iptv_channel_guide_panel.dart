@@ -8,10 +8,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
-import 'package:forja/features/iptv/iptv/channel_guide/iptv_guide_epg.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 
 enum _GuideStep { groups, channels }
@@ -56,7 +53,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   int _focusedGroupIndex = 0;
   int _focusedChannelIndex = 0;
-  IptvGuideEpgCache? _epgCache;
 
   final Map<String, bool> _health = {};
   final Set<String> _healthInFlight = {};
@@ -72,8 +68,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   @override
   void initState() {
     super.initState();
-    final portal = widget.guide.xtreamPortal;
-    if (portal != null) _epgCache = IptvGuideEpgCache(portal);
     _health.addAll(widget.guide.streamHealth);
     _syncFocusIndices();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -166,26 +160,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       if (c.id == widget.currentChannelId) return c;
     }
     return null;
-  }
-
-  IptvGuideChannel? get _epgChannel {
-    if (_wide || _step == _GuideStep.channels) {
-      if (_focusColumn == _FocusColumn.channels) {
-        final channels = _visibleChannels;
-        if (_focusedChannelIndex >= 0 &&
-            _focusedChannelIndex < channels.length) {
-          return channels[_focusedChannelIndex];
-        }
-      }
-    }
-    return _currentChannel;
-  }
-
-  Future<List<EpgEntry>>? _epgFutureFor(IptvGuideChannel? ch) {
-    if (_epgCache == null || ch == null) return null;
-    final stream = ch.xtreamStream;
-    if (stream == null) return null;
-    return _epgCache!.load(stream.streamId);
   }
 
   String? _playUrlFor(IptvGuideChannel ch) {
@@ -515,8 +489,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final showBack = !wide && _step == _GuideStep.channels;
     final title = _headerGroupName();
     final playing = _currentChannel;
-    final epgChannel = _epgChannel;
-    final epgFuture = _epgFutureFor(epgChannel);
     final showChannelMeta = wide || _step == _GuideStep.channels;
 
     return Container(
@@ -584,9 +556,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          epgChannel?.id == playing.id
-                              ? 'Now playing'
-                              : 'Preview',
+                          'Now playing',
                           style: GoogleFonts.poppins(
                             color: _accent.withValues(alpha: 0.85),
                             fontSize: 10,
@@ -595,7 +565,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                           ),
                         ),
                         Text(
-                          (epgChannel ?? playing).name,
+                          playing.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.poppins(
@@ -609,11 +579,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                   ),
                 ],
               ),
-            ),
-          if (epgFuture != null && showChannelMeta)
-            IptvGuideEpgCard(
-              key: ValueKey(epgChannel?.id ?? ''),
-              future: epgFuture,
             ),
         ],
       ),
@@ -813,7 +778,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
             active: active,
             focused: focused,
             health: _health[ch.id],
-            epgFuture: active ? _epgFutureFor(ch) : null,
             onProbe: () => _scheduleHealthCheck(ch),
             onCancelProbe: () => _cancelHealthCheck(ch.id),
             onHover: () {
@@ -850,7 +814,6 @@ class _GuideChannelTile extends StatefulWidget {
     required this.onProbe,
     required this.onCancelProbe,
     this.health,
-    this.epgFuture,
   });
 
   final IptvGuideChannel channel;
@@ -861,7 +824,6 @@ class _GuideChannelTile extends StatefulWidget {
   final VoidCallback onHover;
   final VoidCallback onProbe;
   final VoidCallback onCancelProbe;
-  final Future<List<EpgEntry>>? epgFuture;
 
   @override
   State<_GuideChannelTile> createState() => _GuideChannelTileState();
@@ -970,9 +932,6 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                                 active || focused ? FontWeight.w700 : FontWeight.w500,
                           ),
                         ),
-                        if (widget.epgFuture != null)
-                          IptvGuideEpgCard(
-                              future: widget.epgFuture!, compact: true),
                       ],
                     ),
                   ),

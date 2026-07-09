@@ -291,6 +291,56 @@ class _CompactEpgRow extends StatelessWidget {
   }
 }
 
+/// Bottom-right programme guide overlay for the IPTV player.
+class IptvFloatingEpg extends StatelessWidget {
+  const IptvFloatingEpg({
+    super.key,
+    required this.future,
+    this.bottomInset = 16,
+  });
+
+  final Future<List<EpgEntry>> future;
+  final double bottomInset;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<EpgEntry>>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const SizedBox.shrink();
+        }
+        if ((snap.data ?? const []).isEmpty) return const SizedBox.shrink();
+
+        return Positioned(
+          right: 16,
+          bottom: bottomInset,
+          child: SafeArea(
+            child: IgnorePointer(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: IptvGuideEpgCard(future: future),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _Badge extends StatelessWidget {
   const _Badge({
     required this.label,

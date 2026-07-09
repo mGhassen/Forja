@@ -296,16 +296,16 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                   ),
                                 ),
                                 actions: [
-                                  IconButton(
-                                    icon: const Icon(Icons.tune_rounded,
-                                        color: Colors.white),
+                                  ForjaPlainIcon(
+                                    icon: Icons.tune_rounded,
                                     tooltip: 'Explore',
-                                    onPressed: _openExplore,
+                                    color: Colors.white,
+                                    onTap: _openExplore,
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.search,
-                                        color: Colors.white),
-                                    onPressed: _openSearch,
+                                  ForjaPlainIcon(
+                                    icon: Icons.search,
+                                    color: Colors.white,
+                                    onTap: _openSearch,
                                   ),
                                   const SizedBox(width: 4),
                                 ],

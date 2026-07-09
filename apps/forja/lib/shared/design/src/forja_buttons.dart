@@ -121,8 +121,8 @@ class ForjaGhostButton extends StatelessWidget {
   }
 }
 
-/// Bare icon action — no background, scales on hover.
-class ForjaPlainIcon extends StatelessWidget {
+/// Bare icon action — soft circular fill on hover/press, no border.
+class ForjaPlainIcon extends StatefulWidget {
   const ForjaPlainIcon({
     super.key,
     required this.icon,
@@ -130,7 +130,8 @@ class ForjaPlainIcon extends StatelessWidget {
     this.tooltip,
     this.color,
     this.size = 24,
-    this.hoverScale = 1.12,
+    this.hitSize,
+    this.hoverScale = 1.08,
     this.pressScale = 0.94,
     this.child,
   });
@@ -140,44 +141,97 @@ class ForjaPlainIcon extends StatelessWidget {
   final String? tooltip;
   final Color? color;
   final double size;
+  final double? hitSize;
   final double hoverScale;
   final double pressScale;
   final Widget? child;
 
   @override
+  State<ForjaPlainIcon> createState() => _ForjaPlainIconState();
+}
+
+class _ForjaPlainIconState extends State<ForjaPlainIcon> {
+  bool _hover = false;
+  bool _pressed = false;
+
+  double get _resolvedHitSize => widget.hitSize ?? widget.size + 12;
+
+  Color _resolveIconColor() {
+    return widget.color ??
+        (AppTheme.isLightMode
+            ? (_hover ? Colors.black87 : Colors.black54)
+            : _hover
+                ? ForjaShellColors.iconHover
+                : ForjaShellColors.iconMuted);
+  }
+
+  Color _resolveFillColor() {
+    final fillAlpha = _pressed ? 0.14 : 0.10;
+    return AppTheme.isLightMode
+        ? Colors.black.withValues(alpha: fillAlpha)
+        : Colors.white.withValues(alpha: fillAlpha);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final button = ForjaInteractive(
-      onTap: onTap,
-      hoverScale: hoverScale,
-      pressScale: pressScale,
-      builder: (hover, pressed) {
-        final resolved = color ??
-            (AppTheme.isLightMode
-                ? (hover ? Colors.black87 : Colors.black54)
-                : hover
-                    ? ForjaShellColors.iconHover
-                    : ForjaShellColors.iconMuted);
-        return Padding(
-          padding: const EdgeInsets.all(8),
-          child: child ??
-              Icon(
-                icon,
-                size: size,
-                color: resolved,
+    final scale = _pressed
+        ? widget.pressScale
+        : (_hover ? widget.hoverScale : 1.0);
+    final showFill = _hover || _pressed;
+
+    final button = MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() {
+        _hover = false;
+        _pressed = false;
+      }),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTapDown: widget.onTap != null
+            ? (_) => setState(() => _pressed = true)
+            : null,
+        onTapUp: widget.onTap != null
+            ? (_) => setState(() => _pressed = false)
+            : null,
+        onTapCancel:
+            widget.onTap != null ? () => setState(() => _pressed = false) : null,
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedScale(
+          scale: scale,
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          child: SizedBox(
+            width: _resolvedHitSize,
+            height: _resolvedHitSize,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: showFill ? _resolveFillColor() : Colors.transparent,
               ),
-        );
-      },
+              child: Center(
+                child: widget.child ??
+                    Icon(
+                      widget.icon,
+                      size: widget.size,
+                      color: _resolveIconColor(),
+                    ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
 
-    if (tooltip != null) {
-      return Tooltip(message: tooltip!, child: button);
+    if (widget.tooltip != null) {
+      return Tooltip(message: widget.tooltip!, child: button);
     }
     return button;
   }
 }
 
 /// Borderless dismiss control — soft circular fill on hover, no outline.
-class ForjaCloseButton extends StatefulWidget {
+class ForjaCloseButton extends StatelessWidget {
   const ForjaCloseButton({
     super.key,
     this.onTap,
@@ -205,71 +259,15 @@ class ForjaCloseButton extends StatefulWidget {
   final bool compact;
 
   @override
-  State<ForjaCloseButton> createState() => _ForjaCloseButtonState();
-}
-
-class _ForjaCloseButtonState extends State<ForjaCloseButton> {
-  bool _hover = false;
-  bool _pressed = false;
-
-  Color _resolveIconColor() {
-    return widget.color ??
-        (AppTheme.isLightMode
-            ? (_hover ? Colors.black87 : Colors.black54)
-            : _hover
-                ? ForjaShellColors.cinematic.textPrimary
-                : ForjaShellColors.cinematic.textSecondary);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final scale = _pressed ? 0.94 : (_hover ? 1.08 : 1.0);
-    final fillAlpha = _pressed ? 0.14 : 0.10;
-    final fillColor = AppTheme.isLightMode
-        ? Colors.black.withValues(alpha: fillAlpha)
-        : Colors.white.withValues(alpha: fillAlpha);
-
-    final button = MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() {
-        _hover = false;
-        _pressed = false;
-      }),
-      cursor: SystemMouseCursors.click,
-      child: AnimatedScale(
-        scale: scale,
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOutCubic,
-        child: SizedBox(
-          width: widget.hitSize,
-          height: widget.hitSize,
-          child: Material(
-            color: Colors.transparent,
-            shape: const CircleBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: widget.onTap,
-              onHighlightChanged: (pressed) =>
-                  setState(() => _pressed = pressed),
-              hoverColor: fillColor,
-              splashColor: fillColor,
-              highlightColor: fillColor,
-              child: Icon(
-                Icons.close_rounded,
-                size: widget.size,
-                color: _resolveIconColor(),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return ForjaPlainIcon(
+      icon: Icons.close_rounded,
+      tooltip: tooltip,
+      color: color,
+      size: size,
+      hitSize: hitSize,
+      onTap: onTap,
     );
-
-    if (widget.tooltip != null) {
-      return Tooltip(message: widget.tooltip!, child: button);
-    }
-    return button;
   }
 }
 

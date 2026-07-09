@@ -9,10 +9,14 @@ class MediaDetailsBody extends StatelessWidget {
     super.key,
     required this.child,
     this.backgroundColor,
+    this.bodyOverlap,
+    this.topSpacing,
   });
 
   final Widget child;
   final Color? backgroundColor;
+  final double? bodyOverlap;
+  final double? topSpacing;
 
   Color _shellBg(BuildContext context) {
     return backgroundColor ?? AppTheme.bgDark;
@@ -23,7 +27,8 @@ class MediaDetailsBody extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final inset = ShellTokens.detailsContentHorizontalPadding(width);
     final shellBg = _shellBg(context);
-    final overlap = ShellTokens.detailsHeroBodyOverlap;
+    final overlap = bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
+    final top = topSpacing ?? ShellTokens.detailsBodyTopSpacing;
 
     return Transform.translate(
       offset: Offset(0, -overlap),
@@ -43,7 +48,7 @@ class MediaDetailsBody extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     inset,
-                    ShellTokens.detailsBodyTopSpacing,
+                    top,
                     inset,
                     ShellTokens.detailsBodyBottomSpacing,
                   ),

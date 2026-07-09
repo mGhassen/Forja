@@ -22,7 +22,7 @@ Core playback preferences: whether to default to torrent or streaming details, w
 ## Tips
 
 - Streaming mode + provider order is the main lever for link quality — see [Stream providers](../sources/stream-providers.md)
-- Play source toggles control which backends hero/details **Play** tries, in order: torrent → Stremio → webstreaming
+- Play source toggles control which backends hero/details **Play** tries, in order: torrent → Stremio → webstreaming. The **Sources** panel shows only the enabled source types.
 - External player bypasses built-in subtitle UI
 
 ## Related

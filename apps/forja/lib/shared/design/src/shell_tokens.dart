@@ -165,9 +165,12 @@ abstract final class ShellTokens {
 
   /// Media details — body below full-bleed hero (hero stays edge-to-edge).
   static const double detailsHeroBodyOverlap = 120;
+  /// Extra pull-up when the TV episode rail sits in the first viewport.
+  static const double detailsHeroBodyOverlapWithEpisodes = 168;
   static const double detailsHeroContentTopInset = 88;
   static const double detailsHeroDescriptionWidthFraction = 0.40;
   static const double detailsBodyTopSpacing = 36;
+  static const double detailsBodyTopSpacingWithEpisodes = 12;
   static const double detailsSectionSpacing = 48;
   static const double detailsBodyBottomSpacing = 80;
   static const double detailsContentPaddingDesktop = homeSectionHorizontalPadding;
@@ -188,16 +191,26 @@ abstract final class ShellTokens {
     return sideGutter + padding;
   }
 
-  /// Full viewport hero — prefer [viewportHeight] from a [LayoutBuilder] when set.
+  /// Cinematic hero band (~82% viewport) — see media-details feature doc.
+  static const double detailsHeroViewportFraction = 0.82;
+
+  /// Shorter hero when the TV episode rail must peek into the first screen.
+  static const double detailsHeroWithEpisodesFraction = 0.68;
+
+  /// Hero height for media details — prefer [viewportHeight] from a [LayoutBuilder].
   static double detailsHeroHeight(
     BuildContext context, {
     double? viewportHeight,
+    bool showEpisodeRail = false,
   }) {
     final height = viewportHeight ?? MediaQuery.sizeOf(context).height;
-    if (height.isFinite && height > 0) {
-      return height;
-    }
-    return MediaQuery.sizeOf(context).height;
+    final resolved = height.isFinite && height > 0
+        ? height
+        : MediaQuery.sizeOf(context).height;
+    final fraction = showEpisodeRail
+        ? detailsHeroWithEpisodesFraction
+        : detailsHeroViewportFraction;
+    return resolved * fraction;
   }
 
   static const double tabHeaderTopPadding = 16;

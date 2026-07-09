@@ -4,23 +4,23 @@
 
 ## What it is
 
-When you open a title from Home, Discover, or Search (with torrent mode enabled), you get the **torrent details** screen. A **cinematic hero** (~82% of the viewport) shows Ken Burns backdrop animation, then a chromeless YouTube trailer after a random **12–20 seconds** (preloaded for a smooth crossfade). After each trailer finishes, the backdrop returns for another random 12–20 seconds, then the trailer plays again. Trailer audio is on by default and fades from quiet to full volume over 3 seconds. A **mute** button in the bottom-right of the hero toggles sound.
+When you open a title from Home, Discover, or Search (with torrent mode enabled), you get the **torrent details** screen. A **cinematic hero** (~82% of the viewport for movies, ~68% for TV so the episode rail sits higher on the first screen) shows Ken Burns backdrop animation, then a chromeless YouTube trailer after a random **12–20 seconds** (preloaded for a smooth crossfade). After each trailer finishes, the backdrop returns for another random 12–20 seconds, then the trailer plays again. Trailer audio is on by default and fades from quiet to full volume over 3 seconds. A **mute** button in the bottom-right of the hero toggles sound.
 
 The hero overlay is split into two columns on wide screens:
 
-- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then **Play** / **Resume** (dark pill with border — opens Sources), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download, and overflow; watch progress when you have history appears below the actions.
+- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then **Play** / **Resume** (tries enabled play sources in order; opens **Sources** only if playback cannot start), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download (opens **Sources**), and overflow; watch progress when you have history appears below the actions.
 - **Right:** **Production Info** panel — status, language, and TV fields (first/last aired, seasons, episodes, network, production companies, origin, creators) or movie fields (release date, runtime, production, origin, budget/revenue) from TMDB rich details.
 
 Hero text sits in the **upper** area of the hero (not pinned to the bottom). Below the hero, the page uses a **flat shell background** (same `#141414` as the left nav rail and Home catalog rows) — no blurred backdrop bleed-through.
 
 Scroll below the hero for:
 
-1. **Seasons** (TV only) — square season photo cards; tap a season to expand the episode rail
+1. **Episodes** (TV only) — horizontal episode rail with season picker; visible on the first screen below the hero
 2. **Cast** — circular photos, actor and character names
 3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio, subtitles, quality, playback speed). When a trailer ends and more are available, an **Up next** prompt lets you continue to the next trailer.
 4. **More Like This** — recommendation row
 
-Torrent search, Stremio/Nuvio streams, **Webstreaming** (VidLink, WebStreamr, Videasy, …), and source picking stay in the **Sources** side panel (opened from **Play** in the hero).
+Torrent search, Stremio/Nuvio streams, **Webstreaming** (VidLink, WebStreamr, Videasy, …), and source picking stay in the **Sources** side panel. Only play sources enabled in **Settings → Playback** appear there.
 
 ## How to open it
 
@@ -29,7 +29,8 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 ## What you can do
 
 - Watch the Ken Burns backdrop (12–20s), then chromeless autoplay trailer in the hero when TMDB has one; alternates after each trailer ends (sound on, volume ramps up; mute toggle bottom-right)
-- **Play** / **Resume** opens the Sources panel to pick torrents, addon streams, or webstreaming providers
+- **Play** / **Resume** tries enabled play sources in order; opens **Sources** only if nothing could start
+- **Download** or an episode tap opens **Sources** to pick a stream manually
 - **Trailer** (when available) opens the in-app trailer player on the best-matching official trailer
 - Add or remove from **My List** (**+** button in hero)
 - Trakt/Simkl/collect actions via the **⋯** overflow menu in the hero

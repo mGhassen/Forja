@@ -804,10 +804,19 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildDetailsHero(
-                    heroHeight: ShellTokens.detailsHeroHeight(context),
+                    heroHeight: ShellTokens.detailsHeroHeight(
+                      context,
+                      showEpisodeRail: _movie.mediaType == 'tv',
+                    ),
                   ),
                   MediaDetailsBody(
                     backgroundColor: AppTheme.bgDark,
+                    bodyOverlap: _movie.mediaType == 'tv'
+                        ? ShellTokens.detailsHeroBodyOverlapWithEpisodes
+                        : null,
+                    topSpacing: _movie.mediaType == 'tv'
+                        ? ShellTokens.detailsBodyTopSpacingWithEpisodes
+                        : null,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

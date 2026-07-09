@@ -84,6 +84,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   bool _autoPlayConsumed = false;
   bool _autoPlayWebstreamingStarted = false;
   bool _episodePlayPending = false;
+  bool _manualPlayPending = false;
   bool _playSourceTorrent = true;
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
@@ -257,6 +258,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   void _refreshSourcesForEpisode() {
+    if (!_isCurrentSourceAllowed()) {
+      _syncSelectedSourceToPlaySources();
+    }
     if (_selectedSourceId == 'forja') {
       _autoSearch();
     } else if (_selectedSourceId == 'jackett') {
@@ -277,10 +281,79 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   void _onEpisodeSelected(int episode) {
     setState(() {
       _selectedEpisode = episode;
+      _syncSelectedSourceToPlaySources();
       _sourcesPanelOpen = true;
     });
     _checkHistory();
     _refreshSourcesForEpisode();
+  }
+
+  bool get _panelShowTorrent =>
+      _playSourceTorrent && _playbackProfile.builtinTorrentSearch;
+
+  bool get _panelShowStremio => _playSourceStremio;
+
+  bool get _panelShowWebstreaming => _playSourceWebstreaming;
+
+  bool get _panelShowNuvio => _playSourceStremio && _hasNuvioAddons;
+
+  bool _isCurrentSourceAllowed() {
+    if (_isTorrentSource) return _panelShowTorrent;
+    if (_isNuvioSource) return _panelShowStremio;
+    if (_isWebstreamingSource) return _panelShowWebstreaming;
+    return _panelShowStremio;
+  }
+
+  String _defaultSourceId() {
+    if (_panelShowTorrent) return 'forja';
+    if (_panelShowStremio && _streamAddons.isNotEmpty) {
+      return _streamAddons.length > 1
+          ? 'all_stremio'
+          : _streamAddons.first['baseUrl'] as String;
+    }
+    if (_panelShowWebstreaming) return 'webstream_picker';
+    return 'forja';
+  }
+
+  void _syncSelectedSourceToPlaySources() {
+    if (_isCurrentSourceAllowed()) return;
+    _selectedSourceId = _defaultSourceId();
+    _resetPanelFilters();
+    if (_isWebstreamingSource) {
+      _webstreamingStreams = [];
+      _webstreamingActiveProviderId = null;
+    }
+  }
+
+  void _ensurePanelSourceLoaded() {
+    if (_isTorrentSource && _panelShowTorrent) {
+      if (_allTorrentResults.isEmpty && !_isSearching) _autoSearch();
+    } else if (_isWebstreamingSource && _panelShowWebstreaming) {
+      if (_webstreamingStreams.isEmpty && !_isWebstreamingFetching) {
+        final firstId = _orderedWebstreamingProviders.keys.firstOrNull;
+        if (firstId != null) _fetchWebstreamingProvider(firstId);
+      }
+    } else if (!_isTorrentSource &&
+        !_isNuvioSource &&
+        !_isWebstreamingSource &&
+        _panelShowStremio) {
+      if (_stremioStreams.isEmpty && !_isStremioFetching) {
+        _fetchAllStremioStreams();
+      }
+    }
+  }
+
+  void _openSourcesPanel() {
+    setState(() {
+      _syncSelectedSourceToPlaySources();
+      _sourcesPanelOpen = true;
+    });
+    _ensurePanelSourceLoaded();
+  }
+
+  void _onHeroPlayPressed() {
+    _manualPlayPending = true;
+    _maybeAutoPlay();
   }
 
   void _onSeasonSelected(int season) {
@@ -355,7 +428,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     return MediaDetailsTorrentActionRow(
       movie: _movie,
       hasResume: hasResume,
-      onOpenSources: () => setState(() => _sourcesPanelOpen = true),
+      onOpenSources: _onHeroPlayPressed,
+      onDownload: _openSourcesPanel,
       onOverflowAction: _handleHeroOverflowAction,
       trailers: _trailers,
       trailerLanguageCode: _originalLanguage,
@@ -542,12 +616,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   void _failEpisodePlayPending() {
     if (!_episodePlayPending || !mounted) return;
     _episodePlayPending = false;
-    setState(() => _sourcesPanelOpen = true);
+    _openSourcesPanel();
   }
 
   void _failAutoPlayFromRoute() {
     if (!mounted) return;
-    setState(() => _sourcesPanelOpen = true);
+    _openSourcesPanel();
   }
 
   List<dynamic> _streamsForAutoPlay() {
@@ -558,15 +632,21 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     return _stremioStreams;
   }
 
-  void _consumeAutoPlayFlags({required bool fromRoute, required bool fromEpisode}) {
+  void _consumeAutoPlayFlags({
+    required bool fromRoute,
+    required bool fromEpisode,
+    bool fromManual = false,
+  }) {
     if (fromRoute) _autoPlayConsumed = true;
     if (fromEpisode) _episodePlayPending = false;
+    if (fromManual) _manualPlayPending = false;
   }
 
   void _maybeAutoPlay() {
     final fromRoute = widget.autoPlay && !_autoPlayConsumed;
     final fromEpisode = _episodePlayPending;
-    if (!fromRoute && !fromEpisode) return;
+    final fromManual = _manualPlayPending;
+    if (!fromRoute && !fromEpisode && !fromManual) return;
     if (!mounted || _isLoading) return;
 
     final startPosition = _startPositionForAutoPlay(fromRoute: fromRoute);
@@ -574,7 +654,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
       if (_isSearching) return;
       if (_allTorrentResults.isNotEmpty) {
-        _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+        _consumeAutoPlayFlags(
+          fromRoute: fromRoute,
+          fromEpisode: fromEpisode,
+          fromManual: fromManual,
+        );
         _playTorrent(_allTorrentResults.first, startPosition: startPosition);
         return;
       }
@@ -586,7 +670,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       if (streams.isNotEmpty) {
         final stream = streams.first;
         if (stream is Map<String, dynamic>) {
-          _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+          _consumeAutoPlayFlags(
+            fromRoute: fromRoute,
+            fromEpisode: fromEpisode,
+            fromManual: fromManual,
+          );
           _playStremioStream(stream, startPosition: startPosition);
           return;
         }
@@ -595,7 +683,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     if (_playSourceWebstreaming) {
       if (_webstreamingStreams.isNotEmpty) {
-        _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+        _consumeAutoPlayFlags(
+          fromRoute: fromRoute,
+          fromEpisode: fromEpisode,
+          fromManual: fromManual,
+        );
         _playWebstreamingStream(
           _webstreamingStreams.first,
           startPosition: startPosition,
@@ -625,6 +717,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     } else if (fromRoute) {
       _consumeAutoPlayFlags(fromRoute: true, fromEpisode: false);
       _failAutoPlayFromRoute();
+    } else if (fromManual) {
+      _manualPlayPending = false;
+      _openSourcesPanel();
     }
   }
 
@@ -724,6 +819,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 ? 'all_stremio'
                 : streamAddons.first['baseUrl'] as String;
           }
+          _syncSelectedSourceToPlaySources();
         });
         if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
           _autoSearch();
@@ -856,6 +952,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         _maybeAutoPlay();
         if (_episodePlayPending && _webstreamingStreams.isEmpty) {
           _failEpisodePlayPending();
+        } else if (_manualPlayPending && _webstreamingStreams.isEmpty) {
+          _manualPlayPending = false;
+          _openSourcesPanel();
         }
       }
     }
@@ -2485,7 +2584,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildScrollLayout() {
-    final heroHeight = ShellTokens.detailsHeroHeight(context);
+    final showEpisodeRail = _movie.mediaType == 'tv' && !_isCollection;
+    final heroHeight = ShellTokens.detailsHeroHeight(
+      context,
+      showEpisodeRail: showEpisodeRail,
+    );
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
@@ -2494,6 +2597,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _buildDetailsHero(heroHeight: heroHeight),
           MediaDetailsBody(
             backgroundColor: AppTheme.bgDark,
+            bodyOverlap: showEpisodeRail
+                ? ShellTokens.detailsHeroBodyOverlapWithEpisodes
+                : null,
+            topSpacing: showEpisodeRail
+                ? ShellTokens.detailsBodyTopSpacingWithEpisodes
+                : null,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2547,9 +2656,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           isNuvio: _isNuvioSource,
           isWebstreaming: _isWebstreamingSource,
           isTorrent: _isTorrentSource,
-          showNuvio: _hasNuvioAddons,
-          showWebstreaming: true,
-          showTorrent: _playbackProfile.builtinTorrentSearch,
+          showNuvio: _panelShowNuvio,
+          showWebstreaming: _panelShowWebstreaming,
+          showTorrent: _panelShowTorrent,
+          showStremio: _panelShowStremio,
           onStremioTap: () {
             if (_streamAddons.isNotEmpty) {
               setState(() {

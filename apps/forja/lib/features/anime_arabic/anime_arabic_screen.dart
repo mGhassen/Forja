@@ -306,10 +306,10 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
                                   ),
                                 ),
                                 actions: [
-                                  IconButton(
-                                    icon: const Icon(Icons.search,
-                                        color: Colors.white),
-                                    onPressed: _openSearch,
+                                  ForjaPlainIcon(
+                                    icon: Icons.search,
+                                    color: Colors.white,
+                                    onTap: _openSearch,
                                   ),
                                   const SizedBox(width: 4),
                                 ],

@@ -181,6 +181,7 @@ class TorrentSourceToggle extends StatelessWidget {
     required this.showNuvio,
     required this.showWebstreaming,
     required this.showTorrent,
+    this.showStremio = true,
     required this.onStremioTap,
     required this.onNuvioTap,
     required this.onWebstreamingTap,
@@ -194,6 +195,7 @@ class TorrentSourceToggle extends StatelessWidget {
   final bool showNuvio;
   final bool showWebstreaming;
   final bool showTorrent;
+  final bool showStremio;
   final VoidCallback onStremioTap;
   final VoidCallback onNuvioTap;
   final VoidCallback onWebstreamingTap;
@@ -207,15 +209,16 @@ class TorrentSourceToggle extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       child: Row(
         children: [
-          Expanded(
-            child: _SourceTab(
-              label: 'Stremio Addons',
-              icon: Icons.extension_outlined,
-              selected: isStremio,
-              compact: compact,
-              onTap: onStremioTap,
+          if (showStremio)
+            Expanded(
+              child: _SourceTab(
+                label: 'Stremio Addons',
+                icon: Icons.extension_outlined,
+                selected: isStremio,
+                compact: compact,
+                onTap: onStremioTap,
+              ),
             ),
-          ),
           if (showNuvio)
             Expanded(
               child: _SourceTab(

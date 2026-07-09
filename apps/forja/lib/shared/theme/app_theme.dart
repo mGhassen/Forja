@@ -200,9 +200,7 @@ class AppTheme {
         iconButtonTheme: IconButtonThemeData(
           style: IconButton.styleFrom(
             minimumSize: const Size(40, 40),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
+            shape: const CircleBorder(),
           ),
         ),
       );
@@ -247,9 +245,7 @@ class AppTheme {
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           minimumSize: const Size(40, 40),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-          ),
+          shape: const CircleBorder(),
           foregroundColor: const Color(0xFFF5F5F7),
         ),
       ),

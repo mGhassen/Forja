@@ -21,7 +21,7 @@ Tap **IPTV** in the navigation bar → add or select an Xtream portal.
 - Play in the IPTV player screen
 - Change live channels from the in-player channel guide (groups + channel list overlay)
 - Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header (circular hover highlight, no box border)
-- View programme guide (NOW / NEXT with progress) in the guide when your portal provides EPG
+- View programme guide (NOW / NEXT with progress) as a floating card at the bottom-right of the player when your portal provides EPG
 - Switch audio tracks and subtitles from the player controls when the stream provides them
 
 ## Setup

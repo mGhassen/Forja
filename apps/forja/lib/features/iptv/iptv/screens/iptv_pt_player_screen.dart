@@ -11,6 +11,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
+import 'package:forja/features/iptv/iptv/channel_guide/iptv_guide_epg.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide_panel.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_search_overlay.dart';
@@ -128,6 +129,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   bool _searchVisible = false;
   late String _selectedGroupId;
   late String _currentChannelId;
+  IptvGuideEpgCache? _epgCache;
   double _subtitleDelay = 0;
 
   // Watchdog state
@@ -205,6 +207,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     final guide = widget.channelGuide;
     _selectedGroupId = guide?.initialGroupId ?? '';
     _currentChannelId = guide?.initialChannelId ?? '';
+    final portal = guide?.xtreamPortal;
+    if (portal != null) _epgCache = IptvGuideEpgCache(portal);
     WidgetsBinding.instance.addObserver(this);
     _initOrientationAndChrome();
     WakelockPlus.enable();
@@ -837,6 +841,22 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _scheduleHideControls();
   }
 
+  IptvGuideChannel? _currentGuideChannel() {
+    final guide = widget.channelGuide;
+    if (guide == null || _currentChannelId.isEmpty) return null;
+    for (final ch in guide.channels) {
+      if (ch.id == _currentChannelId) return ch;
+    }
+    return null;
+  }
+
+  Future<List<EpgEntry>>? _floatingEpgFuture() {
+    if (_isVod || _epgCache == null) return null;
+    final stream = _currentGuideChannel()?.xtreamStream;
+    if (stream == null) return null;
+    return _epgCache!.load(stream.streamId);
+  }
+
   void _updateSubVisibility(SubtitleTrack track) {
     if (_player.platform is! NativePlayer) return;
     final on = track.id != 'no';
@@ -1005,6 +1025,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final compact = size.shortestSide < 600;
+    final epgFuture = (!_guideVisible && !_searchVisible)
+        ? _floatingEpgFuture()
+        : null;
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
@@ -1052,6 +1075,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                 },
                 onChannelSelected: _switchChannel,
                 onClose: () => setState(() => _guideVisible = false),
+              ),
+            if (epgFuture != null)
+              IptvFloatingEpg(
+                key: ValueKey(_currentChannelId),
+                future: epgFuture,
+                bottomInset: _controlsVisible ? 88 : 16,
               ),
           ],
         ),

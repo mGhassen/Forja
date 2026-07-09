@@ -336,16 +336,16 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 backgroundColor: Colors.transparent,
                                 elevation: 0,
                                 actions: [
-                                  IconButton(
-                                    icon: const Icon(Icons.search,
-                                        color: Colors.white),
-                                    onPressed: _openSearch,
+                                  ForjaPlainIcon(
+                                    icon: Icons.search,
+                                    color: Colors.white,
+                                    onTap: _openSearch,
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.tune_rounded,
-                                        color: Colors.white),
+                                  ForjaPlainIcon(
+                                    icon: Icons.tune_rounded,
                                     tooltip: 'Discover',
-                                    onPressed: _openDiscover,
+                                    color: Colors.white,
+                                    onTap: _openDiscover,
                                   ),
                                   const SizedBox(width: 4),
                                 ],
