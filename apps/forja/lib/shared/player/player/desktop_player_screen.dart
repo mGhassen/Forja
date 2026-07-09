@@ -39,6 +39,7 @@ import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
+import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
@@ -511,6 +512,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   String? _currentProvider;
   List<StreamSource>? _currentSources;
   String? _currentUrl;
+  int? _activeFileIndex;
   // ── HLS Quality Selector ─────────────────────────────────────────────────
   // Populated when the playing URL is a master HLS playlist with 2+
   // variants. The gear button in the top control bar is hidden until this
@@ -573,6 +575,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         ? null
         : dedupeStreamSources(widget.sources!);
     _currentUrl = widget.mediaPath;
+    _activeFileIndex = widget.fileIndex;
     if (_currentProvider == 'service111477' &&
         widget.sources != null &&
         widget.sources!.isNotEmpty) {
@@ -682,6 +685,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _pipSub?.cancel();
+    PlayerTorrentFilePanel.dismiss();
     // If we tear down while in PiP, restore window chrome so the next
     // screen doesn't inherit a tiny frameless 480x270 window.
     if (PipService.instance.isDesktopActive) {
@@ -2782,6 +2786,76 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     );
   }
 
+  void _showTorrentFilesPanel() {
+    final magnet = widget.magnetLink;
+    if (magnet == null || magnet.isEmpty) return;
+    _hideTimer?.cancel();
+    PlayerTorrentFilePanel.show(
+      context: context,
+      magnetLink: magnet,
+      currentFileIndex: _activeFileIndex,
+      onFileSelected: _switchTorrentFile,
+    );
+  }
+
+  Future<void> _switchTorrentFile(TorrentFileEntry file) async {
+    final magnet = widget.magnetLink;
+    if (magnet == null) return;
+
+    final statusId = 'torrent-file-${file.index}';
+    _statusController.upsert(
+      statusId,
+      file.name,
+      kind: StatusRouletteKind.loading,
+    );
+
+    final url = await TorrentStreamService().streamTorrent(
+      magnet,
+      fileIdx: file.index,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    if (!mounted) return;
+    if (url == null || url.isEmpty) {
+      _statusController.upsert(
+        statusId,
+        file.name,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      throw Exception('Failed to start torrent file stream');
+    }
+
+    await _configureMpvProperties();
+    await resetPlayerForOpen(_player);
+    await _player.open(Media(url));
+    _player.setVolume(_volumeNotifier.value);
+
+    final opened = await waitForMediaOpen(_player);
+    if (!mounted) return;
+    if (!opened) {
+      _statusController.upsert(
+        statusId,
+        file.name,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      throw Exception('Torrent file failed to open');
+    }
+
+    setState(() {
+      _currentUrl = url;
+      _activeFileIndex = file.index;
+      _hasError = false;
+      _errorMessage = '';
+      _currentSources = null;
+    });
+    _playbackConfirmed = true;
+    _statusController.complete();
+    widget.onPlaybackStarted?.call();
+    _onMouseMove();
+  }
+
   void _showSettingsMenu(BuildContext anchorContext) {
     PlayerPopupPanel.show(
       context: context,
@@ -3391,6 +3465,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     final hasProviders = widget.providers != null && widget.providers!.isNotEmpty &&
         widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
     final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
+    final hasTorrentFiles =
+        widget.magnetLink != null && widget.magnetLink!.isNotEmpty;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
       hasStatusMessage: _hasError,
@@ -3715,6 +3791,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   ),
                 ]),
                 Row(children: [
+                  if (hasTorrentFiles) ...[
+                    PlayerFlatIconButton(
+                      icon: Icons.link_rounded,
+                      tooltip: 'Torrent files',
+                      onPressed: _showTorrentFilesPanel,
+                    ),
+                    const SizedBox(width: 2),
+                  ],
                   if (hasSources) ...[
                     PlayerFlatIconButton(
                       icon: Icons.dns_outlined,
