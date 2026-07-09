@@ -3,6 +3,37 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 
+enum PlayerSourceStatus { ready, active, failed, checking }
+
+Color playerSourceBadgeColor(String? badge) {
+  switch (badge?.toUpperCase()) {
+    case 'HLS':
+      return const Color(0xFF5B21B6);
+    case 'MP4':
+    case 'VIDEO':
+      return const Color(0xFF0369A1);
+    case 'DASH':
+      return const Color(0xFFB45309);
+    case 'AUTO':
+      return const Color(0xFF3F3F46);
+    default:
+      return const Color(0xFF2A2A2A);
+  }
+}
+
+Color playerSourceStatusColor(PlayerSourceStatus status) {
+  switch (status) {
+    case PlayerSourceStatus.active:
+      return const Color(0xFF22C55E);
+    case PlayerSourceStatus.failed:
+      return const Color(0xFFEF4444);
+    case PlayerSourceStatus.checking:
+      return const Color(0xFF38BDF8);
+    case PlayerSourceStatus.ready:
+      return Colors.white24;
+  }
+}
+
 /// Floating player menu anchored to a control button when possible.
 /// Uses [OverlayEntry] — never touches the shell route stack.
 class PlayerPopupPanel {
@@ -278,44 +309,114 @@ class PlayerPopupListTile extends StatelessWidget {
     super.key,
     required this.label,
     this.badge,
+    this.badgeColor,
     this.subtitle,
     this.selected = false,
+    this.status,
     this.trailing,
     this.onTap,
   });
 
   final String label;
   final String? badge;
+  final Color? badgeColor;
   final String? subtitle;
   final bool selected;
+  final PlayerSourceStatus? status;
   final Widget? trailing;
   final VoidCallback? onTap;
 
+  Widget? _statusIcon() {
+    if (status == null) return null;
+    switch (status!) {
+      case PlayerSourceStatus.active:
+        return Icon(
+          Icons.play_circle_filled_rounded,
+          color: playerSourceStatusColor(status!),
+          size: 18,
+        );
+      case PlayerSourceStatus.failed:
+        return Icon(
+          Icons.cancel_rounded,
+          color: playerSourceStatusColor(status!),
+          size: 18,
+        );
+      case PlayerSourceStatus.checking:
+        return SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: playerSourceStatusColor(status!),
+          ),
+        );
+      case PlayerSourceStatus.ready:
+        return Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: playerSourceStatusColor(status!),
+            shape: BoxShape.circle,
+          ),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final failed = status == PlayerSourceStatus.failed;
+    final active = status == PlayerSourceStatus.active;
+    final rowColor = selected
+        ? Colors.white.withValues(alpha: 0.12)
+        : failed
+            ? const Color(0xFFEF4444).withValues(alpha: 0.08)
+            : active
+                ? const Color(0xFF22C55E).withValues(alpha: 0.07)
+                : Colors.transparent;
+
     return Material(
-      color: selected ? Colors.white.withValues(alpha: 0.12) : Colors.transparent,
+      color: rowColor,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        child: Padding(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: active
+                ? Border.all(
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                  )
+                : null,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
               if (badge != null) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A2A),
+                    color: badgeColor ?? const Color(0xFF2A2A2A),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     badge!,
-                    style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: badgeColor != null && badgeColor != const Color(0xFF2A2A2A)
+                          ? Colors.white.withValues(alpha: 0.92)
+                          : Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
+              ],
+              if (_statusIcon() != null) ...[
+                _statusIcon()!,
+                const SizedBox(width: 8),
               ],
               Expanded(
                 child: Column(
@@ -323,16 +424,43 @@ class PlayerPopupListTile extends StatelessWidget {
                   children: [
                     Text(
                       label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: failed
+                            ? Colors.white.withValues(alpha: 0.45)
+                            : Colors.white,
                         fontSize: 14,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight:
+                            selected ? FontWeight.w600 : FontWeight.w500,
+                        decoration: failed ? TextDecoration.lineThrough : null,
+                        decorationColor: Colors.white38,
                       ),
                     ),
                     if (subtitle != null)
                       Text(
                         subtitle!,
-                        style: const TextStyle(color: Colors.white38, fontSize: 11),
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11,
+                        ),
+                      ),
+                    if (status != null && status != PlayerSourceStatus.ready)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          switch (status!) {
+                            PlayerSourceStatus.active => 'Playing',
+                            PlayerSourceStatus.failed => 'Unavailable',
+                            PlayerSourceStatus.checking => 'Checking…',
+                            PlayerSourceStatus.ready => '',
+                          },
+                          style: TextStyle(
+                            color: playerSourceStatusColor(status!),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                   ],
                 ),

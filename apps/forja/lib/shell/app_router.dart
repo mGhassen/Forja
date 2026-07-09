@@ -172,6 +172,8 @@ class AppRouter {
     Future<void> Function(Duration position, Duration duration)? onSaveProgress,
     Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned,
     bool pinSource = false,
+    VoidCallback? onPlaybackStarted,
+    VoidCallback? onAllSourcesExhausted,
     bool fadeTransition = false,
   }) {
     final routeBuilder = fadeTransition ? fadeRoute : slideRoute;
@@ -203,6 +205,8 @@ class AppRouter {
           onSaveProgress: onSaveProgress,
           onSourcePinned: onSourcePinned,
           pinSource: pinSource,
+          onPlaybackStarted: onPlaybackStarted,
+          onAllSourcesExhausted: onAllSourcesExhausted,
         ),
       ),
     );

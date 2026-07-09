@@ -44,6 +44,8 @@ class PlayerScreen extends StatefulWidget {
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned;
   final bool pinSource;
+  final VoidCallback? onPlaybackStarted;
+  final VoidCallback? onAllSourcesExhausted;
 
   const PlayerScreen({
     super.key,
@@ -72,6 +74,8 @@ class PlayerScreen extends StatefulWidget {
     this.onSaveProgress,
     this.onSourcePinned,
     this.pinSource = false,
+    this.onPlaybackStarted,
+    this.onAllSourcesExhausted,
   });
 
   @override
@@ -199,6 +203,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,
+        onPlaybackStarted: widget.onPlaybackStarted,
+        onAllSourcesExhausted: widget.onAllSourcesExhausted,
       );
     } else {
       return DesktopPlayerScreen(
@@ -227,6 +233,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,
+        onPlaybackStarted: widget.onPlaybackStarted,
+        onAllSourcesExhausted: widget.onAllSourcesExhausted,
       );
     }
   }

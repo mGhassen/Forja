@@ -58,6 +58,9 @@ class LoadingOverlay extends StatefulWidget {
   final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
   final ValueNotifier<bool>? fadeOutNotifier;
   final String? subtitle;
+  final String? recheckBanner;
+  final bool showReloadButton;
+  final VoidCallback? onReload;
   final VoidCallback? onCancel;
   const LoadingOverlay({
     super.key,
@@ -67,6 +70,9 @@ class LoadingOverlay extends StatefulWidget {
     this.providerProbesNotifier,
     this.fadeOutNotifier,
     this.subtitle,
+    this.recheckBanner,
+    this.showReloadButton = false,
+    this.onReload,
     this.onCancel,
   });
 
@@ -160,6 +166,45 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (widget.recheckBanner != null) ...[
+          Text(
+            widget.recheckBanner!.toUpperCase(),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.amber.shade200.withValues(alpha: 0.95),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2.5,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (widget.showReloadButton) ...[
+          Text(
+            'SAVED STREAM UNAVAILABLE',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 2,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: widget.onReload,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('RELOAD'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         Text(
           _message,
           style: TextStyle(
@@ -318,6 +363,50 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                     if (_showProviderProbes)
                       _probeProgressFooter()
                     else ...[
+                      if (widget.recheckBanner != null) ...[
+                        Text(
+                          widget.recheckBanner!.toUpperCase(),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.amber.shade200.withValues(alpha: 0.95),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 2.5,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      if (widget.showReloadButton) ...[
+                        Text(
+                          'SAVED STREAM UNAVAILABLE',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 2,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: widget.onReload,
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: const Text('RELOAD'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.35),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 22,
+                              vertical: 10,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                       const CircularProgressIndicator(
                         color: AppTheme.primaryColor,
                         strokeWidth: 3,

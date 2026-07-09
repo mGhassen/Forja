@@ -371,6 +371,8 @@ class MobilePlayerScreen extends StatefulWidget {
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned;
   final bool pinSource;
+  final VoidCallback? onPlaybackStarted;
+  final VoidCallback? onAllSourcesExhausted;
 
   const MobilePlayerScreen({
     super.key,
@@ -399,6 +401,8 @@ class MobilePlayerScreen extends StatefulWidget {
     this.onSaveProgress,
     this.onSourcePinned,
     this.pinSource = false,
+    this.onPlaybackStarted,
+    this.onAllSourcesExhausted,
   });
 
   @override
@@ -494,8 +498,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _audioPinned = false;
   bool _subtitlePinned = false;
   final PlayerStatusController _statusController = PlayerStatusController();
+  final Set<int> _failedSourceIndices = {};
+  int? _checkingSourceIndex;
+  final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   bool _isSwitchingProvider = false;
   bool _isInitPlaybackRunning = false;
+  bool _allSourcesExhaustedNotified = false;
   bool _playbackConfirmed = false;
   bool _isFetchingSubs = false;
   String? _selectedExternalSubUrl;
@@ -728,6 +736,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _isBufferingNotifier.dispose();
     _hlsQualitiesNotifier.dispose();
     _statusController.dispose();
+    _sourceMenuRevision.dispose();
 
     _player.dispose();
 
@@ -933,6 +942,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       debugPrint(
         '[Player] Trying source ${i + 1}/${_currentSources!.length}: ${source.title}',
       );
+      _markSourceChecking(i);
       _statusController.upsert(
         'source-$i',
         source.title,
@@ -950,6 +960,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
             kind: StatusRouletteKind.failed,
             dismissAfter: const Duration(milliseconds: 1200),
           );
+          _markSourceFailed(i);
           _currentFallbackSourceIndex++;
           continue;
         }
@@ -1000,6 +1011,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
             kind: StatusRouletteKind.failed,
             dismissAfter: const Duration(milliseconds: 1200),
           );
+          _markSourceFailed(i);
           _currentFallbackSourceIndex++;
           continue;
         }
@@ -1013,6 +1025,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
             kind: StatusRouletteKind.failed,
             dismissAfter: const Duration(milliseconds: 1200),
           );
+          _markSourceFailed(i);
           _currentFallbackSourceIndex++;
           continue;
         }
@@ -1025,6 +1038,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
             kind: StatusRouletteKind.failed,
             dismissAfter: const Duration(milliseconds: 1200),
           );
+          _markSourceFailed(i);
           _currentFallbackSourceIndex++;
           continue;
         }
@@ -1043,6 +1057,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         });
         _playbackConfirmed = true;
         _statusController.complete();
+        _markSourceActive(i);
+        widget.onPlaybackStarted?.call();
         return true;
       } catch (e) {
         debugPrint('[Player] Source $i catch error: $e');
@@ -1053,6 +1069,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(milliseconds: 1200),
         );
+        _markSourceFailed(i);
         _currentFallbackSourceIndex++;
       }
     }
@@ -1085,6 +1102,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _showControls = true;
           _errorMessage = 'All sources on this server failed.';
         });
+        _notifyAllSourcesExhausted();
       }
     } else {
       // No sources list, just try the primary mediaPath
@@ -1122,6 +1140,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _showControls = true;
         _errorMessage = 'All sources and providers failed.';
       });
+      _notifyAllSourcesExhausted();
       return;
     }
 
@@ -1145,7 +1164,16 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _showControls = true;
         _errorMessage = 'Could not find any working stream from any provider.';
       });
+      _notifyAllSourcesExhausted();
     }
+  }
+
+  void _notifyAllSourcesExhausted() {
+    if (widget.onAllSourcesExhausted == null || _allSourcesExhaustedNotified) {
+      return;
+    }
+    _allSourcesExhaustedNotified = true;
+    widget.onAllSourcesExhausted!();
   }
 
   bool _fallbackAborted(int chainGen) =>
@@ -2381,6 +2409,41 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   //  SOURCE SELECTION (for Amri provider)
   // ─────────────────────────────────────────────────────────────────────────
 
+  void _notifySourceMenuChanged() {
+    _sourceMenuRevision.value++;
+  }
+
+  void _markSourceChecking(int index) {
+    _checkingSourceIndex = index;
+    _notifySourceMenuChanged();
+  }
+
+  void _markSourceFailed(int index) {
+    _failedSourceIndices.add(index);
+    _checkingSourceIndex = null;
+    _notifySourceMenuChanged();
+  }
+
+  void _markSourceActive(int index) {
+    _failedSourceIndices.remove(index);
+    _checkingSourceIndex = null;
+    _notifySourceMenuChanged();
+  }
+
+  List<PlayerSourceStatus> _buildSourceStatuses() {
+    final sources = _currentSources ?? const [];
+    return List.generate(sources.length, (i) {
+      if (_checkingSourceIndex == i) return PlayerSourceStatus.checking;
+      final source = sources[i];
+      final isCurrent = _currentProvider == 'service111477'
+          ? source.url == _current111477FileUrl
+          : source.url == _currentUrl;
+      if (isCurrent && _playbackConfirmed) return PlayerSourceStatus.active;
+      if (_failedSourceIndices.contains(i)) return PlayerSourceStatus.failed;
+      return PlayerSourceStatus.ready;
+    });
+  }
+
   PlayerStreamMenuState _streamMenuState() {
     String? activeSourceTitle;
     final sources = _currentSources;
@@ -2416,6 +2479,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       sourceAuto: !_sourcePinned,
       activeProviderLabel: activeProviderLabel,
       activeSourceTitle: activeSourceTitle,
+      sourceStatuses: _buildSourceStatuses(),
     );
   }
 
@@ -2432,6 +2496,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       sourcesOnly: true,
       anchorContext: anchorContext,
       margin: EdgeInsets.only(right: 12, bottom: bottom),
+      refreshListenable:
+          Listenable.merge([_statusController, _sourceMenuRevision]),
     );
     _startHideTimer();
   }
@@ -2456,6 +2522,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       providersEnabled: !_isSwitchingProvider,
       anchorContext: anchorContext,
       margin: EdgeInsets.only(right: 12, bottom: bottom),
+      refreshListenable:
+          Listenable.merge([_statusController, _sourceMenuRevision]),
     );
     _startHideTimer();
   }
@@ -2475,7 +2543,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     setState(() {
       _sourcePinned = false;
       _currentFallbackSourceIndex = 0;
+      _failedSourceIndices.clear();
+      _checkingSourceIndex = null;
     });
+    _notifySourceMenuChanged();
     await _initPlayback();
   }
 
@@ -2493,6 +2564,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
 
     _sourcePinned = true;
+    _markSourceChecking(index);
 
     final currentPos = _positionNotifier.value;
     final statusId = 'source-switch-$index';
@@ -2521,6 +2593,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         if (currentPos.inSeconds > 0) await _player.seek(currentPos);
         _playbackConfirmed = true;
         _statusController.complete();
+        _markSourceActive(index);
       } catch (e) {
         if (!mounted) return;
         _statusController.upsert(
@@ -2529,6 +2602,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
+        _markSourceFailed(index);
       }
       return;
     }
@@ -2543,6 +2617,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
+        _markSourceFailed(index);
         return;
       }
       await _player.open(Media(result.url, httpHeaders: result.headers));
@@ -2589,6 +2664,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     );
     _playbackConfirmed = true;
     _statusController.complete();
+    _markSourceActive(index);
     unawaited(widget.onSourcePinned?.call(source.url, source.title));
   }
 

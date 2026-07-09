@@ -305,6 +305,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   bool _failedAll = false;
   bool _cancelled = false;
   bool _resolverStopped = false;
+  int _autoRecheckUsed = 0;
+  bool _awaitingManualRecheck = false;
+  bool _launchedFromSavedOrCache = false;
 
   @override
   void initState() {
@@ -359,6 +362,82 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _probeNotifier.value = next;
   }
 
+  Future<void> _dropAllStreamCaches() async {
+    _AnimeStreamSessionCache.drop(
+      widget.anime.id,
+      widget.episodeNumber,
+      _category,
+    );
+    await _service.dropCachedStream(
+      animeId: widget.anime.id,
+      episode: widget.episodeNumber,
+      category: _category,
+    );
+  }
+
+  Future<bool> _anyHitPlayable(List<_AnimeResolvedHit> hits) async {
+    for (final h in hits) {
+      final headers = Map<String, String>.from(h.media.headers);
+      if (await _service.probeStreamUrl(h.media.url, headers)) return true;
+    }
+    return false;
+  }
+
+  Future<void> _ensureEmbedsReady() async {
+    if (_allEmbeds.isNotEmpty) return;
+    if (AnimeService.savedSourceNeedsAnikoto(_preferredSourceKey)) {
+      _series ??= await _service.resolveAnikoto(widget.anime);
+    }
+    if (!mounted || _cancelled) return;
+    _allEmbeds = _service.buildAllEmbeds(
+      anilistId: widget.anime.id,
+      episode: widget.episodeNumber,
+      series: _series,
+      animeTitles: [
+        widget.anime.titleEnglish,
+        widget.anime.titleRomaji,
+        widget.anime.titleNative,
+      ],
+      isAdult: widget.anime.isAdult,
+    );
+  }
+
+  Future<void> _handleStaleSavedStreams() async {
+    await _dropAllStreamCaches();
+    _launchedFromSavedOrCache = false;
+    _fadeOutNotifier.value = false;
+    _resolverStopped = false;
+
+    if (_autoRecheckUsed >= 1) {
+      setState(() {
+        _awaitingManualRecheck = true;
+        _failedAll = false;
+      });
+      _probeNotifier.value = const [];
+      _setPhase('Streams unavailable');
+      _setStatusLine('Tap reload to search again');
+      return;
+    }
+
+    _autoRecheckUsed++;
+    setState(() {
+      _awaitingManualRecheck = false;
+      _failedAll = false;
+    });
+    _probeNotifier.value = const [];
+    _setPhase('Finding a stream…');
+    _setStatusLine('Starting source scan…');
+    await _ensureEmbedsReady();
+    if (!mounted || _cancelled) return;
+    await _resolveForCategory(fresh: true);
+  }
+
+  void _manualRecheck() {
+    _autoRecheckUsed = 0;
+    setState(() => _awaitingManualRecheck = false);
+    _retryResolve();
+  }
+
   Future<void> _bootstrap() async {
     final prefFuture = _service.preferredSource(
       animeId: widget.anime.id,
@@ -385,8 +464,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     if (cached != null) {
       if (!mounted || _cancelled) return;
-      _setPhase('Starting…');
-      _setStatusLine('Resuming stream');
       final ranked = _rankHits(
         cached,
         _preferredSourceKey,
@@ -398,6 +475,16 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           '[AnimePlayer] stream cache hit ep ${widget.episodeNumber} '
           '(${ranked.length} streams)',
         );
+      }
+      _setPhase('Starting…');
+      _setStatusLine('Resuming stream');
+      _launchedFromSavedOrCache = true;
+      if (!await _anyHitPlayable(ranked)) {
+        if (kDebugMode) {
+          debugPrint('[AnimePlayer] cached streams stale — rechecking');
+        }
+        await _handleStaleSavedStreams();
+        return;
       }
       await _launchPlayer(ranked, usedSavedSource: true, fromSessionCache: true);
       return;
@@ -447,28 +534,20 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   }
 
   void _retryResolve() {
-    _AnimeStreamSessionCache.drop(
-      widget.anime.id,
-      widget.episodeNumber,
-      _category,
-    );
-    unawaited(_service.dropCachedStream(
-      animeId: widget.anime.id,
-      episode: widget.episodeNumber,
-      category: _category,
-    ));
+    unawaited(_dropAllStreamCaches());
     _resolverStopped = false;
+    _awaitingManualRecheck = false;
     if (_allEmbeds.isEmpty) {
       unawaited(_bootstrap());
       return;
     }
-    _resolveForCategory();
+    _resolveForCategory(fresh: true);
   }
 
   List<AnimeEmbed> get _currentPair =>
       _allEmbeds.where((e) => e.category == _category).toList();
 
-  Future<void> _resolveForCategory() async {
+  Future<void> _resolveForCategory({bool fresh = false}) async {
     if (_cancelled) return;
     setState(() {
       _failedAll = false;
@@ -483,12 +562,13 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       return;
     }
 
-    if (_preferredSourceKey != null) {
+    if (!fresh && _preferredSourceKey != null) {
       final preferredEmbeds =
           pair.where((e) => e.sourceKey == _preferredSourceKey).toList();
       if (preferredEmbeds.isNotEmpty) {
         _setPhase('Using saved source…');
         _setStatusLine('Trying pinned source');
+        _launchedFromSavedOrCache = true;
         final prefHits = await _raceEmbeds(
           preferredEmbeds,
           hardTimeout: const Duration(seconds: 10),
@@ -516,6 +596,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
     }
 
+    _launchedFromSavedOrCache = false;
     _setPhase('Finding a stream…');
     _setStatusLine('Starting source scan…');
     final hits = await _raceEmbeds(pair);
@@ -524,6 +605,13 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       final ranked = _rankHits(hits, _preferredSourceKey, _preferredSourceTitle);
       _activeEmbed = ranked.first.embed;
       await _launchPlayer(ranked);
+      return;
+    }
+    if (_autoRecheckUsed >= 1) {
+      setState(() => _awaitingManualRecheck = true);
+      _setPhase('No streams available');
+      _setStatusLine('Tap reload to search again');
+      _probeNotifier.value = const [];
       return;
     }
     setState(() => _failedAll = true);
@@ -750,6 +838,15 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     bool fromSessionCache = false,
   }) async {
     if (_cancelled || !mounted) return;
+
+    if (usedSavedSource || fromSessionCache) {
+      _launchedFromSavedOrCache = true;
+      if (!await _anyHitPlayable(hits)) {
+        await _handleStaleSavedStreams();
+        return;
+      }
+    }
+
     _resolverStopped = true;
 
     _AnimeStreamSessionCache.write(
@@ -855,6 +952,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     }
 
     _fadeOutNotifier.value = true;
+    var playbackStarted = false;
     final playerFuture = AppRouter.openPlayer(
       context,
       streamUrl: winner.media.url,
@@ -893,16 +991,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           sourceKey: key,
           sourceTitle: title,
         );
-        _AnimeStreamSessionCache.drop(
-          widget.anime.id,
-          widget.episodeNumber,
-          _category,
-        );
-        await _service.dropCachedStream(
-          animeId: widget.anime.id,
-          episode: widget.episodeNumber,
-          category: _category,
-        );
+        await _dropAllStreamCaches();
         _preferredSourceKey = key;
         _preferredSourceTitle = title;
       },
@@ -911,12 +1000,27 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       onNextEpisode:
           hasNext ? () => openEpisode(widget.episodeNumber + 1) : null,
       fadeTransition: true,
+      onPlaybackStarted: () {
+        playbackStarted = true;
+        _autoRecheckUsed = 0;
+        _awaitingManualRecheck = false;
+        _launchedFromSavedOrCache = false;
+        if (resolverRoute != null && mounted) {
+          navigator.removeRoute(resolverRoute);
+        }
+      },
+      onAllSourcesExhausted: () {
+        if (navigator.canPop()) navigator.pop();
+      },
     );
     await Future<void>.delayed(loadingOverlayFadeOutDuration);
-    if (resolverRoute != null) {
-      navigator.removeRoute(resolverRoute);
-    }
     await playerFuture;
+    if (!playbackStarted &&
+        _launchedFromSavedOrCache &&
+        mounted &&
+        !_cancelled) {
+      await _handleStaleSavedStreams();
+    }
   }
 
   Widget _buildFailure(AppThemePreset theme) {
@@ -1021,6 +1125,11 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           providerProbesNotifier: _probeNotifier,
           fadeOutNotifier: _fadeOutNotifier,
           subtitle: episodeLabel,
+          recheckBanner: _awaitingManualRecheck
+              ? null
+              : (_autoRecheckUsed > 0 ? 'Rechecking sources…' : null),
+          showReloadButton: _awaitingManualRecheck,
+          onReload: _manualRecheck,
           onCancel: () {
             _cancelled = true;
             Navigator.of(context).pop();

@@ -1043,6 +1043,59 @@ class AnimeService {
     return sourceKey == 'megaplay' || sourceKey == 'vidwish';
   }
 
+  /// Lightweight reachability check before replaying cached stream URLs.
+  Future<bool> probeStreamUrl(
+    String url,
+    Map<String, String> headers,
+  ) async {
+    if (url.isEmpty) return false;
+    try {
+      if (url.contains('.m3u8')) {
+        final res = await animeHttp(
+          'GET',
+          url,
+          headers: headers,
+          maxRetries: 0,
+          timeoutSecs: 8,
+        );
+        return res.status == 200 && res.body.contains('#EXTM3U');
+      }
+      var res = await animeHttp(
+        'HEAD',
+        url,
+        headers: headers,
+        maxRetries: 0,
+        timeoutSecs: 8,
+      );
+      if (res.status >= 200 && res.status < 400) return true;
+      res = await animeHttp(
+        'GET',
+        url,
+        headers: {...headers, 'Range': 'bytes=0-0'},
+        maxRetries: 0,
+        timeoutSecs: 8,
+      );
+      return res.status == 200 || res.status == 206;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> anyResolvedHitPlayable(
+    List<Map<String, dynamic>> hitsJson,
+  ) async {
+    for (final entry in hitsJson) {
+      final media = (entry['media'] as Map?)?.cast<String, dynamic>();
+      if (media == null) continue;
+      final url = media['url'] as String? ?? '';
+      if (url.isEmpty) continue;
+      final headers =
+          (media['headers'] as Map?)?.cast<String, String>() ?? const {};
+      if (await probeStreamUrl(url, headers)) return true;
+    }
+    return false;
+  }
+
   // ─── Resolved stream URL cache (replay same episode without re-extract) ─
   static const _streamCacheKey = 'enma_anime_stream_cache_v1';
   static const _streamCacheMaxEntries = 24;

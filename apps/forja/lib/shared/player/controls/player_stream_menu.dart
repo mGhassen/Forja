@@ -14,6 +14,7 @@ class PlayerStreamMenuState {
     required this.sourceAuto,
     this.activeProviderLabel,
     this.activeSourceTitle,
+    this.sourceStatuses = const [],
   });
 
   final String? currentProviderId;
@@ -25,6 +26,7 @@ class PlayerStreamMenuState {
   final bool sourceAuto;
   final String? activeProviderLabel;
   final String? activeSourceTitle;
+  final List<PlayerSourceStatus> sourceStatuses;
 }
 
 /// Servers → sources drill-down, same panel flow as seasons → episodes.
@@ -42,6 +44,7 @@ class PlayerStreamMenu {
     bool sourcesOnly = false,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
+    Listenable? refreshListenable,
   }) async {
     final initial = readState();
     final hasProviders = providers != null && providers.isNotEmpty;
@@ -67,6 +70,7 @@ class PlayerStreamMenu {
         margin: margin,
         anchorContext: anchorContext,
         onBack: null,
+        refreshListenable: refreshListenable,
       );
       return;
     }
@@ -83,6 +87,7 @@ class PlayerStreamMenu {
         providersEnabled: providersEnabled,
         margin: margin,
         anchorContext: anchorContext,
+        refreshListenable: refreshListenable,
       );
     } else {
       await _openSources(
@@ -93,6 +98,7 @@ class PlayerStreamMenu {
         margin: margin,
         anchorContext: anchorContext,
         onBack: null,
+        refreshListenable: refreshListenable,
       );
     }
   }
@@ -109,6 +115,7 @@ class PlayerStreamMenu {
     required bool providersEnabled,
     required EdgeInsets margin,
     BuildContext? anchorContext,
+    Listenable? refreshListenable,
   }) async {
     final state = readState();
 
@@ -184,6 +191,7 @@ class PlayerStreamMenu {
                   onSelectSource: onSelectSource,
                   margin: margin,
                   anchorContext: anchorContext,
+                  refreshListenable: refreshListenable,
                   onBack: () => _openServers(
                     context,
                     providers: providers,
@@ -195,6 +203,7 @@ class PlayerStreamMenu {
                     providersEnabled: providersEnabled,
                     margin: margin,
                     anchorContext: anchorContext,
+                    refreshListenable: refreshListenable,
                   ),
                 );
               },
@@ -213,24 +222,20 @@ class PlayerStreamMenu {
     required EdgeInsets margin,
     BuildContext? anchorContext,
     required VoidCallback? onBack,
+    Listenable? refreshListenable,
   }) async {
-    final state = readState();
-    final sources = state.sources ?? const <StreamSource>[];
+    Widget buildList() {
+      final state = readState();
+      final sources = state.sources ?? const <StreamSource>[];
+      final statuses = state.sourceStatuses;
 
-    await PlayerPopupPanel.show(
-      context: context,
-      title: 'Sources',
-      leadingIcon: Icons.dns_outlined,
-      alignment: Alignment.bottomLeft,
-      margin: margin,
-      anchorContext: anchorContext,
-      onBack: onBack,
-      child: ListView(
+      return ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
         children: [
           PlayerPopupListTile(
             badge: 'AUTO',
+            badgeColor: playerSourceBadgeColor('AUTO'),
             label: 'Auto',
             subtitle: state.sourceAuto ? state.activeSourceTitle : null,
             selected: state.sourceAuto,
@@ -245,10 +250,15 @@ class PlayerStreamMenu {
             final isCurrent = state.is111477
                 ? source.url == state.current111477FileUrl
                 : source.url == state.currentUrl;
+            final status = index < statuses.length
+                ? statuses[index]
+                : PlayerSourceStatus.ready;
             return PlayerPopupListTile(
               badge: source.type.toUpperCase(),
+              badgeColor: playerSourceBadgeColor(source.type),
               label: source.title,
               selected: !state.sourceAuto && isCurrent,
+              status: status,
               onTap: () async {
                 PlayerPopupPanel.dismiss();
                 if (!isCurrent) await onSelectSource(source, index);
@@ -256,7 +266,23 @@ class PlayerStreamMenu {
             );
           }),
         ],
-      ),
+      );
+    }
+
+    await PlayerPopupPanel.show(
+      context: context,
+      title: 'Sources',
+      leadingIcon: Icons.dns_outlined,
+      alignment: Alignment.bottomLeft,
+      margin: margin,
+      anchorContext: anchorContext,
+      onBack: onBack,
+      child: refreshListenable == null
+          ? buildList()
+          : ListenableBuilder(
+              listenable: refreshListenable,
+              builder: (context, _) => buildList(),
+            ),
     );
   }
 
