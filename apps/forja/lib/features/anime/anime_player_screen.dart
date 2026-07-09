@@ -129,6 +129,28 @@ String _langCodeFromLabel(String label) {
   return l;
 }
 
+int _sourcePriority(AnimeEmbed embed) {
+  switch (embed.server) {
+    case 'megaplay':
+      return 0;
+    case 'vidwish':
+      return 1;
+    case 'miruro':
+      return 2;
+    case 'allanime':
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+String _decodeEpisodeTitle(String title) => title
+    .replaceAll('&#39;', "'")
+    .replaceAll('&quot;', '"')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>');
+
 class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   final AnimeService _service = AnimeService();
   List<AnimeEmbed> _allEmbeds = const [];
@@ -247,8 +269,11 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final hits = await completer.future;
     if (!mounted || _cancelled) return;
     if (hits.isNotEmpty) {
-      _activeEmbed = hits.first.embed;
-      await _launchPlayer(hits);
+      final sorted = [...hits]
+        ..sort((a, b) =>
+            _sourcePriority(a.embed).compareTo(_sourcePriority(b.embed)));
+      _activeEmbed = sorted.first.embed;
+      await _launchPlayer(sorted);
       return;
     }
     setState(() => _failedAll = true);
@@ -312,23 +337,16 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       category: _category,
     );
 
-    final ls = LocalServerService();
     final sources = <StreamSource>[];
     for (final h in hits) {
       final headers = Map<String, String>.from(h.media.headers)
         ..putIfAbsent('Referer', () => '${h.embed.refererOrigin}/')
         ..putIfAbsent('Origin', () => h.embed.refererOrigin);
-      var url = h.media.url;
-      Map<String, String>? srcHeaders = headers;
-      if (url.contains('.m3u8') && ls.port != 0) {
-        url = ls.getHlsProxyUrl(url, headers);
-        srcHeaders = null;
-      }
       sources.add(StreamSource(
-        url: url,
+        url: h.media.url,
         title: h.embed.displayName,
         type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
-        headers: srcHeaders,
+        headers: headers,
       ));
     }
 
@@ -342,7 +360,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
     }
 
-    final winnerSource = sources.first;
+    final winnerHeaders = sources.first.headers!;
     final title =
         '${widget.anime.displayTitle} • Ep ${widget.episodeNumber} (${winner.embed.displayName})';
 
@@ -385,16 +403,18 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _fadeOutNotifier.value = true;
     final playerFuture = AppRouter.openPlayer(
       context,
-      streamUrl: winnerSource.url,
+      streamUrl: winner.media.url,
       title: title,
-      headers: winnerSource.headers,
+      headers: winnerHeaders,
       sources: sources,
       activeProvider: winner.embed.server,
       externalSubtitles: allSubs.isNotEmpty ? allSubs : null,
       movie: _hubMovieFromAnime(widget.anime),
       hubEpisodes: hubEpisodes,
       hubEpisodeNumber: widget.episodeNumber,
-      episodeOverview: currentEp?.title,
+      episodeOverview: currentEp != null
+          ? _decodeEpisodeTitle(currentEp.title)
+          : null,
       onHubEpisodeSelected: (ep) => openEpisode(ep.number.toInt()),
       onSaveProgress: (pos, dur) async {
         await _service.recordWatch(

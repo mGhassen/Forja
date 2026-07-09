@@ -806,7 +806,7 @@ class AnimeService {
     }
     return AnimeStreamResult(
       url: file,
-      referer: embedPageUrl,
+      referer: '$origin/',
       origin: origin,
       tracks: tracks,
     );
