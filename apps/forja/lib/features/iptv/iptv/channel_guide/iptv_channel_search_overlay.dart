@@ -46,6 +46,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   @override
   void initState() {
     super.initState();
+    _queryFocus.onKeyEvent = _onSearchFieldKey;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _queryFocus.requestFocus();
     });
@@ -309,13 +310,10 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Focus(
+            child: TextField(
+              controller: _queryCtrl,
               focusNode: _queryFocus,
-              onKeyEvent: _onSearchFieldKey,
-              child: TextField(
-                controller: _queryCtrl,
-                focusNode: _queryFocus,
-                autofocus: true,
+              autofocus: true,
               style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
               decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search_rounded, color: Colors.white60),
@@ -353,9 +351,8 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
                   ),
                 ),
               ),
-                onChanged: _onQueryChanged,
-                onSubmitted: (_) => _activateFocusedResult(),
-              ),
+              onChanged: _onQueryChanged,
+              onSubmitted: (_) => _activateFocusedResult(),
             ),
           ),
         ],

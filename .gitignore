@@ -58,3 +58,6 @@ android/key.properties
 
 # Inno Setup output
 installer/windows/Output/
+
+# Release packaging artifacts
+/dist/

@@ -1,11 +1,18 @@
 ; Forja — Windows Installer (Inno Setup 6)
 ; Built from: apps/forja/build/windows/x64/runner/Release/
+; CI: iscc /DMyAppVersion=1.0.1 /DMyOutputBaseFilename=Forja-1.0.1-windows-setup setup.iss
+
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0.0"
+#endif
+#ifndef MyOutputBaseFilename
+  #define MyOutputBaseFilename "Forja-Windows-Setup"
+#endif
 
 #define MyAppName      "Forja"
-#define MyAppVersion   "1.0.0"
 #define MyAppPublisher "Forja"
 #define MyAppExeName   "forja.exe"
-#define MyAppURL       "https://github.com/forja/forja"
+#define MyAppURL       "https://github.com/mGhassen/Forja"
 
 [Setup]
 AppId={{F1A2B3C4-D5E6-7890-ABCD-EF1234567890}
@@ -19,7 +26,7 @@ DefaultGroupName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupIconFile=..\..\apps\forja\windows\runner\resources\app_icon.ico
 OutputDir=Output
-OutputBaseFilename=Forja-Windows-Setup
+OutputBaseFilename={#MyOutputBaseFilename}
 Compression=lzma2/ultra64
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible

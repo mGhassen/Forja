@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 
 class SplashPreviewScreen extends StatefulWidget {
   const SplashPreviewScreen({super.key});
@@ -34,9 +33,7 @@ class _SplashPreviewScreenState extends State<SplashPreviewScreen> {
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => Navigator.of(context).pop(),
-        child: SplashOverlayContent(
-          isLight: AppTheme.isLightMode,
-        ),
+        child: const SplashOverlayContent(),
       ),
     );
   }

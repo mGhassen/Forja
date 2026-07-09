@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 
 class MoviePoster extends StatefulWidget {
   final Movie movie;
@@ -42,7 +41,7 @@ class _MoviePosterState extends State<MoviePoster> {
       highlightColor: Colors.transparent,
       borderRadius: BorderRadius.circular(16.0),
       child: AnimatedScale(
-        scale: isActive && !AppTheme.isLightMode ? 1.05 : 1.0,
+        scale: isActive ? 1.05 : 1.0,
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOutCubic,
         child: Container(
@@ -53,10 +52,10 @@ class _MoviePosterState extends State<MoviePoster> {
               color: isActive ? Colors.deepPurpleAccent : Colors.white10,
               width: isActive ? 3 : 1,
             ),
-            boxShadow: isActive && !AppTheme.isLightMode
+            boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: Colors.deepPurpleAccent.withValues(alpha: 0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 15,
                       spreadRadius: 1,
                       offset: const Offset(0, 4),

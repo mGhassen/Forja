@@ -41,7 +41,7 @@ class AudiobookPlayerService {
   void _ensurePlayer() {
     if (_disposed) return;
     if (_player != null) return;
-    _player = Player();
+    _player = MpvExclusiveSession.instance.trackPlayer(Player());
     if (_handler != null) {
       _attachPlayerListeners();
     }
@@ -49,15 +49,17 @@ class AudiobookPlayerService {
 
   Future<void> releaseMpvForVideo() async {
     if (_player == null) return;
+    final player = _player!;
+    MpvExclusiveSession.instance.untrackPlayer(player);
     for (final s in _subscriptions) {
       await s.cancel();
     }
     _subscriptions.clear();
     try {
-      await _player!.stop();
+      await player.stop();
     } catch (_) {}
     try {
-      await _player!.dispose();
+      await player.dispose();
     } catch (_) {}
     _player = null;
     _playerListenersAttached = false;

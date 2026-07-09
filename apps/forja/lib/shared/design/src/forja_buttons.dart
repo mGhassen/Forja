@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 typedef ForjaInteractiveBuilder = Widget Function(bool hover, bool pressed);
@@ -83,10 +82,7 @@ class ForjaGhostButton extends StatelessWidget {
   final VoidCallback? onTap;
   final IconData? icon;
 
-  Color get _color {
-    if (AppTheme.isLightMode) return Colors.black87;
-    return ForjaShellColors.textPrimary;
-  }
+  Color get _color => ForjaShellColors.textPrimary;
 
   @override
   Widget build(BuildContext context) {
@@ -158,18 +154,12 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
 
   Color _resolveIconColor() {
     return widget.color ??
-        (AppTheme.isLightMode
-            ? (_hover ? Colors.black87 : Colors.black54)
-            : _hover
-                ? ForjaShellColors.iconHover
-                : ForjaShellColors.iconMuted);
+        (_hover ? ForjaShellColors.iconHover : ForjaShellColors.iconMuted);
   }
 
   Color _resolveFillColor() {
     final fillAlpha = _pressed ? 0.14 : 0.10;
-    return AppTheme.isLightMode
-        ? Colors.black.withValues(alpha: fillAlpha)
-        : Colors.white.withValues(alpha: fillAlpha);
+    return Colors.white.withValues(alpha: fillAlpha);
   }
 
   @override
@@ -290,12 +280,8 @@ class ForjaIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = AppTheme.isLightMode
-        ? Colors.black26
-        : ForjaShellColors.ghostBorder;
-    final iconColor = AppTheme.isLightMode
-        ? Colors.black87
-        : ForjaShellColors.textPrimary;
+    const borderColor = ForjaShellColors.ghostBorder;
+    const iconColor = ForjaShellColors.textPrimary;
 
     final button = ForjaInteractive(
       onTap: onTap,

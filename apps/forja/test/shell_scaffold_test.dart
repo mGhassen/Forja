@@ -371,16 +371,9 @@ void main() {
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
-  test('ForjaShellColors adapts to light mode', () {
-    SettingsService.lightModeNotifier.value = false;
+  test('ForjaShellColors uses dark shell palette', () {
     expect(ForjaShellColors.textPrimary, const Color(0xFFE5E7EB));
     expect(ForjaShellColors.cinematic.textPrimary, const Color(0xFFE5E7EB));
-
-    SettingsService.lightModeNotifier.value = true;
-    expect(ForjaShellColors.textPrimary, const Color(0xFF111827));
-    expect(ForjaShellColors.cinematic.textPrimary, const Color(0xFFE5E7EB));
-
-    SettingsService.lightModeNotifier.value = false;
   });
 
   test('navDestinations includes default shell tabs', () {

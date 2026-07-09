@@ -206,9 +206,7 @@ class _HomeHeroTitleSlot extends StatelessWidget {
         color: Colors.white,
         height: 1.0,
         letterSpacing: -1.0,
-        shadows: AppTheme.isLightMode
-            ? null
-            : [
+        shadows: [
                 const Shadow(color: Colors.black, blurRadius: 40),
                 Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 80),
               ],

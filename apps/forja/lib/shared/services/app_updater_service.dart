@@ -7,7 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AppUpdaterService {
-  static const String githubRepo = 'ayman708-UX/ForjaV2';
+  static const String githubRepo = 'mGhassen/Forja';
   static const String githubApiUrl =
       'https://api.github.com/repos/$githubRepo/releases/latest';
 

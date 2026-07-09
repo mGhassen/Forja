@@ -14,13 +14,24 @@ class IptvGuideEpgCache {
   final VerifiedPortal portal;
   final Map<String, Future<List<EpgEntry>>> _cache = {};
 
-  Future<List<EpgEntry>> load(String streamId, {int limit = 6}) {
-    if (streamId.isEmpty) return Future.value(const []);
-    final key = '$streamId:$limit';
-    return _cache.putIfAbsent(
-      key,
-      () => IptvClient.shortEpg(portal.portal, streamId, limit: limit),
-    );
+  Future<List<EpgEntry>> load(IptvStream stream, {int limit = 6}) {
+    final streamId = stream.streamId;
+    final epgId = stream.epgChannelId;
+    if (streamId.isEmpty && epgId.isEmpty) {
+      return Future.value(const []);
+    }
+    final key = '${streamId.isEmpty ? epgId : streamId}:$epgId:$limit';
+    return _cache.putIfAbsent(key, () async {
+      if (streamId.isNotEmpty) {
+        final rows =
+            await IptvClient.shortEpg(portal.portal, streamId, limit: limit);
+        if (rows.isNotEmpty) return rows;
+      }
+      if (epgId.isNotEmpty && epgId != streamId) {
+        return IptvClient.shortEpg(portal.portal, epgId, limit: limit);
+      }
+      return const [];
+    });
   }
 
   void clear() => _cache.clear();
@@ -296,11 +307,13 @@ class IptvFloatingEpg extends StatelessWidget {
   const IptvFloatingEpg({
     super.key,
     required this.future,
-    this.bottomInset = 16,
+    required this.bottomInset,
+    required this.cardWidth,
   });
 
   final Future<List<EpgEntry>> future;
   final double bottomInset;
+  final double cardWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -315,23 +328,21 @@ class IptvFloatingEpg extends StatelessWidget {
         return Positioned(
           right: 16,
           bottom: bottomInset,
-          child: SafeArea(
-            child: IgnorePointer(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 320),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: IptvGuideEpgCard(future: future),
+          child: IgnorePointer(
+            child: SizedBox(
+              width: cardWidth,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
+                child: IptvGuideEpgCard(future: future),
               ),
             ),
           ),

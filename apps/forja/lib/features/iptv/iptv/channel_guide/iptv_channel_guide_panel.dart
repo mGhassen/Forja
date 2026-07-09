@@ -836,19 +836,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
   static const Color _alive = Color(0xFF22C55E);
   static const Color _dead = Color(0xFFEF4444);
 
-  bool get _showHealth => widget.active || widget.focused || _hovered;
-
-  @override
-  void didUpdateWidget(covariant _GuideChannelTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final shouldProbe = widget.active || widget.focused;
-    final wasProbing = oldWidget.active || oldWidget.focused;
-    if (shouldProbe && !wasProbing) {
-      widget.onProbe();
-    } else if (!shouldProbe && wasProbing && !_hovered) {
-      widget.onCancelProbe();
-    }
-  }
+  bool get _showHealth => _hovered;
 
   @override
   Widget build(BuildContext context) {
@@ -864,7 +852,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
         },
         onExit: (_) {
           setState(() => _hovered = false);
-          if (!active && !focused) widget.onCancelProbe();
+          widget.onCancelProbe();
         },
         child: Material(
           elevation: 0,

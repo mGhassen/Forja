@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:media_kit/media_kit.dart';
 import 'package:forja/shared/audio/audiobook_player_service.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 
@@ -15,7 +16,18 @@ class MpvExclusiveSession {
 
   static bool get required => Platform.isMacOS;
 
+  final Set<Player> _trackedPlayers = <Player>{};
   Future<void>? _pendingVideoDispose;
+
+  /// Register a live [Player] so app shutdown can stop mpv before Dart teardown.
+  Player trackPlayer(Player player) {
+    _trackedPlayers.add(player);
+    return player;
+  }
+
+  void untrackPlayer(Player player) {
+    _trackedPlayers.remove(player);
+  }
 
   /// Release background audio players and wait for any in-flight video dispose.
   Future<void> prepareForVideoPlayer() async {
@@ -33,5 +45,33 @@ class MpvExclusiveSession {
         _pendingVideoDispose = null;
       }
     }));
+  }
+
+  /// Stop every tracked mpv instance before the VM shuts down.
+  ///
+  /// mpv core threads can still fire FFI property callbacks after
+  /// [Player.dispose] returns; without a grace period the Dart runtime hits
+  /// "GetFfiCallbackMetadata called after shutdown".
+  Future<void> shutdownAllPlayers() async {
+    await _pendingVideoDispose;
+
+    final players = _trackedPlayers.toList();
+    _trackedPlayers.clear();
+
+    final disposals = <Future<void>>[];
+    for (final player in players) {
+      try {
+        await player.stop();
+      } catch (_) {}
+      disposals.add(
+        player.dispose().catchError((_) {}).whenComplete(() {}),
+      );
+    }
+    await Future.wait(disposals);
+    await _pendingVideoDispose;
+
+    if (players.isNotEmpty) {
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
   }
 }

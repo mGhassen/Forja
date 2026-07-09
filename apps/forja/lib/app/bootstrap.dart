@@ -17,6 +17,7 @@ import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/services/tracker_sync.dart';
+import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/player_pool_service.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
@@ -33,6 +34,9 @@ bool _appShutdownStarted = false;
 /// Stop all media_kit (MPV) players before native teardown.
 /// Without this, mpv core threads segfault on macOS/Windows close.
 Future<void> _shutdownMediaKitPlayers() async {
+  try {
+    await MpvExclusiveSession.instance.shutdownAllPlayers();
+  } catch (_) {}
   try {
     await MusicPlayerService().dispose();
   } catch (_) {}
@@ -136,12 +140,10 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   MusicPlayerService().setHandler(audioHandler);
   AudiobookPlayerService().init(audioHandler);
   
-  // Hydrate light mode setting before first frame
+  // Hydrate theme preset before first frame
   await Engine.init();
   _warnIfRustMissing();
-  await SettingsService().initLightMode();
   
-  // Hydrate theme preset before first frame
   await AppTheme.initTheme();
   
   PlayerPoolService().warmUp();
@@ -269,21 +271,16 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, preset, _) {
-        return ValueListenableBuilder<bool>(
-          valueListenable: SettingsService.lightModeNotifier,
-          builder: (context, _, _) {
-            Widget app = MaterialApp(
-              title: widget.title,
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.themeData,
-              home: const SplashScreen(),
-            );
-            if (_isDesktop) {
-              app = ExcludeSemantics(child: app);
-            }
-            return app;
-          },
+        Widget app = MaterialApp(
+          title: widget.title,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.themeData,
+          home: const SplashScreen(),
         );
+        if (_isDesktop) {
+          app = ExcludeSemantics(child: app);
+        }
+        return app;
       },
     );
   }
@@ -532,9 +529,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _skipSplash,
-        child: SplashOverlayContent(
-          isLight: AppTheme.isLightMode,
-        ),
+        child: const SplashOverlayContent(),
       ),
     );
   }

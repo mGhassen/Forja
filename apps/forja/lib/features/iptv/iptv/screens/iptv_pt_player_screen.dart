@@ -185,7 +185,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   void _initPlayerInstances() {
     _videoEpoch++;
-    _player = Player(configuration: _playerConfiguration);
+    _player = MpvExclusiveSession.instance.trackPlayer(
+      Player(configuration: _playerConfiguration),
+    );
     _controller = VideoController(
       _player,
       configuration: VideoControllerConfiguration(
@@ -792,6 +794,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       await _player.stop();
     } catch (_) {}
     try {
+      MpvExclusiveSession.instance.untrackPlayer(_player);
       final disposeFuture = _player.dispose();
       MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
       await disposeFuture;
@@ -890,10 +893,18 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   Future<List<EpgEntry>>? _floatingEpgFuture() {
-    if (_isVod || _epgCache == null) return null;
+    if (_epgCache == null) return null;
     final stream = _currentGuideChannel()?.xtreamStream;
     if (stream == null) return null;
-    return _epgCache!.load(stream.streamId);
+    return _epgCache!.load(stream);
+  }
+
+  double _floatingEpgBottomInset(BuildContext context, bool compact) {
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final barVerticalPad = compact ? 24.0 : 36.0;
+    final barHeight = compact ? 44.0 : 56.0;
+    final seekbarHeight = _isVod ? (compact ? 44.0 : 52.0) : 0.0;
+    return safeBottom + barVerticalPad + barHeight + seekbarHeight + 12;
   }
 
   void _updateSubVisibility(SubtitleTrack track) {
@@ -1127,10 +1138,18 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                 onClose: () => setState(() => _guideVisible = false),
               ),
             if (epgFuture != null)
-              IptvFloatingEpg(
-                key: ValueKey(_currentChannelId),
-                future: epgFuture,
-                bottomInset: _controlsVisible ? 88 : 16,
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 220),
+                opacity: _controlsVisible ? 1 : 0,
+                child: IgnorePointer(
+                  ignoring: !_controlsVisible,
+                  child: IptvFloatingEpg(
+                    key: ValueKey(_currentChannelId),
+                    future: epgFuture,
+                    bottomInset: _floatingEpgBottomInset(context, compact),
+                    cardWidth: size.width * 0.4,
+                  ),
+                ),
               ),
           ],
         ),

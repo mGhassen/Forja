@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:rust/rust.dart';
 
 /// Fixed Forja theme descriptor (single preset, not user-selectable).
 class AppThemePreset {
@@ -25,8 +24,6 @@ class AppThemePreset {
 
 class AppTheme {
   static const Color appBackground = Color(0xFF141414);
-  static const Color appBackgroundLight = Color(0xFFF7F7F7);
-  static const Color appCardLight = Color(0xFFFFFFFF);
   static const String defaultPresetId = 'forja';
 
   static const AppThemePreset _forjaPreset = AppThemePreset(
@@ -47,72 +44,23 @@ class AppTheme {
 
   static AppThemePreset get current => themeNotifier.value;
 
-  /// Brand accent — Play CTAs, primary highlights.
   static const Color primaryColor = ForjaShellColors.brandGreen;
 
-  /// Muted shell accent — icons, spinners, section chrome.
   static Color get accentColor => ForjaShellColors.sectionAccent;
 
-  static Color get bgDark => isLightMode ? appBackgroundLight : current.bgDark;
-  static Color get bgCard => isLightMode ? appCardLight : current.bgCard;
-
-  static bool get isLightMode => SettingsService.lightModeNotifier.value;
+  static Color get bgDark => current.bgDark;
+  static Color get bgCard => current.bgCard;
 
   static BoxDecoration get backgroundDecoration => effectiveBackground;
   static BoxDecoration get backgroundDecorationFlat => effectiveBackground;
 
   static BoxDecoration get effectiveBackground =>
-      BoxDecoration(color: isLightMode ? appBackgroundLight : current.bgDark);
+      BoxDecoration(color: current.bgDark);
 
   static ThemeData get themeData {
     const preset = _forjaPreset;
     const buttonRadius = BorderRadius.all(Radius.circular(6));
 
-    if (isLightMode) {
-      return ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: appBackgroundLight,
-        primaryColor: preset.primaryColor,
-        colorScheme: ColorScheme.light(
-          primary: preset.primaryColor,
-          secondary: ForjaShellColors.sectionAccent,
-          surface: appCardLight,
-        ),
-        textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).copyWith(
-          displayLarge: GoogleFonts.bebasNeue(fontSize: 48, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Colors.black87),
-          displayMedium: GoogleFonts.bebasNeue(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.black87),
-          titleLarge: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
-          bodyMedium: GoogleFonts.inter(fontSize: 14, color: Colors.black54),
-          labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
-        ),
-        iconTheme: const IconThemeData(color: Color(0xFF6B7280)),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 40),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            shape: const RoundedRectangleBorder(borderRadius: buttonRadius),
-            backgroundColor: preset.primaryColor,
-            foregroundColor: Colors.black87,
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(0, 40),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            shape: const RoundedRectangleBorder(borderRadius: buttonRadius),
-            side: const BorderSide(color: Color(0xFFD1D5DB)),
-            foregroundColor: Colors.black87,
-          ),
-        ),
-        iconButtonTheme: IconButtonThemeData(
-          style: IconButton.styleFrom(
-            minimumSize: const Size(40, 40),
-            shape: const CircleBorder(),
-          ),
-        ),
-      );
-    }
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
@@ -220,8 +168,6 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    final lightMode = AppTheme.isLightMode;
-
     return Focus(
       autofocus: widget.autoFocus,
       onFocusChange: (f) {
@@ -248,35 +194,26 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: widget.onTap,
-          child: lightMode
-              ? Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(widget.borderRadius),
-                  ),
-                  child: widget.child,
-                )
-              : AnimatedBuilder(
-                  animation: _scale,
-                  builder: (context, child) => Transform.scale(scale: _scale.value, child: child),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(widget.borderRadius),
-                      boxShadow: (_isFocused || _isHovered) &&
-                              widget.glowColor != null
-                          ? [
-                              BoxShadow(
-                                color: widget.glowColor!
-                                    .withValues(alpha: 0.4),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                              ),
-                            ]
-                          : [],
-                    ),
-                    child: widget.child,
-                  ),
-                ),
+          child: AnimatedBuilder(
+            animation: _scale,
+            builder: (context, child) => Transform.scale(scale: _scale.value, child: child),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(widget.borderRadius),
+                boxShadow: (_isFocused || _isHovered) && widget.glowColor != null
+                    ? [
+                        BoxShadow(
+                          color: widget.glowColor!.withValues(alpha: 0.4),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : [],
+              ),
+              child: widget.child,
+            ),
+          ),
         ),
       ),
     );

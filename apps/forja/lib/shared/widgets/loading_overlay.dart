@@ -193,7 +193,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                 const ColoredBox(color: Colors.black),
               Container(
                 color: Colors.black.withValues(
-                  alpha: AppTheme.isLightMode ? 0.8 : 0.72,
+                  alpha: 0.72,
                 ),
               ),
               Center(

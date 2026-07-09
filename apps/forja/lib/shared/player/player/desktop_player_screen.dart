@@ -570,12 +570,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     await MpvExclusiveSession.instance.prepareForVideoPlayer();
     if (!mounted || _disposed) return;
 
-    _player = Player(
-      configuration: const PlayerConfiguration(
-        logLevel: MPVLogLevel.warn,
-        libass: true,
-        libassAndroidFont: 'assets/fonts/Roboto-Regular.ttf',
-        libassAndroidFontName: 'Roboto',
+    _player = MpvExclusiveSession.instance.trackPlayer(
+      Player(
+        configuration: const PlayerConfiguration(
+          logLevel: MPVLogLevel.warn,
+          libass: true,
+          libassAndroidFont: 'assets/fonts/Roboto-Regular.ttf',
+          libassAndroidFontName: 'Roboto',
+        ),
       ),
     );
 
@@ -587,6 +589,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     );
 
     if (!mounted || _disposed) {
+      MpvExclusiveSession.instance.untrackPlayer(_player);
       final disposeFuture = _player.dispose();
       MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
       await disposeFuture;
@@ -677,7 +680,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _statusController.dispose();
 
     if (_playerReady) {
-      final disposeFuture = _player.dispose();
+      MpvExclusiveSession.instance.untrackPlayer(_player);
+      final disposeFuture = _player.dispose().catchError((_) {});
       MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
       unawaited(disposeFuture);
     }

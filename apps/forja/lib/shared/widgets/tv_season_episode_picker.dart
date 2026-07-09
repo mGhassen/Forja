@@ -373,7 +373,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     final showProgress =
         WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
     final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
-    final scale = AppTheme.isLightMode ? 1.0 : _scale;
+    final scale = _scale;
 
     return FocusableControl(
       onTap: widget.onTap,
@@ -404,15 +404,13 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                       border: widget.selected
                           ? Border.all(color: Colors.white, width: 2)
                           : null,
-                      boxShadow: !AppTheme.isLightMode
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                blurRadius: 16,
-                                offset: const Offset(0, 8),
-                              ),
-                            ]
-                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
                     child: ClipRRect(
                       borderRadius:

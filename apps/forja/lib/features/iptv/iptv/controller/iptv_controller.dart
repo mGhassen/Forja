@@ -121,12 +121,26 @@ class IptvController extends ChangeNotifier {
   /// Safe to call from `FutureBuilder` — the Future is stable across rebuilds.
   Future<List<EpgEntry>> epgFor(IptvStream s) {
     final p = activePortal;
-    if (p == null || s.kind != 'live' || s.streamId.isEmpty) {
+    if (p == null || s.kind != 'live') {
       return Future.value(const []);
     }
+    if (s.streamId.isEmpty && s.epgChannelId.isEmpty) {
+      return Future.value(const []);
+    }
+    final cacheKey = s.streamId.isEmpty ? s.epgChannelId : s.streamId;
     return _epgCache.putIfAbsent(
-      s.streamId,
-      () => IptvClient.shortEpg(p.portal, s.streamId, limit: 2),
+      cacheKey,
+      () async {
+        if (s.streamId.isNotEmpty) {
+          final rows =
+              await IptvClient.shortEpg(p.portal, s.streamId, limit: 2);
+          if (rows.isNotEmpty) return rows;
+        }
+        if (s.epgChannelId.isNotEmpty && s.epgChannelId != s.streamId) {
+          return IptvClient.shortEpg(p.portal, s.epgChannelId, limit: 2);
+        }
+        return const [];
+      },
     );
   }
 
@@ -139,13 +153,31 @@ class IptvController extends ChangeNotifier {
   /// Lazy EPG fetch for a hardcoded-channel hit. Same dedupe semantics as
   /// [epgFor] but keyed per (portal, stream).
   Future<List<EpgEntry>> epgForHit(ChannelHit h) {
-    if (h.stream.kind != 'live' || h.stream.streamId.isEmpty) {
+    if (h.stream.kind != 'live') {
       return Future.value(const []);
     }
-    final key = '${h.portal.key}|${h.stream.streamId}';
+    final streamId = h.stream.streamId;
+    final epgId = h.stream.epgChannelId;
+    if (streamId.isEmpty && epgId.isEmpty) {
+      return Future.value(const []);
+    }
+    final key = '${h.portal.key}|${streamId.isEmpty ? epgId : streamId}|$epgId';
     return _hitEpgCache.putIfAbsent(
       key,
-      () => IptvClient.shortEpg(h.portal.portal, h.stream.streamId, limit: 2),
+      () async {
+        if (streamId.isNotEmpty) {
+          final rows = await IptvClient.shortEpg(
+            h.portal.portal,
+            streamId,
+            limit: 2,
+          );
+          if (rows.isNotEmpty) return rows;
+        }
+        if (epgId.isNotEmpty && epgId != streamId) {
+          return IptvClient.shortEpg(h.portal.portal, epgId, limit: 2);
+        }
+        return const [];
+      },
     );
   }
 

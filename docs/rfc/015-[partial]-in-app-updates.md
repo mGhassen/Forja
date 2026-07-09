@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **0 / 7** acceptance (v1.1 slice) |
-| **Current slice** | v1.1 — skip version, SHA256, macOS DMG, CI assets |
+| **Progress** | **7 / 7** acceptance (v1.0) · **1 / 7** acceptance (v1.1 slice) |
+| **Current slice** | v1.1 — CI release workflow shipped; skip version, SHA256, macOS DMG download |
 | **Backlog** | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md), [1.0.0](../backlog/done/1.0.0-[done].md) (v1.1 polish slice) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -54,8 +54,8 @@
 | 3 | R15-A10 | Windows/Linux download with in-dialog progress | ⬜ |
 | 4 | R15-A11 | macOS: download DMG to Downloads + open | ⬜ |
 | 5 | R15-A12 | SHA256 verification before install | ⬜ |
-| 6 | R15-A13 | Repo slug configurable / Forja-branded GitHub org | ⬜ |
-| 7 | R15-A14 | CI publishes correctly named assets on every `v*` tag | ⬜ |
+| 6 | R15-A13 | Repo slug configurable / Forja-branded GitHub org | ✅ |
+| 7 | R15-A14 | CI publishes correctly named assets on every `v*` tag | 🔄 |
 
 ---
 
@@ -110,7 +110,7 @@ Forja checks GitHub Releases for a newer version, shows an in-app dialog with re
 
 **Endpoint:** `GET https://api.github.com/repos/{owner}/{repo}/releases/latest`
 
-Config today: `githubRepo = 'ayman708-UX/ForjaV2'` (should move to `forja/forja` or env/build flag).
+Config: `githubRepo = 'mGhassen/Forja'` in `apps/forja/lib/shared/services/app_updater_service.dart`.
 
 **Release tag:** `v1.2.3` (leading `v` stripped for compare).
 
@@ -189,7 +189,7 @@ Add to `SettingsService` / `storage`:
 
 ## CI / release integration
 
-`.github/workflows/build.yml` uploads artifacts per platform on tag push `v*`:
+`.github/workflows/release.yml` on every push to `main` (auto patch bump) → tag `v*` → GitHub Release with:
 
 ```
 Forja-1.2.3-android-arm64.apk

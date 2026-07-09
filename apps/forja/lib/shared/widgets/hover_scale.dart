@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 
 /// Scales on hover with a flat cinematic shadow (no colored glow).
 class HoverScale extends StatefulWidget {
@@ -47,7 +46,7 @@ class _HoverScaleState extends State<HoverScale> {
           transformAlignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.radius),
-            boxShadow: _hover && !AppTheme.isLightMode
+            boxShadow: _hover
                 ? [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),

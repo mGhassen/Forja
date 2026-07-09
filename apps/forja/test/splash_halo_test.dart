@@ -12,7 +12,6 @@ void main() {
           body: Center(
             child: SplashLogoWithHalo(
               logoHeight: 160,
-              isLight: false,
             ),
           ),
         ),

@@ -114,9 +114,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _torrentRamCacheMb = 200;
   int _torrentConnectionsLimit = 25;
 
-  // Light mode
-  bool _isLightMode = false;
-
   // Navbar config
   List<String> _navbarVisible = [];
   List<String> _navbarOrder = [];
@@ -197,9 +194,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ramCacheMb = await _settings.getTorrentRamCacheMb();
     final connLimit = await _settings.getTorrentConnectionsLimit();
 
-    // Load light mode
-    final lightMode = await _settings.isLightModeEnabled();
-
     // Load navbar config
     var navVisible = await _settings.getNavbarConfig();
     // Full order: visible items first, then hidden items
@@ -258,7 +252,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _torrentCacheType = cacheType;
         _torrentRamCacheMb = ramCacheMb;
         _torrentConnectionsLimit = connLimit;
-        _isLightMode = lightMode;
         _navbarVisible = navVisible;
         _navbarOrder = navOrder;
         _streamProviderOrder = streamOrder;
@@ -403,24 +396,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.backup_rounded,
                       title: 'Backup & Restore',
                       children: [_buildBackupRestore()],
-                    ),
-
-                    // ── Appearance ──
-                    _buildExpandableSection(
-                      id: 'appearance',
-                      icon: Icons.palette_rounded,
-                      title: 'Appearance',
-                      children: [
-                        _buildFocusableToggle(
-                          'Light Mode',
-                          'Brighter shell and lists. Home hero keeps cinematic dark treatment.',
-                          _isLightMode,
-                          (val) async {
-                            await _settings.setLightMode(val);
-                            setState(() => _isLightMode = val);
-                          },
-                        ),
-                      ],
                     ),
 
                     // ── Playback ──

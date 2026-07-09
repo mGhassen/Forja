@@ -46,9 +46,7 @@ class HomeMovieCard extends StatelessWidget {
         height: cardHeight,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          boxShadow: AppTheme.isLightMode
-              ? null
-              : [
+          boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.5),
                     blurRadius: 16,
@@ -217,7 +215,7 @@ class HomeMovieRatingBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: AppTheme.isLightMode ? 0.55 : 0.45),
+        color: Colors.black.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),

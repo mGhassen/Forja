@@ -17,23 +17,16 @@ class LogoColors {
 
   final Color base;
 
-  static LogoColors forTheme(bool isLight) {
-    if (isLight) {
-      return const LogoColors(base: Color(0xFFE6DCD0));
-    }
-    return const LogoColors(base: Color(0xFF1CE783));
-  }
+  static const dark = LogoColors(base: Color(0xFF1CE783));
 }
 
 class SplashLogoWithHalo extends StatefulWidget {
   const SplashLogoWithHalo({
     super.key,
     required this.logoHeight,
-    required this.isLight,
   });
 
   final double logoHeight;
-  final bool isLight;
 
   @override
   State<SplashLogoWithHalo> createState() => _SplashLogoWithHaloState();
@@ -145,7 +138,7 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
 
   @override
   Widget build(BuildContext context) {
-    final colors = LogoColors.forTheme(widget.isLight);
+    const colors = LogoColors.dark;
     final logoWidth = widget.logoHeight * _logoAspectRatio;
     final haloDiameter = widget.logoHeight * _haloScale;
     final blurSigma = haloDiameter * 0.14;
@@ -168,9 +161,8 @@ class _SplashLogoWithHaloState extends State<SplashLogoWithHalo>
                 Curves.easeOut.transform(_window(ms, 0, _fadeEndMs));
             final greenT = _window(ms, _greenStartMs, _greenEndMs);
             final bounce = 1 + math.sin(greenT * math.pi) * 0.035;
-            final haloCenterAlpha =
-                (widget.isLight ? 0.24 : 0.18) * introFade;
-            final haloMidAlpha = (widget.isLight ? 0.10 : 0.08) * introFade;
+            final haloCenterAlpha = 0.18 * introFade;
+            final haloMidAlpha = 0.08 * introFade;
 
             return Transform.scale(
               scale: bounce,
@@ -253,16 +245,14 @@ class _SplashLoadingDotsState extends State<SplashLoadingDots>
 class SplashOverlayContent extends StatelessWidget {
   const SplashOverlayContent({
     super.key,
-    required this.isLight,
     this.slogan = splashSlogan,
   });
 
-  final bool isLight;
   final String slogan;
 
   @override
   Widget build(BuildContext context) {
-    final logoColors = LogoColors.forTheme(isLight);
+    const logoColors = LogoColors.dark;
 
     final versionStyle = TextStyle(
       fontSize: 11,
@@ -294,7 +284,6 @@ class SplashOverlayContent extends StatelessWidget {
                       children: [
                         SplashLogoWithHalo(
                           logoHeight: logoHeight,
-                          isLight: isLight,
                         ),
                         const SizedBox(height: 20),
                         Padding(

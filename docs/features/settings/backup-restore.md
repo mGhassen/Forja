@@ -4,7 +4,7 @@
 
 ## What it is
 
-Move your Forja configuration between devices or keep a backup. Export includes settings, addon lists, API keys stored in secure storage, theme, navbar layout, and related preferences.
+Move your Forja configuration between devices or keep a backup. Export includes settings, addon lists, API keys stored in secure storage, navbar layout, and related preferences.
 
 ## How to open it
 

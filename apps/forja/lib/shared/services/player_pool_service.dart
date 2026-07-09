@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -21,9 +22,11 @@ class PlayerPoolService {
   /// Get a fresh player (pre-warming disabled)
   ({Player player, VideoController controller}) getPlayer() {
     debugPrint('[PlayerPool] Creating fresh player');
-    final player = Player(
-      configuration: PlayerConfiguration(
-        libass: !Platform.isAndroid,
+    final player = MpvExclusiveSession.instance.trackPlayer(
+      Player(
+        configuration: PlayerConfiguration(
+          libass: !Platform.isAndroid,
+        ),
       ),
     );
     
@@ -39,6 +42,7 @@ class PlayerPoolService {
   Future<void> dispose() async {
     if (_warmPlayer != null) {
       debugPrint('[PlayerPool] Disposing warm player');
+      MpvExclusiveSession.instance.untrackPlayer(_warmPlayer!);
       await _warmPlayer!.dispose();
       _warmPlayer = null;
       _isReady = false;

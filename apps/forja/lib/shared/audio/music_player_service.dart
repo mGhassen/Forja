@@ -40,7 +40,7 @@ class MusicPlayerService {
   void _ensurePlayer() {
     if (_disposed) return;
     if (_player != null) return;
-    _player = Player();
+    _player = MpvExclusiveSession.instance.trackPlayer(Player());
     if (_initialized) {
       _attachPlayerListeners();
     }
@@ -48,11 +48,13 @@ class MusicPlayerService {
 
   Future<void> releaseMpvForVideo() async {
     if (_player == null) return;
+    final player = _player!;
+    MpvExclusiveSession.instance.untrackPlayer(player);
     try {
-      await _player!.stop();
+      await player.stop();
     } catch (_) {}
     try {
-      await _player!.dispose();
+      await player.dispose();
     } catch (_) {}
     _player = null;
     _playerListenersAttached = false;

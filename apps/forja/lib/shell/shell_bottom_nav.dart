@@ -18,19 +18,11 @@ class ShellBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lightMode = AppTheme.isLightMode;
-    final borderColor =
-        lightMode ? ForjaShellColors.borderSubtle : Colors.white10;
-    final selectedColor =
-        lightMode ? ForjaShellColors.iconActive : Colors.white;
-    final unselectedColor =
-        lightMode ? ForjaShellColors.iconMuted : Colors.white54;
-
     return Container(
       height: ShellTokens.bottomNavHeight,
       decoration: BoxDecoration(
-        color: lightMode ? AppTheme.appBackgroundLight : AppTheme.bgDark,
-        border: Border(top: BorderSide(color: borderColor, width: 0.5)),
+        color: AppTheme.bgDark,
+        border: Border(top: BorderSide(color: Colors.white10, width: 0.5)),
       ),
       child: Stack(
         children: [
@@ -69,14 +61,14 @@ class ShellBottomNav extends StatelessWidget {
                           child: NavDestinationIcon(
                             destination: dest,
                             selected: isSelected,
-                            color: isSelected ? selectedColor : unselectedColor,
+                            color: isSelected ? Colors.white : Colors.white54,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           dest.label,
                           style: TextStyle(
-                            color: isSelected ? selectedColor : unselectedColor,
+                            color: isSelected ? Colors.white : Colors.white54,
                             fontSize: ShellTokens.bottomNavLabelSize,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
@@ -88,33 +80,31 @@ class ShellBottomNav extends StatelessWidget {
               }).toList(),
             ),
           ),
-          if (!lightMode)
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              child: IgnorePointer(
-                child: Container(
-                  width: ShellTokens.bottomNavFadeWidth,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        Colors.transparent,
-                        (lightMode ? AppTheme.appBackgroundLight : AppTheme.bgDark)
-                            .withValues(alpha: 0.9),
-                      ],
-                    ),
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: Container(
+                width: ShellTokens.bottomNavFadeWidth,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      AppTheme.bgDark.withValues(alpha: 0.9),
+                    ],
                   ),
-                  child: Icon(
-                    Icons.arrow_forward_ios,
-                    size: 12,
-                    color: lightMode ? ForjaShellColors.iconMuted : Colors.white24,
-                  ),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 12,
+                  color: Colors.white24,
                 ),
               ),
             ),
+          ),
         ],
       ),
     );

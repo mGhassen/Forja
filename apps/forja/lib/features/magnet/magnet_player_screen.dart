@@ -140,7 +140,7 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  const Icon(Icons.link_rounded, color: AppTheme.accentColor, size: 28),
+                  Icon(Icons.link_rounded, color: AppTheme.accentColor, size: 28),
                   const SizedBox(width: 12),
                   Text(
                     'Magnet Player',

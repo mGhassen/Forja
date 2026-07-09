@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 8** acceptance (v1.0 release gate) |
-| **Current slice** | v1.0 — notarized release + clean repo |
+| **Progress** | **0 / 8** acceptance (v1.0 release gate) · **2 / 8** in progress |
+| **Current slice** | v1.0 — CI release pipeline + updater repo; notarization open |
 | **Backlog** | — |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -24,8 +24,8 @@
 | 2 | R21-A02 | `melos bootstrap` + `flutter analyze` on app + packages | ⬜ |
 | 3 | R21-A03 | `flutter build macos --release` succeeds locally | ⬜ |
 | 4 | R21-A04 | Notarized DMG installs on clean Mac | ⬜ |
-| 5 | R21-A05 | GitHub Release on tag with all platform assets | ⬜ |
-| 6 | R21-A06 | In-app update finds release (RFC-015) | ⬜ |
+| 5 | R21-A05 | GitHub Release on tag with all platform assets | 🔄 |
+| 6 | R21-A06 | In-app update finds release (RFC-015) | 🔄 |
 | 7 | R21-A07 | Icon + splash show Forja branding | ⬜ |
 | 8 | R21-A08 | Jellyfin login works on macOS (keychain) | ⬜ |
 
@@ -90,7 +90,7 @@ Output artifact name per [RFC-015](015-[partial]-in-app-updates.md): `Forja-{ver
 
 ## 3. CI pipeline
 
-[`.github/workflows/build.yml`](../../.github/workflows/build.yml) on tag `v*`:
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml) on every push to `main` (auto patch bump; skips `chore: release v*` commits):
 
 | Job | Output |
 |-----|--------|

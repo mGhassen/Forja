@@ -69,7 +69,6 @@ SliverToBoxAdapter _homeRowSliver(
 }
 
 Widget _homeShimmer(Widget child) {
-  if (AppTheme.isLightMode) return child;
   return Shimmer.fromColors(
     baseColor: AppTheme.bgCard,
     highlightColor: const Color(0xFF1E1E2F),
@@ -221,12 +220,10 @@ Widget _heroTitleText(
       color: Colors.white,
       height: 1.0,
       letterSpacing: -1.0,
-      shadows: AppTheme.isLightMode
-          ? null
-          : [
-              const Shadow(color: Colors.black, blurRadius: 40),
-              Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 80),
-            ],
+      shadows: [
+        const Shadow(color: Colors.black, blurRadius: 40),
+        Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 80),
+      ],
     ),
     maxLines: 2,
     overflow: TextOverflow.ellipsis,
@@ -1103,7 +1100,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _startHeroTimer() {
-    if (AppTheme.isLightMode) return;
     _heroTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
       if (!_heroController.hasClients) return;
       _heroController.nextPage(
@@ -1154,11 +1150,8 @@ class _HomeScreenState extends State<HomeScreen>
     List<Movie> movies, {
     Axis axis = Axis.vertical,
   }) {
-    final lightMode = AppTheme.isLightMode;
-    final selectedColor = lightMode ? ForjaShellColors.textPrimary : Colors.white;
-    final unselectedColor = lightMode
-        ? ForjaShellColors.textSecondary.withValues(alpha: 0.55)
-        : Colors.white.withValues(alpha: 0.25);
+    const selectedColor = Colors.white;
+    final unselectedColor = Colors.white.withValues(alpha: 0.25);
 
     final dots = List.generate(movies.length, (i) {
       final selected = i == _heroIndex;
@@ -1701,7 +1694,6 @@ class _HomeScreenState extends State<HomeScreen>
     final height = _cinematicHeroHeight(context, compact: compact) +
         _desktopTopBarBleed(context);
     final placeholder = Container(height: height, color: AppTheme.bgCard);
-    if (AppTheme.isLightMode) return placeholder;
     return Shimmer.fromColors(
       baseColor: AppTheme.bgCard,
       highlightColor: const Color(0xFF1E1E2F),
@@ -1957,9 +1949,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildDesktopHeroBackdrop(List<Movie> movies, {bool compact = false}) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final shellBg = AppTheme.isLightMode
-            ? AppTheme.appBackground
-            : Theme.of(context).scaffoldBackgroundColor;
+        final shellBg = Theme.of(context).scaffoldBackgroundColor;
         final imageLeft = constraints.maxWidth *
             (compact
                 ? ShellTokens.heroImageStartFractionCompact
@@ -2359,7 +2349,7 @@ Widget _buildRatingBadgeText(String rating) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
     decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: AppTheme.isLightMode ? 0.5 : 0.4),
+      color: Colors.black.withValues(alpha: 0.4),
       borderRadius: BorderRadius.circular(6),
       border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
     ),
@@ -2985,9 +2975,7 @@ class _HistoryCardState extends State<_HistoryCard> {
               height: cardHeight,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: AppTheme.isLightMode
-                    ? null
-                    : [
+                boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.5),
                           blurRadius: 16,
@@ -3317,7 +3305,7 @@ class _StremioCatalogCard extends StatelessWidget {
         height: cardHeight,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          boxShadow: AppTheme.isLightMode ? null : [
+          boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 6)),
           ],
         ),

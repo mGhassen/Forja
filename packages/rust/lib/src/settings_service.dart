@@ -27,9 +27,7 @@ class SettingsService {
   static const String _prowlarrBaseUrlKey = 'prowlarr_base_url';
   static const String _prowlarrApiKeyKey = 'prowlarr_api_key';
   static const String _prowlarrTagIdsKey = 'prowlarr_tag_ids';
-  static const String _lightModeKey = 'light_mode';
   static const String _themePresetKey = 'theme_preset';
-  static final ValueNotifier<bool> lightModeNotifier = ValueNotifier<bool>(false);
   static const String _torrentCacheTypeKey = 'torrent_cache_type';
   static const String _torrentRamCacheMbKey = 'torrent_ram_cache_mb';
   static const String _torrentConnectionsLimitKey = 'torrent_connections_limit';
@@ -271,18 +269,6 @@ class SettingsService {
   Future<void> setTorrentConnectionsLimit(int limit) async =>
       kvSetInt(_torrentConnectionsLimitKey, limit);
 
-  Future<bool> isLightModeEnabled() async =>
-      kvGetBool(_lightModeKey, fallback: false);
-
-  Future<void> setLightMode(bool enabled) async {
-    await kvSetBool(_lightModeKey, enabled);
-    lightModeNotifier.value = enabled;
-  }
-
-  Future<void> initLightMode() async {
-    lightModeNotifier.value = await isLightModeEnabled();
-  }
-
   Future<String> getThemePreset() async => 'forja';
 
   Future<void> setThemePreset(String preset) async {}
@@ -397,7 +383,6 @@ class SettingsService {
     prefsMap[_streamingModeKey] =
         await kvGetBool(_streamingModeKey, fallback: false);
     prefsMap[_useDebridKey] = await kvGetBool(_useDebridKey, fallback: false);
-    prefsMap[_lightModeKey] = await kvGetBool(_lightModeKey, fallback: false);
     prefsMap[_playSourceTorrentKey] = await isPlaySourceTorrentEnabled();
     prefsMap[_playSourceStremioKey] = await isPlaySourceStremioEnabled();
     prefsMap[_playSourceWebstreamingKey] =
@@ -456,7 +441,6 @@ class SettingsService {
     for (final key in [
       _streamingModeKey,
       _useDebridKey,
-      _lightModeKey,
       _playSourceTorrentKey,
       _playSourceStremioKey,
       _playSourceWebstreamingKey,

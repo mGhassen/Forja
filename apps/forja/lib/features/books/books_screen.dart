@@ -392,7 +392,7 @@ class _BooksScreenState extends State<BooksScreen> {
                     children: [
                       if (book.series.isNotEmpty)
                         Text(book.series,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 10,
                                 color: AppTheme.accentColor,
                                 letterSpacing: 0.5),
@@ -521,7 +521,7 @@ class _BooksScreenState extends State<BooksScreen> {
                   children: [
                     if (book.series.isNotEmpty)
                       Text(book.series,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 10,
                               color: AppTheme.accentColor,
                               letterSpacing: 0.5),

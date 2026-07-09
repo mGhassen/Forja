@@ -291,8 +291,8 @@ class IptvClient {
         // strings ("start": "2026-04-25 19:00:00"). Try seconds first.
         final secs = int.tryParse(s);
         if (secs != null && secs > 1000000000) {
-          return DateTime.fromMillisecondsSinceEpoch(secs * 1000, isUtc: true)
-              .toLocal();
+          final ms = secs > 1000000000000 ? secs : secs * 1000;
+          return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
         }
         try {
           return DateTime.parse(s.replaceFirst(' ', 'T')).toLocal();
@@ -310,7 +310,9 @@ class IptvClient {
       for (final e in arr) {
         if (e is! Map<String, dynamic>) continue;
         final start = parseTs(e['start_timestamp']) ?? parseTs(e['start']);
-        final stop = parseTs(e['stop_timestamp']) ?? parseTs(e['end']);
+        final stop = parseTs(e['stop_timestamp']) ??
+            parseTs(e['end']) ??
+            parseTs(e['stop']);
         if (start == null || stop == null) continue;
         out.add(EpgEntry(
           title: decode64(e['title']),

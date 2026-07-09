@@ -144,9 +144,7 @@ class _RailLogo extends StatelessWidget {
       width: ShellTokens.navRailWidth,
       child: Center(
         child: Image.asset(
-          AppTheme.isLightMode
-              ? 'assets/icon/logo-light.png'
-              : 'assets/icon/logo-dark.png',
+          'assets/icon/logo-dark.png',
           width: ShellTokens.navRailLogoWidth,
           fit: BoxFit.contain,
         ),

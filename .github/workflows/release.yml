@@ -1,0 +1,216 @@
+name: Release Forja
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_CHANNEL: stable
+  APP_DIR: apps/forja
+
+jobs:
+  bump_version:
+    name: Bump version and tag
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      !startsWith(github.event.head_commit.message, 'chore: release v')
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          chmod +x scripts/bump_version.sh
+          NEW="$(./scripts/bump_version.sh patch)"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Bumped to $NEW"
+
+      - name: Commit and tag
+        run: |
+          VERSION="${{ steps.bump.outputs.version }}"
+          git add apps/forja/pubspec.yaml installer/windows/setup.iss
+          git commit -m "chore: release v${VERSION}"
+          git tag -a "v${VERSION}" -m "Forja ${VERSION}"
+          git push origin HEAD
+          git push origin "v${VERSION}"
+
+  build_macos:
+    name: macOS
+    needs: bump_version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.bump_version.outputs.version }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Build Rust FFI
+        run: ./scripts/build_rust_release.sh
+
+      - name: Build macOS app
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          flutter pub get
+          flutter build macos --release
+
+      - name: Verify installer payload
+        run: ./scripts/verify_installer_payload.sh macos
+
+      - name: Package DMG
+        run: ./scripts/package_macos_dmg.sh "${{ needs.bump_version.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Forja-macOS-dmg
+          path: dist/Forja-${{ needs.bump_version.outputs.version }}-macos-arm64.dmg
+
+  build_windows:
+    name: Windows
+    needs: bump_version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.bump_version.outputs.version }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Build Rust FFI
+        shell: bash
+        run: ./scripts/build_rust_release.sh
+
+      - name: Build Windows app
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          flutter pub get
+          flutter build windows --release
+
+      - name: Embed Rust in release output
+        shell: bash
+        run: ./scripts/embed_rust_in_release_output.sh windows
+
+      - name: Verify installer payload
+        shell: bash
+        run: ./scripts/verify_installer_payload.sh windows
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = "${{ needs.bump_version.outputs.version }}"
+          $outName = "Forja-$version-windows-setup"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DMyAppVersion=$version" `
+            "/DMyOutputBaseFilename=$outName" `
+            "installer\windows\setup.iss"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Forja-Windows-setup
+          path: installer/windows/Output/Forja-${{ needs.bump_version.outputs.version }}-windows-setup.exe
+
+  build_linux:
+    name: Linux
+    needs: bump_version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.bump_version.outputs.version }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev libmpv-dev libfuse2 \
+            file wget curl
+
+      - name: Build Rust FFI
+        run: ./scripts/build_rust_release.sh
+
+      - name: Build Linux app
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          flutter pub get
+          flutter build linux --release
+
+      - name: Embed Rust in release output
+        run: ./scripts/embed_rust_in_release_output.sh linux
+
+      - name: Verify installer payload
+        run: ./scripts/verify_installer_payload.sh linux
+
+      - name: Package AppImage
+        run: ./scripts/package_linux_appimage.sh "${{ needs.bump_version.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Forja-Linux-appimage
+          path: dist/Forja-${{ needs.bump_version.outputs.version }}-linux-x86_64.AppImage
+
+  publish_release:
+    name: Publish GitHub Release
+    needs:
+      - bump_version
+      - build_macos
+      - build_windows
+      - build_linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release assets
+        run: find release-assets -type f
+
+      - name: Flatten release assets
+        run: |
+          mkdir -p release-flat
+          find release-assets -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' \) -exec cp {} release-flat/ \;
+          ls -la release-flat/
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.bump_version.outputs.version }}
+          name: Forja ${{ needs.bump_version.outputs.version }}
+          generate_release_notes: true
+          files: release-flat/*
