@@ -1,9 +1,9 @@
 ; Forja — Windows Installer (Inno Setup 6)
 ; Built from: apps/forja/build/windows/x64/runner/Release/
-; CI: iscc /DMyAppVersion=1.0.1 /DMyOutputBaseFilename=Forja-1.0.1-windows-setup setup.iss
+; CI: iscc /DMyAppVersion=1.0.9 /DMyOutputBaseFilename=Forja-1.0.9-windows-setup setup.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.0"
+  #define MyAppVersion "1.0.9"
 #endif
 #ifndef MyOutputBaseFilename
   #define MyOutputBaseFilename "Forja-Windows-Setup"
