@@ -48,6 +48,8 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   MediaTrailer? get _nextTrailer =>
       _hasNextTrailer ? widget.trailers[_currentIndex + 1] : null;
 
+  bool get _showReplayControl => _ended && _hasNextTrailer;
+
   @override
   void initState() {
     super.initState();
@@ -520,6 +522,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
 
   Future<void> _seek(Duration position) async {
     if (!_ready) return;
+    if (_ended) setState(() => _ended = false);
     await _runJs('window.trailerSeekTo(${position.inMilliseconds / 1000});');
   }
 
@@ -1036,12 +1039,12 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
                           Row(
                             children: [
                               PlayerFlatIconButton(
-                                icon: _ended
+                                icon: _showReplayControl
                                     ? Icons.replay_rounded
                                     : _playing
                                         ? Icons.pause_rounded
                                         : Icons.play_arrow_rounded,
-                                tooltip: _ended
+                                tooltip: _showReplayControl
                                     ? 'Replay'
                                     : _playing
                                         ? 'Pause'

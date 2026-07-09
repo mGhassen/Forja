@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
 /// Play / My List / download / overflow actions on torrent details hero.
@@ -12,6 +13,8 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
     required this.hasResume,
     required this.onOpenSources,
     required this.onOverflowAction,
+    this.trailers = const [],
+    this.trailerLanguageCode,
     this.userTraktRating,
     this.userSimklRating,
     this.isInTraktCollection = false,
@@ -21,9 +24,22 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   final bool hasResume;
   final VoidCallback onOpenSources;
   final ValueChanged<String> onOverflowAction;
+  final List<MediaTrailer> trailers;
+  final String? trailerLanguageCode;
   final int? userTraktRating;
   final int? userSimklRating;
   final bool isInTraktCollection;
+
+  void _openBestTrailer(BuildContext context) {
+    if (trailers.isEmpty) return;
+    AppRouter.openTrailerPlayer(
+      context,
+      trailers: trailers,
+      initialIndex: 0,
+      movie: movie,
+      languageCode: trailerLanguageCode,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +49,15 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
           label: hasResume ? 'Resume' : 'Play',
           onTap: onOpenSources,
         ),
+        if (trailers.isNotEmpty) ...[
+          const SizedBox(width: 10),
+          HeroPillPlayButton(
+            label: 'Trailer',
+            icon: Icons.smart_display_outlined,
+            primary: false,
+            onTap: () => _openBestTrailer(context),
+          ),
+        ],
         const SizedBox(width: 10),
         HeroPillIconGroup(
           slots: [

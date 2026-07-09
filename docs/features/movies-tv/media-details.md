@@ -8,7 +8,7 @@ When you open a title from Home, Discover, or Search (with torrent mode enabled)
 
 The hero overlay is split into two columns on wide screens:
 
-- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then **Play** / **Resume** (dark pill with border — opens Sources) and a combined **+ | download | ⋯** pill for My List, download, and overflow; watch progress when you have history appears below the actions.
+- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then **Play** / **Resume** (dark pill with border — opens Sources), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download, and overflow; watch progress when you have history appears below the actions.
 - **Right:** **Production Info** panel — status, language, and TV fields (first/last aired, seasons, episodes, network, production companies, origin, creators) or movie fields (release date, runtime, production, origin, budget/revenue) from TMDB rich details.
 
 Hero text sits in the **upper** area of the hero (not pinned to the bottom). Below the hero, the page uses a **flat shell background** (same `#141414` as the left nav rail and Home catalog rows) — no blurred backdrop bleed-through.
@@ -30,10 +30,11 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 
 - Watch the Ken Burns backdrop (12–20s), then chromeless autoplay trailer in the hero when TMDB has one; alternates after each trailer ends (sound on, volume ramps up; mute toggle bottom-right)
 - **Play** / **Resume** opens the Sources panel to pick torrents or addon streams
+- **Trailer** (when available) opens the in-app trailer player on the best-matching official trailer
 - Add or remove from **My List** (**+** button in hero)
 - Trakt/Simkl/collect actions via the **⋯** overflow menu in the hero
 - See resume progress in the hero for movies and the selected TV episode
-- For TV: pick a season from square cards, then an episode from the expandable rail — hover or select an episode to see a centered play icon on its thumbnail
+- For TV: pick a season from square cards, then tap an episode in the rail to play it (resume position when you have history). If no source is ready yet, **Sources** opens so you can pick one
 - Browse main cast and “More Like This” recommendations below the hero
 - Search and sort torrent results in Sources (seeders, size, etc.)
 - Resolve torrents through debrid when configured
@@ -48,7 +49,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists — when **
 ## Tips
 
 - Sort order for torrents is set in Settings → Search & Torrents
-- Enable **Direct streaming mode** to use the [streaming details](direct-streaming-mode.md) screen instead (same hero layout; **Play** starts stream extraction)
+- Enable **Direct streaming mode** to use the [streaming details](direct-streaming-mode.md) screen instead (same hero layout; **Play** starts stream extraction; **Trailer** works the same way)
 
 ## Related
 

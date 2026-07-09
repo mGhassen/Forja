@@ -150,17 +150,20 @@ class PlayerStatusOverlay extends StatelessWidget {
       final entries = _entries(buffering);
       if (entries.isEmpty) return const SizedBox.shrink();
       return Positioned(
-        right: 16,
+        left: 0,
+        right: 0,
         top: 0,
-        bottom: 0,
         child: IgnorePointer(
           child: SafeArea(
+            bottom: false,
             child: Align(
-              alignment: Alignment.centerRight,
-              child: StatusRoulettePanel(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12),
                 child: StatusRouletteView(
                   entries: entries,
                   header: header,
+                  centered: true,
                 ),
               ),
             ),
@@ -183,36 +186,17 @@ class PlayerStatusOverlay extends StatelessWidget {
   }
 }
 
-class StatusRoulettePanel extends StatelessWidget {
-  const StatusRoulettePanel({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-        child: child,
-      ),
-    );
-  }
-}
-
 class StatusRouletteView extends StatelessWidget {
   const StatusRouletteView({
     super.key,
     required this.entries,
     required this.header,
+    this.centered = false,
   });
 
   final List<StatusRouletteEntry> entries;
   final String header;
+  final bool centered;
 
   StatusRouletteEntry? get _activeEntry {
     for (final entry in entries) {
@@ -240,10 +224,12 @@ class StatusRouletteView extends StatelessWidget {
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment:
+          centered ? CrossAxisAlignment.center : CrossAxisAlignment.end,
       children: [
         Text(
           header,
+          textAlign: centered ? TextAlign.center : TextAlign.right,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.55),
             fontSize: 10,
@@ -258,19 +244,23 @@ class StatusRouletteView extends StatelessWidget {
           width: 220,
           child: ClipRect(
             child: Stack(
-              alignment: Alignment.centerRight,
+              alignment:
+                  centered ? Alignment.center : Alignment.centerRight,
               clipBehavior: Clip.hardEdge,
               children: [
                 if (previous != null &&
                     previous.kind != StatusRouletteKind.loading)
                   Align(
-                    alignment: Alignment.topRight,
+                    alignment: centered
+                        ? Alignment.topCenter
+                        : Alignment.topRight,
                     child: Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: _StatusRouletteRow(
                         entry: previous,
                         dimmed: true,
                         compact: true,
+                        centered: centered,
                       ),
                     ),
                   ),
@@ -279,7 +269,8 @@ class StatusRouletteView extends StatelessWidget {
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   layoutBuilder: (current, previousChildren) => Stack(
-                    alignment: Alignment.centerRight,
+                    alignment:
+                        centered ? Alignment.center : Alignment.centerRight,
                     clipBehavior: Clip.hardEdge,
                     children: [
                       ...previousChildren,
@@ -307,6 +298,7 @@ class StatusRouletteView extends StatelessWidget {
                   child: _StatusRouletteRow(
                     key: ValueKey('${active.id}-${active.kind.name}'),
                     entry: active,
+                    centered: centered,
                   ),
                 ),
               ],
@@ -316,6 +308,7 @@ class StatusRouletteView extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           checkedCount > 0 ? '$checkedCount checked' : 'Starting…',
+          textAlign: centered ? TextAlign.center : TextAlign.right,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.45),
             fontSize: 11,
@@ -334,11 +327,13 @@ class _StatusRouletteRow extends StatelessWidget {
     required this.entry,
     this.dimmed = false,
     this.compact = false,
+    this.centered = false,
   });
 
   final StatusRouletteEntry entry;
   final bool dimmed;
   final bool compact;
+  final bool centered;
 
   @override
   Widget build(BuildContext context) {
@@ -370,7 +365,7 @@ class _StatusRouletteRow extends StatelessWidget {
             entry.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
+            textAlign: centered ? TextAlign.center : TextAlign.right,
             style: TextStyle(
               color: Colors.white.withValues(alpha: alpha),
               fontSize: compact ? 12 : 15,

@@ -10,6 +10,7 @@ class PlayerProviderMenu {
     required Future<void> Function(String providerId) onSelect,
     Alignment alignment = Alignment.bottomRight,
     EdgeInsets margin = const EdgeInsets.only(right: 16, bottom: 88),
+    BuildContext? anchorContext,
   }) {
     if (providers.isEmpty) return;
 
@@ -19,6 +20,7 @@ class PlayerProviderMenu {
       leadingIcon: Icons.cloud_outlined,
       alignment: alignment,
       margin: margin,
+      anchorContext: anchorContext,
       child: ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,

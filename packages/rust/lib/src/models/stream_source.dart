@@ -20,6 +20,30 @@ class StreamSource {
   }
 }
 
+int streamSourcePlayPriority(StreamSource source) {
+  final url = source.url.toLowerCase();
+  if (url.contains('.m3u8')) return 0;
+  if (url.contains('h265') || url.contains('hevc') || url.contains('/h265/')) {
+    return 2;
+  }
+  return 1;
+}
+
+/// Collapse duplicate playable URLs and prefer HLS / non-HEVC first.
+List<StreamSource> dedupeStreamSources(List<StreamSource> sources) {
+  final seen = <String>{};
+  final out = <StreamSource>[];
+  for (final source in sources) {
+    final url = source.url.trim();
+    if (url.isEmpty || !seen.add(url)) continue;
+    out.add(source);
+  }
+  out.sort((a, b) => streamSourcePlayPriority(a).compareTo(
+        streamSourcePlayPriority(b),
+      ));
+  return out;
+}
+
 class StreamResult {
   final List<StreamSource> sources;
   final String provider;

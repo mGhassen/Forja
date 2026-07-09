@@ -7,6 +7,9 @@ abstract final class ForjaShellColors {
   /// Hero / cinematic overlays (Home top bar) — always light text on imagery.
   static const cinematic = _CinematicShellPalette();
 
+  /// Brand green from the Forja logo — hero Play CTA fill.
+  static const Color brandGreen = Color(0xFF1CE783);
+
   static Color get iconMuted =>
       AppTheme.isLightMode ? _lightIconMuted : _darkIconMuted;
   static Color get iconActive =>

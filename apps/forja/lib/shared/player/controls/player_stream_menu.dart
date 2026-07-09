@@ -2,24 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:rust/rust.dart';
 
+/// Live stream menu state — read after async provider switches.
+class PlayerStreamMenuState {
+  const PlayerStreamMenuState({
+    required this.currentProviderId,
+    required this.sources,
+    required this.currentUrl,
+    required this.current111477FileUrl,
+    required this.is111477,
+    required this.providerAuto,
+    required this.sourceAuto,
+  });
+
+  final String? currentProviderId;
+  final List<StreamSource>? sources;
+  final String? currentUrl;
+  final String? current111477FileUrl;
+  final bool is111477;
+  final bool providerAuto;
+  final bool sourceAuto;
+}
+
 /// Servers → sources drill-down, same panel flow as seasons → episodes.
 class PlayerStreamMenu {
   static Future<void> show(
     BuildContext context, {
     Map<String, dynamic>? providers,
-    String? currentProviderId,
-    required Future<void> Function(String providerId) onSelectProvider,
-    List<StreamSource>? sources,
-    required String? currentUrl,
-    required String? current111477FileUrl,
-    required bool is111477,
+    required PlayerStreamMenuState Function() readState,
+    required Future<List<StreamSource>?> Function(String providerId)
+        onSelectProvider,
+    required Future<void> Function() onSelectAutoProvider,
+    required Future<void> Function() onSelectAutoSource,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     bool providersEnabled = true,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
+    final initial = readState();
     final hasProviders = providers != null && providers.isNotEmpty;
-    final hasSources = sources != null && sources.isNotEmpty;
+    final hasSources =
+        initial.sources != null && initial.sources!.isNotEmpty;
 
     if (!hasProviders && !hasSources) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -35,12 +57,10 @@ class PlayerStreamMenu {
       await _openServers(
         context,
         providers: providers,
-        currentProviderId: currentProviderId,
+        readState: readState,
         onSelectProvider: onSelectProvider,
-        sources: sources,
-        currentUrl: currentUrl,
-        current111477FileUrl: current111477FileUrl,
-        is111477: is111477,
+        onSelectAutoProvider: onSelectAutoProvider,
+        onSelectAutoSource: onSelectAutoSource,
         onSelectSource: onSelectSource,
         providersEnabled: providersEnabled,
         margin: margin,
@@ -49,10 +69,8 @@ class PlayerStreamMenu {
     } else {
       await _openSources(
         context,
-        sources: sources!,
-        currentUrl: currentUrl,
-        current111477FileUrl: current111477FileUrl,
-        is111477: is111477,
+        readState: readState,
+        onSelectAutoSource: onSelectAutoSource,
         onSelectSource: onSelectSource,
         margin: margin,
         anchorContext: anchorContext,
@@ -64,18 +82,17 @@ class PlayerStreamMenu {
   static Future<void> _openServers(
     BuildContext context, {
     required Map<String, dynamic> providers,
-    required String? currentProviderId,
-    required Future<void> Function(String providerId) onSelectProvider,
-    required List<StreamSource>? sources,
-    required String? currentUrl,
-    required String? current111477FileUrl,
-    required bool is111477,
+    required PlayerStreamMenuState Function() readState,
+    required Future<List<StreamSource>?> Function(String providerId)
+        onSelectProvider,
+    required Future<void> Function() onSelectAutoProvider,
+    required Future<void> Function() onSelectAutoSource,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     required bool providersEnabled,
     required EdgeInsets margin,
     BuildContext? anchorContext,
   }) async {
-    final currentSources = sources ?? const <StreamSource>[];
+    final state = readState();
 
     await PlayerPopupPanel.show(
       context: context,
@@ -87,79 +104,100 @@ class PlayerStreamMenu {
       child: ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
-        children: providers.entries.map((entry) {
-          final key = entry.key;
-          final provider = entry.value;
-          final isCurrent = key == currentProviderId;
-          final fallbackName = provider['name']?.toString();
-          final contentLanguage = _contentLanguage(provider);
-          final flags = StreamProviderDisplay.countryFlags(
-            key,
-            contentLanguage: contentLanguage,
-          );
-          final canDrillSources = isCurrent && currentSources.isNotEmpty;
-          return PlayerPopupListTile(
-            badge: flags.isEmpty ? null : flags,
-            label: StreamProviderDisplay.playerLabel(
-              key,
-              fallbackName: fallbackName,
-              contentLanguage: contentLanguage,
-            ),
-            selected: isCurrent,
-            trailing: canDrillSources
-                ? const Icon(Icons.chevron_right_rounded,
-                    color: Colors.white24, size: 18)
-                : null,
+        children: [
+          PlayerPopupListTile(
+            badge: 'AUTO',
+            label: 'Auto',
+            selected: state.providerAuto,
             onTap: () async {
               PlayerPopupPanel.dismiss();
-              if (!isCurrent) {
-                if (providersEnabled) await onSelectProvider(key);
-                return;
-              }
-              if (canDrillSources) {
+              await onSelectAutoProvider();
+            },
+          ),
+          ...providers.entries.map((entry) {
+            final key = entry.key;
+            final provider = entry.value;
+            final isCurrent = key == state.currentProviderId;
+            final fallbackName = provider['name']?.toString();
+            final contentLanguage = _contentLanguage(provider);
+            final flags = StreamProviderDisplay.countryFlags(
+              key,
+              contentLanguage: contentLanguage,
+            );
+            return PlayerPopupListTile(
+              badge: flags.isEmpty ? null : flags,
+              label: StreamProviderDisplay.playerLabel(
+                key,
+                fallbackName: fallbackName,
+                contentLanguage: contentLanguage,
+              ),
+              selected: !state.providerAuto && isCurrent,
+              trailing: const Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white24,
+                size: 18,
+              ),
+              onTap: () async {
+                PlayerPopupPanel.dismiss();
+                List<StreamSource>? serverSources;
+                if (isCurrent) {
+                  serverSources = readState().sources;
+                } else if (providersEnabled) {
+                  serverSources = await onSelectProvider(key);
+                }
+                serverSources ??= readState().sources;
+                if (serverSources == null || serverSources.isEmpty) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No sources for this server'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  }
+                  return;
+                }
+                if (!context.mounted) return;
                 await _openSources(
                   context,
-                  sources: currentSources,
-                  currentUrl: currentUrl,
-                  current111477FileUrl: current111477FileUrl,
-                  is111477: is111477,
+                  readState: readState,
+                  onSelectAutoSource: onSelectAutoSource,
                   onSelectSource: onSelectSource,
                   margin: margin,
                   anchorContext: anchorContext,
                   onBack: () => _openServers(
                     context,
                     providers: providers,
-                    currentProviderId: currentProviderId,
+                    readState: readState,
                     onSelectProvider: onSelectProvider,
-                    sources: sources,
-                    currentUrl: currentUrl,
-                    current111477FileUrl: current111477FileUrl,
-                    is111477: is111477,
+                    onSelectAutoProvider: onSelectAutoProvider,
+                    onSelectAutoSource: onSelectAutoSource,
                     onSelectSource: onSelectSource,
                     providersEnabled: providersEnabled,
                     margin: margin,
                     anchorContext: anchorContext,
                   ),
                 );
-              }
-            },
-          );
-        }).toList(),
+              },
+            );
+          }),
+        ],
       ),
     );
   }
 
   static Future<void> _openSources(
     BuildContext context, {
-    required List<StreamSource> sources,
-    required String? currentUrl,
-    required String? current111477FileUrl,
-    required bool is111477,
+    required PlayerStreamMenuState Function() readState,
+    required Future<void> Function() onSelectAutoSource,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     required EdgeInsets margin,
     BuildContext? anchorContext,
     required VoidCallback? onBack,
   }) async {
+    final state = readState();
+    final sources = state.sources ?? const <StreamSource>[];
+
     await PlayerPopupPanel.show(
       context: context,
       title: 'Sources',
@@ -171,22 +209,33 @@ class PlayerStreamMenu {
       child: ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
-        children: sources.asMap().entries.map((entry) {
-          final index = entry.key;
-          final source = entry.value;
-          final isCurrent = is111477
-              ? source.url == current111477FileUrl
-              : source.url == currentUrl;
-          return PlayerPopupListTile(
-            badge: source.type.toUpperCase(),
-            label: source.title,
-            selected: isCurrent,
+        children: [
+          PlayerPopupListTile(
+            badge: 'AUTO',
+            label: 'Auto',
+            selected: state.sourceAuto,
             onTap: () async {
               PlayerPopupPanel.dismiss();
-              if (!isCurrent) await onSelectSource(source, index);
+              await onSelectAutoSource();
             },
-          );
-        }).toList(),
+          ),
+          ...sources.asMap().entries.map((entry) {
+            final index = entry.key;
+            final source = entry.value;
+            final isCurrent = state.is111477
+                ? source.url == state.current111477FileUrl
+                : source.url == state.currentUrl;
+            return PlayerPopupListTile(
+              badge: source.type.toUpperCase(),
+              label: source.title,
+              selected: !state.sourceAuto && isCurrent,
+              onTap: () async {
+                PlayerPopupPanel.dismiss();
+                if (!isCurrent) await onSelectSource(source, index);
+              },
+            );
+          }),
+        ],
       ),
     );
   }

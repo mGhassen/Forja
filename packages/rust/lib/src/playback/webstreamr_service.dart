@@ -108,11 +108,12 @@ class WebStreamrService {
           headers: headers,
         ));
       }
+      final deduped = dedupeStreamSources(out);
       debugPrint(
-        '[WebStreamrService] resolved ${out.length} streams for $idLabel'
-        ' (${streams.length} raw, $skipped skipped)',
+        '[WebStreamrService] resolved ${deduped.length} streams for $idLabel'
+        ' (${streams.length} raw, $skipped skipped, ${out.length - deduped.length} dupes)',
       );
-      return out;
+      return deduped;
     } catch (e, st) {
       debugPrint('[WebStreamrService] Exception: $e\n$st');
       return [];

@@ -32,7 +32,7 @@ import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/controls/seek_bar_with_preview.dart';
-import 'package:forja/shared/player/controls/player_stream_menu.dart';
+import 'package:forja/shared/player/controls/stream_source_panel.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/player_episode_menu.dart';
@@ -499,9 +499,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   /// (the menu compares against this rather than the localhost proxy URL).
   String? _current111477FileUrl;
   int _currentFallbackSourceIndex = 0;
+  bool _providerPinned = false;
+  bool _sourcePinned = false;
   final PlayerStatusController _statusController = PlayerStatusController();
   bool _isSwitchingProvider = false;
   bool _isInitPlaybackRunning = false;
+  bool _playbackConfirmed = false;
 
   // ── Feature State ────────────────────────────────────────────────────────
   _HwDecMode _hwDecMode = _HwDecMode.autoSafe;
@@ -534,7 +537,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     
     // ── Provider initialization ──────────────────────────────────────────
     _currentProvider = widget.activeProvider;
-    _currentSources = widget.sources;
+    _currentSources = widget.sources == null
+        ? null
+        : dedupeStreamSources(widget.sources!);
     _currentUrl = widget.mediaPath;
     if (_currentProvider == 'service111477' &&
         widget.sources != null &&
@@ -820,6 +825,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     if (_disposed) return;
     if (_isInitPlaybackRunning) return; // Prevent re-entrant calls during async extraction
     _isInitPlaybackRunning = true;
+    _playbackConfirmed = false;
     
     try {
     setState(() {
@@ -829,9 +835,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
     // 1. Try sources in current provider list
     if (_currentSources != null && _currentSources!.isNotEmpty) {
+      final triedUrls = <String>{};
       while (_currentFallbackSourceIndex < _currentSources!.length) {
         final i = _currentFallbackSourceIndex;
         var source = _currentSources![i];
+
+        if (triedUrls.contains(source.url)) {
+          debugPrint('[Player] Skipping duplicate URL at index $i');
+          _currentFallbackSourceIndex++;
+          continue;
+        }
+        triedUrls.add(source.url);
+
         debugPrint('[Player] Trying source ${i + 1}/${_currentSources!.length}: ${source.title}');
         _statusController.upsert(
           'source-$i',
@@ -886,12 +901,26 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
           await _player.open(Media(openUrl, httpHeaders: source.headers ?? widget.headers));
           _player.setVolume(_volumeNotifier.value);
+          final opened = await waitForMediaOpen(_player);
+          if (!opened) {
+            debugPrint('[Player] Source $i failed to open: $openUrl');
+            await _player.stop();
+            _statusController.upsert(
+              'source-$i',
+              source.title,
+              kind: StatusRouletteKind.failed,
+              dismissAfter: const Duration(milliseconds: 500),
+            );
+            _currentFallbackSourceIndex++;
+            continue;
+          }
           _detectHlsQualities(openUrl, source.headers ?? widget.headers);
           setState(() {
             _currentUrl = openUrl;
           });
+          _playbackConfirmed = true;
           _statusController.complete();
-          return; // Opened successfully
+          return;
         } catch (e) {
           debugPrint('[Player] Source $i catch error: $e');
           _statusController.upsert(
@@ -905,7 +934,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       }
       
       // All sources in current provider failed
-      await _autoFallbackToNextProvider();
+      if (!_providerPinned) {
+        await _autoFallbackToNextProvider();
+      } else if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'All sources on this server failed.';
+        });
+      }
     } else {
       // No sources list, just try the primary mediaPath
       int retryCount = 0;
@@ -1115,7 +1151,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         
         setState(() {
           _currentProvider = newProvider;
-          _currentSources = sources;
+          _currentSources = sources == null ? null : dedupeStreamSources(sources);
           _currentUrl = streamUrl;
           _currentFallbackSourceIndex = 0; // Reset for the new provider
           _hasError = false;
@@ -1252,46 +1288,39 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     // Error recovery – log & surface to UI
     _errorSub = _player.stream.error.listen((err) {
       if (_disposed || err.isEmpty) return;
-      
-      // Ignore non-fatal audio errors (video continues playing)
-      if (err.contains('Error decoding audio') ||
-          err.contains('Failed to initialize a decoder for codec')) {
+      if (isIgnorablePlayerError(err)) {
+        if (err.contains('subtitle') ||
+            err.toLowerCase().contains('sub-add') ||
+            err.toLowerCase().contains('external file')) {
+          debugPrint('🟡 Sub error (ignored): $err');
+        }
         return;
       }
 
-      // Ignore subtitle-fetch errors (HTTP 502/404 from sub providers,
-      // bad SRT, codec issues, etc.). These should NOT kill video
-      // playback or rotate the video fallback chain.
-      final lower = err.toLowerCase();
-      final isSubError = lower.contains('subtitle') ||
-          lower.contains('sub-add') ||
-          lower.contains('external file') ||
-          lower.contains('.srt') ||
-          lower.contains('.vtt') ||
-          lower.contains('.ass') ||
-          lower.contains('.ssa') ||
-          lower.contains('502') ||
-          lower.contains('http error');
-      if (isSubError) {
-        debugPrint('🟡 Sub error (ignored): $err');
+      debugPrint('🔴 Player error: $err');
+
+      if (!isFatalPlayerOpenError(err)) return;
+      if (_hasError || _isInitPlaybackRunning) {
+        if (_isInitPlaybackRunning) {
+          debugPrint('[Player] Ignoring stale error — _initPlayback already running');
+        }
         return;
       }
-      
-      debugPrint('🔴 Player error: $err');
-      
-      // Only surface fatal errors to UI (connection failures are often transient)
-      if (err.contains('Failed') || err.contains('No such file')) {
-        // Don't retry if we've already given up or are currently retrying
-        if (_hasError || _isInitPlaybackRunning) {
-          if (_isInitPlaybackRunning) {
-            debugPrint('[Player] Ignoring stale error — _initPlayback already running');
-          }
-          return;
-        }
-        debugPrint('[Player] Fatal error detected on source $_currentFallbackSourceIndex, progressing fallback...');
-        _currentFallbackSourceIndex++;
-        _initPlayback();
+      if (!_playbackConfirmed) {
+        debugPrint('[Player] Ignoring open error — probe handles fallback');
+        return;
       }
+      _playbackConfirmed = false;
+      if (_sourcePinned) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Playback failed on the selected source.';
+        });
+        return;
+      }
+      debugPrint('[Player] Fatal error detected on source $_currentFallbackSourceIndex, progressing fallback...');
+      _currentFallbackSourceIndex++;
+      _initPlayback();
     });
 
     // Completion – could trigger next-episode logic here in the future
@@ -1903,32 +1932,40 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   //  SOURCE SELECTION (for Amri provider)
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _showStreamMenu([BuildContext? anchorContext]) {
-    final hasProviders = widget.providers != null &&
-        widget.providers!.isNotEmpty &&
-        widget.movie != null &&
-        widget.magnetLink == null &&
-        widget.activeProvider != 'stremio_direct';
-    if (!hasProviders &&
-        (_currentSources == null || _currentSources!.isEmpty)) {
-      return;
-    }
-    PlayerStreamMenu.show(
+  void _showSourcesMenu([BuildContext? anchorContext]) {
+    if (_currentSources == null || _currentSources!.isEmpty) return;
+    StreamSourcePanel.show(
       context,
-      anchorContext: anchorContext,
-      providers: hasProviders ? widget.providers : null,
-      currentProviderId: _currentProvider,
-      onSelectProvider: _switchProvider,
-      sources: _currentSources,
+      sources: _currentSources!,
       currentUrl: _currentUrl,
       current111477FileUrl: _current111477FileUrl,
       is111477: _currentProvider == 'service111477',
-      onSelectSource: _switchToStreamSource,
-      providersEnabled: !_isSwitchingProvider,
+      anchorContext: anchorContext,
+      onSelect: _switchToStreamSource,
     );
+    _onMouseMove();
+  }
+
+  void _showProviderMenu([BuildContext? anchorContext]) {
+    if (widget.providers == null ||
+        widget.providers!.isEmpty ||
+        widget.movie == null ||
+        widget.magnetLink != null ||
+        widget.activeProvider == 'stremio_direct') {
+      return;
+    }
+    PlayerProviderMenu.show(
+      context,
+      providers: widget.providers!,
+      currentProviderId: _currentProvider,
+      anchorContext: anchorContext,
+      onSelect: _switchProvider,
+    );
+    _onMouseMove();
   }
 
   Future<void> _switchToStreamSource(StreamSource source, int index) async {
+    _sourcePinned = true;
     final isCurrent = _currentProvider == 'service111477'
         ? source.url == _current111477FileUrl
         : source.url == _currentUrl;
@@ -1959,6 +1996,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         });
         _detectHlsQualities(newProxied, null);
         if (currentPos.inSeconds > 0) await _player.seek(currentPos);
+        _playbackConfirmed = true;
         _statusController.complete();
       } catch (e) {
         if (!mounted) return;
@@ -2015,6 +2053,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
 
     if (currentPos.inSeconds > 0) await _player.seek(currentPos);
+    _playbackConfirmed = true;
     _statusController.complete();
   }
 
@@ -2157,75 +2196,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       return;
     }
 
-    // ── Streaming-mode shortcut ─────────────────────────────────────────
-    // When launched from streaming_details_screen (= a `providers` map
-    // was passed), don't try to re-resolve the source here. Instead,
-    // pop back with {nextSeason, nextEpisode} so streaming_details can
-    // re-run the full provider fallback chain — same path the user
-    // gets when tapping an episode card manually. Fixes "Provider X
-    // does not support TV" when the active provider lacks a `tv`
-    // entry but other providers in the chain would have worked.
-    final isStreamingMode = widget.providers != null &&
-        widget.providers!.isNotEmpty &&
-        widget.movie != null &&
-        widget.movie!.mediaType == 'tv' &&
-        widget.selectedSeason != null &&
-        widget.selectedEpisode != null;
-    if (isStreamingMode) {
-      try {
-        final tmdb = TmdbService();
-        final tvId = widget.movie!.id;
-        int nextSeason = widget.selectedSeason!;
-        int nextEpisode = widget.selectedEpisode! + 1;
-
-        final seasonData = await tmdb.getTvSeasonDetails(tvId, nextSeason);
-        final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
-        final maxEp = episodes.isNotEmpty
-            ? episodes
-                .map((e) => e['episode_number'] as int)
-                .reduce((a, b) => a > b ? a : b)
-            : 0;
-
-        if (nextEpisode > maxEp) {
-          final totalSeasons = await tmdb.getTvSeasonCount(tvId);
-          if (nextSeason < totalSeasons) {
-            nextSeason++;
-            nextEpisode = 1;
-          } else {
-            if (mounted) {
-              _statusController.upsert(
-                'episode',
-                'No more episodes',
-                kind: StatusRouletteKind.info,
-                dismissAfter: const Duration(seconds: 2),
-              );
-              setState(() => _isLoadingNextEp = false);
-            }
-            return;
-          }
-        }
-
-        _saveWatchHistory();
-        if (!mounted) return;
-        Navigator.of(context).pop({
-          'nextSeason': nextSeason,
-          'nextEpisode': nextEpisode,
-        });
-      } catch (e) {
-        debugPrint('[NextEp] Streaming-mode handoff failed: $e');
-        if (mounted) {
-          _statusController.upsert(
-            'episode',
-            'Next episode failed',
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(seconds: 2),
-          );
-          setState(() => _isLoadingNextEp = false);
-        }
-      }
-      return;
-    }
-
     final next = await _computeNextEpisode();
     if (next == null) {
       if (mounted) setState(() => _isLoadingNextEp = false);
@@ -2271,9 +2241,27 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     return (season: nextSeason, episode: nextEpisode);
   }
 
+  String _episodeSwitchStatusLabel(int season, int episode) {
+    final key = _currentProvider ?? widget.activeProvider;
+    if (key != null) {
+      return PlayerProviderMenu.snackbarLabel(key, widget.providers?[key]);
+    }
+    if (widget.magnetLink != null) return 'Torrents';
+    return 'S$season E$episode';
+  }
+
+  void _showEpisodeSwitchStatus(int season, int episode) {
+    _statusController.upsert(
+      'episode-switch',
+      _episodeSwitchStatusLabel(season, episode),
+      kind: StatusRouletteKind.loading,
+    );
+  }
+
   Future<void> _switchToEpisode(int season, int episode) async {
     if (widget.movie == null) return;
     if (!_isLoadingNextEp && mounted) setState(() => _isLoadingNextEp = true);
+    _showEpisodeSwitchStatus(season, episode);
 
     try {
       debugPrint('[EpSwitch] Playing S${season}E$episode');
@@ -2500,8 +2488,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       debugPrint('[EpSwitch] Error: $e');
       if (mounted) {
         _statusController.upsert(
-          'episode',
-          'Episode switch failed',
+          'episode-switch',
+          _episodeSwitchStatusLabel(season, episode),
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
@@ -2512,20 +2500,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   Future<void> _goToEpisode(int season, int episode) async {
     if (season == widget.selectedSeason && episode == widget.selectedEpisode) return;
-
-    final isStreamingMode = widget.providers != null &&
-        widget.providers!.isNotEmpty &&
-        widget.movie != null &&
-        widget.movie!.mediaType == 'tv';
-    if (isStreamingMode) {
-      _saveWatchHistory();
-      if (!mounted) return;
-      Navigator.of(context).pop({
-        'nextSeason': season,
-        'nextEpisode': episode,
-      });
-      return;
-    }
     await _switchToEpisode(season, episode);
   }
 
@@ -2549,58 +2523,100 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       context: context,
       title: 'Settings',
       anchorContext: anchorContext,
-      child: ListView(
-        padding: const EdgeInsets.all(8),
-        shrinkWrap: true,
-        children: [
-          PlayerPopupListTile(
-            label: 'Playback speed',
-            subtitle: '${_player.state.rate}x',
-            trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 18),
-            onTap: () {
-              PlayerPopupPanel.dismiss();
-              showSpeedMenu(context, _player.state.rate, (s) => _player.setRate(s));
-            },
-          ),
-          PlayerPopupListTile(
-            label: 'Aspect ratio',
-            subtitle: _videoFitLabel,
-            onTap: () {
-              PlayerPopupPanel.dismiss();
-              _cycleAspectRatio();
-            },
-          ),
-          PlayerPopupListTile(
-            label: 'Loop',
-            subtitle: _loopEnabled ? 'On' : 'Off',
-            selected: _loopEnabled,
-            onTap: () {
-              PlayerPopupPanel.dismiss();
-              _toggleLoop();
-            },
-          ),
-          PlayerPopupListTile(
-            label: 'Hardware decode',
-            subtitle: _hwDecMode.label,
-            onTap: () {
-              PlayerPopupPanel.dismiss();
-              _cycleHwDec();
-            },
-          ),
-          PlayerPopupListTile(
-            label: 'Subtitle style',
-            onTap: () {
-              PlayerPopupPanel.dismiss();
-              _showSubtitleSettings();
-            },
-          ),
-        ],
+      child: StatefulBuilder(
+        builder: (context, setPanelState) {
+          return ListView(
+            padding: const EdgeInsets.all(8),
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Video decode',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        GlassPillButton(
+                          text: _hwDecMode.label,
+                          accent: _hwDecMode.accent,
+                          onTap: () {
+                            _cycleHwDec();
+                            setPanelState(() {});
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _hwDecMode.description,
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 11,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFF2A2A2A)),
+              const SizedBox(height: 4),
+              PlayerPopupListTile(
+                label: 'Playback speed',
+                subtitle: '${_player.state.rate}x',
+                trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 18),
+                onTap: () {
+                  PlayerPopupPanel.dismiss();
+                  showSpeedMenu(context, _player.state.rate, (s) => _player.setRate(s));
+                },
+              ),
+              PlayerPopupListTile(
+                label: 'Aspect ratio',
+                subtitle: _videoFitLabel,
+                onTap: () {
+                  PlayerPopupPanel.dismiss();
+                  _cycleAspectRatio();
+                },
+              ),
+              PlayerPopupListTile(
+                label: 'Loop',
+                subtitle: _loopEnabled ? 'On' : 'Off',
+                selected: _loopEnabled,
+                onTap: () {
+                  PlayerPopupPanel.dismiss();
+                  _toggleLoop();
+                },
+              ),
+              PlayerPopupListTile(
+                label: 'Subtitle style',
+                onTap: () {
+                  PlayerPopupPanel.dismiss();
+                  _showSubtitleSettings();
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Future<void> _switchProvider(String newProvider) async {
-    if (_isSwitchingProvider) return;
+  Future<List<StreamSource>?> _switchProvider(String newProvider) async {
+    if (_isSwitchingProvider) return null;
+
+    _providerPinned = true;
+    _sourcePinned = false;
 
     final gen = ++_fallbackGen;
     WebStreamrService().cancelPending();
@@ -2638,7 +2654,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               : null;
           hits = await svc.findMovieSources(title: widget.movie!.title, year: year);
         }
-        if (_fallbackAborted(gen)) return;
+        if (_fallbackAborted(gen)) return null;
         if (hits.isNotEmpty) {
           if (site111477_proxy.is111477ProxyRunning) {
             await site111477_proxy.stop111477Proxy();
@@ -2659,7 +2675,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           streamUrl = webStreamrSources.first.url;
           sources = webStreamrSources;
         }
-        if (_fallbackAborted(gen)) return;
+        if (_fallbackAborted(gen)) return null;
       } else if (newProvider == 'videasy' && widget.movie != null) {
         final ve = VideasyExtractor(onLog: (m) => debugPrint(m));
         final result = await ve.extract(
@@ -2669,7 +2685,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           episode: widget.selectedEpisode,
           isCancelled: () => _fallbackAborted(gen),
         );
-        if (_fallbackAborted(gen)) return;
+        if (_fallbackAborted(gen)) return null;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -2683,7 +2699,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
-        if (_fallbackAborted(gen)) return;
+        if (_fallbackAborted(gen)) return null;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -2698,7 +2714,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
-        if (_fallbackAborted(gen)) return;
+        if (_fallbackAborted(gen)) return null;
         if (results.isNotEmpty) {
           final first = results.first;
           streamUrl = first.url;
@@ -2731,7 +2747,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           providerUrl,
           isCancelled: () => _fallbackAborted(gen),
         );
-        if (_fallbackAborted(gen)) return;
+        if (_fallbackAborted(gen)) return null;
         if (result != null && result.url.isNotEmpty) {
           streamUrl = result.url;
           headers = result.headers;
@@ -2739,7 +2755,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
       }
       
-      if (_fallbackAborted(gen)) return;
+      if (_fallbackAborted(gen)) return null;
       if (streamUrl != null && streamUrl.isNotEmpty) {
         // Reset any stale mpv referrer set by the previous provider/quality
         // selection — then re-apply from the new headers if present.
@@ -2750,7 +2766,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         await _player.open(
           Media(streamUrl, httpHeaders: headers),
         );
-        if (_fallbackAborted(gen)) return;
+        if (_fallbackAborted(gen)) return null;
         
         if (currentPos.inSeconds > 0) {
           await _player.seek(currentPos);
@@ -2759,7 +2775,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         
         setState(() {
           _currentProvider = newProvider;
-          _currentSources = sources;
+          _currentSources = sources == null ? null : dedupeStreamSources(sources);
           _currentUrl = streamUrl;
           _currentFallbackSourceIndex = 0; // Reset index on manual switch
           _hasError = false;
@@ -2767,6 +2783,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         });
         
         _statusController.complete();
+        return _currentSources;
       } else {
         if (mounted && !_fallbackAborted(gen)) {
           _statusController.upsert(
@@ -2791,6 +2808,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         setState(() => _isSwitchingProvider = false);
       }
     }
+    return null;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -3083,6 +3101,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   Widget _buildEmbeddedError() {
+    final hasProviders = widget.providers != null && widget.providers!.isNotEmpty &&
+        widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
+    final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
+
     return Container(
       color: Colors.black.withValues(alpha: 0.6),
       child: Center(
@@ -3116,13 +3138,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   text: 'Retry',
                   onTap: _initPlayback,
                 ),
-                if ((widget.providers != null && widget.providers!.isNotEmpty) ||
-                    (_currentSources != null && _currentSources!.isNotEmpty)) ...[
+                if (hasProviders || hasSources) ...[
                   const SizedBox(width: 16),
-                  GlassPillButton(
-                    text: 'Switch Stream',
-                    onTap: _showStreamMenu,
-                  ),
+                  if (hasSources)
+                    GlassPillButton(
+                      text: 'Sources',
+                      onTap: _showSourcesMenu,
+                    ),
+                  if (hasSources && hasProviders) const SizedBox(width: 12),
+                  if (hasProviders)
+                    GlassPillButton(
+                      text: 'Servers',
+                      onTap: _isSwitchingProvider ? () {} : _showProviderMenu,
+                    ),
                 ],
               ],
             ),
@@ -3161,12 +3189,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             if (mounted) Navigator.of(context).pop(_positionNotifier.value);
           },
           trailing: PlayerTopBarActions(
-            showStream: hasProviders || hasSources,
-            streamEnabled: !_isSwitchingProvider,
-            onStream: (anchor) {
-              _showStreamMenu(anchor);
-              _onMouseMove();
-            },
             showCast: CastingService.instance.isAirPlayAvailable ||
                 CastingService.instance.isChromecastAvailable,
             onCast: () {
@@ -3434,6 +3456,25 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   ),
                 ]),
                 Row(children: [
+                  if (hasSources) ...[
+                    PlayerFlatIconButton(
+                      icon: Icons.dns_outlined,
+                      tooltip: 'Sources',
+                      onPressedWithContext: (ctx) => _showSourcesMenu(ctx),
+                    ),
+                    const SizedBox(width: 2),
+                  ],
+                  if (hasProviders) ...[
+                    PlayerFlatIconButton(
+                      icon: Icons.cloud_outlined,
+                      tooltip: 'Servers',
+                      onPressedWithContext: _isSwitchingProvider
+                          ? null
+                          : (ctx) => _showProviderMenu(ctx),
+                      onPressed: () {},
+                    ),
+                    const SizedBox(width: 2),
+                  ],
                   if (isTv && widget.movie != null) ...[
                     PlayerFlatIconButton(
                       icon: Icons.video_library_outlined,

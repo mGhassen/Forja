@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
+import 'package:forja/shared/design/design.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
@@ -337,10 +338,13 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_back_ios_new_rounded,
-                color: Colors.white70, size: 20),
+          ForjaPlainIcon(
+            icon: Icons.arrow_back_rounded,
+            onTap: () => Navigator.of(context).pop(),
+            color: Colors.white70,
+            size: 22,
+            hoverScale: 1.15,
+            tooltip: 'Back',
           ),
           Expanded(
             child: Column(
@@ -786,10 +790,13 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_back_ios_new_rounded,
-                color: Colors.white70, size: 20),
+          ForjaPlainIcon(
+            icon: Icons.arrow_back_rounded,
+            onTap: () => Navigator.of(context).pop(),
+            color: Colors.white70,
+            size: 22,
+            hoverScale: 1.15,
+            tooltip: 'Back',
           ),
           Expanded(
             child: Column(

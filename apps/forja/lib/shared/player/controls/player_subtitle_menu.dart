@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
@@ -80,13 +81,14 @@ class PlayerSubtitleMenu {
       anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
-      trailing: IconButton(
-        icon: const Icon(Icons.tune_rounded, color: Colors.white54, size: 18),
-        onPressed: () {
+      trailing: ForjaPlainIcon(
+        icon: Icons.tune_rounded,
+        size: 18,
+        color: Colors.white54,
+        onTap: () {
           PlayerPopupPanel.dismiss();
           onSubtitleSettings();
         },
-        visualDensity: VisualDensity.compact,
       ),
       child: ListView(
         padding: const EdgeInsets.all(8),

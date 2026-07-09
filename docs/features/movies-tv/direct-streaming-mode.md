@@ -15,6 +15,7 @@ When **Direct streaming mode** is on (Settings → Playback), tapping a movie or
 
 - See available stream links grouped by provider
 - Pick a link and play in the built-in or external player
+- Tap a TV episode on the details page to start playback (same flow as **Play** / **Resume**)
 - Mark TV episodes as watched
 - Fall through providers in the order you set in Settings
 - While a stream is starting, a right-side roulette cycles through each server as it is checked — ✓ when one works, ✗ when it fails, spinner on the active one (★ on your top-priority server)

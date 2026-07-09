@@ -14,6 +14,28 @@ class AppRouter {
   static Route<T> slideRoute<T>(WidgetBuilder builder) =>
       CupertinoPageRoute<T>(builder: builder);
 
+  static Route<T> fadeRoute<T>(
+    WidgetBuilder builder, {
+    Duration duration = const Duration(milliseconds: 1000),
+  }) {
+    return PageRouteBuilder<T>(
+      opaque: true,
+      fullscreenDialog: true,
+      pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+      transitionDuration: duration,
+      reverseTransitionDuration: const Duration(milliseconds: 500),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+          ),
+          child: child,
+        );
+      },
+    );
+  }
+
   static Future<T?> openDetails<T>(
     BuildContext context, {
     required Movie movie,
@@ -132,9 +154,11 @@ class AppRouter {
     Future<void> Function()? onNextEpisode,
     bool hasNextEpisode = false,
     Future<void> Function(Duration position, Duration duration)? onSaveProgress,
+    bool fadeTransition = false,
   }) {
+    final routeBuilder = fadeTransition ? fadeRoute : slideRoute;
     return Navigator.of(context, rootNavigator: true).push<T>(
-      slideRoute(
+      routeBuilder(
         (_) => PlayerScreen(
           streamUrl: streamUrl,
           audioUrl: audioUrl,

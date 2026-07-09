@@ -67,6 +67,13 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   Set<String> _watchedEpisodes = {};
   Map<String, dynamic>? _lastProgress;
   MediaDetailsExtras? _mediaExtras;
+
+  Duration? get _playbackStartPosition {
+    if (widget.startPosition != null) return widget.startPosition;
+    final pos = _lastProgress?['position'] as int? ?? 0;
+    return pos > 0 ? Duration(milliseconds: pos) : null;
+  }
+
   String? _trailerKey;
   final Map<int, String> _seasonPosters = {};
   Map<String, Map<String, dynamic>> _episodeProgress = {};
@@ -270,7 +277,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
             movie: _movie,
             selectedSeason: isTv ? _selectedSeason : null,
             selectedEpisode: isTv ? _selectedEpisode : null,
-            startPosition: widget.startPosition,
+            startPosition: _playbackStartPosition,
             activeProvider: 'stremio_direct',
           );
           return;
@@ -295,7 +302,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
             selectedSeason: isTv ? _selectedSeason : null,
             selectedEpisode: isTv ? _selectedEpisode : null,
             fileIndex: resolved.fileIndex,
-            startPosition: widget.startPosition,
+            startPosition: _playbackStartPosition,
             activeProvider: 'stremio_direct',
           );
           return;
@@ -323,6 +330,8 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   }
 
   Future<void> _runStreamExtraction() async {
+    if (_isExtracting) return;
+    _isExtracting = true;
     _extractionCancelled = false;
     final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
     final fadeOutNotifier = ValueNotifier(false);
@@ -331,22 +340,14 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
 
     void dismissLoadingOverlay() {
       final ctx = loadingDialogContext;
-      if (ctx != null && ctx.mounted && Navigator.of(ctx).canPop()) {
-        Navigator.of(ctx).pop();
-      } else {
-        final overlay = shellOverlayNavigatorKey.currentState;
-        if (overlay?.canPop() ?? false) {
-          overlay!.pop();
-        }
+      if (ctx != null && ctx.mounted) {
+        dismissLoadingOverlayRoute(ctx);
       }
       loadingDialogContext = null;
     }
 
-    showDialog(
-      context: context,
-      useRootNavigator: false,
-      barrierDismissible: false,
-      barrierColor: Colors.black,
+    showLoadingOverlayDialog(
+      context,
       builder: (dialogContext) {
         loadingDialogContext = dialogContext;
         return LoadingOverlay(
@@ -364,9 +365,16 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
         );
       },
     );
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) {
+      dismissLoadingOverlay();
+      _isExtracting = false;
+      fadeOutNotifier.dispose();
+      probeNotifier.dispose();
+      return;
+    }
 
     setState(() {
-      _isExtracting = true;
       _statusMessage = 'Initializing Stream Extractor...';
     });
 
@@ -490,8 +498,11 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
         ? '${_movie.title} - S$_selectedSeason E$_selectedEpisode'
         : _movie.title;
 
-    Future<void> closeLoadingOverlay() async {
-      if (probeNotifier != null) {
+    Future<void> closeLoadingOverlay({
+      Future<dynamic> Function()? openPlayer,
+    }) async {
+      Future<void> beforeFade() async {
+        if (probeNotifier == null) return;
         probeNotifier.value = probeNotifier.value
             .map(
               (probe) => probe.id == key
@@ -501,16 +512,28 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
             .toList();
         await Future<void>.delayed(const Duration(milliseconds: 250));
       }
-      fadeOutNotifier?.value = true;
-      await Future<void>.delayed(const Duration(milliseconds: 750));
+
       final ctx = loadingDialogContext;
-      if (ctx != null && ctx.mounted && Navigator.of(ctx).canPop()) {
-        Navigator.of(ctx).pop();
-      } else {
-        final overlay = shellOverlayNavigatorKey.currentState;
-        if (overlay?.canPop() ?? false) {
-          overlay!.pop();
+      if (openPlayer != null) {
+        if (ctx != null && ctx.mounted) {
+          await crossfadeLoadingOverlayToPlayer<dynamic>(
+            loadingDialogContext: ctx,
+            fadeOutNotifier: fadeOutNotifier,
+            beforeFade: beforeFade,
+            openPlayer: openPlayer,
+          );
+        } else {
+          await beforeFade();
+          await openPlayer();
         }
+        return;
+      }
+
+      await beforeFade();
+      fadeOutNotifier?.value = true;
+      await Future<void>.delayed(loadingOverlayFadeOutDuration);
+      if (ctx != null && ctx.mounted) {
+        dismissLoadingOverlayRoute(ctx);
       }
     }
 
@@ -522,34 +545,40 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
       List<Map<String, dynamic>>? subtitles,
     }) {
       if (!mounted) return;
-      final dismissFuture = closeLoadingOverlay();
+      final dismissFuture = closeLoadingOverlay(
+        openPlayer: () {
+          final playerFuture = AppRouter.openPlayer<dynamic>(
+            context,
+            streamUrl: streamUrl,
+            audioUrl: audioUrl,
+            title: title,
+            headers: headers,
+            movie: _movie,
+            providers: orderedProviders,
+            activeProvider: key,
+            selectedSeason: isTv ? _selectedSeason : null,
+            selectedEpisode: isTv ? _selectedEpisode : null,
+            startPosition: _playbackStartPosition,
+            sources: sources?.cast(),
+            externalSubtitles: subtitles,
+            fadeTransition: true,
+          );
+          playerFuture.then((result) {
+            if (!mounted || result is! Map) return;
+            final nextSeason = result['nextSeason'];
+            final nextEpisode = result['nextEpisode'];
+            if (nextSeason is! int || nextEpisode is! int) return;
+            setState(() {
+              _selectedSeason = nextSeason;
+              _selectedEpisode = nextEpisode;
+            });
+            _loadWatchedEpisodes();
+            _runStreamExtraction();
+          });
+          return playerFuture;
+        },
+      );
       onOverlayDismissScheduled?.call(dismissFuture);
-      unawaited(AppRouter.openPlayer<dynamic>(
-        context,
-        streamUrl: streamUrl,
-        audioUrl: audioUrl,
-        title: title,
-        headers: headers,
-        movie: _movie,
-        providers: orderedProviders,
-        activeProvider: key,
-        selectedSeason: isTv ? _selectedSeason : null,
-        selectedEpisode: isTv ? _selectedEpisode : null,
-        startPosition: widget.startPosition,
-        sources: sources?.cast(),
-        externalSubtitles: subtitles,
-      ).then((result) {
-        if (!mounted || result is! Map) return;
-        final nextSeason = result['nextSeason'];
-        final nextEpisode = result['nextEpisode'];
-        if (nextSeason is! int || nextEpisode is! int) return;
-        setState(() {
-          _selectedSeason = nextSeason;
-          _selectedEpisode = nextEpisode;
-        });
-        _loadWatchedEpisodes();
-        _runStreamExtraction();
-      }));
     }
 
     if (key == 'service111477') {
@@ -696,8 +725,8 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
     final String url = isTv
         ? provider['tv'](
             _movie.id.toString(),
-            _selectedSeason.toString(),
-            _selectedEpisode.toString(),
+            _selectedSeason,
+            _selectedEpisode,
           )
         : provider['movie'](_movie.id.toString());
     debugPrint('[StreamExtractor] Trying ${provider['name']} source: $url');
@@ -783,9 +812,11 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
                             seasonPosters: _seasonPosters,
                             episodeProgress: _episodeProgress,
                             onSeasonSelected: _fetchSeason,
-                            onEpisodeSelected: (ep) {
+                            onEpisodeSelected: (ep) async {
                               setState(() => _selectedEpisode = ep);
-                              _checkHistory();
+                              await _checkHistory();
+                              if (!mounted || _isExtracting) return;
+                              _startExtraction();
                             },
                             onToggleWatched: _toggleEpisodeWatched,
                           ),
@@ -866,6 +897,8 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
       hasResume: hasResume,
       isExtracting: _isExtracting,
       onPlay: _startExtraction,
+      trailers: _mediaExtras?.trailers ?? const [],
+      trailerLanguageCode: _mediaExtras?.originalLanguage,
       statusMessage: _statusMessage,
     );
   }

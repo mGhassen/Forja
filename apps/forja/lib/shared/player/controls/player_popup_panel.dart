@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/design.dart';
 
 /// Floating player menu anchored to a control button when possible.
 /// Uses [OverlayEntry] — never touches the shell route stack.
 class PlayerPopupPanel {
+  static const _bottomControlsZoneHeight = 120.0;
+  static const _progressBarClearance = 56.0;
+
   static OverlayEntry? _entry;
   static Completer<void>? _completer;
 
@@ -63,6 +66,13 @@ class PlayerPopupPanel {
         final anchorRect = anchorContext != null
             ? _anchorRectInOverlay(anchorContext, overlayContext)
             : null;
+        final reserveAbove = anchorRect == null
+            ? 0.0
+            : _progressBarReserveAbove(
+                overlaySize: overlaySize,
+                anchorRect: anchorRect,
+                screenPadding: screenPadding,
+              );
 
         final panel = Material(
           type: MaterialType.transparency,
@@ -77,6 +87,7 @@ class PlayerPopupPanel {
                       anchorGap: anchorGap,
                       screenPadding: screenPadding,
                       maxHeight: maxHeight,
+                      reserveAbove: reserveAbove,
                     ),
             ),
             child: _PanelShell(
@@ -102,8 +113,10 @@ class PlayerPopupPanel {
             overlaySize.width - width - screenPadding.right,
           );
 
-          final spaceAbove =
-              anchorRect.top - screenPadding.top - anchorGap;
+          final spaceAbove = anchorRect.top -
+              screenPadding.top -
+              anchorGap -
+              reserveAbove;
           final spaceBelow = overlaySize.height -
               anchorRect.bottom -
               screenPadding.bottom -
@@ -114,7 +127,10 @@ class PlayerPopupPanel {
           panelLayer = showAbove
               ? Positioned(
                   left: left,
-                  bottom: overlaySize.height - anchorRect.top + anchorGap,
+                  bottom: overlaySize.height -
+                      anchorRect.top +
+                      anchorGap +
+                      reserveAbove,
                   width: width,
                   child: panel,
                 )
@@ -154,15 +170,28 @@ class PlayerPopupPanel {
     return _completer!.future;
   }
 
+  static double _progressBarReserveAbove({
+    required Size overlaySize,
+    required Rect anchorRect,
+    required EdgeInsets screenPadding,
+  }) {
+    final anchorFromBottom =
+        overlaySize.height - anchorRect.bottom - screenPadding.bottom;
+    return anchorFromBottom < _bottomControlsZoneHeight
+        ? _progressBarClearance
+        : 0.0;
+  }
+
   static double _anchoredMaxHeight({
     required Size overlaySize,
     required Rect anchorRect,
     required double anchorGap,
     required EdgeInsets screenPadding,
     required double maxHeight,
+    required double reserveAbove,
   }) {
     final spaceAbove =
-        anchorRect.top - screenPadding.top - anchorGap;
+        anchorRect.top - screenPadding.top - anchorGap - reserveAbove;
     final spaceBelow = overlaySize.height -
         anchorRect.bottom -
         screenPadding.bottom -
@@ -205,10 +234,11 @@ class _PanelShell extends StatelessWidget {
             child: Row(
               children: [
                 if (onBack != null)
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
-                    onPressed: onBack,
-                    visualDensity: VisualDensity.compact,
+                  ForjaPlainIcon(
+                    icon: Icons.arrow_back_rounded,
+                    size: 20,
+                    color: Colors.white,
+                    onTap: onBack,
                   )
                 else if (leadingIcon != null)
                   Padding(
@@ -228,10 +258,11 @@ class _PanelShell extends StatelessWidget {
                   ),
                 ),
                 if (trailing != null) trailing!,
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
-                  onPressed: onClose,
-                  visualDensity: VisualDensity.compact,
+                ForjaPlainIcon(
+                  icon: Icons.close_rounded,
+                  size: 20,
+                  color: Colors.white54,
+                  onTap: onClose,
                 ),
               ],
             ),

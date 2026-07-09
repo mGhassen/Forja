@@ -146,9 +146,6 @@ class PlayerTopBar extends StatelessWidget {
 class PlayerTopBarActions extends StatelessWidget {
   const PlayerTopBarActions({
     super.key,
-    this.onStream,
-    this.showStream = false,
-    this.streamEnabled = true,
     this.onCast,
     this.showCast = false,
     this.onPip,
@@ -156,9 +153,6 @@ class PlayerTopBarActions extends StatelessWidget {
     this.pipActive = false,
   });
 
-  final ValueChanged<BuildContext>? onStream;
-  final bool showStream;
-  final bool streamEnabled;
   final VoidCallback? onCast;
   final bool showCast;
   final VoidCallback? onPip;
@@ -170,14 +164,6 @@ class PlayerTopBarActions extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (showStream && onStream != null)
-          PlayerFlatIconButton(
-            icon: Icons.cloud_outlined,
-            tooltip: 'Servers & sources',
-            onPressedWithContext: streamEnabled ? onStream : null,
-            onPressed: () {},
-            size: 44,
-          ),
         if (showCast && onCast != null)
           PlayerFlatIconButton(
             icon: Icons.cast_rounded,

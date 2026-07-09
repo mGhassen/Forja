@@ -10,6 +10,7 @@ import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_guide_epg.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 
@@ -151,11 +152,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   EdgeInsets _panelPadding(BuildContext context) {
     return EdgeInsets.only(
-      top: DesktopWindowChrome.topInset(context) +
-          IptvChannelGuidePanel.panelEdgeGap,
-      left: DesktopWindowChrome.leadingInset(context) +
-          IptvChannelGuidePanel.panelEdgeGap,
-      bottom: IptvChannelGuidePanel.panelEdgeGap,
+      top: DesktopWindowChrome.topInset(context),
     );
   }
 
@@ -475,7 +472,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         : IptvChannelGuidePanel.panelWidthNarrow;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(IptvChannelGuidePanel.panelRadius),
+      borderRadius: const BorderRadius.only(
+        topRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
+        bottomRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
+      ),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
         child: Material(
@@ -485,8 +485,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           child: Container(
             width: panelWidth,
             decoration: BoxDecoration(
-              borderRadius:
-                  BorderRadius.circular(IptvChannelGuidePanel.panelRadius),
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
+                bottomRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
+              ),
               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             clipBehavior: Clip.antiAlias,
@@ -533,16 +535,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: showBack
-                      ? IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 40,
-                            minHeight: 40,
-                          ),
-                          onPressed: () =>
+                      ? ForjaPlainIcon(
+                          icon: Icons.arrow_back_rounded,
+                          onTap: () =>
                               setState(() => _step = _GuideStep.groups),
-                          icon: Icon(Icons.arrow_back_rounded,
-                              color: Colors.white),
+                          color: Colors.white,
+                          size: 22,
+                          hoverScale: 1.15,
+                          tooltip: 'Back',
                         )
                       : const SizedBox(width: 40, height: 36),
                 ),
@@ -708,7 +708,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         return KeyedSubtree(
           key: _groupKey(i),
           child: MouseRegion(
-            onEnter: (_) => _selectGroup(g.id, animateScroll: true),
+            onEnter: (_) {
+              setState(() {
+                _focusedGroupIndex = i;
+                if (_wide) _focusColumn = _FocusColumn.groups;
+              });
+            },
             child: InkWell(
             onTap: () {
               setState(() {
@@ -809,6 +814,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
             epgFuture: active ? _epgFutureFor(ch) : null,
             onProbe: () => _scheduleHealthCheck(ch),
             onCancelProbe: () => _cancelHealthCheck(ch.id),
+            onHover: () {
+              setState(() {
+                _focusedChannelIndex = i;
+                _focusColumn = _FocusColumn.channels;
+              });
+            },
             onTap: () {
               setState(() {
                 _focusedChannelIndex = i;
@@ -829,6 +840,7 @@ class _GuideChannelTile extends StatefulWidget {
     required this.active,
     required this.focused,
     required this.onTap,
+    required this.onHover,
     required this.onProbe,
     required this.onCancelProbe,
     this.health,
@@ -840,6 +852,7 @@ class _GuideChannelTile extends StatefulWidget {
   final bool focused;
   final bool? health;
   final VoidCallback onTap;
+  final VoidCallback onHover;
   final VoidCallback onProbe;
   final VoidCallback onCancelProbe;
   final Future<List<EpgEntry>>? epgFuture;
@@ -878,6 +891,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
       child: MouseRegion(
         onEnter: (_) {
           setState(() => _hovered = true);
+          widget.onHover();
           widget.onProbe();
         },
         onExit: (_) {

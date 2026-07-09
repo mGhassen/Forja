@@ -74,6 +74,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Map<String, dynamic>? _lastProgress;
   bool _sourcesPanelOpen = false;
   bool _autoPlayConsumed = false;
+  bool _episodePlayPending = false;
 
   String _selectedSourceId = 'forja';
   List<Map<String, dynamic>> _streamAddons = [];
@@ -248,6 +249,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   void _onEpisodeSelected(int episode) {
     setState(() => _selectedEpisode = episode);
+    _episodePlayPending = true;
     _checkHistory();
     _refreshSourcesForEpisode();
   }
@@ -326,6 +328,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       hasResume: hasResume,
       onOpenSources: () => setState(() => _sourcesPanelOpen = true),
       onOverflowAction: _handleHeroOverflowAction,
+      trailers: _trailers,
+      trailerLanguageCode: _originalLanguage,
       userTraktRating: _userTraktRating,
       userSimklRating: _userSimklRating,
       isInTraktCollection: _isInTraktCollection,
@@ -456,7 +460,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   Future<void> _sortResults() async {
-    if (_allTorrentResults.isEmpty) return;
+    if (_allTorrentResults.isEmpty) {
+      _maybeAutoPlay();
+      return;
+    }
     final sorted = (await Engine.sortTorrents(
       _allTorrentResults.map((e) => e.toJson()).toList(),
       _sortPreference,
@@ -470,35 +477,61 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       }
     }
     if (mounted) setState(() => _allTorrentResults = sorted);
-    if (widget.autoPlay) _maybeAutoPlay();
+    _maybeAutoPlay();
+  }
+
+  Duration? _startPositionForAutoPlay({required bool fromRoute}) {
+    if (fromRoute) return widget.startPosition;
+    final progress = _lastProgress;
+    if (progress == null) return null;
+    final pos = progress['position'] as int? ?? 0;
+    return pos > 0 ? Duration(milliseconds: pos) : null;
+  }
+
+  void _failEpisodePlayPending() {
+    if (!_episodePlayPending || !mounted) return;
+    _episodePlayPending = false;
+    setState(() => _sourcesPanelOpen = true);
   }
 
   void _maybeAutoPlay() {
-    if (!widget.autoPlay || _autoPlayConsumed || !mounted || _isLoading) return;
+    final fromRoute = widget.autoPlay && !_autoPlayConsumed;
+    final fromEpisode = _episodePlayPending;
+    if (!fromRoute && !fromEpisode) return;
+    if (!mounted || _isLoading) return;
+
+    final startPosition = _startPositionForAutoPlay(fromRoute: fromRoute);
 
     if (_playbackProfile.builtinTorrentSearch) {
       if (_isSearching) return;
       if (_allTorrentResults.isNotEmpty) {
-        _autoPlayConsumed = true;
-        _playTorrent(
-          _allTorrentResults.first,
-          startPosition: widget.startPosition,
-        );
+        if (fromRoute) _autoPlayConsumed = true;
+        if (fromEpisode) _episodePlayPending = false;
+        _playTorrent(_allTorrentResults.first, startPosition: startPosition);
         return;
       }
-      if (_isStremioFetching) return;
-    } else if (_isStremioFetching) {
+      if (_isStremioFetching || _isNuvioFetching) return;
+    } else if (_isStremioFetching || _isNuvioFetching) {
       return;
     }
 
-    final streams = _selectedSourceId == 'all_stremio'
-        ? _allCombinedStremioStreams
-        : _stremioStreams;
-    if (streams.isEmpty) return;
+    final streams = _isNuvioSource || _selectedSourceId == 'all_nuvio'
+        ? _nuvioStreams
+        : (_selectedSourceId == 'all_stremio'
+            ? _allCombinedStremioStreams
+            : _stremioStreams);
+    if (streams.isEmpty) {
+      if (fromEpisode) _failEpisodePlayPending();
+      return;
+    }
     final stream = streams.first;
-    if (stream is! Map<String, dynamic>) return;
-    _autoPlayConsumed = true;
-    _playStremioStream(stream, startPosition: widget.startPosition);
+    if (stream is! Map<String, dynamic>) {
+      if (fromEpisode) _failEpisodePlayPending();
+      return;
+    }
+    if (fromRoute) _autoPlayConsumed = true;
+    if (fromEpisode) _episodePlayPending = false;
+    _playStremioStream(stream, startPosition: startPosition);
   }
 
   Future<void> _fetchDetails() async {
@@ -1129,6 +1162,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             }
           });
           _maybeAutoPlay();
+          if (_episodePlayPending &&
+              !_isStremioFetching &&
+              _allCombinedStremioStreams.isEmpty) {
+            _failEpisodePlayPending();
+          }
         }
       }
 
@@ -1213,12 +1251,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             ? 'No streams found from $scraperName'
             : null;
       });
+      _maybeAutoPlay();
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isNuvioFetching = false;
         _errorMessage = 'Error: $e';
       });
+      _maybeAutoPlay();
     }
   }
 
@@ -1271,6 +1311,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             _errorMessage = 'No streams found from any Nuvio addon';
           }
         });
+        _maybeAutoPlay();
       },
       cancelOnError: false,
     );
@@ -1496,6 +1537,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     } finally {
       if (mounted && gen == _stremioFetchGen) {
         setState(() => _isStremioFetching = false);
+        _maybeAutoPlay();
+        if (_episodePlayPending && _stremioStreams.isEmpty) {
+          _failEpisodePlayPending();
+        }
       }
     }
   }
@@ -1543,6 +1588,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     } catch (e) {
       if (mounted && gen == _torrentSearchGen) {
         setState(() { _errorMessage = e.toString(); _isSearching = false; });
+        _maybeAutoPlay();
       }
     }
   }
@@ -1565,6 +1611,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     } catch (e) {
       if (mounted && gen == _torrentSearchGen) {
         setState(() { _errorMessage = e.toString(); _isSearching = false; });
+        _maybeAutoPlay();
       }
     }
   }
@@ -1619,6 +1666,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (!mounted || gen != _torrentSearchGen) return;
         if (combined.isEmpty) {
           setState(() { _errorMessage = 'No results found for "S${s}E$e". Try checking your configured indexers in Jackett.'; _isSearching = false; });
+          _maybeAutoPlay();
         } else {
           setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
           _sortResults();
@@ -1635,6 +1683,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (!mounted || gen != _torrentSearchGen) return;
         if (filtered.isEmpty) {
           setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Jackett.'; _isSearching = false; });
+          _maybeAutoPlay();
         } else {
           setState(() { _allTorrentResults = filtered; _isSearching = false; });
           _sortResults();
@@ -1643,6 +1692,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     } catch (e) {
       if (mounted && gen == _torrentSearchGen) {
         setState(() { _errorMessage = e.toString(); _isSearching = false; });
+        _maybeAutoPlay();
       }
     }
   }
@@ -1706,6 +1756,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (!mounted || gen != _torrentSearchGen) return;
         if (combined.isEmpty) {
           setState(() { _errorMessage = 'No results found for "S${s}E$e". Try checking your configured indexers in Prowlarr.'; _isSearching = false; });
+          _maybeAutoPlay();
         } else {
           setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
           _sortResults();
@@ -1722,6 +1773,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (!mounted || gen != _torrentSearchGen) return;
         if (filtered.isEmpty) {
           setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Prowlarr.'; _isSearching = false; });
+          _maybeAutoPlay();
         } else {
           setState(() { _allTorrentResults = filtered; _isSearching = false; });
           _sortResults();
@@ -1730,6 +1782,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     } catch (e) {
       if (mounted && gen == _torrentSearchGen) {
         setState(() { _errorMessage = e.toString(); _isSearching = false; });
+        _maybeAutoPlay();
       }
     }
   }
@@ -1802,27 +1855,29 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     if (!mounted) return;
     _streamCancelled = false;
+    final fadeOutNotifier = ValueNotifier(false);
+    BuildContext? loadingDialogContext;
     final loadingMessage = stremioResolveLoadingMessage(
       profile: _playbackProfile,
       useDebrid: useDebrid,
       debridService: debridService,
     );
-    showDialog(
-      context: context,
-      useRootNavigator: false,
-      barrierDismissible: false,
-      barrierColor: Colors.black,
-      builder: (dialogContext) => LoadingOverlay(
-        movie: _movie,
-        message: loadingMessage,
-        subtitle: playbackSourceHint(
-          useDebrid: useDebrid,
-          debridService: debridService,
-        ),
-        onCancel: () => _dismissStreamLoadingDialog(dialogContext),
-      ),
+    showLoadingOverlayDialog(
+      context,
+      builder: (dialogContext) {
+        loadingDialogContext = dialogContext;
+        return LoadingOverlay(
+          movie: _movie,
+          message: loadingMessage,
+          fadeOutNotifier: fadeOutNotifier,
+          subtitle: playbackSourceHint(
+            useDebrid: useDebrid,
+            debridService: debridService,
+          ),
+          onCancel: () => _dismissStreamLoadingDialog(dialogContext),
+        );
+      },
     );
-    final navigator = Navigator.of(context);
 
     final resolved = await resolveStremioStream(
       stream: stream,
@@ -1833,25 +1888,42 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       isCancelled: () => _streamCancelled,
     );
 
-    if (_streamCancelled) return;
-    if (navigator.canPop()) navigator.pop();
+    if (_streamCancelled) {
+      fadeOutNotifier.dispose();
+      return;
+    }
 
     if (resolved is StremioPlayable && mounted) {
-      await AppRouter.openPlayer(
-        context,
-        streamUrl: resolved.streamUrl,
-        title: _movie.title,
-        magnetLink: resolved.magnetLink,
-        movie: _movie,
-        selectedSeason: isTv ? _selectedSeason : null,
-        selectedEpisode: isTv ? _selectedEpisode : null,
-        fileIndex: resolved.fileIndex,
-        startPosition: startPosition,
-        activeProvider: 'stremio_direct',
-        stremioId: stremioId,
-        stremioAddonBaseUrl: stremioAddonBaseUrl,
-      );
-    } else if (resolved is StremioResolveFailure &&
+      final dialogContext = loadingDialogContext;
+      if (dialogContext != null) {
+        await crossfadeLoadingOverlayToPlayer(
+          loadingDialogContext: dialogContext,
+          fadeOutNotifier: fadeOutNotifier,
+          openPlayer: () => AppRouter.openPlayer(
+            context,
+            streamUrl: resolved.streamUrl,
+            title: _movie.title,
+            magnetLink: resolved.magnetLink,
+            movie: _movie,
+            selectedSeason: isTv ? _selectedSeason : null,
+            selectedEpisode: isTv ? _selectedEpisode : null,
+            fileIndex: resolved.fileIndex,
+            startPosition: startPosition,
+            activeProvider: 'stremio_direct',
+            stremioId: stremioId,
+            stremioAddonBaseUrl: stremioAddonBaseUrl,
+            fadeTransition: true,
+          ),
+        );
+      }
+    } else if (loadingDialogContext != null &&
+        loadingDialogContext!.mounted &&
+        Navigator.of(loadingDialogContext!).canPop()) {
+      Navigator.of(loadingDialogContext!).pop();
+    }
+    fadeOutNotifier.dispose();
+
+    if (resolved is StremioResolveFailure &&
         resolved.error != StremioPlaybackError.cancelled &&
         mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1925,22 +1997,47 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final overlayMessage = ValueNotifier<String>(
       playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
     );
+    final fadeOutNotifier = ValueNotifier(false);
+    BuildContext? loadingDialogContext;
     final sourceHint = playbackSourceHint(
       useDebrid: useDebrid,
       debridService: debridService,
     );
-    showDialog(
-      context: context,
-      useRootNavigator: false,
-      barrierDismissible: false,
-      barrierColor: Colors.black,
-      builder: (dialogContext) => LoadingOverlay(
-        movie: _movie,
-        messageNotifier: overlayMessage,
-        subtitle: sourceHint,
-        onCancel: () => _dismissStreamLoadingDialog(dialogContext),
-      ),
-    );
+
+    void showLoading({
+      String? message,
+      ValueNotifier<String>? messageNotifier,
+    }) {
+      showLoadingOverlayDialog(
+        context,
+        builder: (dialogContext) {
+          loadingDialogContext = dialogContext;
+          return LoadingOverlay(
+            movie: _movie,
+            message: message,
+            messageNotifier: messageNotifier,
+            fadeOutNotifier: fadeOutNotifier,
+            subtitle: sourceHint,
+            onCancel: () => _dismissStreamLoadingDialog(dialogContext),
+          );
+        },
+      );
+    }
+
+    void popLoading() {
+      final ctx = loadingDialogContext;
+      if (ctx != null && ctx.mounted) {
+        dismissLoadingOverlayRoute(ctx);
+      }
+      loadingDialogContext = null;
+    }
+
+    void abortPlayback() {
+      popLoading();
+      fadeOutNotifier.dispose();
+    }
+
+    showLoading(messageNotifier: overlayMessage);
 
     String? url;
     String? magnetLink = result.magnet;
@@ -1948,53 +2045,50 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     try {
       if (!magnetLink.startsWith('magnet:')) {
-        if (!mounted || _streamCancelled) return;
-        Navigator.pop(context);
-        showDialog(
-          context: context,
-          useRootNavigator: false,
-          barrierDismissible: false,
-          barrierColor: Colors.black,
-          builder: (dialogContext) => LoadingOverlay(
-            movie: _movie,
-            message: 'Resolving download link...',
-            onCancel: () => _dismissStreamLoadingDialog(dialogContext),
-          ),
-        );
+        if (!mounted || _streamCancelled) {
+          abortPlayback();
+          return;
+        }
+        popLoading();
+        showLoading(message: 'Resolving download link...');
         try {
           final resolved = await _linkResolver.resolve(magnetLink);
-          if (_streamCancelled) return;
+          if (_streamCancelled) {
+            abortPlayback();
+            return;
+          }
           if (resolved.isMagnet) {
             magnetLink = resolved.link;
           } else if (resolved.torrentBytes != null) {
-            if (!mounted) return;
-            if (Navigator.canPop(context)) Navigator.pop(context);
+            if (!mounted) {
+              abortPlayback();
+              return;
+            }
+            abortPlayback();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Torrent file downloads not yet supported. Please use magnet links.'))
             );
             return;
           }
         } catch (e) {
-          if (_streamCancelled) return;
-          if (!mounted) return;
-          if (Navigator.canPop(context)) Navigator.pop(context);
+          if (_streamCancelled) {
+            abortPlayback();
+            return;
+          }
+          if (!mounted) {
+            abortPlayback();
+            return;
+          }
+          abortPlayback();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
           return;
         }
-        if (!mounted || _streamCancelled) return;
-        if (Navigator.canPop(context)) Navigator.pop(context);
-        showDialog(
-          context: context,
-          useRootNavigator: false,
-          barrierDismissible: false,
-          barrierColor: Colors.black,
-          builder: (dialogContext) => LoadingOverlay(
-            movie: _movie,
-            messageNotifier: overlayMessage,
-            subtitle: sourceHint,
-            onCancel: () => _dismissStreamLoadingDialog(dialogContext),
-          ),
-        );
+        if (!mounted || _streamCancelled) {
+          abortPlayback();
+          return;
+        }
+        popLoading();
+        showLoading(messageNotifier: overlayMessage);
       }
 
       overlayMessage.value = playbackResolveLabel(
@@ -2011,7 +2105,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         season: isTv ? _selectedSeason : null,
         episode: isTv ? _selectedEpisode : null,
       );
-      if (_streamCancelled) return;
+      if (_streamCancelled) {
+        abortPlayback();
+        return;
+      }
       if (playback != null) {
         url = playback.url;
         resolvedFileIndex = playback.fileIndex;
@@ -2031,23 +2128,34 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       overlayMessage.dispose();
     }
 
-    if (!mounted || _streamCancelled) return;
-    if (Navigator.canPop(context)) Navigator.pop(context);
-
-    if (url != null) {
-      await AppRouter.openPlayer(
-        context,
-        streamUrl: url!,
-        title: _movie.title,
-        magnetLink: magnetLink,
-        movie: _movie,
-        selectedSeason: _movie.mediaType == 'tv' ? _selectedSeason : null,
-        selectedEpisode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
-        fileIndex: resolvedFileIndex,
-        startPosition: startPosition,
-        activeProvider: 'torrent',
-      );
+    if (!mounted || _streamCancelled) {
+      abortPlayback();
+      return;
     }
+
+    final dialogContext = loadingDialogContext;
+    if (url != null && dialogContext != null) {
+      await crossfadeLoadingOverlayToPlayer(
+        loadingDialogContext: dialogContext,
+        fadeOutNotifier: fadeOutNotifier,
+        openPlayer: () => AppRouter.openPlayer(
+          context,
+          streamUrl: url!,
+          title: _movie.title,
+          magnetLink: magnetLink,
+          movie: _movie,
+          selectedSeason: _movie.mediaType == 'tv' ? _selectedSeason : null,
+          selectedEpisode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
+          fileIndex: resolvedFileIndex,
+          startPosition: startPosition,
+          activeProvider: 'torrent',
+          fadeTransition: true,
+        ),
+      );
+    } else {
+      popLoading();
+    }
+    fadeOutNotifier.dispose();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

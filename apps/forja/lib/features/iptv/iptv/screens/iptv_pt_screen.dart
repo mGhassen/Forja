@@ -11,6 +11,7 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
@@ -150,10 +151,13 @@ class _PtAppBar extends StatelessWidget {
       child: Row(
         children: [
           if (onBack != null)
-            IconButton(
-              onPressed: onBack,
-              icon: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white70, size: 20),
+            ForjaPlainIcon(
+              icon: Icons.arrow_back_rounded,
+              onTap: onBack,
+              color: Colors.white70,
+              size: 22,
+              hoverScale: 1.15,
+              tooltip: 'Back',
             ),
           Expanded(
             child: Column(
@@ -887,16 +891,19 @@ class _SectionPickView extends StatelessWidget {
                     _SectionTile(
                       icon: Icons.live_tv_rounded,
                       label: 'Live TV',
+                      colors: const [Color(0xFFEF4444), Color(0xFF7C2D12)],
                       onTap: () => ctrl.openSection(IptvSection.live),
                     ),
                     _SectionTile(
                       icon: Icons.movie_rounded,
                       label: 'Movies',
+                      colors: const [Color(0xFFEC4899), Color(0xFF8B5CF6)],
                       onTap: () => ctrl.openSection(IptvSection.vod),
                     ),
                     _SectionTile(
                       icon: Icons.video_library_rounded,
                       label: 'Series',
+                      colors: const [Color(0xFF1565C0), Color(0xFF00E5FF)],
                       onTap: () => ctrl.openSection(IptvSection.series),
                     ),
                   ],
@@ -913,10 +920,12 @@ class _SectionPickView extends StatelessWidget {
 class _SectionTile extends StatelessWidget {
   final IconData icon;
   final String label;
+  final List<Color> colors;
   final VoidCallback onTap;
   const _SectionTile({
     required this.icon,
     required this.label,
+    required this.colors,
     required this.onTap,
   });
 
@@ -926,14 +935,17 @@ class _SectionTile extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          color: IptvShellStyle.surfaceMuted,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: colors,
+          ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: IptvShellStyle.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+              color: colors.first.withValues(alpha: 0.5),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
           ],
         ),

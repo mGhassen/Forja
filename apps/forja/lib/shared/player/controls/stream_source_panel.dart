@@ -12,6 +12,7 @@ class StreamSourcePanel {
     required Future<void> Function(StreamSource source, int index) onSelect,
     Alignment alignment = Alignment.bottomRight,
     EdgeInsets margin = const EdgeInsets.only(right: 16, bottom: 88),
+    BuildContext? anchorContext,
   }) {
     if (sources.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -29,6 +30,7 @@ class StreamSourcePanel {
       leadingIcon: Icons.dns_outlined,
       alignment: alignment,
       margin: margin,
+      anchorContext: anchorContext,
       child: ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,

@@ -15,6 +15,26 @@ BoxDecoration _heroPillDecoration({required bool hover}) {
   );
 }
 
+BoxDecoration _heroPlayDecoration({required bool hover}) {
+  return BoxDecoration(
+    color: hover
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.92)
+        : ForjaShellColors.brandGreen,
+    borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
+  );
+}
+
+BorderRadius _heroPillSlotBorderRadius({
+  required bool isFirst,
+  required bool isLast,
+}) {
+  const radius = Radius.circular(_kHeroPillHeight / 2);
+  if (isFirst && isLast) return const BorderRadius.all(radius);
+  if (isFirst) return const BorderRadius.horizontal(left: radius);
+  if (isLast) return const BorderRadius.horizontal(right: radius);
+  return BorderRadius.zero;
+}
+
 /// Primary hero CTA — pill with icon + label (Play, Watch Now, Resume).
 class HeroPillPlayButton extends StatelessWidget {
   const HeroPillPlayButton({
@@ -22,14 +42,18 @@ class HeroPillPlayButton extends StatelessWidget {
     required this.label,
     this.icon = Icons.play_arrow_rounded,
     this.onTap,
+    this.primary = true,
   });
 
   final String label;
   final IconData? icon;
   final VoidCallback? onTap;
+  final bool primary;
 
   @override
   Widget build(BuildContext context) {
+    final foreground = primary ? const Color(0xFF111827) : Colors.white;
+
     return ForjaInteractive(
       onTap: onTap,
       hoverScale: 1.03,
@@ -40,19 +64,21 @@ class HeroPillPlayButton extends StatelessWidget {
           curve: Curves.easeOutCubic,
           height: _kHeroPillHeight,
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: _heroPillDecoration(hover: hover),
+          decoration: primary
+              ? _heroPlayDecoration(hover: hover)
+              : _heroPillDecoration(hover: hover),
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: _kHeroPillIconSize, color: Colors.white),
+                Icon(icon, size: _kHeroPillIconSize, color: foreground),
                 const SizedBox(width: 8),
               ],
               Text(
                 label,
                 style: GoogleFonts.inter(
-                  color: Colors.white,
+                  color: foreground,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.2,
@@ -92,6 +118,7 @@ class HeroPillIconGroup extends StatelessWidget {
 
     return Container(
       height: _kHeroPillHeight,
+      clipBehavior: Clip.antiAlias,
       decoration: _heroPillDecoration(hover: false),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -103,7 +130,11 @@ class HeroPillIconGroup extends StatelessWidget {
                 height: 18,
                 color: Colors.white.withValues(alpha: 0.22),
               ),
-            _HeroPillIconSlotButton(slot: slots[i]),
+            _HeroPillIconSlotButton(
+              slot: slots[i],
+              isFirst: i == 0,
+              isLast: i == slots.length - 1,
+            ),
           ],
         ],
       ),
@@ -112,9 +143,15 @@ class HeroPillIconGroup extends StatelessWidget {
 }
 
 class _HeroPillIconSlotButton extends StatelessWidget {
-  const _HeroPillIconSlotButton({required this.slot});
+  const _HeroPillIconSlotButton({
+    required this.slot,
+    required this.isFirst,
+    required this.isLast,
+  });
 
   final HeroPillIconSlot slot;
+  final bool isFirst;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +173,13 @@ class _HeroPillIconSlotButton extends StatelessWidget {
           width: _kHeroPillHeight,
           height: _kHeroPillHeight,
           alignment: Alignment.center,
-          color: hover ? Colors.white.withValues(alpha: 0.08) : Colors.transparent,
+          decoration: BoxDecoration(
+            color: hover ? Colors.white.withValues(alpha: 0.08) : Colors.transparent,
+            borderRadius: _heroPillSlotBorderRadius(
+              isFirst: isFirst,
+              isLast: isLast,
+            ),
+          ),
           child: content,
         );
       },
