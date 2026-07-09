@@ -12,6 +12,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
     required this.movie,
     required this.hasResume,
     required this.onOpenSources,
+    this.onClearProgress,
     this.onDownload,
     this.onPlayStreaming,
     this.showPlayStreaming = false,
@@ -29,6 +30,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   final Movie movie;
   final bool hasResume;
   final VoidCallback onOpenSources;
+  final VoidCallback? onClearProgress;
   final VoidCallback? onDownload;
   final VoidCallback? onPlayStreaming;
   final bool showPlayStreaming;
@@ -87,6 +89,18 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
                 ? HeroPillPlayTone.streaming
                 : HeroPillPlayTone.primary,
             onTap: isStreamingExtracting ? null : onOpenSources,
+          ),
+          const SizedBox(width: 10),
+        ],
+        if (hasResume && onClearProgress != null) ...[
+          HeroPillIconGroup(
+            slots: [
+              HeroPillIconSlot(
+                icon: Icons.delete_outline_rounded,
+                tooltip: 'Clear progress',
+                onTap: onClearProgress,
+              ),
+            ],
           ),
           const SizedBox(width: 10),
         ],

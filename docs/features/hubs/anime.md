@@ -18,6 +18,7 @@ Tap **Anime** in the navigation bar.
 - Search anime catalog
 - Open details with episodes
 - Toggle **SUB** / **DUB** before playback
+- Resume from continue watching; clear progress with the trash icon next to **Resume** on details
 - Play in the anime player — sources are probed in parallel; the highest-ranked working source from **Settings → Playback → Anime provider order** plays first (player nicknames still appear in the source switcher)
 - Track watch history per series (sub/dub preference)
 

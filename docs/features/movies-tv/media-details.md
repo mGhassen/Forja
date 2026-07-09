@@ -8,7 +8,7 @@ When you open a title from Home, Discover, Search, or lists, you get the **media
 
 The hero overlay is split into two columns on wide screens:
 
-- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then green **Play** / **Resume** with play icon (webstreaming best extractor when enabled), white **Play** / **Resume** with magnet icon (opens the **Sources** panel for torrent / Stremio), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download (opens **Sources**), and overflow; watch progress when you have history appears below the actions.
+- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then green **Play** / **Resume** with play icon (webstreaming best extractor when enabled), white **Play** / **Resume** with magnet icon (opens the **Sources** panel for torrent / Stremio), a trash icon next to Resume when you have watch progress (clears that title/episode from history), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download (opens **Sources**), and overflow; watch progress when you have history appears below the actions.
 - **Right:** **Production Info** panel — status, language, and TV fields (first/last aired, seasons, episodes, network, production companies, origin, creators) or movie fields (release date, runtime, production, origin, budget/revenue) from TMDB rich details.
 
 Hero text sits in the **upper** area of the hero (not pinned to the bottom). Below the hero, the page uses a **flat shell background** (same `#141414` as the left nav rail and Home catalog rows) — no blurred backdrop bleed-through.
@@ -36,6 +36,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 - Add or remove from **My List** (**+** button in hero)
 - Trakt/Simkl/collect actions via the **⋯** overflow menu in the hero
 - See resume progress in the hero for movies and the selected TV episode
+- Clear resume progress with the trash icon next to **Resume** (removes that movie or selected episode from continue watching)
 - For TV: pick a season from square cards, then tap an episode in the rail to select it and open **Sources** (resume position when you have history is applied when you pick a stream)
 - Browse main cast and “More Like This” recommendations below the hero
 - Search and sort torrent results in Sources (seeders, size, etc.)

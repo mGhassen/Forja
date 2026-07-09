@@ -145,21 +145,23 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   }
 
   List<String> _metaParts(KdramaDetails det) {
+    final typeBadge = det.toCard().heroMediaBadge;
     return [
-      if (det.year != null) '${det.year}',
+      ?det.year,
       if (det.country.isNotEmpty) det.country,
-      if (det.type.isNotEmpty) det.type,
+      ?typeBadge,
       if (det.status.isNotEmpty) det.status,
       if (det.episodesCount > 0) '${det.episodesCount} eps',
     ];
   }
 
   List<MapEntry<String, String>> _facts(KdramaDetails det) {
+    final typeBadge = det.toCard().heroMediaBadge;
     return [
       if (det.releaseDate.isNotEmpty)
         MapEntry('Released', _formatDate(det.releaseDate)),
       if (det.country.isNotEmpty) MapEntry('Country', det.country),
-      if (det.type.isNotEmpty) MapEntry('Type', det.type),
+      if (typeBadge != null) MapEntry('Type', typeBadge),
       if (det.status.isNotEmpty) MapEntry('Status', det.status),
       if (det.label != null && det.label!.isNotEmpty)
         MapEntry('Label', det.label!),

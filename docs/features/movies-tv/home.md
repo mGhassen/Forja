@@ -18,7 +18,7 @@ Tap **Home** in the navigation bar (first tab by default).
 - Use mood/genre chips to filter what appears in rails
 - See **Tonight's Pick** and **Because you watched…** (BestSimilar) suggestions
 - Resume from **Continue watching** (local watch history)
-- Tap **Play** on the hero to play or resume immediately (opens the player, or auto-starts extraction/search first)
+- Tap **Play** on the hero to auto-start **webstreaming** (best extractor) on the details screen — not torrent search
 - **Info | +** pill opens details or toggles My List
 - Open any poster to view details and play
 - Jump into a Stremio addon catalog rail when configured

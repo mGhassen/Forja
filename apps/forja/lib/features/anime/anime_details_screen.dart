@@ -115,6 +115,11 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     );
   }
 
+  Future<void> _clearProgress() async {
+    await _service.removeFromHistory(widget.anime.id);
+    if (mounted) setState(() => _progress = null);
+  }
+
   List<String> _metaParts(AnimeCard a) {
     return [
       if (a.format != null && a.format!.isNotEmpty) a.format!,
@@ -283,6 +288,18 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
                   enabled: _episodes.isNotEmpty,
                   onPlay: () => _play(resumeEp ?? 1),
                 ),
+                if (hasProgress) ...[
+                  const SizedBox(width: 10),
+                  HeroPillIconGroup(
+                    slots: [
+                      HeroPillIconSlot(
+                        icon: Icons.delete_outline_rounded,
+                        tooltip: 'Clear progress',
+                        onTap: _clearProgress,
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(width: 10),
                 HeroPillSegmentedChoice<String>(
                   selected: _category,

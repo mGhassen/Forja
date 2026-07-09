@@ -55,6 +55,8 @@ class KissKhService {
         final id = (it['id'] as num?)?.toInt();
         final title = (it['title'] ?? '').toString().trim();
         if (id == null || title.isEmpty) continue;
+        final release = (it['releaseDate'] ?? '').toString();
+        final type = (it['type'] ?? '').toString().trim();
         out.add(KdramaCard(
           id: id,
           title: title,
@@ -63,6 +65,8 @@ class KissKhService {
               ? null
               : (it['label'] as String).trim(),
           episodesCount: (it['episodesCount'] as num?)?.toInt() ?? 0,
+          year: yearFromRelease(release),
+          type: type.isEmpty ? null : type,
         ));
       }
       return out;
@@ -70,6 +74,70 @@ class KissKhService {
       debugPrint('[KissKh] parse list failed: $e');
       return const [];
     }
+  }
+
+  static String? yearFromRelease(String releaseDate) {
+    if (releaseDate.length >= 4) {
+      final y = releaseDate.substring(0, 4);
+      if (RegExp(r'^\d{4}$').hasMatch(y)) return y;
+    }
+    return null;
+  }
+
+  /// List endpoints omit year/type — fill from `/Drama/{id}` (cached).
+  Future<List<KdramaCard>> enrichCards(List<KdramaCard> cards) async {
+    if (cards.isEmpty) return cards;
+    final out = List<KdramaCard>.from(cards);
+    const chunk = 12;
+    for (var i = 0; i < out.length; i += chunk) {
+      final end = (i + chunk).clamp(0, out.length);
+      await Future.wait([
+        for (var j = i; j < end; j++)
+          () async {
+            final c = out[j];
+            if (c.year != null && c.type != null) return;
+            try {
+              final det = await getDetails(c.id);
+              out[j] = c.copyWith(
+                year: c.year ?? det.year,
+                type: c.type ?? (det.type.isEmpty ? null : det.type),
+                episodesCount:
+                    c.episodesCount > 0 ? c.episodesCount : det.episodesCount,
+                label: c.label ?? det.label,
+              );
+            } catch (_) {}
+          }(),
+      ]);
+    }
+    return out;
+  }
+
+  Future<KdramaHomeFeed> enrichHomeFeed(KdramaHomeFeed feed) async {
+    final byId = <int, KdramaCard>{};
+    for (final c in [
+      ...feed.spotlight,
+      ...feed.latest,
+      ...feed.mostViewed,
+      ...feed.trending,
+      ...feed.topRated,
+      ...feed.upcoming,
+      ...feed.anime,
+    ]) {
+      byId.putIfAbsent(c.id, () => c);
+    }
+    final enriched = await enrichCards(byId.values.toList());
+    final map = {for (final c in enriched) c.id: c};
+    List<KdramaCard> mapList(List<KdramaCard> list) =>
+        list.map((c) => map[c.id] ?? c).toList();
+    return KdramaHomeFeed(
+      spotlight: mapList(feed.spotlight),
+      latest: mapList(feed.latest),
+      mostViewed: mapList(feed.mostViewed),
+      trending: mapList(feed.trending),
+      topRated: mapList(feed.topRated),
+      upcoming: mapList(feed.upcoming),
+      anime: mapList(feed.anime),
+    );
   }
 
   // ─── Public API ────────────────────────────────────────────────
@@ -295,6 +363,9 @@ class KdramaCard {
   final String cover;
   final String? label;
   final int episodesCount;
+  final String? year;
+  /// Raw kisskh type: `TVSeries`, `Movie`, `Anime`, `Hollywood`.
+  final String? type;
 
   const KdramaCard({
     required this.id,
@@ -302,7 +373,61 @@ class KdramaCard {
     required this.cover,
     this.label,
     this.episodesCount = 0,
+    this.year,
+    this.type,
   });
+
+  KdramaCard copyWith({
+    int? id,
+    String? title,
+    String? cover,
+    String? label,
+    int? episodesCount,
+    String? year,
+    String? type,
+  }) {
+    return KdramaCard(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      cover: cover ?? this.cover,
+      label: label ?? this.label,
+      episodesCount: episodesCount ?? this.episodesCount,
+      year: year ?? this.year,
+      type: type ?? this.type,
+    );
+  }
+
+  /// Home-hero style badge: SERIES / FILM / ANIME / HOLLYWOOD.
+  String? get heroMediaBadge {
+    switch ((type ?? '').toLowerCase()) {
+      case 'tvseries':
+        return 'SERIES';
+      case 'movie':
+        return 'FILM';
+      case 'anime':
+        return 'ANIME';
+      case 'hollywood':
+        return 'HOLLYWOOD';
+      default:
+        return type?.isNotEmpty == true ? type!.toUpperCase() : null;
+    }
+  }
+
+  /// Home-poster style label: TV / FILM / ANIME / HOLLYWOOD.
+  String? get cardMediaLabel {
+    switch ((type ?? '').toLowerCase()) {
+      case 'tvseries':
+        return 'TV';
+      case 'movie':
+        return 'FILM';
+      case 'anime':
+        return 'ANIME';
+      case 'hollywood':
+        return 'HOLLYWOOD';
+      default:
+        return type?.isNotEmpty == true ? type : null;
+    }
+  }
 }
 
 class KdramaHomeFeed {
@@ -352,13 +477,7 @@ class KdramaDetails {
     this.episodes = const [],
   });
 
-  String? get year {
-    if (releaseDate.length >= 4) {
-      final y = releaseDate.substring(0, 4);
-      if (RegExp(r'^\d{4}$').hasMatch(y)) return y;
-    }
-    return null;
-  }
+  String? get year => KissKhService.yearFromRelease(releaseDate);
 
   KdramaCard toCard() => KdramaCard(
         id: id,
@@ -366,6 +485,8 @@ class KdramaDetails {
         cover: cover,
         label: label,
         episodesCount: episodesCount,
+        year: year,
+        type: type.isEmpty ? null : type,
       );
 }
 

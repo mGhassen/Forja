@@ -34,6 +34,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   KdramaHomeFeed? _feed;
   bool _loading = true;
   String? _error;
+  int _loadGen = 0;
 
   List<Map<String, dynamic>> _continueWatching = [];
 
@@ -80,6 +81,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   }
 
   Future<void> _load() async {
+    final gen = ++_loadGen;
     setState(() {
       _loading = true;
       _error = null;
@@ -89,7 +91,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
         _service.getHome(),
         _service.getWatchHistory(),
       ]);
-      if (!mounted) return;
+      if (!mounted || gen != _loadGen) return;
       final feed = results[0] as KdramaHomeFeed;
       setState(() {
         _feed = feed;
@@ -97,13 +99,23 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             (results[1] as List<Map<String, dynamic>>).take(10).toList();
         _loading = false;
       });
+      // List endpoints omit year/type — fill from details in the background.
+      unawaited(_enrichFeed(feed, gen));
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || gen != _loadGen) return;
       setState(() {
         _loading = false;
         _error = '$e';
       });
     }
+  }
+
+  Future<void> _enrichFeed(KdramaHomeFeed feed, int gen) async {
+    try {
+      final enriched = await _service.enrichHomeFeed(feed);
+      if (!mounted || gen != _loadGen) return;
+      setState(() => _feed = enriched);
+    } catch (_) {}
   }
 
   List<KdramaCard> get _spotlight {
@@ -191,11 +203,14 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   }
 
   HubPosterCard _dramaPosterCard(KdramaCard card, {int? rank}) {
-    final subtitle = card.episodesCount > 0 ? '${card.episodesCount} eps' : null;
+    final subtitle = [
+      if (card.year != null) card.year!,
+      if (card.cardMediaLabel != null) card.cardMediaLabel!,
+    ].join('  •  ');
     return HubPosterCard(
       imageUrl: card.cover,
       title: card.title,
-      subtitle: subtitle,
+      subtitle: subtitle.isEmpty ? null : subtitle,
       badge: card.label,
       rank: rank,
       onTap: () => _openDetails(card),
@@ -209,7 +224,8 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             id: '${a.id}',
             title: a.title,
             imageUrl: a.cover,
-            badge: a.episodesCount > 0 ? '${a.episodesCount} EP' : a.label,
+            year: a.year,
+            badge: a.heroMediaBadge,
             onPlay: () => _openDetails(a),
             onDetails: () => _openDetails(a),
           ),

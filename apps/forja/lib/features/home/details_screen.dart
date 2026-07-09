@@ -666,6 +666,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       showPlayStreaming: _playSourceWebstreaming,
       isStreamingExtracting: _isWebstreamingOnlyExtracting,
       onOpenSources: _openSourcesPanel,
+      onClearProgress: hasResume ? _clearProgress : null,
       onPlayStreaming: _onPlayStreamingPressed,
       onDownload: _openSourcesPanel,
       onOverflowAction: _handleHeroOverflowAction,
@@ -675,6 +676,23 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       userSimklRating: _userSimklRating,
       isInTraktCollection: _isInTraktCollection,
     );
+  }
+
+  Future<void> _clearProgress() async {
+    final progress = _lastProgress;
+    if (progress == null) return;
+    final uniqueId = progress['uniqueId'] as String?;
+    if (uniqueId == null || uniqueId.isEmpty) return;
+    await WatchHistoryService().removeItem(uniqueId);
+    if (!mounted) return;
+    setState(() {
+      _lastProgress = null;
+      if (_movie.mediaType == 'tv') {
+        final season = progress['season'] as int? ?? _selectedSeason;
+        final episode = progress['episode'] as int? ?? _selectedEpisode;
+        _episodeProgress.remove('S${season}_E$episode');
+      }
+    });
   }
 
   Future<void> _handleHeroOverflowAction(String value) async {
@@ -984,6 +1002,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (!fromRoute && !fromEpisode) return;
     if (!mounted || _isLoading) return;
 
+    // Home hero Play (and other route autoPlay) → webstreaming, not torrent.
+    if (fromRoute && _playSourceWebstreaming) {
+      _consumeAutoPlayFlags(
+        fromRoute: true,
+        fromEpisode: fromEpisode,
+      );
+      unawaited(_startWebstreamingOnlyPlayback());
+      return;
+    }
+
     final startPosition = _startPositionForAutoPlay(fromRoute: fromRoute);
 
     if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
@@ -1127,6 +1155,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           }
           _syncSelectedSourceToPlaySources();
         });
+        _maybeAutoPlay();
         if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
           _autoSearch();
         }
