@@ -9,43 +9,47 @@ import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 class AnimeStreamProviders {
   AnimeStreamProviders._();
 
-  /// Default try order (Anikoto first, then Miruro, AllAnime, AnimeRealms, adult).
+  /// Default try order — strongest / most reliable first.
   static const List<String> defaultOrder = [
+    // AllAnime direct CDNs (best quality / reliability in practice)
+    'allanime:Default',
+    'allanime:S-mp4',
+    // Anikoto HD embeds
     'megaplay',
     'vidwish',
-    // Miruro pipes
+    // HiAnime / AnimePahe (Miruro + AnimeRealms mirrors)
     'miruro:zoro',
+    'animerealms:hianime',
     'miruro:kiwi',
+    'animerealms:animepahe',
+    // Remaining AllAnime
+    'allanime:Yt-mp4',
+    'allanime:Luf-Mp4',
+    'allanime:Uv-mp4',
+    // Strong Miruro pipes
     'miruro:bee',
+    'miruro:ally',
+    'animerealms:allmanga',
     'miruro:hop',
     'miruro:bonk',
-    'miruro:ally',
+    'animerealms:gogoanime',
     'miruro:moo',
+    'animerealms:zencloud',
+    'animerealms:animekai',
+    // Mid AnimeRealms
+    'animerealms:animez',
+    'animerealms:kickassanime',
+    'animerealms:anizone',
+    'animerealms:febbox',
+    // Weaker Miruro internals / regional
     'miruro:animedunya',
     'miruro:arc',
     'miruro:jet',
     'miruro:bun',
     'miruro:kuz',
     'miruro:telli',
-    // AllAnime
-    'allanime:Default',
-    'allanime:S-mp4',
-    'allanime:Yt-mp4',
-    'allanime:Luf-Mp4',
-    'allanime:Uv-mp4',
-    // AnimeRealms
-    'animerealms:hianime',
-    'animerealms:allmanga',
-    'animerealms:gogoanime',
-    'animerealms:zencloud',
-    'animerealms:animepahe',
-    'animerealms:animez',
-    'animerealms:animekai',
-    'animerealms:kickassanime',
-    'animerealms:anizone',
-    'animerealms:febbox',
     'animerealms:hanime-tv',
-    // Adult
+    // Adult last
     'watchhentai',
     'hentaini',
   ];
