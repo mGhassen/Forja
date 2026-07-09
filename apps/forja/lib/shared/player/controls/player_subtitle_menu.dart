@@ -19,6 +19,7 @@ class PlayerSubtitleMenu {
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
     bool excludeKnownExternalEmbedded = false,
+    BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
     await _openRoot(
@@ -34,6 +35,7 @@ class PlayerSubtitleMenu {
       onSubtitleSettings: onSubtitleSettings,
       excludeKnownExternalEmbedded: excludeKnownExternalEmbedded,
       margin: margin,
+      anchorContext: anchorContext,
     );
   }
 
@@ -50,6 +52,7 @@ class PlayerSubtitleMenu {
     required VoidCallback onSubtitleSettings,
     required bool excludeKnownExternalEmbedded,
     required EdgeInsets margin,
+    BuildContext? anchorContext,
   }) async {
     final current = player.state.track.subtitle;
     final embedded = player.state.tracks.subtitle.where((t) {
@@ -74,6 +77,7 @@ class PlayerSubtitleMenu {
       leadingIcon: Icons.subtitles_outlined,
       alignment: Alignment.bottomLeft,
       margin: margin,
+      anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
       trailing: IconButton(
@@ -175,8 +179,10 @@ class PlayerSubtitleMenu {
                     onSubtitleSettings: onSubtitleSettings,
                     excludeKnownExternalEmbedded: excludeKnownExternalEmbedded,
                     margin: margin,
+                    anchorContext: anchorContext,
                   ),
                   margin: margin,
+                  anchorContext: anchorContext,
                 );
               },
             );
@@ -202,12 +208,14 @@ class PlayerSubtitleMenu {
     required void Function(String? url) onExternalUrlChanged,
     required Future<void> Function() onRoot,
     required EdgeInsets margin,
+    BuildContext? anchorContext,
   }) async {
     await PlayerPopupPanel.show(
       context: context,
       title: languageDisplayName(langKey),
       alignment: Alignment.bottomLeft,
       margin: margin,
+      anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
       onBack: () {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/hero/hero_meta_line.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
@@ -11,16 +12,18 @@ class PlayerFlatIconButton extends StatelessWidget {
   const PlayerFlatIconButton({
     super.key,
     required this.icon,
-    required this.onPressed,
+    this.onPressed,
+    this.onPressedWithContext,
     this.label,
     this.tooltip,
     this.active = false,
     this.size = 40,
     this.iconSize = 22,
-  });
+  }) : assert(onPressed != null || onPressedWithContext != null);
 
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final ValueChanged<BuildContext>? onPressedWithContext;
   final String? label;
   final String? tooltip;
   final bool active;
@@ -33,7 +36,9 @@ class PlayerFlatIconButton extends StatelessWidget {
       color: active ? Colors.white.withValues(alpha: 0.18) : Colors.transparent,
       shape: label == null ? const CircleBorder() : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: InkWell(
-        onTap: onPressed,
+        onTap: onPressedWithContext != null
+            ? () => onPressedWithContext!(context)
+            : onPressed,
         customBorder: label == null ? const CircleBorder() : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         child: SizedBox(
           width: label == null ? size : null,
@@ -80,13 +85,20 @@ class PlayerTopBar extends StatelessWidget {
     return 'S$season E$episode';
   }
 
+  static double topPadding(BuildContext context) {
+    if (DesktopWindowChrome.isDesktop) {
+      return DesktopWindowChrome.topInset(context) + 6;
+    }
+    return MediaQuery.paddingOf(context).top + 6;
+  }
+
+  static double totalHeight(BuildContext context) => topPadding(context) + 44 + 6;
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: Row(
+    return Padding(
+      padding: EdgeInsets.fromLTRB(8, topPadding(context), 8, 6),
+      child: Row(
           children: [
             PlayerFlatIconButton(
               icon: Icons.arrow_back_rounded,
@@ -127,7 +139,6 @@ class PlayerTopBar extends StatelessWidget {
               const SizedBox(width: 44),
           ],
         ),
-      ),
     );
   }
 }
@@ -145,7 +156,7 @@ class PlayerTopBarActions extends StatelessWidget {
     this.pipActive = false,
   });
 
-  final VoidCallback? onStream;
+  final ValueChanged<BuildContext>? onStream;
   final bool showStream;
   final bool streamEnabled;
   final VoidCallback? onCast;
@@ -163,7 +174,8 @@ class PlayerTopBarActions extends StatelessWidget {
           PlayerFlatIconButton(
             icon: Icons.cloud_outlined,
             tooltip: 'Servers & sources',
-            onPressed: streamEnabled ? onStream! : () {},
+            onPressedWithContext: streamEnabled ? onStream : null,
+            onPressed: () {},
             size: 44,
           ),
         if (showCast && onCast != null)
@@ -198,9 +210,6 @@ Future<void> showPlayerCastPicker(
   if (!canCast) return;
 
   if (streamUrl == null || streamUrl.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No stream URL to cast')),
-    );
     return;
   }
 
@@ -227,19 +236,11 @@ Future<void> showPlayerCastPicker(
     target = CastTarget.chromecast;
   }
 
-  final ok = await casting.castUrl(
+  await casting.castUrl(
     url: streamUrl,
     target: target,
     headers: headers,
     title: title,
-  );
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        ok ? 'Casting started' : 'Casting is not available yet',
-      ),
-    ),
   );
 }
 

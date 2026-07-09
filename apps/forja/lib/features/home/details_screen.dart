@@ -2038,7 +2038,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       await AppRouter.openPlayer(
         context,
         streamUrl: url!,
-        title: result.name,
+        title: _movie.title,
         magnetLink: magnetLink,
         movie: _movie,
         selectedSeason: _movie.mediaType == 'tv' ? _selectedSeason : null,

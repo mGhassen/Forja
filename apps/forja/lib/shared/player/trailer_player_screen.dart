@@ -16,14 +16,14 @@ const _kYoutubeEmbedOrigin = 'https://com.forja.app';
 class TrailerPlayerScreen extends StatefulWidget {
   const TrailerPlayerScreen({
     super.key,
-    required this.youtubeKey,
-    required this.title,
+    required this.trailers,
+    required this.initialIndex,
     this.movie,
     this.languageCode,
   });
 
-  final String youtubeKey;
-  final String title;
+  final List<MediaTrailer> trailers;
+  final int initialIndex;
   final Movie? movie;
   final String? languageCode;
 
@@ -33,6 +33,7 @@ class TrailerPlayerScreen extends StatefulWidget {
 
 class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   InAppWebViewController? _controller;
+  late int _currentIndex;
   bool _playing = false;
   bool _ended = false;
   bool _muted = false;
@@ -40,9 +41,17 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
 
+  MediaTrailer get _trailer => widget.trailers[_currentIndex];
+
+  bool get _hasNextTrailer => _currentIndex < widget.trailers.length - 1;
+
+  MediaTrailer? get _nextTrailer =>
+      _hasNextTrailer ? widget.trailers[_currentIndex + 1] : null;
+
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
   }
 
@@ -52,14 +61,19 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
     super.dispose();
   }
 
+  void _exitTrailer() {
+    if (PlayerPopupPanel.isShowing) {
+      PlayerPopupPanel.dismiss();
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
   bool _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
     if (event.logicalKey != LogicalKeyboardKey.escape) return false;
-    if (PlayerPopupPanel.isShowing) {
-      PlayerPopupPanel.dismiss();
-      return true;
-    }
-    if (mounted) Navigator.maybePop(context);
+    _exitTrailer();
     return true;
   }
 
@@ -120,6 +134,9 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
     var endGuardTimer = null;
     var progressTimer = null;
     var captionProbeLangs = [$captionProbeLangs];
+    var captionsApiReady = false;
+    var captionsVisible = false;
+    var pendingCaptionLang = undefined;
 
     function cropYoutubeChrome(p) {
       try {
@@ -139,7 +156,8 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
           iframeH = h;
           iframeW = h * videoAspect;
         }
-        var overscan = 1.42;
+        // Heavy overscan hides YouTube chrome but also clips bottom captions.
+        var overscan = captionsVisible ? 1.06 : 1.42;
         iframeW *= overscan;
         iframeH *= overscan;
         iframe.style.position = 'absolute';
@@ -151,7 +169,9 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
         iframe.style.maxHeight = 'none';
         iframe.style.border = '0';
         iframe.style.pointerEvents = 'none';
-        iframe.style.transform = 'translate(-50%, -50%)';
+        iframe.style.transform = captionsVisible
+          ? 'translate(-50%, -58%)'
+          : 'translate(-50%, -50%)';
         iframe.style.transformOrigin = 'center center';
       } catch (e) {}
     }
@@ -229,9 +249,42 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
       } catch (e) {}
     }
 
+    function applyCaptionTrack(languageCode) {
+      if (!player) return;
+      ensureCaptionsModule();
+      if (!captionsApiReady) {
+        pendingCaptionLang = languageCode;
+        return;
+      }
+      try {
+        if (!languageCode) {
+          player.setOption('captions', 'track', {});
+          captionsVisible = false;
+        } else {
+          player.setOption('captions', 'track', { languageCode: languageCode });
+          try { player.setOption('captions', 'reload', true); } catch (e2) {}
+          captionsVisible = true;
+        }
+        cropYoutubeChrome(player);
+      } catch (e) {}
+    }
+
+    function flushPendingCaptionTrack() {
+      if (pendingCaptionLang === undefined) return;
+      var lang = pendingCaptionLang;
+      pendingCaptionLang = undefined;
+      applyCaptionTrack(lang);
+    }
+
+    function onCaptionsApiChange() {
+      if (!player || typeof player.setOption !== 'function') return;
+      captionsApiReady = true;
+      flushPendingCaptionTrack();
+    }
+
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
-        videoId: '${widget.youtubeKey}',
+        videoId: '${_trailer.key}',
         width: '100%',
         height: '100%',
         playerVars: {
@@ -280,6 +333,9 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
             } else if (e.data === YT.PlayerState.ENDED) {
               finishTrailer(p);
             }
+          },
+          onApiChange: function() {
+            onCaptionsApiChange();
           }
         }
       });
@@ -366,15 +422,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
     };
 
     window.trailerSetCaptionTrack = function(languageCode) {
-      if (!player) return;
-      ensureCaptionsModule();
-      try {
-        if (!languageCode) {
-          player.setOption('captions', 'track', {});
-        } else {
-          player.setOption('captions', 'track', { languageCode: languageCode });
-        }
-      } catch (e) {}
+      applyCaptionTrack(languageCode || null);
     };
 
     window.trailerGetAudioTracks = function() {
@@ -398,9 +446,45 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
       try { player.setAudioTrack(id); } catch (e) {}
     };
 
+    window.trailerGetPlaybackRate = function() {
+      if (!player || typeof player.getPlaybackRate !== 'function') return 1;
+      try { return player.getPlaybackRate(); } catch (e) { return 1; }
+    };
+
+    window.trailerSetPlaybackRate = function(rate) {
+      if (!player || typeof player.setPlaybackRate !== 'function') return;
+      try { player.setPlaybackRate(rate); } catch (e) {}
+    };
+
+    window.trailerGetAvailablePlaybackRates = function() {
+      if (!player || typeof player.getAvailablePlaybackRates !== 'function') return [1];
+      try { return player.getAvailablePlaybackRates(); } catch (e) { return [1]; }
+    };
+
+    window.trailerGetPlaybackQuality = function() {
+      if (!player || typeof player.getPlaybackQuality !== 'function') return 'auto';
+      try { return player.getPlaybackQuality(); } catch (e) { return 'auto'; }
+    };
+
+    window.trailerGetAvailableQualityLevels = function() {
+      if (!player || typeof player.getAvailableQualityLevels !== 'function') return [];
+      try { return player.getAvailableQualityLevels(); } catch (e) { return []; }
+    };
+
+    window.trailerSetPlaybackQuality = function(quality) {
+      if (!player || typeof player.setPlaybackQuality !== 'function') return;
+      try { player.setPlaybackQuality(quality); } catch (e) {}
+    };
+
     window.addEventListener('resize', function() {
       if (player) cropYoutubeChrome(player);
     });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape' || !window.flutter_inappwebview) return;
+      e.preventDefault();
+      window.flutter_inappwebview.callHandler('trailerEscape');
+    }, true);
   </script>
 </body>
 </html>
@@ -444,7 +528,22 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
     await _runJs('window.trailerSkip($seconds);');
   }
 
-  Future<void> _showSubtitleMenu() async {
+  void _playNextTrailer() {
+    if (!_hasNextTrailer) return;
+    PlayerPopupPanel.dismiss();
+    setState(() {
+      _currentIndex++;
+      _controller = null;
+      _playing = false;
+      _ended = false;
+      _ready = false;
+      _muted = false;
+      _position = Duration.zero;
+      _duration = Duration.zero;
+    });
+  }
+
+  Future<void> _showSubtitleMenu(BuildContext anchorContext) async {
     if (!_ready) return;
     final tracksRaw = await _runJsJson('window.trailerGetCaptionTracks()');
     final active = await _runJsJson('window.trailerGetActiveCaption()');
@@ -456,8 +555,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
       context: context,
       title: 'Subtitles',
       leadingIcon: Icons.subtitles_outlined,
-      alignment: Alignment.bottomRight,
-      margin: const EdgeInsets.only(right: 16, bottom: 120),
+      anchorContext: anchorContext,
       maxHeight: 360,
       child: ListView(
         shrinkWrap: true,
@@ -498,7 +596,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
     );
   }
 
-  Future<void> _showAudioMenu() async {
+  Future<void> _showAudioMenu(BuildContext anchorContext) async {
     if (!_ready) return;
     final tracksRaw = await _runJsJson('window.trailerGetAudioTracks()');
     final tracks = _parseAudioTracks(tracksRaw);
@@ -508,20 +606,17 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
       context: context,
       title: 'Audio',
       leadingIcon: Icons.audiotrack_rounded,
-      alignment: Alignment.bottomRight,
-      margin: const EdgeInsets.only(right: 16, bottom: 120),
+      anchorContext: anchorContext,
       maxHeight: 360,
       child: ListView(
         shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
         children: [
           if (tracks.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'No alternate audio tracks for this trailer.',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
-              ),
+            PlayerPopupListTile(
+              label: _defaultAudioLabel(),
+              badge: _defaultAudioBadge(),
+              selected: true,
             )
           else
             ...tracks.map((track) {
@@ -540,6 +635,95 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showQualityMenu(BuildContext anchorContext) async {
+    if (!_ready) return;
+    final currentRaw = await _runJsJson('window.trailerGetPlaybackQuality()');
+    final levelsRaw = await _runJsJson('window.trailerGetAvailableQualityLevels()');
+    final current = currentRaw is String ? currentRaw : 'auto';
+    final levels = _parseQualityLevels(levelsRaw);
+
+    if (!mounted) return;
+    await PlayerPopupPanel.show(
+      context: context,
+      title: 'Quality',
+      leadingIcon: Icons.hd_outlined,
+      anchorContext: anchorContext,
+      maxHeight: 360,
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        children: [
+          if (levels.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'No quality options for this trailer.',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+            )
+          else
+            ...levels.map((level) {
+              return PlayerPopupListTile(
+                label: _qualityLabel(level),
+                badge: level == 'auto' ? 'AUTO' : null,
+                selected: level == current,
+                onTap: () async {
+                  PlayerPopupPanel.dismiss();
+                  await _runJs("window.trailerSetPlaybackQuality('$level');");
+                },
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showSpeedMenu(BuildContext anchorContext) async {
+    if (!_ready) return;
+    final rateRaw = await _runJsJson('window.trailerGetPlaybackRate()');
+    final ratesRaw = await _runJsJson('window.trailerGetAvailablePlaybackRates()');
+    final currentRate = rateRaw is num ? rateRaw.toDouble() : 1.0;
+    final rates = _parsePlaybackRates(ratesRaw);
+
+    if (!mounted) return;
+    await PlayerPopupPanel.show(
+      context: context,
+      title: 'Playback speed',
+      leadingIcon: Icons.speed_rounded,
+      anchorContext: anchorContext,
+      maxHeight: 360,
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        children: rates.map((rate) {
+          final selected = (rate - currentRate).abs() < 0.01;
+          return PlayerPopupListTile(
+            label: '${_formatRate(rate)}x',
+            selected: selected,
+            onTap: () async {
+              PlayerPopupPanel.dismiss();
+              await _runJs('window.trailerSetPlaybackRate($rate);');
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  String _defaultAudioLabel() {
+    final lang = widget.languageCode?.trim();
+    if (lang != null && lang.isNotEmpty) {
+      return languageDisplayName(lang);
+    }
+    return 'Original';
+  }
+
+  String? _defaultAudioBadge() {
+    final lang = widget.languageCode?.trim();
+    if (lang != null && lang.isNotEmpty) return lang.toUpperCase();
+    return null;
   }
 
   List<Map<String, dynamic>> _parseCaptionTracks(dynamic raw) {
@@ -563,6 +747,75 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
     return out;
   }
 
+  List<double> _parsePlaybackRates(dynamic raw) {
+    if (raw is! List || raw.isEmpty) return const [1.0];
+    final rates = raw
+        .whereType<num>()
+        .map((r) => r.toDouble())
+        .where((r) => r > 0)
+        .toSet()
+        .toList()
+      ..sort();
+    return rates.isEmpty ? const [1.0] : rates;
+  }
+
+  List<String> _parseQualityLevels(dynamic raw) {
+    if (raw is! List) return const [];
+    const order = [
+      'highres',
+      'hd1080',
+      'hd720',
+      'large',
+      'medium',
+      'small',
+      'tiny',
+      'auto',
+    ];
+    final levels = raw
+        .map((e) => e?.toString())
+        .whereType<String>()
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+    levels.sort((a, b) {
+      final ai = order.indexOf(a);
+      final bi = order.indexOf(b);
+      if (ai == -1 && bi == -1) return a.compareTo(b);
+      if (ai == -1) return 1;
+      if (bi == -1) return -1;
+      return ai.compareTo(bi);
+    });
+    return levels;
+  }
+
+  String _formatRate(double rate) {
+    if (rate == rate.roundToDouble()) return rate.toStringAsFixed(0);
+    return rate.toStringAsFixed(2).replaceAll(RegExp(r'\.?0+$'), '');
+  }
+
+  String _qualityLabel(String code) {
+    switch (code) {
+      case 'highres':
+        return '4K';
+      case 'hd1080':
+        return '1080p';
+      case 'hd720':
+        return '720p';
+      case 'large':
+        return '480p';
+      case 'medium':
+        return '360p';
+      case 'small':
+        return '240p';
+      case 'tiny':
+        return '144p';
+      case 'auto':
+        return 'Auto';
+      default:
+        return code;
+    }
+  }
+
   List<Map<String, dynamic>> _parseAudioTracks(dynamic raw) {
     if (raw is! List) return const [];
     return raw
@@ -584,7 +837,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
         fit: StackFit.expand,
         children: [
           InAppWebView(
-            key: ValueKey('trailer-player-${widget.youtubeKey}'),
+            key: ValueKey('trailer-player-${_trailer.key}'),
             initialData: InAppWebViewInitialData(
               data: _embedHtml(),
               baseUrl: WebUri(_kYoutubeEmbedOrigin),
@@ -634,6 +887,10 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
                   });
                 },
               );
+              controller.addJavaScriptHandler(
+                handlerName: 'trailerEscape',
+                callback: (_) => _exitTrailer(),
+              );
             },
           ),
           DesktopWindowChrome.overlayDragStrip(),
@@ -645,7 +902,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
             child: PlayerFlatIconButton(
               icon: Icons.arrow_back_rounded,
               tooltip: 'Back',
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: _exitTrailer,
             ),
           ),
           const Positioned(
@@ -654,6 +911,78 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
             right: 0,
             child: PlayerOverlayGradient(isTop: true),
           ),
+          if (_ended && _hasNextTrailer)
+            Positioned.fill(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Up next',
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _nextTrailer!.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _playNextTrailer,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Next Trailer',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             left: 0,
             right: 0,
@@ -680,12 +1009,12 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
                     children: [
                       if (widget.movie != null)
                         PlayerTitleMeta(
-                          title: widget.title,
+                          title: _trailer.name,
                           movie: widget.movie,
                         )
                       else
                         Text(
-                          widget.title,
+                          _trailer.name,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -763,13 +1092,25 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
                               PlayerFlatIconButton(
                                 icon: Icons.audiotrack_rounded,
                                 tooltip: 'Audio',
-                                onPressed: _showAudioMenu,
+                                onPressedWithContext: _showAudioMenu,
                               ),
                               const SizedBox(width: 2),
                               PlayerFlatIconButton(
                                 icon: Icons.subtitles_outlined,
                                 tooltip: 'Subtitles',
-                                onPressed: _showSubtitleMenu,
+                                onPressedWithContext: _showSubtitleMenu,
+                              ),
+                              const SizedBox(width: 2),
+                              PlayerFlatIconButton(
+                                icon: Icons.hd_outlined,
+                                tooltip: 'Quality',
+                                onPressedWithContext: _showQualityMenu,
+                              ),
+                              const SizedBox(width: 2),
+                              PlayerFlatIconButton(
+                                icon: Icons.speed_rounded,
+                                tooltip: 'Playback speed',
+                                onPressedWithContext: _showSpeedMenu,
                               ),
                               if (!_ready) ...[
                                 const SizedBox(width: 8),

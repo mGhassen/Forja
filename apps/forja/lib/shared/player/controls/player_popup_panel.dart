@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 
-/// Floating player menu anchored above the bottom control bar (HDO-style).
+/// Floating player menu anchored to a control button when possible.
 /// Uses [OverlayEntry] — never touches the shell route stack.
 class PlayerPopupPanel {
   static OverlayEntry? _entry;
@@ -18,6 +18,21 @@ class PlayerPopupPanel {
     _completer = null;
   }
 
+  static Rect? _anchorRectInOverlay(
+    BuildContext anchorContext,
+    BuildContext overlayContext,
+  ) {
+    final anchorBox = anchorContext.findRenderObject() as RenderBox?;
+    if (anchorBox == null || !anchorBox.hasSize) return null;
+
+    final overlayBox =
+        Overlay.of(overlayContext).context.findRenderObject() as RenderBox?;
+    if (overlayBox == null) return null;
+
+    final offset = anchorBox.localToGlobal(Offset.zero, ancestor: overlayBox);
+    return offset & anchorBox.size;
+  }
+
   static Future<void> show({
     required BuildContext context,
     required String title,
@@ -28,6 +43,9 @@ class PlayerPopupPanel {
     double maxHeight = 380,
     Alignment alignment = Alignment.bottomLeft,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
+    BuildContext? anchorContext,
+    double anchorGap = 8,
+    EdgeInsets screenPadding = const EdgeInsets.all(8),
     VoidCallback? onBack,
   }) {
     dismiss();
@@ -41,6 +59,81 @@ class PlayerPopupPanel {
 
     _entry = OverlayEntry(
       builder: (overlayContext) {
+        final overlaySize = MediaQuery.sizeOf(overlayContext);
+        final anchorRect = anchorContext != null
+            ? _anchorRectInOverlay(anchorContext, overlayContext)
+            : null;
+
+        final panel = Material(
+          type: MaterialType.transparency,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: width,
+              maxHeight: anchorRect == null
+                  ? maxHeight
+                  : _anchoredMaxHeight(
+                      overlaySize: overlaySize,
+                      anchorRect: anchorRect,
+                      anchorGap: anchorGap,
+                      screenPadding: screenPadding,
+                      maxHeight: maxHeight,
+                    ),
+            ),
+            child: _PanelShell(
+              title: title,
+              leadingIcon: leadingIcon,
+              trailing: trailing,
+              onBack: onBack == null
+                  ? null
+                  : () {
+                      close();
+                      onBack();
+                    },
+              onClose: close,
+              child: child,
+            ),
+          ),
+        );
+
+        final Widget panelLayer;
+        if (anchorRect != null) {
+          final left = (anchorRect.center.dx - width / 2).clamp(
+            screenPadding.left,
+            overlaySize.width - width - screenPadding.right,
+          );
+
+          final spaceAbove =
+              anchorRect.top - screenPadding.top - anchorGap;
+          final spaceBelow = overlaySize.height -
+              anchorRect.bottom -
+              screenPadding.bottom -
+              anchorGap;
+          final showAbove =
+              spaceAbove >= spaceBelow && spaceAbove > 0;
+
+          panelLayer = showAbove
+              ? Positioned(
+                  left: left,
+                  bottom: overlaySize.height - anchorRect.top + anchorGap,
+                  width: width,
+                  child: panel,
+                )
+              : Positioned(
+                  left: left,
+                  top: anchorRect.bottom + anchorGap,
+                  width: width,
+                  child: panel,
+                );
+        } else {
+          panelLayer = Align(
+            alignment: alignment,
+            child: Padding(
+              padding: margin,
+              child: panel,
+            ),
+          );
+        }
+
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -51,31 +144,7 @@ class PlayerPopupPanel {
                 child: const SizedBox.shrink(),
               ),
             ),
-            Align(
-              alignment: alignment,
-              child: Padding(
-                padding: margin,
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: width, maxHeight: maxHeight),
-                    child: _PanelShell(
-                      title: title,
-                      leadingIcon: leadingIcon,
-                      trailing: trailing,
-                      onBack: onBack == null
-                          ? null
-                          : () {
-                              close();
-                              onBack();
-                            },
-                      onClose: close,
-                      child: child,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            panelLayer,
           ],
         );
       },
@@ -83,6 +152,23 @@ class PlayerPopupPanel {
 
     overlay.insert(_entry!);
     return _completer!.future;
+  }
+
+  static double _anchoredMaxHeight({
+    required Size overlaySize,
+    required Rect anchorRect,
+    required double anchorGap,
+    required EdgeInsets screenPadding,
+    required double maxHeight,
+  }) {
+    final spaceAbove =
+        anchorRect.top - screenPadding.top - anchorGap;
+    final spaceBelow = overlaySize.height -
+        anchorRect.bottom -
+        screenPadding.bottom -
+        anchorGap;
+    final available = spaceAbove >= spaceBelow ? spaceAbove : spaceBelow;
+    return available.clamp(120, maxHeight);
   }
 }
 

@@ -1,7 +1,10 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
+import 'package:forja/shared/design/src/forja_shell_colors.dart';
 
 enum _GuideStep { groups, channels }
 
@@ -24,8 +27,8 @@ class IptvChannelGuidePanel extends StatefulWidget {
   final VoidCallback onClose;
 
   static const double wideBreakpoint = 700;
-  static const double groupsWidth = 200;
-  static const double channelsWidth = 280;
+  static const double panelWidthWide = 480;
+  static const double panelWidthNarrow = 300;
 
   @override
   State<IptvChannelGuidePanel> createState() => _IptvChannelGuidePanelState();
@@ -35,6 +38,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   _GuideStep _step = _GuideStep.groups;
   final ScrollController _groupScroll = ScrollController();
   final ScrollController _channelScroll = ScrollController();
+
+  static const Color _groupsBg = Color(0xFF0C0C12);
+  static const Color _channelsBg = Color(0xFF16161F);
+  static const Color _accent = Color(0xFF00E5FF);
 
   @override
   void initState() {
@@ -58,7 +65,24 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     super.dispose();
   }
 
+  IptvGuideChannel? get _currentChannel {
+    for (final c in widget.guide.channels) {
+      if (c.id == widget.currentChannelId) return c;
+    }
+    return null;
+  }
+
   void _scrollToCurrent() {
+    final gIdx =
+        widget.guide.groups.indexWhere((g) => g.id == widget.selectedGroupId);
+    if (gIdx >= 0 && _groupScroll.hasClients) {
+      _groupScroll.animateTo(
+        (gIdx * 48.0).clamp(0.0, _groupScroll.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    }
+
     final wide = MediaQuery.sizeOf(context).width >=
         IptvChannelGuidePanel.wideBreakpoint;
     if (!wide && _step == _GuideStep.groups) return;
@@ -67,17 +91,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final idx = channels.indexWhere((c) => c.id == widget.currentChannelId);
     if (idx >= 0 && _channelScroll.hasClients) {
       _channelScroll.animateTo(
-        (idx * 64.0).clamp(0.0, _channelScroll.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
-    }
-
-    final gIdx =
-        widget.guide.groups.indexWhere((g) => g.id == widget.selectedGroupId);
-    if (gIdx >= 0 && _groupScroll.hasClients) {
-      _groupScroll.animateTo(
-        (gIdx * 44.0).clamp(0.0, _groupScroll.position.maxScrollExtent),
+        (idx * 68.0).clamp(0.0, _channelScroll.position.maxScrollExtent),
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
       );
@@ -90,34 +104,43 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         MediaQuery.sizeOf(context).width >= IptvChannelGuidePanel.wideBreakpoint;
 
     return Positioned.fill(
-      child: Row(
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          if (wide) _buildPanelShell(wide: true) else _buildMobilePanel(),
-          Expanded(
+          Positioned.fill(
             child: GestureDetector(
               onTap: widget.onClose,
               behavior: HitTestBehavior.opaque,
-              child: Container(color: Colors.black.withValues(alpha: 0.45)),
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.42),
+                  ),
+                ),
+              ),
             ),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _buildPanelShell(wide: wide),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMobilePanel() {
-    return _buildPanelShell(wide: false);
-  }
-
   Widget _buildPanelShell({required bool wide}) {
     final panelWidth = wide
-        ? IptvChannelGuidePanel.groupsWidth + IptvChannelGuidePanel.channelsWidth
-        : 300.0;
+        ? IptvChannelGuidePanel.panelWidthWide
+        : IptvChannelGuidePanel.panelWidthNarrow;
 
-    return SizedBox(
-      width: panelWidth,
-      child: Material(
-        color: const Color(0xFF12121A),
+    return Material(
+      elevation: 16,
+      shadowColor: Colors.black.withValues(alpha: 0.6),
+      color: _channelsBg,
+      child: SizedBox(
+        width: panelWidth,
         child: SafeArea(
           right: false,
           child: Column(
@@ -138,39 +161,83 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final showBack = !wide && _step == _GuideStep.channels;
     final groupName =
         widget.guide.groupById(widget.selectedGroupId)?.name ?? 'Channels';
+    final playing = _currentChannel;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
       decoration: BoxDecoration(
+        color: _channelsBg,
         border: Border(
           bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (showBack)
-            IconButton(
-              onPressed: () => setState(() => _step = _GuideStep.groups),
-              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-            )
-          else
-            const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              showBack ? groupName : 'Channels',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.bebasNeue(
-                color: Colors.white,
-                fontSize: 20,
-                letterSpacing: 1,
+          Row(
+            children: [
+              if (showBack)
+                IconButton(
+                  onPressed: () => setState(() => _step = _GuideStep.groups),
+                  icon:
+                      const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                )
+              else
+                const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  showBack ? groupName : 'Channels',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.bebasNeue(
+                    color: Colors.white,
+                    fontSize: 20,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: widget.onClose,
+                icon: const Icon(Icons.close_rounded, color: Colors.white70),
+              ),
+            ],
+          ),
+          if (playing != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+              child: Row(
+                children: [
+                  _ChannelLogo(url: playing.logoUrl ?? '', size: 28),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Now playing',
+                          style: GoogleFonts.poppins(
+                            color: _accent.withValues(alpha: 0.85),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        Text(
+                          playing.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          IconButton(
-            onPressed: widget.onClose,
-            icon: const Icon(Icons.close_rounded, color: Colors.white70),
-          ),
         ],
       ),
     );
@@ -180,17 +247,33 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: IptvChannelGuidePanel.groupsWidth,
-          child: _buildGroupList(),
+        Expanded(
+          flex: 5,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: _groupsBg,
+              border: Border(
+                right: BorderSide(color: Color(0x1AFFFFFF)),
+              ),
+            ),
+            child: _buildGroupList(),
+          ),
         ),
-        Container(
-          width: 1,
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
-        SizedBox(
-          width: IptvChannelGuidePanel.channelsWidth,
-          child: _buildChannelList(widget.selectedGroupId),
+        Expanded(
+          flex: 7,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: _channelsBg,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(6, 0),
+                ),
+              ],
+            ),
+            child: _buildChannelList(widget.selectedGroupId),
+          ),
         ),
       ],
     );
@@ -198,12 +281,24 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   Widget _buildNarrowBody() {
     if (_step == _GuideStep.groups) {
-      return _buildGroupList(onPick: (id) {
-        widget.onGroupSelected(id);
-        setState(() => _step = _GuideStep.channels);
-      });
+      return DecoratedBox(
+        decoration: const BoxDecoration(color: _groupsBg),
+        child: _buildGroupList(onPick: (id) {
+          widget.onGroupSelected(id);
+          setState(() => _step = _GuideStep.channels);
+        }),
+      );
     }
-    return _buildChannelList(widget.selectedGroupId);
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: _channelsBg),
+      child: _buildChannelList(widget.selectedGroupId),
+    );
+  }
+
+  bool _groupHasPlayingChannel(String groupId) {
+    return widget.guide
+        .channelsForGroup(groupId)
+        .any((c) => c.id == widget.currentChannelId);
   }
 
   Widget _buildGroupList({ValueChanged<String>? onPick}) {
@@ -214,35 +309,56 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       itemBuilder: (_, i) {
         final g = widget.guide.groups[i];
         final selected = g.id == widget.selectedGroupId;
+        final hasPlaying = _groupHasPlayingChannel(g.id);
         return InkWell(
           onTap: () {
             widget.onGroupSelected(g.id);
             onPick?.call(g.id);
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             decoration: BoxDecoration(
               color: selected
-                  ? const Color(0xFF00E5FF).withValues(alpha: 0.12)
+                  ? _accent.withValues(alpha: 0.18)
                   : Colors.transparent,
               border: Border(
                 left: BorderSide(
-                  color: selected
-                      ? const Color(0xFF00E5FF)
-                      : Colors.transparent,
+                  color: selected ? _accent : Colors.transparent,
                   width: 3,
                 ),
               ),
             ),
-            child: Text(
-              g.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                color: selected ? Colors.white : Colors.white70,
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    g.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      color: selected ? Colors.white : Colors.white60,
+                      fontSize: 12,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+                if (hasPlaying && !selected)
+                  Container(
+                    width: 7,
+                    height: 7,
+                    margin: const EdgeInsets.only(left: 6),
+                    decoration: const BoxDecoration(
+                      color: _accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                if (selected)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: Icon(Icons.chevron_right_rounded,
+                        color: _accent, size: 18),
+                  ),
+              ],
             ),
           ),
         );
@@ -289,19 +405,32 @@ class _GuideChannelTile extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
+  static const Color _accent = Color(0xFF00E5FF);
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       child: Material(
+        elevation: active ? 2 : 0,
+        shadowColor: Colors.black.withValues(alpha: 0.4),
         color: active
-            ? const Color(0xFF00E5FF).withValues(alpha: 0.14)
-            : Colors.white.withValues(alpha: 0.04),
+            ? _accent.withValues(alpha: 0.2)
+            : ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
-          child: Padding(
+          child: Container(
+            decoration: active
+                ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _accent.withValues(alpha: 0.55),
+                      width: 1,
+                    ),
+                  )
+                : null,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               children: [
@@ -315,13 +444,13 @@ class _GuideChannelTile extends StatelessWidget {
                     style: GoogleFonts.poppins(
                       color: active ? Colors.white : Colors.white70,
                       fontSize: 13,
-                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
                 ),
                 if (active)
-                  const Icon(Icons.volume_up_rounded,
-                      color: Color(0xFF00E5FF), size: 18),
+                  const Icon(Icons.play_arrow_rounded,
+                      color: _accent, size: 22),
               ],
             ),
           ),
@@ -332,9 +461,10 @@ class _GuideChannelTile extends StatelessWidget {
 }
 
 class _ChannelLogo extends StatelessWidget {
-  const _ChannelLogo({required this.url});
+  const _ChannelLogo({required this.url, this.size = 40});
 
   final String url;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -343,8 +473,8 @@ class _ChannelLogo extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
         url,
-        width: 40,
-        height: 40,
+        width: size,
+        height: size,
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => _placeholder(),
         loadingBuilder: (ctx, child, prog) {
@@ -357,13 +487,14 @@ class _ChannelLogo extends StatelessWidget {
 
   Widget _placeholder() {
     return Container(
-      width: 40,
-      height: 40,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(Icons.live_tv_rounded, color: Colors.white38, size: 20),
+      child: Icon(Icons.live_tv_rounded,
+          color: Colors.white38, size: size * 0.5),
     );
   }
 }

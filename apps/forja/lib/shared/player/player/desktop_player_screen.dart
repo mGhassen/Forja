@@ -30,6 +30,7 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/controls/seek_bar_with_preview.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
@@ -38,6 +39,7 @@ import 'package:forja/shared/player/controls/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
+import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shell/app_router.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -443,6 +445,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
   Timer? _hideTimer;
+  Movie? _heroMovie;
+  String? _episodeOverview;
   bool _isFullscreen = false;
   BoxFit _videoFit = BoxFit.contain;
   bool _isPipMode = false;
@@ -495,6 +499,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   /// (the menu compares against this rather than the localhost proxy URL).
   String? _current111477FileUrl;
   int _currentFallbackSourceIndex = 0;
+  final PlayerStatusController _statusController = PlayerStatusController();
   bool _isSwitchingProvider = false;
   bool _isInitPlaybackRunning = false;
 
@@ -545,6 +550,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       if (!mounted) return;
       setState(() => _isPipMode = on);
     });
+
+    _loadHeroMetadata();
 
     // ── Create player with minimal overhead config ────────────────────────
     _player = Player(
@@ -652,6 +659,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _isBufferingNotifier.dispose();
     _hlsQualitiesNotifier.dispose();
     _volumeNotifier.dispose();
+    _statusController.dispose();
 
     _player.dispose();
 
@@ -739,7 +747,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       WatchHistoryService().saveProgress(
         tmdbId: widget.movie!.id,
         imdbId: widget.movie!.imdbId,
-        title: widget.title,
+        title: _displayTitle,
         posterPath: widget.movie!.posterPath,
         backdropPath: widget.movie!.backdropPath,
         method: method,
@@ -825,6 +833,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         final i = _currentFallbackSourceIndex;
         var source = _currentSources![i];
         debugPrint('[Player] Trying source ${i + 1}/${_currentSources!.length}: ${source.title}');
+        _statusController.upsert(
+          'source-$i',
+          source.title,
+          kind: StatusRouletteKind.loading,
+        );
 
         // Arabic embed sources need on-demand extraction first
         if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
@@ -832,6 +845,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           final result = await ArabicService.extractStreamUrl(source.url);
           if (result == null) {
             debugPrint('[Player] Arabic extract failed for ${source.title}');
+            _statusController.upsert(
+              'source-$i',
+              source.title,
+              kind: StatusRouletteKind.failed,
+              dismissAfter: const Duration(milliseconds: 1200),
+            );
             _currentFallbackSourceIndex++;
             continue;
           }
@@ -871,9 +890,16 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           setState(() {
             _currentUrl = openUrl;
           });
+          _statusController.complete();
           return; // Opened successfully
         } catch (e) {
           debugPrint('[Player] Source $i catch error: $e');
+          _statusController.upsert(
+            'source-$i',
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(milliseconds: 500),
+          );
           _currentFallbackSourceIndex++;
         }
       }
@@ -945,8 +971,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   Future<bool> _silentSwitchProvider(String newProvider, {int? chainGen}) async {
     final gen = chainGen ?? _fallbackGen;
     if (_fallbackAborted(gen)) return false;
+    final provider = widget.providers![newProvider];
+    final providerLabel = PlayerProviderMenu.snackbarLabel(newProvider, provider);
+    _statusController.upsert(
+      'provider-$newProvider',
+      providerLabel,
+      kind: StatusRouletteKind.loading,
+    );
     try {
-      final provider = widget.providers![newProvider];
       String? streamUrl;
       Map<String, String>? headers;
       List<StreamSource>? sources;
@@ -1089,11 +1121,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           _hasError = false;
           _errorMessage = '';
         });
+        _statusController.complete();
         return true;
       }
     } catch (e) {
       debugPrint('[Player] Silent fallback to $newProvider failed: $e');
     }
+    _statusController.upsert(
+      'provider-$newProvider',
+      providerLabel,
+      kind: StatusRouletteKind.failed,
+      dismissAfter: const Duration(milliseconds: 1200),
+    );
     return false;
   }
 
@@ -1140,12 +1179,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       if (!_hasInitialSeek && dur.inSeconds > 0 && widget.startPosition != null) {
         _hasInitialSeek = true;
         _player.seek(widget.startPosition!);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Resumed from ${formatDuration(widget.startPosition!)}'),
-            duration: const Duration(seconds: 2),
-          ));
-        }
       }
     });
 
@@ -1181,6 +1214,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           );
         }
       } else {
+        if (mounted) setState(() => _showControls = true);
         // Scrobble pause
         if (widget.movie != null) {
           final pos = _positionNotifier.value.inMilliseconds;
@@ -1444,11 +1478,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       (_player.platform as NativePlayer)
           .setProperty('hwdec', next.mpvValue);
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(next.description),
-      duration: const Duration(seconds: 2),
-    ));
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1465,8 +1494,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     final isTranslated = s['translated'] == true ||
         url.contains('/subtitlecat-translate');
 
-    final messenger = ScaffoldMessenger.of(context);
-
     // Already-local subtitle (e.g. kisskh decrypted) — feed straight to libmpv.
     if (url.startsWith('file://') || url.startsWith('/')) {
       try {
@@ -1479,8 +1506,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       } catch (e) {
         if (!mounted) return;
         setState(() => _selectedExternalSubUrl = null);
-        messenger.showSnackBar(
-            SnackBar(content: Text('Subtitle failed: $e — tap to retry')));
+        _statusController.upsert(
+          'subtitle',
+          'Subtitle failed',
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
       }
       return;
     }
@@ -1510,8 +1541,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         if (mounted) {
           setState(() => _selectedExternalSubUrl = null);
         }
-        messenger.showSnackBar(SnackBar(
-            content: Text('Subtitle failed (${res.statusCode}) — tap to retry')));
+        _statusController.upsert(
+          'subtitle',
+          'Subtitle failed',
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
         return;
       }
       final dir = await getTemporaryDirectory();
@@ -1535,8 +1570,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() => _selectedExternalSubUrl = null);
-      messenger.showSnackBar(
-          SnackBar(content: Text('Subtitle failed: $e — tap to retry')));
+      _statusController.upsert(
+        'subtitle',
+        'Subtitle failed',
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
     }
   }
 
@@ -1581,10 +1620,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   /// don't have to be re-plumbed.
   Future<void> _maybeAutoPickExternalSubtitle() async {}
 
-  void _showSubtitlesMenu() {
+  void _showSubtitlesMenu(BuildContext anchorContext) {
     PlayerSubtitleMenu.show(
       context,
       player: _player,
+      anchorContext: anchorContext,
       externalSubtitles: _externalSubtitles,
       selectedExternalSubUrl: _selectedExternalSubUrl,
       isFetchingSubs: _isFetchingSubs,
@@ -1798,8 +1838,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   //  AUDIO
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _showAudioMenu() {
-    PlayerAudioMenu.show(context, player: _player);
+  void _showAudioMenu(BuildContext anchorContext) {
+    PlayerAudioMenu.show(context, player: _player, anchorContext: anchorContext);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1829,13 +1869,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     });
   }
 
-  void _showQualityMenu() {
+  void _showQualityMenu(BuildContext anchorContext) {
     final qs = _hlsQualitiesNotifier.value ?? const <HlsQuality>[];
     PlayerQualityMenu.show(
       context,
       qualities: qs,
       currentQualityUrl: _currentQualityUrl,
       onSelect: _switchQuality,
+      anchorContext: anchorContext,
     );
   }
 
@@ -1862,7 +1903,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   //  SOURCE SELECTION (for Amri provider)
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _showStreamMenu() {
+  void _showStreamMenu([BuildContext? anchorContext]) {
     final hasProviders = widget.providers != null &&
         widget.providers!.isNotEmpty &&
         widget.movie != null &&
@@ -1874,6 +1915,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
     PlayerStreamMenu.show(
       context,
+      anchorContext: anchorContext,
       providers: hasProviders ? widget.providers : null,
       currentProviderId: _currentProvider,
       onSelectProvider: _switchProvider,
@@ -1893,20 +1935,20 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     if (isCurrent) return;
 
     final currentPos = _positionNotifier.value;
-    final messenger = ScaffoldMessenger.of(context);
+    final statusId = 'source-switch-$index';
+    _statusController.upsert(
+      statusId,
+      source.title,
+      kind: StatusRouletteKind.loading,
+    );
 
     if (_currentProvider == 'service111477') {
-      messenger.showSnackBar(SnackBar(
-        content: Text('Switching to ${source.title}…'),
-        duration: const Duration(seconds: 30),
-      ));
       try {
         if (site111477_proxy.is111477ProxyRunning) {
           await site111477_proxy.stop111477Proxy();
         }
         final newProxied = await site111477_proxy.start111477Proxy(source.url);
         if (!mounted) return;
-        messenger.hideCurrentSnackBar();
         await _player.open(Media(newProxied));
         setState(() {
           _currentUrl = newProxied;
@@ -1917,36 +1959,29 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         });
         _detectHlsQualities(newProxied, null);
         if (currentPos.inSeconds > 0) await _player.seek(currentPos);
-        if (mounted) {
-          messenger.showSnackBar(SnackBar(
-            content: Text('Switched to ${source.title}'),
-            duration: const Duration(seconds: 2),
-          ));
-        }
+        _statusController.complete();
       } catch (e) {
         if (!mounted) return;
-        messenger.hideCurrentSnackBar();
-        messenger.showSnackBar(SnackBar(
-          content: Text('Switch failed: $e'),
-          duration: const Duration(seconds: 3),
-        ));
+        _statusController.upsert(
+          statusId,
+          source.title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
       }
       return;
     }
 
     if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
-      messenger.showSnackBar(SnackBar(
-        content: Text('Extracting ${source.title}...'),
-        duration: const Duration(seconds: 30),
-      ));
       final result = await ArabicService.extractStreamUrl(source.url);
       if (!mounted) return;
-      messenger.hideCurrentSnackBar();
       if (result == null) {
-        messenger.showSnackBar(SnackBar(
-          content: Text('Failed to extract ${source.title}'),
-          duration: const Duration(seconds: 2),
-        ));
+        _statusController.upsert(
+          statusId,
+          source.title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
         return;
       }
       await _player.open(Media(result.url, httpHeaders: result.headers));
@@ -1980,13 +2015,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
 
     if (currentPos.inSeconds > 0) await _player.seek(currentPos);
-
-    if (mounted) {
-      messenger.showSnackBar(SnackBar(
-        content: Text('Switched to ${source.title}'),
-        duration: const Duration(seconds: 2),
-      ));
-    }
+    _statusController.complete();
   }
 
   Future<Uint8List?> _captureSeekPreview(Duration position) async {
@@ -2009,9 +2038,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     setState(() => _loopEnabled = !_loopEnabled);
     _player.setPlaylistMode(
         _loopEnabled ? PlaylistMode.single : PlaylistMode.none);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Loop: ${_loopEnabled ? "ON" : "OFF"}'),
-        duration: const Duration(seconds: 1)));
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -2119,8 +2145,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         await widget.onNextEpisode!();
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Next episode failed: $e')),
+          _statusController.upsert(
+            'episode',
+            'Next episode failed',
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
           );
           setState(() => _isLoadingNextEp = false);
         }
@@ -2164,8 +2193,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             nextEpisode = 1;
           } else {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No more episodes available')),
+              _statusController.upsert(
+                'episode',
+                'No more episodes',
+                kind: StatusRouletteKind.info,
+                dismissAfter: const Duration(seconds: 2),
               );
               setState(() => _isLoadingNextEp = false);
             }
@@ -2182,8 +2214,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       } catch (e) {
         debugPrint('[NextEp] Streaming-mode handoff failed: $e');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Next episode failed: $e')),
+          _statusController.upsert(
+            'episode',
+            'Next episode failed',
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
           );
           setState(() => _isLoadingNextEp = false);
         }
@@ -2223,8 +2258,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         nextEpisode = 1;
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No more episodes available')),
+          _statusController.upsert(
+            'episode',
+            'No more episodes',
+            kind: StatusRouletteKind.info,
+            dismissAfter: const Duration(seconds: 2),
           );
         }
         return null;
@@ -2461,8 +2499,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     } catch (e) {
       debugPrint('[EpSwitch] Error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Episode switch error: $e')),
+        _statusController.upsert(
+          'episode',
+          'Episode switch failed',
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
         );
         setState(() => _isLoadingNextEp = false);
       }
@@ -2488,7 +2529,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     await _switchToEpisode(season, episode);
   }
 
-  void _showEpisodesMenu() {
+  void _showEpisodesMenu(BuildContext anchorContext) {
     final movie = widget.movie;
     if (movie == null || movie.mediaType != 'tv') return;
     final season = widget.selectedSeason ?? 1;
@@ -2499,15 +2540,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       currentSeason: season,
       currentEpisode: episode,
       onEpisodeSelected: _goToEpisode,
+      anchorContext: anchorContext,
     );
   }
 
-  void _showSettingsMenu() {
+  void _showSettingsMenu(BuildContext anchorContext) {
     PlayerPopupPanel.show(
       context: context,
       title: 'Settings',
-      alignment: Alignment.bottomRight,
-      margin: const EdgeInsets.only(right: 16, bottom: 88),
+      anchorContext: anchorContext,
       child: ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
@@ -2569,17 +2610,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     setState(() => _isSwitchingProvider = true);
     
     final currentPos = _positionNotifier.value;
-    final messenger = ScaffoldMessenger.of(context);
+    final provider = widget.providers![newProvider];
+    final providerLabel = PlayerProviderMenu.snackbarLabel(newProvider, provider);
+    _statusController.upsert(
+      'provider-$newProvider',
+      providerLabel,
+      kind: StatusRouletteKind.loading,
+    );
     
     try {
-      final provider = widget.providers![newProvider];
-      final providerLabel = PlayerProviderMenu.snackbarLabel(newProvider, provider);
-      
-      messenger.showSnackBar(SnackBar(
-        content: Text('Extracting from $providerLabel...'),
-        duration: const Duration(seconds: 2),
-      ));
-
       String? streamUrl;
       Map<String, String>? headers;
       List<StreamSource>? sources;
@@ -2727,26 +2766,25 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           _errorMessage = '';
         });
         
-        if (mounted) {
-          messenger.showSnackBar(SnackBar(
-            content: Text('Switched to $providerLabel'),
-            duration: const Duration(seconds: 2),
-          ));
-        }
+        _statusController.complete();
       } else {
         if (mounted && !_fallbackAborted(gen)) {
-          messenger.showSnackBar(SnackBar(
-            content: Text('Failed to extract from $providerLabel'),
-            duration: const Duration(seconds: 2),
-          ));
+          _statusController.upsert(
+            'provider-$newProvider',
+            providerLabel,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
+          );
         }
       }
     } catch (e) {
       if (mounted && !_fallbackAborted(gen)) {
-        messenger.showSnackBar(SnackBar(
-          content: Text('Error switching provider: $e'),
-          duration: const Duration(seconds: 2),
-        ));
+        _statusController.upsert(
+          'provider-$newProvider',
+          providerLabel,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
       }
     } finally {
       if (mounted) {
@@ -2772,6 +2810,25 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _startHideTimer();
   }
 
+  Movie? get _displayMovie => _heroMovie ?? widget.movie;
+
+  String get _displayTitle => _displayMovie?.title ?? widget.title;
+
+  Future<void> _loadHeroMetadata() async {
+    final movie = widget.movie;
+    if (movie == null) return;
+    final metadata = await loadPlayerHeroMetadata(
+      movie: movie,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    if (!mounted || metadata == null) return;
+    setState(() {
+      _heroMovie = metadata.movie;
+      _episodeOverview = metadata.episodeOverview;
+    });
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   //  FULLSCREEN
   // ─────────────────────────────────────────────────────────────────────────
@@ -2783,6 +2840,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
     await windowManager.setFullScreen(!isFull);
     if (mounted) setState(() => _isFullscreen = !isFull);
+  }
+
+  Future<void> _exitPlayer() async {
+    if (PlayerPopupPanel.isShowing) {
+      PlayerPopupPanel.dismiss();
+      return;
+    }
+    if (_isFullscreen) {
+      await windowManager.setFullScreen(false);
+      if (mounted) setState(() => _isFullscreen = false);
+    }
+    _saveWatchHistory();
+    if (mounted) Navigator.of(context).pop(_positionNotifier.value);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -2822,8 +2892,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     } else if (key == LogicalKeyboardKey.keyF) {
       _toggleFullscreen();
     } else if (key == LogicalKeyboardKey.escape) {
-      windowManager.setFullScreen(false);
-      if (mounted) setState(() => _isFullscreen = false);
+      unawaited(_exitPlayer());
     } else if (key == LogicalKeyboardKey.keyL) {
       _toggleLoop();
     } else {
@@ -2854,9 +2923,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         _videoFit = BoxFit.contain;
       }
     });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Aspect Ratio: $_videoFitLabel'),
-        duration: const Duration(seconds: 1)));
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -2939,6 +3005,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
                 // ── Embedded Error Overlay ───────────────────────────────
                 if (_hasError) _buildEmbeddedError(),
+
+                PlayerStatusOverlay(
+                  controller: _statusController,
+                  bufferingListenable: _isBufferingNotifier,
+                ),
               ],
             ),
           ),
@@ -3078,7 +3149,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       Positioned(
         top: 0, left: 0, right: 0,
         child: PlayerTopBar(
-          title: widget.title,
+          title: _displayTitle,
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
           onBack: () async {
@@ -3092,8 +3163,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           trailing: PlayerTopBarActions(
             showStream: hasProviders || hasSources,
             streamEnabled: !_isSwitchingProvider,
-            onStream: () {
-              _showStreamMenu();
+            onStream: (anchor) {
+              _showStreamMenu(anchor);
               _onMouseMove();
             },
             showCast: CastingService.instance.isAirPlayAvailable ||
@@ -3118,10 +3189,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         ),
       ),
 
-      if (widget.movie != null)
+      if (_displayMovie != null)
         Positioned(
           left: 0,
-          top: 72,
+          top: PlayerTopBar.totalHeight(context),
           bottom: 120,
           child: ValueListenableBuilder<bool>(
             valueListenable: _isPlayingNotifier,
@@ -3133,9 +3204,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: PlayerPausedHero(
-                    movie: widget.movie!,
+                    movie: _displayMovie!,
                     season: widget.selectedSeason,
                     episode: widget.selectedEpisode,
+                    episodeOverview: _episodeOverview,
                   ),
                 ),
               ),
@@ -3366,20 +3438,20 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                     PlayerFlatIconButton(
                       icon: Icons.video_library_outlined,
                       tooltip: 'Episodes',
-                      onPressed: _showEpisodesMenu,
+                      onPressedWithContext: _showEpisodesMenu,
                     ),
                     const SizedBox(width: 2),
                   ],
                   PlayerFlatIconButton(
                     icon: Icons.audiotrack_rounded,
                     tooltip: 'Audio',
-                    onPressed: _showAudioMenu,
+                    onPressedWithContext: _showAudioMenu,
                   ),
                   const SizedBox(width: 2),
                   PlayerFlatIconButton(
                     icon: Icons.subtitles_outlined,
                     tooltip: 'Subtitles',
-                    onPressed: _showSubtitlesMenu,
+                    onPressedWithContext: _showSubtitlesMenu,
                   ),
                   const SizedBox(width: 2),
                   ValueListenableBuilder<List<HlsQuality>?>(
@@ -3390,7 +3462,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                         PlayerFlatIconButton(
                           icon: Icons.hd_outlined,
                           tooltip: 'Quality',
-                          onPressed: _showQualityMenu,
+                          onPressedWithContext: _showQualityMenu,
                         ),
                         const SizedBox(width: 2),
                       ],
@@ -3399,7 +3471,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   PlayerFlatIconButton(
                     icon: Icons.settings_outlined,
                     tooltip: 'Settings',
-                    onPressed: _showSettingsMenu,
+                    onPressedWithContext: _showSettingsMenu,
                   ),
                   const SizedBox(width: 2),
                   PlayerFlatIconButton(

@@ -836,6 +836,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             ),
             // Reconnect/buffering banner
             if (_buffering || _statusBanner != null) _buildBanner(),
+            // Top bar + bottom controls (below guide when open)
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 220),
+              opacity: _controlsVisible ? 1 : 0,
+              child: IgnorePointer(
+                ignoring: !_controlsVisible || _guideVisible,
+                child: _buildOverlay(compact),
+              ),
+            ),
             if (_guideVisible && widget.channelGuide != null)
               IptvChannelGuidePanel(
                 guide: widget.channelGuide!,
@@ -847,15 +856,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                 onChannelSelected: _switchChannel,
                 onClose: () => setState(() => _guideVisible = false),
               ),
-            // Top bar + bottom controls
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 220),
-              opacity: _controlsVisible ? 1 : 0,
-              child: IgnorePointer(
-                ignoring: !_controlsVisible,
-                child: _buildOverlay(compact),
-              ),
-            ),
           ],
         ),
       ),

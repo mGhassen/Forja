@@ -17,7 +17,7 @@ Scroll below the hero for:
 
 1. **Seasons** (TV only) — square season photo cards; tap a season to expand the episode rail
 2. **Cast** — circular photos, actor and character names
-3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio track picker when YouTube offers alternates, subtitles)
+3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio, subtitles, quality, playback speed). When a trailer ends and more are available, an **Up next** prompt lets you continue to the next trailer.
 4. **More Like This** — recommendation row
 
 Torrent search, Stremio/Nuvio streams, and source picking stay in the **Sources** side panel (opened from **Play** in the hero).

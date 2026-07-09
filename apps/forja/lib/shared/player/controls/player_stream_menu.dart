@@ -15,6 +15,7 @@ class PlayerStreamMenu {
     required bool is111477,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     bool providersEnabled = true,
+    BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
     final hasProviders = providers != null && providers.isNotEmpty;
@@ -43,6 +44,7 @@ class PlayerStreamMenu {
         onSelectSource: onSelectSource,
         providersEnabled: providersEnabled,
         margin: margin,
+        anchorContext: anchorContext,
       );
     } else {
       await _openSources(
@@ -53,6 +55,7 @@ class PlayerStreamMenu {
         is111477: is111477,
         onSelectSource: onSelectSource,
         margin: margin,
+        anchorContext: anchorContext,
         onBack: null,
       );
     }
@@ -70,6 +73,7 @@ class PlayerStreamMenu {
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     required bool providersEnabled,
     required EdgeInsets margin,
+    BuildContext? anchorContext,
   }) async {
     final currentSources = sources ?? const <StreamSource>[];
 
@@ -79,6 +83,7 @@ class PlayerStreamMenu {
       leadingIcon: Icons.cloud_outlined,
       alignment: Alignment.bottomLeft,
       margin: margin,
+      anchorContext: anchorContext,
       child: ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
@@ -120,6 +125,7 @@ class PlayerStreamMenu {
                   is111477: is111477,
                   onSelectSource: onSelectSource,
                   margin: margin,
+                  anchorContext: anchorContext,
                   onBack: () => _openServers(
                     context,
                     providers: providers,
@@ -132,6 +138,7 @@ class PlayerStreamMenu {
                     onSelectSource: onSelectSource,
                     providersEnabled: providersEnabled,
                     margin: margin,
+                    anchorContext: anchorContext,
                   ),
                 );
               }
@@ -150,6 +157,7 @@ class PlayerStreamMenu {
     required bool is111477,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     required EdgeInsets margin,
+    BuildContext? anchorContext,
     required VoidCallback? onBack,
   }) async {
     await PlayerPopupPanel.show(
@@ -158,6 +166,7 @@ class PlayerStreamMenu {
       leadingIcon: Icons.dns_outlined,
       alignment: Alignment.bottomLeft,
       margin: margin,
+      anchorContext: anchorContext,
       onBack: onBack,
       child: ListView(
         padding: const EdgeInsets.all(8),

@@ -94,16 +94,16 @@ class AppRouter {
 
   static Future<T?> openTrailerPlayer<T>(
     BuildContext context, {
-    required String youtubeKey,
-    required String title,
+    required List<MediaTrailer> trailers,
+    required int initialIndex,
     Movie? movie,
     String? languageCode,
   }) {
     return Navigator.of(context, rootNavigator: true).push<T>(
       slideRoute(
         (_) => TrailerPlayerScreen(
-          youtubeKey: youtubeKey,
-          title: title,
+          trailers: trailers,
+          initialIndex: initialIndex,
           movie: movie,
           languageCode: languageCode,
         ),

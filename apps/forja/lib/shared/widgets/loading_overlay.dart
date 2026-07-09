@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/player/controls/player_status_roulette.dart';
 
 class LoadingOverlay extends StatefulWidget {
   final Movie movie;
@@ -172,7 +173,12 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                     alignment: Alignment.centerRight,
                     child: Padding(
                       padding: const EdgeInsets.only(right: 28),
-                      child: _ProviderProbeRoulette(probes: _probes),
+                      child: StatusRoulettePanel(
+                        child: StatusRouletteView(
+                          entries: statusEntriesFromProbes(_probes),
+                          header: 'CHECKING SOURCES',
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -243,221 +249,5 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         ),
       ),
     );
-  }
-}
-
-class _ProviderProbeRoulette extends StatelessWidget {
-  const _ProviderProbeRoulette({required this.probes});
-
-  final List<StreamProviderProbe> probes;
-
-  StreamProviderProbe? get _activeProbe {
-    for (final probe in probes) {
-      if (probe.status == StreamProviderProbeStatus.trying) return probe;
-    }
-    return probes.isNotEmpty ? probes.last : null;
-  }
-
-  StreamProviderProbe? get _previousProbe {
-    final active = _activeProbe;
-    if (active == null) return null;
-    final idx = probes.indexOf(active);
-    if (idx <= 0) return null;
-    return probes[idx - 1];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final active = _activeProbe;
-    if (active == null) return const SizedBox.shrink();
-
-    final previous = _previousProbe;
-    final triedCount = probes.where((p) => p.status != StreamProviderProbeStatus.trying).length;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          'CHECKING SOURCES',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.35),
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 2.5,
-            fontFamily: 'Poppins',
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 72,
-          width: 220,
-          child: ClipRect(
-            child: Stack(
-              alignment: Alignment.centerRight,
-              clipBehavior: Clip.hardEdge,
-              children: [
-                if (previous != null &&
-                    previous.status != StreamProviderProbeStatus.trying)
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: _RouletteRow(
-                        probe: previous,
-                        dimmed: true,
-                        compact: true,
-                      ),
-                    ),
-                  ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 420),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  layoutBuilder: (current, previous) => Stack(
-                    alignment: Alignment.centerRight,
-                    clipBehavior: Clip.hardEdge,
-                    children: [
-                      ...previous,
-                      if (current != null) current,
-                    ],
-                  ),
-                  transitionBuilder: (child, animation) {
-                    final slide = Tween<Offset>(
-                      begin: const Offset(0, 0.55),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    ));
-                    return ClipRect(
-                      child: SlideTransition(
-                        position: slide,
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: child,
-                        ),
-                      ),
-                    );
-                  },
-                  child: _RouletteRow(
-                    key: ValueKey('${active.id}-${active.status.name}'),
-                    probe: active,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          triedCount > 0 ? '$triedCount checked' : 'Starting…',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.28),
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            fontFamily: 'Poppins',
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RouletteRow extends StatelessWidget {
-  const _RouletteRow({
-    super.key,
-    required this.probe,
-    this.dimmed = false,
-    this.compact = false,
-  });
-
-  final StreamProviderProbe probe;
-  final bool dimmed;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final isTrying = probe.status == StreamProviderProbeStatus.trying;
-    final isFailed = probe.status == StreamProviderProbeStatus.failed;
-    final alpha = dimmed ? 0.28 : (isFailed ? 0.45 : 0.92);
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (!compact) ...[
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: _ProbeIcon(status: probe.status, dimmed: dimmed),
-          ),
-          const SizedBox(width: 10),
-        ],
-        if (probe.isPreferred && !dimmed) ...[
-          Icon(
-            Icons.star_rounded,
-            size: compact ? 11 : 13,
-            color: Colors.amber.withValues(alpha: isFailed ? 0.4 : 0.85),
-          ),
-          const SizedBox(width: 4),
-        ],
-        Flexible(
-          child: Text(
-            probe.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: alpha),
-              fontSize: compact ? 12 : 15,
-              fontWeight: isTrying && !dimmed ? FontWeight.w600 : FontWeight.w500,
-              fontFamily: 'Poppins',
-            ),
-          ),
-        ),
-        if (isTrying && !dimmed) ...[
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 1.6,
-              color: Colors.white.withValues(alpha: 0.75),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _ProbeIcon extends StatelessWidget {
-  const _ProbeIcon({required this.status, this.dimmed = false});
-
-  final StreamProviderProbeStatus status;
-  final bool dimmed;
-
-  @override
-  Widget build(BuildContext context) {
-    final alpha = dimmed ? 0.35 : 1.0;
-    switch (status) {
-      case StreamProviderProbeStatus.trying:
-        return CircularProgressIndicator(
-          strokeWidth: 1.8,
-          color: Colors.white.withValues(alpha: 0.9 * alpha),
-        );
-      case StreamProviderProbeStatus.failed:
-        return Icon(
-          Icons.close_rounded,
-          size: 16,
-          color: Colors.red.shade400.withValues(alpha: alpha),
-        );
-      case StreamProviderProbeStatus.success:
-        return Icon(
-          Icons.check_rounded,
-          size: 16,
-          color: Color(0xFF22C55E).withValues(alpha: alpha),
-        );
-    }
   }
 }

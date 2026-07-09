@@ -6,6 +6,7 @@ class PlayerAudioMenu {
   static void show(
     BuildContext context, {
     required Player player,
+    BuildContext? anchorContext,
     Alignment alignment = Alignment.bottomLeft,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) {
@@ -18,6 +19,7 @@ class PlayerAudioMenu {
       leadingIcon: Icons.audiotrack_rounded,
       alignment: alignment,
       margin: margin,
+      anchorContext: anchorContext,
       child: ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,

@@ -35,7 +35,8 @@ class MediaDetailsTrailersSection extends StatelessWidget {
             itemCount: trailers.length,
             separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (context, index) => _TrailerCard(
-              trailer: trailers[index],
+              trailers: trailers,
+              index: index,
               movie: movie,
               languageCode: languageCode,
             ),
@@ -48,20 +49,24 @@ class MediaDetailsTrailersSection extends StatelessWidget {
 
 class _TrailerCard extends StatelessWidget {
   const _TrailerCard({
-    required this.trailer,
+    required this.trailers,
+    required this.index,
     this.movie,
     this.languageCode,
   });
 
-  final MediaTrailer trailer;
+  final List<MediaTrailer> trailers;
+  final int index;
   final Movie? movie;
   final String? languageCode;
+
+  MediaTrailer get trailer => trailers[index];
 
   void _open(BuildContext context) {
     AppRouter.openTrailerPlayer(
       context,
-      youtubeKey: trailer.key,
-      title: trailer.name,
+      trailers: trailers,
+      initialIndex: index,
       movie: movie,
       languageCode: languageCode,
     );

@@ -8,6 +8,7 @@ class PlayerQualityMenu {
     required List<HlsQuality> qualities,
     required String? currentQualityUrl,
     required Future<void> Function(HlsQuality quality) onSelect,
+    BuildContext? anchorContext,
     Alignment alignment = Alignment.bottomLeft,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) {
@@ -18,6 +19,7 @@ class PlayerQualityMenu {
         leadingIcon: Icons.hd_outlined,
         alignment: alignment,
         margin: margin,
+        anchorContext: anchorContext,
         child: const Padding(
           padding: EdgeInsets.all(16),
           child: Text(
@@ -35,6 +37,7 @@ class PlayerQualityMenu {
       leadingIcon: Icons.hd_outlined,
       alignment: alignment,
       margin: margin,
+      anchorContext: anchorContext,
       child: ListView(
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
