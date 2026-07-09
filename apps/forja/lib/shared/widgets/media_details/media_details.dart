@@ -6,3 +6,4 @@ export 'torrent_release_metadata.dart';
 export 'torrent_source_filters.dart';
 export 'torrent_source_tiles.dart';
 export 'torrent_sources_panel.dart';
+export 'torrent_sources_panel_chrome.dart';

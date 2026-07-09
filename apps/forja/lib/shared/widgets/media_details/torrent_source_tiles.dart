@@ -8,18 +8,14 @@ class TorrentSourceTile extends StatelessWidget {
   const TorrentSourceTile({
     super.key,
     required this.result,
-    required this.trackerName,
     required this.onPlay,
-    required this.onCopyMagnet,
     this.progress = 0,
     this.isResumable = false,
     this.highlightStart = false,
   });
 
   final TorrentResult result;
-  final String trackerName;
   final VoidCallback onPlay;
-  final VoidCallback onCopyMagnet;
   final double progress;
   final bool isResumable;
   final bool highlightStart;
@@ -60,7 +56,7 @@ class TorrentSourceTile extends StatelessWidget {
               child: Row(
                 children: [
                   SizedBox(
-                    width: isTv ? 48 : 44,
+                    width: isTv ? 56 : 52,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -92,6 +88,19 @@ class TorrentSourceTile extends StatelessWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        if (result.size.trim().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            result.size.trim(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: ForjaShellColors.cinematic.textSecondary,
+                              fontSize: isTv ? 11 : 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -123,29 +132,21 @@ class TorrentSourceTile extends StatelessWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          [
-                            if (meta.isNotEmpty) meta,
-                            result.size,
-                            if (trackerName.isNotEmpty) trackerName,
-                          ].join(' · '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: ForjaShellColors.cinematic.textSecondary,
-                            fontSize: isTv ? 12 : 11,
+                        if (meta.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            meta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: ForjaShellColors.cinematic.textSecondary,
+                              fontSize: isTv ? 12 : 11,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
-                  if (!isTv) ...[
-                    const SizedBox(width: 6),
-                    _iconBtn(Icons.content_copy_rounded, false, onCopyMagnet),
-                    const SizedBox(width: 6),
-                  ],
-                  _iconBtn(Icons.play_arrow_rounded, true, onPlay, large: isTv),
                 ],
               ),
             ),
@@ -230,7 +231,6 @@ class WebstreamingSourceTile extends StatelessWidget {
                 ],
               ),
             ),
-            _iconBtn(Icons.play_arrow_rounded, true, onPlay, large: isTv),
           ],
         ),
       ),
@@ -245,7 +245,6 @@ class StremioSourceTile extends StatelessWidget {
     required this.description,
     required this.leadingIcon,
     required this.leadingColor,
-    required this.actionIcon,
     required this.onTap,
     this.addonName,
     this.showAddonName = false,
@@ -259,7 +258,6 @@ class StremioSourceTile extends StatelessWidget {
   final String description;
   final IconData leadingIcon;
   final Color leadingColor;
-  final IconData actionIcon;
   final VoidCallback onTap;
   final String? addonName;
   final bool showAddonName;
@@ -357,7 +355,6 @@ class StremioSourceTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  _iconBtn(actionIcon, true, onTap, large: isTv),
                 ],
               ),
             ),
@@ -383,32 +380,6 @@ class StremioSourceTile extends StatelessWidget {
   }
 }
 
-Widget _iconBtn(
-  IconData icon,
-  bool highlight,
-  VoidCallback onTap, {
-  bool large = false,
-}) =>
-    GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: large ? 40 : 32,
-        height: large ? 40 : 32,
-        decoration: BoxDecoration(
-          color: highlight ? ForjaShellColors.chipSelectedBg : Colors.white.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: highlight ? ForjaShellColors.chipSelectedBorder : Colors.white12,
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: large ? 22 : 17,
-          color: highlight ? ForjaShellColors.iconActive : Colors.white54,
-        ),
-      ),
-    );
-
 StremioTilePresentation stremioTilePresentation(Map<String, dynamic> stream, {required bool isResumable}) {
   final externalUrl = stream['externalUrl']?.toString();
   final isExternal = externalUrl != null && externalUrl.isNotEmpty;
@@ -418,41 +389,33 @@ StremioTilePresentation stremioTilePresentation(Map<String, dynamic> stream, {re
 
   IconData leadingIcon;
   Color leadingColor;
-  IconData actionIcon;
   if (isStremioLink) {
     final parsed = StremioService.parseMetaLink(externalUrl);
     final action = parsed?['action'];
     if (action == 'detail') {
       leadingIcon = Icons.movie_outlined;
       leadingColor = Colors.amberAccent;
-      actionIcon = Icons.open_in_new_rounded;
     } else if (action == 'search') {
       leadingIcon = Icons.search_rounded;
       leadingColor = Colors.cyanAccent;
-      actionIcon = Icons.search_rounded;
     } else {
       leadingIcon = Icons.explore_outlined;
       leadingColor = Colors.tealAccent;
-      actionIcon = Icons.open_in_new_rounded;
     }
   } else if (isWebLink) {
     leadingIcon = Icons.language_rounded;
     leadingColor = Colors.lightBlueAccent;
-    actionIcon = Icons.open_in_browser_rounded;
   } else if (isResumable) {
     leadingIcon = Icons.play_circle_filled_rounded;
     leadingColor = ForjaShellColors.textPrimary;
-    actionIcon = Icons.play_arrow_rounded;
   } else {
     leadingIcon = Icons.extension_rounded;
     leadingColor = Colors.blueAccent;
-    actionIcon = Icons.play_arrow_rounded;
   }
 
   return StremioTilePresentation(
     leadingIcon: leadingIcon,
     leadingColor: leadingColor,
-    actionIcon: actionIcon,
     isExternal: isExternal,
   );
 }
@@ -461,12 +424,10 @@ class StremioTilePresentation {
   const StremioTilePresentation({
     required this.leadingIcon,
     required this.leadingColor,
-    required this.actionIcon,
     required this.isExternal,
   });
 
   final IconData leadingIcon;
   final Color leadingColor;
-  final IconData actionIcon;
   final bool isExternal;
 }

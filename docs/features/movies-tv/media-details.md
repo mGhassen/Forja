@@ -20,7 +20,7 @@ Scroll below the hero for:
 3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio, subtitles, quality, playback speed). When a trailer ends and more are available, an **Up next** prompt lets you continue to the next trailer.
 4. **More Like This** — recommendation row
 
-Torrent search and Stremio/Nuvio streams stay in the **Sources** side panel. **Webstreaming** (VidLink, WebStreamr, Videasy, …) is started from the hero green **Play** / **Resume** (play icon) — it is not a Sources tab. Only torrent/Stremio play sources enabled in **Settings → Playback** appear in the panel.
+Torrent search and Stremio streams share one **Sources** list. The panel chrome is compact: **Sources** + count, then **All / Torrents / Stremio** (and **Nuvio** when installed) chips, optional provider chips when filtered, then search + filters. **Webstreaming** is started from the hero green **Play** / **Resume** (play icon) — it is not in Sources. Only torrent/Stremio play sources enabled in **Settings → Playback** appear in the panel.
 
 ## How to open it
 
@@ -39,6 +39,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 - For TV: pick a season from square cards, then tap an episode in the rail to select it and open **Sources** (resume position when you have history is applied when you pick a stream)
 - Browse main cast and “More Like This” recommendations below the hero
 - Search and sort torrent results in Sources (seeders, size, etc.)
+- Filter Sources by quality, size (`<1 GB` · `1–3 GB` · `3–8 GB` · `8–20 GB` · `20 GB+`, multi-select OR), language, tech, and audio
 - Resolve torrents through debrid when configured
 - Mark watched / unwatched per episode
 - Use [Webstreaming](direct-streaming-mode.md) via the hero green **Play** / **Resume** (play icon) button

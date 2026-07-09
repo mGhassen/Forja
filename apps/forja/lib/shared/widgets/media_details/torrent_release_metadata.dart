@@ -21,6 +21,57 @@ class TorrentReleaseMetadata {
   static const qualityFilters = ['4K', '1080p', '720p', '480p'];
   static const techFilters = ['HDR', 'DV', 'REMUX', 'WEB-DL', 'WEBRip', 'BluRay', '10bit'];
 
+  /// Preset size ranges for Sources filters (multi-select OR).
+  static const sizeFilters = [
+    '<1 GB',
+    '1–3 GB',
+    '3–8 GB',
+    '8–20 GB',
+    '20 GB+',
+  ];
+
+  static const _gb = 1024.0 * 1024.0 * 1024.0;
+
+  /// Parses a human size string (`1.4 GB`, `850 MB`) or the first size token
+  /// found inside a longer title/description. Returns `0` when unknown.
+  static double parseSizeBytes(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) return 0;
+    final match = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(tb|t|gb|g|mb|m|kb|k)\b',
+      caseSensitive: false,
+    ).firstMatch(s);
+    if (match == null) {
+      final value = double.tryParse(s.replaceAll(RegExp(r'[^0-9.]'), ''));
+      return value ?? 0;
+    }
+    final value = double.tryParse(match.group(1)!) ?? 0;
+    final unit = match.group(2)!.toLowerCase();
+    if (unit.startsWith('t')) return value * _gb * 1024;
+    if (unit.startsWith('g')) return value * _gb;
+    if (unit.startsWith('m')) return value * 1024 * 1024;
+    if (unit.startsWith('k')) return value * 1024;
+    return value;
+  }
+
+  static String? sizeRangeForBytes(double bytes) {
+    if (bytes <= 0) return null;
+    final gb = bytes / _gb;
+    if (gb < 1) return '<1 GB';
+    if (gb < 3) return '1–3 GB';
+    if (gb < 8) return '3–8 GB';
+    if (gb < 20) return '8–20 GB';
+    return '20 GB+';
+  }
+
+  /// Multi-select OR: keep if size falls in any selected range.
+  /// Unknown size fails when any size filter is active.
+  static bool matchesSizeFilters(double bytes, Set<String> sizeFilters) {
+    if (sizeFilters.isEmpty) return true;
+    final range = sizeRangeForBytes(bytes);
+    return range != null && sizeFilters.contains(range);
+  }
+
   static TorrentReleaseMetadata parse(String name) {
     final n = name.toUpperCase();
     return TorrentReleaseMetadata(
@@ -230,19 +281,37 @@ List<TorrentResult> filterTorrentResults(
   Set<String> languageFilters = const {},
   Set<String> techFilters = const {},
   Set<String> audioFilters = const {},
+  Set<String> sizeFilters = const {},
 }) {
   return results
-      .where(
-        (r) => TorrentReleaseMetadata.parse(r.name).matchesFiltersForName(
+      .where((r) {
+        if (!TorrentReleaseMetadata.parse(r.name).matchesFiltersForName(
           r.name,
           searchQuery: searchQuery,
           qualityFilters: qualityFilters,
           languageFilters: languageFilters,
           techFilters: techFilters,
           audioFilters: audioFilters,
-        ),
-      )
+        )) {
+          return false;
+        }
+        return TorrentReleaseMetadata.matchesSizeFilters(
+          r.sizeInBytes > 0
+              ? r.sizeInBytes
+              : TorrentReleaseMetadata.parseSizeBytes(r.size),
+          sizeFilters,
+        );
+      })
       .toList();
+}
+
+Set<String> collectSizeRanges(Iterable<double> sizesInBytes) {
+  final out = <String>{};
+  for (final bytes in sizesInBytes) {
+    final range = TorrentReleaseMetadata.sizeRangeForBytes(bytes);
+    if (range != null) out.add(range);
+  }
+  return out;
 }
 
 Set<String> collectQualities(Iterable<String> names) {

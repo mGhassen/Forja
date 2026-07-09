@@ -171,6 +171,57 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
   }
 }
 
+class TorrentSourceKindFilter extends StatelessWidget {
+  const TorrentSourceKindFilter({
+    super.key,
+    required this.selected,
+    required this.showTorrents,
+    required this.showStremio,
+    required this.showNuvio,
+    required this.onChanged,
+  });
+
+  final String selected;
+  final bool showTorrents;
+  final bool showStremio;
+  final bool showNuvio;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final options = <({String id, String label, IconData icon})>[
+      if (showTorrents && showStremio)
+        (id: 'all', label: 'All', icon: Icons.apps_rounded),
+      if (showTorrents)
+        (id: 'torrents', label: 'Torrents', icon: Icons.downloading_rounded),
+      if (showStremio)
+        (id: 'stremio', label: 'Stremio', icon: Icons.extension_outlined),
+      if (showNuvio)
+        (id: 'nuvio', label: 'Nuvio', icon: Icons.code_rounded),
+    ];
+    if (options.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      decoration: _torrentPanelTrackDecoration(),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          for (final option in options)
+            Expanded(
+              child: _SourceTab(
+                label: option.label,
+                icon: option.icon,
+                selected: selected == option.id,
+                compact: true,
+                onTap: () => onChanged(option.id),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class TorrentSourceToggle extends StatelessWidget {
   const TorrentSourceToggle({
     super.key,
@@ -197,44 +248,27 @@ class TorrentSourceToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 420;
-    return Container(
-      decoration: _torrentPanelTrackDecoration(),
-      padding: const EdgeInsets.all(4),
-      child: Row(
-        children: [
-          if (showStremio)
-            Expanded(
-              child: _SourceTab(
-                label: 'Stremio Addons',
-                icon: Icons.extension_outlined,
-                selected: isStremio,
-                compact: compact,
-                onTap: onStremioTap,
-              ),
-            ),
-          if (showNuvio)
-            Expanded(
-              child: _SourceTab(
-                label: 'Nuvio Addons',
-                icon: Icons.code_rounded,
-                selected: isNuvio,
-                compact: compact,
-                onTap: onNuvioTap,
-              ),
-            ),
-          if (showTorrent)
-            Expanded(
-              child: _SourceTab(
-                label: 'Torrent Sources',
-                icon: Icons.downloading_rounded,
-                selected: isTorrent,
-                compact: compact,
-                onTap: onTorrentTap,
-              ),
-            ),
-        ],
-      ),
+    final selected = isNuvio
+        ? 'nuvio'
+        : isTorrent
+            ? 'torrents'
+            : 'stremio';
+    return TorrentSourceKindFilter(
+      selected: selected,
+      showTorrents: showTorrent,
+      showStremio: showStremio,
+      showNuvio: showNuvio,
+      onChanged: (id) {
+        switch (id) {
+          case 'torrents':
+            onTorrentTap();
+          case 'nuvio':
+            onNuvioTap();
+          case 'stremio':
+          case 'all':
+            onStremioTap();
+        }
+      },
     );
   }
 }
@@ -256,13 +290,7 @@ class _SourceTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shortLabel = compact
-        ? (label.startsWith('Stremio')
-            ? 'Stremio'
-            : label.startsWith('Nuvio')
-                ? 'Nuvio'
-                : 'Torrent')
-        : label;
+    final shortLabel = label;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -323,10 +351,12 @@ class TorrentSourceChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (chips.isEmpty) return const SizedBox.shrink();
+    final showArrows = chips.length > 3;
 
     return Row(
       children: [
-        _ScrollArrow(icon: Icons.arrow_back_ios_rounded, onTap: onScrollBack),
+        if (showArrows)
+          _ScrollArrow(icon: Icons.arrow_back_ios_rounded, onTap: onScrollBack),
         Expanded(
           child: SingleChildScrollView(
             controller: scrollController,
@@ -343,13 +373,13 @@ class TorrentSourceChips extends StatelessWidget {
                   selected = selectedSourceId == id;
                 }
                 return Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.only(right: 6),
                   child: GestureDetector(
                     onTap: () => onChipTap(id),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: _torrentPanelChipDecoration(selected: selected),
+                      duration: const Duration(milliseconds: 160),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: _torrentPanelChipDecoration(selected: selected, radius: 999),
                       child: Text(
                         chip['label'] as String,
                         style: TextStyle(
@@ -367,7 +397,8 @@ class TorrentSourceChips extends StatelessWidget {
             ),
           ),
         ),
-        _ScrollArrow(icon: Icons.arrow_forward_ios_rounded, onTap: onScrollForward),
+        if (showArrows)
+          _ScrollArrow(icon: Icons.arrow_forward_ios_rounded, onTap: onScrollForward),
       ],
     );
   }
@@ -746,6 +777,9 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
     this.showAudioFilters = false,
     this.activeAudioFilters = const {},
     this.onAudioFiltersChanged,
+    this.availableSizeRanges = const {},
+    this.activeSizeFilters = const {},
+    this.onSizeFiltersChanged,
     this.sortPreference,
     this.onSortChanged,
   });
@@ -765,6 +799,9 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
   final bool showAudioFilters;
   final Set<String> activeAudioFilters;
   final ValueChanged<Set<String>>? onAudioFiltersChanged;
+  final Set<String> availableSizeRanges;
+  final Set<String> activeSizeFilters;
+  final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final String? sortPreference;
   final ValueChanged<String>? onSortChanged;
 
@@ -772,7 +809,8 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
       activeQualityFilters.length +
       activeLanguageFilters.length +
       activeTechFilters.length +
-      activeAudioFilters.length;
+      activeAudioFilters.length +
+      activeSizeFilters.length;
 
   Future<void> _openFilters(BuildContext context) async {
     await showModalBottomSheet<void>(
@@ -785,22 +823,26 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
         availableQualities: availableQualities,
         availableLanguages: availableLanguages,
         availableTech: availableTech,
+        availableSizeRanges: availableSizeRanges,
         activeQualityFilters: activeQualityFilters,
         activeLanguageFilters: activeLanguageFilters,
         activeTechFilters: activeTechFilters,
         activeAudioFilters: activeAudioFilters,
+        activeSizeFilters: activeSizeFilters,
         showAudioFilters: showAudioFilters,
         sortPreference: sortPreference,
         onQualityFiltersChanged: onQualityFiltersChanged,
         onLanguageFiltersChanged: onLanguageFiltersChanged,
         onTechFiltersChanged: onTechFiltersChanged,
         onAudioFiltersChanged: onAudioFiltersChanged,
+        onSizeFiltersChanged: onSizeFiltersChanged,
         onSortChanged: onSortChanged,
         onClearAll: () {
           onQualityFiltersChanged({});
           onLanguageFiltersChanged({});
           onTechFiltersChanged({});
           onAudioFiltersChanged?.call({});
+          onSizeFiltersChanged?.call({});
         },
       ),
     );
@@ -813,6 +855,7 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
         (availableQualities.isNotEmpty ||
             availableLanguages.isNotEmpty ||
             availableTech.isNotEmpty ||
+            availableSizeRanges.isNotEmpty ||
             showAudioFilters ||
             sortPreference != null);
 
@@ -954,10 +997,12 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
     required this.availableQualities,
     required this.availableLanguages,
     required this.availableTech,
+    required this.availableSizeRanges,
     required this.activeQualityFilters,
     required this.activeLanguageFilters,
     required this.activeTechFilters,
     required this.activeAudioFilters,
+    required this.activeSizeFilters,
     required this.showAudioFilters,
     required this.onQualityFiltersChanged,
     required this.onLanguageFiltersChanged,
@@ -966,21 +1011,25 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
     this.sortPreference,
     this.onSortChanged,
     this.onAudioFiltersChanged,
+    this.onSizeFiltersChanged,
   });
 
   final Set<String> availableQualities;
   final Set<String> availableLanguages;
   final Set<String> availableTech;
+  final Set<String> availableSizeRanges;
   final Set<String> activeQualityFilters;
   final Set<String> activeLanguageFilters;
   final Set<String> activeTechFilters;
   final Set<String> activeAudioFilters;
+  final Set<String> activeSizeFilters;
   final bool showAudioFilters;
   final String? sortPreference;
   final ValueChanged<Set<String>> onQualityFiltersChanged;
   final ValueChanged<Set<String>> onLanguageFiltersChanged;
   final ValueChanged<Set<String>> onTechFiltersChanged;
   final ValueChanged<Set<String>>? onAudioFiltersChanged;
+  final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final ValueChanged<String>? onSortChanged;
   final VoidCallback onClearAll;
 
@@ -993,6 +1042,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
   late Set<String> _language;
   late Set<String> _tech;
   late Set<String> _audio;
+  late Set<String> _size;
   late String? _sort;
 
   @override
@@ -1002,6 +1052,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     _language = Set<String>.from(widget.activeLanguageFilters);
     _tech = Set<String>.from(widget.activeTechFilters);
     _audio = Set<String>.from(widget.activeAudioFilters);
+    _size = Set<String>.from(widget.activeSizeFilters);
     _sort = widget.sortPreference;
   }
 
@@ -1077,6 +1128,19 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                           label: q,
                           selected: _quality.contains(q),
                           onTap: () => _toggle(_quality, q, widget.onQualityFiltersChanged),
+                        )),
+              ),
+            if (widget.availableSizeRanges.isNotEmpty &&
+                widget.onSizeFiltersChanged != null)
+              _sheetSection(
+                'Size',
+                TorrentReleaseMetadata.sizeFilters
+                    .where(widget.availableSizeRanges.contains)
+                    .map((s) => _sheetChip(
+                          label: s,
+                          selected: _size.contains(s),
+                          onTap: () =>
+                              _toggle(_size, s, widget.onSizeFiltersChanged!),
                         )),
               ),
             if (widget.availableLanguages.isNotEmpty)
