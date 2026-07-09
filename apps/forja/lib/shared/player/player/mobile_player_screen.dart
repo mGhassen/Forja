@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -11,7 +10,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:forja/shared/utils/language_display.dart';
 import 'package:rust/rust.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -28,8 +26,16 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'menus.dart';
 import 'package:forja/shared/services/pip_service.dart';
+import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
-import 'package:forja/shared/player/controls/stream_source_panel.dart';
+import 'package:forja/shared/player/controls/player_stream_menu.dart';
+import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/player_provider_menu.dart';
+import 'package:forja/shared/player/controls/player_episode_menu.dart';
+import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
+import 'package:forja/shared/player/controls/player_audio_menu.dart';
+import 'package:forja/shared/player/controls/player_quality_menu.dart';
+import 'package:forja/shell/app_router.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GLASS PRIMITIVES  (mobile — press feedback only, no hover)
@@ -467,9 +473,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _isInitPlaybackRunning = false;
   bool _isFetchingSubs = false;
   String? _selectedExternalSubUrl;
-  /// Currently opened language-folder key in the subtitle picker, or null
-  /// when the picker shows the folder list. Persists across menu open/close.
-  String? _subsMenuFolder;
 
   // ── Feature State ─────────────────────────────────────────────────────────
   _HwDecMode _hwDecMode = _HwDecMode.autoSafe;
@@ -1783,351 +1786,22 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   Future<void> _maybeAutoPickExternalSubtitle() async {}
 
   void _showSubtitlesMenu() {
-    String searchQuery = '';
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      isScrollControlled: true,
-      constraints:
-          BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
-      builder: (context) {
-        return StatefulBuilder(builder: (context, setModalState) {
-          final current = _player.state.track.subtitle;
-          final inFolder = _subsMenuFolder != null;
-
-          // Embedded tracks (only at root view).
-          final embedded =
-              _player.state.tracks.subtitle.where((t) {
-            final isExternal = t.id.startsWith('http');
-            final isKnownExternal = _externalSubtitles
-                .any((s) => s['display'] == t.title && s['language'] == t.language);
-            final matchesSearch = searchQuery.isEmpty ||
-                (t.title?.toLowerCase().contains(searchQuery.toLowerCase()) ??
-                    false) ||
-                (t.language?.toLowerCase().contains(searchQuery.toLowerCase()) ??
-                    false);
-            return t.id != 'no' && !isExternal && !isKnownExternal && matchesSearch;
-          }).toList();
-
-          // Group online subs by language.
-          final Map<String, List<Map<String, dynamic>>> byLang = {};
-          for (final s in _externalSubtitles) {
-            final key = languageGroupKey(s['language'] as String?);
-            byLang.putIfAbsent(key, () => []).add(s);
-          }
-          final folderKeys = byLang.keys.toList()..sort(compareLanguageCodes);
-
-          List<Map<String, dynamic>> online;
-          if (inFolder) {
-            online = (byLang[_subsMenuFolder!] ?? []).where((s) {
-              if (searchQuery.isEmpty) return true;
-              final q = searchQuery.toLowerCase();
-              return (s['display'] ?? '')
-                      .toString()
-                      .toLowerCase()
-                      .contains(q) ||
-                  (s['language'] ?? '')
-                      .toString()
-                      .toLowerCase()
-                      .contains(q);
-            }).toList();
-          } else {
-            online = const [];
-          }
-
-          final visibleFolders = !inFolder && searchQuery.isNotEmpty
-              ? folderKeys.where((k) {
-                  final q = searchQuery.toLowerCase();
-                  return languageDisplayName(k).toLowerCase().contains(q) ||
-                      k.contains(q);
-                }).toList()
-              : folderKeys;
-
-          return SafeArea(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                width: 40, height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10, left: 4, right: 4),
-                child: Row(
-                  children: [
-                    if (inFolder)
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_rounded,
-                            color: Colors.white),
-                        tooltip: 'Back to languages',
-                        onPressed: () {
-                          setModalState(() {
-                            searchQuery = '';
-                            _subsMenuFolder = null;
-                          });
-                          setState(() {});
-                        },
-                      )
-                    else
-                      const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                          inFolder
-                              ? languageDisplayName(_subsMenuFolder)
-                              : 'Subtitles',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold)),
-                    ),
-                    IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.4)),
-                        ),
-                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.tune_rounded, color: Color(0xFF7C3AED), size: 20),
-                          SizedBox(width: 4),
-                          Text('Style', style: TextStyle(color: Color(0xFF7C3AED), fontSize: 12, fontWeight: FontWeight.w600)),
-                        ]),
-                      ),
-                      tooltip: 'Subtitle settings',
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _showSubtitleSettings();
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: TextField(
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: inFolder
-                        ? 'Search in ${languageDisplayName(_subsMenuFolder)}...'
-                        : 'Search subtitles...',
-                    hintStyle: const TextStyle(color: Colors.white54),
-                    prefixIcon:
-                        const Icon(Icons.search, color: Colors.white54),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.08),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  ),
-                  onChanged: (v) => setModalState(() => searchQuery = v),
-                ),
-              ),
-              if (_isFetchingSubs)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: LinearProgressIndicator(
-                      color: Color(0xFF7C3AED),
-                      backgroundColor: Colors.white10),
-                ),
-              Expanded(
-                child: ListView(children: [
-                  if (!inFolder) ...[
-                    ListTile(
-                      leading:
-                          const Icon(Icons.close, color: Colors.white70),
-                      title: const Text('Off',
-                          style: TextStyle(color: Colors.white)),
-                      trailing: current.id == 'no'
-                          ? const Icon(Icons.check, color: Color(0xFF7C3AED))
-                          : null,
-                      onTap: () {
-                        _selectedExternalSubUrl = null;
-                        _player.setSubtitleTrack(SubtitleTrack.no());
-                        _updateSubVisibility(SubtitleTrack.no());
-                        Navigator.pop(context);
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.file_upload_outlined,
-                          color: Colors.white70),
-                      title: const Text('Load from file',
-                          style: TextStyle(color: Colors.white)),
-                      onTap: () async {
-                        final result = await FilePicker.platform.pickFiles(
-                          type: FileType.custom,
-                          allowedExtensions: ['srt', 'ass', 'ssa', 'vtt'],
-                        );
-                        if (result != null &&
-                            result.files.single.path != null) {
-                          final file = File(result.files.single.path!);
-                          final content = await file.readAsString();
-                          final name = result.files.single.name;
-                          _selectedExternalSubUrl = null;
-                          final subTrack = SubtitleTrack.data(
-                              content, title: name, language: 'und');
-                          _player.setSubtitleTrack(subTrack);
-                          // Detect ASS from file extension since data tracks have no codec
-                          final isAssFile = name.toLowerCase().endsWith('.ass') ||
-                              name.toLowerCase().endsWith('.ssa');
-                          setState(() => _isNativeSubtitle = isAssFile);
-                          if (_player.platform is NativePlayer) {
-                            (_player.platform as NativePlayer)
-                                .setProperty('sub-visibility', isAssFile ? 'yes' : 'no');
-                          }
-                          if (context.mounted) Navigator.pop(context);
-                        }
-                      },
-                    ),
-                    if (embedded.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Text('EMBEDDED',
-                            style: TextStyle(
-                                color: Color(0xFF7C3AED),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                      ...embedded.map((t) {
-                        final sel = t.id == current.id &&
-                            _selectedExternalSubUrl == null;
-                        return ListTile(
-                          title: Text(
-                              t.title ?? t.language ?? 'Track ${t.id}',
-                              style: TextStyle(
-                                  color: sel
-                                      ? const Color(0xFF7C3AED)
-                                      : Colors.white,
-                                  fontWeight: sel
-                                      ? FontWeight.bold
-                                      : FontWeight.normal)),
-                          trailing: sel
-                              ? const Icon(Icons.check,
-                                  color: Color(0xFF7C3AED))
-                              : null,
-                          onTap: () {
-                            _selectedExternalSubUrl = null;
-                            _player.setSubtitleTrack(t);
-                            _updateSubVisibility(t);
-                            Navigator.pop(context);
-                          },
-                        );
-                      }),
-                    ],
-                    if (visibleFolders.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Text('ONLINE LANGUAGES',
-                            style: TextStyle(
-                                color: Color(0xFF7C3AED),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                      ...visibleFolders.map((key) {
-                        final list = byLang[key]!;
-                        final hasSelected = list.any(
-                            (s) => s['url'] == _selectedExternalSubUrl);
-                        return ListTile(
-                          leading: Icon(
-                            hasSelected
-                                ? Icons.folder_rounded
-                                : Icons.folder_outlined,
-                            color: hasSelected
-                                ? const Color(0xFF7C3AED)
-                                : Colors.white70,
-                          ),
-                          title: Text(languageDisplayName(key),
-                              style: TextStyle(
-                                  color: hasSelected
-                                      ? const Color(0xFF7C3AED)
-                                      : Colors.white,
-                                  fontWeight: hasSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal)),
-                          subtitle: Text(
-                              '${list.length} subtitle${list.length == 1 ? '' : 's'}',
-                              style: const TextStyle(
-                                  color: Colors.white54, fontSize: 12)),
-                          trailing: const Icon(
-                              Icons.chevron_right_rounded,
-                              color: Colors.white54),
-                          onTap: () {
-                            setModalState(() {
-                              searchQuery = '';
-                              _subsMenuFolder = key;
-                            });
-                            setState(() {});
-                          },
-                        );
-                      }),
-                    ],
-                    if (embedded.isEmpty && visibleFolders.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Center(
-                            child: Text('No subtitles found',
-                                style:
-                                    TextStyle(color: Colors.white54))),
-                      ),
-                  ] else ...[
-                    if (online.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Center(
-                            child: Text('No subtitles match',
-                                style:
-                                    TextStyle(color: Colors.white54))),
-                      )
-                    else
-                      ...online.map((s) {
-                        final sel = s['url'] == _selectedExternalSubUrl;
-                        return ListTile(
-                          title: Text(s['display'] ?? 'Unknown',
-                              style: TextStyle(
-                                  color: sel
-                                      ? const Color(0xFF7C3AED)
-                                      : Colors.white,
-                                  fontWeight: sel
-                                      ? FontWeight.bold
-                                      : FontWeight.normal)),
-                          subtitle: Text(
-                              (s['translated'] == true
-                                      ? 'Translated · '
-                                      : '') +
-                                  (s['sourceName']?.toString() ?? ''),
-                              style: TextStyle(
-                                  color: sel
-                                      ? const Color(0xFF7C3AED)
-                                          .withValues(alpha: 0.7)
-                                      : Colors.white54,
-                                  fontSize: 12)),
-                          trailing: sel
-                              ? const Icon(Icons.check,
-                                  color: Color(0xFF7C3AED))
-                              : null,
-                          onTap: () async {
-                            _selectedExternalSubUrl = s['url'];
-                            await _loadOnlineSubtitle(s);
-                            if (context.mounted) Navigator.pop(context);
-                          },
-                        );
-                      }),
-                  ],
-                ]),
-              ),
-            ]),
-          );
-        });
-      },
+    PlayerSubtitleMenu.show(
+      context,
+      player: _player,
+      externalSubtitles: _externalSubtitles,
+      selectedExternalSubUrl: _selectedExternalSubUrl,
+      isFetchingSubs: _isFetchingSubs,
+      updateSubVisibility: _updateSubVisibility,
+      onExternalUrlChanged: (url) => setState(() => _selectedExternalSubUrl = url),
+      onNativeSubtitleChanged: (v) => setState(() => _isNativeSubtitle = v),
+      loadOnlineSubtitle: _loadOnlineSubtitle,
+      onSubtitleSettings: _showSubtitleSettings,
+      excludeKnownExternalEmbedded: true,
+      margin: EdgeInsets.only(
+        left: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 76,
+      ),
     );
   }
 
@@ -2144,6 +1818,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     showDialog(
       context: context,
+      useRootNavigator: false,
       builder: (context) {
         final screenW = MediaQuery.of(context).size.width;
         final dialogW = (screenW * 0.9).clamp(280.0, 420.0);
@@ -2373,45 +2048,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _showAudioMenu() {
-    final tracks =
-        _player.state.tracks.audio.where((t) => t.id != 'no').toList();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Audio Tracks',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-          ),
-          if (tracks.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('No audio tracks found',
-                  style: TextStyle(color: Colors.white54)),
-            )
-          else
-            ...tracks.map((t) => ListTile(
-                  leading: const Icon(Icons.audiotrack,
-                      color: Colors.white70),
-                  title: Text(t.title ?? t.language ?? 'Track ${t.id}',
-                      style: const TextStyle(color: Colors.white)),
-                  trailing: t.id == _player.state.track.audio.id
-                      ? const Icon(Icons.check,
-                          color: Color(0xFF7C3AED))
-                      : null,
-                  onTap: () {
-                    _player.setAudioTrack(t);
-                    Navigator.pop(context);
-                  },
-                )),
-        ]),
+    PlayerAudioMenu.show(
+      context,
+      player: _player,
+      margin: EdgeInsets.only(
+        left: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 76,
       ),
     );
   }
@@ -2448,105 +2090,67 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   }
 
   void _showQualityMenu() {
-    final qs = _hlsQualitiesNotifier.value;
-    if (qs == null || qs.length < 2) return;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 40, height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2)),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Quality',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-          ),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: qs.length,
-              itemBuilder: (context, i) {
-                final q = qs[i];
-                final isCurrent = q.url == _currentQualityUrl;
-                return ListTile(
-                  leading: Icon(
-                    q.isAuto ? Icons.auto_awesome_outlined : Icons.high_quality_outlined,
-                    color: isCurrent ? const Color(0xFF7C3AED) : Colors.white70,
-                  ),
-                  title: Text(
-                    q.label,
-                    style: TextStyle(
-                      color: isCurrent ? const Color(0xFF7C3AED) : Colors.white,
-                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  subtitle: q.bandwidth != null
-                      ? Text(
-                          '${(q.bandwidth! / 1000).round()} kbps',
-                          style: TextStyle(
-                            color: isCurrent
-                                ? const Color(0xFF7C3AED).withValues(alpha: 0.7)
-                                : Colors.white54,
-                            fontSize: 11,
-                          ),
-                        )
-                      : null,
-                  trailing: isCurrent
-                      ? const Icon(Icons.check, color: Color(0xFF7C3AED))
-                      : null,
-                  onTap: () async {
-                    Navigator.pop(context);
-                    if (isCurrent) return;
-                    final pos = _positionNotifier.value;
-                    _currentQualityUrl = q.url;
-                    if (mounted) setState(() {});
-                    if (_hlsMasterHeaders != null && _player.platform is NativePlayer) {
-                      final ref = _hlsMasterHeaders!['Referer'] ??
-                          _hlsMasterHeaders!['referer'];
-                      if (ref != null) {
-                        await (_player.platform as NativePlayer)
-                            .setProperty('referrer', ref);
-                      }
-                    }
-                    await _player.open(
-                      Media(q.url, httpHeaders: _hlsMasterHeaders),
-                    );
-                    if (pos.inSeconds > 0) await _player.seek(pos);
-                  },
-                );
-              },
-            ),
-          ),
-        ]),
+    final qs = _hlsQualitiesNotifier.value ?? const <HlsQuality>[];
+    PlayerQualityMenu.show(
+      context,
+      qualities: qs,
+      currentQualityUrl: _currentQualityUrl,
+      onSelect: _switchQuality,
+      margin: EdgeInsets.only(
+        left: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 76,
       ),
     );
+  }
+
+  Future<void> _switchQuality(HlsQuality q) async {
+    final pos = _positionNotifier.value;
+    _currentQualityUrl = q.url;
+    if (mounted) setState(() {});
+    if (_hlsMasterHeaders != null && _player.platform is NativePlayer) {
+      final ref = _hlsMasterHeaders!['Referer'] ??
+          _hlsMasterHeaders!['referer'];
+      if (ref != null) {
+        await (_player.platform as NativePlayer)
+            .setProperty('referrer', ref);
+      }
+    }
+    await _player.open(
+      Media(q.url, httpHeaders: _hlsMasterHeaders),
+    );
+    if (pos.inSeconds > 0) await _player.seek(pos);
+    _startHideTimer();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   //  SOURCE SELECTION (for Amri provider)
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _showSourcesMenu() {
-    StreamSourcePanel.show(
+  void _showStreamMenu() {
+    final hasProviders = widget.providers != null &&
+        widget.providers!.isNotEmpty &&
+        widget.movie != null &&
+        widget.magnetLink == null &&
+        widget.activeProvider != 'stremio_direct';
+    if (!hasProviders &&
+        (_currentSources == null || _currentSources!.isEmpty)) {
+      return;
+    }
+    PlayerStreamMenu.show(
       context,
-      sources: _currentSources ?? [],
+      providers: hasProviders ? widget.providers : null,
+      currentProviderId: _currentProvider,
+      onSelectProvider: _switchProvider,
+      sources: _currentSources,
       currentUrl: _currentUrl,
       current111477FileUrl: _current111477FileUrl,
       is111477: _currentProvider == 'service111477',
-      useSidePanel: false,
-      onSelect: _switchToStreamSource,
+      onSelectSource: _switchToStreamSource,
+      providersEnabled: !_isSwitchingProvider,
+      margin: EdgeInsets.only(
+        left: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 76,
+      ),
     );
   }
 
@@ -2658,67 +2262,363 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
   }
 
-  void _showProviderMenu() {
-    if (widget.providers == null || widget.providers!.isEmpty || widget.movie == null) {
+  Future<({int season, int episode})?> _computeNextEpisode() async {
+    if (widget.movie == null ||
+        widget.selectedSeason == null ||
+        widget.selectedEpisode == null) {
+      return null;
+    }
+    final tmdb = TmdbService();
+    final tvId = widget.movie!.id;
+    var nextSeason = widget.selectedSeason!;
+    var nextEpisode = widget.selectedEpisode! + 1;
+
+    final seasonData = await tmdb.getTvSeasonDetails(tvId, nextSeason);
+    final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
+    final maxEp = episodes.isNotEmpty
+        ? episodes.map((e) => e['episode_number'] as int).reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    if (nextEpisode > maxEp) {
+      final totalSeasons = await tmdb.getTvSeasonCount(tvId);
+      if (nextSeason < totalSeasons) {
+        nextSeason++;
+        nextEpisode = 1;
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No more episodes available')),
+          );
+        }
+        return null;
+      }
+    }
+    return (season: nextSeason, episode: nextEpisode);
+  }
+
+  Future<void> _switchToEpisode(int season, int episode) async {
+    if (widget.movie == null) return;
+    if (!_isLoadingNextEp && mounted) setState(() => _isLoadingNextEp = true);
+
+    try {
+      debugPrint('[EpSwitch] Playing S${season}E$episode');
+      _saveWatchHistory();
+
+      String? streamUrl;
+      String? magnetLink;
+      int? fileIndex;
+      Map<String, String>? headers;
+      List<StreamSource>? nextSources;
+      String? activeProvider = widget.activeProvider;
+
+      final isTorrent = widget.magnetLink != null &&
+          widget.activeProvider != 'stremio_direct';
+      final isStremioDirect = widget.activeProvider == 'stremio_direct';
+      final isWebStreamr = widget.activeProvider == 'webstreamr';
+      final isAmri = widget.activeProvider == 'amri';
+      final isService111477 = widget.activeProvider == 'service111477';
+
+      if (isStremioDirect && widget.stremioAddonBaseUrl != null) {
+        final stremio = StremioService();
+        final stremioId = widget.stremioId ?? widget.movie!.imdbId;
+        if (stremioId == null) throw Exception('No Stremio ID available');
+
+        final epId = '$stremioId:$season:$episode';
+        final streams = await stremio.getStreams(
+          baseUrl: widget.stremioAddonBaseUrl!,
+          type: 'series',
+          id: epId,
+        );
+
+        if (streams.isEmpty) throw Exception('No streams found for S${season}E$episode');
+
+        final stream = streams.first as Map<String, dynamic>;
+
+        if (stream['url'] != null) {
+          streamUrl = stream['url'] as String;
+          final proxyHeaders = stream['behaviorHints']?['proxyHeaders']?['request'];
+          if (proxyHeaders is Map) {
+            headers = Map<String, String>.from(proxyHeaders);
+          }
+        } else if (stream['infoHash'] != null) {
+          final infoHash = stream['infoHash'] as String;
+          final streamTitle = (stream['title'] ?? stream['name'] ?? '').toString();
+          final dn = streamTitle.isNotEmpty ? '&dn=${Uri.encodeComponent(streamTitle)}' : '';
+          final sourcesList = stream['sources'];
+          final trackerParams = StringBuffer();
+          if (sourcesList is List) {
+            for (final src in sourcesList) {
+              if (src is String && src.startsWith('tracker:')) {
+                trackerParams.write('&tr=${Uri.encodeComponent(src.substring(8))}');
+              }
+            }
+          }
+          magnetLink = 'magnet:?xt=urn:btih:$infoHash$dn$trackerParams';
+
+          final settings = SettingsService();
+          final useDebrid = await settings.useDebridForStreams();
+          final debridService = await settings.getDebridService();
+
+          final playback = await resolveMagnetForPlayback(
+            magnet: magnetLink,
+            useDebrid: useDebrid,
+            debridService: debridService,
+            localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+            season: season,
+            episode: episode,
+          );
+          if (playback != null) {
+            streamUrl = playback.url;
+            fileIndex = playback.fileIndex;
+          }
+          activeProvider = 'torrent';
+        }
+      } else if (isTorrent) {
+        final s = season.toString().padLeft(2, '0');
+        final e = episode.toString().padLeft(2, '0');
+        final query = '${widget.movie!.title} S${s}E$e';
+        debugPrint('[EpSwitch] Searching torrents: $query');
+
+        final results = (await Engine.searchTorrents(query))
+            .map(TorrentResult.fromJson)
+            .toList();
+        final filtered = (await Engine.filterTorrents(
+          results.map((e) => e.toJson()).toList(),
+          widget.movie!.title,
+          requiredSeason: season,
+          requiredEpisode: episode,
+        )).map(TorrentResult.fromJson).toList();
+
+        if (filtered.isEmpty) throw Exception('No torrents found for S${s}E$e');
+
+        filtered.sort((a, b) => b.seeders.compareTo(a.seeders));
+        magnetLink = filtered.first.magnet;
+
+        final settings = SettingsService();
+        final useDebrid = await settings.useDebridForStreams();
+        final debridService = await settings.getDebridService();
+
+        final playback = await resolveMagnetForPlayback(
+          magnet: magnetLink,
+          useDebrid: useDebrid,
+          debridService: debridService,
+          localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+          season: season,
+          episode: episode,
+        );
+        if (playback != null) {
+          streamUrl = playback.url;
+          fileIndex = playback.fileIndex;
+        }
+      } else if (isWebStreamr) {
+        final imdbId = widget.movie!.imdbId;
+        if (imdbId == null || imdbId.isEmpty) throw Exception('No IMDB ID for WebStreamr');
+
+        final webStreamr = WebStreamrService();
+        final sources = await webStreamr.getStreams(
+          imdbId: imdbId,
+          isMovie: false,
+          season: season,
+          episode: episode,
+        );
+        if (sources.isEmpty) throw Exception('No WebStreamr sources for S${season}E$episode');
+        streamUrl = sources.first.url;
+      } else if (isService111477) {
+        final svc = Site111477Service();
+        final hits = await svc.findEpisodeSources(
+          showTitle: widget.movie!.title,
+          season: season,
+          episode: episode,
+        );
+        if (hits.isEmpty) {
+          throw Exception('No 111477 file for S${season}E$episode');
+        }
+        if (site111477_proxy.is111477ProxyRunning) {
+          await site111477_proxy.stop111477Proxy();
+        }
+        streamUrl = await site111477_proxy.start111477Proxy(hits.first.fileUrl);
+        nextSources = Site111477Service.toStreamSources(hits);
+      } else if (isAmri) {
+        final extractor = StreamExtractor();
+        final result = await extractor.extractWithAmri(
+          tmdbId: widget.movie!.id.toString(),
+          isMovie: false,
+          season: season,
+          episode: episode,
+        );
+        if (result == null) throw Exception('AMRI extraction failed for S${season}E$episode');
+        streamUrl = result.url;
+        headers = result.headers.isNotEmpty ? result.headers : null;
+      } else if (widget.activeProvider != null &&
+          widget.activeProvider!.startsWith('nuvio:')) {
+        final scraperId = widget.activeProvider!.substring(6);
+        final results = await NuvioService.instance.runOneScraper(
+          scraperId: scraperId,
+          tmdbId: widget.movie!.id.toString(),
+          type: 'tv',
+          season: season,
+          episode: episode,
+        );
+        if (results.isEmpty) {
+          throw Exception('Nuvio: no streams for S${season}E$episode');
+        }
+        final first = results.first;
+        streamUrl = first.url;
+        headers = first.headers.isNotEmpty ? first.headers : null;
+        nextSources = results
+            .map((r) => StreamSource(
+                  url: r.url,
+                  title: r.title.isNotEmpty ? r.title : r.name,
+                  type: r.url.toLowerCase().contains('.m3u8')
+                      ? 'hls'
+                      : r.url.toLowerCase().contains('.mpd')
+                          ? 'dash'
+                          : 'mp4',
+                  headers: r.headers.isEmpty ? null : r.headers,
+                ))
+            .toList();
+      } else if (widget.activeProvider != null) {
+        final provider = StreamProviders.providers[widget.activeProvider];
+        if (provider == null || provider['tv'] == null) {
+          throw Exception('Provider ${widget.activeProvider} does not support TV');
+        }
+
+        final providerUrl = provider['tv'](
+          widget.movie!.id.toString(),
+          season,
+          episode,
+        );
+        final extractor = StreamExtractor();
+        final result = await extractor.extract(providerUrl, timeout: const Duration(seconds: 20));
+        if (result == null) throw Exception('Extraction failed for S${season}E$episode');
+        streamUrl = result.url;
+        headers = result.headers.isNotEmpty ? result.headers : null;
+      }
+
+      if (streamUrl == null || streamUrl.isEmpty) {
+        throw Exception('Could not find stream for S${season}E$episode');
+      }
+
+      if (!mounted) return;
+
+      final nextTitle = '${widget.movie!.title} - S$season E$episode';
+      Navigator.of(context, rootNavigator: true).pushReplacement(
+        AppRouter.slideRoute(
+          (_) => PlayerScreen(
+            streamUrl: streamUrl!,
+            title: nextTitle,
+            headers: headers,
+            movie: widget.movie,
+            selectedSeason: season,
+            selectedEpisode: episode,
+            magnetLink: magnetLink,
+            fileIndex: fileIndex,
+            activeProvider: activeProvider,
+            stremioId: widget.stremioId,
+            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+            providers: widget.providers,
+            sources: nextSources,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[EpSwitch] Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Episode switch error: $e')),
+        );
+        setState(() => _isLoadingNextEp = false);
+      }
+    }
+  }
+
+  Future<void> _goToEpisode(int season, int episode) async {
+    if (season == widget.selectedSeason && episode == widget.selectedEpisode) return;
+
+    final isStreamingMode = widget.providers != null &&
+        widget.providers!.isNotEmpty &&
+        widget.movie != null &&
+        widget.movie!.mediaType == 'tv';
+    if (isStreamingMode) {
+      _saveWatchHistory();
+      if (!mounted) return;
+      Navigator.of(context).pop({
+        'nextSeason': season,
+        'nextEpisode': episode,
+      });
       return;
     }
+    await _switchToEpisode(season, episode);
+  }
 
-    showModalBottomSheet(
+  void _showEpisodesMenu() {
+    final movie = widget.movie;
+    if (movie == null || movie.mediaType != 'tv') return;
+    final season = widget.selectedSeason ?? 1;
+    final episode = widget.selectedEpisode ?? 1;
+    PlayerEpisodeMenu.show(
+      context,
+      movie: movie,
+      currentSeason: season,
+      currentEpisode: episode,
+      onEpisodeSelected: _goToEpisode,
+    );
+  }
+
+  void _showSettingsMenu() {
+    PlayerPopupPanel.show(
       context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 40, height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2)),
+      title: 'Settings',
+      alignment: Alignment.bottomRight,
+      margin: EdgeInsets.only(
+        right: 12,
+        bottom: MediaQuery.paddingOf(context).bottom + 76,
+      ),
+      child: ListView(
+        padding: const EdgeInsets.all(8),
+        shrinkWrap: true,
+        children: [
+          PlayerPopupListTile(
+            label: 'Playback speed',
+            subtitle: '${_player.state.rate}x',
+            onTap: () {
+              PlayerPopupPanel.dismiss();
+              showSpeedMenu(context, _player.state.rate, (s) => _player.setRate(s));
+            },
           ),
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Switch Provider',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
+          PlayerPopupListTile(
+            label: 'Aspect ratio',
+            subtitle: _videoFitLabel,
+            onTap: () {
+              PlayerPopupPanel.dismiss();
+              _cycleAspectRatio();
+            },
           ),
-          Expanded(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: widget.providers!.length,
-              itemBuilder: (context, index) {
-                final key = widget.providers!.keys.elementAt(index);
-                final provider = widget.providers![key];
-                final isCurrent = key == _currentProvider;
-                return ListTile(
-                  leading: Icon(
-                    Icons.stream_rounded,
-                    color: isCurrent ? const Color(0xFF7C3AED) : Colors.white70,
-                  ),
-                  title: Text(
-                    provider['name'],
-                    style: TextStyle(
-                      color: isCurrent ? const Color(0xFF7C3AED) : Colors.white,
-                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  trailing: isCurrent
-                      ? const Icon(Icons.check, color: Color(0xFF7C3AED))
-                      : null,
-                  onTap: () async {
-                    Navigator.pop(context);
-                    if (!isCurrent) {
-                      await _switchProvider(key);
-                    }
-                  },
-                );
-              },
-            ),
+          PlayerPopupListTile(
+            label: 'Loop',
+            subtitle: _loopEnabled ? 'On' : 'Off',
+            selected: _loopEnabled,
+            onTap: () {
+              PlayerPopupPanel.dismiss();
+              _toggleLoop();
+            },
           ),
-        ]),
+          PlayerPopupListTile(
+            label: 'Hardware decode',
+            subtitle: _hwDecMode.label,
+            onTap: () {
+              PlayerPopupPanel.dismiss();
+              _cycleHwDec();
+            },
+          ),
+          PlayerPopupListTile(
+            label: 'Subtitle style',
+            onTap: () {
+              PlayerPopupPanel.dismiss();
+              _showSubtitleSettings();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -2738,9 +2638,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     
     try {
       final provider = widget.providers![newProvider];
+      final providerLabel = PlayerProviderMenu.snackbarLabel(newProvider, provider);
       
       messenger.showSnackBar(SnackBar(
-        content: Text('Extracting from ${provider['name']}...'),
+        content: Text('Extracting from $providerLabel...'),
         duration: const Duration(seconds: 2),
       ));
 
@@ -2893,14 +2794,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         
         if (mounted) {
           messenger.showSnackBar(SnackBar(
-            content: Text('Switched to ${provider['name']}'),
+            content: Text('Switched to $providerLabel'),
             duration: const Duration(seconds: 2),
           ));
         }
       } else {
         if (mounted && !_fallbackAborted(gen)) {
           messenger.showSnackBar(SnackBar(
-            content: Text('Failed to extract from ${provider['name']}'),
+            content: Text('Failed to extract from $providerLabel'),
             duration: const Duration(seconds: 2),
           ));
         }
@@ -3047,15 +2948,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       return;
     }
 
-    // ── Streaming-mode shortcut ─────────────────────────────────────────
-    // When launched from streaming_details_screen (= a `providers` map
-    // was passed), don't try to re-resolve the source here. Instead,
-    // pop back with {nextSeason, nextEpisode} so streaming_details can
-    // re-run the full provider fallback chain — same path the user
-    // gets when tapping an episode card manually. This avoids the
-    // "Provider X does not support TV" failures when the active
-    // provider lacks a `tv` entry but other providers in the chain
-    // would have worked.
     final isStreamingMode = widget.providers != null &&
         widget.providers!.isNotEmpty &&
         widget.movie != null &&
@@ -3111,278 +3003,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       return;
     }
 
-    try {
-      final tmdb = TmdbService();
-      final tvId = widget.movie!.id;
-      int nextSeason = widget.selectedSeason!;
-      int nextEpisode = widget.selectedEpisode! + 1;
-
-      // Check if next episode exists in current season
-      final seasonData = await tmdb.getTvSeasonDetails(tvId, nextSeason);
-      final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
-      final maxEp = episodes.isNotEmpty
-          ? episodes.map((e) => e['episode_number'] as int).reduce((a, b) => a > b ? a : b)
-          : 0;
-
-      if (nextEpisode > maxEp) {
-        // Try next season
-        final totalSeasons = await tmdb.getTvSeasonCount(tvId);
-        if (nextSeason < totalSeasons) {
-          nextSeason++;
-          nextEpisode = 1;
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No more episodes available')),
-            );
-          }
-          setState(() => _isLoadingNextEp = false);
-          return;
-        }
-      }
-
-      debugPrint('[NextEp] Playing S${nextSeason}E$nextEpisode');
-
-      // Save current watch history before switching
-      _saveWatchHistory();
-
-      String? streamUrl;
-      String? magnetLink;
-      int? fileIndex;
-      Map<String, String>? headers;
-      List<StreamSource>? nextSources;
-      String? activeProvider = widget.activeProvider;
-
-      final isTorrent = widget.magnetLink != null &&
-          widget.activeProvider != 'stremio_direct';
-      final isStremioDirect = widget.activeProvider == 'stremio_direct';
-      final isWebStreamr = widget.activeProvider == 'webstreamr';
-      final isAmri = widget.activeProvider == 'amri';
-      final isService111477 = widget.activeProvider == 'service111477';
-
-      if (isStremioDirect && widget.stremioAddonBaseUrl != null) {
-        // ── Stremio addon: re-fetch streams for next episode ──────────
-        final stremio = StremioService();
-        final stremioId = widget.stremioId ?? widget.movie!.imdbId;
-        if (stremioId == null) throw Exception('No Stremio ID available');
-
-        final epId = '$stremioId:$nextSeason:$nextEpisode';
-        final streams = await stremio.getStreams(
-          baseUrl: widget.stremioAddonBaseUrl!,
-          type: 'series',
-          id: epId,
-        );
-
-        if (streams.isEmpty) throw Exception('No streams found for S${nextSeason}E$nextEpisode');
-
-        final stream = streams.first as Map<String, dynamic>;
-
-        if (stream['url'] != null) {
-          streamUrl = stream['url'] as String;
-          final proxyHeaders = stream['behaviorHints']?['proxyHeaders']?['request'];
-          if (proxyHeaders is Map) {
-            headers = Map<String, String>.from(proxyHeaders);
-          }
-        } else if (stream['infoHash'] != null) {
-          // Stremio returned a torrent hash — resolve it
-          final infoHash = stream['infoHash'] as String;
-          final streamTitle = (stream['title'] ?? stream['name'] ?? '').toString();
-          final dn = streamTitle.isNotEmpty ? '&dn=${Uri.encodeComponent(streamTitle)}' : '';
-          final sourcesList = stream['sources'];
-          final trackerParams = StringBuffer();
-          if (sourcesList is List) {
-            for (final src in sourcesList) {
-              if (src is String && src.startsWith('tracker:')) {
-                trackerParams.write('&tr=${Uri.encodeComponent(src.substring(8))}');
-              }
-            }
-          }
-          magnetLink = 'magnet:?xt=urn:btih:$infoHash$dn$trackerParams';
-
-          final settings = SettingsService();
-          final useDebrid = await settings.useDebridForStreams();
-          final debridService = await settings.getDebridService();
-
-          final playback = await resolveMagnetForPlayback(
-            magnet: magnetLink,
-            useDebrid: useDebrid,
-            debridService: debridService,
-            localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
-            season: nextSeason,
-            episode: nextEpisode,
-          );
-          if (playback != null) {
-            streamUrl = playback.url;
-            fileIndex = playback.fileIndex;
-          }
-          activeProvider = 'torrent';
-        }
-      } else if (isTorrent) {
-        // ── Torrent: re-search for next episode ───────────────────────
-        final s = nextSeason.toString().padLeft(2, '0');
-        final e = nextEpisode.toString().padLeft(2, '0');
-        final query = '${widget.movie!.title} S${s}E$e';
-        debugPrint('[NextEp] Searching torrents: $query');
-
-        final results = (await Engine.searchTorrents(query))
-            .map(TorrentResult.fromJson)
-            .toList();
-        final filtered = (await Engine.filterTorrents(
-          results.map((e) => e.toJson()).toList(),
-          widget.movie!.title,
-          requiredSeason: nextSeason,
-          requiredEpisode: nextEpisode,
-        )).map(TorrentResult.fromJson).toList();
-
-        if (filtered.isEmpty) throw Exception('No torrents found for S${s}E$e');
-
-        // Pick best result (highest seeders)
-        filtered.sort((a, b) => b.seeders.compareTo(a.seeders));
-        magnetLink = filtered.first.magnet;
-
-        final settings = SettingsService();
-        final useDebrid = await settings.useDebridForStreams();
-        final debridService = await settings.getDebridService();
-
-        final playback = await resolveMagnetForPlayback(
-          magnet: magnetLink,
-          useDebrid: useDebrid,
-          debridService: debridService,
-          localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
-          season: nextSeason,
-          episode: nextEpisode,
-        );
-        if (playback != null) {
-          streamUrl = playback.url;
-          fileIndex = playback.fileIndex;
-        }
-      } else if (isWebStreamr) {
-        // ── WebStreamr: fetch next episode streams ────────────────────
-        final imdbId = widget.movie!.imdbId;
-        if (imdbId == null || imdbId.isEmpty) throw Exception('No IMDB ID for WebStreamr');
-
-        final webStreamr = WebStreamrService();
-        final sources = await webStreamr.getStreams(
-          imdbId: imdbId,
-          isMovie: false,
-          season: nextSeason,
-          episode: nextEpisode,
-        );
-        if (sources.isEmpty) throw Exception('No WebStreamr sources for S${nextSeason}E$nextEpisode');
-        streamUrl = sources.first.url;
-      } else if (isService111477) {
-        // ── 111477.xyz: resolve next episode → restart proxy ──────────
-        final svc = Site111477Service();
-        final hits = await svc.findEpisodeSources(
-          showTitle: widget.movie!.title,
-          season: nextSeason,
-          episode: nextEpisode,
-        );
-        if (hits.isEmpty) {
-          throw Exception('No 111477 file for S${nextSeason}E$nextEpisode');
-        }
-        if (site111477_proxy.is111477ProxyRunning) {
-          await site111477_proxy.stop111477Proxy();
-        }
-        streamUrl = await site111477_proxy.start111477Proxy(hits.first.fileUrl);
-        nextSources = Site111477Service.toStreamSources(hits);
-      } else if (isAmri) {
-        // ── AMRI: re-extract for next episode ─────────────────────────
-        final extractor = StreamExtractor();
-        final result = await extractor.extractWithAmri(
-          tmdbId: widget.movie!.id.toString(),
-          isMovie: false,
-          season: nextSeason,
-          episode: nextEpisode,
-        );
-        if (result == null) throw Exception('AMRI extraction failed for S${nextSeason}E$nextEpisode');
-        streamUrl = result.url;
-        headers = result.headers.isNotEmpty ? result.headers : null;
-      } else if (widget.activeProvider != null &&
-          widget.activeProvider!.startsWith('nuvio:')) {
-        // ── Nuvio scraper: re-run for next episode ────────────────────
-        final scraperId = widget.activeProvider!.substring(6);
-        final results = await NuvioService.instance.runOneScraper(
-          scraperId: scraperId,
-          tmdbId: widget.movie!.id.toString(),
-          type: 'tv',
-          season: nextSeason,
-          episode: nextEpisode,
-        );
-        if (results.isEmpty) {
-          throw Exception('Nuvio: no streams for S${nextSeason}E$nextEpisode');
-        }
-        final first = results.first;
-        streamUrl = first.url;
-        headers = first.headers.isNotEmpty ? first.headers : null;
-        nextSources = results
-            .map((r) => StreamSource(
-                  url: r.url,
-                  title: r.title.isNotEmpty ? r.title : r.name,
-                  type: r.url.toLowerCase().contains('.m3u8')
-                      ? 'hls'
-                      : r.url.toLowerCase().contains('.mpd')
-                          ? 'dash'
-                          : 'mp4',
-                  headers: r.headers.isEmpty ? null : r.headers,
-                ))
-            .toList();
-      } else if (widget.activeProvider != null) {
-        // ── Stream provider (vidlink, vixsrc, etc.) ───────────────────
-        final provider = StreamProviders.providers[widget.activeProvider];
-        if (provider == null || provider['tv'] == null) {
-          throw Exception('Provider ${widget.activeProvider} does not support TV');
-        }
-
-        final providerUrl = provider['tv'](
-          widget.movie!.id.toString(),
-          nextSeason,
-          nextEpisode,
-        );
-        final extractor = StreamExtractor();
-        final result = await extractor.extract(providerUrl, timeout: const Duration(seconds: 20));
-        if (result == null) throw Exception('Extraction failed for S${nextSeason}E$nextEpisode');
-        streamUrl = result.url;
-        headers = result.headers.isNotEmpty ? result.headers : null;
-      }
-
-      if (streamUrl == null || streamUrl.isEmpty) {
-        throw Exception('Could not find stream for S${nextSeason}E$nextEpisode');
-      }
-
-      if (!mounted) return;
-
-      // Navigate to new player with next episode
-      final nextTitle = '${widget.movie!.title} - S$nextSeason E$nextEpisode';
-      final navigator = Navigator.of(context);
-      navigator.pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => PlayerScreen(
-            streamUrl: streamUrl!,
-            title: nextTitle,
-            headers: headers,
-            movie: widget.movie,
-            selectedSeason: nextSeason,
-            selectedEpisode: nextEpisode,
-            magnetLink: magnetLink,
-            fileIndex: fileIndex,
-            activeProvider: activeProvider,
-            stremioId: widget.stremioId,
-            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
-            providers: widget.providers,
-            sources: nextSources,
-          ),
-        ),
-      );
-    } catch (e) {
-      debugPrint('[NextEp] Error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Next episode error: $e')),
-        );
-        setState(() => _isLoadingNextEp = false);
-      }
+    final next = await _computeNextEpisode();
+    if (next == null) {
+      if (mounted) setState(() => _isLoadingNextEp = false);
+      return;
     }
+    await _switchToEpisode(next.season, next.episode);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -3680,18 +3306,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                     text: 'Retry',
                     onTap: _initPlayback,
                   ),
-                  if (_currentProvider == 'arabic' && _currentSources != null && _currentSources!.isNotEmpty) ...[
+                  if ((widget.providers != null && widget.providers!.isNotEmpty) ||
+                      (_currentSources != null && _currentSources!.isNotEmpty)) ...[
                     const SizedBox(width: 12),
                     _GlassPillButton(
-                      text: 'Switch Source',
-                      onTap: _showSourcesMenu,
+                      text: 'Switch Stream',
+                      onTap: _showStreamMenu,
                     ),
                   ],
-                  const SizedBox(width: 12),
-                  _GlassPillButton(
-                    text: 'Switch Provider',
-                    onTap: _showProviderMenu,
-                  ),
                 ],
               ),              ],
               ),
@@ -3700,268 +3322,268 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
               }
 
   Widget _buildControlsOverlay() {
-    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
-    final btnSize = isPortrait ? 34.0 : 40.0;
-    final iconSz = isPortrait ? 16.0 : 18.0;
-    final gap = isPortrait ? 4.0 : 6.0;
+    final isTv = widget.movie?.mediaType == 'tv';
+    final hasProviders = widget.providers != null && widget.providers!.isNotEmpty &&
+        widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
+    final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
+    final btnSize = 38.0;
+    final iconSz = 20.0;
 
     return Stack(children: [
-      // ── Gradients ────────────────────────────────────────────────────────
       const Positioned(
           top: 0, left: 0, right: 0,
-          child: _OverlayGradient(isTop: true)),
+          child: PlayerOverlayGradient(isTop: true)),
       const Positioned(
           bottom: 0, left: 0, right: 0,
-          child: _OverlayGradient(isTop: false)),
+          child: PlayerOverlayGradient(isTop: false)),
 
-      // ── TOP BAR ──────────────────────────────────────────────────────────
       Positioned(
         top: 0, left: 0, right: 0,
-        child: SafeArea(
-          child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(children: [
-              PlayerFlatIconButton(
-                icon: Icons.arrow_back,
-                label: 'Back',
-                onPressed: _exitPlayer,
-              ),
-              const Spacer(),
-              // HW mode badge
-              if (!isPortrait)
-                _GlassPillButton(
-                  text: _hwDecMode.label,
-                  onTap: _cycleHwDec,
-                  accent: _hwDecMode.accent,
-                ),
-              if (!isPortrait) SizedBox(width: gap),
-              _GlassIconButton(
-                icon: Icons.music_note_outlined,
-                onPressed: _showAudioMenu,
-                size: btnSize, iconSize: iconSz,
-              ),
-              SizedBox(width: gap),
-              _GlassIconButton(
-                icon: Icons.subtitles_outlined,
-                onPressed: _showSubtitlesMenu,
-                size: btnSize, iconSize: iconSz,
-              ),
-              SizedBox(width: gap),
-              _GlassIconButton(
-                icon: Icons.picture_in_picture_alt_outlined,
-                onPressed: () async {
-                  await PipService.instance.enter();
-                },
-                size: btnSize, iconSize: iconSz,
-              ),
-              // Quality selector — only when the playing stream is a master
-              // HLS playlist with 2+ variants.
-              ValueListenableBuilder<List<HlsQuality>?>(
-                valueListenable: _hlsQualitiesNotifier,
-                builder: (ctx, qs, _) {
-                  if (qs == null || qs.length < 2) return const SizedBox.shrink();
-                  return Row(mainAxisSize: MainAxisSize.min, children: [
-                    SizedBox(width: gap),
-                    _GlassIconButton(
-                      icon: Icons.video_settings_outlined,
-                      onPressed: _showQualityMenu,
-                      size: btnSize, iconSize: iconSz,
-                    ),
-                  ]);
-                },
-              ),
-              if (_currentSources != null && _currentSources!.isNotEmpty) ...[
-                SizedBox(width: gap),
-                _GlassIconButton(
-                  icon: Icons.video_library_outlined,
-                  onPressed: _showSourcesMenu,
-                  size: btnSize, iconSize: iconSz,
-                ),
-              ],
-            ]),
+        child: PlayerTopBar(
+          title: widget.title,
+          season: widget.selectedSeason,
+          episode: widget.selectedEpisode,
+          onBack: _exitPlayer,
+          trailing: PlayerTopBarActions(
+            showStream: hasProviders || hasSources,
+            streamEnabled: !_isSwitchingProvider,
+            onStream: () {
+              _showStreamMenu();
+              _startHideTimer();
+            },
+            showCast: CastingService.instance.isAirPlayAvailable ||
+                CastingService.instance.isChromecastAvailable,
+            onCast: () {
+              showPlayerCastPicker(
+                context,
+                streamUrl: _currentUrl,
+                title: widget.title,
+                headers: widget.headers,
+              );
+              _startHideTimer();
+            },
+            showPip: PipService.instance.isSupported,
+            onPip: () async {
+              await PipService.instance.enter();
+              _startHideTimer();
+            },
           ),
         ),
       ),
 
-      Positioned(
-        left: 12,
-        top: 56,
-        right: 12,
-        child: SafeArea(
-          bottom: false,
-          child: PlayerTitleMeta(title: widget.title, movie: widget.movie),
-        ),
-      ),
-
-      // ── CENTER PLAY/PAUSE ─────────────────────────────────────────────────
-      Center(
-        child: ValueListenableBuilder<bool>(
-          valueListenable: _isBufferingNotifier,
-          builder: (context, buffering, _) =>
-              ValueListenableBuilder<bool>(
+      if (widget.movie != null)
+        Positioned(
+          left: 0,
+          top: 64,
+          bottom: 110,
+          child: ValueListenableBuilder<bool>(
             valueListenable: _isPlayingNotifier,
-            builder: (context, playing, _) => _GlassPlayPause(
-              isPlaying: playing,
-              isBuffering: buffering,
-              onPressed: () {
-                playing ? _player.pause() : _player.play();
-                _startHideTimer();
-              },
+            builder: (context, playing, _) => AnimatedOpacity(
+              opacity: playing ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: IgnorePointer(
+                ignoring: playing,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: PlayerPausedHero(
+                    movie: widget.movie!,
+                    season: widget.selectedSeason,
+                    episode: widget.selectedEpisode,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
-      ),
 
-      // ── BOTTOM SECTION ────────────────────────────────────────────────────
+      if (!_isLocked)
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: _isLocked,
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PlayerCenterActionButton(
+                    icon: Icons.replay_10_rounded,
+                    onPressed: () {
+                      final pos =
+                          _positionNotifier.value - const Duration(seconds: 10);
+                      _player.seek(pos < Duration.zero ? Duration.zero : pos);
+                      _startHideTimer();
+                    },
+                  ),
+                  const SizedBox(width: 24),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _isPlayingNotifier,
+                    builder: (context, playing, _) =>
+                        ValueListenableBuilder<bool>(
+                      valueListenable: _isBufferingNotifier,
+                      builder: (context, buffering, _) =>
+                          PlayerCenterActionButton(
+                        icon: playing
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        size: 80,
+                        iconSize: 44,
+                        showSpinner: buffering,
+                        onPressed: () {
+                          playing ? _player.pause() : _player.play();
+                          _startHideTimer();
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  PlayerCenterActionButton(
+                    icon: Icons.forward_10_rounded,
+                    onPressed: () {
+                      final dur = _durationNotifier.value;
+                      final pos =
+                          _positionNotifier.value + const Duration(seconds: 10);
+                      _player.seek(pos > dur ? dur : pos);
+                      _startHideTimer();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
       Positioned(
         bottom: 0, left: 0, right: 0,
         child: SafeArea(
           child: Padding(
-            padding:
-                const EdgeInsets.fromLTRB(12, 0, 12, 10),
-            child:
-                Column(mainAxisSize: MainAxisSize.min, children: [
-              // ── Icon row ─────────────────────────────────────────────
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              ValueListenableBuilder<Duration>(
+                valueListenable: _durationNotifier,
+                builder: (context, duration, _) =>
+                    ValueListenableBuilder<Duration>(
+                  valueListenable: _positionNotifier,
+                  builder: (context, position, _) =>
+                      ValueListenableBuilder<Duration>(
+                    valueListenable: _bufferedNotifier,
+                    builder: (context, buffered, _) => _MobileSeekbar(
+                      duration: duration,
+                      position: position,
+                      bufferedPosition: buffered,
+                      onSeek: (t) {
+                        _player.seek(t);
+                        _startHideTimer();
+                      },
+                      onDragStart: () => _hideTimer?.cancel(),
+                      onDragEnd: _startHideTimer,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Left: lock / speed / loop (+ HW badge in portrait)
                   Row(children: [
-                    _GlassIconButton(
-                      icon: _isLocked
-                          ? Icons.lock_rounded
-                          : Icons.lock_open_rounded,
-                      onPressed: _toggleLock,
-                      active: _isLocked,
-                      size: btnSize, iconSize: iconSz,
-                    ),
-                    SizedBox(width: gap),
-                    _GlassIconButton(
-                      icon: Icons.screen_rotation_rounded,
-                      onPressed: _toggleRotation,
-                      size: btnSize, iconSize: iconSz,
-                    ),
-                    SizedBox(width: gap),
-                    _GlassIconButton(
-                      icon: Icons.speed_outlined,
-                      onPressed: () => showSpeedMenu(
-                          context,
-                          _player.state.rate,
-                          (s) => _player.setRate(s)),
-                      size: btnSize, iconSize: iconSz,
-                    ),
-                    SizedBox(width: gap),
-                    _GlassIconButton(
-                      icon: _loopEnabled
-                          ? Icons.repeat_one_rounded
-                          : Icons.repeat_rounded,
-                      onPressed: _toggleLoop,
-                      active: _loopEnabled,
-                      size: btnSize, iconSize: iconSz,
-                    ),
-                    if (isPortrait) ...[
-                      SizedBox(width: gap),
-                      _GlassPillButton(
-                        text: _hwDecMode.label,
-                        onTap: _cycleHwDec,
-                        accent: _hwDecMode.accent,
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _isPlayingNotifier,
+                      builder: (context, playing, _) => PlayerFlatIconButton(
+                        icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        size: btnSize,
+                        iconSize: iconSz,
+                        onPressed: () {
+                          playing ? _player.pause() : _player.play();
+                          _startHideTimer();
+                        },
                       ),
-                    ],
-                  ]),
-
-                  // Right: copy URL / subtitle settings / aspect ratio / provider switcher
-                  Row(children: [
-                    // Show provider switcher only when providers are available and not using torrent/stremio
-                    if (widget.providers != null && widget.providers!.isNotEmpty && 
-                        widget.magnetLink == null && widget.activeProvider != 'stremio_direct') ...[
-                      _GlassIconButton(
-                        icon: Icons.swap_horiz_rounded,
-                        onPressed: _isSwitchingProvider ? () {} : _showProviderMenu,
-                        size: btnSize, iconSize: iconSz,
-                      ),
-                      SizedBox(width: gap),
-                    ],
-                    _GlassIconButton(
-                      icon: Icons.link_rounded,
-                      onPressed: () async {
-                        await Clipboard.setData(ClipboardData(text: widget.mediaPath));
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Stream URL copied to clipboard')),
-                          );
-                        }
+                    ),
+                    PlayerFlatIconButton(
+                      icon: Icons.replay_10_rounded,
+                      size: btnSize,
+                      iconSize: iconSz,
+                      onPressed: () {
+                        final pos = _positionNotifier.value - const Duration(seconds: 10);
+                        _player.seek(pos < Duration.zero ? Duration.zero : pos);
+                        _startHideTimer();
                       },
-                      size: btnSize, iconSize: iconSz,
                     ),
-                    SizedBox(width: gap),
-                    // Aspect ratio pill — shows current mode
-                    _GlassPillButton(
-                      text: _videoFitLabel,
-                      onTap: _cycleAspectRatio,
+                    PlayerFlatIconButton(
+                      icon: Icons.forward_10_rounded,
+                      size: btnSize,
+                      iconSize: iconSz,
+                      onPressed: () {
+                        final dur = _durationNotifier.value;
+                        final pos = _positionNotifier.value + const Duration(seconds: 10);
+                        _player.seek(pos > dur ? dur : pos);
+                        _startHideTimer();
+                      },
+                    ),
+                    PlayerFlatIconButton(
+                      icon: Icons.volume_up_rounded,
+                      size: btnSize,
+                      iconSize: iconSz,
+                      onPressed: () {
+                        _player.setVolume(_volume > 0 ? 0.0 : 100.0);
+                        _startHideTimer();
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    ValueListenableBuilder<Duration>(
+                      valueListenable: _positionNotifier,
+                      builder: (context, pos, _) =>
+                          ValueListenableBuilder<Duration>(
+                        valueListenable: _durationNotifier,
+                        builder: (context, dur, _) => PlayerTimeRange(
+                          position: pos,
+                          duration: dur,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ]),
+                  Row(children: [
+                    if (isTv && widget.movie != null)
+                      PlayerFlatIconButton(
+                        icon: Icons.video_library_outlined,
+                        size: btnSize,
+                        iconSize: iconSz,
+                        onPressed: _showEpisodesMenu,
+                      ),
+                    PlayerFlatIconButton(
+                      icon: Icons.audiotrack_rounded,
+                      size: btnSize,
+                      iconSize: iconSz,
+                      tooltip: 'Audio',
+                      onPressed: _showAudioMenu,
+                    ),
+                    PlayerFlatIconButton(
+                      icon: Icons.subtitles_outlined,
+                      size: btnSize,
+                      iconSize: iconSz,
+                      onPressed: _showSubtitlesMenu,
+                    ),
+                    PlayerFlatIconButton(
+                      icon: Icons.hd_outlined,
+                      size: btnSize,
+                      iconSize: iconSz,
+                      tooltip: 'Quality',
+                      onPressed: _showQualityMenu,
+                    ),
+                    PlayerFlatIconButton(
+                      icon: Icons.settings_outlined,
+                      size: btnSize,
+                      iconSize: iconSz,
+                      onPressed: _showSettingsMenu,
+                    ),
+                    PlayerFlatIconButton(
+                      icon: _isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
+                      active: _isLocked,
+                      size: btnSize,
+                      iconSize: iconSz,
+                      onPressed: _toggleLock,
                     ),
                   ]),
                 ],
               ),
-              const SizedBox(height: 8),
-
-              // ── Seekbar row ───────────────────────────────────────────
-              Row(children: [
-                ValueListenableBuilder<Duration>(
-                  valueListenable: _positionNotifier,
-                  builder: (context, pos, _) => SizedBox(
-                    width: 56,
-                    child: Text(
-                      formatDuration(pos),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontFamily: 'monospace'),
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ValueListenableBuilder<Duration>(
-                    valueListenable: _durationNotifier,
-                    builder: (context, duration, _) =>
-                        ValueListenableBuilder<Duration>(
-                      valueListenable: _positionNotifier,
-                      builder: (context, position, _) =>
-                          ValueListenableBuilder<Duration>(
-                        valueListenable: _bufferedNotifier,
-                        builder: (context, buffered, _) =>
-                            _MobileSeekbar(
-                          duration: duration,
-                          position: position,
-                          bufferedPosition: buffered,
-                          onSeek: (t) {
-                            _player.seek(t);
-                            _startHideTimer();
-                          },
-                          onDragStart: () => _hideTimer?.cancel(),
-                          onDragEnd: _startHideTimer,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ValueListenableBuilder<Duration>(
-                  valueListenable: _durationNotifier,
-                  builder: (context, dur, _) => SizedBox(
-                    width: 56,
-                    child: Text(
-                      formatDuration(dur),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontFamily: 'monospace'),
-                    ),
-                  ),
-                ),
-              ]),
             ]),
           ),
         ),

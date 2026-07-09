@@ -8,11 +8,11 @@ The player fetches subtitles from multiple sources in parallel — APIs (Wyzie, 
 
 ## How to open it
 
-During playback, open the subtitle menu from the player controls.
+During playback, tap the **Subtitles** icon in the bottom control bar. Languages open in a floating panel; tap a language to see individual tracks (with source name, e.g. opensubtitles).
 
 ## What you can do
 
-- Browse available subtitle tracks (loads stream in as sources respond)
+- Floating subtitle picker: Off, load from file, embedded tracks, then languages with track counts; drill into a language for specific files
 - Enable, disable, or switch tracks
 - Change appearance (size, color, font, opacity)
 - Adjust sync delay if dialogue is early/late

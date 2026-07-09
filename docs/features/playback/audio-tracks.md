@@ -9,7 +9,7 @@ Many streams include multiple audio tracks (languages, commentary, Atmos). Forja
 ## How to open it
 
 - **Settings → Playback** — preferred language and avoid unsupported audio
-- **Player menu** — switch audio track during playback
+- **Player bottom bar** — audio button (next to subtitles) opens the audio track popup
 
 ## What you can do
 

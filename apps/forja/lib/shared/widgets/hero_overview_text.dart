@@ -10,6 +10,7 @@ class HeroOverviewText extends StatefulWidget {
     this.onReadMore,
     this.readMoreLabel = 'Read More',
     this.readLessLabel = 'Read Less',
+    this.shrinkWrap = true,
   });
 
   final String overview;
@@ -19,6 +20,8 @@ class HeroOverviewText extends StatefulWidget {
   final VoidCallback? onReadMore;
   final String readMoreLabel;
   final String readLessLabel;
+  /// When false, expands to fill a bounded parent height (fixed overview slots).
+  final bool shrinkWrap;
 
   @override
   State<HeroOverviewText> createState() => _HeroOverviewTextState();
@@ -162,7 +165,9 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
-        final bounded = constraints.hasBoundedHeight && constraints.maxHeight.isFinite;
+        final bounded = !widget.shrinkWrap &&
+            constraints.hasBoundedHeight &&
+            constraints.maxHeight.isFinite;
         final maxHeight = bounded ? constraints.maxHeight : null;
 
         final preliminaryTruncation = _needsTruncation(

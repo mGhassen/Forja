@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 void showSpeedMenu(BuildContext context, double currentSpeed, ValueChanged<double> onSpeedChanged) {
   showModalBottomSheet(
     context: context,
+    useRootNavigator: false,
     backgroundColor: const Color(0xFF141414),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -71,6 +72,7 @@ void showSpeedMenu(BuildContext context, double currentSpeed, ValueChanged<doubl
 void showTracksMenu(BuildContext context, String title, List<String> tracks, int selectedIndex, ValueChanged<int> onTrackSelected) {
   showModalBottomSheet(
     context: context,
+    useRootNavigator: false,
     backgroundColor: const Color(0xFF141414),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),

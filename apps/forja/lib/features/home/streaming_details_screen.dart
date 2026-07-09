@@ -6,6 +6,7 @@ import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/widgets/loading_overlay.dart';
+import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/design/design.dart' hide AppTheme;
 import 'package:forja/shared/theme/app_theme.dart';
@@ -16,17 +17,16 @@ import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
-import 'package:forja/shared/widgets/my_list_button.dart';
+import 'package:forja/shared/widgets/media_details/media_details_streaming_action_row.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
-import 'package:forja/shared/player/player_screen.dart';
-
 class StreamingDetailsScreen extends StatefulWidget {
   final Movie movie;
   final int? initialSeason;
   final int? initialEpisode;
   final Duration? startPosition;
+  final bool autoPlay;
 
   const StreamingDetailsScreen({
     super.key,
@@ -34,6 +34,7 @@ class StreamingDetailsScreen extends StatefulWidget {
     this.initialSeason,
     this.initialEpisode,
     this.startPosition,
+    this.autoPlay = false,
   });
 
   @override
@@ -156,8 +157,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
           _isLoading = false;
         });
 
-        // Auto-start extraction when opened with a start position (e.g. from Continue Watching / Trakt)
-        if (widget.startPosition != null) {
+        if (widget.startPosition != null || widget.autoPlay) {
           _startExtraction();
         }
       }
@@ -262,20 +262,16 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
 
         if (precheck is StremioPlayable) {
           if (!mounted) return;
-          Navigator.push(
+          await AppRouter.openPlayer(
             context,
-            MaterialPageRoute(
-              builder: (context) => PlayerScreen(
-                streamUrl: precheck.streamUrl,
-                title: title,
-                headers: precheck.headers,
-                movie: _movie,
-                selectedSeason: isTv ? _selectedSeason : null,
-                selectedEpisode: isTv ? _selectedEpisode : null,
-                startPosition: widget.startPosition,
-                activeProvider: 'stremio_direct',
-              ),
-            ),
+            streamUrl: precheck.streamUrl,
+            title: title,
+            headers: precheck.headers,
+            movie: _movie,
+            selectedSeason: isTv ? _selectedSeason : null,
+            selectedEpisode: isTv ? _selectedEpisode : null,
+            startPosition: widget.startPosition,
+            activeProvider: 'stremio_direct',
           );
           return;
         }
@@ -290,21 +286,17 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
           episode: isTv ? _selectedEpisode : null,
         );
         if (resolved is StremioPlayable && mounted) {
-          Navigator.push(
+          await AppRouter.openPlayer(
             context,
-            MaterialPageRoute(
-              builder: (context) => PlayerScreen(
-                streamUrl: resolved.streamUrl,
-                title: title,
-                magnetLink: resolved.magnetLink,
-                movie: _movie,
-                selectedSeason: isTv ? _selectedSeason : null,
-                selectedEpisode: isTv ? _selectedEpisode : null,
-                fileIndex: resolved.fileIndex,
-                startPosition: widget.startPosition,
-                activeProvider: 'stremio_direct',
-              ),
-            ),
+            streamUrl: resolved.streamUrl,
+            title: title,
+            magnetLink: resolved.magnetLink,
+            movie: _movie,
+            selectedSeason: isTv ? _selectedSeason : null,
+            selectedEpisode: isTv ? _selectedEpisode : null,
+            fileIndex: resolved.fileIndex,
+            startPosition: widget.startPosition,
+            activeProvider: 'stremio_direct',
           );
           return;
         }
@@ -332,21 +324,45 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
 
   Future<void> _runStreamExtraction() async {
     _extractionCancelled = false;
+    final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
+    final fadeOutNotifier = ValueNotifier(false);
+    BuildContext? loadingDialogContext;
+    Future<void>? overlayDismissFuture;
+
+    void dismissLoadingOverlay() {
+      final ctx = loadingDialogContext;
+      if (ctx != null && ctx.mounted && Navigator.of(ctx).canPop()) {
+        Navigator.of(ctx).pop();
+      } else {
+        final overlay = shellOverlayNavigatorKey.currentState;
+        if (overlay?.canPop() ?? false) {
+          overlay!.pop();
+        }
+      }
+      loadingDialogContext = null;
+    }
+
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       barrierColor: Colors.black,
-      builder: (context) => LoadingOverlay(
-        movie: _movie,
-        onCancel: () {
-          _extractionCancelled = true;
-          WebStreamrService().cancelPending();
-          VidsrcExtractor.cancelPending();
-          NuvioService.instance.cancelPending();
-          unawaited(_extractor.cancel());
-          Navigator.of(context).pop();
-        },
-      ),
+      builder: (dialogContext) {
+        loadingDialogContext = dialogContext;
+        return LoadingOverlay(
+          movie: _movie,
+          providerProbesNotifier: probeNotifier,
+          fadeOutNotifier: fadeOutNotifier,
+          onCancel: () {
+            _extractionCancelled = true;
+            WebStreamrService().cancelPending();
+            VidsrcExtractor.cancelPending();
+            NuvioService.instance.cancelPending();
+            unawaited(_extractor.cancel());
+            dismissLoadingOverlay();
+          },
+        );
+      },
     );
 
     setState(() {
@@ -354,52 +370,107 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
       _statusMessage = 'Initializing Stream Extractor...';
     });
 
-    // Load user-defined provider order. The first provider that yields a
-    // working stream wins; the player uses the rest as fallbacks (in this
-    // same order) when the active source dies.
-    final order = await _settings.getStreamProviderOrder();
+    try {
+      // Load user-defined provider order. The first provider that yields a
+      // working stream wins; the player uses the rest as fallbacks (in this
+      // same order) when the active source dies.
+      final order = await _settings.getStreamProviderOrder();
 
-    // Build a reordered providers map so the player's fallback loop
-    // (which iterates `widget.providers!.keys`) follows the user's order.
-    final orderedProviders = <String, dynamic>{
-      for (final k in order)
-        if (_providers.containsKey(k)) k: _providers[k],
-      // Append anything in StreamProviders not in the saved order, just in
-      // case a new built-in provider ships before settings are migrated.
-      for (final k in _providers.keys)
-        if (!order.contains(k)) k: _providers[k],
-    };
+      // Build a reordered providers map so the player's fallback loop
+      // (which iterates `widget.providers!.keys`) follows the user's order.
+      final orderedProviders = <String, dynamic>{
+        for (final k in order)
+          if (_providers.containsKey(k)) k: _providers[k],
+        // Append anything in StreamProviders not in the saved order, just in
+        // case a new built-in provider ships before settings are migrated.
+        for (final k in _providers.keys)
+          if (!order.contains(k)) k: _providers[k],
+      };
 
-    bool found = false;
-    for (final key in orderedProviders.keys) {
-      if (!mounted || _extractionCancelled) break;
-      final provider = orderedProviders[key];
-      final displayName = (provider?['name'] as String?) ?? key;
+      bool found = false;
+      var isFirstProvider = true;
+      for (final key in orderedProviders.keys) {
+        if (!mounted || _extractionCancelled) break;
+
+        final displayName = _providerDisplayLabel(key, orderedProviders[key]);
+        probeNotifier.value = [
+          ...probeNotifier.value,
+          StreamProviderProbe(
+            id: key,
+            label: displayName,
+            status: StreamProviderProbeStatus.trying,
+            isPreferred: isFirstProvider,
+          ),
+        ];
+        isFirstProvider = false;
+        if (mounted) {
+          setState(() => _statusMessage = 'Searching $displayName…');
+        }
+
+        try {
+          found = await _tryProvider(
+            key,
+            orderedProviders,
+            probeNotifier: probeNotifier,
+            fadeOutNotifier: fadeOutNotifier,
+            loadingDialogContext: loadingDialogContext,
+            onOverlayDismissScheduled: (future) => overlayDismissFuture = future,
+          );
+        } catch (e) {
+          debugPrint('Error extracting from $key: $e');
+        }
+
+        if (!found) {
+          probeNotifier.value = probeNotifier.value
+              .map(
+                (probe) => probe.id == key
+                    ? probe.copyWith(status: StreamProviderProbeStatus.failed)
+                    : probe,
+              )
+              .toList();
+        }
+
+        if (found) break;
+      }
+
       if (mounted) {
-        setState(() => _statusMessage = 'Searching $displayName…');
+        if (_extractionCancelled) {
+          setState(() {
+            _isExtracting = false;
+            _statusMessage = null;
+          });
+          return;
+        }
+        if (!found) dismissLoadingOverlay();
+        setState(() {
+          _isExtracting = false;
+          _statusMessage = found ? null : 'No streams found. Try again later.';
+        });
+        if (!found) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to find a working stream.')),
+          );
+        }
       }
-      try {
-        found = await _tryProvider(key, orderedProviders);
-      } catch (e) {
-        debugPrint('Error extracting from $key: $e');
-      }
-      if (found) break;
+    } finally {
+      await overlayDismissFuture;
+      fadeOutNotifier.dispose();
+      probeNotifier.dispose();
     }
+  }
 
-    if (mounted) {
-      if (_extractionCancelled) {
-        setState(() { _isExtracting = false; _statusMessage = null; });
-        return;
-      }
-      if (!found && Navigator.canPop(context)) Navigator.pop(context);
-      setState(() {
-        _isExtracting = false;
-        _statusMessage = found ? null : 'No streams found. Try again later.';
-      });
-      if (!found) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to find a working stream.')));
-      }
+  String _providerDisplayLabel(String key, dynamic provider) {
+    final fallbackName = provider is Map ? provider['name']?.toString() : null;
+    List<String>? contentLanguage;
+    if (provider is Map && provider['contentLanguage'] is List) {
+      contentLanguage =
+          (provider['contentLanguage'] as List).map((e) => e.toString()).toList();
     }
+    return StreamProviderDisplay.playerLabel(
+      key,
+      fallbackName: fallbackName,
+      contentLanguage: contentLanguage,
+    );
   }
 
   /// Tries a single provider by key. Returns true if a stream was found and
@@ -407,11 +478,41 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   /// [orderedProviders] (not the static map) so the player's auto-fallback
   /// honours the user's preferred order.
   Future<bool> _tryProvider(
-      String key, Map<String, dynamic> orderedProviders) async {
+    String key,
+    Map<String, dynamic> orderedProviders, {
+    ValueNotifier<List<StreamProviderProbe>>? probeNotifier,
+    ValueNotifier<bool>? fadeOutNotifier,
+    BuildContext? loadingDialogContext,
+    void Function(Future<void> future)? onOverlayDismissScheduled,
+  }) async {
     final isTv = _movie.mediaType == 'tv';
     final title = isTv
         ? '${_movie.title} - S$_selectedSeason E$_selectedEpisode'
         : _movie.title;
+
+    Future<void> closeLoadingOverlay() async {
+      if (probeNotifier != null) {
+        probeNotifier.value = probeNotifier.value
+            .map(
+              (probe) => probe.id == key
+                  ? probe.copyWith(status: StreamProviderProbeStatus.success)
+                  : probe,
+            )
+            .toList();
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+      fadeOutNotifier?.value = true;
+      await Future<void>.delayed(const Duration(milliseconds: 750));
+      final ctx = loadingDialogContext;
+      if (ctx != null && ctx.mounted && Navigator.of(ctx).canPop()) {
+        Navigator.of(ctx).pop();
+      } else {
+        final overlay = shellOverlayNavigatorKey.currentState;
+        if (overlay?.canPop() ?? false) {
+          overlay!.pop();
+        }
+      }
+    }
 
     void pushPlayer({
       required String streamUrl,
@@ -420,34 +521,24 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
       List<dynamic>? sources,
       List<Map<String, dynamic>>? subtitles,
     }) {
-      if (Navigator.canPop(context)) Navigator.pop(context);
-      Navigator.push<dynamic>(
+      if (!mounted) return;
+      final dismissFuture = closeLoadingOverlay();
+      onOverlayDismissScheduled?.call(dismissFuture);
+      unawaited(AppRouter.openPlayer<dynamic>(
         context,
-        MaterialPageRoute(
-          builder: (context) => PlayerScreen(
-            streamUrl: streamUrl,
-            audioUrl: audioUrl,
-            title: title,
-            headers: headers,
-            movie: _movie,
-            providers: orderedProviders,
-            activeProvider: key,
-            selectedSeason: isTv ? _selectedSeason : null,
-            selectedEpisode: isTv ? _selectedEpisode : null,
-            startPosition: widget.startPosition,
-            sources: sources?.cast(),
-            externalSubtitles: subtitles,
-          ),
-        ),
+        streamUrl: streamUrl,
+        audioUrl: audioUrl,
+        title: title,
+        headers: headers,
+        movie: _movie,
+        providers: orderedProviders,
+        activeProvider: key,
+        selectedSeason: isTv ? _selectedSeason : null,
+        selectedEpisode: isTv ? _selectedEpisode : null,
+        startPosition: widget.startPosition,
+        sources: sources?.cast(),
+        externalSubtitles: subtitles,
       ).then((result) {
-        // ── Streaming-mode "Next Episode" handoff ──────────────────────
-        // The player pops with {nextSeason, nextEpisode} when the user
-        // hits the Next Episode button. Instead of re-resolving sources
-        // inside the player (which only knows about the active provider
-        // and breaks for providers without a `tv` entry), we just bump
-        // the selected episode here and re-run the full provider
-        // fallback chain — same path taken when the user taps an
-        // episode card manually.
         if (!mounted || result is! Map) return;
         final nextSeason = result['nextSeason'];
         final nextEpisode = result['nextEpisode'];
@@ -458,7 +549,7 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
         });
         _loadWatchedEpisodes();
         _runStreamExtraction();
-      });
+      }));
     }
 
     if (key == 'service111477') {
@@ -770,46 +861,12 @@ class _StreamingDetailsScreenState extends State<StreamingDetailsScreen> with At
   Widget _buildHeroActionRow() {
     final hasResume = _lastProgress != null &&
         ((_lastProgress!['position'] as int? ?? 0) > 0);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            if (_isExtracting)
-              const Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white70,
-                  ),
-                ),
-              ),
-            ForjaGhostButton(
-              label: _isExtracting
-                  ? 'Loading'
-                  : (hasResume ? 'Resume' : 'Play'),
-              icon: _isExtracting ? null : Icons.play_arrow_rounded,
-              onTap: _isExtracting ? null : _startExtraction,
-            ),
-            const SizedBox(width: 16),
-            ForjaPlainIcon(
-              icon: Icons.add,
-              tooltip: 'Add to My List',
-              child: MyListButton.movie(movie: _movie),
-            ),
-          ],
-        ),
-        if (_isExtracting && _statusMessage != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            _statusMessage!,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
-          ),
-        ],
-      ],
+    return MediaDetailsStreamingActionRow(
+      movie: _movie,
+      hasResume: hasResume,
+      isExtracting: _isExtracting,
+      onPlay: _startExtraction,
+      statusMessage: _statusMessage,
     );
   }
 

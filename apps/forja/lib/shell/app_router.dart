@@ -21,6 +21,7 @@ class AppRouter {
     int? initialSeason,
     int? initialEpisode,
     Duration? startPosition,
+    bool autoPlay = false,
   }) {
     return pushShellRoute<T>(
       context,
@@ -31,6 +32,7 @@ class AppRouter {
           initialSeason: initialSeason,
           initialEpisode: initialEpisode,
           startPosition: startPosition,
+          autoPlay: autoPlay,
         ),
       ),
     );
@@ -42,6 +44,7 @@ class AppRouter {
     int? initialSeason,
     int? initialEpisode,
     Duration? startPosition,
+    bool autoPlay = false,
   }) {
     return pushShellRoute<T>(
       context,
@@ -51,6 +54,7 @@ class AppRouter {
           initialSeason: initialSeason,
           initialEpisode: initialEpisode,
           startPosition: startPosition,
+          autoPlay: autoPlay,
         ),
       ),
     );
@@ -63,6 +67,7 @@ class AppRouter {
     int? initialSeason,
     int? initialEpisode,
     Duration? startPosition,
+    bool autoPlay = false,
   }) async {
     final streaming = await SettingsService().isStreamingModeEnabled();
     if (!context.mounted) return null;
@@ -73,6 +78,7 @@ class AppRouter {
         initialSeason: initialSeason,
         initialEpisode: initialEpisode,
         startPosition: startPosition,
+        autoPlay: autoPlay,
       );
     }
     return openDetails<T>(
@@ -82,6 +88,7 @@ class AppRouter {
       initialSeason: initialSeason,
       initialEpisode: initialEpisode,
       startPosition: startPosition,
+      autoPlay: autoPlay,
     );
   }
 

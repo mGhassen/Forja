@@ -7,17 +7,26 @@ class MyListButton extends StatelessWidget {
     super.key,
     required Movie this.movie,
     this.useHeartIcon = false,
+    this.iconColor,
+    this.iconColorActive,
+    this.iconSize,
   }) : stremioItem = null;
 
   const MyListButton.stremio({
     super.key,
     required Map<String, dynamic> this.stremioItem,
     this.useHeartIcon = false,
+    this.iconColor,
+    this.iconColorActive,
+    this.iconSize,
   }) : movie = null;
 
   final Movie? movie;
   final Map<String, dynamic>? stremioItem;
   final bool useHeartIcon;
+  final Color? iconColor;
+  final Color? iconColorActive;
+  final double? iconSize;
 
   String get _uniqueId {
     if (movie != null) return MyListService.movieId(movie!.id, movie!.mediaType);
@@ -64,10 +73,12 @@ class MyListButton extends StatelessWidget {
             useHeartIcon
                 ? (inList ? Icons.favorite_rounded : Icons.favorite_border_rounded)
                 : (inList ? Icons.bookmark_rounded : Icons.add_rounded),
-            size: useHeartIcon ? 24 : 20,
+            size: iconSize ?? (useHeartIcon ? 24 : 20),
             color: inList
-                ? (useHeartIcon ? Colors.white : ForjaShellColors.iconActive)
-                : (useHeartIcon ? Colors.white70 : ForjaShellColors.iconMuted),
+                ? (iconColorActive ??
+                    (useHeartIcon ? Colors.white : ForjaShellColors.iconActive))
+                : (iconColor ??
+                    (useHeartIcon ? Colors.white70 : ForjaShellColors.iconMuted)),
           ),
         );
       },

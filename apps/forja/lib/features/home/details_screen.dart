@@ -9,7 +9,6 @@ import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
-import 'package:forja/shared/player/player_screen.dart';
 import 'stremio_catalog_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
@@ -38,7 +37,17 @@ class DetailsScreen extends StatefulWidget {
   final int? initialEpisode;
   /// Optional: resume position from Trakt/Simkl import (used when no local progress matches).
   final Duration? startPosition;
-  const DetailsScreen({super.key, required this.movie, this.stremioItem, this.initialSeason, this.initialEpisode, this.startPosition});
+  /// When true, auto-plays the best source after the initial fetch/search completes.
+  final bool autoPlay;
+  const DetailsScreen({
+    super.key,
+    required this.movie,
+    this.stremioItem,
+    this.initialSeason,
+    this.initialEpisode,
+    this.startPosition,
+    this.autoPlay = false,
+  });
 
   @override
   State<DetailsScreen> createState() => _DetailsScreenState();
@@ -64,6 +73,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   String? _errorMessage;
   Map<String, dynamic>? _lastProgress;
   bool _sourcesPanelOpen = false;
+  bool _autoPlayConsumed = false;
 
   String _selectedSourceId = 'forja';
   List<Map<String, dynamic>> _streamAddons = [];
@@ -460,6 +470,35 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       }
     }
     if (mounted) setState(() => _allTorrentResults = sorted);
+    if (widget.autoPlay) _maybeAutoPlay();
+  }
+
+  void _maybeAutoPlay() {
+    if (!widget.autoPlay || _autoPlayConsumed || !mounted || _isLoading) return;
+
+    if (_playbackProfile.builtinTorrentSearch) {
+      if (_isSearching) return;
+      if (_allTorrentResults.isNotEmpty) {
+        _autoPlayConsumed = true;
+        _playTorrent(
+          _allTorrentResults.first,
+          startPosition: widget.startPosition,
+        );
+        return;
+      }
+      if (_isStremioFetching) return;
+    } else if (_isStremioFetching) {
+      return;
+    }
+
+    final streams = _selectedSourceId == 'all_stremio'
+        ? _allCombinedStremioStreams
+        : _stremioStreams;
+    if (streams.isEmpty) return;
+    final stream = streams.first;
+    if (stream is! Map<String, dynamic>) return;
+    _autoPlayConsumed = true;
+    _playStremioStream(stream, startPosition: widget.startPosition);
   }
 
   Future<void> _fetchDetails() async {
@@ -1089,6 +1128,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               _errorMessage = 'No streams found from any addon';
             }
           });
+          _maybeAutoPlay();
         }
       }
 
@@ -1744,7 +1784,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     if (precheck is StremioPlayable) {
       if (!mounted) return;
-      Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
+      await AppRouter.openPlayer(
+        context,
         streamUrl: precheck.streamUrl,
         title: _movie.title,
         headers: precheck.headers,
@@ -1755,7 +1796,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         activeProvider: 'stremio_direct',
         stremioId: stremioId,
         stremioAddonBaseUrl: stremioAddonBaseUrl,
-      )));
+      );
       return;
     }
 
@@ -1796,7 +1837,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (navigator.canPop()) navigator.pop();
 
     if (resolved is StremioPlayable && mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
+      await AppRouter.openPlayer(
+        context,
         streamUrl: resolved.streamUrl,
         title: _movie.title,
         magnetLink: resolved.magnetLink,
@@ -1808,7 +1850,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         activeProvider: 'stremio_direct',
         stremioId: stremioId,
         stremioAddonBaseUrl: stremioAddonBaseUrl,
-      )));
+      );
     } else if (resolved is StremioResolveFailure &&
         resolved.error != StremioPlaybackError.cancelled &&
         mounted) {
@@ -1993,13 +2035,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (Navigator.canPop(context)) Navigator.pop(context);
 
     if (url != null) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(
-        streamUrl: url!, title: result.name, magnetLink: magnetLink, movie: _movie,
+      await AppRouter.openPlayer(
+        context,
+        streamUrl: url!,
+        title: result.name,
+        magnetLink: magnetLink,
+        movie: _movie,
         selectedSeason: _movie.mediaType == 'tv' ? _selectedSeason : null,
         selectedEpisode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
         fileIndex: resolvedFileIndex,
         startPosition: startPosition,
-        activeProvider: 'torrent')));
+        activeProvider: 'torrent',
+      );
     }
   }
 

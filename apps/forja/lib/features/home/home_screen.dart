@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:rust/rust.dart';
 import 'dart:math' as math;
-import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
@@ -15,7 +15,6 @@ import 'package:forja/shared/extractors/amri_extractor.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/app/boot_cache.dart';
 import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -25,6 +24,8 @@ import 'package:forja/features/home/stremio_catalog_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
+import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/design/design.dart' hide AppTheme;
 
 double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
@@ -1259,6 +1260,24 @@ class _HomeScreenState extends State<HomeScreen>
     await AppRouter.openMovie(context, movie: movie);
   }
 
+  Future<void> _watchNow(Movie movie) async {
+    if (!mounted) return;
+    final history = await WatchHistoryService().getHistory();
+    Map<String, dynamic>? historyItem;
+    for (final item in history) {
+      if (item['tmdbId'] == movie.id) {
+        historyItem = item;
+        break;
+      }
+    }
+    if (!mounted) return;
+    if (historyItem != null) {
+      await resumePlaybackFromHistory(context, historyItem);
+      return;
+    }
+    await AppRouter.openMovie(context, movie: movie, autoPlay: true);
+  }
+
   Future<void> _loadStremioCatalogs() async {
     if (mounted) setState(() => _stremioCatalogsLoading = true);
     try {
@@ -1926,10 +1945,11 @@ class _HomeScreenState extends State<HomeScreen>
             height: ShellTokens.heroOverviewSlotHeightDesktop,
             child: Align(
               alignment: Alignment.topLeft,
-              child: _HeroOverviewText(
+              child: HeroOverviewText(
                 overview: heroMovie.overview,
                 style: overviewStyle,
                 maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+                shrinkWrap: false,
                 onReadMore: () => _openDetails(heroMovie),
               ),
             ),
@@ -2159,21 +2179,28 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildHeroActionRow(Movie heroMovie) {
     return Row(
       children: [
-        ForjaGhostButton(
-          label: 'Watch Now',
-          icon: Icons.play_arrow_rounded,
-          onTap: () => _openDetails(heroMovie),
+        HeroPillPlayButton(
+          label: 'Play',
+          onTap: () => _watchNow(heroMovie),
         ),
-        const SizedBox(width: 16),
-        ForjaPlainIcon(
-          icon: Icons.info_outline_rounded,
-          tooltip: 'Details',
-          onTap: () => _openDetails(heroMovie),
-        ),
-        ForjaPlainIcon(
-          icon: Icons.add,
-          tooltip: 'Add to My List',
-          child: MyListButton.movie(movie: heroMovie),
+        const SizedBox(width: 10),
+        HeroPillIconGroup(
+          slots: [
+            HeroPillIconSlot(
+              icon: Icons.info_outline_rounded,
+              tooltip: 'Details',
+              onTap: () => _openDetails(heroMovie),
+            ),
+            HeroPillIconSlot(
+              child: MyListButton.movie(
+                movie: heroMovie,
+                iconColor: Colors.white,
+                iconColorActive: Colors.white,
+                iconSize: 20,
+              ),
+              tooltip: 'Add to My List',
+            ),
+          ],
         ),
       ],
     );
@@ -2352,6 +2379,293 @@ Widget _buildRatingBadgeText(String rating) {
   );
 }
 
+/// Resumes or replays a title from a watch-history entry (Continue Watching, hero Watch Now).
+Future<void> resumePlaybackFromHistory(
+  BuildContext context,
+  Map<String, dynamic> item,
+) async {
+  try {
+    final method = item['method'] as String;
+    final tmdbId = item['tmdbId'] as int;
+    final season = item['season'] as int?;
+    final episode = item['episode'] as int?;
+    final title = item['title'] as String;
+    final posterPath = item['posterPath'] as String;
+    final startPos = Duration(milliseconds: item['position'] as int);
+
+    final isStreamingEntry = method == 'stream' || method == 'amri';
+    if (isStreamingEntry) {
+      if (context.mounted) {
+        final mediaType =
+            item['mediaType'] as String? ?? (season != null ? 'tv' : 'movie');
+        final movie = Movie(
+          id: tmdbId,
+          title: title,
+          posterPath: posterPath,
+          backdropPath: '',
+          overview: '',
+          releaseDate: '',
+          voteAverage: 0,
+          mediaType: mediaType,
+          genres: [],
+          imdbId: item['imdbId'],
+        );
+        await AppRouter.openStreamingDetails(
+          context,
+          movie: movie,
+          initialSeason: season,
+          initialEpisode: episode,
+          startPosition: startPos,
+        );
+      }
+      return;
+    }
+
+    final savedMagnetLink = item['magnetLink'] as String?;
+    final savedFileIndex = item['fileIndex'] as int?;
+
+    String? streamUrl;
+    String? activeProvider;
+    String? magnetLink;
+    int? fileIndex;
+    String? stremioItemId;
+    String? stremioAddonBase;
+
+    if (method == 'stremio_direct') {
+      stremioItemId = item['stremioId'] as String?;
+      stremioAddonBase = item['stremioAddonBaseUrl'] as String?;
+
+      if (context.mounted) {
+        final mediaType =
+            item['mediaType'] as String? ?? (season != null ? 'tv' : 'movie');
+        final movie = Movie(
+          id: tmdbId,
+          title: title,
+          posterPath: posterPath,
+          backdropPath: '',
+          overview: '',
+          releaseDate: '',
+          voteAverage: 0,
+          mediaType: mediaType,
+          genres: [],
+          imdbId: item['imdbId'],
+        );
+        Map<String, dynamic>? stremioItem;
+        if (stremioItemId != null) {
+          stremioItem = {
+            'id': stremioItemId,
+            '_addonBaseUrl': stremioAddonBase ?? '',
+            'type': item['stremioType'] ?? (season != null ? 'series' : 'movie'),
+            'name': title,
+          };
+        }
+        await AppRouter.openDetails(
+          context,
+          movie: movie,
+          stremioItem: stremioItem,
+          initialSeason: season,
+          initialEpisode: episode,
+          startPosition: startPos,
+        );
+      }
+      return;
+    } else if (method == 'stream') {
+      final sourceId = item['sourceId'] as String;
+      activeProvider = sourceId;
+
+      if (sourceId == 'webstreamr') {
+        debugPrint('[Resume] Using WebStreamrService for $title');
+        final webStreamr = WebStreamrService();
+        final imdbId = item['imdbId']?.toString() ?? '';
+        if (imdbId.isNotEmpty) {
+          final webStreamrSources = await webStreamr.getStreams(
+            imdbId: imdbId,
+            isMovie: season == null,
+            season: season,
+            episode: episode,
+          );
+          if (webStreamrSources.isNotEmpty) {
+            streamUrl = webStreamrSources.first.url;
+            if (context.mounted) {
+              await AppRouter.openPlayer(
+                context,
+                streamUrl: streamUrl!,
+                title: title,
+                movie: Movie(
+                  id: tmdbId,
+                  title: title,
+                  posterPath: posterPath,
+                  backdropPath: '',
+                  overview: '',
+                  releaseDate: '',
+                  voteAverage: 0,
+                  mediaType: season != null ? 'tv' : 'movie',
+                  genres: [],
+                  imdbId: imdbId,
+                ),
+                selectedSeason: season,
+                selectedEpisode: episode,
+                activeProvider: 'webstreamr',
+                startPosition: startPos,
+                sources: webStreamrSources,
+              );
+              return;
+            }
+          }
+        }
+      }
+
+      final provider = StreamProviders.providers[sourceId];
+      if (provider == null) {
+        throw Exception('Provider $sourceId not available');
+      }
+
+      debugPrint(
+        '[Resume] Re-extracting stream for $title (TMDB: $tmdbId, S:$season, E:$episode)',
+      );
+      final url = season != null && episode != null
+          ? provider['tv'](tmdbId, season, episode)
+          : provider['movie'](tmdbId);
+
+      final extractor = StreamExtractor();
+      final result =
+          await extractor.extract(url, timeout: const Duration(seconds: 20));
+      streamUrl = result?.url;
+    } else if (method == 'amri') {
+      activeProvider = 'AMRI';
+      debugPrint(
+        '[Resume] Re-extracting AMRI for $title (TMDB: $tmdbId, S:$season, E:$episode)',
+      );
+      final amriExtractor = AmriExtractor(
+        onLog: (message) => debugPrint('[AMRI Resume] $message'),
+      );
+
+      final year = item['year']?.toString() ?? '';
+
+      final sourcesData = await amriExtractor.extractSources(
+        tmdbId.toString(),
+        title,
+        year,
+        season: season,
+        episode: episode,
+      );
+
+      if (sourcesData['sources'] != null &&
+          sourcesData['sources'].isNotEmpty) {
+        final sources = sourcesData['sources'] as List;
+        streamUrl = sources.first['url'] as String?;
+      }
+    } else if (method == 'torrent') {
+      magnetLink = savedMagnetLink;
+      fileIndex = savedFileIndex;
+
+      if (magnetLink == null || magnetLink.isEmpty) {
+        throw Exception('No magnet link saved for this torrent');
+      }
+
+      debugPrint('[Resume] Using saved magnet link: ${magnetLink.substring(0, 60)}...');
+      debugPrint('[Resume] Using saved file index: $fileIndex');
+
+      final useDebridSetting = await SettingsService().useDebridForStreams();
+      final debridService = await SettingsService().getDebridService();
+      final useDebrid = useDebridSetting && debridService != 'None';
+
+      final playback = await resolveMagnetForPlayback(
+        magnet: magnetLink,
+        useDebrid: useDebrid,
+        debridService: debridService,
+        localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
+        season: season,
+        episode: episode,
+        fileIdx: fileIndex,
+      );
+      if (playback != null) {
+        streamUrl = playback.url;
+        fileIndex = playback.fileIndex ?? fileIndex;
+        debugPrint('[Resume] Resolved torrent playback URL');
+      }
+    } else if (method == 'trakt_import') {
+      if (context.mounted) {
+        final mediaType =
+            item['mediaType'] as String? ?? (season != null ? 'tv' : 'movie');
+        final movie = Movie(
+          id: tmdbId,
+          title: title,
+          posterPath: posterPath,
+          backdropPath: '',
+          overview: '',
+          releaseDate: '',
+          voteAverage: 0,
+          mediaType: mediaType,
+          genres: [],
+          imdbId: item['imdbId'],
+        );
+        final isStreaming = await SettingsService().isStreamingModeEnabled();
+        if (!context.mounted) return;
+        if (isStreaming) {
+          await AppRouter.openStreamingDetails(
+            context,
+            movie: movie,
+            initialSeason: season,
+            initialEpisode: episode,
+            startPosition: startPos,
+          );
+        } else {
+          await AppRouter.openDetails(
+            context,
+            movie: movie,
+            initialSeason: season,
+            initialEpisode: episode,
+            startPosition: startPos,
+          );
+        }
+      }
+      return;
+    }
+
+    if (streamUrl != null && context.mounted) {
+      await AppRouter.openPlayer(
+        context,
+        streamUrl: streamUrl!,
+        title: title,
+        movie: Movie(
+          id: tmdbId,
+          title: title,
+          posterPath: posterPath,
+          backdropPath: '',
+          overview: '',
+          releaseDate: '',
+          voteAverage: 0,
+          mediaType: season != null ? 'tv' : 'movie',
+          genres: [],
+          imdbId: item['imdbId'],
+        ),
+        selectedSeason: season,
+        selectedEpisode: episode,
+        magnetLink: magnetLink,
+        fileIndex: fileIndex,
+        activeProvider: activeProvider,
+        startPosition: startPos,
+        stremioId: stremioItemId,
+        stremioAddonBaseUrl: stremioAddonBase,
+      );
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load video')),
+        );
+      }
+    }
+  } catch (e) {
+    debugPrint('[Resume] Error: $e');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+}
+
 class _ContinueWatchingSection extends StatefulWidget {
   final bool compactTop;
 
@@ -2406,292 +2720,10 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
   Future<void> _resumePlayback(Map<String, dynamic> item) async {
     final uniqueId = item['uniqueId'] as String;
     if (_loadingItemId != null) return;
-    
+
     setState(() => _loadingItemId = uniqueId);
-
     try {
-      final method = item['method'] as String;
-      final tmdbId = item['tmdbId'] as int;
-      final season = item['season'] as int?;
-      final episode = item['episode'] as int?;
-      final title = item['title'] as String;
-      final posterPath = item['posterPath'] as String; 
-      final startPos = Duration(milliseconds: item['position'] as int);
-
-      // Streaming-mode entries (stream/amri/stremio_direct) don't keep a
-      // re-playable URL — extraction tokens expire. The cleanest UX is to
-      // re-open the StreamingDetailsScreen which auto-runs the extraction
-      // splash and then forwards startPosition to the player so it seeks
-      // once the duration loads.
-      final isStreamingEntry = method == 'stream' || method == 'amri';
-      if (isStreamingEntry) {
-        if (mounted) {
-          final mediaType =
-              item['mediaType'] as String? ?? (season != null ? 'tv' : 'movie');
-          final movie = Movie(
-            id: tmdbId,
-            title: title,
-            posterPath: posterPath,
-            backdropPath: '',
-            overview: '',
-            releaseDate: '',
-            voteAverage: 0,
-            mediaType: mediaType,
-            genres: [],
-            imdbId: item['imdbId'],
-          );
-          await AppRouter.openStreamingDetails(
-            context,
-            movie: movie,
-            initialSeason: season,
-            initialEpisode: episode,
-            startPosition: startPos,
-          );
-        }
-        return;
-      }
-
-      // Get saved magnet link and file index for torrents
-      final savedMagnetLink = item['magnetLink'] as String?;
-      final savedFileIndex = item['fileIndex'] as int?;
-
-      String? streamUrl;
-      String? activeProvider;
-      String? magnetLink;
-      int? fileIndex;
-      String? stremioItemId;
-      String? stremioAddonBase;
-
-      if (method == 'stremio_direct') {
-        stremioItemId = item['stremioId'] as String?;
-        stremioAddonBase = item['stremioAddonBaseUrl'] as String?;
-
-        if (mounted) {
-          final mediaType = item['mediaType'] as String? ?? (season != null ? 'tv' : 'movie');
-          final movie = Movie(
-            id: tmdbId,
-            title: title,
-            posterPath: posterPath,
-            backdropPath: '',
-            overview: '',
-            releaseDate: '',
-            voteAverage: 0,
-            mediaType: mediaType,
-            genres: [],
-            imdbId: item['imdbId'],
-          );
-          Map<String, dynamic>? stremioItem;
-          if (stremioItemId != null) {
-            stremioItem = {
-              'id': stremioItemId,
-              '_addonBaseUrl': stremioAddonBase ?? '',
-              'type': item['stremioType'] ?? (season != null ? 'series' : 'movie'),
-              'name': title,
-            };
-          }
-          await AppRouter.openDetails(
-            context,
-            movie: movie,
-            stremioItem: stremioItem,
-            initialSeason: season,
-            initialEpisode: episode,
-            startPosition: startPos,
-          );
-        }
-        return; // Skip the player launch below
-      } else if (method == 'stream') {
-        // Re-extract stream using saved sourceId (tmdbId + season + episode)
-        final sourceId = item['sourceId'] as String;
-        activeProvider = sourceId;
-        
-        if (sourceId == 'webstreamr') {
-          debugPrint('[Resume] Using WebStreamrService for $title');
-          final webStreamr = WebStreamrService();
-          final imdbId = item['imdbId']?.toString() ?? '';
-          if (imdbId.isNotEmpty) {
-            final webStreamrSources = await webStreamr.getStreams(
-              imdbId: imdbId,
-              isMovie: season == null,
-              season: season,
-              episode: episode,
-            );
-            if (webStreamrSources.isNotEmpty) {
-              streamUrl = webStreamrSources.first.url;
-              if (mounted) {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PlayerScreen(
-                      streamUrl: streamUrl!,
-                      title: title,
-                      movie: Movie(
-                        id: tmdbId,
-                        title: title,
-                        posterPath: posterPath,
-                        backdropPath: '', 
-                        overview: '', 
-                        releaseDate: '', 
-                        voteAverage: 0, 
-                        mediaType: season != null ? 'tv' : 'movie', 
-                        genres: [], 
-                        imdbId: imdbId,
-                      ),
-                      selectedSeason: season,
-                      selectedEpisode: episode,
-                      activeProvider: 'webstreamr',
-                      startPosition: startPos,
-                      sources: webStreamrSources,
-                    ),
-                  ),
-                );
-                return;
-              }
-            }
-          }
-        }
-
-        final provider = StreamProviders.providers[sourceId];
-        if (provider == null) {
-           throw Exception("Provider $sourceId not available");
-        }
-
-        debugPrint('[Resume] Re-extracting stream for $title (TMDB: $tmdbId, S:$season, E:$episode)');
-        final url = season != null && episode != null
-            ? provider['tv'](tmdbId, season, episode)
-            : provider['movie'](tmdbId);
-        
-        final extractor = StreamExtractor();
-        final result = await extractor.extract(url, timeout: const Duration(seconds: 20));
-        streamUrl = result?.url;
-      } else if (method == 'amri') {
-        // Re-extract AMRI using tmdbId + season + episode
-        activeProvider = 'AMRI';
-        debugPrint('[Resume] Re-extracting AMRI for $title (TMDB: $tmdbId, S:$season, E:$episode)');
-        final amriExtractor = AmriExtractor(
-          onLog: (message) => debugPrint('[AMRI Resume] $message'),
-        );
-        
-        final year = item['year']?.toString() ?? '';
-        
-        final sourcesData = await amriExtractor.extractSources(
-          tmdbId.toString(),
-          title,
-          year,
-          season: season,
-          episode: episode,
-        );
-        
-        if (sourcesData['sources'] != null && sourcesData['sources'].isNotEmpty) {
-          final sources = sourcesData['sources'] as List;
-          streamUrl = sources.first['url'] as String?;
-        }
-      } else if (method == 'torrent') {
-        // Use saved magnet link - NEVER re-search
-        magnetLink = savedMagnetLink;
-        fileIndex = savedFileIndex;
-        
-        if (magnetLink == null || magnetLink.isEmpty) {
-          throw Exception("No magnet link saved for this torrent");
-        }
-        
-        debugPrint('[Resume] Using saved magnet link: ${magnetLink.substring(0, 60)}...');
-        debugPrint('[Resume] Using saved file index: $fileIndex');
-
-        // Check Debrid Preference
-        final useDebridSetting = await SettingsService().useDebridForStreams();
-        final debridService = await SettingsService().getDebridService();
-        final useDebrid = useDebridSetting && debridService != 'None';
-
-        final playback = await resolveMagnetForPlayback(
-          magnet: magnetLink,
-          useDebrid: useDebrid,
-          debridService: debridService,
-          localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
-          season: season,
-          episode: episode,
-          fileIdx: fileIndex,
-        );
-        if (playback != null) {
-          streamUrl = playback.url;
-          fileIndex = playback.fileIndex ?? fileIndex;
-          debugPrint('[Resume] Resolved torrent playback URL');
-        }
-      } else if (method == 'trakt_import') {
-        // Trakt-imported items have no stream source — find one automatically
-        if (context.mounted) {
-          final mediaType = item['mediaType'] as String? ?? (season != null ? 'tv' : 'movie');
-          final movie = Movie(
-            id: tmdbId,
-            title: title,
-            posterPath: posterPath,
-            backdropPath: '',
-            overview: '',
-            releaseDate: '',
-            voteAverage: 0,
-            mediaType: mediaType,
-            genres: [],
-            imdbId: item['imdbId'],
-          );
-          final isStreaming = await SettingsService().isStreamingModeEnabled();
-          if (!context.mounted) return;
-          if (isStreaming) {
-            await AppRouter.openStreamingDetails(
-              context,
-              movie: movie,
-              initialSeason: season,
-              initialEpisode: episode,
-              startPosition: startPos,
-            );
-          } else {
-            await AppRouter.openDetails(
-              context,
-              movie: movie,
-              initialSeason: season,
-              initialEpisode: episode,
-              startPosition: startPos,
-            );
-          }
-        }
-        return;
-      }
-
-      if (streamUrl != null && mounted) {
-        // Launch Player
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PlayerScreen(
-              streamUrl: streamUrl!,
-              title: title,
-              movie: Movie(
-                id: tmdbId,
-                title: title,
-                posterPath: posterPath,
-                backdropPath: '', 
-                overview: '', 
-                releaseDate: '', 
-                voteAverage: 0, 
-                mediaType: season != null ? 'tv' : 'movie', 
-                genres: [], 
-                imdbId: item['imdbId'],
-              ),
-              selectedSeason: season,
-              selectedEpisode: episode,
-              magnetLink: magnetLink,
-              fileIndex: fileIndex, // Pass file index to player
-              activeProvider: activeProvider,
-              startPosition: startPos,
-              stremioId: stremioItemId,
-              stremioAddonBaseUrl: stremioAddonBase,
-            ),
-          ),
-        );
-      } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to load video")));
-      }
-    } catch (e) {
-      debugPrint('[Resume] Error: $e');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      await resumePlaybackFromHistory(context, item);
     } finally {
       if (mounted) setState(() => _loadingItemId = null);
     }
@@ -2859,7 +2891,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
   }
 }
 
-class _HistoryCard extends StatelessWidget {
+class _HistoryCard extends StatefulWidget {
   final Map<String, dynamic> item;
   final String? resolvedBackdropPath;
   final VoidCallback onTap;
@@ -2893,18 +2925,28 @@ class _HistoryCard extends StatelessWidget {
   }
 
   @override
+  State<_HistoryCard> createState() => _HistoryCardState();
+}
+
+class _HistoryCardState extends State<_HistoryCard> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool get _active => _hovered || _focused;
+
+  @override
   Widget build(BuildContext context) {
-    final posterPath = item['posterPath'] as String;
-    final storedBackdrop = item['backdropPath'] as String?;
+    final posterPath = widget.item['posterPath'] as String;
+    final storedBackdrop = widget.item['backdropPath'] as String?;
     final backdropPath = (storedBackdrop != null && storedBackdrop.isNotEmpty)
         ? storedBackdrop
-        : resolvedBackdropPath;
-    final title = item['title'] as String;
-    final season = item['season'] as int?;
-    final episode = item['episode'] as int?;
-    final episodeTitle = item['episodeTitle'] as String?;
-    final position = item['position'] as int;
-    final duration = item['duration'] as int;
+        : widget.resolvedBackdropPath;
+    final title = widget.item['title'] as String;
+    final season = widget.item['season'] as int?;
+    final episode = widget.item['episode'] as int?;
+    final episodeTitle = widget.item['episodeTitle'] as String?;
+    final position = widget.item['position'] as int;
+    final duration = widget.item['duration'] as int;
     
     final progress = duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
     final remaining = duration > 0 ? Duration(milliseconds: duration - position) : Duration.zero;
@@ -2921,24 +2963,48 @@ class _HistoryCard extends StatelessWidget {
     final cardWidth = _HistoryCard.cardWidth(context);
     final cardHeight = _HistoryCard.cardHeight(context);
 
-    return FocusableControl(
-      onTap: isLoading ? () {} : onTap,
-      borderRadius: 14,
-      scaleOnFocus: 1.05,
-      child: Container(
-        width: cardWidth,
-        height: cardHeight,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: AppTheme.isLightMode ? null : [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 6)),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
+    return Focus(
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onKeyEvent: (node, event) {
+        if (!widget.isLoading &&
+            event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select)) {
+          widget.onTap();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.isLoading ? null : widget.onTap,
+          child: AnimatedScale(
+            scale: _active ? 1.05 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            child: Container(
+              width: cardWidth,
+              height: cardHeight,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: AppTheme.isLightMode
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
               ColoredBox(
                 color: AppTheme.bgDark,
                 child: imageUrl.isNotEmpty
@@ -2980,7 +3046,7 @@ class _HistoryCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       hoverColor: ForjaShellColors.inkHover,
                       splashColor: ForjaShellColors.inkSplash,
-                      onTap: onRemove,
+                      onTap: widget.onRemove,
                       child: Container(
                         padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
@@ -2995,7 +3061,7 @@ class _HistoryCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       hoverColor: ForjaShellColors.inkHover,
                       splashColor: ForjaShellColors.inkSplash,
-                      onTap: onInfo,
+                      onTap: widget.onInfo,
                       child: Container(
                         padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
@@ -3059,16 +3125,49 @@ class _HistoryCard extends StatelessWidget {
               ),
             ),
             
-            if (isLoading)
-               Container(
-                 decoration: BoxDecoration(
-                   color: Colors.black.withValues(alpha: 0.6),
-                   borderRadius: BorderRadius.circular(14),
-                 ),
-                 child: Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent)),
-               ),
-          ],
-        ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: _active && !widget.isLoading ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            if (widget.isLoading)
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: ForjaShellColors.sectionAccent,
+                  ),
+                ),
+              ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -3638,126 +3737,6 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
                 ),
               ),
           ],
-        );
-      },
-    );
-  }
-}
-
-class _HeroOverviewText extends StatefulWidget {
-  const _HeroOverviewText({
-    required this.overview,
-    required this.style,
-    required this.maxLines,
-    required this.onReadMore,
-  });
-
-  final String overview;
-  final TextStyle style;
-  final int maxLines;
-  final VoidCallback onReadMore;
-
-  @override
-  State<_HeroOverviewText> createState() => _HeroOverviewTextState();
-}
-
-class _HeroOverviewTextState extends State<_HeroOverviewText> {
-  static const _ellipsis = '... ';
-  static const _readMoreLabel = 'read more';
-
-  late final TapGestureRecognizer _readMoreRecognizer;
-
-  @override
-  void initState() {
-    super.initState();
-    _readMoreRecognizer = TapGestureRecognizer()..onTap = widget.onReadMore;
-  }
-
-  @override
-  void didUpdateWidget(covariant _HeroOverviewText oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _readMoreRecognizer.onTap = widget.onReadMore;
-  }
-
-  @override
-  void dispose() {
-    _readMoreRecognizer.dispose();
-    super.dispose();
-  }
-
-  TextStyle get _readMoreStyle => widget.style.copyWith(
-        color: Colors.white.withValues(alpha: 0.85),
-        decoration: TextDecoration.underline,
-        decorationColor: Colors.white.withValues(alpha: 0.55),
-      );
-
-  bool _fits(String body, double maxWidth) {
-    final painter = TextPainter(
-      text: TextSpan(
-        children: [
-          TextSpan(text: body, style: widget.style),
-          TextSpan(text: _ellipsis, style: widget.style),
-          TextSpan(text: _readMoreLabel, style: _readMoreStyle),
-        ],
-      ),
-      maxLines: widget.maxLines,
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: maxWidth);
-    return !painter.didExceedMaxLines;
-  }
-
-  String _truncateForReadMore(String text, double maxWidth) {
-    var low = 0;
-    var high = text.length;
-    while (low < high) {
-      final mid = (low + high + 1) ~/ 2;
-      final candidate = text.substring(0, mid).trimRight();
-      if (_fits(candidate, maxWidth)) {
-        low = mid;
-      } else {
-        high = mid - 1;
-      }
-    }
-    return text.substring(0, low).trimRight();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.overview.isEmpty) {
-      return Text(' ', style: widget.style.copyWith(color: Colors.transparent));
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        final fullPainter = TextPainter(
-          text: TextSpan(text: widget.overview, style: widget.style),
-          maxLines: widget.maxLines,
-          textDirection: TextDirection.ltr,
-        )..layout(maxWidth: maxWidth);
-
-        if (!fullPainter.didExceedMaxLines) {
-          return Text(
-            widget.overview,
-            style: widget.style,
-            maxLines: widget.maxLines,
-          );
-        }
-
-        final truncated = _truncateForReadMore(widget.overview, maxWidth);
-        return Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: truncated, style: widget.style),
-              TextSpan(text: _ellipsis, style: widget.style),
-              TextSpan(
-                text: _readMoreLabel,
-                style: _readMoreStyle,
-                recognizer: _readMoreRecognizer,
-              ),
-            ],
-          ),
-          maxLines: widget.maxLines,
         );
       },
     );

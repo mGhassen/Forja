@@ -9,6 +9,9 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
+import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide_panel.dart';
+import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 
 /// Single source for the IPTV player.
@@ -29,6 +32,7 @@ class IptvPtPlayerScreen extends StatefulWidget {
   final String title;
   final String? subtitle;
   final String? logoUrl;
+  final IptvChannelGuide? channelGuide;
 
   const IptvPtPlayerScreen({
     super.key,
@@ -36,6 +40,7 @@ class IptvPtPlayerScreen extends StatefulWidget {
     required this.title,
     this.subtitle,
     this.logoUrl,
+    this.channelGuide,
   });
 
   /// Convenience: build for a single Xtream stream.
@@ -44,13 +49,15 @@ class IptvPtPlayerScreen extends StatefulWidget {
     required String url,
     required IptvStream stream,
     String? portalName,
+    IptvChannelGuide? channelGuide,
   }) =>
       IptvPtPlayerScreen(
         key: key,
         sources: [IptvPlaySource(url: url, label: portalName ?? 'Source 1')],
         title: stream.name,
         subtitle: portalName,
-        logoUrl: stream.icon,
+        logoUrl: stream.icon.isEmpty ? null : stream.icon,
+        channelGuide: channelGuide,
       );
 
   /// Convenience: build for a list of channel hits (multi-source).
@@ -95,6 +102,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   double _seekPreview = 0.0;
   bool get _isVod => _duration.inSeconds > 1;
 
+  late List<IptvPlaySource> _sources;
+  late String _title;
+  String? _subtitle;
+  String? _logoUrl;
+
   int _sourceIdx = 0;
   bool _playing = false;
   bool _buffering = false;
@@ -102,6 +114,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   String? _statusBanner;
   bool _controlsVisible = true;
   Timer? _hideControlsTimer;
+
+  bool _guideVisible = false;
+  late String _selectedGroupId;
+  late String _currentChannelId;
 
   // Watchdog state
   Timer? _watchdog;
@@ -145,6 +161,13 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   @override
   void initState() {
     super.initState();
+    _sources = List<IptvPlaySource>.from(widget.sources);
+    _title = widget.title;
+    _subtitle = widget.subtitle;
+    _logoUrl = widget.logoUrl;
+    final guide = widget.channelGuide;
+    _selectedGroupId = guide?.initialGroupId ?? '';
+    _currentChannelId = guide?.initialChannelId ?? '';
     WidgetsBinding.instance.addObserver(this);
     _initOrientationAndChrome();
     WakelockPlus.enable();
@@ -388,7 +411,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   Future<void> _openCurrent() async {
-    final src = widget.sources[_sourceIdx];
+    final src = _sources[_sourceIdx];
     // Connect silently — no banner. The buffering indicator (if any) will
     // appear naturally while the stream loads.
     try {
@@ -542,12 +565,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     try {
       if (_retryAttempt >= _maxRetries) {
         // Rotate to the next source if we have one.
-        if (_sourceIdx < widget.sources.length - 1) {
+        if (_sourceIdx < _sources.length - 1) {
           _sourceIdx++;
           _retryAttempt = 0;
           if (mounted) {
             setState(() =>
-                _statusBanner = 'Switching to ${widget.sources[_sourceIdx].label}…');
+                _statusBanner = 'Switching to ${_sources[_sourceIdx].label}…');
           }
           await _openCurrent();
           return;
@@ -578,7 +601,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         _retryAttempt = 0;
         try {
           await _player.open(
-            Media(widget.sources[_sourceIdx].url,
+            Media(_sources[_sourceIdx].url,
                 httpHeaders: const {'User-Agent': _ua}),
           );
           await _player.play();
@@ -621,7 +644,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           _bind();
           await _applyMpvTunables();
           await _player.open(
-            Media(widget.sources[_sourceIdx].url,
+            Media(_sources[_sourceIdx].url,
                 httpHeaders: const {'User-Agent': _ua}),
           );
           await _player.play();
@@ -635,7 +658,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         } catch (_) {}
         try {
           await _player.open(
-            Media(widget.sources[_sourceIdx].url,
+            Media(_sources[_sourceIdx].url,
                 httpHeaders: const {'User-Agent': _ua}),
           );
           await _player.play();
@@ -646,7 +669,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         } catch (_) {}
         try {
           await _player.open(
-            Media(widget.sources[_sourceIdx].url,
+            Media(_sources[_sourceIdx].url,
                 httpHeaders: const {'User-Agent': _ua}),
           );
           await _player.play();
@@ -665,7 +688,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           _bind();
           await _applyMpvTunables();
           await _player.open(
-            Media(widget.sources[_sourceIdx].url,
+            Media(_sources[_sourceIdx].url,
                 httpHeaders: const {'User-Agent': _ua}),
           );
           await _player.play();
@@ -705,8 +728,54 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     await _openCurrent();
   }
 
+  Future<void> _switchChannel(IptvGuideChannel ch) async {
+    if (ch.id == _currentChannelId) return;
+    final guide = widget.channelGuide;
+    if (guide == null) return;
+
+    String url;
+    String label;
+    if (ch.xtreamStream != null && guide.xtreamPortal != null) {
+      url = IptvClient.streamUrl(guide.xtreamPortal!.portal, ch.xtreamStream!);
+      label = guide.xtreamPortal!.name;
+    } else if (ch.playUrl != null && ch.playUrl!.isNotEmpty) {
+      url = ch.playUrl!;
+      label = _sources.isNotEmpty ? _sources.first.label : 'M3U';
+    } else {
+      return;
+    }
+
+    final groupName = guide.groupById(ch.groupId)?.name;
+
+    setState(() {
+      _currentChannelId = ch.id;
+      _selectedGroupId = ch.groupId;
+      _sources = [IptvPlaySource(url: url, label: label)];
+      _sourceIdx = 0;
+      _retryAttempt = 0;
+      _title = ch.name;
+      _logoUrl = ch.logoUrl;
+      _subtitle = groupName;
+    });
+    await _openCurrent();
+  }
+
+  void _toggleGuide() {
+    if (widget.channelGuide == null) return;
+    setState(() {
+      _guideVisible = !_guideVisible;
+      if (_guideVisible) {
+        _controlsVisible = true;
+        _hideControlsTimer?.cancel();
+      } else {
+        _scheduleHideControls();
+      }
+    });
+  }
+
   void _scheduleHideControls() {
     _hideControlsTimer?.cancel();
+    if (_guideVisible) return;
     _hideControlsTimer =
         Timer(const Duration(seconds: 4), () {
       if (!mounted) return;
@@ -767,6 +836,17 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             ),
             // Reconnect/buffering banner
             if (_buffering || _statusBanner != null) _buildBanner(),
+            if (_guideVisible && widget.channelGuide != null)
+              IptvChannelGuidePanel(
+                guide: widget.channelGuide!,
+                selectedGroupId: _selectedGroupId,
+                currentChannelId: _currentChannelId,
+                onGroupSelected: (id) {
+                  setState(() => _selectedGroupId = id);
+                },
+                onChannelSelected: _switchChannel,
+                onClose: () => setState(() => _guideVisible = false),
+              ),
             // Top bar + bottom controls
             AnimatedOpacity(
               duration: const Duration(milliseconds: 220),
@@ -859,13 +939,13 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             onPressed: () => Navigator.of(context).maybePop(),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
-          if ((widget.logoUrl ?? '').isNotEmpty)
+          if ((_logoUrl ?? '').isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 10),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: Image.network(
-                  widget.logoUrl!,
+                  _logoUrl!,
                   width: 32,
                   height: 32,
                   fit: BoxFit.cover,
@@ -879,7 +959,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.title,
+                  _title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.bebasNeue(
@@ -888,9 +968,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                     letterSpacing: 1,
                   ),
                 ),
-                if ((widget.subtitle ?? '').isNotEmpty)
+                if ((_subtitle ?? '').isNotEmpty)
                   Text(
-                    widget.subtitle!,
+                    _subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
@@ -901,10 +981,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               ],
             ),
           ),
-          if (widget.sources.length > 1) ...[
+          if (_sources.length > 1) ...[
             const SizedBox(width: 8),
             _SourceChip(
-              label: widget.sources[_sourceIdx].label,
+              label: _sources[_sourceIdx].label,
               onTap: _showSourcePicker,
             ),
           ],
@@ -1111,12 +1191,19 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             ),
           ),
           const Spacer(),
-          if (widget.sources.length > 1)
+          if (widget.channelGuide != null) ...[
+            _RoundIcon(
+              icon: Icons.grid_view_rounded,
+              onTap: _toggleGuide,
+            ),
+            const SizedBox(width: 14),
+          ],
+          if (_sources.length > 1)
             _RoundIcon(
               icon: Icons.swap_horiz_rounded,
               onTap: _showSourcePicker,
             ),
-          if (widget.sources.length > 1) const SizedBox(width: 14),
+          if (_sources.length > 1) const SizedBox(width: 14),
           _RoundIcon(
             icon: _isFullscreen
                 ? Icons.fullscreen_exit_rounded
@@ -1183,9 +1270,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                 ),
                 child: ListView.builder(
                   shrinkWrap: true,
-                  itemCount: widget.sources.length,
+                  itemCount: _sources.length,
                   itemBuilder: (_, i) {
-                    final s = widget.sources[i];
+                    final s = _sources[i];
                     final active = i == _sourceIdx;
                     return ListTile(
                       leading: Icon(

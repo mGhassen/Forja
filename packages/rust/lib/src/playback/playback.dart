@@ -2,6 +2,7 @@ export 'extracted_media.dart';
 export 'local_server_service.dart';
 export 'playback_profile.dart';
 export 'provider_registry.dart';
+export 'stream_provider_display.dart';
 export 'site111477_proxy.dart';
 export 'stream_providers.dart';
 export 'torrent_engine_backend.dart';

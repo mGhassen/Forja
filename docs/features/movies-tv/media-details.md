@@ -8,7 +8,7 @@ When you open a title from Home, Discover, or Search (with torrent mode enabled)
 
 The hero overlay is split into two columns on wide screens:
 
-- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), **Play** / **Resume** (white pill — opens Sources), **+** (My List), download (opens Sources), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), and watch progress when you have history.
+- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then **Play** / **Resume** (dark pill with border — opens Sources) and a combined **+ | download | ⋯** pill for My List, download, and overflow; watch progress when you have history appears below the actions.
 - **Right:** **Production Info** panel — status, language, and TV fields (first/last aired, seasons, episodes, network, production companies, origin, creators) or movie fields (release date, runtime, production, origin, budget/revenue) from TMDB rich details.
 
 Hero text sits in the **upper** area of the hero (not pinned to the bottom). Below the hero, the page uses a **flat shell background** (same `#141414` as the left nav rail and Home catalog rows) — no blurred backdrop bleed-through.
@@ -17,7 +17,7 @@ Scroll below the hero for:
 
 1. **Seasons** (TV only) — square season photo cards; tap a season to expand the episode rail
 2. **Cast** — circular photos, actor and character names
-3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to play in the in-app trailer player
+3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio track picker when YouTube offers alternates, subtitles)
 4. **More Like This** — recommendation row
 
 Torrent search, Stremio/Nuvio streams, and source picking stay in the **Sources** side panel (opened from **Play** in the hero).

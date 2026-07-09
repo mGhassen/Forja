@@ -23,7 +23,7 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 
 - **Home menu (desktop):** Films / TV Shows / Categories overlaid on the hero; Categories opens a mood picker
 - **Left rail:** Forja logo (top), your configured tabs (center), Settings (bottom); muted grey icons with hover feedback
-- **Body:** flat `bgDark`; Home hero is full-bleed with text-only Watch Now plus bare info and add-to-list icons
+- **Body:** flat `bgDark`; Home hero is full-bleed with pill **Play** plus a combined **info | add** pill for details and My List
 
 ## Available tabs
 

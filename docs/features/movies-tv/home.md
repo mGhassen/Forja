@@ -17,6 +17,8 @@ Tap **Home** in the navigation bar (first tab by default).
 - Use mood/genre chips to filter what appears in rails
 - See **Tonight's Pick** and **Because you watched…** (BestSimilar) suggestions
 - Resume from **Continue watching** (local watch history)
+- Tap **Play** on the hero to play or resume immediately (opens the player, or auto-starts extraction/search first)
+- **Info | +** pill opens details or toggles My List
 - Open any poster to view details and play
 - Jump into a Stremio addon catalog rail when configured
 - View Trakt recommendation and calendar sections when connected
@@ -29,6 +31,7 @@ Tap **Home** in the navigation bar (first tab by default).
 ## Tips
 
 - Continue watching updates automatically when you watch movies or series
+- Hover a continue watching card (desktop) to scale it and show a play icon — click to resume
 - Dismiss an item from continue watching from the details screen or Home
 
 ## Related

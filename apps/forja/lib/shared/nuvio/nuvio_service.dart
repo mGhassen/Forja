@@ -394,6 +394,7 @@ class NuvioService {
           'scraperId': s.id,
           'manifestUrl': a.manifestUrl,
           'supportedTypes': s.supportedTypes,
+          'contentLanguage': s.contentLanguage,
         };
       }
     }
@@ -416,6 +417,7 @@ class NuvioService {
                 'scraperId': s.id,
                 'manifestUrl': virt.manifestUrl,
                 'supportedTypes': s.supportedTypes,
+                'contentLanguage': s.contentLanguage,
               });
         }
       }

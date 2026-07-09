@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:rust/rust.dart';
 
@@ -39,16 +39,24 @@ class MediaDetailsStreamingActionRow extends StatelessWidget {
                   ),
                 ),
               ),
-            ForjaGhostButton(
+            HeroPillPlayButton(
               label: isExtracting ? 'Loading' : (hasResume ? 'Resume' : 'Play'),
               icon: isExtracting ? null : Icons.play_arrow_rounded,
               onTap: isExtracting ? null : onPlay,
             ),
-            const SizedBox(width: 16),
-            ForjaPlainIcon(
-              icon: Icons.add,
-              tooltip: 'Add to My List',
-              child: MyListButton.movie(movie: movie),
+            const SizedBox(width: 10),
+            HeroPillIconGroup(
+              slots: [
+                HeroPillIconSlot(
+                  child: MyListButton.movie(
+                    movie: movie,
+                    iconColor: Colors.white,
+                    iconColorActive: Colors.white,
+                    iconSize: 20,
+                  ),
+                  tooltip: 'Add to My List',
+                ),
+              ],
             ),
           ],
         ),

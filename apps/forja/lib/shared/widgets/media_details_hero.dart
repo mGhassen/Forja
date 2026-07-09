@@ -1042,91 +1042,70 @@ class _HeroMainColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     final director = directorName?.trim();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final bounded =
-            constraints.hasBoundedHeight && constraints.maxHeight.isFinite;
-
-        return SizedBox(
-          width: maxContentWidth,
-          height: bounded ? constraints.maxHeight : null,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: bounded ? MainAxisSize.max : MainAxisSize.min,
-            children: [
-              HeroTitle(movie: movie, logoUrl: logoUrl),
-              if (movie.genres.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  movie.genres.take(4).join(' • '),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.78),
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
-              if (actionRow != null) ...[
-                const SizedBox(height: 18),
-                actionRow!,
-              ],
-              const SizedBox(height: 14),
-              HeroMetaLine(
-                movie: movie,
-                certification: certification,
-                imdbRating: imdbRating,
+    return SizedBox(
+      width: maxContentWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          HeroTitle(movie: movie, logoUrl: logoUrl),
+          if (movie.genres.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              movie.genres.take(4).join(' • '),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withValues(alpha: 0.78),
+                letterSpacing: 0.2,
               ),
-              if (director != null && director.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  'Director: $director',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.72),
-                  ),
-                ),
-              ],
-              if (movie.overview.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                if (bounded)
-                  Flexible(
-                    child: HeroOverviewText(
-                      overview: movie.overview,
-                      maxLines: 3,
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.6,
-                        color: Colors.white.withValues(alpha: 0.72),
-                      ),
-                    ),
-                  )
-                else
-                  HeroOverviewText(
-                    overview: movie.overview,
-                    maxLines: 3,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.6,
-                      color: Colors.white.withValues(alpha: 0.72),
-                    ),
-                  ),
-              ],
-              if (positionMs != null && durationMs != null) ...[
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: 280,
-                  child: WatchProgressBar(
-                    positionMs: positionMs!,
-                    durationMs: durationMs!,
-                  ),
-                ),
-              ],
-            ],
+            ),
+          ],
+          const SizedBox(height: 14),
+          HeroMetaLine(
+            movie: movie,
+            certification: certification,
+            imdbRating: imdbRating,
           ),
-        );
-      },
+          if (director != null && director.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Director: $director',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withValues(alpha: 0.72),
+              ),
+            ),
+          ],
+          if (movie.overview.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            HeroOverviewText(
+              overview: movie.overview,
+              maxLines: 3,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.6,
+                color: Colors.white.withValues(alpha: 0.72),
+              ),
+            ),
+          ],
+          if (actionRow != null) ...[
+            const SizedBox(height: 18),
+            actionRow!,
+          ],
+          if (positionMs != null && durationMs != null) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: 280,
+              child: WatchProgressBar(
+                positionMs: positionMs!,
+                durationMs: durationMs!,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

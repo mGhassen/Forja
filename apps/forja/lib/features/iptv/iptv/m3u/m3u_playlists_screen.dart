@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
 import 'm3u_models.dart';
 import 'm3u_parser.dart';
@@ -748,6 +749,10 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
         title: ch.name,
         subtitle: ch.group.isNotEmpty ? ch.group : widget.playlist.name,
         logoUrl: ch.logo.isEmpty ? null : ch.logo,
+        channelGuide: IptvChannelGuide.fromM3uPlaylist(
+          widget.playlist.channels,
+          initialChannel: ch,
+        ),
       ),
     ));
   }
