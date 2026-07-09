@@ -161,6 +161,15 @@ double statusNotificationTop(BuildContext context) {
   return top + 44 + 6 + 4;
 }
 
+void notifyNoServerAvailable(PlayerStatusController controller) {
+  controller.upsert(
+    'no-server',
+    'No server available',
+    kind: StatusRouletteKind.failed,
+    dismissAfter: const Duration(seconds: 3),
+  );
+}
+
 class PlayerStatusOverlay extends StatelessWidget {
   const PlayerStatusOverlay({
     super.key,

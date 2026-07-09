@@ -42,11 +42,11 @@ class SubtitleApi {
 
     final List<Future<List<Map<String, dynamic>>>> tasks = [];
 
-    // Wyzie
-    tasks.add(_fetchWyzie(tmdbId, season, episode));
-
-    // Levrx
-    tasks.add(_fetchLevrx(tmdbId, season, episode));
+    // Wyzie / Levrx require a real TMDB id (anime uses negative anilist ids).
+    if (tmdbId > 0) {
+      tasks.add(_fetchWyzie(tmdbId, season, episode));
+      tasks.add(_fetchLevrx(tmdbId, season, episode));
+    }
 
     // SubtitleCat (scraping + on-demand Google translation)
     if (title != null && title.trim().isNotEmpty) {

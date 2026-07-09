@@ -669,7 +669,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         const SizedBox(height: 24),
         Expanded(
           child: GridView.builder(
-            padding: EdgeInsets.zero,
+            clipBehavior: Clip.none,
+            padding: const EdgeInsets.only(bottom: 8),
             gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: _SearchFilmCard.cardWidth(context),
               mainAxisSpacing: 16,
@@ -679,11 +680,14 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             itemCount: results.length,
             itemBuilder: (context, index) {
               final item = results[index];
-              return _SearchFilmCard(
-                result: item,
-                selected: index == _focusedIndex,
-                onTap: () => _setFocusedIndex(index),
-                onOpen: () => _openResult(item),
+              return Padding(
+                padding: const EdgeInsets.all(4),
+                child: _SearchFilmCard(
+                  result: item,
+                  selected: index == _focusedIndex,
+                  onTap: () => _setFocusedIndex(index),
+                  onOpen: () => _openResult(item),
+                ),
               );
             },
           ),
@@ -952,38 +956,33 @@ class _SearchFilmCard extends StatelessWidget {
     return MediaQuery.sizeOf(context).width > 900 ? 190.0 : 165.0;
   }
 
-  static double cardHeight(BuildContext context) => cardWidth(context) * 1.5;
-
   @override
   Widget build(BuildContext context) {
-    final cardWidth = _SearchFilmCard.cardWidth(context);
-    final cardHeight = _SearchFilmCard.cardHeight(context);
     final isDesktop = MediaQuery.sizeOf(context).width > 900;
 
     return FocusableControl(
       onTap: onTap,
       borderRadius: 14,
-      scaleOnFocus: 1.05,
+      scaleOnFocus: 1.0,
       child: GestureDetector(
         onDoubleTap: onOpen,
-        child: AnimatedContainer(
-          duration: ShellTokens.navSelectionAnimation,
-          width: cardWidth,
-          height: cardHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: selected
-                ? Border.all(color: Colors.white, width: 2)
-                : null,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: selected ? 0.65 : 0.5),
-                blurRadius: selected ? 20 : 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: ClipRRect(
+        child: SizedBox.expand(
+          child: AnimatedContainer(
+            duration: ShellTokens.navSelectionAnimation,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: selected
+                  ? Border.all(color: Colors.white, width: 2)
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: selected ? 0.65 : 0.5),
+                  blurRadius: selected ? 20 : 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: Stack(
               fit: StackFit.expand,
@@ -1090,6 +1089,7 @@ class _SearchFilmCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

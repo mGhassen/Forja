@@ -11,12 +11,13 @@ import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_cinematic_hero.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'asian_drama_details_screen.dart';
-import 'asian_drama_explore_screen.dart';
 import 'asian_drama_player_screen.dart';
 import 'asian_drama_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 
 class AsianDramaScreen extends StatefulWidget {
   const AsianDramaScreen({super.key});
@@ -118,14 +119,9 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   }
 
   void _openSearch() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AsianDramaSearchScreen()),
-    );
-  }
-
-  void _openExplore() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AsianDramaExploreScreen()),
+    pushShellRoute(
+      context,
+      AppRouter.slideRoute((_) => const AsianDramaSearchScreen()),
     );
   }
 
@@ -242,35 +238,6 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                               parent: AlwaysScrollableScrollPhysics(),
                             ),
                             slivers: [
-                              SliverAppBar(
-                                pinned: false,
-                                floating: true,
-                                backgroundColor: Colors.transparent,
-                                elevation: 0,
-                                title: const Text(
-                                  'Asian Drama',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                                actions: [
-                                  ForjaPlainIcon(
-                                    icon: Icons.tune_rounded,
-                                    tooltip: 'Explore',
-                                    color: Colors.white,
-                                    onTap: _openExplore,
-                                  ),
-                                  ForjaPlainIcon(
-                                    icon: Icons.search,
-                                    color: Colors.white,
-                                    onTap: _openSearch,
-                                  ),
-                                  const SizedBox(width: 4),
-                                ],
-                              ),
                               if (_loading)
                                 ...homeHubLoadingSlivers(
                                   context,
@@ -281,6 +248,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                 SliverToBoxAdapter(
                                   child: HubCinematicHero(
                                     slides: _heroSlides(_spotlight),
+                                    onSearch: _openSearch,
                                   ),
                                 ),
                                 if (_continueWatching.isNotEmpty)

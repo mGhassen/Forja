@@ -9,15 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/anime/catalog/allanime_extractor.dart';
 import 'package:forja/features/anime/catalog/watchhentai_extractor.dart';
 import 'package:forja/features/anime/catalog/hentaini_extractor.dart';
-import 'package:forja/features/anime/catalog/anime_stream_servers.dart';
 import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 
 class AnimeService {
   static const String _anikotoUa =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
-  static final RegExp _megaPathIdRe = RegExp(r'/stream/s-2/(\d+)/');
-
   // ─── GraphQL helper ─────────────────────────────────────────────
   Future<dynamic> _query(String query, [Map<String, dynamic>? vars]) async {
     const maxAttempts = 3;
@@ -655,72 +652,47 @@ class AnimeService {
     List<String> animeTitles = const [],
     bool isAdult = false,
   }) {
-    AnikotoEpisode? anikotoEp;
+    String? embedId;
     if (series != null) {
-      for (final e in series.episodes) {
-        if (e.number == episode) {
-          anikotoEp = e;
-          break;
-        }
-      }
+      final ep = series.episodes
+          .where((e) => e.number == episode)
+          .cast<AnikotoEpisode?>()
+          .firstWhere((_) => true, orElse: () => null);
+      embedId = ep?.embedId;
     }
-    final embedId = anikotoEp?.embedId;
 
     final all = <AnimeEmbed>[];
     if (embedId != null && embedId.isNotEmpty) {
-      void addPair(String cat) {
-        final megaUrl = cat == 'sub'
-            ? anikotoEp?.embedUrlSub
-            : anikotoEp?.embedUrlDub;
-        final mega = megaUrl ??
-            _embed(
-              host: 'megaplay.buzz',
-              anilistId: anilistId,
-              episode: episode,
-              category: cat,
-              embedId: embedId,
-            );
-        final vid = _embed(
-          host: 'vidwish.live',
-          anilistId: anilistId,
-          episode: episode,
-          category: cat,
-          embedId: embedId,
-        );
-        if (mega != null) {
-          all.add(AnimeEmbed(
-            label: 'HD-1',
-            server: 'megaplay',
-            category: cat,
-            url: mega,
-          ));
-        }
-        if (vid != null) {
-          all.add(AnimeEmbed(
-            label: 'HD-2',
-            server: 'vidwish',
-            category: cat,
-            url: vid,
-          ));
-        }
-      }
-
-      addPair('sub');
-      addPair('dub');
+      all.addAll([
+        AnimeEmbed(
+          label: 'HD-1', server: 'megaplay', category: 'sub',
+          url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
+        ),
+        AnimeEmbed(
+          label: 'HD-2', server: 'vidwish', category: 'sub',
+          url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
+        ),
+        AnimeEmbed(
+          label: 'HD-1', server: 'megaplay', category: 'dub',
+          url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
+        ),
+        AnimeEmbed(
+          label: 'HD-2', server: 'vidwish', category: 'dub',
+          url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
+        ),
+      ]);
     }
-    // Forja stream servers (neko, momo, …) — one embed per server per category.
+    // Miruro fallback — emit one embed per known provider per category. The
+    // resolver fans them all out in parallel; whichever returns a stream
+    // first wins. The episodes lookup is cached inside MiruroExtractor so all
+    // parallel attempts share a single network round-trip.
     for (final cat in const ['sub', 'dub']) {
-      for (final srv in AnimeStreamServers.all) {
+      for (final prov in MiruroExtractor.knownProviders) {
         all.add(AnimeEmbed(
-          label: srv.id,
-          server: srv.id,
+          label: 'Miruro·$prov',
+          server: 'miruro',
           category: cat,
-          url: AnimeStreamServers.streamUrl(
-            anilistId: anilistId,
-            episode: episode,
-            category: cat,
-            server: srv,
-          ),
+          url: 'miruro://anilist/$anilistId/$episode/$cat/$prov',
         ));
       }
     }
@@ -766,59 +738,12 @@ class AnimeService {
   /// direct page loads — extraction only works when this header is present.
   static const String embedReferer = 'https://www.enma.lol/';
 
-  /// megaplay / vidwish: GET /stream/getSources?id={id} → JSON stream.
-  /// The catalog id in `/stream/s-2/{id}/` works directly — no HTML scrape.
-  Future<AnimeStreamResult?> _fetchMegaSources({
-    required String origin,
-    required String embedPageUrl,
-    required String dataId,
-  }) async {
-    const ua =
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
-    final apiUrl = '$origin/stream/getSources?id=$dataId';
-    final apiRes = await animeHttp('GET', apiUrl, headers: {
-      'Referer': embedPageUrl,
-      'Origin': origin,
-      'X-Requested-With': 'XMLHttpRequest',
-      'User-Agent': ua,
-      'Accept': 'application/json, text/plain, */*',
-    }, maxRetries: 0);
-    if (apiRes.status != 200) return null;
-    final json = jsonDecode(apiRes.body);
-    if (json is! Map) return null;
-    final file =
-        (json['sources'] is Map ? json['sources']['file'] : null) as String?;
-    if (file == null || file.isEmpty) return null;
-
-    final tracks = <AnimeTrack>[];
-    final rawTracks = json['tracks'];
-    if (rawTracks is List) {
-      for (final t in rawTracks) {
-        if (t is Map &&
-            t['file'] is String &&
-            ((t['kind'] ?? 'captions') == 'captions' ||
-                (t['kind'] ?? '') == 'subtitles')) {
-          tracks.add(AnimeTrack(
-            url: t['file'] as String,
-            label: (t['label'] as String?) ?? 'Unknown',
-            isDefault: t['default'] == true,
-          ));
-        }
-      }
-    }
-    return AnimeStreamResult(
-      url: file,
-      referer: '$origin/',
-      origin: origin,
-      tracks: tracks,
-    );
-  }
-
+  /// Direct HTTP extractor for megaplay.buzz / vidwish.live embeds.
+  ///
+  /// Both providers expose the same internal API:
+  ///   1. GET /stream/s-2/{id}/{lang}     → HTML containing `data-id="..."`
+  ///   2. GET /stream/getSources?id={dataId} → JSON { sources:{file}, tracks:[] }
   Future<AnimeStreamResult?> extractDirect(AnimeEmbed embed) async {
-    if (AnimeStreamServers.isForjaServer(embed.server)) {
-      return _extractStreamServer(embed);
-    }
     if (embed.server == 'miruro') {
       return _extractMiruro(embed);
     }
@@ -838,89 +763,83 @@ class AnimeService {
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
           '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-      final pathId = _megaPathIdRe.firstMatch(embedUri.path)?.group(1);
-      final tried = <String>{};
-
-      Future<AnimeStreamResult?> tryId(String? id) async {
-        if (id == null || id.isEmpty || !tried.add(id)) return null;
-        return _fetchMegaSources(
-          origin: origin,
-          embedPageUrl: embed.url,
-          dataId: id,
-        );
-      }
-
-      var result = await tryId(pathId);
-      if (result != null) {
-        if (kDebugMode) {
-          debugPrint(
-              '[extractDirect] OK via path id=$pathId tracks=${result.tracks.length}');
-        }
-        return result;
-      }
-
-      // Fallback: scrape HTML for a different internal player id.
+      // Step 1: fetch embed HTML to extract data-id
       final pageRes = await animeHttp('GET', embed.url, headers: {
         'Referer': embedReferer,
         'User-Agent': ua,
         'Accept':
             'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       }, maxRetries: 0);
-      if (pageRes.status == 200) {
-        final htmlId =
-            RegExp(r'data-id\s*=\s*"(\d+)"').firstMatch(pageRes.body)?.group(1);
-        result = await tryId(htmlId);
-        if (result != null) {
-          if (kDebugMode) {
-            debugPrint(
-                '[extractDirect] OK via html id=$htmlId tracks=${result.tracks.length}');
-          }
-          return result;
+      if (pageRes.status != 200) {
+        if (kDebugMode) {
+          debugPrint('[extractDirect] embed page HTTP ${pageRes.status}');
         }
-      } else if (kDebugMode) {
-        debugPrint('[extractDirect] embed page HTTP ${pageRes.status}');
+        return null;
       }
+      final m = RegExp(r'data-id\s*=\s*"(\d+)"').firstMatch(pageRes.body);
+      if (m == null) {
+        if (kDebugMode) debugPrint('[extractDirect] data-id not found');
+        return null;
+      }
+      final dataId = m.group(1)!;
 
-      if (kDebugMode) {
-        debugPrint('[extractDirect] no stream for ${embed.displayName}');
+      // Step 2: fetch sources JSON
+      final apiUrl = '$origin/stream/getSources?id=$dataId';
+      final apiRes = await animeHttp('GET', apiUrl, headers: {
+        'Referer': embed.url,
+        'Origin': origin,
+        'X-Requested-With': 'XMLHttpRequest',
+        'User-Agent': ua,
+        'Accept': 'application/json, text/plain, */*',
+      }, maxRetries: 0);
+      if (apiRes.status != 200) {
+        if (kDebugMode) {
+          debugPrint('[extractDirect] getSources HTTP ${apiRes.status}');
+        }
+        return null;
       }
-      return null;
+      final json = jsonDecode(apiRes.body);
+      if (json is! Map) return null;
+      final file =
+          (json['sources'] is Map ? json['sources']['file'] : null) as String?;
+      if (file == null || file.isEmpty) {
+        if (kDebugMode) debugPrint('[extractDirect] no sources.file');
+        return null;
+      }
+      final tracks = <AnimeTrack>[];
+      final rawTracks = json['tracks'];
+      if (rawTracks is List) {
+        for (final t in rawTracks) {
+          if (t is Map &&
+              t['file'] is String &&
+              ((t['kind'] ?? 'captions') == 'captions' ||
+                  (t['kind'] ?? '') == 'subtitles')) {
+            tracks.add(AnimeTrack(
+              url: t['file'] as String,
+              label: (t['label'] as String?) ?? 'Unknown',
+              isDefault: t['default'] == true,
+            ));
+          }
+        }
+      }
+      if (kDebugMode) {
+        debugPrint('[extractDirect] OK file=$file tracks=${tracks.length}');
+      }
+      return AnimeStreamResult(
+        url: file,
+        referer: '$origin/',
+        origin: origin,
+        tracks: tracks,
+      );
     } catch (e, st) {
       if (kDebugMode) debugPrint('[extractDirect] error: $e\n$st');
       return null;
     }
   }
 
-  // Pipe transport for Forja stream servers (neko → zoro, momo → kiwi, …).
+  // Miruro extractor — uses the secure-pipe API to resolve a direct HLS
+  // stream + subtitle tracks from any AniList episode/category.
   final MiruroExtractor _miruro = MiruroExtractor();
-
-  Future<AnimeStreamResult?> _extractStreamServer(AnimeEmbed embed) async {
-    final parsed = AnimeStreamServers.parseUrl(embed.url);
-    if (parsed == null) return null;
-
-    final res = await _miruro.extractWithProvider(
-      anilistId: parsed.anilistId,
-      episodeNumber: parsed.episode,
-      category: parsed.category,
-      provider: parsed.server.pipeKey,
-    );
-    if (res == null) return null;
-
-    return AnimeStreamResult(
-      url: res.url,
-      referer: res.referer,
-      origin: res.origin,
-      tracks: res.tracks
-          .map((t) => AnimeTrack(
-                url: t.url,
-                label: t.label.isNotEmpty
-                    ? t.label
-                    : (t.language.isNotEmpty ? t.language : 'Unknown'),
-                isDefault: t.isDefault,
-              ))
-          .toList(),
-    );
-  }
 
   Future<AnimeStreamResult?> _extractMiruro(AnimeEmbed embed) async {
     final m = RegExp(r'^miruro://anilist/(\d+)/(\d+)/(sub|dub)/([a-z0-9]+)$')
@@ -1298,6 +1217,8 @@ class AnimeEmbed {
 
   String get displayName {
     switch (server) {
+      case 'miruro':
+        return 'Miruro · ${category.toUpperCase()}';
       case 'allanime':
         return 'AllAnime · ${category.toUpperCase()}';
       case 'watchhentai':
@@ -1312,6 +1233,8 @@ class AnimeEmbed {
     switch (server) {
       case 'vidwish':
         return 'https://vidwish.live';
+      case 'miruro':
+        return 'https://www.miruro.tv';
       case 'allanime':
         return 'https://allmanga.to';
       case 'watchhentai':
@@ -1368,27 +1291,20 @@ class AnikotoEpisode {
   final int number;
   final String title;
   final String embedId; // episode_embed_id used by /stream/s-2/{id}/{lang}
-  final String? embedUrlSub;
-  final String? embedUrlDub;
 
   const AnikotoEpisode({
     required this.id,
     required this.number,
     required this.title,
     required this.embedId,
-    this.embedUrlSub,
-    this.embedUrlDub,
   });
 
   factory AnikotoEpisode.fromJson(Map<String, dynamic> j) {
-    final embedUrl = (j['embed_url'] as Map?)?.cast<String, dynamic>() ?? {};
     return AnikotoEpisode(
       id: (j['id'] ?? 0) as int,
       number: (j['number'] ?? 0) as int,
       title: (j['title'] ?? '') as String,
       embedId: (j['episode_embed_id'] ?? '').toString(),
-      embedUrlSub: (embedUrl['sub'] as String?)?.trim(),
-      embedUrlDub: (embedUrl['dub'] as String?)?.trim(),
     );
   }
 }

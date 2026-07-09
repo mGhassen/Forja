@@ -11,11 +11,12 @@ import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'anime_details_screen.dart';
-import 'anime_discover_screen.dart';
 import 'anime_player_screen.dart';
 import 'anime_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 
 class AnimeScreen extends StatefulWidget {
   const AnimeScreen({super.key});
@@ -222,15 +223,10 @@ class _AnimeScreenState extends State<AnimeScreen>
     openAnimeDetails(context, a).then((_) => _refreshHistory());
   }
 
-  void _openDiscover() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AnimeDiscoverScreen()),
-    );
-  }
-
   void _openSearch() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AnimeSearchScreen()),
+    pushShellRoute(
+      context,
+      AppRouter.slideRoute((_) => const AnimeSearchScreen()),
     );
   }
 
@@ -316,26 +312,6 @@ class _AnimeScreenState extends State<AnimeScreen>
                               parent: AlwaysScrollableScrollPhysics(),
                             ),
                             slivers: [
-                              SliverAppBar(
-                                pinned: false,
-                                floating: true,
-                                backgroundColor: Colors.transparent,
-                                elevation: 0,
-                                actions: [
-                                  ForjaPlainIcon(
-                                    icon: Icons.search,
-                                    color: Colors.white,
-                                    onTap: _openSearch,
-                                  ),
-                                  ForjaPlainIcon(
-                                    icon: Icons.tune_rounded,
-                                    tooltip: 'Discover',
-                                    color: Colors.white,
-                                    onTap: _openDiscover,
-                                  ),
-                                  const SizedBox(width: 4),
-                                ],
-                              ),
                               SliverToBoxAdapter(
                                 child: FutureBuilder<List<AnimeCard>>(
                                   future: _spotlightFuture,
@@ -350,6 +326,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                       slides: _heroSlides(
                                         snap.data!.take(5).toList(),
                                       ),
+                                      onSearch: _openSearch,
                                     );
                                   },
                                 ),
@@ -581,7 +558,6 @@ class _AnimeScreenState extends State<AnimeScreen>
             },
           ),
         ),
-        const SizedBox(height: 16),
         _buildMoodSection(),
       ],
     );
@@ -591,10 +567,44 @@ class _AnimeScreenState extends State<AnimeScreen>
     final future = _moodFuture;
     if (future == null) return const SizedBox.shrink();
 
-    return HubCatalogSection<AnimeCard>(
-      title: 'In the mood',
+    return FutureBuilder<List<AnimeCard>>(
       future: future,
-      cardBuilder: (context, anime, index) => _animePosterCard(anime),
+      builder: (context, snapshot) {
+        final loading = snapshot.connectionState == ConnectionState.waiting;
+        final list = snapshot.data ?? <AnimeCard>[];
+
+        if (loading || list.isEmpty) {
+          if (loading || !snapshot.hasData) {
+            return homeLoadingShimmer(
+              SizedBox(
+                height: HubPosterCard.cardHeight(context),
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  itemCount: 5,
+                  separatorBuilder: (_, _) => const SizedBox(width: 14),
+                  itemBuilder: (_, _) => homeCardSkeleton(context),
+                ),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }
+
+        return SizedBox(
+          height: HubPosterCard.cardHeight(context),
+          child: ListView.separated(
+            clipBehavior: Clip.none,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            itemCount: list.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (context, index) => _animePosterCard(list[index]),
+          ),
+        );
+      },
     );
   }
 

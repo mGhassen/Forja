@@ -17,7 +17,8 @@ DESKTOP_SRC="$ROOT/installer/linux/Forja.desktop"
 TOOLS_DIR="$DIST/linuxdeploy-tools"
 
 LINUXDEPLOY="$TOOLS_DIR/linuxdeploy-x86_64.AppImage"
-LINUXDEPLOY_GTK="$TOOLS_DIR/linuxdeploy-plugin-gtk-x86_64.AppImage"
+GTK_PLUGIN_REF=3b67a1d1c1b0c8268f57f2bce40fe2d33d409cea
+LINUXDEPLOY_GTK="$TOOLS_DIR/linuxdeploy-plugin-gtk.sh"
 
 if [[ ! -d "$BUNDLE" ]]; then
   echo "error: missing $BUNDLE — run flutter build linux --release first" >&2
@@ -40,7 +41,7 @@ fi
 
 if [[ ! -x "$LINUXDEPLOY_GTK" ]]; then
   curl -fsSL -o "$LINUXDEPLOY_GTK" \
-    "https://github.com/linuxdeploy/linuxdeploy-plugin-gtk/releases/download/continuous/linuxdeploy-plugin-gtk-x86_64.AppImage"
+    "https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/${GTK_PLUGIN_REF}/linuxdeploy-plugin-gtk.sh"
   chmod +x "$LINUXDEPLOY_GTK"
 fi
 
@@ -64,12 +65,13 @@ chmod +x "$APPDIR/AppRun" "$APPDIR/usr/bin/forja"
 export ARCH=x86_64
 export VERSION="$VERSION"
 export APPIMAGE_EXTRACT_AND_RUN=1
-export LINUXDEPLOY_PLUGIN_GTK="$LINUXDEPLOY_GTK"
+export PATH="$TOOLS_DIR:$PATH"
 
 "$LINUXDEPLOY" \
   --appdir "$APPDIR" \
   --desktop-file="$APPDIR/forja.desktop" \
   --icon-file="$APPDIR/forja.png" \
+  --plugin gtk \
   --output appimage
 
 BUILT="$(find "$TOOLS_DIR" -maxdepth 1 -name '*.AppImage' -newer "$LINUXDEPLOY" 2>/dev/null | head -1 || true)"

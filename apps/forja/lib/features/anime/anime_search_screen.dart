@@ -1,11 +1,11 @@
 // Anime search — debounced TextField with grid results.
 
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
+
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/shared/widgets/hover_scale.dart';
+import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'anime_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
@@ -32,7 +32,7 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focus.requestFocus();
+      if (mounted) _focus.requestFocus();
     });
   }
 
@@ -45,8 +45,14 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
   }
 
   void _onChanged(String v) {
+    setState(() {});
     _debounce?.cancel();
-    final q = v.trim();
+    _debounce = Timer(const Duration(milliseconds: 380), () {
+      _runSearch(v.trim());
+    });
+  }
+
+  Future<void> _runSearch(String q) async {
     if (q.isEmpty) {
       setState(() {
         _query = '';
@@ -56,10 +62,6 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
       });
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 500), () => _run(q));
-  }
-
-  Future<void> _run(String q) async {
     setState(() {
       _query = q;
       _loading = true;
@@ -73,7 +75,7 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || _query != q) return;
       setState(() {
         _loading = false;
         _error = 'Search failed';
@@ -82,6 +84,23 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
   }
 
   void _open(AnimeCard a) => openAnimeDetails(context, a);
+
+  HubPosterCard _posterCard(AnimeCard anime) {
+    final subtitle = [
+      if (anime.seasonYear != null) '${anime.seasonYear}',
+      if (anime.episodes != null) '${anime.episodes} eps',
+    ].join(' · ');
+
+    return HubPosterCard(
+      imageUrl: anime.coverUrl,
+      title: anime.displayTitle,
+      subtitle: subtitle.isEmpty ? null : subtitle,
+      rating:
+          (anime.averageScore ?? 0) > 0 ? (anime.averageScore! / 10) : null,
+      badge: anime.format,
+      onTap: () => _open(anime),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,26 +112,26 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
           appBar: AppBar(
             backgroundColor: AppTheme.bgDark,
             elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white, size: 18),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            iconTheme: const IconThemeData(color: Colors.white),
             titleSpacing: 0,
             title: TextField(
               controller: _controller,
               focusNode: _focus,
+              autofocus: true,
               onChanged: _onChanged,
+              onSubmitted: (v) => _runSearch(v.trim()),
               textInputAction: TextInputAction.search,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
+              cursorColor: ForjaShellColors.sectionAccent,
               decoration: InputDecoration(
                 hintText: 'Search anime…',
                 hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.38),
+                  color: ForjaShellColors.cinematic.textSecondary
+                      .withValues(alpha: 0.7),
                   fontWeight: FontWeight.w400,
                 ),
                 border: InputBorder.none,
@@ -122,12 +141,13 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
               if (_controller.text.isNotEmpty)
                 ForjaCloseButton.compact(
                   tooltip: null,
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: ForjaShellColors.cinematic.textPrimary,
                   onTap: () {
                     _controller.clear();
                     _onChanged('');
                   },
                 ),
+              const SizedBox(width: 4),
             ],
           ),
           body: _buildBody(),
@@ -137,37 +157,69 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
   }
 
   Widget _buildBody() {
+    if (_loading) {
+      return Center(
+        child: CircularProgressIndicator(
+          color: ForjaShellColors.sectionAccent,
+        ),
+      );
+    }
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                color: ForjaShellColors.sectionAccent,
+                size: 48,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ElevatedButton.icon(
+                onPressed: () => _runSearch(_query),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (_query.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_rounded,
-                color: Colors.white.withValues(alpha: 0.2), size: 80),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.search_rounded,
+              color: ForjaShellColors.cinematic.textSecondary
+                  .withValues(alpha: 0.4),
+              size: 56,
+            ),
+            const SizedBox(height: 12),
             Text(
-              'Search anime by title…',
+              'Start typing to search',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
+                color: ForjaShellColors.cinematic.textSecondary,
                 fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
-        ),
-      );
-    }
-    if (_loading) {
-      return Center(
-        child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
-      );
-    }
-    if (_error != null) {
-      return Center(
-        child: Text(
-          _error!,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
-          ),
         ),
       );
     }
@@ -176,13 +228,19 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_off_rounded,
-                color: Colors.white.withValues(alpha: 0.2), size: 80),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.search_off_rounded,
+              color: ForjaShellColors.cinematic.textSecondary
+                  .withValues(alpha: 0.4),
+              size: 56,
+            ),
+            const SizedBox(height: 12),
             Text(
               'No results for "$_query"',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: ForjaShellColors.cinematic.textSecondary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -190,149 +248,23 @@ class _AnimeSearchScreenState extends State<AnimeSearchScreen> {
       );
     }
 
-    final w = MediaQuery.of(context).size.width;
-    final cross = w > 1200
-        ? 6
-        : w > 900
-            ? 5
-            : w > 600
-                ? 4
-                : 3;
+    final cardWidth = HubPosterCard.cardWidth(context);
+    final cardHeight = HubPosterCard.cardHeight(context);
+    final padding = ShellTokens.homeSectionHorizontalPadding;
 
     return GridView.builder(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: cross,
-        childAspectRatio: 2 / 3.2,
+      padding: EdgeInsets.fromLTRB(padding, 12, padding, 24),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: cardWidth + 16,
         mainAxisSpacing: 16,
         crossAxisSpacing: 12,
+        childAspectRatio: cardWidth / cardHeight,
       ),
       itemCount: _results.length,
-      itemBuilder: (_, i) => _buildCard(_results[i]),
-    );
-  }
-
-  Widget _buildCard(AnimeCard a) {
-    return HoverScale(
-      onTap: () => _open(a),
-      radius: 12,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: AppTheme.bgCard,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.06),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (a.coverUrl.isNotEmpty)
-                    CachedNetworkImage(
-                      imageUrl: a.coverUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) =>
-                          Container(color: AppTheme.bgCard),
-                      errorWidget: (_, _, _) => Container(
-                        color: AppTheme.bgCard,
-                        child: const Icon(Icons.broken_image,
-                            color: Colors.white24),
-                      ),
-                    ),
-                  if ((a.averageScore ?? 0) > 0)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star_rounded,
-                                color: Colors.amber, size: 11),
-                            const SizedBox(width: 2),
-                            Text(
-                              ((a.averageScore ?? 0) / 10)
-                                  .toStringAsFixed(1),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  if (a.format != null && a.format!.isNotEmpty)
-                    Positioned(
-                      top: 6,
-                      left: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: ForjaShellColors.progressFill
-                              .withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          a.format!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            a.displayTitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              height: 1.2,
-            ),
-          ),
-          if (a.seasonYear != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                '${a.seasonYear}',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 10.5,
-                ),
-              ),
-            ),
-        ],
+      itemBuilder: (_, i) => Align(
+        alignment: Alignment.topCenter,
+        child: _posterCard(_results[i]),
       ),
     );
   }

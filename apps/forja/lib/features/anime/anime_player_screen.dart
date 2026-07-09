@@ -7,7 +7,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/features/anime/catalog/anime_stream_servers.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -130,25 +129,6 @@ String _langCodeFromLabel(String label) {
   return l;
 }
 
-int _sourcePriority(AnimeEmbed embed) {
-  switch (embed.server) {
-    case 'megaplay':
-      return 0;
-    case 'vidwish':
-      return 1;
-    case 'allanime':
-      return 50;
-    case 'watchhentai':
-    case 'hentaini':
-      return 60;
-    default:
-      if (AnimeStreamServers.isForjaServer(embed.server)) {
-        return 2 + AnimeStreamServers.priorityIndex(embed.server);
-      }
-      return 40;
-  }
-}
-
 String _decodeEpisodeTitle(String title) => title
     .replaceAll('&#39;', "'")
     .replaceAll('&quot;', '"')
@@ -233,6 +213,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       return;
     }
 
+    // Race every source in parallel. The FIRST success starts a short grace
+    // window during which we wait for slower extractors to land — those become
+    // automatic fallbacks if the winner's CDN is dead.
     const graceWindow = Duration(seconds: 4);
     final completer =
         Completer<List<({AnimeEmbed embed, ExtractedMedia media})>>();
@@ -274,21 +257,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final hits = await completer.future;
     if (!mounted || _cancelled) return;
     if (hits.isNotEmpty) {
-      final sorted = [...hits]
-        ..sort((a, b) =>
-            _sourcePriority(a.embed).compareTo(_sourcePriority(b.embed)));
-      _activeEmbed = sorted.first.embed;
-      await _launchPlayer(sorted);
+      _activeEmbed = hits.first.embed;
+      await _launchPlayer(hits);
       return;
     }
     setState(() => _failedAll = true);
-    _setPhase(
-      _series == null &&
-              _currentPair.every(
-                  (e) => e.server != 'megaplay' && e.server != 'vidwish')
-          ? 'Catalog lookup failed'
-          : 'No streams available',
-    );
+    _setPhase('No streams available');
     setState(() => _statusLine = '');
   }
 

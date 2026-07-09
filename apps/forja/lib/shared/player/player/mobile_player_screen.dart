@@ -979,6 +979,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           }
         }
 
+        await resetPlayerForOpen(_player);
         await applyMediaHttpHeaders(_player, srcHeaders);
         await _player.open(Media(openUrl, httpHeaders: srcHeaders));
         _player.setVolume(_volume);
@@ -1007,6 +1008,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         return true;
       } catch (e) {
         debugPrint('[Player] Source $i catch error: $e');
+        await _player.stop();
         _statusController.upsert(
           'source-$i',
           source.title,
@@ -1038,6 +1040,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       if (!_providerPinned) {
         await _autoFallbackToNextProvider();
       } else if (mounted) {
+        notifyNoServerAvailable(_statusController);
         setState(() {
           _hasError = true;
           _showControls = true;
@@ -1074,6 +1077,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
   Future<void> _autoFallbackToNextProvider() async {
     if (widget.providers == null || widget.providers!.isEmpty) {
+      notifyNoServerAvailable(_statusController);
       setState(() {
         _hasError = true;
         _showControls = true;
@@ -1096,6 +1100,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
 
     if (mounted && !_fallbackAborted(chainGen)) {
+      notifyNoServerAvailable(_statusController);
       setState(() {
         _hasError = true;
         _showControls = true;
@@ -1456,7 +1461,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     _completedSub = _player.stream.completed.listen((completed) {
       if (_disposed || !completed) return;
-      // Show controls when playback finishes so user can navigate away
+      if (!_playbackConfirmed || _isInitPlaybackRunning) return;
       if (mounted) setState(() => _showControls = true);
     });
 
@@ -1907,7 +1912,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       if (mounted) setState(() => _externalSubtitles = List<Map<String, dynamic>>.from(jellyfinSubs));
     }
 
-    if (widget.movie == null) return;
+    if (widget.movie == null || widget.movie!.id <= 0) return;
     if (mounted) setState(() => _isFetchingSubs = true);
 
     final stream = SubtitleApi.fetchSubtitlesStream(

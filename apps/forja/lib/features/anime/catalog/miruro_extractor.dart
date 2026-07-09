@@ -3,47 +3,27 @@ import 'dart:convert';
 import 'dart:io' show gzip, zlib;
 
 import 'package:flutter/foundation.dart';
-
 import 'package:rust/rust.dart';
-
-import 'miruro_pipe_session.dart';
 
 /// Direct extractor for the miruro.tv "secure pipe" API.
 class MiruroExtractor {
-  static const String _baseUrl = MiruroPipeSession.baseUrl;
+  static const String _baseUrl = 'https://www.miruro.tv';
   static const String _pipeObfKeyHex = '71951034f8fbcf53d89db52ceb3dc22c';
-  static const List<String> _protocolVersions = ['0.2.0', '0.1.0'];
+  static const String _protocolVersion = '0.2.0';
 
-  /// Pipe key → upstream (debug logs only).
-  static const Map<String, String> upstreamSources = {
-    'kiwi': 'AnimePahe',
-    'ally': 'AllManga',
-    'bonk': 'AnimeDao',
-    'bee': 'AniKoto',
-    'moo': 'AnimeGG',
-    'hop': 'Miruro',
-    'arc': 'Miruro internal',
-    'zoro': 'HiAnime',
-    'jet': 'Miruro internal',
-    'animedunya': 'AnimeDunya',
-  };
-
-  /// Pipe keys raced by [AnimeStreamServers] (kept for legacy miruro:// URLs).
+  /// Every provider the upstream API may expose. The resolver fires one
+  /// extract attempt per provider in parallel, so order doesn't matter much.
   static const List<String> knownProviders = [
     'zoro',
     'kiwi',
-    'bee',
-    'hop',
-    'bonk',
-    'ally',
-    'moo',
-    'animedunya',
     'arc',
     'jet',
+    'hop',
+    'bee',
+    'bun',
+    'kuz',
+    'telli',
   ];
-
-  static String upstreamLabel(String pipeKey) =>
-      upstreamSources[pipeKey.toLowerCase()] ?? pipeKey;
 
   static final Uint8List _obfKey = Uint8List.fromList(
     RegExp(r'.{2}')
@@ -56,8 +36,7 @@ class MiruroExtractor {
   /// parallel per-provider extracts share a single network call.
   final Map<int, Future<Map<String, dynamic>?>> _epsCache = {};
 
-  /// Cached `episodes?anilistId=…` lookup shared by catalog + playback.
-  Future<Map<String, dynamic>?> fetchEpisodes(int anilistId) {
+  Future<Map<String, dynamic>?> _episodes(int anilistId) {
     return _epsCache.putIfAbsent(
       anilistId,
       () => _apiGet('episodes', query: {'anilistId': '$anilistId'})
@@ -75,7 +54,7 @@ class MiruroExtractor {
     required String provider,
   }) async {
     try {
-      final epData = await fetchEpisodes(anilistId);
+      final epData = await _episodes(anilistId);
       final providersMap =
           (epData?['providers'] as Map?)?.cast<String, dynamic>() ?? {};
       final prov = (providersMap[provider] as Map?)?.cast<String, dynamic>();
@@ -143,8 +122,8 @@ class MiruroExtractor {
 
       if (kDebugMode) {
         debugPrint(
-            '[Miruro] OK $provider (${upstreamLabel(provider)}) ep=$episodeNumber '
-            'cat=$category tracks=${tracks.length}');
+            '[Miruro] OK provider=$provider ep=$episodeNumber cat=$category '
+            'tracks=${tracks.length}');
       }
       return MiruroResult(
         url: url,
@@ -163,78 +142,38 @@ class MiruroExtractor {
 
   // ─── secure pipe transport ──────────────────────────────────────
 
-  static const _pipeHeaders = {
-    'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    'Referer': 'https://www.miruro.tv/',
-    'Origin': 'https://www.miruro.tv',
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-origin',
-  };
-
   Future<dynamic> _apiGet(String path, {Map<String, String>? query}) async {
-    for (final version in _protocolVersions) {
-      final result = await _apiGetVersion(path, query: query, version: version);
-      if (result != null) return result;
-    }
-    return null;
-  }
-
-  Future<dynamic> _apiGetVersion(
-    String path, {
-    Map<String, String>? query,
-    required String version,
-  }) async {
-    final payload = {
+    final payload = jsonEncode({
       'path': path,
       'method': 'GET',
       'query': query ?? const <String, String>{},
       'body': null,
-      'version': version,
-    };
-    final encoded = miruroEncodePipeRequest(payload);
+      'version': _protocolVersion,
+    });
+    final encoded =
+        base64Url.encode(utf8.encode(payload)).replaceAll('=', '');
     final uri = '$_baseUrl/api/secure/pipe?e=$encoded';
 
-    // Fast path — works when CF is not blocking this IP / client.
-    final direct = await animeHttp('GET', uri, headers: _pipeHeaders, maxRetries: 0);
-    if (direct.status == 200) {
-      return _decodePipeBody(direct.body, direct.headers['x-obfuscated']);
-    }
-
-    if (direct.status != 403 && kDebugMode) {
-      debugPrint('[Miruro] $path HTTP ${direct.status} (v$version)');
-    }
-
-    // CF blocks reqwest — use a real WebView session on miruro.tv.
-    if (direct.status == 403 || direct.body.contains('cloudflare')) {
-      final viaBrowser = await MiruroPipeSession.instance.get(uri);
-      if (viaBrowser != null && viaBrowser.status == 200) {
-        if (kDebugMode && version != _protocolVersions.first) {
-          debugPrint('[Miruro] $path OK via WebView v$version');
-        }
-        return _decodePipeBody(viaBrowser.body, viaBrowser.xObf);
-      }
-      if (kDebugMode && viaBrowser != null) {
-        debugPrint(
-            '[Miruro] $path WebView HTTP ${viaBrowser.status} (v$version)');
+    final res = await animeHttp('GET', uri, headers: {
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Referer': '$_baseUrl/',
+      'Origin': _baseUrl,
+      'Accept': 'application/json, text/plain, */*',
+    }, maxRetries: 0);
+    if (res.status != 200) {
+      if (kDebugMode) {
+        debugPrint('[Miruro] $path HTTP ${res.status}');
       }
       return null;
     }
 
-    return null;
-  }
-
-  dynamic _decodePipeBody(String body, String? xObfHeader) {
-    if (body.isEmpty) return null;
-    final xObf = xObfHeader?.trim();
+    final xObf = res.headers['x-obfuscated'];
     if (xObf == null || xObf.isEmpty) {
-      return jsonDecode(body);
+      return jsonDecode(res.body);
     }
-    return jsonDecode(_deobfuscate(body, xObf));
+    return jsonDecode(_deobfuscate(res.body, xObf));
   }
 
   String _deobfuscate(String body, String level) {

@@ -72,14 +72,22 @@ bool isMediaOpenReady(PlayerState state) {
   return false;
 }
 
+/// Clears stale duration/buffer from a prior failed open before trying again.
+Future<void> resetPlayerForOpen(Player player) async {
+  await player.stop();
+  final deadline = DateTime.now().add(const Duration(milliseconds: 500));
+  while (DateTime.now().isBefore(deadline)) {
+    if (!isMediaOpenReady(player.state)) return;
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+  }
+}
+
 /// Returns true once mpv reports playable media, false on fatal open error or
 /// [timeout].
 Future<bool> waitForMediaOpen(
   Player player, {
   Duration timeout = const Duration(seconds: 12),
 }) async {
-  if (isMediaOpenReady(player.state)) return true;
-
   final completer = Completer<bool>();
   final subs = <StreamSubscription<dynamic>>[];
   var settled = false;

@@ -23,13 +23,6 @@ Future<T?> openAnimeDetails<T>(BuildContext context, AnimeCard anime) {
   );
 }
 
-Future<T?> replaceAnimeDetails<T>(BuildContext context, AnimeCard anime) {
-  return pushReplacementShellRoute<T, void>(
-    context,
-    AppRouter.slideRoute((_) => AnimeDetailsScreen(anime: anime)),
-  );
-}
-
 class AnimeDetailsScreen extends StatefulWidget {
   final AnimeCard anime;
   const AnimeDetailsScreen({super.key, required this.anime});
@@ -44,7 +37,6 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   AnimeCard? _full;
   List<AnimeEpisode> _episodes = [];
   List<AnimeCard> _related = [];
-  List<AnimeCard> _seasons = [];
   Map<String, dynamic>? _progress;
   String? _error;
 
@@ -111,10 +103,6 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       });
     }).catchError((_) {});
 
-    _service.getSeasons(widget.anime.id).then((s) {
-      if (!mounted) return;
-      if (s.length > 1) setState(() => _seasons = s);
-    }).catchError((_) {});
   }
 
   void _play(int epNumber) {
@@ -322,10 +310,6 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_seasons.length > 1) ...[
-                  _buildSeasonsRail(),
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
-                ],
                 if (_episodes.isNotEmpty)
                   TvSeasonEpisodePicker(
                     tmdbId: a.id,
@@ -374,53 +358,6 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       .replaceAll('&amp;', '&')
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>');
-
-  Widget _buildSeasonsRail() {
-    final currentId = widget.anime.id;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Related Series', style: ShellSectionTitle.titleStyle),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 36,
-          child: HorizontalScroller(
-            height: 36,
-            itemCount: _seasons.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (_, i) {
-              final s = _seasons[i];
-              final selected = s.id == currentId;
-              return HoverScale(
-                radius: 18,
-                onTap: () {
-                  if (selected) return;
-                  replaceAnimeDetails(context, s);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  alignment: Alignment.center,
-                  decoration: shellChipDecoration(selected: selected, radius: 18),
-                  child: Text(
-                    'S${i + 1}\u00a0\u00b7\u00a0${s.displayTitle}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: selected
-                          ? ForjaShellColors.cinematic.textPrimary
-                          : ForjaShellColors.cinematic.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildRelated() {
     return Column(

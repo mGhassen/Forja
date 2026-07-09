@@ -930,6 +930,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
 
         final srcHeaders = source.headers ?? widget.headers;
+        await resetPlayerForOpen(_player);
         await applyMediaHttpHeaders(_player, srcHeaders);
         await _player.open(Media(openUrl, httpHeaders: srcHeaders));
         _player.setVolume(_volumeNotifier.value);
@@ -958,6 +959,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         return true;
       } catch (e) {
         debugPrint('[Player] Source $i catch error: $e');
+        await _player.stop();
         _statusController.upsert(
           'source-$i',
           source.title,
@@ -989,6 +991,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       if (!_providerPinned) {
         await _autoFallbackToNextProvider();
       } else if (mounted) {
+        notifyNoServerAvailable(_statusController);
         setState(() {
           _hasError = true;
           _showControls = true;
@@ -1025,6 +1028,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   Future<void> _autoFallbackToNextProvider() async {
     if (widget.providers == null || widget.providers!.isEmpty) {
+      notifyNoServerAvailable(_statusController);
       setState(() {
         _hasError = true;
         _showControls = true;
@@ -1047,6 +1051,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
 
     if (mounted && !_fallbackAborted(chainGen)) {
+      notifyNoServerAvailable(_statusController);
       setState(() {
         _hasError = true;
         _showControls = true;
@@ -1407,6 +1412,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     // Completion – could trigger next-episode logic here in the future
     _completedSub = _player.stream.completed.listen((completed) {
       if (_disposed || !completed) return;
+      if (!_playbackConfirmed || _isInitPlaybackRunning) return;
       debugPrint('✅ Playback completed');
     });
 
@@ -1697,7 +1703,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       if (mounted) setState(() => _externalSubtitles = List<Map<String, dynamic>>.from(jellyfinSubs));
     }
 
-    if (widget.movie == null) return;
+    if (widget.movie == null || widget.movie!.id <= 0) return;
     if (mounted) setState(() => _isFetchingSubs = true);
 
     final stream = SubtitleApi.fetchSubtitlesStream(

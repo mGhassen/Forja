@@ -40,10 +40,12 @@ class HubCinematicHero extends StatefulWidget {
     super.key,
     required this.slides,
     this.firstRowHeight,
+    this.onSearch,
   });
 
   final List<HubHeroSlide> slides;
   final double? firstRowHeight;
+  final VoidCallback? onSearch;
 
   @override
   State<HubCinematicHero> createState() => _HubCinematicHeroState();
@@ -177,7 +179,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     final backdropHeight = _heroBodyHeight();
     final topBarBleed = MediaQuery.paddingOf(context).top;
     final imageHeight = _snapToDevicePixels(backdropHeight + topBarBleed);
-    final textTop = topBarBleed + ShellTokens.heroTextColumnTopInsetDesktop;
+    final textTop = topBarBleed + ShellTokens.shellHeaderTopPadding;
 
     return SizedBox(
       height: imageHeight,
@@ -192,6 +194,18 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             height: imageHeight,
             child: _buildBackdrop(slides),
           ),
+          if (widget.onSearch != null)
+            Positioned(
+              top: textTop,
+              right: ShellTokens.bodyHorizontalPadding,
+              child: ForjaPlainIcon(
+                icon: Icons.search_rounded,
+                color: Colors.white,
+                size: 30,
+                hitSize: 44,
+                onTap: widget.onSearch,
+              ),
+            ),
           Positioned(
             left: ShellTokens.bodyHorizontalPadding,
             top: textTop,
