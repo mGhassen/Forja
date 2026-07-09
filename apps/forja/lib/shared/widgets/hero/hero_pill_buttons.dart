@@ -103,14 +103,21 @@ class HeroPillPlayButton extends StatelessWidget {
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (leading != null) ...[
-                IconTheme(
-                  data: IconThemeData(
-                    size: _kHeroPillIconSize,
-                    color: foreground,
+                SizedBox(
+                  width: _kHeroPillIconSize,
+                  height: _kHeroPillIconSize,
+                  child: Center(
+                    child: IconTheme(
+                      data: IconThemeData(
+                        size: _kHeroPillIconSize,
+                        color: foreground,
+                      ),
+                      child: leading,
+                    ),
                   ),
-                  child: leading,
                 ),
                 const SizedBox(width: 8),
               ],
@@ -121,6 +128,7 @@ class HeroPillPlayButton extends StatelessWidget {
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.2,
+                  height: 1.0,
                 ),
               ),
             ],
@@ -160,35 +168,52 @@ class _MagnetIconPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    final w = size.width;
+    final h = size.height;
+    // Keep the horseshoe optically centered in the icon box.
+    final top = h * 0.16;
+    final bottom = h * 0.86;
+    final left = w * 0.28;
+    final right = w * 0.72;
+    final midY = top + (bottom - top) * 0.52;
+    final tipH = h * 0.14;
+    final tipW = w * 0.18;
+
+    final stroke = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.14
+      ..strokeWidth = w * 0.13
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    final w = size.width;
-    final h = size.height;
     final path = Path()
-      ..moveTo(w * 0.28, h * 0.12)
-      ..lineTo(w * 0.28, h * 0.48)
-      ..cubicTo(w * 0.28, h * 0.78, w * 0.72, h * 0.78, w * 0.72, h * 0.48)
-      ..lineTo(w * 0.72, h * 0.12);
-    canvas.drawPath(path, paint);
+      ..moveTo(left, top + tipH * 0.35)
+      ..lineTo(left, midY)
+      ..cubicTo(left, bottom, right, bottom, right, midY)
+      ..lineTo(right, top + tipH * 0.35);
+    canvas.drawPath(path, stroke);
 
     final tip = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.18, h * 0.08, w * 0.20, h * 0.16),
+        Rect.fromCenter(
+          center: Offset(left, top + tipH * 0.35),
+          width: tipW,
+          height: tipH,
+        ),
         Radius.circular(w * 0.04),
       ),
       tip,
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.62, h * 0.08, w * 0.20, h * 0.16),
+        Rect.fromCenter(
+          center: Offset(right, top + tipH * 0.35),
+          width: tipW,
+          height: tipH,
+        ),
         Radius.circular(w * 0.04),
       ),
       tip,
