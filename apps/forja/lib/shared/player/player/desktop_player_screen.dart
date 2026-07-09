@@ -412,6 +412,8 @@ class DesktopPlayerScreen extends StatefulWidget {
   final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
+  final Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned;
+  final bool pinSource;
 
   const DesktopPlayerScreen({
     super.key,
@@ -438,6 +440,8 @@ class DesktopPlayerScreen extends StatefulWidget {
     this.onHubEpisodeSelected,
     this.episodeOverview,
     this.onSaveProgress,
+    this.onSourcePinned,
+    this.pinSource = false,
   });
 
   @override
@@ -553,6 +557,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     
     // ── Provider initialization ──────────────────────────────────────────
     _currentProvider = widget.activeProvider;
+    _sourcePinned = widget.pinSource;
     _currentSources = widget.sources == null
         ? null
         : dedupeStreamSources(widget.sources!);
@@ -949,8 +954,20 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        if (sourceExpectsDuration(openUrl, type: source.type) &&
-            !await waitForSeekableDuration(_player)) {
+        final needsVideo = sourceExpectsDuration(openUrl, type: source.type);
+        if (needsVideo && !await waitForVideoDecode(_player)) {
+          debugPrint('[Player] Source $i opened without video: $openUrl');
+          await _player.stop();
+          _statusController.upsert(
+            'source-$i',
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(milliseconds: 500),
+          );
+          _currentFallbackSourceIndex++;
+          continue;
+        }
+        if (needsVideo && !await waitForSeekableDuration(_player)) {
           debugPrint('[Player] Source $i opened without duration: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -1450,8 +1467,20 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _completedSub = _player.stream.completed.listen((completed) {
       if (_disposed || !completed) return;
       if (!_playbackConfirmed || _isInitPlaybackRunning) return;
-      if (!isNaturalPlaybackEnd(_player.state)) return;
-      debugPrint('✅ Playback completed');
+      if (isNaturalPlaybackEnd(_player.state)) {
+        debugPrint('✅ Playback completed');
+        return;
+      }
+      final pos = _player.state.position.inMilliseconds;
+      if (_sourcePinned || pos > 10000) return;
+      final next = _currentFallbackSourceIndex + 1;
+      if (_currentSources == null || next >= _currentSources!.length) return;
+      debugPrint(
+        '[Player] Abortive end at ${pos}ms on source '
+        '${_currentFallbackSourceIndex + 1}/${_currentSources!.length} — trying next',
+      );
+      _playbackConfirmed = false;
+      _initPlayback(sourceStartIndex: next);
     });
 
     _tracksSub = _player.stream.tracks.listen((tracks) {
@@ -2182,11 +2211,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   Future<void> _switchToStreamSource(StreamSource source, int index) async {
-    _sourcePinned = true;
     final isCurrent = _currentProvider == 'service111477'
         ? source.url == _current111477FileUrl
         : source.url == _currentUrl;
-    if (isCurrent) return;
+    if (isCurrent && _sourcePinned) return;
+
+    if (isCurrent && !_sourcePinned) {
+      setState(() => _sourcePinned = true);
+      unawaited(widget.onSourcePinned?.call(source.url, source.title));
+      return;
+    }
+
+    _sourcePinned = true;
 
     final currentPos = _positionNotifier.value;
     final statusId = 'source-switch-$index';
@@ -2278,6 +2314,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     );
     _playbackConfirmed = true;
     _statusController.complete();
+    unawaited(widget.onSourcePinned?.call(source.url, source.title));
   }
 
   Future<Uint8List?> _captureSeekPreview(Duration position) async {
@@ -3202,71 +3239,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     );
   }
 
-  Widget _buildEmbeddedError() {
-    final hasProviders = widget.providers != null && widget.providers!.isNotEmpty &&
-        widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
-    final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
-
-    return Positioned(
-      top: PlayerTopBar.totalHeight(context),
-      left: 16,
-      right: 16,
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.82),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.35)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.error_outline, color: Colors.redAccent, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Playback Failed',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _errorMessage,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              GlassPillButton(text: 'Retry', onTap: _initPlayback),
-              if (hasSources) ...[
-                const SizedBox(width: 8),
-                GlassPillButton(text: 'Sources', onTap: _showSourcesMenu),
-              ],
-              if (hasProviders) ...[
-                const SizedBox(width: 8),
-                GlassPillButton(
-                  text: 'Servers',
-                  onTap: _isSwitchingProvider ? () {} : _showProviderMenu,
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildControlsOverlay() {
     final isTv = widget.movie?.mediaType == 'tv';
     final hasEpisodePicker = (isTv && widget.movie != null) ||
@@ -3274,6 +3246,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     final hasProviders = widget.providers != null && widget.providers!.isNotEmpty &&
         widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
     final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
+    final topBarHeight = PlayerTopBar.totalHeight(
+      context,
+      hasStatusMessage: _hasError,
+      hasStatusActions: _hasError,
+    );
 
     return Stack(
       clipBehavior: Clip.none,
@@ -3294,6 +3271,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               ? null
               : widget.selectedEpisode,
           episodeLine: _hubEpisodeLine,
+          statusMessage: _hasError ? _errorMessage : null,
+          statusActions: _hasError
+              ? PlayerTopStatusActions(
+                  onRetry: _initPlayback,
+                  onSources: hasSources ? _showSourcesMenu : null,
+                  onServers: hasProviders ? _showProviderMenu : null,
+                  serversEnabled: !_isSwitchingProvider,
+                )
+              : null,
           onBack: () async {
             if (_isFullscreen) {
               await windowManager.setFullScreen(false);
@@ -3326,12 +3312,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         ),
       ),
 
-      if (_hasError) _buildEmbeddedError(),
-
       if (_displayMovie != null)
         Positioned(
           left: 0,
-          top: PlayerTopBar.totalHeight(context),
+          top: topBarHeight,
           bottom: 120,
           child: ValueListenableBuilder<bool>(
             valueListenable: _isPlayingNotifier,

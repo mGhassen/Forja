@@ -5,9 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';
-import 'package:forja/shared/design/src/forja_buttons.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 /// A single result section that streams in dynamically.
@@ -53,7 +51,10 @@ class _FlatSearchResult {
 
 /// Search tab — RFC-024 R24-A11: query-driven only; no ShellTabRefresh / auto stale refetch.
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.overlay = false});
+
+  /// Slide-in overlay from Home / hubs (vs mounted Search tab).
+  final bool overlay;
 
   @override
   State<SearchScreen> createState() => SearchScreenState();
@@ -95,6 +96,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     ShellBus.stremioSearchNotifier.addListener(_onExternalSearch);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ShellBus.notifyShellChromeChanged();
+      if (widget.overlay && mounted) {
+        _focusNode.requestFocus();
+      }
     });
   }
 
@@ -426,6 +430,56 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
   }
 
+  double _searchPageTopInset(BuildContext context) {
+    if (widget.overlay) {
+      return ShellTokens.searchPageInset;
+    }
+    return ShellTokens.searchPageTopInset;
+  }
+
+  PreferredSizeWidget _buildOverlayAppBar() {
+    return AppBar(
+      backgroundColor: AppTheme.bgDark,
+      elevation: 0,
+      iconTheme: const IconThemeData(color: Colors.white),
+      titleSpacing: 0,
+      title: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        autofocus: true,
+        onChanged: _onSearchChanged,
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+        cursorColor: ForjaShellColors.sectionAccent,
+        decoration: InputDecoration(
+          hintText: 'Search movies, shows…',
+          hintStyle: TextStyle(
+            color: ForjaShellColors.cinematic.textSecondary
+                .withValues(alpha: 0.7),
+            fontWeight: FontWeight.w400,
+          ),
+          border: InputBorder.none,
+        ),
+      ),
+      actions: [
+        if (_controller.text.isNotEmpty)
+          ForjaCloseButton.compact(
+            tooltip: null,
+            color: ForjaShellColors.cinematic.textPrimary,
+            onTap: () {
+              _controller.clear();
+              _onSearchChanged('');
+            },
+          ),
+        const SizedBox(width: 4),
+      ],
+    );
+  }
+
   Widget buildShellSearchBar() {
     if (_isDesktopLayout(context)) return const SizedBox.shrink();
     return ShellSearchBar(
@@ -443,6 +497,22 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (widget.overlay) {
+      return ValueListenableBuilder<AppThemePreset>(
+        valueListenable: AppTheme.themeNotifier,
+        builder: (context, _, _) {
+          return Scaffold(
+            backgroundColor: AppTheme.bgDark,
+            appBar: _buildOverlayAppBar(),
+            body: _isDesktopLayout(context)
+                ? _buildDesktopLayout(context)
+                : _buildMobileBody(context),
+          );
+        },
+      );
+    }
+
     if (_isDesktopLayout(context)) {
       return _buildDesktopLayout(context);
     }
@@ -485,7 +555,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         Padding(
           padding: EdgeInsets.fromLTRB(
             ShellTokens.searchPageInset,
-            ShellTokens.searchPageTopInset,
+            _searchPageTopInset(context),
             ShellTokens.searchPageInset,
             ShellTokens.searchPageInset,
           ),

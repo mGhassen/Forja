@@ -369,6 +369,8 @@ class MobilePlayerScreen extends StatefulWidget {
   final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
+  final Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned;
+  final bool pinSource;
 
   const MobilePlayerScreen({
     super.key,
@@ -395,6 +397,8 @@ class MobilePlayerScreen extends StatefulWidget {
     this.onHubEpisodeSelected,
     this.episodeOverview,
     this.onSaveProgress,
+    this.onSourcePinned,
+    this.pinSource = false,
   });
 
   @override
@@ -527,6 +531,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     // ── Provider initialization ──────────────────────────────────────────
     _currentProvider = widget.activeProvider;
+    _sourcePinned = widget.pinSource;
     _currentSources = widget.sources == null
         ? null
         : dedupeStreamSources(widget.sources!);
@@ -998,8 +1003,20 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        if (sourceExpectsDuration(openUrl, type: source.type) &&
-            !await waitForSeekableDuration(_player)) {
+        final needsVideo = sourceExpectsDuration(openUrl, type: source.type);
+        if (needsVideo && !await waitForVideoDecode(_player)) {
+          debugPrint('[Player] Source $i opened without video: $openUrl');
+          await _player.stop();
+          _statusController.upsert(
+            'source-$i',
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(milliseconds: 1200),
+          );
+          _currentFallbackSourceIndex++;
+          continue;
+        }
+        if (needsVideo && !await waitForSeekableDuration(_player)) {
           debugPrint('[Player] Source $i opened without duration: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -1499,8 +1516,20 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _completedSub = _player.stream.completed.listen((completed) {
       if (_disposed || !completed) return;
       if (!_playbackConfirmed || _isInitPlaybackRunning) return;
-      if (!isNaturalPlaybackEnd(_player.state)) return;
-      if (mounted) setState(() => _showControls = true);
+      if (isNaturalPlaybackEnd(_player.state)) {
+        if (mounted) setState(() => _showControls = true);
+        return;
+      }
+      final pos = _player.state.position.inMilliseconds;
+      if (_sourcePinned || pos > 10000) return;
+      final next = _currentFallbackSourceIndex + 1;
+      if (_currentSources == null || next >= _currentSources!.length) return;
+      debugPrint(
+        '[Player] Abortive end at ${pos}ms on source '
+        '${_currentFallbackSourceIndex + 1}/${_currentSources!.length} — trying next',
+      );
+      _playbackConfirmed = false;
+      _initPlayback(sourceStartIndex: next);
     });
 
     _tracksSub = _player.stream.tracks.listen((tracks) {
@@ -2451,11 +2480,19 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   }
 
   Future<void> _switchToStreamSource(StreamSource source, int index) async {
-    _sourcePinned = true;
     final isCurrent = _currentProvider == 'service111477'
         ? source.url == _current111477FileUrl
         : source.url == _currentUrl;
-    if (isCurrent) return;
+    if (isCurrent && _sourcePinned) return;
+
+    if (isCurrent && !_sourcePinned) {
+      setState(() => _sourcePinned = true);
+      unawaited(widget.onSourcePinned?.call(source.url, source.title));
+      _startHideTimer();
+      return;
+    }
+
+    _sourcePinned = true;
 
     final currentPos = _positionNotifier.value;
     final statusId = 'source-switch-$index';
@@ -2552,6 +2589,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     );
     _playbackConfirmed = true;
     _statusController.complete();
+    unawaited(widget.onSourcePinned?.call(source.url, source.title));
   }
 
   Future<({int season, int episode})?> _computeNextEpisode() async {
@@ -3418,79 +3456,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
               );
   }
 
-  Widget _buildEmbeddedError() {
-    final hasProviders = widget.providers != null && widget.providers!.isNotEmpty &&
-        widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
-    final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
-
-    return Positioned(
-      top: PlayerTopBar.totalHeight(context),
-      left: 12,
-      right: 12,
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.82),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.35)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Playback Failed',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _errorMessage,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _GlassPillButton(text: 'Retry', onTap: _initPlayback),
-                  if (hasSources)
-                    _GlassPillButton(text: 'Sources', onTap: _showSourcesMenu),
-                  if (hasProviders)
-                    _GlassPillButton(
-                      text: 'Servers',
-                      onTap: _isSwitchingProvider ? () {} : _showProviderMenu,
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildControlsOverlay() {
     final isTv = widget.movie?.mediaType == 'tv';
     final hasEpisodePicker = (isTv && widget.movie != null) ||
@@ -3500,6 +3465,11 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
     final btnSize = 38.0;
     final iconSz = 20.0;
+    final topBarHeight = PlayerTopBar.totalHeight(
+      context,
+      hasStatusMessage: _hasError,
+      hasStatusActions: _hasError,
+    );
 
     return Stack(children: [
       const Positioned(
@@ -3518,6 +3488,15 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
               ? null
               : widget.selectedEpisode,
           episodeLine: _hubEpisodeLine,
+          statusMessage: _hasError ? _errorMessage : null,
+          statusActions: _hasError
+              ? PlayerTopStatusActions(
+                  onRetry: _initPlayback,
+                  onSources: hasSources ? _showSourcesMenu : null,
+                  onServers: hasProviders ? _showProviderMenu : null,
+                  serversEnabled: !_isSwitchingProvider,
+                )
+              : null,
           onBack: _exitPlayer,
           trailing: PlayerTopBarActions(
             showCast: CastingService.instance.isAirPlayAvailable ||
@@ -3541,12 +3520,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         ),
       ),
 
-      if (_hasError) _buildEmbeddedError(),
-
       if (_displayMovie != null)
         Positioned(
           left: 0,
-          top: PlayerTopBar.totalHeight(context),
+          top: topBarHeight,
           bottom: 110,
           child: ValueListenableBuilder<bool>(
             valueListenable: _isPlayingNotifier,

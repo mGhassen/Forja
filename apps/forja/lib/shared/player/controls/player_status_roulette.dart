@@ -319,6 +319,9 @@ class StatusRouletteView extends StatelessWidget {
     final previous = _previousEntry;
     final checkedCount =
         entries.where((e) => e.kind != StatusRouletteKind.loading).length;
+    final readyCount =
+        entries.where((e) => e.kind == StatusRouletteKind.success).length;
+    final totalCount = entries.length;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -405,7 +408,10 @@ class StatusRouletteView extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          checkedCount > 0 ? '$checkedCount checked' : 'Starting…',
+          totalCount > 0
+              ? '$checkedCount / $totalCount'
+                  '${readyCount > 0 ? '  ·  $readyCount ready' : ''}'
+              : 'Starting…',
           textAlign: centered ? TextAlign.center : TextAlign.right,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.45),

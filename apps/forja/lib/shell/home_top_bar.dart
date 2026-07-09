@@ -2,8 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
+import 'package:forja/features/search/search_screen.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -112,7 +115,10 @@ class _HomeTopBarState extends State<HomeTopBar> {
   }
 
   void _openSearch() {
-    ShellBus.requestTab.value = 'search';
+    pushShellRoute(
+      context,
+      AppRouter.slideRoute((_) => const SearchScreen(overlay: true)),
+    );
   }
 
   Widget _buildSearchAction() {

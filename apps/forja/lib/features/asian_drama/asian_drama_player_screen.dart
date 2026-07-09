@@ -27,15 +27,26 @@ Movie _hubMovieFromDrama(KdramaCard drama, {String overview = ''}) => Movie(
       numberOfEpisodes: drama.episodesCount,
     );
 
-List<PlayerHubEpisode> _hubEpisodesFromDrama(List<KdramaEpisode> episodes) =>
-    episodes
-        .map(
-          (e) => PlayerHubEpisode(
-            number: e.number,
-            title: 'Episode ${e.displayNumber}',
-          ),
-        )
-        .toList();
+String? _dramaEpisodeThumbnail(String cover) {
+  final value = cover.trim();
+  return value.isNotEmpty ? value : null;
+}
+
+List<PlayerHubEpisode> _hubEpisodesFromDrama(
+  KdramaCard drama,
+  List<KdramaEpisode> episodes,
+) {
+  final thumb = _dramaEpisodeThumbnail(drama.cover);
+  return episodes
+      .map(
+        (e) => PlayerHubEpisode(
+          number: e.number,
+          title: 'Episode ${e.displayNumber}',
+          thumbnailUrl: thumb,
+        ),
+      )
+      .toList();
+}
 
 Future<T?> openAsianDramaPlayer<T>(
   BuildContext context, {
@@ -151,6 +162,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     final sources = stream.toSources(label: 'kisskh');
     final subs = stream.subtitles;
 
+    var drama = widget.drama;
     var episodes = widget.allEpisodes;
     var overview = '';
     if (episodes.isEmpty) {
@@ -158,6 +170,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         final det = await _service.getDetails(widget.drama.id);
         episodes = det.episodes;
         overview = det.description;
+        drama = det.toCard();
       } catch (_) {}
     }
 
@@ -182,7 +195,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       }
     }
     final hasNext = episodes.isEmpty ? true : nextFromList != null;
-    final hubEpisodes = _hubEpisodesFromDrama(episodes);
+    final hubEpisodes = _hubEpisodesFromDrama(drama, episodes);
 
     if (!mounted) return;
     final navigator = Navigator.of(context, rootNavigator: true);
@@ -223,7 +236,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       headers: sources.first.headers,
       sources: sources,
       activeProvider: 'kisskh',
-      movie: _hubMovieFromDrama(widget.drama, overview: overview),
+      movie: _hubMovieFromDrama(drama, overview: overview),
       startPosition: widget.startPosition,
       externalSubtitles: subs.isNotEmpty ? subs : null,
       hubEpisodes: hubEpisodes,

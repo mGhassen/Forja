@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/home/details_screen.dart';
+import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/trailer_player_screen.dart';
@@ -118,6 +119,13 @@ class AppRouter {
     );
   }
 
+  static Future<T?> openSearch<T>(BuildContext context) {
+    return pushShellRoute<T>(
+      context,
+      slideRoute((_) => const SearchScreen(overlay: true)),
+    );
+  }
+
   static Future<T?> openTrailerPlayer<T>(
     BuildContext context, {
     required List<MediaTrailer> trailers,
@@ -162,6 +170,8 @@ class AppRouter {
     Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected,
     String? episodeOverview,
     Future<void> Function(Duration position, Duration duration)? onSaveProgress,
+    Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned,
+    bool pinSource = false,
     bool fadeTransition = false,
   }) {
     final routeBuilder = fadeTransition ? fadeRoute : slideRoute;
@@ -191,6 +201,8 @@ class AppRouter {
           onHubEpisodeSelected: onHubEpisodeSelected,
           episodeOverview: episodeOverview,
           onSaveProgress: onSaveProgress,
+          onSourcePinned: onSourcePinned,
+          pinSource: pinSource,
         ),
       ),
     );

@@ -534,9 +534,14 @@ class _AnimeScreenState extends State<AnimeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const ShellSectionTitle(
+        ShellSectionTitle(
           title: 'Pick your vibe',
-          padding: EdgeInsets.fromLTRB(24, 0, 24, 16),
+          padding: const EdgeInsets.fromLTRB(
+            24,
+            ShellTokens.homeSectionTitleTop,
+            24,
+            16,
+          ),
         ),
         SizedBox(
           height: 40,

@@ -744,6 +744,16 @@ class AnimeService {
   /// Both providers expose the same internal API:
   ///   1. GET /stream/s-2/{id}/{lang}     → HTML containing `data-id="..."`
   ///   2. GET /stream/getSources?id={dataId} → JSON { sources:{file}, tracks:[] }
+  /// Resolve one or more playable URLs for [embed]. Miruro may return several
+  /// CDN mirrors per provider; other servers return at most one.
+  Future<List<AnimeStreamResult>> extractDirectCandidates(AnimeEmbed embed) async {
+    if (embed.server == 'miruro') {
+      return _extractMiruroAll(embed);
+    }
+    final one = await extractDirect(embed);
+    return one != null ? [one] : const [];
+  }
+
   Future<AnimeStreamResult?> extractDirect(AnimeEmbed embed) async {
     if (embed.server == 'miruro') {
       return _extractMiruro(embed);
@@ -843,26 +853,30 @@ class AnimeService {
   final MiruroExtractor _miruro = MiruroExtractor();
 
   Future<AnimeStreamResult?> _extractMiruro(AnimeEmbed embed) async {
+    final all = await _extractMiruroAll(embed);
+    return all.isEmpty ? null : all.first;
+  }
+
+  Future<List<AnimeStreamResult>> _extractMiruroAll(AnimeEmbed embed) async {
     final m = RegExp(r'^miruro://anilist/(\d+)/(\d+)/(sub|dub)/([a-z0-9]+)$')
         .firstMatch(embed.url);
-    if (m == null) return null;
-    final anilistId = int.parse(m.group(1)!);
-    final ep = int.parse(m.group(2)!);
-    final cat = m.group(3)!;
-    final provider = m.group(4)!;
+    if (m == null) return const [];
 
-    final res = await _miruro.extractWithProvider(
-      anilistId: anilistId,
-      episodeNumber: ep,
-      category: cat,
-      provider: provider,
+    final results = await _miruro.extractAllStreamsWithProvider(
+      anilistId: int.parse(m.group(1)!),
+      episodeNumber: int.parse(m.group(2)!),
+      category: m.group(3)!,
+      provider: m.group(4)!,
     );
-    if (res == null) return null;
+    return results.map(_miruroToAnimeResult).toList();
+  }
 
+  AnimeStreamResult _miruroToAnimeResult(MiruroResult res) {
     return AnimeStreamResult(
       url: res.url,
       referer: res.referer,
       origin: res.origin,
+      streamLabel: res.streamLabel,
       tracks: res.tracks
           .map((t) => AnimeTrack(
                 url: t.url,
@@ -966,6 +980,202 @@ class AnimeService {
     );
   }
 
+
+  // ─── Stream source preference (per anime + category) ────────────
+  static const _sourcePrefKey = 'enma_anime_source_v1';
+  static const _sourcePrefMaxEntries = 40;
+  static const _sourcePrefMaxAge = Duration(days: 60);
+
+  Future<AnimeStreamPref?> preferredSource({
+    required int animeId,
+    required String category,
+  }) async {
+    final list = await _loadSourcePrefs();
+    for (final e in list) {
+      if (_prefAnimeId(e) == animeId && e['cat'] == category) {
+        final key = e['key'] as String?;
+        if (key == null || key.isEmpty) return null;
+        return AnimeStreamPref(
+          sourceKey: key,
+          sourceTitle: e['title'] as String?,
+        );
+      }
+    }
+    return null;
+  }
+
+  Future<void> recordPreferredSource({
+    required int animeId,
+    required String category,
+    required String sourceKey,
+    String? sourceTitle,
+  }) async {
+    var list = await _loadSourcePrefs();
+    list.removeWhere(
+      (e) => _prefAnimeId(e) == animeId && e['cat'] == category,
+    );
+    list.insert(
+      0,
+      {
+        'id': animeId,
+        'cat': category,
+        'key': sourceKey,
+        if (sourceTitle != null && sourceTitle.isNotEmpty) 'title': sourceTitle,
+        't': DateTime.now().millisecondsSinceEpoch,
+      },
+    );
+    if (list.length > _sourcePrefMaxEntries) {
+      list = list.sublist(0, _sourcePrefMaxEntries);
+    }
+    await _persistSourcePrefs(list);
+    await dropCachedStreamsForShow(animeId: animeId, category: category);
+    if (kDebugMode) {
+      debugPrint(
+        '[AnimeService] saved source pref id=$animeId cat=$category '
+        'key=$sourceKey title=$sourceTitle',
+      );
+    }
+  }
+
+  /// Megaplay/vidwish need Anikoto embed ids; Miruro/AllAnime do not.
+  static bool savedSourceNeedsAnikoto(String? sourceKey) {
+    if (sourceKey == null || sourceKey.isEmpty) return true;
+    return sourceKey == 'megaplay' || sourceKey == 'vidwish';
+  }
+
+  // ─── Resolved stream URL cache (replay same episode without re-extract) ─
+  static const _streamCacheKey = 'enma_anime_stream_cache_v1';
+  static const _streamCacheMaxEntries = 24;
+  static const _streamCacheMaxAge = Duration(minutes: 25);
+
+  Future<List<Map<String, dynamic>>?> cachedResolvedStreamsJson({
+    required int animeId,
+    required int episode,
+    required String category,
+  }) async {
+    final list = await _loadStreamCache();
+    final key = _streamCacheEntryKey(animeId, episode, category);
+    for (final e in list) {
+      if (e['k'] == key) {
+        if (kDebugMode) {
+          debugPrint('[AnimeService] disk stream cache hit $key');
+        }
+        return (e['hits'] as List?)
+            ?.map((h) => (h as Map).cast<String, dynamic>())
+            .toList();
+      }
+    }
+    return null;
+  }
+
+  Future<void> cacheResolvedStreamsJson({
+    required int animeId,
+    required int episode,
+    required String category,
+    required List<Map<String, dynamic>> hits,
+  }) async {
+    if (hits.isEmpty) return;
+    var list = await _loadStreamCache();
+    final key = _streamCacheEntryKey(animeId, episode, category);
+    list.removeWhere((e) => e['k'] == key);
+    list.insert(
+      0,
+      {
+        'k': key,
+        't': DateTime.now().millisecondsSinceEpoch,
+        'hits': hits,
+      },
+    );
+    if (list.length > _streamCacheMaxEntries) {
+      list = list.sublist(0, _streamCacheMaxEntries);
+    }
+    await _persistStreamCache(list);
+  }
+
+  Future<void> dropCachedStream({
+    required int animeId,
+    required int episode,
+    required String category,
+  }) async {
+    final list = await _loadStreamCache();
+    final key = _streamCacheEntryKey(animeId, episode, category);
+    if (!list.any((e) => e['k'] == key)) return;
+    list.removeWhere((e) => e['k'] == key);
+    await _persistStreamCache(list);
+  }
+
+  Future<void> dropCachedStreamsForShow({
+    required int animeId,
+    required String category,
+  }) async {
+    final prefix = '$animeId:';
+    final suffix = ':$category';
+    final list = await _loadStreamCache();
+    final before = list.length;
+    list.removeWhere((e) {
+      final k = e['k'] as String? ?? '';
+      return k.startsWith(prefix) && k.endsWith(suffix);
+    });
+    if (list.length != before) {
+      await _persistStreamCache(list);
+    }
+  }
+
+  String _streamCacheEntryKey(int animeId, int episode, String category) =>
+      '$animeId:$episode:$category';
+
+  Future<List<Map<String, dynamic>>> _loadStreamCache() async {
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_streamCacheKey) ?? [];
+    final cutoff =
+        DateTime.now().millisecondsSinceEpoch - _streamCacheMaxAge.inMilliseconds;
+    final list = raw
+        .map((e) => jsonDecode(e) as Map<String, dynamic>)
+        .where((e) => (e['t'] as int? ?? 0) >= cutoff)
+        .toList();
+    if (list.length != raw.length) {
+      await _persistStreamCache(list);
+    }
+    return list;
+  }
+
+  Future<void> _persistStreamCache(List<Map<String, dynamic>> list) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList(
+      _streamCacheKey,
+      list.map(jsonEncode).toList(growable: false),
+    );
+  }
+
+  int? _prefAnimeId(Map<String, dynamic> e) {
+    final id = e['id'];
+    if (id is int) return id;
+    if (id is num) return id.toInt();
+    return int.tryParse(id?.toString() ?? '');
+  }
+
+  Future<List<Map<String, dynamic>>> _loadSourcePrefs() async {
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_sourcePrefKey) ?? [];
+    final cutoff =
+        DateTime.now().millisecondsSinceEpoch - _sourcePrefMaxAge.inMilliseconds;
+    final list = raw
+        .map((e) => jsonDecode(e) as Map<String, dynamic>)
+        .where((e) => (e['t'] as int? ?? 0) >= cutoff)
+        .toList();
+    if (list.length != raw.length) {
+      await _persistSourcePrefs(list);
+    }
+    return list;
+  }
+
+  Future<void> _persistSourcePrefs(List<Map<String, dynamic>> list) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList(
+      _sourcePrefKey,
+      list.map(jsonEncode).toList(growable: false),
+    );
+  }
 
   // ─── Liked anime ────────────────────────────────────────────────
   static const _likedKey = 'enma_liked_v1';
@@ -1203,6 +1413,13 @@ class AnimeEpisode {
   });
 }
 
+class AnimeStreamPref {
+  final String sourceKey;
+  final String? sourceTitle;
+
+  const AnimeStreamPref({required this.sourceKey, this.sourceTitle});
+}
+
 class AnimeEmbed {
   final String label;     // e.g. Kaiju, Ronin, Chibi
   final String server;    // 'megaplay' | 'vidwish'
@@ -1217,6 +1434,24 @@ class AnimeEmbed {
   });
 
   String get displayName => '$label · ${category.toUpperCase()}';
+
+  /// Stable id for saved stream preference (e.g. `megaplay`, `miruro:zoro`).
+  String get sourceKey {
+    switch (server) {
+      case 'miruro':
+        final uri = Uri.parse(url.replaceFirst('miruro://', 'https://'));
+        final prov = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+        return 'miruro:$prov';
+      case 'allanime':
+        final uri = Uri.parse(url.replaceFirst('allanime://', 'https://'));
+        final segs = uri.pathSegments;
+        if (segs.length >= 4) return 'allanime:${segs[3]}';
+        return 'allanime:default';
+      default:
+        return server;
+    }
+  }
+
   String get refererOrigin {
     switch (server) {
       case 'vidwish':
@@ -1241,12 +1476,14 @@ class AnimeStreamResult {
   final String referer;   // header to send to CDN
   final String origin;    // header to send to CDN
   final List<AnimeTrack> tracks;
+  final String? streamLabel;
 
   const AnimeStreamResult({
     required this.url,
     required this.referer,
     required this.origin,
     this.tracks = const [],
+    this.streamLabel,
   });
 }
 

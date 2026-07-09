@@ -862,11 +862,11 @@ class _EpisodeRow extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      if (thumbnail != null)
+                      if (_resolvedThumbnail(thumbnail) case final url?)
                         CachedNetworkImage(
-                          imageUrl: thumbnail.toString().startsWith('http')
-                              ? thumbnail.toString()
-                              : TmdbApi.getStillUrl(thumbnail.toString()),
+                          imageUrl: url.startsWith('http')
+                              ? url
+                              : TmdbApi.getStillUrl(url),
                           fit: BoxFit.cover,
                           errorWidget: (_, _, _) => _thumbFallback(),
                         )
@@ -954,6 +954,12 @@ class _EpisodeRow extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static String? _resolvedThumbnail(dynamic thumbnail) {
+    final value = thumbnail?.toString().trim();
+    if (value == null || value.isEmpty || value == 'null') return null;
+    return value;
   }
 
   Widget _thumbFallback() {

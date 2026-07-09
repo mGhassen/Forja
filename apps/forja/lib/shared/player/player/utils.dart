@@ -16,6 +16,16 @@ Future<void> applyMediaHttpHeaders(
   if (referer != null) await native.setProperty('referrer', referer);
   final ua = headers['User-Agent'] ?? headers['user-agent'];
   if (ua != null) await native.setProperty('user-agent', ua);
+
+  // HLS segment requests need the same Referer/Origin as the master playlist.
+  final headerFields = <String>[];
+  if (referer != null) headerFields.add('Referer: $referer');
+  final origin = headers['Origin'] ?? headers['origin'];
+  if (origin != null) headerFields.add('Origin: $origin');
+  if (ua != null) headerFields.add('User-Agent: $ua');
+  if (headerFields.isNotEmpty) {
+    await native.setProperty('http-header-fields', headerFields.join(','));
+  }
 }
 
 /// Avoid opening mpv while a route fade is still covering the player surface.
@@ -61,11 +71,15 @@ bool isFatalPlayerOpenError(String err) =>
     (err.contains('Failed') || err.contains('No such file'));
 
 /// mpv is ready to play — VOD duration, decoded video, or live/buffered data.
-bool isMediaOpenReady(PlayerState state) {
-  if (state.duration.inMilliseconds > 0) return true;
+bool hasDecodedVideo(PlayerState state) {
   final w = state.videoParams.w ?? 0;
   final h = state.videoParams.h ?? 0;
-  if (w > 0 && h > 0) return true;
+  return w > 0 && h > 0;
+}
+
+bool isMediaOpenReady(PlayerState state) {
+  if (hasDecodedVideo(state)) return true;
+  if (state.duration.inMilliseconds > 0) return true;
   if (state.buffer.inMilliseconds > 0) return true;
   if (state.position.inMilliseconds > 0) return true;
   if (state.playing && state.bufferingPercentage > 0) return true;
@@ -89,6 +103,23 @@ bool sourceExpectsDuration(String url, {String? type}) {
 }
 
 /// VOD streams need a known duration before the seekbar can work.
+/// HLS/VOD opens must decode at least one video frame before we treat them as
+/// playable — buffer/position alone false-positives on dead CDNs.
+Future<bool> waitForVideoDecode(
+  Player player, {
+  Duration timeout = const Duration(seconds: 8),
+}) async {
+  if (hasDecodedVideo(player.state)) return true;
+  try {
+    await player.stream.videoParams
+        .firstWhere((p) => (p.w ?? 0) > 0 && (p.h ?? 0) > 0)
+        .timeout(timeout);
+    return true;
+  } catch (_) {
+    return hasDecodedVideo(player.state);
+  }
+}
+
 Future<bool> waitForSeekableDuration(
   Player player, {
   Duration timeout = const Duration(seconds: 5),

@@ -42,6 +42,8 @@ class PlayerScreen extends StatefulWidget {
   /// player exit). Used by anime / arabic flows that own their own
   /// per-source history store and don't go through `WatchHistoryService`.
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
+  final Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned;
+  final bool pinSource;
 
   const PlayerScreen({
     super.key,
@@ -68,6 +70,8 @@ class PlayerScreen extends StatefulWidget {
     this.onHubEpisodeSelected,
     this.episodeOverview,
     this.onSaveProgress,
+    this.onSourcePinned,
+    this.pinSource = false,
   });
 
   @override
@@ -193,6 +197,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
         onSaveProgress: widget.onSaveProgress,
+        onSourcePinned: widget.onSourcePinned,
+        pinSource: widget.pinSource,
       );
     } else {
       return DesktopPlayerScreen(
@@ -219,6 +225,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
         onSaveProgress: widget.onSaveProgress,
+        onSourcePinned: widget.onSourcePinned,
+        pinSource: widget.pinSource,
       );
     }
   }

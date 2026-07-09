@@ -72,6 +72,8 @@ class PlayerTopBar extends StatelessWidget {
     this.season,
     this.episode,
     this.episodeLine,
+    this.statusMessage,
+    this.statusActions,
     required this.onBack,
     this.trailing,
   });
@@ -80,6 +82,8 @@ class PlayerTopBar extends StatelessWidget {
   final int? season;
   final int? episode;
   final String? episodeLine;
+  final String? statusMessage;
+  final Widget? statusActions;
   final VoidCallback onBack;
   final Widget? trailing;
 
@@ -97,13 +101,26 @@ class PlayerTopBar extends StatelessWidget {
     return MediaQuery.paddingOf(context).top + 6;
   }
 
-  static double totalHeight(BuildContext context) => topPadding(context) + 44 + 6;
+  static double totalHeight(
+    BuildContext context, {
+    bool hasStatusMessage = false,
+    bool hasStatusActions = false,
+  }) {
+    var height = topPadding(context) + 44 + 6;
+    if (hasStatusMessage) height += 20;
+    if (hasStatusActions) height += 30;
+    return height;
+  }
+
+  bool get _hasStatusMessage =>
+      statusMessage != null && statusMessage!.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(8, topPadding(context), 8, 6),
       child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             PlayerFlatIconButton(
               icon: Icons.arrow_back_rounded,
@@ -129,11 +146,32 @@ class PlayerTopBar extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       _episodeLine!,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: ForjaShellColors.cinematic.textSecondary,
                         fontSize: 12,
                       ),
                     ),
+                  ],
+                  if (_hasStatusMessage) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      statusMessage!,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.72),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                  if (statusActions != null) ...[
+                    const SizedBox(height: 8),
+                    statusActions!,
                   ],
                 ],
               ),
@@ -144,6 +182,50 @@ class PlayerTopBar extends StatelessWidget {
               const SizedBox(width: 44),
           ],
         ),
+    );
+  }
+}
+
+class PlayerTopStatusActions extends StatelessWidget {
+  const PlayerTopStatusActions({
+    super.key,
+    required this.onRetry,
+    this.onSources,
+    this.onServers,
+    this.serversEnabled = true,
+  });
+
+  final VoidCallback onRetry;
+  final VoidCallback? onSources;
+  final VoidCallback? onServers;
+  final bool serversEnabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 12,
+      runSpacing: 4,
+      children: [
+        _link('Retry', onRetry),
+        if (onSources != null) _link('Sources', onSources!),
+        if (onServers != null)
+          _link('Servers', serversEnabled ? onServers! : () {}),
+      ],
+    );
+  }
+
+  Widget _link(String label, VoidCallback onTap) {
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.white.withValues(alpha: 0.75),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+      child: Text(label),
     );
   }
 }

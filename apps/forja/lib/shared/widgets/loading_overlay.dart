@@ -143,6 +143,80 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   bool get _showProviderProbes =>
       widget.providerProbesNotifier != null && _probes.isNotEmpty;
 
+  int get _probeTotal => _probes.length;
+
+  int get _probeChecked => _probes
+      .where((p) => p.status != StreamProviderProbeStatus.trying)
+      .length;
+
+  int get _probeReady => _probes
+      .where((p) => p.status == StreamProviderProbeStatus.success)
+      .length;
+
+  double get _probeProgress =>
+      _probeTotal > 0 ? _probeChecked / _probeTotal : 0;
+
+  Widget _probeProgressFooter() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          _message,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.75),
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 3,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: 220,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: _probeProgress),
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value > 0 ? value : null,
+                minHeight: 3,
+                backgroundColor: Colors.white.withValues(alpha: 0.12),
+                color: AppTheme.primaryColor,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '$_probeChecked / $_probeTotal CHECKED'
+          '${_probeReady > 0 ? '  ·  $_probeReady READY' : ''}',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        if (widget.subtitle != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            widget.subtitle!.toUpperCase(),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.35),
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 1.5,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   String? get _logoImageUrl {
     final path = widget.movie.logoPath;
     if (path.isEmpty || path.toLowerCase().endsWith('.svg')) return null;
@@ -241,7 +315,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                 right: 0,
                 child: Column(
                   children: [
-                    if (!_showProviderProbes) ...[
+                    if (_showProviderProbes)
+                      _probeProgressFooter()
+                    else ...[
                       const CircularProgressIndicator(
                         color: AppTheme.primaryColor,
                         strokeWidth: 3,
@@ -257,22 +333,22 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                           fontFamily: 'Poppins',
                         ),
                       ),
-                    ],
-                    if (widget.subtitle != null) ...[
-                      if (!_showProviderProbes) const SizedBox(height: 8),
-                      Text(
-                        widget.subtitle!.toUpperCase(),
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 2,
-                          fontFamily: 'Poppins',
+                      if (widget.subtitle != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          widget.subtitle!.toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 2,
+                            fontFamily: 'Poppins',
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                     if (widget.onCancel != null) ...[
-                      const SizedBox(height: 24),
+                      SizedBox(height: _showProviderProbes ? 20 : 24),
                       TextButton(
                         onPressed: widget.onCancel,
                         style: TextButton.styleFrom(

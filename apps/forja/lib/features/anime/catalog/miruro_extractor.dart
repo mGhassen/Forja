@@ -75,16 +75,32 @@ class MiruroExtractor {
     required String category,
     required String provider,
   }) async {
+    final all = await extractAllStreamsWithProvider(
+      anilistId: anilistId,
+      episodeNumber: episodeNumber,
+      category: category,
+      provider: provider,
+    );
+    return all.isEmpty ? null : all.first;
+  }
+
+  /// Every HLS entry in the Miruro `sources` response (server mirror per row).
+  Future<List<MiruroResult>> extractAllStreamsWithProvider({
+    required int anilistId,
+    required int episodeNumber,
+    required String category,
+    required String provider,
+  }) async {
     try {
       final epData = await fetchEpisodes(anilistId);
       final providersMap =
           (epData?['providers'] as Map?)?.cast<String, dynamic>() ?? {};
       final prov = (providersMap[provider] as Map?)?.cast<String, dynamic>();
-      if (prov == null) return null;
+      if (prov == null) return const [];
 
       final eps = (prov['episodes'] as Map?)?.cast<String, dynamic>() ?? {};
       final list = eps[category] as List?;
-      if (list == null || list.isEmpty) return null;
+      if (list == null || list.isEmpty) return const [];
 
       Map<String, dynamic>? hit;
       for (final raw in list) {
@@ -95,10 +111,10 @@ class MiruroExtractor {
           break;
         }
       }
-      if (hit == null) return null;
+      if (hit == null) return const [];
 
       final epId = hit['id']?.toString();
-      if (epId == null || epId.isEmpty) return null;
+      if (epId == null || epId.isEmpty) return const [];
 
       final src = await _apiGet('sources', query: {
         'episodeId': epId,
@@ -106,61 +122,105 @@ class MiruroExtractor {
         'category': category,
         'anilistId': '$anilistId',
       });
-      if (src == null) return null;
+      if (src is! Map<String, dynamic>) return const [];
 
+      final tracks = _parseSubtitleTracks(src);
       final streams = (src['streams'] as List?) ?? const [];
-      Map<String, dynamic>? hls;
-      for (final s in streams) {
-        if (s is! Map) continue;
-        final type = (s['type'] ?? '').toString();
-        if (type == 'hls' || type.isEmpty) {
-          hls = s.cast<String, dynamic>();
-          break;
+      final out = <MiruroResult>[];
+      var streamIndex = 0;
+
+      for (final raw in streams) {
+        if (raw is! Map) continue;
+        final stream = raw.cast<String, dynamic>();
+        final type = (stream['type'] ?? '').toString();
+        if (type.isNotEmpty && type != 'hls') continue;
+
+        final url = (stream['url'] ?? '').toString();
+        if (url.isEmpty) continue;
+
+        streamIndex++;
+        final referer = _resolveStreamReferer(
+          stream: stream,
+          src: src,
+          anilistId: anilistId,
+        );
+        final origin = Uri.tryParse(referer)?.origin ??
+            Uri.tryParse(url)?.origin ??
+            _baseUrl;
+        final serverLabel = _streamServerLabel(stream, streamIndex);
+
+        if (kDebugMode) {
+          debugPrint(
+            '[Miruro] OK ${AnimeStreamNicknames.forMiruroPipe(provider)} '
+            '($provider) ep=$episodeNumber cat=$category '
+            'stream=$serverLabel referer=$referer url=$url tracks=${tracks.length}',
+          );
         }
-      }
-      if (hls == null) return null;
 
-      final url = (hls['url'] ?? '').toString();
-      if (url.isEmpty) return null;
-
-      final referer = (hls['referer'] as String?)?.trim().isNotEmpty == true
-          ? hls['referer'] as String
-          : '$_baseUrl/';
-      final origin = Uri.tryParse(referer)?.origin ?? _baseUrl;
-
-      final tracks = <MiruroTrack>[];
-      final subs = (src['subtitles'] as List?) ?? const [];
-      for (final t in subs) {
-        if (t is! Map) continue;
-        final fileUrl = (t['file'] ?? t['url'] ?? '').toString();
-        if (fileUrl.isEmpty) continue;
-        tracks.add(MiruroTrack(
-          url: fileUrl,
-          label: (t['label'] as String?) ?? 'Unknown',
-          language: (t['language'] as String?) ?? '',
-          isDefault: t['default'] == true,
+        out.add(MiruroResult(
+          url: url,
+          referer: referer,
+          origin: origin,
+          tracks: tracks,
+          provider: provider,
+          streamLabel: serverLabel,
         ));
       }
-
-      if (kDebugMode) {
-        debugPrint(
-            '[Miruro] OK ${AnimeStreamNicknames.forMiruroPipe(provider)} '
-            '($provider) ep=$episodeNumber cat=$category url=$url '
-            'tracks=${tracks.length}');
-      }
-      return MiruroResult(
-        url: url,
-        referer: referer,
-        origin: origin,
-        tracks: tracks,
-        provider: provider,
-      );
+      return out;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[Miruro] $provider failed: $e');
       }
-      return null;
+      return const [];
     }
+  }
+
+  List<MiruroTrack> _parseSubtitleTracks(Map<String, dynamic> src) {
+    final tracks = <MiruroTrack>[];
+    final subs = (src['subtitles'] as List?) ?? const [];
+    for (final t in subs) {
+      if (t is! Map) continue;
+      final fileUrl = (t['file'] ?? t['url'] ?? '').toString();
+      if (fileUrl.isEmpty) continue;
+      tracks.add(MiruroTrack(
+        url: fileUrl,
+        label: (t['label'] as String?) ?? 'Unknown',
+        language: (t['language'] as String?) ?? '',
+        isDefault: t['default'] == true,
+      ));
+    }
+    return tracks;
+  }
+
+  String _resolveStreamReferer({
+    required Map<String, dynamic> stream,
+    required Map<String, dynamic> src,
+    required int anilistId,
+  }) {
+    for (final key in ['referer', 'Referer', 'referrer']) {
+      final v = (stream[key] as String?)?.trim();
+      if (v != null && v.isNotEmpty) return v;
+    }
+    for (final key in ['referer', 'Referer', 'referrer']) {
+      final v = (src[key] as String?)?.trim();
+      if (v != null && v.isNotEmpty) return v;
+    }
+    final headers = stream['headers'];
+    if (headers is Map) {
+      for (final key in ['Referer', 'referer']) {
+        final v = (headers[key] as String?)?.trim();
+        if (v != null && v.isNotEmpty) return v;
+      }
+    }
+    return '$_baseUrl/watch/$anilistId';
+  }
+
+  String _streamServerLabel(Map<String, dynamic> stream, int index) {
+    for (final key in ['server', 'label', 'name', 'id']) {
+      final v = stream[key]?.toString().trim();
+      if (v != null && v.isNotEmpty) return v;
+    }
+    return 'stream-$index';
   }
 
   Map<String, String> _pipeHeadersFor(String base) => {
@@ -297,6 +357,7 @@ class MiruroResult {
   final String origin;
   final List<MiruroTrack> tracks;
   final String provider;
+  final String? streamLabel;
 
   const MiruroResult({
     required this.url,
@@ -304,6 +365,7 @@ class MiruroResult {
     required this.origin,
     required this.tracks,
     required this.provider,
+    this.streamLabel,
   });
 }
 
