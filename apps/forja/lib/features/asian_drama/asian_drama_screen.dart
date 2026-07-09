@@ -267,7 +267,10 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
               ? _buildError()
               : Stack(
                       children: [
-                        _buildAmbientBackdrop(),
+                        Positioned.fill(
+                          child: ColoredBox(color: AppTheme.bgDark),
+                        ),
+                        if (!_loading) _buildAmbientBackdrop(),
                         RefreshIndicator(
                           color: ForjaShellColors.sectionAccent,
                           backgroundColor: AppTheme.bgCard,
@@ -307,33 +310,14 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                   const SizedBox(width: 4),
                                 ],
                               ),
-                              SliverToBoxAdapter(
-                                child: _loading || _spotlight.isEmpty
-                                    ? _buildHubHeroShimmer()
-                                    : _buildHero(),
-                              ),
-                              if (_loading) ...[
-                                SliverToBoxAdapter(
-                                  child: homeContinueWatchingSkeleton(context),
-                                ),
-                                for (final spec in [
-                                  (width: 180.0, subtitle: true),
-                                  (width: 150.0, subtitle: false),
-                                  (width: 140.0, subtitle: false),
-                                  (width: 160.0, subtitle: false),
-                                  (width: 130.0, subtitle: false),
-                                  (width: 145.0, subtitle: false),
-                                ])
-                                  SliverToBoxAdapter(
-                                    child: homeLoadingShimmer(
-                                      homeMovieRowSkeleton(
-                                        context,
-                                        titleWidth: spec.width,
-                                        showSubtitle: spec.subtitle,
-                                      ),
-                                    ),
-                                  ),
-                              ] else ...[
+                              if (_loading)
+                                ...homeHubLoadingSlivers(
+                                  context,
+                                  heroShimmer: _buildHubHeroShimmer(),
+                                  rows: kHomeHubAsianDramaLoadingRows,
+                                )
+                              else ...[
+                                SliverToBoxAdapter(child: _buildHero()),
                                 if (_continueWatching.isNotEmpty)
                                   SliverToBoxAdapter(
                                     child: _buildContinueWatching(),

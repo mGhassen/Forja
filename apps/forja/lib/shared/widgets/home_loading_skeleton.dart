@@ -28,8 +28,10 @@ Widget homeTitleBarSkeleton({double width = 140, double height = 18}) {
 }
 
 Widget homeCardSkeleton(BuildContext context, {double? width}) {
+  final cardWidth = width ?? HomeMovieCard.cardWidth(context);
   return Container(
-    width: width ?? HomeMovieCard.cardWidth(context),
+    width: cardWidth,
+    height: HomeMovieCard.cardHeight(context),
     decoration: BoxDecoration(
       color: AppTheme.bgCard,
       borderRadius: BorderRadius.circular(14),
@@ -163,4 +165,66 @@ Widget homeHubHeroShimmer({required double height}) {
   return homeLoadingShimmer(
     Container(height: height, color: AppTheme.bgCard),
   );
+}
+
+typedef HomeHubLoadingRowSpec = ({double width, bool showSubtitle});
+
+const List<HomeHubLoadingRowSpec> kHomeHubDefaultLoadingRows = [
+  (width: 170, showSubtitle: false),
+  (width: 160, showSubtitle: false),
+  (width: 150, showSubtitle: false),
+  (width: 180, showSubtitle: false),
+  (width: 165, showSubtitle: false),
+];
+
+const List<HomeHubLoadingRowSpec> kHomeHubAsianDramaLoadingRows = [
+  (width: 180, showSubtitle: true),
+  (width: 150, showSubtitle: false),
+  (width: 140, showSubtitle: false),
+  (width: 160, showSubtitle: false),
+  (width: 130, showSubtitle: false),
+  (width: 145, showSubtitle: false),
+];
+
+SliverToBoxAdapter homeHubRowSliver(
+  Widget section, {
+  required bool isFirstAfterHero,
+}) {
+  return SliverToBoxAdapter(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!isFirstAfterHero)
+          const SizedBox(height: ShellTokens.homeRowSpacing),
+        RepaintBoundary(child: section),
+      ],
+    ),
+  );
+}
+
+List<Widget> homeHubLoadingSlivers(
+  BuildContext context, {
+  required Widget heroShimmer,
+  List<HomeHubLoadingRowSpec>? rows,
+}) {
+  final specs = rows ?? kHomeHubDefaultLoadingRows;
+  return [
+    SliverToBoxAdapter(child: heroShimmer),
+    homeHubRowSliver(
+      homeContinueWatchingSkeleton(context),
+      isFirstAfterHero: true,
+    ),
+    for (final spec in specs)
+      homeHubRowSliver(
+        homeLoadingShimmer(
+          homeMovieRowSkeleton(
+            context,
+            titleWidth: spec.width,
+            showSubtitle: spec.showSubtitle,
+          ),
+        ),
+        isFirstAfterHero: false,
+      ),
+  ];
 }

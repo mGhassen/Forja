@@ -331,7 +331,10 @@ class _AnimeScreenState extends State<AnimeScreen>
               ? _buildError()
               : Stack(
                       children: [
-                        _buildAmbientBackdrop(),
+                        Positioned.fill(
+                          child: ColoredBox(color: AppTheme.bgDark),
+                        ),
+                        if (!_loading) _buildAmbientBackdrop(),
                         RefreshIndicator(
                           color: ForjaShellColors.sectionAccent,
                           backgroundColor: AppTheme.bgCard,
@@ -362,31 +365,13 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   const SizedBox(width: 4),
                                 ],
                               ),
-                              SliverToBoxAdapter(
-                                child: _loading || _spotlight.isEmpty
-                                    ? _buildHubHeroShimmer()
-                                    : _buildHero(),
-                              ),
-                              if (_loading) ...[
-                                SliverToBoxAdapter(
-                                  child: homeContinueWatchingSkeleton(context),
-                                ),
-                                for (final width in [
-                                  170.0,
-                                  160.0,
-                                  150.0,
-                                  180.0,
-                                  165.0,
-                                ])
-                                  SliverToBoxAdapter(
-                                    child: homeLoadingShimmer(
-                                      homeMovieRowSkeleton(
-                                        context,
-                                        titleWidth: width,
-                                      ),
-                                    ),
-                                  ),
-                              ] else ...[
+                              if (_loading)
+                                ...homeHubLoadingSlivers(
+                                  context,
+                                  heroShimmer: _buildHubHeroShimmer(),
+                                )
+                              else ...[
+                                SliverToBoxAdapter(child: _buildHero()),
                                 if (_continueWatching.isNotEmpty)
                                   SliverToBoxAdapter(
                                     child: _buildContinueWatching(),
