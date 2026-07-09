@@ -150,64 +150,37 @@ class HeroFactsPanel extends StatelessWidget {
         (label: 'Revenue', value: _formatMoney(revenue)),
     ];
 
-    final rowsWidget = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0)
-            Divider(
-              height: 20,
-              color: Colors.white.withValues(alpha: 0.1),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Production Info',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.white.withValues(alpha: 0.92),
+              letterSpacing: 0.2,
             ),
-          _HeroFactRow(label: rows[i].label, value: rows[i].value),
-        ],
-      ],
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxHeight = constraints.hasBoundedHeight && constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : null;
-
-        return Container(
-          constraints: maxHeight != null
-              ? BoxConstraints(maxHeight: maxHeight)
-              : const BoxConstraints(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.45),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
-          child: Column(
-            mainAxisSize: maxHeight != null ? MainAxisSize.max : MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Production Info',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white.withValues(alpha: 0.92),
-                  letterSpacing: 0.2,
-                ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 20,
+                color: Colors.white.withValues(alpha: 0.1),
               ),
-              const SizedBox(height: 12),
-              if (maxHeight != null)
-                Flexible(
-                  child: SingleChildScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    child: rowsWidget,
-                  ),
-                )
-              else
-                rowsWidget,
-            ],
-          ),
-        );
-      },
+            _HeroFactRow(label: rows[i].label, value: rows[i].value),
+          ],
+        ],
+      ),
     );
   }
 
