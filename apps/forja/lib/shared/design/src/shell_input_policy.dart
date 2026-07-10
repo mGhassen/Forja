@@ -48,6 +48,14 @@ class ShellInputPolicy {
 
   bool get isInteractiveActive => scaleOnHover || scaleOnFocus;
 
+  /// Policy-aware hover OR focus — use with [shellFocusableTap] callbacks.
+  static bool interactiveActive(
+    ShellInputPolicy policy, {
+    required bool hovered,
+    required bool focused,
+  }) =>
+      (policy.scaleOnHover && hovered) || (policy.scaleOnFocus && focused);
+
   /// App-root D-pad traversal — TV only.
   static Widget maybeWrapFocusTraversal({required Widget child, required bool enabled}) {
     if (!enabled) return child;

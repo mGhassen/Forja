@@ -1117,6 +1117,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    return ShellScopeBuilder(
+      builder: (context, _) => _buildPlayer(context),
+    );
+  }
+
+  Widget _buildPlayer(BuildContext context) {
     if (!_playerReady) {
       return const Scaffold(
         backgroundColor: Colors.black,

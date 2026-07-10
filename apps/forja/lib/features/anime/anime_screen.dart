@@ -17,6 +17,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 class AnimeScreen extends StatefulWidget {
   const AnimeScreen({super.key});
@@ -519,6 +520,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                 (entry['anime'] as Map).cast<String, dynamic>(),
               );
               return _AnimeContinueWatchingCard(
+                listIndex: i,
                 entry: entry,
                 onTap: () => _resumeWatch(entry),
                 onRemove: () => _removeFromHistory(entry),
@@ -656,12 +658,14 @@ class _AnimeContinueWatchingCard extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onRemove;
   final VoidCallback onInfo;
+  final int listIndex;
 
   const _AnimeContinueWatchingCard({
     required this.entry,
     required this.onTap,
     required this.onRemove,
     required this.onInfo,
+    required this.listIndex,
   });
 
   static double cardWidth(BuildContext context) =>
@@ -680,7 +684,11 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
   bool _focused = false;
 
   bool _activeFor(ShellInputPolicy policy) =>
-      (policy.scaleOnHover && _hovered) || (policy.scaleOnFocus && _focused);
+      ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: _hovered,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -703,28 +711,19 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
     final cardWidth = _AnimeContinueWatchingCard.cardWidth(context);
     final cardHeight = _AnimeContinueWatchingCard.cardHeight(context);
 
-    return Focus(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      listIndex: widget.listIndex,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
-          widget.onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedScale(
-            scale: _activeFor(policy) ? 1.05 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: Container(
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedScale(
+        scale: _activeFor(policy) ? 1.05 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: Container(
               width: cardWidth,
               height: cardHeight,
               decoration: BoxDecoration(
@@ -907,8 +906,6 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }

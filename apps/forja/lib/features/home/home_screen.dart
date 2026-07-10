@@ -2835,6 +2835,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
                   final historyItem = history[index];
                   final itemId = historyItem['uniqueId'] as String;
                   return _HistoryCard(
+                    listIndex: index,
                     item: historyItem,
                     resolvedBackdropPath:
                         _resolvedBackdrops[historyItem['tmdbId'] as int?],
@@ -2860,6 +2861,7 @@ class _HistoryCard extends StatefulWidget {
   final VoidCallback onRemove;
   final VoidCallback onInfo;
   final bool isLoading;
+  final int listIndex;
 
   const _HistoryCard({
     required this.item,
@@ -2867,6 +2869,7 @@ class _HistoryCard extends StatefulWidget {
     required this.onTap,
     required this.onRemove,
     required this.onInfo,
+    required this.listIndex,
     this.isLoading = false,
   });
 
@@ -2894,11 +2897,11 @@ class _HistoryCardState extends State<_HistoryCard> {
   bool _hovered = false;
   bool _focused = false;
 
-  bool _active(BuildContext context) {
-    final policy = ShellScope.inputPolicyOf(context);
-    return (policy.scaleOnHover && _hovered) ||
-        (policy.scaleOnFocus && _focused);
-  }
+  bool _active(BuildContext context) => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -2929,32 +2932,19 @@ class _HistoryCardState extends State<_HistoryCard> {
     final cardWidth = _HistoryCard.cardWidth(context);
     final cardHeight = _HistoryCard.cardHeight(context);
 
-    return Focus(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.isLoading ? null : widget.onTap,
+      listIndex: widget.listIndex,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onKeyEvent: (node, event) {
-        if (!widget.isLoading &&
-            event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
-          widget.onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: MouseRegion(
-        onEnter: (_) {
-          if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
-          setState(() => _hovered = true);
-        },
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.isLoading ? null : widget.onTap,
-          child: AnimatedScale(
-            scale: _active(context) ? 1.05 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: Container(
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedScale(
+        scale: _active(context) ? 1.05 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: Container(
               width: cardWidth,
               height: cardHeight,
               decoration: BoxDecoration(
@@ -3137,8 +3127,6 @@ class _HistoryCardState extends State<_HistoryCard> {
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }

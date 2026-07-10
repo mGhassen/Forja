@@ -8,9 +8,6 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/webview/forja_webview_settings.dart';
 
-bool _shellHoverVisual(BuildContext context, bool hovered) =>
-    ShellScope.inputPolicyOf(context).scaleOnHover && hovered;
-
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 class _Sport {
@@ -703,36 +700,37 @@ class _CdnChannelCard extends StatefulWidget {
 
 class _CdnChannelCardState extends State<_CdnChannelCard> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final c = widget.channel;
-    final hoverVisual = _shellHoverVisual(context, _hovered);
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
       borderRadius: 16,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
-      child: MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) {
-        if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
-        setState(() => _hovered = true);
-      },
-      onExit:  (_) => setState(() => _hovered = false),
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: hoverVisual ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
+            color: active ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: hoverVisual
+              color: active
                   ? ForjaShellColors.chipSelectedBorder
                   : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
             ),
-            boxShadow: hoverVisual
+            boxShadow: active
                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
                 : null,
           ),
@@ -785,7 +783,7 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
                         style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                if (hoverVisual)
+                if (active)
                   Positioned.fill(
                     child: Center(
                       child: Container(
@@ -801,7 +799,6 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -826,36 +823,37 @@ class _CdnSportCard extends StatefulWidget {
 
 class _CdnSportCardState extends State<_CdnSportCard> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final e = widget.event;
-    final hoverVisual = _shellHoverVisual(context, _hovered);
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
       borderRadius: 16,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
-      child: MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) {
-        if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
-        setState(() => _hovered = true);
-      },
-      onExit:  (_) => setState(() => _hovered = false),
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: hoverVisual ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
+            color: active ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: hoverVisual
+              color: active
                   ? ForjaShellColors.chipSelectedBorder
                   : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
             ),
-            boxShadow: hoverVisual
+            boxShadow: active
                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
                 : null,
           ),
@@ -943,7 +941,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                         style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                if (hoverVisual)
+                if (active)
                   Positioned.fill(
                     child: Center(
                       child: Container(
@@ -959,7 +957,6 @@ class _CdnSportCardState extends State<_CdnSportCard> {
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -1133,13 +1130,19 @@ class _DamiTvMatchCard extends StatefulWidget {
 
 class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final s = widget.stream;
     final hasIframe = s.iframe.isNotEmpty;
     final hasTeams = s.homeTeam != null && s.awayTeam != null;
-    final hoverVisual = _shellHoverVisual(context, _hovered);
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
 
     return shellFocusableTap(
       context: context,
@@ -1147,25 +1150,20 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       borderRadius: 16,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
-      child: MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) {
-        if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
-        setState(() => _hovered = true);
-      },
-      onExit:  (_) => setState(() => _hovered = false),
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: hoverVisual ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
+            color: active ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: hoverVisual
+              color: active
                   ? ForjaShellColors.chipSelectedBorder
                   : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
             ),
-            boxShadow: hoverVisual
+            boxShadow: active
                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
                 : null,
           ),
@@ -1285,7 +1283,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                     ),
                   ),
                 // play overlay on hover
-                if (hoverVisual && hasIframe)
+                if (active && hasIframe)
                   Positioned.fill(
                     child: Center(
                       child: Container(
@@ -1301,7 +1299,6 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
             ),
           ),
         ),
-      ),
     );
   }
 }

@@ -18,6 +18,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 class AsianDramaScreen extends StatefulWidget {
   const AsianDramaScreen({super.key});
@@ -411,6 +412,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
               final entry = _continueWatching[i];
               final card = _cardFromHistoryEntry(entry);
               return _AsianDramaContinueWatchingCard(
+                listIndex: i,
                 entry: entry,
                 onTap: () => _resumeWatch(entry),
                 onRemove: () => _removeFromHistory(entry),
@@ -428,12 +430,14 @@ class _AsianDramaContinueWatchingCard extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onRemove;
   final VoidCallback onInfo;
+  final int listIndex;
 
   const _AsianDramaContinueWatchingCard({
     required this.entry,
     required this.onTap,
     required this.onRemove,
     required this.onInfo,
+    required this.listIndex,
   });
 
   static double cardWidth(BuildContext context) =>
@@ -453,7 +457,11 @@ class _AsianDramaContinueWatchingCardState
   bool _focused = false;
 
   bool _activeFor(ShellInputPolicy policy) =>
-      (policy.scaleOnHover && _hovered) || (policy.scaleOnFocus && _focused);
+      ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: _hovered,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -480,28 +488,19 @@ class _AsianDramaContinueWatchingCardState
     final cardWidth = _AsianDramaContinueWatchingCard.cardWidth(context);
     final cardHeight = _AsianDramaContinueWatchingCard.cardHeight(context);
 
-    return Focus(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      listIndex: widget.listIndex,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
-          widget.onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedScale(
-            scale: _activeFor(policy) ? 1.05 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: Container(
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedScale(
+        scale: _activeFor(policy) ? 1.05 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: Container(
               width: cardWidth,
               height: cardHeight,
               decoration: BoxDecoration(
@@ -684,8 +683,6 @@ class _AsianDramaContinueWatchingCardState
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }

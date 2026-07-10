@@ -10,7 +10,10 @@ VoidCallback? shellTvNavLeftEdge(
   int listIndex = -1,
   bool navLeftAlways = false,
 }) {
-  if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return null;
+  final policy = ShellScope.maybeOf(context)?.inputPolicy;
+  final tvFocus = policy?.useFocusableMoodChips ??
+      resolveShellProfile(context) == ShellProfile.tv;
+  if (!tvFocus) return null;
   if (!navLeftAlways && listIndex != 0) return null;
   return ShellTvFocus.focusCurrentNavTab;
 }
@@ -21,7 +24,10 @@ VoidCallback? shellTvNavLeftEdgeGrid(
   required int index,
   required int columnCount,
 }) {
-  if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return null;
+  final policy = ShellScope.maybeOf(context)?.inputPolicy;
+  final tvFocus = policy?.useFocusableMoodChips ??
+      resolveShellProfile(context) == ShellProfile.tv;
+  if (!tvFocus) return null;
   if (columnCount <= 0 || index % columnCount != 0) return null;
   return ShellTvFocus.focusCurrentNavTab;
 }
@@ -62,7 +68,10 @@ VoidCallback? _resolveTvNavLeftEdge(
   return null;
 }
 
-/// TV: [FocusableControl] with D-pad focus lift. Phone/desktop: plain [InkWell].
+/// TV: [FocusableControl] with D-pad focus lift. Desktop: [InkWell] + optional hover.
+///
+/// Pass [onFocusChange] / [onHoverChange] for policy-gated active visuals in the
+/// child — do not wrap with a second [Focus] or [MouseRegion].
 Widget shellFocusableTap({
   required BuildContext context,
   required Widget child,
@@ -72,6 +81,7 @@ Widget shellFocusableTap({
   VoidCallback? onLeftEdge,
   VoidCallback? onUpEdge,
   ValueChanged<bool>? onFocusChange,
+  ValueChanged<bool>? onHoverChange,
   FocusNode? focusNode,
   int? listIndex,
   bool navLeftAlways = false,
@@ -100,7 +110,8 @@ Widget shellFocusableTap({
       child: child,
     );
   }
-  return Material(
+
+  Widget body = Material(
     color: Colors.transparent,
     borderRadius: BorderRadius.circular(borderRadius),
     child: InkWell(
@@ -109,4 +120,15 @@ Widget shellFocusableTap({
       child: child,
     ),
   );
+
+  if (policy.scaleOnHover && onHoverChange != null) {
+    body = MouseRegion(
+      onEnter: (_) => onHoverChange(true),
+      onExit: (_) => onHoverChange(false),
+      cursor: SystemMouseCursors.click,
+      child: body,
+    );
+  }
+
+  return body;
 }

@@ -606,13 +606,75 @@ class PlayerCenterActionButton extends StatefulWidget {
 class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
   bool _hovered = false;
   bool _pressed = false;
+  bool _focused = false;
+
+  Widget _buildCore({required bool highlight}) {
+    return GestureDetector(
+      onTap: widget.onPressed,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.9 : (highlight ? 1.06 : 1.0),
+        duration: const Duration(milliseconds: 100),
+        child: Container(
+          width: widget.size,
+          height: widget.size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: highlight ? 0.22 : 0.14),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: highlight ? 0.35 : 0.2),
+            ),
+          ),
+          child: widget.showSpinner
+              ? Center(
+                  child: SizedBox(
+                    width: widget.iconSize,
+                    height: widget.iconSize,
+                    child: const CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  ),
+                )
+              : Icon(
+                  widget.icon,
+                  color: Colors.white,
+                  size: widget.iconSize,
+                ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final hoverActive = policy.scaleOnHover && _hovered;
-    final core = MouseRegion(
+
+    if (widget.tvFocusable) {
+      final highlight = ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: false,
+        focused: _focused,
+      );
+      return FocusableControl(
+        focusNode: widget.focusNode,
+        onTap: widget.onPressed,
+        borderRadius: widget.size / 2,
+        scaleOnFocus: 1.0,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        child: _buildCore(highlight: highlight),
+      );
+    }
+
+    final highlight = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: false,
+    );
+    return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
         if (!policy.scaleOnHover) return;
@@ -625,50 +687,7 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
           _pressed = false;
         });
       },
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) => setState(() => _pressed = false),
-        onTapCancel: () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _pressed ? 0.9 : (hoverActive ? 1.06 : 1.0),
-          duration: const Duration(milliseconds: 100),
-          child: Container(
-            width: widget.size,
-            height: widget.size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: hoverActive ? 0.22 : 0.14),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: hoverActive ? 0.35 : 0.2),
-              ),
-            ),
-            child: widget.showSpinner
-                ? Center(
-                    child: SizedBox(
-                      width: widget.iconSize,
-                      height: widget.iconSize,
-                      child: const CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    ),
-                  )
-                : Icon(
-                    widget.icon,
-                    color: Colors.white,
-                    size: widget.iconSize,
-                  ),
-          ),
-        ),
-      ),
-    );
-    if (!widget.tvFocusable) return core;
-    return FocusableControl(
-      focusNode: widget.focusNode,
-      onTap: widget.onPressed,
-      borderRadius: widget.size / 2,
-      child: core,
+      child: _buildCore(highlight: highlight),
     );
   }
 }

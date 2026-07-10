@@ -5,8 +5,11 @@ import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
-bool iptvUseTvFocus(BuildContext context) =>
-    ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+bool iptvUseTvFocus(BuildContext context) {
+  final policy = ShellScope.maybeOf(context)?.inputPolicy;
+  if (policy != null) return policy.useFocusableMoodChips;
+  return resolveShellProfile(context) == ShellProfile.tv;
+}
 
 Widget iptvTap({
   required BuildContext context,

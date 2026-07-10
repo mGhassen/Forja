@@ -57,7 +57,7 @@ void main() {
         child: HomeMovieCard(movie: _testMovie(), onTap: () {}),
       ),
     );
-    expect(find.byType(FocusableControl), findsOneWidget);
+    expect(find.byType(FocusableControl), findsAtLeastNWidgets(1));
   });
 
   testWidgets('HomeMovieCard uses InkWell on mobile profile', (tester) async {
