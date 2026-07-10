@@ -484,7 +484,6 @@ class PlayerHubEpisodePanel {
     required List<PlayerHubEpisode> episodes,
     required num currentEpisode,
     required Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected,
-    Uint8List? frozenFrame,
   }) {
     dismiss();
 
@@ -497,7 +496,6 @@ class PlayerHubEpisodePanel {
         currentEpisode: currentEpisode,
         onEpisodeSelected: onEpisodeSelected,
         onClose: dismiss,
-        frozenFrame: frozenFrame,
       ),
     );
 
@@ -512,14 +510,12 @@ class _HubEpisodePanelOverlay extends StatefulWidget {
     required this.currentEpisode,
     required this.onEpisodeSelected,
     required this.onClose,
-    this.frozenFrame,
   });
 
   final List<PlayerHubEpisode> episodes;
   final num currentEpisode;
   final Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected;
   final VoidCallback onClose;
-  final Uint8List? frozenFrame;
 
   @override
   State<_HubEpisodePanelOverlay> createState() =>
@@ -542,8 +538,8 @@ class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay> {
     return TorrentSourcesPanel(
       isOpen: _open,
       onClose: widget.onClose,
-      enableBlur: false,
-      frozenFrame: widget.frozenFrame,
+      // BackdropFilter over live video — no freeze-frame image (anime / hub).
+      enableBlur: true,
       child: _HubEpisodePanelBody(
         episodes: widget.episodes,
         currentEpisode: widget.currentEpisode,

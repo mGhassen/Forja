@@ -2872,11 +2872,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
-    final frame = await _capturePanelFrostFrame();
-    if (!mounted) return;
     if (widget.hubEpisodes != null &&
         widget.hubEpisodes!.isNotEmpty &&
         widget.onHubEpisodeSelected != null) {
+      if (!mounted) return;
       PlayerPopupPanel.dismiss();
       PlayerHubEpisodePanel.show(
         context: context,
@@ -2884,10 +2883,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         currentEpisode:
             widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: widget.onHubEpisodeSelected!,
-        frozenFrame: frame,
       );
       return;
     }
+    final frame = await _capturePanelFrostFrame();
+    if (!mounted) return;
     final movie = widget.movie;
     if (movie == null || movie.mediaType != 'tv') return;
     final season = widget.selectedSeason ?? 1;
