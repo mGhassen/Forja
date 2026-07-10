@@ -339,7 +339,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
   }
 }
 
-class _CategoryTab extends StatelessWidget {
+class _CategoryTab extends StatefulWidget {
   const _CategoryTab({
     super.key,
     required this.label,
@@ -362,81 +362,103 @@ class _CategoryTab extends StatelessWidget {
   final FocusNode? focusNode;
 
   @override
-  Widget build(BuildContext context) {
-    final cinematic = ForjaShellColors.cinematic;
+  State<_CategoryTab> createState() => _CategoryTabState();
+}
 
-    Widget buildContent(bool focused) {
-      final active = isActive || focused;
-      final tabColor =
-          active ? cinematic.textPrimary : cinematic.textSecondary;
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 34,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.inter(
-                      fontSize: 17,
-                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                      color: tabColor,
-                      letterSpacing: 0.1,
-                    ),
+class _CategoryTabState extends State<_CategoryTab> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  Widget _buildContent() {
+    final selected = widget.isActive;
+    final highlighted = _hovered || _focused;
+    final showUnderline = selected || highlighted;
+    final textColor = selected
+        ? Colors.white
+        : highlighted
+            ? Colors.white.withValues(alpha: 0.92)
+            : ForjaShellColors.cinematic.textSecondary;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 34,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.label,
+                  style: GoogleFonts.inter(
+                    fontSize: 17,
+                    fontWeight: selected
+                        ? FontWeight.w700
+                        : highlighted
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                    color: textColor,
+                    letterSpacing: 0.1,
                   ),
-                  if (showChevron) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.expand_more_rounded,
-                      size: 18,
-                      color: tabColor,
-                    ),
-                  ],
+                ),
+                if (widget.showChevron) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.expand_more_rounded,
+                    size: 18,
+                    color: textColor,
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
-          SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
-          AnimatedContainer(
-            duration: ShellTokens.navSelectionAnimation,
-            height: ShellTokens.shellNavUnderlineHeight,
-            width: active ? 28 : 0,
-            decoration: BoxDecoration(
-              color: active ? cinematic.navUnderline : Colors.transparent,
-              borderRadius: BorderRadius.circular(2),
-            ),
+        ),
+        SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
+        AnimatedContainer(
+          duration: ShellTokens.navSelectionAnimation,
+          curve: Curves.easeOutCubic,
+          height: ShellTokens.shellNavUnderlineHeight,
+          width: showUnderline ? (selected ? 32 : 28) : 0,
+          decoration: BoxDecoration(
+            color: showUnderline
+                ? (selected ? Colors.white : Colors.white.withValues(alpha: 0.92))
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(2),
           ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
+  }
 
-    if (tvFocus) {
+  @override
+  Widget build(BuildContext context) {
+    if (widget.tvFocus) {
       return shellFocusableTap(
         context: context,
-        onTap: onTap,
+        onTap: widget.onTap,
         borderRadius: 4,
         scaleOnFocus: ShellTokens.focusActiveScale,
-        listIndex: listIndex,
+        listIndex: widget.listIndex,
         tvTabId: 'home',
         tvZone: ShellTvZone.topBar,
-        tvItemIndex: listIndex,
-        onDownEdge: onDownEdge,
-        focusNode: focusNode,
-        child: buildContent(false),
+        tvItemIndex: widget.listIndex,
+        onDownEdge: widget.onDownEdge,
+        focusNode: widget.focusNode,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: (hovered) => setState(() => _hovered = hovered),
+        child: _buildContent(),
       );
     }
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: onTap,
+        onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
-        child: buildContent(false),
+        child: _buildContent(),
       ),
     );
   }

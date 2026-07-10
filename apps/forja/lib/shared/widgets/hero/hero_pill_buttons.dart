@@ -7,12 +7,15 @@ import 'package:google_fonts/google_fonts.dart';
 const double _kHeroPillHeight = 40;
 const double _kHeroPillIconSize = 20;
 
+Color _heroPillSlotActiveFill({required bool pressed}) =>
+    Colors.white.withValues(alpha: pressed ? 0.24 : 0.18);
+
 BoxDecoration _heroPillDecoration({required bool hover}) {
   return BoxDecoration(
-    color: Colors.black.withValues(alpha: hover ? 0.55 : 0.42),
+    color: Colors.black.withValues(alpha: hover ? 0.62 : 0.42),
     borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
     border: Border.all(
-      color: Colors.white.withValues(alpha: hover ? 0.38 : 0.24),
+      color: Colors.white.withValues(alpha: hover ? 0.48 : 0.24),
     ),
   );
 }
@@ -434,7 +437,7 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: active
-                ? Colors.white.withValues(alpha: pressed ? 0.12 : 0.08)
+                ? _heroPillSlotActiveFill(pressed: pressed)
                 : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(
               isFirst: isFirst,
@@ -538,7 +541,7 @@ class _HeroPillIconSlotButton extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: (hover || pressed)
-                ? Colors.white.withValues(alpha: pressed ? 0.12 : 0.08)
+                ? _heroPillSlotActiveFill(pressed: pressed)
                 : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(
               isFirst: isFirst,

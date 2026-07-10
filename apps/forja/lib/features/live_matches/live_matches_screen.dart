@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/webview/forja_webview_settings.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
@@ -1108,16 +1108,14 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
       ),
       body: Stack(
         children: [
-          InAppWebView(
+          ForjaInAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-            initialSettings: forjaWebViewSettings(
-              InAppWebViewSettings(
+            initialSettings: InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               javaScriptEnabled: true,
               disableDefaultErrorPage: true,
               supportMultipleWindows: false,
-              ),
             ),
             onLoadStart: (_, _) => setState(() => _loading = true),
             onLoadStop:  (_, _) => setState(() => _loading = false),
@@ -1407,16 +1405,14 @@ class _DamiTvPlayerScreenState extends State<_DamiTvPlayerScreen> {
       ),
       body: Stack(
         children: [
-          InAppWebView(
+          ForjaInAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(embedUrl)),
-            initialSettings: forjaWebViewSettings(
-              InAppWebViewSettings(
+            initialSettings: InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               javaScriptEnabled: true,
               disableDefaultErrorPage: true,
               supportMultipleWindows: false,
-              ),
             ),
             onLoadStart: (_, _) => setState(() => _loading = true),
             onLoadStop:  (_, _) => setState(() => _loading = false),

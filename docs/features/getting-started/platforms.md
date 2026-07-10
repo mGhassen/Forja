@@ -28,7 +28,7 @@ Download builds from [GitHub Releases](https://github.com/mGhassen/Forja/release
 ## Platform notes
 
 - **Android:** Picture-in-picture, background music playback, immersive navigation
-- **Android TV:** Leanback launcher entry, nav-rail shell (`ShellHost` TV profile), D-pad focus on in-scope tabs, built-in player remote keys (play/pause, seek ±10s, Back)
+- **Android TV:** Leanback launcher entry, nav-rail shell (`ShellHost` TV profile), D-pad focus on in-scope tabs, built-in player remote keys (play/pause, seek ±10s, Back). WebViews use software compositing on TV to avoid Chromium GLES abort on some emulators/devices — trailer and live embeds may be slower than on phone/desktop.
 - **macOS:** Hidden title bar with draggable window chrome
 - **Windows / Linux:** Custom window caption on desktop
 
@@ -46,7 +46,7 @@ flutter emulators --launch <tv_avd_id>
 flutter run -d <tv_avd_id>
 ```
 
-Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md) (`I25-M01`–`M08`).
+Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md) (`I25-M01`–`M08`). WebView crash workaround: [issue 031](../../issues/031-[workaround]-android-tv-webview-gles-crash.md) (`I31-A01` smoke on TV AVD).
 
 ### Phone / generic emulator (layout only)
 

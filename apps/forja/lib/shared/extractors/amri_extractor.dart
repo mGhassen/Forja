@@ -3,11 +3,11 @@ import 'dart:collection';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:forja/shared/webview/forja_webview_settings.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 
 class AmriExtractor {
   final void Function(String) onLog;
-  HeadlessInAppWebView? _headlessWebView;
+  ForjaHeadlessInAppWebView? _headlessWebView;
   Completer<Map<String, dynamic>>? _sourcesCompleter;
   bool _cancelled = false;
 
@@ -71,7 +71,7 @@ class AmriExtractor {
       
       final script = _buildInterceptScript(tmdbId);
       
-      _headlessWebView = HeadlessInAppWebView(
+      _headlessWebView = ForjaHeadlessInAppWebView(
         initialUrlRequest: URLRequest(url: WebUri(url)),
         initialUserScripts: UnmodifiableListView([
           UserScript(
@@ -79,12 +79,10 @@ class AmriExtractor {
             injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
           ),
         ]),
-        initialSettings: forjaWebViewSettings(
-          InAppWebViewSettings(
+        initialSettings: InAppWebViewSettings(
           javaScriptEnabled: true,
           domStorageEnabled: true,
           userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          ),
         ),
         onLoadStop: (controller, loadedUrl) async {
           onLog('Page fully loaded.');

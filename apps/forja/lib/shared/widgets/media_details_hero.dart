@@ -4,8 +4,8 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:forja/shared/webview/forja_webview_settings.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/hero/hero_facts_panel.dart';
@@ -593,17 +593,6 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
 
   Color _shellBg(BuildContext context) => AppTheme.bgDark;
 
-  InAppWebViewSettings get _webViewSettings => forjaWebViewSettings(
-        InAppWebViewSettings(
-          mediaPlaybackRequiresUserGesture: false,
-          allowsInlineMediaPlayback: true,
-          transparentBackground: false,
-          disableVerticalScroll: true,
-          disableHorizontalScroll: true,
-          supportZoom: false,
-        ),
-      );
-
   Widget _buildBackdropMedia(Color shellBg) {
     if (_backdropUrl.isEmpty) {
       return ColoredBox(color: shellBg);
@@ -673,7 +662,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                     child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          InAppWebView(
+                          ForjaInAppWebView(
                             key: ValueKey(
                               'trailer-${widget.trailerYoutubeKey}',
                             ),
@@ -684,7 +673,14 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                               ),
                               baseUrl: WebUri(_kYoutubeEmbedOrigin),
                             ),
-                            initialSettings: _webViewSettings,
+                            initialSettings: InAppWebViewSettings(
+                              mediaPlaybackRequiresUserGesture: false,
+                              allowsInlineMediaPlayback: true,
+                              transparentBackground: false,
+                              disableVerticalScroll: true,
+                              disableHorizontalScroll: true,
+                              supportZoom: false,
+                            ),
                             onWebViewCreated: (controller) {
                               _webViewController = controller;
                               controller.addJavaScriptHandler(

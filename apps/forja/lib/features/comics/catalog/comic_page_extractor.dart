@@ -3,13 +3,13 @@ import 'dart:collection';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:forja/shared/webview/forja_webview_settings.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 
 class ComicPageExtractor {
   static const String _userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36';
 
-  HeadlessInAppWebView? _webView;
+  ForjaHeadlessInAppWebView? _webView;
   bool _isDisposed = false;
 
   Future<List<String>?> extractPages(String url, {Duration timeout = const Duration(seconds: 30)}) async {
@@ -24,7 +24,7 @@ class ComicPageExtractor {
       }
     });
 
-    _webView = HeadlessInAppWebView(
+    _webView = ForjaHeadlessInAppWebView(
       initialUrlRequest: URLRequest(url: WebUri(url)),
       initialSize: const Size(1280, 720),
       initialUserScripts: UnmodifiableListView([
@@ -33,13 +33,11 @@ class ComicPageExtractor {
           injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
         ),
       ]),
-      initialSettings: forjaWebViewSettings(
-        InAppWebViewSettings(
+      initialSettings: InAppWebViewSettings(
         javaScriptEnabled: true,
         domStorageEnabled: true,
         userAgent: _userAgent,
         useOnLoadResource: true,
-        ),
       ),
       onLoadResource: (controller, resource) {
         final rUrl = resource.url.toString();
@@ -164,16 +162,14 @@ class ComicPageExtractor {
       }
     });
 
-    _webView = HeadlessInAppWebView(
+    _webView = ForjaHeadlessInAppWebView(
       initialUrlRequest: URLRequest(url: WebUri(url)),
       initialSize: const Size(1280, 720),
-      initialSettings: forjaWebViewSettings(
-        InAppWebViewSettings(
+      initialSettings: InAppWebViewSettings(
         javaScriptEnabled: true,
         domStorageEnabled: true,
         userAgent: _userAgent,
         ),
-      ),
       onLoadStop: (controller, url) async {
         final result = await controller.evaluateJavascript(source: """
           (function() {
@@ -228,7 +224,7 @@ class ComicPageExtractor {
     }
 
     // Create new webview for this page
-    _webView = HeadlessInAppWebView(
+    _webView = ForjaHeadlessInAppWebView(
       initialUrlRequest: URLRequest(url: WebUri(pageUrl)),
       initialSize: const Size(1280, 720),
       initialUserScripts: UnmodifiableListView([
@@ -237,13 +233,11 @@ class ComicPageExtractor {
           injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
         ),
       ]),
-      initialSettings: forjaWebViewSettings(
-        InAppWebViewSettings(
+      initialSettings: InAppWebViewSettings(
         javaScriptEnabled: true,
         domStorageEnabled: true,
         userAgent: _userAgent,
         useOnLoadResource: true,
-        ),
       ),
       onLoadResource: (controller, resource) {
         final rUrl = resource.url.toString();

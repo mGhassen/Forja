@@ -26,7 +26,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
-import 'package:forja/shared/webview/forja_webview_settings.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 
 class KissKhStream {
   final String url;
@@ -43,7 +43,7 @@ class KissKhStream {
 }
 
 class KissKhExtractor {
-  HeadlessInAppWebView? _web;
+  ForjaHeadlessInAppWebView? _web;
   InAppWebViewController? _controller;
   Completer<Map<String, dynamic>>? _apiCompleter;
   final List<Map<String, dynamic>> _subsBuffer = [];
@@ -86,7 +86,7 @@ class KissKhExtractor {
     _subsBuffer.clear();
 
     try {
-      _web = HeadlessInAppWebView(
+      _web = ForjaHeadlessInAppWebView(
         initialUrlRequest: URLRequest(url: WebUri(pageUrl)),
         initialUserScripts: UnmodifiableListView([
           UserScript(
@@ -94,14 +94,12 @@ class KissKhExtractor {
             injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
           ),
         ]),
-        initialSettings: forjaWebViewSettings(
-          InAppWebViewSettings(
+        initialSettings: InAppWebViewSettings(
           javaScriptEnabled: true,
           domStorageEnabled: true,
           userAgent: _userAgent,
           mediaPlaybackRequiresUserGesture: true,
           allowsInlineMediaPlayback: true,
-          ),
         ),
         onWebViewCreated: (controller) => _controller = controller,
         onLoadStop: (_, _) {

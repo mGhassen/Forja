@@ -8,7 +8,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:archive/archive.dart';
 import 'package:xml/xml.dart';
 
-import 'package:forja/shared/webview/forja_webview_settings.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class BookReaderScreen extends StatefulWidget {
@@ -670,9 +670,8 @@ class _BookReaderScreenState extends State<BookReaderScreen>
       children: [
         // ── WebView ────────────────────────────────────────────────────────
         Positioned.fill(
-          child: InAppWebView(
-            initialSettings: forjaWebViewSettings(
-              InAppWebViewSettings(
+          child: ForjaInAppWebView(
+            initialSettings: InAppWebViewSettings(
               isInspectable: kDebugMode,
               javaScriptEnabled: true,
               transparentBackground: false,
@@ -683,7 +682,6 @@ class _BookReaderScreenState extends State<BookReaderScreen>
               horizontalScrollBarEnabled: false,
               disableVerticalScroll: false,
               disableHorizontalScroll: true,
-              ),
             ),
             onWebViewCreated: (controller) {
               debugPrint('[BookReader] WebView created');
