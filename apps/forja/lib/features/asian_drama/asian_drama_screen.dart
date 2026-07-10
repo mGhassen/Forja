@@ -41,6 +41,8 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   List<Map<String, dynamic>> _continueWatching = [];
 
+  int get _catalogRowBase => _continueWatching.isNotEmpty ? 1 : 0;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -298,7 +300,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       compactTop: _continueWatching.isEmpty,
                                       tvTabId: 'asian_drama',
                                       tvRowId: 'latest',
-                                      tvRowOrder: 0,
+                                      tvRowOrder: _catalogRowBase + 0,
                                       tvFocusUp: () =>
                                           ShellTvFocusCoordinator.focusHero(
                                         tabId: 'asian_drama',
@@ -319,7 +321,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       items: _feed!.trending,
                                       tvTabId: 'asian_drama',
                                       tvRowId: 'trending',
-                                      tvRowOrder: 1,
+                                      tvRowOrder: _catalogRowBase + 1,
                                       cardBuilder: (context, card, index) =>
                                           _dramaPosterCard(
                                         card,
@@ -337,7 +339,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       showRank: true,
                                       tvTabId: 'asian_drama',
                                       tvRowId: 'top-rated',
-                                      tvRowOrder: 2,
+                                      tvRowOrder: _catalogRowBase + 2,
                                       cardBuilder: (context, card, index) =>
                                           _dramaPosterCard(
                                         card,
@@ -355,7 +357,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       items: _feed!.mostViewed,
                                       tvTabId: 'asian_drama',
                                       tvRowId: 'most-viewed',
-                                      tvRowOrder: 3,
+                                      tvRowOrder: _catalogRowBase + 3,
                                       cardBuilder: (context, card, index) =>
                                           _dramaPosterCard(
                                         card,
@@ -372,7 +374,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       items: _feed!.anime,
                                       tvTabId: 'asian_drama',
                                       tvRowId: 'anime',
-                                      tvRowOrder: 4,
+                                      tvRowOrder: _catalogRowBase + 4,
                                       cardBuilder: (context, card, index) =>
                                           _dramaPosterCard(
                                         card,
@@ -389,7 +391,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       items: _feed!.upcoming,
                                       tvTabId: 'asian_drama',
                                       tvRowId: 'upcoming',
-                                      tvRowOrder: 5,
+                                      tvRowOrder: _catalogRowBase + 5,
                                       cardBuilder: (context, card, index) =>
                                           _dramaPosterCard(
                                         card,
@@ -465,7 +467,20 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
         ),
         SizedBox(
           height: _AsianDramaContinueWatchingCard.cardHeight(context),
-          child: ListView.separated(
+          child: Builder(
+            builder: (context) {
+              shellTvRegisterRow(
+                tabId: 'asian_drama',
+                rowId: 'continue-watching',
+                sortOrder: 0,
+                itemCount: _continueWatching.length,
+                onFocusUp: () => ShellTvFocusCoordinator.focusHero(
+                  tabId: 'asian_drama',
+                ),
+              );
+              return FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             clipBehavior: Clip.none,
@@ -481,6 +496,9 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                 onTap: () => _resumeWatch(entry),
                 onRemove: () => _removeFromHistory(entry),
                 onInfo: () => _openDetails(card),
+              );
+            },
+          ),
               );
             },
           ),
@@ -556,6 +574,9 @@ class _AsianDramaContinueWatchingCardState
       context: context,
       onTap: widget.onTap,
       listIndex: widget.listIndex,
+      tvTabId: 'asian_drama',
+      tvRowId: 'continue-watching',
+      tvItemIndex: widget.listIndex,
       borderRadius: 14,
       scaleOnFocus: 1.0,
       onFocusChange: (focused) => setState(() => _focused = focused),

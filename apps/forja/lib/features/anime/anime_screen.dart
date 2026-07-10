@@ -52,6 +52,8 @@ class _AnimeScreenState extends State<AnimeScreen>
   // Continue watching
   List<Map<String, dynamic>> _continueWatching = [];
 
+  int get _catalogRowBase => _continueWatching.isNotEmpty ? 1 : 0;
+
   // Mood / genre filter
   String _selectedMood = 'shonen';
   Future<List<AnimeCard>>? _moodFuture;
@@ -382,7 +384,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   future: _trendingFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'trending',
-                                  tvRowOrder: 0,
+                                  tvRowOrder: _catalogRowBase + 0,
                                   tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
                                     tabId: 'anime',
                                   ),
@@ -401,7 +403,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   future: _topAiringFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'top-airing',
-                                  tvRowOrder: 1,
+                                  tvRowOrder: _catalogRowBase + 1,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -418,7 +420,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   showRank: true,
                                   tvTabId: 'anime',
                                   tvRowId: 'top-10',
-                                  tvRowOrder: 2,
+                                  tvRowOrder: _catalogRowBase + 2,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -435,7 +437,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   future: _mostPopularFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'most-popular',
-                                  tvRowOrder: 3,
+                                  tvRowOrder: _catalogRowBase + 3,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -451,7 +453,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   future: _recentEpisodesFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'latest-eps',
-                                  tvRowOrder: 4,
+                                  tvRowOrder: _catalogRowBase + 4,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -467,7 +469,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   future: _topRatedFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'top-rated',
-                                  tvRowOrder: 5,
+                                  tvRowOrder: _catalogRowBase + 5,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -483,7 +485,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   future: _mostFavoriteFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'most-favorited',
-                                  tvRowOrder: 6,
+                                  tvRowOrder: _catalogRowBase + 6,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -499,7 +501,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   future: _latestCompletedFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'recently-completed',
-                                  tvRowOrder: 7,
+                                  tvRowOrder: _catalogRowBase + 7,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
@@ -583,7 +585,19 @@ class _AnimeScreenState extends State<AnimeScreen>
         ),
         SizedBox(
           height: _AnimeContinueWatchingCard.cardHeight(context),
-          child: ListView.separated(
+          child: Builder(
+            builder: (context) {
+              shellTvRegisterRow(
+                tabId: 'anime',
+                rowId: 'continue-watching',
+                sortOrder: 0,
+                itemCount: _continueWatching.length,
+                onFocusUp: () =>
+                    ShellTvFocusCoordinator.focusHero(tabId: 'anime'),
+              );
+              return FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ListView.separated(
             controller: _cwScrollController,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
@@ -602,6 +616,9 @@ class _AnimeScreenState extends State<AnimeScreen>
                 onTap: () => _resumeWatch(entry),
                 onRemove: () => _removeFromHistory(entry),
                 onInfo: () => _openDetails(anime),
+              );
+            },
+          ),
               );
             },
           ),
@@ -626,7 +643,17 @@ class _AnimeScreenState extends State<AnimeScreen>
         ),
         SizedBox(
           height: 40,
-          child: ListView.separated(
+          child: Builder(
+            builder: (context) {
+              shellTvRegisterRow(
+                tabId: 'anime',
+                rowId: 'mood-chips',
+                sortOrder: _catalogRowBase,
+                itemCount: _moods.length,
+              );
+              return FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -639,7 +666,17 @@ class _AnimeScreenState extends State<AnimeScreen>
                 label: m.label,
                 selected: selected,
                 icon: m.icon,
+                listIndex: i,
+                tvTabId: 'anime',
                 onTap: () => _selectMood(m.id),
+                onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
+                  'anime',
+                  'mood-results',
+                  0,
+                ),
+              );
+            },
+          ),
               );
             },
           ),
@@ -681,7 +718,17 @@ class _AnimeScreenState extends State<AnimeScreen>
 
         return SizedBox(
           height: HubPosterCard.cardHeight(context),
-          child: ListView.separated(
+          child: Builder(
+            builder: (context) {
+              shellTvRegisterRow(
+                tabId: 'anime',
+                rowId: 'mood-results',
+                sortOrder: _catalogRowBase + 1,
+                itemCount: list.length,
+              );
+              return FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ListView.separated(
             clipBehavior: Clip.none,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
@@ -689,7 +736,14 @@ class _AnimeScreenState extends State<AnimeScreen>
             itemCount: list.length,
             separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (context, index) =>
-                _animePosterCard(list[index], listIndex: index),
+                _animePosterCard(
+              list[index],
+              listIndex: index,
+              tvRowId: 'mood-results',
+            ),
+          ),
+              );
+            },
           ),
         );
       },
@@ -792,6 +846,9 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
       context: context,
       onTap: widget.onTap,
       listIndex: widget.listIndex,
+      tvTabId: 'anime',
+      tvRowId: 'continue-watching',
+      tvItemIndex: widget.listIndex,
       borderRadius: 14,
       scaleOnFocus: 1.0,
       onFocusChange: (focused) => setState(() => _focused = focused),

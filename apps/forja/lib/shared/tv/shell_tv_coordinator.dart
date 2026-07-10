@@ -139,10 +139,6 @@ abstract final class ShellTvFocusCoordinator {
     final next = _navNodeForId(_navIdAt(idx + 1));
     if (next == null || !next.canRequestFocus) return false;
     next.requestFocus();
-    saveFocus(
-      ShellTvFocus.currentNavTabId ?? _navOrder.first,
-      const ShellTvFocusMemory(zone: ShellTvZone.nav),
-    );
     return true;
   }
 
@@ -153,10 +149,6 @@ abstract final class ShellTvFocusCoordinator {
     final prev = _navNodeForId(_navIdAt(idx - 1));
     if (prev == null || !prev.canRequestFocus) return false;
     prev.requestFocus();
-    saveFocus(
-      ShellTvFocus.currentNavTabId ?? _navOrder.first,
-      const ShellTvFocusMemory(zone: ShellTvZone.nav),
-    );
     return true;
   }
 
@@ -184,7 +176,7 @@ abstract final class ShellTvFocusCoordinator {
   static bool restoreTabFocus(String tabId) {
     if (tabId.isEmpty) return false;
     final memory = _tabMemory[tabId];
-    if (memory != null) {
+    if (memory != null && memory.zone != ShellTvZone.nav) {
       if (memory.node != null &&
           memory.node!.canRequestFocus &&
           _request(memory.node!)) {
@@ -218,7 +210,7 @@ abstract final class ShellTvFocusCoordinator {
         }
         return _restoreDefault(tabId);
       case ShellTvZone.nav:
-        return focusActiveNavTab();
+        return _restoreDefault(tabId);
     }
   }
 
@@ -502,10 +494,7 @@ class ShellTvFocusMeta {
           ShellTvFocusMemory(zone: zone, node: node),
         );
       case ShellTvZone.nav:
-        ShellTvFocusCoordinator.saveFocus(
-          tabId,
-          const ShellTvFocusMemory(zone: ShellTvZone.nav),
-        );
+        break;
     }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/design/src/forja_focus_effects.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
@@ -180,7 +181,19 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   @override
   void didUpdateWidget(covariant FocusableControl oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
+    if (oldWidget.focusNode != widget.focusNode) {
+      final oldNode = oldWidget.focusNode ?? _ownedNode;
+      if (oldNode != null) {
+        _unregisterTvItemNode(oldWidget.tvMeta, node: oldNode);
+      }
+      if (widget.focusNode == null) {
+        _ownedNode ??= FocusNode(debugLabel: 'focusable-control');
+      } else {
+        _ownedNode?.dispose();
+        _ownedNode = null;
+      }
+      _registerTvItemNode();
+    } else if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
         oldWidget.tvMeta?.itemIndex != widget.tvMeta?.itemIndex) {
       _unregisterTvItemNode(oldWidget.tvMeta);
       _registerTvItemNode();
@@ -189,7 +202,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
   void _registerTvItemNode() {
     final meta = widget.tvMeta;
-    if (meta == null || meta.zone != ShellTvZone.row) return;
+    if (meta == null ||
+        (meta.zone != ShellTvZone.row && meta.zone != ShellTvZone.grid)) {
+      return;
+    }
     if (meta.rowId == null || meta.itemIndex == null) return;
     ShellTvFocusCoordinator.registerItemNode(
       tabId: meta.tabId,
@@ -199,14 +215,17 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     );
   }
 
-  void _unregisterTvItemNode(ShellTvFocusMeta? meta) {
-    if (meta == null || meta.zone != ShellTvZone.row) return;
+  void _unregisterTvItemNode(ShellTvFocusMeta? meta, {FocusNode? node}) {
+    if (meta == null ||
+        (meta.zone != ShellTvZone.row && meta.zone != ShellTvZone.grid)) {
+      return;
+    }
     if (meta.rowId == null || meta.itemIndex == null) return;
     ShellTvFocusCoordinator.unregisterItemNode(
       tabId: meta.tabId,
       rowId: meta.rowId!,
       index: meta.itemIndex!,
-      node: _effectiveNode,
+      node: node ?? _effectiveNode,
     );
   }
 
@@ -339,7 +358,11 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
             builder: (context, child) => Transform.scale(
               scale: _scale.value,
               alignment: Alignment.center,
-              child: child,
+              child: ForjaFocusEffectStack(
+                focused: _isFocused,
+                borderRadius: BorderRadius.circular(widget.borderRadius),
+                child: child!,
+              ),
             ),
             child: widget.child,
           ),

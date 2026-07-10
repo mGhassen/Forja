@@ -10,6 +10,7 @@ import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -148,6 +149,27 @@ class _HomeTopBarState extends State<HomeTopBar> {
   }
 
   Widget _buildSearchAction({required bool tvFocus}) {
+    if (tvFocus) {
+      return shellFocusableTap(
+        context: context,
+        onTap: _openSearch,
+        borderRadius: 22,
+        scaleOnFocus: ShellTokens.focusActiveScale,
+        tvTabId: 'home',
+        tvZone: ShellTvZone.topBar,
+        focusNode: _searchFocus,
+        onUpEdge: ShellTvFocus.focusHomeMenu,
+        onDownEdge: () => ShellTvFocus.focusHomeHeroPlay(),
+        child: const SizedBox(
+          height: 34,
+          width: 44,
+          child: Center(
+            child: Icon(Icons.search_rounded, color: Colors.white, size: 30),
+          ),
+        ),
+      );
+    }
+
     final icon = ForjaPlainIcon(
       icon: Icons.search_rounded,
       color: Colors.white,
@@ -156,20 +178,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
       hoverScale: ShellTokens.focusActiveScale,
       focusNode: tvFocus ? _searchFocus : null,
       onTap: _openSearch,
-      onKeyEvent: tvFocus
-          ? (node, event) {
-              if (event is! KeyDownEvent) return KeyEventResult.ignored;
-              if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                if (ShellTvFocus.focusHomeMenu()) return KeyEventResult.handled;
-              }
-              if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                if (ShellTvFocus.focusHomeHeroPlay()) {
-                  return KeyEventResult.handled;
-                }
-              }
-              return KeyEventResult.ignored;
-            }
-          : null,
+      onKeyEvent: null,
     );
 
     return SizedBox(height: 34, child: Center(child: icon));
@@ -239,7 +248,9 @@ class _HomeTopBarState extends State<HomeTopBar> {
                         ? 20.0
                         : 36.0;
 
-                    final tabs = Row(
+                    final tabs = FocusTraversalGroup(
+                      policy: OrderedTraversalPolicy(),
+                      child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _CategoryTab(
@@ -248,20 +259,10 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           onTap: () =>
                               _toggleMediaFilter(ShellHomeCategory.films),
                           tvFocus: tvFocus,
+                          listIndex: 0,
                           focusNode: tvFocus ? _menuFocus : null,
-                          onKeyEvent: tvFocus
-                              ? (node, event) {
-                                  if (event is! KeyDownEvent) {
-                                    return KeyEventResult.ignored;
-                                  }
-                                  if (event.logicalKey ==
-                                      LogicalKeyboardKey.arrowDown) {
-                                    if (ShellTvFocus.focusHomeSearch()) {
-                                      return KeyEventResult.handled;
-                                    }
-                                  }
-                                  return KeyEventResult.ignored;
-                                }
+                          onDownEdge: tvFocus
+                              ? ShellTvFocus.focusHomeSearch
                               : null,
                         ),
                         SizedBox(width: tabGap),
@@ -271,6 +272,10 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           onTap: () =>
                               _toggleMediaFilter(ShellHomeCategory.tvShows),
                           tvFocus: tvFocus,
+                          listIndex: 1,
+                          onDownEdge: tvFocus
+                              ? () => ShellTvFocus.focusHomeHeroPlay()
+                              : null,
                         ),
                         SizedBox(width: tabGap),
                         _CategoryTab(
@@ -280,8 +285,13 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           showChevron: true,
                           onTap: _openCategoriesMenu,
                           tvFocus: tvFocus,
+                          listIndex: 2,
+                          onDownEdge: tvFocus
+                              ? () => ShellTvFocus.focusHomeHeroPlay()
+                              : null,
                         ),
                       ],
+                    ),
                     );
 
                     if (!compactNav || tvFocus) {
@@ -312,7 +322,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                               ),
                             ),
                             SizedBox(width: tabGap),
-                            ...tabs.children,
+                            tabs,
                           ],
                         ),
                       ),
@@ -337,8 +347,9 @@ class _CategoryTab extends StatelessWidget {
     required this.onTap,
     this.showChevron = false,
     this.tvFocus = false,
+    this.listIndex,
+    this.onDownEdge,
     this.focusNode,
-    this.onKeyEvent,
   });
 
   final String label;
@@ -346,8 +357,9 @@ class _CategoryTab extends StatelessWidget {
   final VoidCallback onTap;
   final bool showChevron;
   final bool tvFocus;
+  final int? listIndex;
+  final VoidCallback? onDownEdge;
   final FocusNode? focusNode;
-  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -404,12 +416,18 @@ class _CategoryTab extends StatelessWidget {
     }
 
     if (tvFocus) {
-      return ForjaInteractive(
-        focusNode: focusNode,
+      return shellFocusableTap(
+        context: context,
         onTap: onTap,
-        onKeyEvent: onKeyEvent,
-        hoverScale: ShellTokens.focusActiveScale,
-        builder: (focused, _) => buildContent(focused),
+        borderRadius: 4,
+        scaleOnFocus: ShellTokens.focusActiveScale,
+        listIndex: listIndex,
+        tvTabId: 'home',
+        tvZone: ShellTvZone.topBar,
+        tvItemIndex: listIndex,
+        onDownEdge: onDownEdge,
+        focusNode: focusNode,
+        child: buildContent(false),
       );
     }
 

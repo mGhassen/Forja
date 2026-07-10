@@ -381,6 +381,12 @@ class _PortalListView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         final cross = (c.maxWidth ~/ 320).clamp(1, 4);
+        final count = ctrl.verified.length;
+        iptvSyncRow(
+          rowId: 'portals',
+          sortOrder: 0,
+          itemCount: count,
+        );
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -389,7 +395,7 @@ class _PortalListView extends StatelessWidget {
             mainAxisSpacing: 12,
             mainAxisExtent: 120,
           ),
-          itemCount: ctrl.verified.length,
+          itemCount: count,
           itemBuilder: (_, i) {
             final v = ctrl.verified[i];
             final selected = ctrl.selected.contains(v.key);
@@ -398,6 +404,8 @@ class _PortalListView extends StatelessWidget {
               editMode: ctrl.editMode,
               selected: selected,
               isFavorite: ctrl.isFavoritePortal(v.key),
+              gridIndex: i,
+              gridColumns: cross,
               onToggleFavorite: () => ctrl.toggleFavoritePortal(v.key),
               onTap: () {
                 if (ctrl.editMode) {
@@ -599,6 +607,8 @@ class _PortalCard extends StatelessWidget {
   final bool editMode;
   final bool selected;
   final bool isFavorite;
+  final int? gridIndex;
+  final int? gridColumns;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final VoidCallback onToggleFavorite;
@@ -610,6 +620,8 @@ class _PortalCard extends StatelessWidget {
     required this.onTap,
     required this.onLongPress,
     required this.onToggleFavorite,
+    this.gridIndex,
+    this.gridColumns,
   });
 
   @override
@@ -638,6 +650,10 @@ class _PortalCard extends StatelessWidget {
           context: context,
           onTap: onTap,
           borderRadius: 14,
+          gridIndex: gridIndex,
+          gridColumns: gridColumns,
+          tvRowId: 'portals',
+          tvZone: ShellTvZone.grid,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -1173,6 +1189,11 @@ class _BrowserViewState extends State<_BrowserView> {
       ),
       child: Builder(builder: (_) {
         final cats = _filteredCategories;
+        iptvSyncRow(
+          rowId: 'browser-categories',
+          sortOrder: 1,
+          itemCount: cats.length,
+        );
         return ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: cats.length,
@@ -1183,6 +1204,8 @@ class _BrowserViewState extends State<_BrowserView> {
             context: context,
             onTap: () => ctrl.selectBrowserCategory(c.id),
             borderRadius: 8,
+            listIndex: i,
+            tvRowId: 'browser-categories',
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
@@ -1222,6 +1245,11 @@ class _BrowserViewState extends State<_BrowserView> {
       height: 40,
       child: Builder(builder: (_) {
         final cats = _filteredCategories;
+        iptvSyncRow(
+          rowId: 'browser-category-chips',
+          sortOrder: 1,
+          itemCount: cats.length,
+        );
         return ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1235,6 +1263,8 @@ class _BrowserViewState extends State<_BrowserView> {
               context: context,
               onTap: () => ctrl.selectBrowserCategory(c.id),
               borderRadius: 20,
+              listIndex: i,
+              tvRowId: 'browser-category-chips',
               child: ChoiceChip(
                 label: Text(c.name.isEmpty ? 'Uncategorized' : c.name,
                     style: GoogleFonts.poppins(

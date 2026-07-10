@@ -34,7 +34,7 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode|screenLayout"
             android:hardwareAccelerated="true"
             android:supportsPictureInPicture="true"
-            android:resizeableActivity="true"
+            android:resizeableActivity="false"
             android:windowSoftInputMode="adjustResize">
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"

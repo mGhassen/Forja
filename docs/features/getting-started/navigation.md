@@ -28,7 +28,7 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 ## Android TV
 
 - Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
-- **Nav rail:** UP/DOWN only move between nav items (trap at Home and Settings); LEFT is trapped; **RIGHT** enters the tab and restores that tab’s last focus (row index, hero, or default)
+- **Nav rail:** UP/DOWN only move between nav items (trap at Home and Settings); LEFT is trapped; **RIGHT** returns to the **active** tab’s last focus (row, hero, or default) without switching tabs; **Enter/Select** switches to the focused nav tab and restores that tab’s focus
 - **Catalog rows:** LEFT/RIGHT move within the row only (no vertical scroll jump); DOWN moves to the same column in the next row; last row DOWN stops (no escape to nav)
 - **Hero:** UP from the first row scrolls the hero fully visible and focuses Play; LEFT from Play focuses the **active** nav tab (not a geometric neighbor)
 - **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Matches** use TV-sized cards and coordinator-registered rows/chips; remote **Select** / **Enter** / **Space** activate focused controls

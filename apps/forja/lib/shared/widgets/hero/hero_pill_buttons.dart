@@ -104,13 +104,25 @@ class HeroPillPlayButton extends StatelessWidget {
       onKeyEvent: onKeyEvent,
       hoverScale: 1.03,
       pressScale: 0.97,
-      builder: (hover, pressed) {
+      focusEffectRadius: _kHeroPillHeight / 2,
+      rainbowWhenFocused:
+          resolved == HeroPillPlayTone.primary ||
+          resolved == HeroPillPlayTone.streaming,
+      builder: (active, pressed, focused) {
+        final showRainbow =
+            focused &&
+            (resolved == HeroPillPlayTone.primary ||
+                resolved == HeroPillPlayTone.streaming);
         return AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           height: _kHeroPillHeight,
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: decoration(hover),
+          decoration: showRainbow
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
+                )
+              : decoration(active),
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -399,8 +411,9 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
       onTap: onTap,
       hoverScale: 1.06,
       pressScale: 0.94,
-      builder: (hover, pressed) {
-        final active = selected || hover || pressed;
+      focusEffectRadius: _kHeroPillHeight / 2,
+      builder: (active, pressed, focused) {
+        final highlighted = selected || active || pressed;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
@@ -408,7 +421,7 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: active
+            color: highlighted
                 ? Colors.white.withValues(alpha: pressed ? 0.12 : 0.08)
                 : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(
@@ -504,7 +517,8 @@ class _HeroPillIconSlotButton extends StatelessWidget {
       hoverScale: 1.06,
       pressScale: 0.94,
       onKeyEvent: _onKeyEvent,
-      builder: (hover, pressed) {
+      focusEffectRadius: _kHeroPillHeight / 2,
+      builder: (active, pressed, focused) {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
@@ -512,7 +526,7 @@ class _HeroPillIconSlotButton extends StatelessWidget {
           height: _kHeroPillHeight,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: (hover || pressed)
+            color: (active || pressed)
                 ? Colors.white.withValues(alpha: pressed ? 0.12 : 0.08)
                 : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(

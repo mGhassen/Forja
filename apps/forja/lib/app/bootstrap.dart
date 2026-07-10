@@ -285,11 +285,18 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           theme: AppTheme.themeData,
           home: const SplashScreen(),
           builder: (context, child) {
-            final content = ForjaToastHost(
+            Widget content = ForjaToastHost(
               child: BackNavigationScope(
                 child: child ?? const SizedBox.shrink(),
               ),
             );
+            if (ShellTokens.isAndroidTvDevice) {
+              final mq = MediaQuery.of(context);
+              content = MediaQuery(
+                data: mq.copyWith(padding: EdgeInsets.zero),
+                child: content,
+              );
+            }
             return ShellInputPolicy.maybeWrapFocusTraversal(
               enabled: ShellTokens.isAndroidTvDevice,
               child: content,
@@ -312,10 +319,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  late AnimationController _slideController;
-  late Animation<Offset> _slideAnimation;
-
+class _SplashScreenState extends State<SplashScreen> {
   /// Minimum time the splash overlay stays visible. Engine starts almost
   /// instantly, so we hold the splash a bit longer to let MainScreen /
   /// HomeScreen build, layout, paint and prefetch in the background. That
@@ -334,24 +338,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, -1),
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeInOutCubic,
-    ));
-    _slideController.addStatusListener((status) {
-      if (status == AnimationStatus.completed && mounted) {
-        setState(() => _showOverlay = false);
-        _notifySplashDismissed();
-      }
-    });
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _initEngine();
     });
@@ -398,17 +384,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     );
   }
 
-  /// Called once the engine is ready AND the minimum splash time has
-  /// elapsed. Slides the overlay up and then removes it from the tree,
-  /// leaving the already-warm MainScreen in place.
   void _dismissSplash() {
-    if (!mounted || !_showOverlay || _slideController.isAnimating) return;
-    if (_slideController.isCompleted) {
-      setState(() => _showOverlay = false);
-      _notifySplashDismissed();
-      return;
-    }
-    _slideController.forward();
+    if (!mounted || !_showOverlay) return;
+    setState(() => _showOverlay = false);
+    _notifySplashDismissed();
   }
 
   Future<void> _initEngine() async {
@@ -510,45 +489,39 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
 
   @override
-  void dispose() {
-    _slideController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // The real app — built and laid out behind the splash so widgets,
-        // images, fonts and HomeScreen network requests are all warm by
-        // the time the overlay slides away.
-        Positioned.fill(
-          child: IgnorePointer(
-            ignoring: _showOverlay,
+    return ColoredBox(
+      color: AppTheme.bgDark,
+      child: Stack(
+        fit: StackFit.expand,
+        clipBehavior: Clip.hardEdge,
+        children: [
+          Offstage(
+            offstage: _showOverlay,
             child: _mainScreen,
           ),
-        ),
-        if (_showOverlay)
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _skipSplash,
-              child: SlideTransition(
-                position: _slideAnimation,
+          if (_showOverlay)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _skipSplash,
                 child: _buildSplashOverlay(),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildSplashOverlay() {
-    return Scaffold(
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _skipSplash,
-        child: const SplashOverlayContent(),
+    return SizedBox.expand(
+      child: ColoredBox(
+        color: AppTheme.bgDark,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _skipSplash,
+          child: const SplashOverlayContent(),
+        ),
       ),
     );
   }

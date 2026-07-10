@@ -432,6 +432,22 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     return small;
   }
 
+  void _enterPageFromNav() {
+    widget.onTap();
+    final tabId = widget.destination.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ShellTvFocusCoordinator.restoreTabFocus(tabId);
+    });
+  }
+
+  void _returnToActivePage() {
+    final tabId = ShellTvFocus.currentNavTabId;
+    if (tabId == null || tabId.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ShellTvFocusCoordinator.restoreTabFocus(tabId);
+    });
+  }
+
   bool _activeFor(ShellInputPolicy policy) =>
       (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
 
@@ -469,29 +485,22 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         onFocusChange: (focused) {
           setState(() => _focused = focused);
           widget.onFocusChanged();
-          if (focused && ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-            final tabId = ShellTvFocus.currentNavTabId ?? widget.destination.id;
-            ShellTvFocusCoordinator.saveFocus(
-              tabId,
-              const ShellTvFocusMemory(zone: ShellTvZone.nav),
-            );
-          }
         },
         onKeyEvent: (node, event) {
           if (event is! KeyDownEvent) return KeyEventResult.ignored;
-          if (event.logicalKey == LogicalKeyboardKey.enter ||
-              event.logicalKey == LogicalKeyboardKey.select ||
-              event.logicalKey == LogicalKeyboardKey.space ||
-              event.logicalKey == LogicalKeyboardKey.numpadEnter) {
-            widget.onTap();
+          if (shellTvIsActivateKey(event)) {
+            _enterPageFromNav();
             return KeyEventResult.handled;
           }
           if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
             final arrow = event.logicalKey;
+            if (arrow == LogicalKeyboardKey.arrowRight) {
+              _returnToActivePage();
+              return KeyEventResult.handled;
+            }
             if (arrow == LogicalKeyboardKey.arrowUp ||
                 arrow == LogicalKeyboardKey.arrowDown ||
-                arrow == LogicalKeyboardKey.arrowLeft ||
-                arrow == LogicalKeyboardKey.arrowRight) {
+                arrow == LogicalKeyboardKey.arrowLeft) {
               if (ShellTvFocusCoordinator.handleNavKey(arrow)) {
                 return KeyEventResult.handled;
               }

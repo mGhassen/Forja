@@ -36,6 +36,8 @@ class ForjaShellChip extends StatelessWidget {
     this.fontSize = 12.5,
     this.listIndex,
     this.tvTabId,
+    this.onDownEdge,
+    this.onUpEdge,
   });
 
   final String label;
@@ -48,6 +50,8 @@ class ForjaShellChip extends StatelessWidget {
   final double fontSize;
   final int? listIndex;
   final String? tvTabId;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onUpEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +96,8 @@ class ForjaShellChip extends StatelessWidget {
         listIndex: listIndex,
         tvTabId: tvTabId,
         tvZone: ShellTvZone.chipStrip,
+        onDownEdge: onDownEdge,
+        onUpEdge: onUpEdge,
         child: Material(
           color: Colors.transparent,
           borderRadius: borderRadius,

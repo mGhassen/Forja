@@ -46,6 +46,9 @@ bool _isFullCinematicHero(BuildContext context) {
 }
 
 double _heroTextTopInset(BuildContext context) {
+  if (ShellScope.profileOf(context) == ShellProfile.tv) {
+    return ShellTokens.shellHeaderTopPadding;
+  }
   return ShellTokens.heroTextColumnTopInsetDesktop;
 }
 
@@ -1608,6 +1611,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   double _desktopTopBarBleed(BuildContext context) {
+    if (ShellScope.profileOf(context) == ShellProfile.tv) return 0;
     return MediaQuery.paddingOf(context).top;
   }
 
@@ -3551,9 +3555,21 @@ class _MoodSectionState extends State<_MoodSection> {
           ),
         ),
         // Chip strip
-        SizedBox(
+        Builder(
+          builder: (context) {
+            if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+              shellTvRegisterRow(
+                tabId: 'home',
+                rowId: 'mood-chips',
+                sortOrder: widget.tvRowOrder,
+                itemCount: moods.length,
+              );
+            }
+            return SizedBox(
           height: 40,
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -3562,6 +3578,22 @@ class _MoodSectionState extends State<_MoodSection> {
             itemBuilder: (context, i) {
               final m = moods[i];
               final isSelected = m.id == selectedId;
+              if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+                return ForjaShellChip(
+                  label: m.label,
+                  selected: isSelected,
+                  icon: m.icon,
+                  listIndex: i,
+                  tvTabId: 'home',
+                  onTap: () => onSelect(m.id),
+                  onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
+                    'home',
+                    'mood-results',
+                    0,
+                  ),
+                );
+              }
+
               final chip = Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
@@ -3601,15 +3633,6 @@ class _MoodSectionState extends State<_MoodSection> {
                 ),
               );
 
-              if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-                return FocusableControl(
-                  onTap: () => onSelect(m.id),
-                  borderRadius: 24,
-                  onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
-                  child: chip,
-                );
-              }
-
               return Material(
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(24),
@@ -3624,6 +3647,9 @@ class _MoodSectionState extends State<_MoodSection> {
               );
             },
           ),
+          ),
+        );
+          },
         ),
         const SizedBox(height: 16),
         // Results row
@@ -3668,7 +3694,7 @@ class _MoodSectionState extends State<_MoodSection> {
             shellTvRegisterRow(
               tabId: 'home',
               rowId: 'mood-results',
-              sortOrder: widget.tvRowOrder,
+              sortOrder: widget.tvRowOrder + 1,
               itemCount: count,
             );
             return SizedBox(

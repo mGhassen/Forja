@@ -69,7 +69,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   final StremioService _stremio = StremioService();
   final FocusNode _focusNode = FocusNode();
   final FocusNode _firstHelperFocusNode = FocusNode();
-  final FocusNode _resultCardFocusNode = FocusNode();
 
   Timer? _debounce;
   String _query = '';
@@ -393,7 +392,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     _debounce?.cancel();
     _focusNode.dispose();
     _firstHelperFocusNode.dispose();
-    _resultCardFocusNode.dispose();
     super.dispose();
   }
 
@@ -473,9 +471,11 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     }
     _pendingGridFocusIndex = null;
     _focusNode.unfocus();
-    setState(() => _focusedIndex = index.clamp(0, count - 1));
+    final clamped = index.clamp(0, count - 1);
+    setState(() => _focusedIndex = clamped);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _resultCardFocusNode.requestFocus();
+      if (!mounted) return;
+      ShellTvFocusCoordinator.focusRowItem('search', 'results', clamped);
     });
   }
 
@@ -492,7 +492,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       setState(() => _focusedIndex = index);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _resultCardFocusNode.requestFocus();
+      if (!mounted) return;
+      ShellTvFocusCoordinator.focusRowItem('search', 'results', index);
     });
   }
 
@@ -907,8 +908,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                     child: _SearchFilmCard(
                       result: item,
                       selected: index == _focusedIndex,
-                      focusNode:
-                          index == _focusedIndex ? _resultCardFocusNode : null,
                       gridIndex: index,
                       gridColumns: gridColumns,
                       onTap: () => _setFocusedIndex(index),
@@ -1184,7 +1183,6 @@ class _SearchFilmCard extends StatelessWidget {
     required this.onTap,
     required this.onOpen,
     this.onFocusChange,
-    this.focusNode,
     this.gridIndex,
     this.gridColumns,
   });
@@ -1194,7 +1192,6 @@ class _SearchFilmCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onOpen;
   final ValueChanged<bool>? onFocusChange;
-  final FocusNode? focusNode;
   final int? gridIndex;
   final int? gridColumns;
 
@@ -1208,10 +1205,10 @@ class _SearchFilmCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 14,
-      focusNode: focusNode,
       gridIndex: gridIndex,
       gridColumns: gridColumns,
       tvTabId: 'search',
+      tvRowId: 'results',
       tvZone: ShellTvZone.grid,
       tvItemIndex: gridIndex,
       onFocusChange: onFocusChange,

@@ -217,4 +217,71 @@ void main() {
     );
     expect(find.byType(FocusableControl), findsAtLeastNWidgets(1));
   });
+
+  testWidgets('nav RIGHT restores page focus after nav visit', (tester) async {
+    final homeNav = FocusNode(debugLabel: 'nav-home');
+    final pageNode = FocusNode(debugLabel: 'page-item');
+    ShellTvFocus.registerNav('home', homeNav);
+    ShellTvFocus.currentNavTabId = 'home';
+
+    ShellTvFocusCoordinator.saveFocus(
+      'home',
+      ShellTvFocusMemory(
+        zone: ShellTvZone.row,
+        rowId: 'featured',
+        itemIndex: 2,
+        node: pageNode,
+      ),
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
+            Focus(focusNode: pageNode, child: const SizedBox(width: 40, height: 40)),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    homeNav.requestFocus();
+    await tester.pump();
+
+    ShellTvFocusCoordinator.saveFocus(
+      'home',
+      const ShellTvFocusMemory(zone: ShellTvZone.nav),
+    );
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'home',
+      defaultFocus: () => pageNode,
+    );
+
+    expect(
+      ShellTvFocusCoordinator.handleNavKey(LogicalKeyboardKey.arrowRight),
+      isTrue,
+    );
+    await tester.pump();
+    expect(pageNode.hasFocus, isTrue);
+    expect(homeNav.hasFocus, isFalse);
+
+    homeNav.dispose();
+    pageNode.dispose();
+  });
+
+  test('restoreTabFocus ignores stale nav-only memory', () {
+    final pageNode = FocusNode(debugLabel: 'page-item');
+    ShellTvFocusCoordinator.saveFocus(
+      'home',
+      const ShellTvFocusMemory(zone: ShellTvZone.nav),
+    );
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'home',
+      defaultFocus: () => pageNode,
+    );
+
+    expect(ShellTvFocusCoordinator.restoreTabFocus('home'), isTrue);
+
+    pageNode.dispose();
+  });
 }

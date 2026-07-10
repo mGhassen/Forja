@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/design/src/forja_focus_effects.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
@@ -7,7 +8,11 @@ import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-typedef ForjaInteractiveBuilder = Widget Function(bool hover, bool pressed);
+typedef ForjaInteractiveBuilder = Widget Function(
+  bool active,
+  bool pressed,
+  bool focused,
+);
 
 class ForjaInteractive extends StatefulWidget {
   const ForjaInteractive({
@@ -19,6 +24,8 @@ class ForjaInteractive extends StatefulWidget {
     this.autoFocus = false,
     this.focusNode,
     this.onKeyEvent,
+    this.focusEffectRadius,
+    this.rainbowWhenFocused = false,
   });
 
   final ForjaInteractiveBuilder builder;
@@ -28,6 +35,8 @@ class ForjaInteractive extends StatefulWidget {
   final bool autoFocus;
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
+  final double? focusEffectRadius;
+  final bool rainbowWhenFocused;
 
   @override
   State<ForjaInteractive> createState() => _ForjaInteractiveState();
@@ -51,6 +60,17 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   bool _activeFor(ShellInputPolicy policy) =>
       (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
 
+  Widget _wrapFocusEffects(Widget child) {
+    final radius = widget.focusEffectRadius;
+    if (radius == null || !_focused) return child;
+    return ForjaFocusEffectStack(
+      focused: true,
+      borderRadius: BorderRadius.circular(radius),
+      rainbowBackground: widget.rainbowWhenFocused,
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final policy = _policy(context);
@@ -58,7 +78,9 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       scale: _scaleFor(policy),
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
-      child: widget.builder(_activeFor(policy), _pressed),
+      child: _wrapFocusEffects(
+        widget.builder(_activeFor(policy), _pressed, _focused),
+      ),
     );
 
     Widget interactive = MouseRegion(
@@ -135,7 +157,7 @@ class ForjaGhostButton extends StatelessWidget {
       focusNode: focusNode,
       hoverScale: 1.04,
       pressScale: 0.96,
-      builder: (hover, pressed) {
+      builder: (active, pressed, focused) {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Row(
@@ -373,7 +395,8 @@ class ForjaIconButton extends StatelessWidget {
       onTap: onTap,
       hoverScale: 1.08,
       pressScale: 0.95,
-      builder: (hover, pressed) {
+      focusEffectRadius: ShellTokens.shellButtonRadius,
+      builder: (active, pressed, focused) {
         return Container(
           width: size,
           height: size,
@@ -381,7 +404,7 @@ class ForjaIconButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(ShellTokens.shellButtonRadius),
             border: Border.all(
-              color: hover ? iconColor.withValues(alpha: 0.5) : borderColor,
+              color: active ? iconColor.withValues(alpha: 0.5) : borderColor,
             ),
           ),
           child: child ?? Icon(icon, size: 20, color: iconColor),

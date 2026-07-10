@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 bool iptvUseTvFocus(BuildContext context) {
   final policy = ShellScope.maybeOf(context)?.inputPolicy;
@@ -21,6 +22,9 @@ Widget iptvTap({
   int? gridIndex,
   int? gridColumns,
   bool navLeftAlways = false,
+  String? tvRowId,
+  int? tvItemIndex,
+  ShellTvZone? tvZone,
 }) {
   if (onTap == null) return child;
   return shellFocusableTap(
@@ -33,7 +37,30 @@ Widget iptvTap({
     gridColumns: gridColumns,
     navLeftAlways: navLeftAlways,
     tvTabId: 'iptv',
+    tvRowId: tvRowId,
+    tvItemIndex: tvItemIndex ?? listIndex ?? gridIndex,
+    tvZone: tvZone ?? (tvRowId != null ? ShellTvZone.row : null),
     child: child,
+  );
+}
+
+/// Registers a horizontal IPTV row with the TV coordinator.
+void iptvSyncRow({
+  required String rowId,
+  required int sortOrder,
+  required int itemCount,
+  VoidCallback? onFocusUp,
+}) {
+  if (itemCount <= 0) {
+    shellTvUnregisterRow(tabId: 'iptv', rowId: rowId);
+    return;
+  }
+  shellTvRegisterRow(
+    tabId: 'iptv',
+    rowId: rowId,
+    sortOrder: sortOrder,
+    itemCount: itemCount,
+    onFocusUp: onFocusUp,
   );
 }
 
