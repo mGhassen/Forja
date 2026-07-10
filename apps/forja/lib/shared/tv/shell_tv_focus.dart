@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// TV D-pad focus anchors shared across shell nav, home chrome, and catalog rows.
 abstract final class ShellTvFocus {
@@ -50,4 +51,21 @@ abstract final class ShellTvFocus {
     node.requestFocus();
     return true;
   }
+}
+
+/// Swallow horizontal D-pad at a row edge so focus stays in the hero / chip strip.
+KeyEventResult shellTrapTvFocusHorizontalEdge(
+  FocusNode node,
+  KeyEvent event, {
+  bool trapRight = false,
+  bool trapLeft = false,
+}) {
+  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+  if (trapRight && event.logicalKey == LogicalKeyboardKey.arrowRight) {
+    return KeyEventResult.handled;
+  }
+  if (trapLeft && event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+    return KeyEventResult.handled;
+  }
+  return KeyEventResult.ignored;
 }

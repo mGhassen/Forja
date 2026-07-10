@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 const double _kHeroPillHeight = 40;
@@ -248,11 +250,39 @@ class HeroPillIconSlot {
   final Widget? child;
 }
 
+/// Horizontal hero CTA cluster — ordered left→right on TV, no escape to catalog.
+class HeroPillActionRow extends StatelessWidget {
+  const HeroPillActionRow({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return row;
+    }
+    return FocusTraversalGroup(
+      policy: OrderedTraversalPolicy(),
+      child: row,
+    );
+  }
+}
+
 /// Secondary hero actions grouped in one pill (info | add, etc.).
 class HeroPillIconGroup extends StatelessWidget {
-  const HeroPillIconGroup({super.key, required this.slots});
+  const HeroPillIconGroup({
+    super.key,
+    required this.slots,
+    this.tvFocusOrderStart,
+  });
 
   final List<HeroPillIconSlot> slots;
+  /// When set (TV), pins D-pad order for each slot starting at this index.
+  final int? tvFocusOrderStart;
 
   @override
   Widget build(BuildContext context) {
@@ -276,6 +306,9 @@ class HeroPillIconGroup extends StatelessWidget {
               slot: slots[i],
               isFirst: i == 0,
               isLast: i == slots.length - 1,
+              focusOrder: tvFocusOrderStart != null
+                  ? NumericFocusOrder((tvFocusOrderStart! + i).toDouble())
+                  : null,
             ),
           ],
         ],
@@ -410,11 +443,26 @@ class _HeroPillIconSlotButton extends StatelessWidget {
     required this.slot,
     required this.isFirst,
     required this.isLast,
+    this.focusOrder,
   });
 
   final HeroPillIconSlot slot;
   final bool isFirst;
   final bool isLast;
+  final FocusOrder? focusOrder;
+
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    if (isLast) {
+      return shellTrapTvFocusHorizontalEdge(node, event, trapRight: true);
+    }
+    return KeyEventResult.ignored;
+  }
+
+  Widget _wrapOrder(Widget child) {
+    final order = focusOrder;
+    if (order == null) return child;
+    return FocusTraversalOrder(order: order, child: child);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -426,24 +474,28 @@ class _HeroPillIconSlotButton extends StatelessWidget {
         );
 
     if (slot.child != null && slot.onTap == null) {
-      return SizedBox(
-        width: _kHeroPillHeight,
-        height: _kHeroPillHeight,
-        child: ClipRRect(
-          borderRadius: _heroPillSlotBorderRadius(
-            isFirst: isFirst,
-            isLast: isLast,
+      return _wrapOrder(
+        SizedBox(
+          width: _kHeroPillHeight,
+          height: _kHeroPillHeight,
+          child: ClipRRect(
+            borderRadius: _heroPillSlotBorderRadius(
+              isFirst: isFirst,
+              isLast: isLast,
+            ),
+            child: Center(child: content),
           ),
-          child: Center(child: content),
         ),
       );
     }
 
     if (slot.onTap == null) {
-      return SizedBox(
-        width: _kHeroPillHeight,
-        height: _kHeroPillHeight,
-        child: Center(child: content),
+      return _wrapOrder(
+        SizedBox(
+          width: _kHeroPillHeight,
+          height: _kHeroPillHeight,
+          child: Center(child: content),
+        ),
       );
     }
 
@@ -451,6 +503,7 @@ class _HeroPillIconSlotButton extends StatelessWidget {
       onTap: slot.onTap,
       hoverScale: 1.06,
       pressScale: 0.94,
+      onKeyEvent: _onKeyEvent,
       builder: (hover, pressed) {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 140),
@@ -473,8 +526,8 @@ class _HeroPillIconSlotButton extends StatelessWidget {
     );
 
     if (slot.tooltip != null) {
-      return Tooltip(message: slot.tooltip!, child: button);
+      return _wrapOrder(Tooltip(message: slot.tooltip!, child: button));
     }
-    return button;
+    return _wrapOrder(button);
   }
 }

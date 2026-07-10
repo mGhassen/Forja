@@ -2141,27 +2141,32 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildHeroActionRow(Movie heroMovie) {
     final metrics = ShellScope.metricsOf(context);
     final policy = ShellScope.inputPolicyOf(context);
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        HeroPillPlayButton(
-          label: 'Play',
-          focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
-          onKeyEvent: policy.heroPlayAutoFocus
-              ? (node, event) {
-                  if (event is KeyDownEvent &&
-                      event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                    if (ShellTvFocus.focusHomeSearch()) {
-                      return KeyEventResult.handled;
-                    }
-                  }
-                  return KeyEventResult.ignored;
+    final tvNav = policy.useFocusableMoodChips;
+    final play = HeroPillPlayButton(
+      label: 'Play',
+      focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+      onKeyEvent: policy.heroPlayAutoFocus
+          ? (node, event) {
+              if (event is KeyDownEvent &&
+                  event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                if (ShellTvFocus.focusHomeSearch()) {
+                  return KeyEventResult.handled;
                 }
-              : null,
-          onTap: () => _watchNow(heroMovie),
-        ),
+              }
+              return KeyEventResult.ignored;
+            }
+          : null,
+      onTap: () => _watchNow(heroMovie),
+    );
+    final row = HeroPillActionRow(
+      children: [
+        if (tvNav)
+          FocusTraversalOrder(order: const NumericFocusOrder(1), child: play)
+        else
+          play,
         const SizedBox(width: 10),
         HeroPillIconGroup(
+          tvFocusOrderStart: tvNav ? 2 : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,

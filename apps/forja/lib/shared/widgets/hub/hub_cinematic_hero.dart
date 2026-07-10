@@ -602,16 +602,21 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
 
   Widget _buildActionRow(HubHeroSlide slide) {
     final policy = ShellScope.inputPolicyOf(context);
-    return Row(
+    final tvNav = policy.useFocusableMoodChips;
+    final play = HeroPillPlayButton(
+      label: 'Play',
+      onTap: slide.onPlay,
+      focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+    );
+    return HeroPillActionRow(
       children: [
-        HeroPillPlayButton(
-          label: 'Play',
-          onTap: slide.onPlay,
-          focusNode:
-              policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
-        ),
+        if (tvNav)
+          FocusTraversalOrder(order: const NumericFocusOrder(1), child: play)
+        else
+          play,
         const SizedBox(width: 10),
         HeroPillIconGroup(
+          tvFocusOrderStart: tvNav ? 2 : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,

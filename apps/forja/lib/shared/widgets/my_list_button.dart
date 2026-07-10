@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/theme/app_theme.dart';
-import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:rust/rust.dart';
 
 class MyListButton extends StatelessWidget {
   const MyListButton.movie({
@@ -88,6 +89,8 @@ class MyListButton extends StatelessWidget {
             onTap: () => _toggle(context),
             hoverScale: 1.06,
             pressScale: 0.94,
+            onKeyEvent: (node, event) =>
+                shellTrapTvFocusHorizontalEdge(node, event, trapRight: true),
             builder: (active, pressed) {
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 140),
