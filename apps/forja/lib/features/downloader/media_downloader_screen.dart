@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:rust/rust.dart';
+import 'package:forja/shared/design/design.dart';
 
 class MediaDownloaderScreen extends StatefulWidget {
   const MediaDownloaderScreen({super.key});
@@ -230,21 +231,14 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
     if (uri == null) return;
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open ${m.fileName}')),
-      );
+      ForjaToast.error('Could not open ${m.fileName}');
     }
   }
 
   Future<void> _copy(Site111477Match m) async {
     await Clipboard.setData(ClipboardData(text: m.fileUrl));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Link copied'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    ForjaToast.success('Link copied', duration: const Duration(seconds: 2));
   }
 
   void _clearSelection() {

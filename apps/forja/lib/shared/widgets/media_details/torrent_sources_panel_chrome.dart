@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
@@ -48,8 +46,8 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
     this.onSortChanged,
     this.cacheRefreshToken,
     this.showCacheLine = false,
-    /// Player: screenshot still for Filters frost. Details: leave null.
-    this.filterFrozenFrame,
+    /// Details: true. Player: false (no freeze-frame / no live video blur).
+    this.filterEnableBlur = true,
   });
 
   final VoidCallback onClose;
@@ -90,7 +88,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
   final ValueChanged<String>? onSortChanged;
   final int? cacheRefreshToken;
   final bool showCacheLine;
-  final Uint8List? filterFrozenFrame;
+  final bool filterEnableBlur;
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +150,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           onSizeFiltersChanged: onSizeFiltersChanged,
           sortPreference: sortPreference,
           onSortChanged: onSortChanged,
-          frozenFrame: filterFrozenFrame,
+          enableBlur: filterEnableBlur,
         ),
         if (showCacheLine && cacheRefreshToken != null) ...[
           SizedBox(height: isTv ? 6 : 4),

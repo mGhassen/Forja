@@ -13,6 +13,7 @@ import 'package:forja/shared/audio/music_downloader_service.dart';
 import 'music_player_screen.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class MusicScreen extends StatefulWidget {
   const MusicScreen({super.key});
@@ -983,14 +984,7 @@ class _MusicScreenState extends State<MusicScreen>
                 await _loadUserData();
                 if (mounted) {
                   setState(() => _currentView = MusicView.playlists);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Playlist deleted'),
-                      backgroundColor: AppTheme.bgCard,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
+                  ForjaToast.success('Playlist deleted');
                 }
               }
             }),
@@ -1036,14 +1030,7 @@ class _MusicScreenState extends State<MusicScreen>
               await _storageService.saveAlbum(a);
               await _loadUserData();
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Album saved!'),
-                    backgroundColor: AppTheme.current.primaryColor.withValues(alpha: 0.9),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                );
+                ForjaToast.success('Album saved!');
               }
             }),
           ],
@@ -1473,14 +1460,7 @@ class _MusicScreenState extends State<MusicScreen>
                           }
                           await _loadUserData();
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(isSaved ? 'Album removed' : 'Album saved!'),
-                                backgroundColor: AppTheme.current.primaryColor.withValues(alpha: 0.9),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                            );
+                            ForjaToast.success(isSaved ? 'Album removed' : 'Album saved!');
                           }
                         },
                         borderRadius: BorderRadius.circular(20),
@@ -1941,16 +1921,8 @@ class _MusicScreenState extends State<MusicScreen>
                 await _storageService.savePlaylist(updatedPlaylist);
                 await _loadUserData();
                 if (context.mounted) {
-                  final messenger = ScaffoldMessenger.of(context);
                   setState(() => _selectedPlaylist = updatedPlaylist);
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: const Text('Removed from playlist'),
-                      backgroundColor: AppTheme.bgCard,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
+                  ForjaToast.success('Removed from playlist');
                 }
               }),
             _buildMenuItem(Icons.playlist_add_rounded, 'Add to Playlist', AppTheme.current.primaryColor, () {
@@ -2000,15 +1972,12 @@ class _MusicScreenState extends State<MusicScreen>
                       }
                       await _storageService.removeDownloadedTrack(track.id);
                     } else {
-                      final messenger = ScaffoldMessenger.of(context);
                       final success = await _downloader.downloadTrack(track);
                       if (mounted) {
-                        messenger.showSnackBar(SnackBar(
-                          content: Text(success ? 'Added to download queue...' : 'Already in download queue'),
-                          backgroundColor: AppTheme.bgCard,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ));
+                        ForjaToast.show(
+                      success ? 'Added to download queue...' : 'Already in download queue',
+                      kind: success ? ForjaToastKind.success : ForjaToastKind.info,
+                    );
                       }
                     }
                   },
@@ -2056,12 +2025,7 @@ class _MusicScreenState extends State<MusicScreen>
     final playlists = await _storageService.getPlaylists();
     if (!mounted) return;
     if (playlists.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Create a playlist first!'),
-        backgroundColor: AppTheme.bgCard,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ));
+      ForjaToast.info('Create a playlist first!');
       return;
     }
     showModalBottomSheet(
@@ -2087,18 +2051,12 @@ class _MusicScreenState extends State<MusicScreen>
               child: InkWell(
                 onTap: () async {
                   final navigator = Navigator.of(context);
-                  final messenger = ScaffoldMessenger.of(context);
                   p.tracks.add(track);
                   await _storageService.savePlaylist(p);
                   await _loadUserData();
                   if (!mounted) return;
                   navigator.pop();
-                  messenger.showSnackBar(SnackBar(
-                    content: Text('Added to ${p.name}'),
-                    backgroundColor: AppTheme.current.primaryColor.withValues(alpha: 0.9),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ));
+                  ForjaToast.success('Added to ${p.name}');
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -2220,11 +2178,7 @@ class _MusicScreenState extends State<MusicScreen>
 
   void _openDownloadFolder(List<MusicTrack> downloaded) async {
     if (downloaded.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('No downloads to show'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ));
+      ForjaToast.info('No downloads to show');
       return;
     }
     final path = downloaded.first.localPath ?? 'Android/media/com.forja.app/Music';
@@ -2289,12 +2243,7 @@ class _MusicScreenState extends State<MusicScreen>
                   TextButton(
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: dirPath));
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: const Text('Path copied!'),
-                        backgroundColor: AppTheme.current.primaryColor.withValues(alpha: 0.9),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ));
+                      ForjaToast.success('Path copied!');
                       Navigator.pop(context);
                     },
                     child: Text('Copy Path', style: TextStyle(color: AppTheme.current.primaryColor)),

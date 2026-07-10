@@ -6,6 +6,7 @@ import 'package:forja/features/audiobooks/catalog/audiobook_service.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 import 'audiobook_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class AudiobookDownloadsScreen extends StatefulWidget {
   const AudiobookDownloadsScreen({super.key});
@@ -71,9 +72,7 @@ class _AudiobookDownloadsScreenState extends State<AudiobookDownloadsScreen> {
         .toList();
 
     if (chapters.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No downloaded chapters available')),
-      );
+      ForjaToast.info('No downloaded chapters available');
       return;
     }
 

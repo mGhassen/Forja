@@ -3,6 +3,7 @@ import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class ListsScreen extends StatefulWidget {
   const ListsScreen({super.key});
@@ -160,9 +161,7 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
       if (created != null) {
         _loadTraktLists();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('List created!')),
-          );
+          ForjaToast.success('List created!');
         }
       }
     }
@@ -470,13 +469,9 @@ class _TraktListItemsScreenState extends State<_TraktListItemsScreen> {
     );
     if (success && mounted) {
       setState(() => _movies.removeWhere((m) => m.id == movie.id));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Removed "${movie.title}"')),
-      );
+      ForjaToast.success('Removed "${movie.title}"');
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to remove item')),
-      );
+      ForjaToast.error('Failed to remove item');
     }
   }
 
@@ -579,13 +574,9 @@ class _MdblistItemsScreenState extends State<_MdblistItemsScreen> {
     );
     if (success && mounted) {
       setState(() => _movies.removeWhere((m) => m.id == movie.id));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Removed "${movie.title}"')),
-      );
+      ForjaToast.success('Removed "${movie.title}"');
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to remove item')),
-      );
+      ForjaToast.error('Failed to remove item');
     }
   }
 

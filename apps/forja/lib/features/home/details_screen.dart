@@ -639,9 +639,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
       if (!found && mounted && !_webstreamingOnlyExtractionCancelled) {
         dismissLoading();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to find a working stream.')),
-        );
+        ForjaToast.error('Failed to find a working stream.');
       }
     } finally {
       if (mounted) {
@@ -768,15 +766,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (await TraktService().isLoggedIn()) {
           _showRatingDialog();
         } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login to Trakt first in Settings')));
+          ForjaToast.error('Login to Trakt first in Settings');
         }
       case 'simkl_rate':
         if (await SimklService().isLoggedIn()) {
           _showSimklRatingDialog();
         } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login to Simkl first in Settings')));
+          ForjaToast.error('Login to Simkl first in Settings');
         }
       case 'collect':
         await _toggleTraktCollection();
@@ -1491,8 +1487,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _toggleTraktCollection() async {
     if (!await TraktService().isLoggedIn()) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login to Trakt first in Settings')));
+      ForjaToast.error('Login to Trakt first in Settings');
       return;
     }
     if (_isInTraktCollection) {
@@ -1515,8 +1510,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _traktCheckin() async {
     if (!await TraktService().isLoggedIn()) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login to Trakt first in Settings')));
+      ForjaToast.error('Login to Trakt first in Settings');
       return;
     }
     final success = await TraktService().checkin(
@@ -1527,9 +1521,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     );
     if (!mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Checked in on Trakt!')),
-      );
+      ForjaToast.success('Checked in on Trakt!');
     } else {
       // Offer to cancel existing check-in and retry
       final shouldCancel = await showDialog<bool>(
@@ -1557,8 +1549,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
           );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(retrySuccess ? 'Checked in on Trakt!' : 'Check-in failed')),
+          ForjaToast.show(
+            retrySuccess ? 'Checked in on Trakt!' : 'Check-in failed',
+            kind: retrySuccess ? ForjaToastKind.success : ForjaToastKind.error,
           );
         }
       }
@@ -1570,15 +1563,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _addToTraktList() async {
     if (!await TraktService().isLoggedIn()) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login to Trakt first in Settings')));
+      ForjaToast.error('Login to Trakt first in Settings');
       return;
     }
     final lists = await TraktService().getUserLists();
     if (!mounted || lists.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No Trakt lists found. Create one in Lists screen.')));
+        ForjaToast.warning('No Trakt lists found. Create one in Lists screen.');
       }
       return;
     }
@@ -1620,10 +1611,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       shows: type == 'shows' ? [entry] : [],
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(success
-        ? 'Added to "${selected['name']}"'
-        : 'Failed to add to list')),
+    ForjaToast.show(
+      success
+          ? 'Added to "${selected['name']}"'
+          : 'Failed to add to list',
+      kind: success ? ForjaToastKind.success : ForjaToastKind.error,
     );
   }
 
@@ -2306,9 +2298,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _searchJackett() async {
     if (!_isJackettConfigured) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Jackett is not configured. Go to Settings to add your Base URL and API Key.'))
-        );
+        ForjaToast.info('Jackett is not configured. Go to Settings to add your Base URL and API Key.');
       }
       return;
     }
@@ -2387,9 +2377,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _searchProwlarr() async {
     if (!_isProwlarrConfigured) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Prowlarr is not configured. Go to Settings to add your Base URL and API Key.'))
-        );
+        ForjaToast.info('Prowlarr is not configured. Go to Settings to add your Base URL and API Key.');
       }
       return;
     }
@@ -2502,9 +2490,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     if (precheck is StremioResolveFailure) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(precheck.message)),
-        );
+        ForjaToast.info(precheck.message);
       }
       return;
     }
@@ -2600,9 +2586,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (resolved is StremioResolveFailure &&
         resolved.error != StremioPlaybackError.cancelled &&
         mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(resolved.message)),
-      );
+      ForjaToast.info(resolved.message);
     }
   }
 
@@ -2656,8 +2640,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to handle this link')));
+      ForjaToast.error('Unable to handle this link');
     }
   }
 
@@ -2739,9 +2722,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               return;
             }
             abortPlayback();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Torrent file downloads not yet supported. Please use magnet links.'))
-            );
+            ForjaToast.info('Torrent file downloads not yet supported. Please use magnet links.');
             return;
           }
         } catch (e) {
@@ -2754,7 +2735,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             return;
           }
           abortPlayback();
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+          ForjaToast.error(e.toString());
           return;
         }
         if (!mounted || _streamCancelled) {
@@ -2794,9 +2775,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         final message = e is DebridAuthException
             ? e.toString()
             : debridUserMessage(e, debridService);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ForjaToast.info(message);
       }
     } finally {
       overlayMessage.dispose();
@@ -3523,4 +3502,4 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  EXPANDABLE SYNOPSIS
-// ═════════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════;

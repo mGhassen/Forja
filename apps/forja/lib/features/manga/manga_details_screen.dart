@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/features/manga/catalog/manga_service.dart';
 import 'manga_reader_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class MangaDetailsScreen extends StatefulWidget {
   final Manga manga;
@@ -386,9 +387,7 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
     
     final chapterNumber = double.tryParse(input);
     if (chapterNumber == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid chapter number')),
-      );
+      ForjaToast.warning('Please enter a valid chapter number');
       return;
     }
     
@@ -396,9 +395,7 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
     final chapterIndex = _chapters.indexWhere((ch) => ch.number == chapterNumber);
     
     if (chapterIndex == -1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Chapter $chapterNumber not found')),
-      );
+      ForjaToast.error('Chapter $chapterNumber not found');
       return;
     }
     

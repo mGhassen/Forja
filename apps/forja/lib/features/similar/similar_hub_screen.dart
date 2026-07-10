@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:rust/rust.dart';
 import 'similar_results_screen.dart';
+import 'package:forja/shared/design/design.dart';
 
 enum _MediaFilter { all, movies, tv }
 
@@ -143,10 +144,7 @@ class _SimilarHubScreenState extends State<SimilarHubScreen>
       );
       if (!mounted) return;
       if (hit == null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('No bestsimilar.com match for "${m.title}"'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ForjaToast.info('No bestsimilar.com match for "${m.title}"');
         setState(() => _resolvingId = null);
         return;
       }

@@ -389,7 +389,7 @@ class _SourceBadgeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: accentBorder ??
-                (isResumable
+                ((isResumable || highlightStart)
                     ? ForjaShellColors.chipSelectedBorder
                     : Colors.white.withValues(alpha: 0.07)),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:rust/rust.dart';
+import 'package:forja/shared/design/design.dart';
 
 /// Settings UI for the local WebStreamr port — country toggles, MFP,
 /// FlareSolverr, per-extractor disable, resolution exclusion, TMDB token.
@@ -56,9 +57,7 @@ class _WebStreamrSettingsScreenState extends State<WebStreamrSettingsScreen> {
     // Re-apply env (TMDB token / flare URL).
     await WebStreamrService.init();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('WebStreamr settings saved.')),
-    );
+    ForjaToast.success('WebStreamr settings saved.');
   }
 
   @override

@@ -92,12 +92,7 @@ class PlayerStreamMenu {
         initial.sources != null && initial.sources!.isNotEmpty;
 
     if (!hasProviders && !hasSources) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No streams available'),
-          duration: Duration(seconds: 1),
-        ),
-      );
+      ForjaToast.warning('No streams available', duration: const Duration(seconds: 1));
       return;
     }
 
@@ -223,12 +218,7 @@ class PlayerStreamMenu {
                 serverSources ??= readState().sources;
                 if (serverSources == null || serverSources.isEmpty) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No sources for this server'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
+                    ForjaToast.info('No sources for this server', duration: const Duration(seconds: 1));
                   }
                   return;
                 }

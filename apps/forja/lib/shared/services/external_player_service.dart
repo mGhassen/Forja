@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/android_player_launcher.dart';
+import 'package:forja/shared/design/design.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  EXTERNAL PLAYER SERVICE
@@ -276,16 +277,7 @@ class ExternalPlayerService {
     } catch (e) {
       debugPrint('[ExternalPlayer] Error launching ${player.displayName}: $e');
       if (context != null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${player.displayName} could not be launched. Is it installed?',
-              style: const TextStyle(color: Colors.white),
-            ),
-            backgroundColor: Colors.red.shade900,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ForjaToast.error('${player.displayName} could not be launched. Is it installed?');
       }
       return false;
     }

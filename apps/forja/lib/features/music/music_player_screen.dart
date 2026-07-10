@@ -9,6 +9,7 @@ import 'package:forja/shared/audio/music_storage_service.dart';
 import 'package:forja/shared/audio/music_downloader_service.dart';
 import 'package:forja/shared/audio/lyrics_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 enum PlayerView { art, lyrics, related }
 
@@ -147,15 +148,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> with WidgetsBindi
               return IconButton(
                 icon: Icon(Icons.download_rounded, color: Colors.white.withValues(alpha: 0.6), size: 22),
                 onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
                   final success = await _downloader.downloadTrack(track);
                   if (mounted) {
-                    messenger.showSnackBar(SnackBar(
-                      content: Text(success ? 'Added to download queue...' : 'Already in download queue'),
-                      backgroundColor: const Color(0xFF1A1030),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ));
+                    ForjaToast.show(
+                      success ? 'Added to download queue...' : 'Already in download queue',
+                      kind: success ? ForjaToastKind.success : ForjaToastKind.info,
+                    );
                   }
                 },
               );

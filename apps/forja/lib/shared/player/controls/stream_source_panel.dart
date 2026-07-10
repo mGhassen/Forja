@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/design/design.dart';
 
 class StreamSourcePanel {
   static void show(
@@ -15,12 +16,7 @@ class StreamSourcePanel {
     BuildContext? anchorContext,
   }) {
     if (sources.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No sources available'),
-          duration: Duration(seconds: 1),
-        ),
-      );
+      ForjaToast.info('No sources available', duration: const Duration(seconds: 1));
       return;
     }
 

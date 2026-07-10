@@ -2907,8 +2907,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     final movie = widget.movie;
     if (movie == null) return;
     _hideTimer?.cancel();
-    final frame = await _capturePanelFrostFrame();
-    if (!mounted) return;
     PlayerSourcesPanel.show(
       context: context,
       movie: movie,
@@ -2917,19 +2915,24 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       currentMagnet: _activeMagnet ?? widget.magnetLink,
       onTorrentSelected: _switchTorrentSource,
       onStremioSelected: _switchStremioSource,
-      frozenFrame: frame,
     );
   }
 
   Future<void> _switchStremioSource(Map<String, dynamic> stream) async {
     final title =
         (stream['title'] ?? stream['name'] ?? 'Stremio stream').toString();
-    final statusId = 'stremio-source-${stream.hashCode}';
+    // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
+    final statusId = 'source-stremio-${stream.hashCode}';
+    _playbackConfirmed = false;
     _statusController.upsert(
       statusId,
       title,
       kind: StatusRouletteKind.loading,
     );
+    // Let the overlay paint before heavy resolve work.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await _player.stop();
 
     final resolved = await resolveStremioStream(
       stream: stream,
@@ -2991,12 +2994,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
-    final statusId = 'torrent-source-${result.magnet.hashCode}';
+    // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
+    final statusId = 'source-torrent-${result.magnet.hashCode}';
+    _playbackConfirmed = false;
     _statusController.upsert(
       statusId,
       result.name,
       kind: StatusRouletteKind.loading,
     );
+    // Let the overlay paint before heavy resolve work.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await _player.stop();
 
     final settings = SettingsService();
     final useDebrid = await settings.useDebridForStreams();

@@ -8,6 +8,7 @@ import 'package:forja/shared/services/app_updater_service.dart';
 // Conditional import for Android-only package
 import 'package:ota_update/ota_update.dart' if (dart.library.html) 'package:ota_update/ota_update_stub.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class UpdateDialog extends StatefulWidget {
   final UpdateInfo updateInfo;
@@ -424,9 +425,7 @@ class _UpdateDialogState extends State<UpdateDialog> with SingleTickerProviderSt
                 case OtaStatus.INTERNAL_ERROR:
                 case OtaStatus.DOWNLOAD_ERROR:
                 case OtaStatus.CHECKSUM_ERROR:
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Update failed: ${event.status}')),
-                  );
+                  ForjaToast.error('Update failed: ${event.status}');
                   Navigator.of(context).pop();
                   break;
                 default:
@@ -438,18 +437,14 @@ class _UpdateDialogState extends State<UpdateDialog> with SingleTickerProviderSt
         onError: (error) {
           if (mounted) {
             setState(() => _isDownloading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Download failed: $error')),
-            );
+            ForjaToast.error('Download failed: $error');
           }
         },
       );
     } catch (e) {
       if (mounted) {
         setState(() => _isDownloading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update failed: $e')),
-        );
+        ForjaToast.error('Update failed: $e');
       }
     }
   }
@@ -586,9 +581,7 @@ class _UpdateDialogState extends State<UpdateDialog> with SingleTickerProviderSt
     } catch (e) {
       if (mounted) {
         setState(() => _isDownloading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Download failed: $e')),
-        );
+        ForjaToast.error('Download failed: $e');
       }
     }
   }

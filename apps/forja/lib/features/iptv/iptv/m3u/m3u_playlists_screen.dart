@@ -226,9 +226,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
       });
       await _persist();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Refreshed "${p.name}" — ${channels.length} channels')),
-        );
+        ForjaToast.info('Refreshed "${p.name}" — ${channels.length} channels');
       }
     } catch (e) {
       if (!mounted) return;

@@ -7,6 +7,7 @@ import 'package:forja/features/audiobooks/catalog/audiobook_service.dart';
 import 'package:forja/shared/audio/audiobook_player_service.dart';
 import 'package:forja/shared/audio/audiobook_download_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class AudiobookPlayerScreen extends StatefulWidget {
   final Audiobook audiobook;
@@ -57,9 +58,7 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
 
   void _startDownload() {
     _downloadService.downloadBook(widget.audiobook, widget.chapters);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Download started...'), duration: Duration(seconds: 2)),
-    );
+    ForjaToast.info('Download started...', duration: const Duration(seconds: 2));
   }
 
   void _handleExit() async {
@@ -188,9 +187,7 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
           return IconButton(
             icon: const Icon(Icons.download_done, color: Colors.greenAccent, size: 24),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Already downloaded'), duration: Duration(seconds: 1)),
-              );
+              ForjaToast.warning('Already downloaded', duration: const Duration(seconds: 1));
             },
             tooltip: 'Downloaded',
           );

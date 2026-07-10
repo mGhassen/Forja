@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/design/design.dart';
 
 class MyListButton extends StatelessWidget {
   const MyListButton.movie({
@@ -52,20 +53,12 @@ class MyListButton extends StatelessWidget {
                 releaseDate: movie!.releaseDate,
               );
               if (context.mounted) {
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(added ? 'Added to My List' : 'Removed from My List'),
-                  duration: const Duration(seconds: 1),
-                ));
+                ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
               }
             } else if (stremioItem != null) {
               final added = await MyListService().toggleStremioItem(stremioItem!);
               if (context.mounted) {
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(added ? 'Added to My List' : 'Removed from My List'),
-                  duration: const Duration(seconds: 1),
-                ));
+                ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
               }
             }
           },

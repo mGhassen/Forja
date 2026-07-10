@@ -18,6 +18,7 @@ import 'package:palette_generator/palette_generator.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/design/design.dart';
 
 class SimilarResultsScreen extends StatefulWidget {
   final int bsId;
@@ -213,10 +214,7 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
       }
       if (!mounted) return;
       if (movie == null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Could not find "${item.title}" on TMDB'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ForjaToast.error('Could not find "${item.title}" on TMDB');
         setState(() => _resolvingId = null);
         return;
       }
@@ -226,10 +224,7 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _resolvingId = null);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to open: $e'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ForjaToast.error('Failed to open: $e');
       }
     }
   }

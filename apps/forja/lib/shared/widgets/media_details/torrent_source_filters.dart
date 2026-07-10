@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
@@ -694,12 +693,7 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
       await _load();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not clear stream cache'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        ForjaToast.error('Could not clear stream cache', duration: const Duration(seconds: 2));
       }
     } finally {
       if (mounted) setState(() => _clearing = false);
@@ -786,8 +780,8 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
     this.onSizeFiltersChanged,
     this.sortPreference,
     this.onSortChanged,
-    /// Player: screenshot still for ImageFiltered frost. Details: null → BackdropFilter.
-    this.frozenFrame,
+    /// Details: true (BackdropFilter). Player: false (no freeze-frame / no live blur).
+    this.enableBlur = true,
   });
 
   final String searchQuery;
@@ -810,7 +804,7 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final String? sortPreference;
   final ValueChanged<String>? onSortChanged;
-  final Uint8List? frozenFrame;
+  final bool enableBlur;
 
   int get _activeCount =>
       activeQualityFilters.length +
@@ -835,7 +829,7 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
 
     entry = OverlayEntry(
       builder: (ctx) => _TorrentFiltersSidePanel(
-        frozenFrame: frozenFrame,
+        enableBlur: enableBlur,
         onClose: close,
         child: _TorrentSourceFilterSheet(
           availableQualities: availableQualities,
@@ -1264,17 +1258,17 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
   }
 }
 
-/// Full-height frosted Filters panel docked to the left of Sources (player).
+/// Full-height Filters panel docked to the left of Sources.
 class _TorrentFiltersSidePanel extends StatefulWidget {
   const _TorrentFiltersSidePanel({
     required this.child,
     required this.onClose,
-    this.frozenFrame,
+    this.enableBlur = true,
   });
 
   final Widget child;
   final VoidCallback onClose;
-  final Uint8List? frozenFrame;
+  final bool enableBlur;
 
   @override
   State<_TorrentFiltersSidePanel> createState() =>
@@ -1326,10 +1320,8 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
               curve: Curves.easeOutCubic,
               offset: _open ? Offset.zero : const Offset(1, 0),
               child: ForjaFrostedPanel(
-                // Details: BackdropFilter. Player: ImageFiltered via frozenFrame.
-                enableBlur: widget.frozenFrame == null ||
-                    widget.frozenFrame!.isEmpty,
-                frozenFrame: widget.frozenFrame,
+                // Details: BackdropFilter. Player: translucent shell (no frame).
+                enableBlur: widget.enableBlur,
                 border: Border(
                   left: BorderSide(
                     color: ForjaShellColors.cinematic.borderSubtle,

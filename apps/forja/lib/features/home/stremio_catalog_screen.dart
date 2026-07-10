@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 /// Full-screen catalog browser for Stremio addons.
 /// Shows all catalogs from installed addons, supports genre filtering,
@@ -1269,11 +1270,7 @@ class _AddToMyListStremioButton extends StatelessWidget {
           onTap: () async {
             final added = await MyListService().toggleStremioItem(item);
             if (context.mounted) {
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(added ? 'Added to My List' : 'Removed from My List'),
-                duration: const Duration(seconds: 1),
-              ));
+              ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
             }
           },
           child: Container(

@@ -20,10 +20,9 @@ import 'webstreamr_settings_screen.dart';
 import 'splash_preview_screen.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/src/shell_tab_header.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
+import 'package:forja/shared/design/design.dart';
 
 /// Settings tab — RFC-024 R24-A13: local prefs only; no ShellTabRefresh / API stale policy.
 class SettingsScreen extends StatefulWidget {
@@ -291,12 +290,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await _settings.saveStremioAddon(addonData);
         _addonController.clear();
         await _loadSettings();
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Addon installed successfully!')));
+        if (mounted) ForjaToast.success('Addon installed successfully!');
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to install addon. Check URL.')));
+        if (mounted) ForjaToast.error('Failed to install addon. Check URL.');
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ForjaToast.error('Error: $e');
     } finally {
       if (mounted) setState(() => _isInstalling = false);
     }
@@ -305,7 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _removeAddon(String baseUrl) async {
     await _settings.removeStremioAddon(baseUrl);
     await _loadSettings();
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Addon removed')));
+    if (mounted) ForjaToast.success('Addon removed');
   }
 
   @override
@@ -335,9 +334,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final key = _rdController.text.trim();
     if (key.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter an API key')),
-        );
+        ForjaToast.warning('Please enter an API key');
       }
       return;
     }
@@ -352,9 +349,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _isVerifyingRD = false;
       _rdController.clear();
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Real-Debrid API key saved')),
-    );
+    ForjaToast.success('Real-Debrid API key saved');
   }
 
   void _logoutRD() async {
@@ -364,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _rdController.clear();
     });
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged out of Real-Debrid')));
+      ForjaToast.success('Logged out of Real-Debrid');
     }
   }
 
@@ -950,15 +945,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await tempFile.delete();
 
       if (result != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings exported successfully!')),
-        );
+        ForjaToast.success('Settings exported successfully!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ForjaToast.error('Export failed: $e');
       }
     } finally {
       if (mounted) setState(() => _isExporting = false);
@@ -981,9 +972,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       jsonStr = await File(file.path!).readAsString();
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read file.')),
-        );
+        ForjaToast.error('Could not read file.');
       }
       return;
     }
@@ -1020,15 +1009,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _settings.importAllSettings(data);
       await _loadSettings(); // Refresh all UI state
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings imported successfully!')),
-        );
+        ForjaToast.success('Settings imported successfully!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e')),
-        );
+        ForjaToast.error('Import failed: $e');
       }
     } finally {
       if (mounted) setState(() => _isImporting = false);
@@ -1403,15 +1388,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final addon = await NuvioService.instance.install(url);
       if (!mounted) return;
       _nuvioController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Installed ${addon.name} (${addon.scrapers.length} scrapers)')),
-      );
+      ForjaToast.success('Installed ${addon.name} (${addon.scrapers.length} scrapers)');
       await _loadNuvioAddons();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Install failed: $e'), backgroundColor: Colors.redAccent),
-      );
+      ForjaToast.error('Install failed: $e');
     } finally {
       if (mounted) setState(() => _nuvioInstalling = false);
     }
@@ -1421,9 +1402,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await NuvioService.instance.remove(manifestUrl);
     await _loadNuvioAddons();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Nuvio addon removed')),
-    );
+    ForjaToast.success('Nuvio addon removed');
   }
 
   Widget _buildRDLogin() {
@@ -1525,7 +1504,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: () async {
                   await _debrid.saveTorBoxKey(_torboxController.text);
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('TorBox API Key Saved!')));
+                    ForjaToast.success('TorBox API Key Saved!');
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -1569,7 +1548,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: () async {
                   await _debrid.saveAllDebridKey(_alldebridController.text);
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AllDebrid API Key Saved!')));
+                    ForjaToast.success('AllDebrid API Key Saved!');
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -1626,7 +1605,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: () async {
                   await _debrid.savePremiumizeKey(_premiumizeController.text);
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Premiumize API Key Saved!')));
+                    ForjaToast.success('Premiumize API Key Saved!');
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -1683,7 +1662,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: () async {
                   await _debrid.saveDebridLinkKey(_debridlinkController.text);
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debrid-Link API Key Saved!')));
+                    ForjaToast.success('Debrid-Link API Key Saved!');
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -2012,9 +1991,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _settings.setJackettApiKey(apiKey);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Jackett settings saved!')),
-      );
+      ForjaToast.success('Jackett settings saved!');
     }
   }
 
@@ -2062,9 +2039,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _settings.setProwlarrTagIds(_prowlarrSelectedTagIds.toList());
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Prowlarr settings saved!')),
-      );
+      ForjaToast.success('Prowlarr settings saved!');
     }
   }
 
@@ -2094,9 +2069,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final data = await _trakt.startDeviceAuth();
     if (data == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to start Trakt login')),
-        );
+        ForjaToast.error('Failed to start Trakt login');
       }
       return;
     }
@@ -2121,9 +2094,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Code $userCode copied! Opening $verifyUrl...')),
-      );
+      ForjaToast.success('Code $userCode copied! Opening $verifyUrl...');
     }
 
     _traktPollTimer?.cancel();
@@ -2141,9 +2112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _isTraktLoggedIn = true;
             _traktUsername = username;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Logged in to Trakt${username != null ? " as $username" : ""}!')),
-          );
+          ForjaToast.success('Logged in to Trakt${username != null ? " as $username" : ""}!');
         }
         // Auto-sync after login
         _syncTrakt();
@@ -2154,9 +2123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _traktUserCode = null;
             _traktVerifyUrl = null;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result == 'denied' ? 'Trakt login denied' : 'Code expired, try again')),
-          );
+          ForjaToast.error(result == 'denied' ? 'Trakt login denied' : 'Code expired, try again');
         }
       }
       // 'pending' → keep polling
@@ -2183,9 +2150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isTraktLoggedIn = false;
         _traktUsername = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Logged out of Trakt')),
-      );
+      ForjaToast.success('Logged out of Trakt');
     }
   }
 
@@ -2201,22 +2166,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final episodesExported = await _trakt.exportWatchedEpisodes();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Trakt sync done! Imported $watchlistCount watchlist, '
-              '$playbackCount playback, $episodesImported episodes. '
-              'Exported $exportedCount watchlist, $episodesExported episodes.',
-            ),
-            duration: const Duration(seconds: 4),
-          ),
+        ForjaToast.success(
+          'Trakt sync done! Imported $watchlistCount watchlist, '
+          '$playbackCount playback, $episodesImported episodes. '
+          'Exported $exportedCount watchlist, $episodesExported episodes.',
+          duration: const Duration(seconds: 4),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Trakt sync error: $e')),
-        );
+        ForjaToast.error('Trakt sync error: $e');
       }
     } finally {
       if (mounted) setState(() => _isTraktSyncing = false);
@@ -2417,9 +2376,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final data = await _simkl.requestPin();
     if (data == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to start Simkl login')),
-        );
+        ForjaToast.error('Failed to start Simkl login');
       }
       return;
     }
@@ -2442,9 +2399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Code $userCode copied! Opening $verifyUrl...')),
-      );
+      ForjaToast.success('Code $userCode copied! Opening $verifyUrl...');
     }
 
     _simklPollTimer?.cancel();
@@ -2461,9 +2416,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _isSimklLoggedIn = true;
             _simklUsername = username;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Logged in to Simkl${username != null ? " as $username" : ""}!')),
-          );
+          ForjaToast.success('Logged in to Simkl${username != null ? " as $username" : ""}!');
         }
         _syncSimkl();
       }
@@ -2489,9 +2442,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isSimklLoggedIn = false;
         _simklUsername = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Logged out of Simkl')),
-      );
+      ForjaToast.success('Logged out of Simkl');
     }
   }
 
@@ -2506,22 +2457,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final episodesExported = await _simkl.exportWatchedEpisodes();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Simkl sync done! Imported $watchlistCount watchlist, '
-              '$episodesImported episodes. '
-              'Exported $exportedCount watchlist, $episodesExported episodes.',
-            ),
-            duration: const Duration(seconds: 4),
-          ),
+        ForjaToast.success(
+          'Simkl sync done! Imported $watchlistCount watchlist, '
+          '$episodesImported episodes. '
+          'Exported $exportedCount watchlist, $episodesExported episodes.',
+          duration: const Duration(seconds: 4),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Simkl sync error: $e')),
-        );
+        ForjaToast.error('Simkl sync error: $e');
       }
     } finally {
       if (mounted) setState(() => _isSimklSyncing = false);
@@ -2669,9 +2614,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final key = _mdblistApiKeyController.text.trim();
     if (key.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter an API key')),
-        );
+        ForjaToast.warning('Please enter an API key');
       }
       return;
     }
@@ -2686,9 +2629,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _isMdblistConfigured = true;
           _mdblistUsername = info['name']?.toString();
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('MDBlist connected${_mdblistUsername != null ? " as $_mdblistUsername" : ""}!')),
-        );
+        ForjaToast.success('MDBlist connected${_mdblistUsername != null ? " as $_mdblistUsername" : ""}!');
       }
     } else {
       await _mdblist.logout();
@@ -2697,9 +2638,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _isMdblistConfigured = false;
           _mdblistUsername = null;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid MDBlist API key')),
-        );
+        ForjaToast.error('Invalid MDBlist API key');
       }
     }
   }
@@ -2712,9 +2651,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _mdblistUsername = null;
         _mdblistApiKeyController.clear();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('MDBlist API key removed')),
-      );
+      ForjaToast.success('MDBlist API key removed');
     }
   }
 
@@ -2900,33 +2837,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context) => UpdateDialog(updateInfo: updateInfo),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green),
-                  SizedBox(width: 12),
-                  Text('You\'re running the latest version!'),
-                ],
-              ),
-              backgroundColor: Colors.green.withValues(alpha: 0.2),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
+          ForjaToast.success("You're running the latest version!");
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isCheckingUpdate = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to check for updates: $e'),
-            backgroundColor: Colors.red.withValues(alpha: 0.2),
-          ),
-        );
+        ForjaToast.error('Failed to check for updates: $e');
       }
     }
   }

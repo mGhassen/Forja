@@ -5,6 +5,7 @@ import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';
 import 'package:forja/shared/player/player/desktop_player_screen.dart';
+import 'package:forja/shared/design/design.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
@@ -133,16 +134,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       setState(() => _externalLaunched = true);
     } else {
       // Player not found — fall back to built-in player
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '$_externalPlayerName not found. Using built-in player.',
-            style: const TextStyle(color: Colors.white),
-          ),
-          backgroundColor: Colors.orange.shade900,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ForjaToast.warning('$_externalPlayerName not found. Using built-in player.');
       setState(() {
         _useExternalPlayer = false;
         _externalLaunched = false;

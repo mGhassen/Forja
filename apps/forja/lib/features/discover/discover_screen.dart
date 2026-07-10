@@ -6,6 +6,7 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -748,11 +749,7 @@ class _AddToMyListButton extends StatelessWidget {
               releaseDate: movie.releaseDate,
             );
             if (context.mounted) {
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(added ? 'Added to My List' : 'Removed from My List'),
-                duration: const Duration(seconds: 1),
-              ));
+              ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
             }
           },
           child: Container(

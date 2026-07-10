@@ -29,6 +29,7 @@ import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 bool _appShutdownStarted = false;
 
@@ -278,8 +279,10 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           theme: AppTheme.themeData,
           home: const SplashScreen(),
           builder: (context, child) {
-            return BackNavigationScope(
-              child: child ?? const SizedBox.shrink(),
+            return ForjaToastHost(
+              child: BackNavigationScope(
+                child: child ?? const SizedBox.shrink(),
+              ),
             );
           },
         );

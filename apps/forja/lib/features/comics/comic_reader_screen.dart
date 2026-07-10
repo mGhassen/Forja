@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:forja/features/comics/catalog/comics_service.dart';
 import 'package:forja/features/comics/catalog/comic_page_extractor.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class ComicReaderScreen extends StatefulWidget {
   final String chapterTitle;
@@ -268,9 +269,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       _nextImageUrl = null; // Clear cache when changing chapters
       _loadPages(widget.chapters[_currentChapterIdx].url);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You have reached the last chapter')),
-      );
+      ForjaToast.info('You have reached the last chapter');
     }
   }
 

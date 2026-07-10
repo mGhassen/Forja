@@ -8,6 +8,7 @@ import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/design/design.dart';
 
 class PlayerFlatIconButton extends StatelessWidget {
   const PlayerFlatIconButton({
@@ -288,13 +289,13 @@ void _showCastFeedback(
     return;
   }
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(message),
-      duration: const Duration(seconds: 3),
-      behavior: SnackBarBehavior.floating,
-    ),
-  );
+  final toastKind = switch (kind) {
+    StatusRouletteKind.success => ForjaToastKind.success,
+    StatusRouletteKind.failed => ForjaToastKind.error,
+    StatusRouletteKind.loading => ForjaToastKind.info,
+    StatusRouletteKind.info => ForjaToastKind.info,
+  };
+  ForjaToast.show(message, kind: toastKind, duration: const Duration(seconds: 3));
 }
 
 String _castTargetLabel(CastTarget target) =>

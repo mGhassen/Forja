@@ -2487,17 +2487,13 @@ Future<void> resumePlaybackFromHistory(
       );
     } else {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load video')),
-        );
+        ForjaToast.error('Failed to load video');
       }
     }
   } catch (e) {
     debugPrint('[Resume] Error: $e');
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ForjaToast.error('Error: $e');
     }
   }
 }

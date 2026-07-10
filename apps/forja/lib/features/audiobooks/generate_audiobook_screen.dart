@@ -11,6 +11,7 @@ import 'package:forja/shared/utils/epub_splitter.dart';
 import 'package:forja/shared/utils/epub_cover.dart';
 import 'audiobook_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 /// Top-level worker for `compute` so the EPUB parsing/splitting runs off the UI thread.
 Future<List<EpubPart>> _splitWorker(String path) {
@@ -128,19 +129,13 @@ class _GenerateAudiobookScreenState extends State<GenerateAudiobookScreen> {
         );
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(parts.length == 1
+      ForjaToast.success(parts.length == 1
               ? 'Uploaded — generation started on the server.'
-              : 'Uploaded ${parts.length} parts — generation started.'),
-        ),
-      );
+              : 'Uploaded ${parts.length} parts — generation started.');
       _refreshAndScheduleNext();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Upload failed: $e')),
-      );
+      ForjaToast.error('Upload failed: $e');
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -156,9 +151,7 @@ class _GenerateAudiobookScreenState extends State<GenerateAudiobookScreen> {
   Future<void> _copyUrl(String url) async {
     await Clipboard.setData(ClipboardData(text: url));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Stream link copied')),
-    );
+    ForjaToast.success('Stream link copied');
   }
 
   void _playInApp(GeneratedAudiobookJob job) {

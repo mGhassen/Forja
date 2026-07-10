@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'server_grid.dart';
+import 'package:forja/shared/design/design.dart';
 
 class PlayerOverlayPanel extends StatelessWidget {
   const PlayerOverlayPanel({
@@ -69,9 +70,7 @@ class PlayerOverlayPanel extends StatelessWidget {
                 label: 'Watch Party',
                 enabled: false,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Watch Party — coming soon')),
-                  );
+                  ForjaToast.warning('Watch Party — coming soon');
                 },
               ),
               _ChipBtn(label: 'Shuffle', primary: true, onTap: onShuffle),

@@ -3,6 +3,7 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/design/design.dart';
 
 class MediaDetailsTrackerState {
   int? userTraktRating;
@@ -43,17 +44,13 @@ class MediaDetailsTrackerHandlers {
         if (await TraktService().isLoggedIn()) {
           _showTraktRatingDialog();
         } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login to Trakt first in Settings')),
-          );
+          ForjaToast.error('Login to Trakt first in Settings');
         }
       case 'simkl_rate':
         if (await SimklService().isLoggedIn()) {
           _showSimklRatingDialog();
         } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login to Simkl first in Settings')),
-          );
+          ForjaToast.error('Login to Simkl first in Settings');
         }
       case 'collect':
         await _toggleTraktCollection();
@@ -168,9 +165,7 @@ class MediaDetailsTrackerHandlers {
   Future<void> _toggleTraktCollection() async {
     if (!await TraktService().isLoggedIn()) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login to Trakt first in Settings')),
-      );
+      ForjaToast.error('Login to Trakt first in Settings');
       return;
     }
     if (state.isInTraktCollection) {
@@ -197,9 +192,7 @@ class MediaDetailsTrackerHandlers {
   Future<void> _traktCheckin() async {
     if (!await TraktService().isLoggedIn()) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login to Trakt first in Settings')),
-      );
+      ForjaToast.error('Login to Trakt first in Settings');
       return;
     }
     final success = await TraktService().checkin(
@@ -210,9 +203,7 @@ class MediaDetailsTrackerHandlers {
     );
     if (!mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Checked in on Trakt!')),
-      );
+      ForjaToast.success('Checked in on Trakt!');
       return;
     }
 
@@ -242,26 +233,20 @@ class MediaDetailsTrackerHandlers {
       episode: movie().mediaType == 'tv' ? episode() : null,
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(retrySuccess ? 'Checked in on Trakt!' : 'Check-in failed')),
-    );
+    ForjaToast.error(retrySuccess ? 'Checked in on Trakt!' : 'Check-in failed');
   }
 
   Future<void> _addToTraktList() async {
     if (!await TraktService().isLoggedIn()) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login to Trakt first in Settings')),
-      );
+      ForjaToast.error('Login to Trakt first in Settings');
       return;
     }
 
     final lists = await TraktService().getUserLists();
     if (!mounted) return;
     if (lists.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No Trakt lists found')),
-      );
+      ForjaToast.warning('No Trakt lists found');
       return;
     }
 
@@ -296,13 +281,7 @@ class MediaDetailsTrackerHandlers {
       shows: type == 'shows' ? [entry] : [],
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success ? 'Added to "${selected['name']}"' : 'Failed to add to list',
-        ),
-      ),
-    );
+    ForjaToast.error(success ? 'Added to "${selected['name']}"' : 'Failed to add to list');
   }
 
   void _showTraktRatingDialog() {

@@ -789,12 +789,7 @@ class _PortalCard extends StatelessWidget {
                       final p = v.portal;
                       final cleanUrl = p.url.replaceFirst('http://', '').replaceFirst('https://', '');
                       Clipboard.setData(ClipboardData(text: '$cleanUrl:${p.username}:${p.password}'));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Portal details copied to clipboard'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
+                      ForjaToast.success('Portal details copied to clipboard', duration: const Duration(seconds: 2));
                     },
                     icon: Icon(Icons.copy_rounded, color: Colors.white54, size: 20),
                   ),

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
@@ -35,7 +34,6 @@ class PlayerSourcesPanel {
     required Future<void> Function(TorrentResult result) onTorrentSelected,
     required Future<void> Function(Map<String, dynamic> stream)
         onStremioSelected,
-    Uint8List? frozenFrame,
   }) {
     dismiss();
     PlayerPopupPanel.dismiss();
@@ -53,7 +51,6 @@ class PlayerSourcesPanel {
         onTorrentSelected: onTorrentSelected,
         onStremioSelected: onStremioSelected,
         onClose: dismiss,
-        frozenFrame: frozenFrame,
       ),
     );
 
@@ -71,7 +68,6 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.season,
     this.episode,
     this.currentMagnet,
-    this.frozenFrame,
   });
 
   final Movie movie;
@@ -81,7 +77,6 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
-  final Uint8List? frozenFrame;
 
   @override
   State<_PlayerSourcesOverlay> createState() => _PlayerSourcesOverlayState();
@@ -104,8 +99,6 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      // No freeze-frame under the Sources shell — solid/translucent panel only.
-      // Filters still receives [frozenFrame] for its own frost path.
       child: _PlayerSourcesBody(
         movie: widget.movie,
         season: widget.season,
@@ -114,7 +107,6 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
         onTorrentSelected: widget.onTorrentSelected,
         onStremioSelected: widget.onStremioSelected,
         onClose: widget.onClose,
-        frozenFrame: widget.frozenFrame,
       ),
     );
   }
@@ -129,7 +121,6 @@ class _PlayerSourcesBody extends StatefulWidget {
     this.season,
     this.episode,
     this.currentMagnet,
-    this.frozenFrame,
   });
 
   final Movie movie;
@@ -139,7 +130,6 @@ class _PlayerSourcesBody extends StatefulWidget {
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
-  final Uint8List? frozenFrame;
 
   @override
   State<_PlayerSourcesBody> createState() => _PlayerSourcesBodyState();
@@ -149,6 +139,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   final _settings = SettingsService();
   final _stremio = StremioService();
   final _chipsScrollController = ScrollController();
+  final _listScrollController = ScrollController();
+  final _currentTileKey = GlobalKey();
   final _profile = PlatformPlayback.capabilities;
 
   List<TorrentResult> _results = [];
@@ -161,8 +153,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   int _searchGen = 0;
   int _stremioGen = 0;
   String? _error;
-  String? _switchingMagnet;
-  String? _switchingStremioKey;
+  bool _pendingScrollToCurrent = true;
 
   bool _showTorrents = true;
   bool _showStremio = false;
@@ -197,7 +188,55 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     _searchGen++;
     _stremioGen++;
     _chipsScrollController.dispose();
+    _listScrollController.dispose();
     super.dispose();
+  }
+
+  static final _infoHashRe = RegExp(r'[0-9a-fA-F]{40}');
+
+  String? _infoHashOf(String? magnetOrHash) {
+    if (magnetOrHash == null || magnetOrHash.isEmpty) return null;
+    return _infoHashRe.firstMatch(magnetOrHash)?.group(0)?.toLowerCase();
+  }
+
+  bool _isCurrentMagnet(String magnet) {
+    final current = _infoHashOf(widget.currentMagnet);
+    final other = _infoHashOf(magnet);
+    if (current != null && other != null) return current == other;
+    final raw = widget.currentMagnet?.toLowerCase();
+    return raw != null && raw.isNotEmpty && magnet.toLowerCase() == raw;
+  }
+
+  bool _isCurrentStremio(Map<String, dynamic> stream) {
+    final current = _infoHashOf(widget.currentMagnet);
+    if (current == null) return false;
+    final hash = stream['infoHash']?.toString();
+    if (hash != null && hash.isNotEmpty) {
+      return _infoHashOf(hash) == current;
+    }
+    final url = stream['url']?.toString();
+    return url != null && _isCurrentMagnet(url);
+  }
+
+  void _requestScrollToCurrent() {
+    _pendingScrollToCurrent = true;
+    _scheduleScrollToCurrent();
+  }
+
+  void _scheduleScrollToCurrent() {
+    if (!_pendingScrollToCurrent) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pendingScrollToCurrent) return;
+      final ctx = _currentTileKey.currentContext;
+      if (ctx == null) return;
+      _pendingScrollToCurrent = false;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.15,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   Future<void> _bootstrap() async {
@@ -376,6 +415,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           _error = 'No torrents found';
         }
       });
+      _requestScrollToCurrent();
     } catch (e) {
       if (!mounted || gen != _searchGen) return;
       setState(() {
@@ -455,6 +495,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           }
           _stremioStreams.addAll(tagged);
         });
+        if (tagged.isNotEmpty) _requestScrollToCurrent();
       }).catchError((_) {
         // skip failed addon
       }).whenComplete(completeOne);
@@ -485,6 +526,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     if (_showsStremio && _stremioStreams.isEmpty) {
       unawaited(_fetchStremioStreams());
     }
+    _requestScrollToCurrent();
   }
 
   String get _year {
@@ -695,33 +737,19 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   }
 
   Future<void> _selectTorrent(TorrentResult result) async {
-    final current = widget.currentMagnet?.toLowerCase();
-    if (current != null &&
-        current.isNotEmpty &&
-        result.magnet.toLowerCase() == current) {
+    if (_isCurrentMagnet(result.magnet)) {
       widget.onClose();
       return;
     }
-    setState(() => _switchingMagnet = result.magnet);
-    try {
-      await widget.onTorrentSelected(result);
-      widget.onClose();
-    } catch (_) {
-      if (mounted) setState(() => _switchingMagnet = null);
-    }
+    // Close first so the player can show CHECKING SOURCES while resolving.
+    widget.onClose();
+    await widget.onTorrentSelected(result);
   }
 
   Future<void> _selectStremio(Map<String, dynamic> stream) async {
-    final key = stream['infoHash']?.toString() ??
-        stream['url']?.toString() ??
-        stream.hashCode.toString();
-    setState(() => _switchingStremioKey = key);
-    try {
-      await widget.onStremioSelected(stream);
-      widget.onClose();
-    } catch (_) {
-      if (mounted) setState(() => _switchingStremioKey = null);
-    }
+    // Close first so the player can show CHECKING SOURCES while resolving.
+    widget.onClose();
+    await widget.onStremioSelected(stream);
   }
 
   String? get _episodeLabel {
@@ -809,7 +837,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           showCacheLine: _showsTorrents && _localTorrentEngine,
           cacheRefreshToken:
               Object.hash(_openToken, _results.length, _searching),
-          filterFrozenFrame: widget.frozenFrame,
+          filterEnableBlur: false,
         ),
         SizedBox(height: isTv ? 10 : 8),
         Expanded(child: _buildList(torrents, stremio)),
@@ -883,40 +911,25 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       );
     }
 
-    final current = widget.currentMagnet?.toLowerCase();
     final showAddonName = _showsMerged || _selectedSourceId == 'all_stremio';
 
+    _scheduleScrollToCurrent();
+
     return ListView.separated(
+      controller: _listScrollController,
       itemCount: count,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
         if (i < torrents.length) {
           final r = torrents[i];
-          final isCurrent =
-              current != null && r.magnet.toLowerCase() == current;
-          final switching = _switchingMagnet == r.magnet;
-          final tile = TorrentSourceTile(
-            result: r,
-            highlightStart: isCurrent,
-            onPlay: () => _selectTorrent(r),
-          );
-          if (!switching) return tile;
-          return Stack(
-            children: [
-              Opacity(opacity: 0.55, child: IgnorePointer(child: tile)),
-              const Positioned.fill(
-                child: Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white54,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          final isCurrent = _isCurrentMagnet(r.magnet);
+          return KeyedSubtree(
+            key: isCurrent ? _currentTileKey : null,
+            child: TorrentSourceTile(
+              result: r,
+              highlightStart: isCurrent,
+              onPlay: () => _selectTorrent(r),
+            ),
           );
         }
 
@@ -925,40 +938,23 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         final description = (s['description'] ?? '').toString();
         final presentation =
             stremioTilePresentation(s, isResumable: false);
-        final key = s['infoHash']?.toString() ??
-            s['url']?.toString() ??
-            s.hashCode.toString();
-        final switching = _switchingStremioKey == key;
-        final tile = StremioSourceTile(
-          title: title,
-          description: description,
-          leadingIcon: presentation.leadingIcon,
-          leadingColor: presentation.leadingColor,
-          isExternal: presentation.isExternal,
-          addonName: s['_addonName']?.toString(),
-          showAddonName: showAddonName,
-          sizeText: s['size']?.toString(),
-          seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
-          stream: s,
-          onTap: () => _selectStremio(s),
-        );
-        if (!switching) return tile;
-        return Stack(
-          children: [
-            Opacity(opacity: 0.55, child: IgnorePointer(child: tile)),
-            const Positioned.fill(
-              child: Center(
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white54,
-                  ),
-                ),
-              ),
-            ),
-          ],
+        final isCurrent = _isCurrentStremio(s);
+        return KeyedSubtree(
+          key: isCurrent ? _currentTileKey : null,
+          child: StremioSourceTile(
+            title: title,
+            description: description,
+            leadingIcon: presentation.leadingIcon,
+            leadingColor: presentation.leadingColor,
+            isExternal: presentation.isExternal,
+            addonName: s['_addonName']?.toString(),
+            showAddonName: showAddonName,
+            sizeText: s['size']?.toString(),
+            seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
+            stream: s,
+            highlightStart: isCurrent,
+            onTap: () => _selectStremio(s),
+          ),
         );
       },
     );

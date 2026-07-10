@@ -3,9 +3,8 @@ import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/design/src/shell_tab_header.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class MyListScreen extends StatefulWidget {
   const MyListScreen({super.key});
@@ -170,37 +169,34 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
                       onRemove: () async {
                         await _myList.remove(item['uniqueId']);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Removed "${item['title']}" from My List'),
-                              duration: const Duration(seconds: 2),
-                              action: SnackBarAction(
-                                label: 'UNDO',
-                                onPressed: () {
-                                  // Re-add the item
-                                  if (item['source'] == 'stremio') {
-                                    _myList.addStremioItem({
-                                      'name': item['title'],
-                                      'poster': item['posterPath'],
-                                      'type': item['stremioType'] ?? item['mediaType'],
-                                      'imdb_id': item['imdbId'],
-                                      'imdbRating': item['voteAverage']?.toString(),
-                                      'releaseInfo': item['releaseDate'],
-                                    });
-                                  } else {
-                                    _myList.addMovie(
-                                      tmdbId: item['tmdbId'] ?? 0,
-                                      imdbId: item['imdbId'],
-                                      title: item['title'] ?? '',
-                                      posterPath: item['posterPath'] ?? '',
-                                      mediaType: item['mediaType'] ?? 'movie',
-                                      voteAverage: (item['voteAverage'] as num?)?.toDouble() ?? 0,
-                                      releaseDate: item['releaseDate'] ?? '',
-                                    );
-                                  }
-                                },
-                              ),
-                            ),
+                          ForjaToast.success(
+                            'Removed "${item['title']}" from My List',
+                            duration: const Duration(seconds: 2),
+                            actionLabel: 'UNDO',
+                            onAction: () {
+                              if (item['source'] == 'stremio') {
+                                _myList.addStremioItem({
+                                  'name': item['title'],
+                                  'poster': item['posterPath'],
+                                  'type': item['stremioType'] ?? item['mediaType'],
+                                  'imdb_id': item['imdbId'],
+                                  'imdbRating': item['voteAverage']?.toString(),
+                                  'releaseInfo': item['releaseDate'],
+                                });
+                              } else {
+                                _myList.addMovie(
+                                  tmdbId: item['tmdbId'] ?? 0,
+                                  imdbId: item['imdbId'],
+                                  title: item['title'] ?? '',
+                                  posterPath: item['posterPath'] ?? '',
+                                  mediaType: item['mediaType'] ?? 'movie',
+                                  voteAverage:
+                                      (item['voteAverage'] as num?)?.toDouble() ??
+                                          0,
+                                  releaseDate: item['releaseDate'] ?? '',
+                                );
+                              }
+                            },
                           );
                         }
                       },

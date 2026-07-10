@@ -1528,11 +1528,7 @@ class _AddToMyListButton extends StatelessWidget {
               releaseDate: movie.releaseDate,
             );
             if (context.mounted) {
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(added ? 'Added to My List' : 'Removed from My List'),
-                duration: const Duration(seconds: 1),
-              ));
+              ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
             }
           },
           child: Container(
@@ -1568,11 +1564,7 @@ class _AddToMyListStremioButton extends StatelessWidget {
           onTap: () async {
             final added = await MyListService().toggleStremioItem(item);
             if (context.mounted) {
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(added ? 'Added to My List' : 'Removed from My List'),
-                duration: const Duration(seconds: 1),
-              ));
+              ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
             }
           },
           child: Container(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/design/design.dart';
 
 class MoviePoster extends StatefulWidget {
   final Movie movie;
@@ -147,11 +148,7 @@ class _MoviePosterState extends State<MoviePoster> {
                             releaseDate: widget.movie.releaseDate,
                           );
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(added ? 'Added to My List' : 'Removed from My List'),
-                              duration: const Duration(seconds: 1),
-                            ));
+                            ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
                           }
                         },
                         child: Container(

@@ -10,6 +10,7 @@ import 'audiobook_player_screen.dart';
 import 'audiobook_downloads_screen.dart';
 import 'generate_audiobook_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class AudiobookScreen extends StatefulWidget {
   const AudiobookScreen({super.key});
@@ -209,9 +210,7 @@ class _AudiobookScreenState extends State<AudiobookScreen>
           }); 
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load audio tracks. Book might be restricted.')),
-        );
+        ForjaToast.error('Failed to load audio tracks. Book might be restricted.');
       }
     }
   }

@@ -248,12 +248,7 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
       ).then((_) => _refreshHistory());
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text('Resume failed: $e'),
-        ),
-      );
+      ForjaToast.error('Resume failed: $e');
     }
   }
 

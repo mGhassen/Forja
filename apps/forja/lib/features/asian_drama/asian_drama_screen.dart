@@ -175,12 +175,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       ).then((_) => _refreshHistory());
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text('Resume failed: $e'),
-        ),
-      );
+      ForjaToast.error('Resume failed: $e');
     }
   }
 

@@ -589,9 +589,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   void _openDamiTvStream(_DamiTvStream s) {
     if (s.iframe.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stream not yet available for this event')),
-      );
+      ForjaToast.info('Stream not yet available for this event');
       return;
     }
     Navigator.push(context, MaterialPageRoute(
@@ -607,9 +605,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   void _openCdnSportEvent(_CdnSportEvent event) {
     if (event.channels.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No channels available for this event')),
-      );
+      ForjaToast.info('No channels available for this event');
       return;
     }
     if (event.channels.length == 1) {

@@ -465,13 +465,7 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
                 await _service.removeFromHistory(a.slug);
                 if (!mounted) return;
                 setState(() => _progress = null);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    content: Text('Cleared progress'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                ForjaToast.success('Cleared progress', duration: const Duration(seconds: 2));
               },
               child: const Padding(
                 padding: EdgeInsets.symmetric(

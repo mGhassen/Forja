@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:forja/features/manga/catalog/manga_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/design.dart';
 
 class MangaReaderScreen extends StatefulWidget {
   final Manga manga;
@@ -271,9 +272,7 @@ class _MangaReaderScreenState extends State<MangaReaderScreen> {
       _currentChapterIndex--;
       _loadChapter();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You have reached the last chapter')),
-      );
+      ForjaToast.info('You have reached the last chapter');
     }
   }
 
