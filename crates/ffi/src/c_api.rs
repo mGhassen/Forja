@@ -685,3 +685,38 @@ pub unsafe extern "C" fn ffi_storage_set_json(
         from_c_str(value_json),
     ))
 }
+
+#[no_mangle]
+pub extern "C" fn ffi_lan_server_start(bind_mode: u8, preferred_port: u16) -> i32 {
+    crate::lan_server_start(bind_mode, preferred_port as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_lan_server_stop() {
+    crate::lan_server_stop();
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_lan_server_port() -> u16 {
+    crate::lan_server_port().min(u16::MAX as u32) as u16
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_lan_pairing_code_refresh() -> *mut c_char {
+    to_c_string(crate::lan_pairing_code_refresh())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_lan_revoke_device(device_id: *const c_char) -> bool {
+    crate::lan_revoke_device(from_c_str(device_id))
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_lan_devices_json() -> *mut c_char {
+    to_c_string(crate::lan_devices_json())
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_lan_browse_servers_json(timeout_ms: u64) -> *mut c_char {
+    to_c_string(crate::lan_browse_servers_json(timeout_ms))
+}

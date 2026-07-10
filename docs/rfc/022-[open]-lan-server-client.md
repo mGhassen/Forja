@@ -1,8 +1,7 @@
 # RFC-022: LAN server/client streaming and one-time-code pairing
 
-**Version:** post-v1.2 (after [RFC-013](013-[draft]-v1.2-sync-lan-party.md))  
-**Status:** draft  
-**Target version:** v2+  
+**Version:** 1.2.0  
+**Status:** open  
 **Depends on:** [RFC-009 — Rust FFI](fixed/009-[fixed]-rust-ffi.md), [RFC-004 — Provider registry](004-[partial]-provider-registry.md), [issue 003 — playback profiles](../issues/fixed/003-[fixed]-stremio-platform-playback-model.md)  
 **Related:** [ARCHITECTURE.md](../ARCHITECTURE.md), [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md), [RFC-007 — LAN companion](007-[draft]-lan-companion.md) (remote control, orthogonal), [RFC-010 — Web client](010-[draft]-web-client.md)
 
@@ -10,9 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 12** acceptance (post-v1.2 slice) |
-| **Current slice** | post-v1.2 — LAN server/client + mDNS pairing |
-| **Backlog** | v2+ |
+| **Progress** | **0 / 12** acceptance · **5 / 7** components 🔄 (1.2.0 slice) |
+| **Current slice** | 1.2.0 — LAN server/client + mDNS pairing (code landed; manual QA pending) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,11 +20,11 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R22-C01 | LAN WebSocket server (reuse RFC-007 infra) | ✅ |
-| 2 | R22-C02 | Pairing + token auth | ✅ |
-| 3 | R22-C03 | Proxy relay for engine resolve | ✅ |
-| 4 | R22-C04 | mDNS discovery | ⬜ |
-| 5 | R22-C05 | Constrained client profile | ⬜ |
+| 1 | R22-C01 | LAN HTTP gateway (axum control + stream relay) | 🔄 |
+| 2 | R22-C02 | Pairing + token auth | 🔄 |
+| 3 | R22-C03 | Proxy relay for engine resolve | 🔄 |
+| 4 | R22-C04 | mDNS discovery | 🔄 |
+| 5 | R22-C05 | Constrained client profile | 🔄 |
 | 6 | R22-C06 | HDR passthrough relay | ⬜ |
 | 7 | R22-C07 | Range seek over LAN | ⬜ |
 

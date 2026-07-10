@@ -8,6 +8,9 @@ enum StremioInfoHashPolicy {
   /// Debrid only — show streams but reject play without debrid.
   debridOnly,
 
+  /// Routed to paired desktop LAN server (RFC-022).
+  desktopServes,
+
   /// Hide hash-based streams in the UI (TV / web without debrid).
   hidden,
 }
@@ -19,11 +22,15 @@ class PlaybackProfile {
   final bool stremioUrl;
   final bool builtinTorrentSearch;
 
+  /// When true, mobile/constrained clients prefer desktop LAN for torrent/proxy paths.
+  final bool preferDesktopServer;
+
   const PlaybackProfile({
     required this.localTorrentEngine,
     required this.stremioInfoHash,
     this.stremioUrl = true,
     required this.builtinTorrentSearch,
+    this.preferDesktopServer = false,
   });
 
   /// Desktop / Android / iOS — full torrent engine + hash playback.
@@ -31,13 +38,23 @@ class PlaybackProfile {
     localTorrentEngine: true,
     stremioInfoHash: StremioInfoHashPolicy.localEngine,
     builtinTorrentSearch: true,
+    preferDesktopServer: false,
   );
 
-  /// Web, future TV — URL-only; hash streams need debrid or are hidden.
+  /// Phone / tablet — can run engine locally but prefer desktop for heavy paths.
+  static const mobile = PlaybackProfile(
+    localTorrentEngine: true,
+    stremioInfoHash: StremioInfoHashPolicy.localEngine,
+    builtinTorrentSearch: true,
+    preferDesktopServer: true,
+  );
+
+  /// Web, future TV — URL-only; hash streams need debrid, desktop, or are hidden.
   static const constrained = PlaybackProfile(
     localTorrentEngine: false,
-    stremioInfoHash: StremioInfoHashPolicy.debridOnly,
+    stremioInfoHash: StremioInfoHashPolicy.desktopServes,
     builtinTorrentSearch: false,
+    preferDesktopServer: true,
   );
 
   bool get canPlayInfoHashLocally =>
@@ -61,6 +78,7 @@ abstract final class PlatformPlayback {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
       case TargetPlatform.iOS:
+        return PlaybackProfile.mobile;
       case TargetPlatform.windows:
       case TargetPlatform.macOS:
       case TargetPlatform.linux:

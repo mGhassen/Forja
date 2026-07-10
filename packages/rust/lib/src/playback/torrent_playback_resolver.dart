@@ -1,4 +1,5 @@
 import 'debrid_api.dart';
+import 'lan_playback_bridge.dart';
 import 'package:rust/rust.dart';
 
 enum TorrentPlaybackSource { debrid, localEngine }
@@ -75,7 +76,19 @@ Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
     return null;
   }
 
-  if (!localTorrentEngine) return null;
+  if (!localTorrentEngine) {
+    final lan = LanPlaybackBridge.openMagnetOnDesktop;
+    if (lan != null) {
+      final viaLan = await lan(
+        magnet: magnet,
+        season: season,
+        episode: episode,
+        fileIdx: fileIdx,
+      );
+      if (viaLan != null) return viaLan;
+    }
+    return null;
+  }
 
   final url = await TorrentStreamService().streamTorrent(
     magnet,

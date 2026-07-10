@@ -1,0 +1,20 @@
+[package]
+name = "lan"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+axum = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+proxy = { path = "../proxy" }
+torrent = { path = "../torrent" }
+scrapers = { path = "../scrapers" }
+tower = { workspace = true }
+tower-http = { version = "0.6", features = ["auth"] }
+http = "1"
+rand = "0.8"
+mdns-sd = "0.11"
+urlencoding = "2"

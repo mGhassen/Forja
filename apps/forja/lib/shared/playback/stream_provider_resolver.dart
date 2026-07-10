@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:rust/rust.dart';
@@ -54,7 +55,22 @@ class StreamProviderResolver {
         hits = await svc.findMovieSources(title: movie.title, year: year);
       }
       if (cancelled() || hits.isEmpty) return null;
-      final proxiedUrl = await site111477_proxy.start111477Proxy(hits.first.fileUrl);
+      final rawUrl = hits.first.fileUrl;
+      if (await LanPlaybackRouter.shouldPreferDesktop(
+        PlatformPlayback.capabilities,
+      )) {
+        final lanUrl = await LanClientService.instance.openStream(
+          kind: 'proxy',
+          upstreamUrl: rawUrl,
+        );
+        if (!cancelled() && lanUrl != null && lanUrl.isNotEmpty) {
+          return StreamProviderResolveResult(
+            streamUrl: lanUrl,
+            sources: Site111477Service.toStreamSources(hits),
+          );
+        }
+      }
+      final proxiedUrl = await site111477_proxy.start111477Proxy(rawUrl);
       if (cancelled()) return null;
       return StreamProviderResolveResult(
         streamUrl: proxiedUrl,

@@ -1,6 +1,6 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    // Flutter Gradle Plugin must follow the Android plugin.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -33,10 +33,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
-
     defaultConfig {
         applicationId = "com.forja.app"
         minSdk = flutter.minSdkVersion
@@ -65,6 +61,18 @@ android {
             keyAlias = project.findProperty("FORJA_KEY_ALIAS") as String? ?: "forja"
             keyPassword = project.findProperty("FORJA_KEY_PASSWORD") as String? ?: ""
         }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

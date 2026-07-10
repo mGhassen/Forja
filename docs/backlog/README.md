@@ -30,7 +30,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | Major | Theme | Era |
 |-------|-------|-----|
 | **v0** | Tell & land | Engine migration + foundation |
-| **v1** | Souk & métier | Details/player UX (1.0.1); overlay, casting, providers (1.0.2) |
+| **v1** | Souk & métier | Details/player UX (1.0.1); overlay, casting, providers (1.0.2); LAN server/client (1.2.0) |
 | **v2** | Diwan & mer | Sync, LAN, watch party |
 | **v3** | TBD | Web client |
 
@@ -40,6 +40,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 |------|----------|--------|
 | [1.0.1-[open].md](1.0.1-[open].md) | — | open — details & player UX (5/12 shipped) |
 | [1.0.2-[draft].md](1.0.2-[draft].md) | — | draft — overlay, providers, casting, release CI (1/9) |
+| [1.2.0-[draft].md](1.2.0-[draft].md) | — | draft — LAN server/client (0/6 shipped, impl 🔄) |
 
 ## Done — v1
 

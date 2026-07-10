@@ -1,4 +1,5 @@
 import 'debrid_api.dart';
+import 'lan_playback_bridge.dart';
 import 'torrent_playback_resolver.dart';
 import 'package:rust/rust.dart';
 
@@ -124,7 +125,39 @@ StremioResolveOutcome? classifyStremioStream(
     );
   }
 
+  if (!profile.localTorrentEngine &&
+      profile.stremioInfoHash == StremioInfoHashPolicy.desktopServes) {
+    return StremioResolveFailure(
+      error: StremioPlaybackError.engineUnavailable,
+      message:
+          'Pair with a desktop Forja server in Settings → LAN to play torrent streams.',
+    );
+  }
+
   return null;
+}
+
+Future<StremioResolveOutcome?> _tryLanMagnetResolve({
+  required PlaybackProfile profile,
+  required String magnet,
+  int? season,
+  int? episode,
+}) async {
+  if (!profile.preferDesktopServer) return null;
+  final opener = LanPlaybackBridge.openMagnetOnDesktop;
+  if (opener == null) return null;
+  final result = await opener(
+    magnet: magnet,
+    season: season,
+    episode: episode,
+  );
+  if (result == null) return null;
+  return StremioPlayable(
+    streamUrl: result.url,
+    magnetLink: magnet,
+    fileIndex: result.fileIndex,
+    loadingMessage: result.sourceLabel,
+  );
 }
 
 String stremioResolveLoadingMessage({
@@ -178,6 +211,22 @@ Future<StremioResolveOutcome> resolveStremioStream({
     debridService: debridService,
   );
 
+  if (!useDebrid || debridService == 'None') {
+    final lanHit = await _tryLanMagnetResolve(
+      profile: profile,
+      magnet: magnet,
+      season: season,
+      episode: episode,
+    );
+    if (isCancelled?.call() == true) {
+      return StremioResolveFailure(
+        error: StremioPlaybackError.cancelled,
+        message: '',
+      );
+    }
+    if (lanHit != null) return lanHit;
+  }
+
   try {
     final result = await resolveMagnetForPlayback(
       magnet: magnet,
@@ -202,6 +251,14 @@ Future<StremioResolveOutcome> resolveStremioStream({
       );
     }
     if (!profile.localTorrentEngine) {
+      if (profile.stremioInfoHash == StremioInfoHashPolicy.desktopServes) {
+        return StremioResolveFailure(
+          error: StremioPlaybackError.engineUnavailable,
+          message: stremioPlaybackErrorMessage(
+            StremioPlaybackError.engineUnavailable,
+          ),
+        );
+      }
       return StremioResolveFailure(
         error: StremioPlaybackError.engineUnavailable,
         message: stremioPlaybackErrorMessage(

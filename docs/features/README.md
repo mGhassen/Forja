@@ -130,6 +130,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Backup & restore](settings/backup-restore.md)
 - [Navigation bar](settings/navigation-bar.md)
 - [App updates](settings/app-updates.md)
+- [LAN server / client](settings/lan.md)
 
 ---
 

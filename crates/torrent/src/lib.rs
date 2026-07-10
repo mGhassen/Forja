@@ -14,7 +14,7 @@ use librqbit::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -75,8 +75,8 @@ struct PreparedTorrent {
 }
 
 #[derive(Clone)]
-struct AppState {
-    api: Api,
+pub struct TorrentAppState {
+    pub api: Api,
 }
 
 #[derive(Clone)]
@@ -147,6 +147,10 @@ impl TorrentEngine {
     }
 
     pub fn start_engine(&self, preferred_port: u16) -> Result<u16, String> {
+        self.start_engine_on(IpAddr::V4(Ipv4Addr::LOCALHOST), preferred_port)
+    }
+
+    pub fn start_engine_on(&self, bind_addr: IpAddr, preferred_port: u16) -> Result<u16, String> {
         self.runtime.block_on(async {
             let peer_limit = {
                 let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
@@ -163,15 +167,10 @@ impl TorrentEngine {
                 .await
                 .map_err(|e| e.to_string())?;
             let api = Api::new(session.clone(), None);
-            let app = Router::new()
-                .route(
-                    "/torrents/{id}/stream/{file_id}/{*filename}",
-                    get(stream_file_handler),
-                )
-                .with_state(AppState {
-                    api: api.clone(),
-                });
-            let addr = SocketAddr::from(([127, 0, 0, 1], preferred_port));
+            let app = torrent_stream_router(TorrentAppState {
+                api: api.clone(),
+            });
+            let addr = SocketAddr::new(bind_addr, preferred_port);
             let listener = tokio::net::TcpListener::bind(addr)
                 .await
                 .map_err(|e| e.to_string())?;
@@ -196,6 +195,10 @@ impl TorrentEngine {
 
     pub fn engine_port(&self) -> u16 {
         self.inner.lock().map(|i| i.http_port).unwrap_or(0)
+    }
+
+    pub fn torrent_api(&self) -> Option<Api> {
+        self.inner.lock().ok().and_then(|i| i.api.clone())
     }
 
     pub fn stop_engine(&self) {
@@ -583,8 +586,17 @@ async fn wait_for_stream_head(
     Ok(())
 }
 
+pub fn torrent_stream_router(state: TorrentAppState) -> Router {
+    Router::new()
+        .route(
+            "/torrents/{id}/stream/{file_id}/{*filename}",
+            get(stream_file_handler),
+        )
+        .with_state(state)
+}
+
 async fn stream_file_handler(
-    State(state): State<AppState>,
+    State(state): State<TorrentAppState>,
     Path((id, file_id, _filename)): Path<(usize, usize, String)>,
     headers: HeaderMap,
 ) -> Result<Response, StatusCode> {

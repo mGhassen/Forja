@@ -1,4 +1,5 @@
 export 'extracted_media.dart';
+export 'lan_playback_bridge.dart';
 export 'local_server_service.dart';
 export 'playback_profile.dart';
 export 'provider_registry.dart';

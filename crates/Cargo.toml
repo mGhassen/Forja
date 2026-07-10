@@ -10,6 +10,7 @@ members = [
     "scrapers",
     "torrent",
     "proxy",
+    "lan",
     "storage",
     "tmdb-core",
     "trakt-core",

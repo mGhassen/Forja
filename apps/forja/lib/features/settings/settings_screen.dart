@@ -18,6 +18,7 @@ import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
 import 'webstreamr_settings_screen.dart';
 import 'splash_preview_screen.dart';
+import 'lan_settings_section.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/nav_config.dart';
@@ -680,6 +681,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (_debridService == 'Premiumize') _buildPremiumizeConfig(),
                         if (_debridService == 'Debrid-Link') _buildDebridLinkConfig(),
                       ],
+                    ),
+
+                    // ── LAN server/client ──
+                    _buildExpandableSection(
+                      id: 'lan',
+                      icon: Icons.hub_rounded,
+                      title: 'LAN',
+                      children: const [LanSettingsSection()],
                     ),
 
                     // ── Accounts & Sync ──

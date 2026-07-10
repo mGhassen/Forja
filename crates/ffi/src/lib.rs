@@ -4,6 +4,8 @@ mod c_api;
 mod engine_torrent;
 #[cfg(feature = "local-proxy")]
 mod engine_proxy;
+#[cfg(feature = "lan-server")]
+mod engine_lan;
 #[cfg(feature = "local-proxy")]
 mod engine_seek111477;
 #[cfg(feature = "local-proxy")]
@@ -648,5 +650,83 @@ fn storage_set_json(key: String, value_json: String) -> String {
     match storage::set(&key, value) {
         Ok(()) => r#"{"ok":true}"#.into(),
         Err(e) => serde_json::json!({ "error": e }).to_string(),
+    }
+}
+
+fn lan_server_start(bind_mode: u8, preferred_port: u32) -> i32 {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_server_start(
+            &RUNTIME,
+            bind_mode,
+            preferred_port.min(u16::MAX as u32) as u16,
+        )
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        let _ = (bind_mode, preferred_port);
+        -1
+    }
+}
+
+fn lan_server_stop() {
+    #[cfg(feature = "lan-server")]
+    engine_lan::lan_server_stop();
+}
+
+fn lan_server_port() -> u32 {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_server_port() as u32
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        0
+    }
+}
+
+fn lan_pairing_code_refresh() -> String {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_pairing_code_refresh()
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        String::new()
+    }
+}
+
+fn lan_revoke_device(device_id: String) -> bool {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_revoke_device(device_id)
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        let _ = device_id;
+        false
+    }
+}
+
+fn lan_devices_json() -> String {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_devices_json()
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        "[]".into()
+    }
+}
+
+fn lan_browse_servers_json(timeout_ms: u64) -> String {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_browse_servers_json(timeout_ms)
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        let _ = timeout_ms;
+        "[]".into()
     }
 }

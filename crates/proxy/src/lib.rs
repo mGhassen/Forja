@@ -9,7 +9,7 @@ use axum::{
 use futures_util::TryStreamExt;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -70,29 +70,12 @@ impl LocalProxy {
     }
 
     pub async fn start(&mut self, port: u16) -> Result<u16, String> {
-        let app = Router::new()
-            .route("/health", get(health))
-            .route(
-                "/proxy",
-                get(query_proxy_handler).head(query_proxy_handler),
-            )
-            .route(
-                "/hls-proxy",
-                get(hls::hls_proxy_handler).head(hls::hls_proxy_handler),
-            )
-            .route("/proxy/{token}", get(token_proxy_handler))
-            .route("/toky-proxy", get(toky::toky_proxy_handler))
-            .route("/comic-proxy", get(comic::comic_proxy_handler))
-            .route(
-                "/jellyfin-stream",
-                get(jellyfin::jellyfin_stream_handler).head(jellyfin::jellyfin_stream_handler),
-            )
-            .route(
-                "/subtitlecat-translate",
-                get(subtitlecat::subtitlecat_translate_handler),
-            )
-            .with_state(self.state.clone());
-        let addr = SocketAddr::from(([127, 0, 0, 1], port));
+        self.start_on(IpAddr::V4(Ipv4Addr::LOCALHOST), port).await
+    }
+
+    pub async fn start_on(&mut self, bind_addr: IpAddr, port: u16) -> Result<u16, String> {
+        let app = proxy_router(self.state.clone());
+        let addr = SocketAddr::new(bind_addr, port);
         let listener = tokio::net::TcpListener::bind(addr)
             .await
             .map_err(|e| e.to_string())?;
@@ -120,6 +103,31 @@ impl LocalProxy {
             *port = 0;
         }
     }
+}
+
+pub fn proxy_router(state: ProxyState) -> Router {
+    Router::new()
+        .route("/health", get(health))
+        .route(
+            "/proxy",
+            get(query_proxy_handler).head(query_proxy_handler),
+        )
+        .route(
+            "/hls-proxy",
+            get(hls::hls_proxy_handler).head(hls::hls_proxy_handler),
+        )
+        .route("/proxy/{token}", get(token_proxy_handler))
+        .route("/toky-proxy", get(toky::toky_proxy_handler))
+        .route("/comic-proxy", get(comic::comic_proxy_handler))
+        .route(
+            "/jellyfin-stream",
+            get(jellyfin::jellyfin_stream_handler).head(jellyfin::jellyfin_stream_handler),
+        )
+        .route(
+            "/subtitlecat-translate",
+            get(subtitlecat::subtitlecat_translate_handler),
+        )
+        .with_state(state)
 }
 
 #[derive(Debug, Deserialize)]

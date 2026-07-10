@@ -16,6 +16,7 @@ import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/services/tracker_sync.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/player_pool_service.dart';
@@ -48,6 +49,41 @@ Future<void> _shutdownMediaKitPlayers() async {
   try {
     await PlayerPoolService().dispose();
   } catch (_) {}
+}
+
+void _wireLanPlaybackBridge() {
+  LanPlaybackBridge.openMagnetOnDesktop = ({
+    required String magnet,
+    int? season,
+    int? episode,
+    int? fileIdx,
+  }) async {
+    if (!await LanPlaybackRouter.shouldPreferDesktop(
+      PlatformPlayback.capabilities,
+    )) {
+      return null;
+    }
+    final url = await LanClientService.instance.openStream(
+      kind: 'torrent',
+      magnet: magnet,
+      season: season,
+      episode: episode,
+      fileIdx: fileIdx,
+    );
+    if (url == null || url.isEmpty) return null;
+    return TorrentPlaybackUrl(
+      url,
+      fileIndex: fileIdx,
+      source: TorrentPlaybackSource.localEngine,
+      sourceLabel: 'LAN Server',
+    );
+  };
+}
+
+Future<void> _restoreLanServerIfEnabled() async {
+  if (!LanServerService.canRunServer) return;
+  if (!await LanPrefs.instance.isLanServerEnabled()) return;
+  await LanServerService.instance.start();
 }
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
@@ -145,6 +181,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Hydrate theme preset before first frame
   await Engine.init();
   _warnIfRustMissing();
+  _wireLanPlaybackBridge();
+  unawaited(_restoreLanServerIfEnabled());
   
   await AppTheme.initTheme();
   
