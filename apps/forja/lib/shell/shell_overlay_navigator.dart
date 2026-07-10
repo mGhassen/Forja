@@ -63,7 +63,9 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
   Widget build(BuildContext context) {
     return IgnorePointer(
       ignoring: !_overlayHasPage,
-      child: Navigator(
+      child: ExcludeFocus(
+        excluding: !_overlayHasPage,
+        child: Navigator(
         key: shellOverlayNavigatorKey,
         observers: [_observer],
         onGenerateInitialRoutes: (NavigatorState navigator, String initialRoute) {
@@ -80,6 +82,7 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
             ),
           ];
         },
+        ),
       ),
     );
   }

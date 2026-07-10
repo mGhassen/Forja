@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/webview/forja_webview_settings.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
@@ -845,13 +846,15 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
               data: _embedHtml(),
               baseUrl: WebUri(_kYoutubeEmbedOrigin),
             ),
-            initialSettings: InAppWebViewSettings(
+            initialSettings: forjaWebViewSettings(
+              InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               transparentBackground: false,
               disableVerticalScroll: true,
               disableHorizontalScroll: true,
               supportZoom: false,
+              ),
             ),
             onWebViewCreated: (controller) {
               _controller = controller;

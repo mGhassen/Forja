@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/webview/forja_webview_settings.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
@@ -592,13 +593,15 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
 
   Color _shellBg(BuildContext context) => AppTheme.bgDark;
 
-  InAppWebViewSettings get _webViewSettings => InAppWebViewSettings(
-        mediaPlaybackRequiresUserGesture: false,
-        allowsInlineMediaPlayback: true,
-        transparentBackground: false,
-        disableVerticalScroll: true,
-        disableHorizontalScroll: true,
-        supportZoom: false,
+  InAppWebViewSettings get _webViewSettings => forjaWebViewSettings(
+        InAppWebViewSettings(
+          mediaPlaybackRequiresUserGesture: false,
+          allowsInlineMediaPlayback: true,
+          transparentBackground: false,
+          disableVerticalScroll: true,
+          disableHorizontalScroll: true,
+          supportZoom: false,
+        ),
       );
 
   Widget _buildBackdropMedia(Color shellBg) {
@@ -663,13 +666,11 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                   ),
                 ),
               ),
-            if (_hasTrailerKey)
+            if (_hasTrailerKey && _showTrailer)
               Positioned.fill(
                 child: ClipRect(
                   child: IgnorePointer(
-                    child: Offstage(
-                      offstage: !_showTrailer,
-                      child: Stack(
+                    child: Stack(
                         fit: StackFit.expand,
                         children: [
                           InAppWebView(
@@ -717,7 +718,6 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                     ),
                   ),
                 ),
-              ),
             if (cinematicDesktop)
               Positioned.fill(
                 child: IgnorePointer(

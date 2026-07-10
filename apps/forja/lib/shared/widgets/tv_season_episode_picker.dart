@@ -459,7 +459,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     return FocusableControl(
       onTap: widget.onTap,
       borderRadius: _EpisodeCard.thumbRadius,
-      scaleOnFocus: 1.0,
+      scaleOnFocus: 1.05,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Scales on hover with a flat cinematic shadow (no colored glow).
+/// On TV, delegates to [shellFocusableTap] for D-pad focus + ring.
 class HoverScale extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
@@ -26,6 +29,16 @@ class _HoverScaleState extends State<HoverScale> {
 
   @override
   Widget build(BuildContext context) {
+    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return shellFocusableTap(
+        context: context,
+        onTap: widget.onTap,
+        borderRadius: widget.radius,
+        scaleOnFocus: widget.scale,
+        child: widget.child,
+      );
+    }
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),

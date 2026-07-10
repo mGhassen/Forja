@@ -116,11 +116,15 @@ class ForjaGhostButton extends StatelessWidget {
     required this.label,
     this.onTap,
     this.icon,
+    this.autoFocus = false,
+    this.focusNode,
   });
 
   final String label;
   final VoidCallback? onTap;
   final IconData? icon;
+  final bool autoFocus;
+  final FocusNode? focusNode;
 
   Color get _color => ForjaShellColors.textPrimary;
 
@@ -128,6 +132,8 @@ class ForjaGhostButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ForjaInteractive(
       onTap: onTap,
+      autoFocus: autoFocus,
+      focusNode: focusNode,
       hoverScale: 1.04,
       pressScale: 0.96,
       builder: (hover, pressed) {

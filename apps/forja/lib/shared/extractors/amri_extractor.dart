@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/webview/forja_webview_settings.dart';
 
 class AmriExtractor {
   final void Function(String) onLog;
@@ -78,10 +79,12 @@ class AmriExtractor {
             injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
           ),
         ]),
-        initialSettings: InAppWebViewSettings(
+        initialSettings: forjaWebViewSettings(
+          InAppWebViewSettings(
           javaScriptEnabled: true,
           domStorageEnabled: true,
           userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          ),
         ),
         onLoadStop: (controller, loadedUrl) async {
           onLog('Page fully loaded.');

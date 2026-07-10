@@ -53,11 +53,22 @@ class ShellInputPolicy {
 
   bool get isInteractiveActive => scaleOnHover || scaleOnFocus;
 
+  List<BoxShadow> get focusGlowShadows {
+    if (!showFocusRing) return const [];
+    return [
+      BoxShadow(
+        color: Colors.white.withValues(alpha: 0.28),
+        blurRadius: 8,
+        spreadRadius: 0,
+      ),
+    ];
+  }
+
   Decoration? focusRingDecoration({required double borderRadius}) {
     if (!showFocusRing) return null;
     return BoxDecoration(
       borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(color: Colors.white, width: 3),
+      boxShadow: focusGlowShadows,
     );
   }
 

@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/webview/forja_webview_settings.dart';
 
 class ComicPageExtractor {
   static const String _userAgent =
@@ -32,11 +33,13 @@ class ComicPageExtractor {
           injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
         ),
       ]),
-      initialSettings: InAppWebViewSettings(
+      initialSettings: forjaWebViewSettings(
+        InAppWebViewSettings(
         javaScriptEnabled: true,
         domStorageEnabled: true,
         userAgent: _userAgent,
         useOnLoadResource: true,
+        ),
       ),
       onLoadResource: (controller, resource) {
         final rUrl = resource.url.toString();
@@ -164,10 +167,12 @@ class ComicPageExtractor {
     _webView = HeadlessInAppWebView(
       initialUrlRequest: URLRequest(url: WebUri(url)),
       initialSize: const Size(1280, 720),
-      initialSettings: InAppWebViewSettings(
+      initialSettings: forjaWebViewSettings(
+        InAppWebViewSettings(
         javaScriptEnabled: true,
         domStorageEnabled: true,
         userAgent: _userAgent,
+        ),
       ),
       onLoadStop: (controller, url) async {
         final result = await controller.evaluateJavascript(source: """
@@ -232,11 +237,13 @@ class ComicPageExtractor {
           injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
         ),
       ]),
-      initialSettings: InAppWebViewSettings(
+      initialSettings: forjaWebViewSettings(
+        InAppWebViewSettings(
         javaScriptEnabled: true,
         domStorageEnabled: true,
         userAgent: _userAgent,
         useOnLoadResource: true,
+        ),
       ),
       onLoadResource: (controller, resource) {
         final rUrl = resource.url.toString();

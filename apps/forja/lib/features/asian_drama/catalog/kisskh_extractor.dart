@@ -26,6 +26,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
+import 'package:forja/shared/webview/forja_webview_settings.dart';
 
 class KissKhStream {
   final String url;
@@ -93,12 +94,14 @@ class KissKhExtractor {
             injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
           ),
         ]),
-        initialSettings: InAppWebViewSettings(
+        initialSettings: forjaWebViewSettings(
+          InAppWebViewSettings(
           javaScriptEnabled: true,
           domStorageEnabled: true,
           userAgent: _userAgent,
           mediaPlaybackRequiresUserGesture: true,
           allowsInlineMediaPlayback: true,
+          ),
         ),
         onWebViewCreated: (controller) => _controller = controller,
         onLoadStop: (_, _) {

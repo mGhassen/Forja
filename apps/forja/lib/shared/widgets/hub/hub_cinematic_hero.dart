@@ -57,8 +57,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
 
   late final PageController _controller =
       PageController(initialPage: _loopStart);
+  final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'hub-hero-play');
   Timer? _timer;
   int _index = 0;
+  bool _tvHeroInitialFocusDone = false;
 
   bool get _compact =>
       MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
@@ -81,6 +83,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
+    _tvHeroPlayFocus.dispose();
     super.dispose();
   }
 
@@ -173,6 +176,17 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     final slides = widget.slides;
     if (slides.isEmpty) {
       return homeCinematicHeroShimmer(context);
+    }
+
+    final policy = ShellScope.inputPolicyOf(context);
+    if (policy.heroPlayAutoFocus && !_tvHeroInitialFocusDone) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _tvHeroInitialFocusDone) return;
+        if (_tvHeroPlayFocus.canRequestFocus) {
+          _tvHeroPlayFocus.requestFocus();
+          _tvHeroInitialFocusDone = true;
+        }
+      });
     }
 
     final heroSlide = slides[_index];
@@ -587,11 +601,14 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   }
 
   Widget _buildActionRow(HubHeroSlide slide) {
+    final policy = ShellScope.inputPolicyOf(context);
     return Row(
       children: [
         HeroPillPlayButton(
           label: 'Play',
           onTap: slide.onPlay,
+          focusNode:
+              policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
         ),
         const SizedBox(width: 10),
         HeroPillIconGroup(

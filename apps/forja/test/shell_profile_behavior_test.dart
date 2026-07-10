@@ -87,7 +87,9 @@ bool _navItemHasFocusRing(WidgetTester tester, String id) {
   for (final element
       in find.descendant(of: focusFinder, matching: find.byType(DecoratedBox)).evaluate()) {
     final decoration = (element.widget as DecoratedBox).decoration;
-    if (decoration is BoxDecoration && decoration.border != null) {
+    if (decoration is BoxDecoration &&
+        decoration.boxShadow != null &&
+        decoration.boxShadow!.isNotEmpty) {
       return true;
     }
   }

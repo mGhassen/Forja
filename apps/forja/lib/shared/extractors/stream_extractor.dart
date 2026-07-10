@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
+import 'package:forja/shared/webview/forja_webview_settings.dart';
 
 class StreamExtractor {
   HeadlessInAppWebView? _headlessWebView;
@@ -228,7 +229,8 @@ class StreamExtractor {
 
   // ── Wrapper helpers ──────────────────────────────────────────────────────
 
-  InAppWebViewSettings _wrapperSettings() => InAppWebViewSettings(
+  InAppWebViewSettings _wrapperSettings() => forjaWebViewSettings(
+        InAppWebViewSettings(
         javaScriptEnabled: true,
         domStorageEnabled: true,
         userAgent: _userAgent,
@@ -239,6 +241,7 @@ class StreamExtractor {
         useOnLoadResource: true,
         iframeAllow: 'autoplay; fullscreen; encrypted-media',
         iframeAllowFullscreen: true,
+        ),
       );
 
   void Function(InAppWebViewController, LoadedResource) _onLoadResource(String fallbackReferer) =>

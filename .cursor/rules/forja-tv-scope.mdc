@@ -1,0 +1,47 @@
+---
+description: TV profile — supported nav tabs, file map, and D-pad focus requirements
+globs: apps/forja/lib/**/*.dart
+alwaysApply: true
+---
+
+# TV scope — supported tabs only
+
+On **TV profile** (`ShellInputPolicy.tv`), only these shell tabs are in scope for UX, D-pad QA, and feature work. Do not spend TV polish on other tabs unless the user explicitly expands scope.
+
+| Tab (user) | Nav ID | Primary screen |
+|------------|--------|----------------|
+| Home | `home` | `features/home/home_screen.dart` |
+| Search | `search` | `features/search/search_screen.dart` |
+| Anime | `anime` | `features/anime/anime_screen.dart` |
+| Asian Drama | `asian_drama` | `features/asian_drama/asian_drama_screen.dart` |
+| IPTV | `iptv` | `features/iptv/iptv/screens/iptv_pt_screen.dart` |
+| Live Matches | `live_matches` | `features/live_matches/live_matches_screen.dart` |
+| Lists | `mylist` | `features/my_list/my_list_screen.dart`, `lists_screen.dart` |
+| Settings | `settings` | `features/settings/settings_screen.dart` |
+
+Nav registry: `apps/forja/lib/shell/nav_config.dart` (`navDestinations`, `navTabBuilders`).
+
+## Out of scope (TV) unless asked
+
+`discover`, `similar`, `arabic`, `anime_arabic`, `books`, `music`, `comics`, `manga`, `jellyfin`, `downloader`, `magnet`, `audiobooks`.
+
+## D-pad / focus checklist (in-scope pages)
+
+Read `ShellScope.inputPolicyOf(context)` — never `ShellTokens.isTvLayout` in widgets.
+
+| Pattern | When |
+|---------|------|
+| `shellFocusableTap` / `FocusableControl` | Cards, tiles, list rows, tappable catalog items |
+| `ForjaInteractive` / `HeroPillPlayButton` + `FocusNode` | Hero CTAs; request initial focus when `policy.heroPlayAutoFocus` |
+| `HubCinematicHero` | Shared hub hero (Anime, Asian Drama) — already wires TV autofocus |
+| `ForjaShellChip` | Filter/mood chips (uses focus on TV automatically) |
+| `HoverScale` | Delegates to `shellFocusableTap` on TV — prefer for legacy cards |
+| `ExcludeFocus` on empty overlay | `shell_overlay_navigator.dart` — do not regress |
+
+Hub sub-routes pushed via `pushShellRoute` (details, search, explore) inherit the same rules.
+
+## Shell shared with all in-scope tabs
+
+`shell_scaffold.dart`, `shell_nav_rail.dart`, `shell_overlay_navigator.dart`, `home_top_bar.dart`, `shared/tv/tv_remote_debug.dart`.
+
+When fixing TV navigation on one in-scope tab, grep the same pattern across the other seven before marking done.

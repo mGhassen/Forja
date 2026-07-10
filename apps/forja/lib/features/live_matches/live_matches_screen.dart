@@ -6,6 +6,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/webview/forja_webview_settings.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
@@ -1040,12 +1041,14 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
         children: [
           InAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-            initialSettings: InAppWebViewSettings(
+            initialSettings: forjaWebViewSettings(
+              InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               javaScriptEnabled: true,
               disableDefaultErrorPage: true,
               supportMultipleWindows: false,
+              ),
             ),
             onLoadStart: (_, _) => setState(() => _loading = true),
             onLoadStop:  (_, _) => setState(() => _loading = false),
@@ -1321,12 +1324,14 @@ class _DamiTvPlayerScreenState extends State<_DamiTvPlayerScreen> {
         children: [
           InAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(embedUrl)),
-            initialSettings: InAppWebViewSettings(
+            initialSettings: forjaWebViewSettings(
+              InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               javaScriptEnabled: true,
               disableDefaultErrorPage: true,
               supportMultipleWindows: false,
+              ),
             ),
             onLoadStart: (_, _) => setState(() => _loading = true),
             onLoadStop:  (_, _) => setState(() => _loading = false),

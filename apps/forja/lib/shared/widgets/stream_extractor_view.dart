@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/webview/forja_webview_settings.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
 class StreamExtractorView extends StatefulWidget {
@@ -86,7 +87,8 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
                 forMainFrameOnly: false,
               ),
             ]),
-            initialSettings: InAppWebViewSettings(
+            initialSettings: forjaWebViewSettings(
+              InAppWebViewSettings(
               javaScriptEnabled: true,
               domStorageEnabled: true,
               userAgent: _userAgent,
@@ -103,6 +105,7 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
               safeBrowsingEnabled: false,
               preferredContentMode: UserPreferredContentMode.DESKTOP,
               mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+              ),
             ),
             shouldOverrideUrlLoading: (controller, navigationAction) async {
               final url = navigationAction.request.url.toString();
