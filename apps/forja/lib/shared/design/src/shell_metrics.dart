@@ -22,6 +22,10 @@ class ShellMetrics {
     required this.torrentPanelLeadingIconSize,
     required this.torrentPanelSectionFontSize,
     required this.usesTvDensity,
+    required this.navRailItemSpacing,
+    required this.navRailLogoGap,
+    required this.navRailTopPadding,
+    required this.navRailBottomPadding,
   });
 
   final double homeMovieCardWidth;
@@ -43,6 +47,10 @@ class ShellMetrics {
   final double torrentPanelLeadingIconSize;
   final double torrentPanelSectionFontSize;
   final bool usesTvDensity;
+  final double navRailItemSpacing;
+  final double navRailLogoGap;
+  final double navRailTopPadding;
+  final double navRailBottomPadding;
 
   static const mobile = ShellMetrics(
     homeMovieCardWidth: 165,
@@ -64,6 +72,10 @@ class ShellMetrics {
     torrentPanelLeadingIconSize: 22,
     torrentPanelSectionFontSize: 16,
     usesTvDensity: false,
+    navRailItemSpacing: ShellTokens.navRailItemSpacing,
+    navRailLogoGap: 20,
+    navRailTopPadding: ShellTokens.shellHeaderTopPadding,
+    navRailBottomPadding: 16,
   );
 
   static const desktop = ShellMetrics(
@@ -86,6 +98,10 @@ class ShellMetrics {
     torrentPanelLeadingIconSize: 22,
     torrentPanelSectionFontSize: 16,
     usesTvDensity: false,
+    navRailItemSpacing: ShellTokens.navRailItemSpacing,
+    navRailLogoGap: 20,
+    navRailTopPadding: ShellTokens.shellHeaderTopPadding,
+    navRailBottomPadding: 16,
   );
 
   static const tv = ShellMetrics(
@@ -108,6 +124,10 @@ class ShellMetrics {
     torrentPanelLeadingIconSize: 26,
     torrentPanelSectionFontSize: 18,
     usesTvDensity: true,
+    navRailItemSpacing: 8,
+    navRailLogoGap: 10,
+    navRailTopPadding: 8,
+    navRailBottomPadding: 8,
   );
 
   double get navRailWidth => ShellTokens.navRailWidth;

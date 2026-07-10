@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Fixed Forja theme descriptor (single preset, not user-selectable).
@@ -122,7 +123,6 @@ class FocusableControl extends StatefulWidget {
   final VoidCallback? onTap;
   final bool autoFocus;
   final double borderRadius;
-  final Color? glowColor;
   final double scaleOnFocus;
 
   const FocusableControl({
@@ -131,8 +131,7 @@ class FocusableControl extends StatefulWidget {
     this.onTap,
     this.autoFocus = false,
     this.borderRadius = 12.0,
-    this.glowColor,
-    this.scaleOnFocus = 1.0,
+    this.scaleOnFocus = ShellTokens.focusActiveScale,
   });
 
   @override
@@ -208,23 +207,12 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
           onTap: widget.onTap,
           child: AnimatedBuilder(
             animation: _scale,
-            builder: (context, child) => Transform.scale(scale: _scale.value, child: child),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(widget.borderRadius),
-                boxShadow: [
-                  if (_isFocused) ...policy.focusGlowShadows,
-                  if ((_isFocused || _isHovered) && widget.glowColor != null)
-                    BoxShadow(
-                      color: widget.glowColor!.withValues(alpha: 0.4),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                ],
-              ),
-              child: widget.child,
+            builder: (context, child) => Transform.scale(
+              scale: _scale.value,
+              alignment: Alignment.center,
+              child: child,
             ),
+            child: widget.child,
           ),
         ),
       ),

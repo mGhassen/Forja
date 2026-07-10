@@ -32,8 +32,7 @@ void main() {
 
   test('input policies match profile expectations', () {
     expect(ShellInputPolicy.desktop.scaleOnHover, isTrue);
-    expect(ShellInputPolicy.desktop.showFocusRing, isFalse);
-    expect(ShellInputPolicy.tv.showFocusRing, isTrue);
+    expect(ShellInputPolicy.tv.scaleOnFocus, isTrue);
     expect(ShellInputPolicy.tv.wrapAppFocusTraversal, isTrue);
     expect(ShellInputPolicy.mobile.wrapAppFocusTraversal, isFalse);
   });

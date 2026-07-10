@@ -3,7 +3,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Scales on hover with a flat cinematic shadow (no colored glow).
-/// On TV, delegates to [shellFocusableTap] for D-pad focus + ring.
+/// On TV, delegates to [shellFocusableTap] for D-pad focus lift + scale.
 class HoverScale extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
@@ -16,7 +16,7 @@ class HoverScale extends StatefulWidget {
     required this.child,
     required this.onTap,
     this.onLongPress,
-    this.scale = 1.04,
+    this.scale = ShellTokens.focusActiveScale,
     this.radius = 14,
   });
 

@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 /// Per-profile input and focus behavior.
 class ShellInputPolicy {
   const ShellInputPolicy({
-    required this.showFocusRing,
     required this.scaleOnHover,
     required this.scaleOnFocus,
     required this.ensureVisibleOnFocus,
@@ -13,7 +12,6 @@ class ShellInputPolicy {
     required this.heroPlayAutoFocus,
   });
 
-  final bool showFocusRing;
   final bool scaleOnHover;
   final bool scaleOnFocus;
   final bool ensureVisibleOnFocus;
@@ -22,7 +20,6 @@ class ShellInputPolicy {
   final bool heroPlayAutoFocus;
 
   static const mobile = ShellInputPolicy(
-    showFocusRing: false,
     scaleOnHover: false,
     scaleOnFocus: false,
     ensureVisibleOnFocus: false,
@@ -32,7 +29,6 @@ class ShellInputPolicy {
   );
 
   static const desktop = ShellInputPolicy(
-    showFocusRing: false,
     scaleOnHover: true,
     scaleOnFocus: false,
     ensureVisibleOnFocus: false,
@@ -42,7 +38,6 @@ class ShellInputPolicy {
   );
 
   static const tv = ShellInputPolicy(
-    showFocusRing: true,
     scaleOnHover: false,
     scaleOnFocus: true,
     ensureVisibleOnFocus: true,
@@ -52,25 +47,6 @@ class ShellInputPolicy {
   );
 
   bool get isInteractiveActive => scaleOnHover || scaleOnFocus;
-
-  List<BoxShadow> get focusGlowShadows {
-    if (!showFocusRing) return const [];
-    return [
-      BoxShadow(
-        color: Colors.white.withValues(alpha: 0.28),
-        blurRadius: 8,
-        spreadRadius: 0,
-      ),
-    ];
-  }
-
-  Decoration? focusRingDecoration({required double borderRadius}) {
-    if (!showFocusRing) return null;
-    return BoxDecoration(
-      borderRadius: BorderRadius.circular(borderRadius),
-      boxShadow: focusGlowShadows,
-    );
-  }
 
   /// App-root D-pad traversal — TV only.
   static Widget maybeWrapFocusTraversal({required Widget child, required bool enabled}) {

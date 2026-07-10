@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
-/// TV: [FocusableControl] with D-pad ring. Phone/desktop: plain [InkWell].
+/// TV: [FocusableControl] with D-pad focus lift. Phone/desktop: plain [InkWell].
 Widget shellFocusableTap({
   required BuildContext context,
   required Widget child,
   VoidCallback? onTap,
   double borderRadius = 12,
-  double scaleOnFocus = 1.05,
+  double scaleOnFocus = ShellTokens.focusActiveScale,
 }) {
   final policy = ShellScope.inputPolicyOf(context);
   if (policy.useFocusableMoodChips) {

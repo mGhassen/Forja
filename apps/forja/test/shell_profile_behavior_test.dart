@@ -80,22 +80,6 @@ AnimatedScale _navItemScale(WidgetTester tester, String id) {
   return tester.widget<AnimatedScale>(scaleFinder);
 }
 
-bool _navItemHasFocusRing(WidgetTester tester, String id) {
-  final focusFinder = find.byWidgetPredicate(
-    (w) => w is Focus && w.debugLabel == 'nav-$id',
-  );
-  for (final element
-      in find.descendant(of: focusFinder, matching: find.byType(DecoratedBox)).evaluate()) {
-    final decoration = (element.widget as DecoratedBox).decoration;
-    if (decoration is BoxDecoration &&
-        decoration.boxShadow != null &&
-        decoration.boxShadow!.isNotEmpty) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void main() {
   testWidgets('desktop hero action row has no FittedBox (R28-A08)', (tester) async {
     await tester.pumpWidget(
@@ -133,7 +117,6 @@ void main() {
 
     await _focusNavItem(tester, 'search');
     expect(_navItemScale(tester, 'search').scale, 1.0);
-    expect(_navItemHasFocusRing(tester, 'search'), isFalse);
 
     final searchIcon =
         find.image(const AssetImage('assets/images/nav/search.png'));
@@ -149,7 +132,7 @@ void main() {
     );
   });
 
-  testWidgets('tv nav rail scales and shows focus ring on keyboard focus (R28-A09)',
+  testWidgets('tv nav rail scales on keyboard focus (R28-A09)',
       (tester) async {
     await tester.pumpWidget(
       _wrapProfile(
@@ -167,7 +150,6 @@ void main() {
       _navItemScale(tester, 'search').scale,
       ShellTokens.navRailIconHoverScale,
     );
-    expect(_navItemHasFocusRing(tester, 'search'), isTrue);
   });
 
   testWidgets('tv mood chips use FocusableControl; desktop uses InkWell (R28-A09/A08)',

@@ -23,6 +23,8 @@ abstract final class ShellTokens {
   static const double navRailIconSize = 30;
   /// Immediate hover grow for rail icons (and compact ☰).
   static const double navRailIconHoverScale = 1.15;
+  /// D-pad / TV focus scale.
+  static const double focusActiveScale = 1.08;
   static const double navRailIconRevealedScale = 0.78;
   static const double navRailIconSlideUp = 10;
   static const double navRailIconLabelGap = 3;

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
@@ -459,7 +460,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     return FocusableControl(
       onTap: widget.onTap,
       borderRadius: _EpisodeCard.thumbRadius,
-      scaleOnFocus: 1.05,
+      scaleOnFocus: ShellTokens.focusActiveScale,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),

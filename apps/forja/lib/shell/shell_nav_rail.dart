@@ -104,12 +104,37 @@ class ShellNavRail extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: ShellTokens.shellHeaderTopPadding),
+            SizedBox(height: metrics.navRailTopPadding),
             const _RailLogo(),
-            const SizedBox(height: 20),
+            SizedBox(height: metrics.navRailLogoGap),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  final navColumn = Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 0; i < _navIds.length; i++)
+                        Builder(
+                          builder: (context) {
+                            final id = _navIds[i];
+                            final index = _indexForId(id)!;
+                            final dest = navDestinations[id]!;
+                            final selected = index == selectedIndex;
+                            return _ShellNavRailItem(
+                              destination: dest,
+                              selected: selected,
+                              onTap: () => onDestinationSelected(index),
+                              itemSpacing: metrics.navRailItemSpacing,
+                            );
+                          },
+                        ),
+                    ],
+                  );
+
+                  if (metrics.usesTvDensity) {
+                    return navColumn;
+                  }
+
                   return SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: ConstrainedBox(
@@ -119,25 +144,7 @@ class ShellNavRail extends StatelessWidget {
                           constraints.maxHeight - 16,
                         ),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          for (var i = 0; i < _navIds.length; i++)
-                            Builder(
-                              builder: (context) {
-                                final id = _navIds[i];
-                                final index = _indexForId(id)!;
-                                final dest = navDestinations[id]!;
-                                final selected = index == selectedIndex;
-                                return _ShellNavRailItem(
-                                  destination: dest,
-                                  selected: selected,
-                                  onTap: () => onDestinationSelected(index),
-                                );
-                              },
-                            ),
-                        ],
-                      ),
+                      child: navColumn,
                     ),
                   );
                 },
@@ -148,8 +155,9 @@ class ShellNavRail extends StatelessWidget {
                 destination: navDestinations['settings']!,
                 selected: settingsIndex == selectedIndex,
                 onTap: () => onDestinationSelected(settingsIndex),
+                itemSpacing: metrics.navRailItemSpacing,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: metrics.navRailBottomPadding),
             ],
           ],
         ),
@@ -261,11 +269,13 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.destination,
     required this.selected,
     required this.onTap,
+    required this.itemSpacing,
   });
 
   final NavDestination destination;
   final bool selected;
   final VoidCallback onTap;
+  final double itemSpacing;
 
   @override
   State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
@@ -345,8 +355,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: ShellTokens.navRailItemSpacing / 2,
+      padding: EdgeInsets.symmetric(
+        vertical: widget.itemSpacing / 2,
       ),
       child: Focus(
         debugLabel: 'nav-${widget.destination.id}',
@@ -362,11 +372,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         },
         child: Builder(
           builder: (context) {
-            final ring =
-                _focused ? policy.focusRingDecoration(borderRadius: 12) : null;
-            return DecoratedBox(
-              decoration: ring ?? const BoxDecoration(),
-              child: SizedBox(
+            return SizedBox(
                 width: ShellTokens.navRailWidth,
                 height: _contentHeight,
                 child: Center(
@@ -427,7 +433,6 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                     ),
                   ),
                 ),
-              ),
             );
           },
         ),

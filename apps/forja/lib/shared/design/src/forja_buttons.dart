@@ -85,11 +85,6 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
 
     if (widget.onTap == null) return interactive;
 
-    final ring = _focused ? policy.focusRingDecoration(borderRadius: 10) : null;
-    if (ring != null) {
-      interactive = DecoratedBox(decoration: ring, child: interactive);
-    }
-
     return Focus(
       focusNode: widget.focusNode,
       debugLabel: widget.focusNode?.debugLabel ?? 'forja-interactive',
