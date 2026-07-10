@@ -311,7 +311,7 @@ class _ProviderFilterCard extends StatelessWidget {
             onTap: onTap,
             hoverScale: 1,
             pressScale: 1,
-            builder: (hover, _, focused) {
+            builder: (hover, _) {
               final scale = hover
                   ? ShellTokens.shellProviderHoverScale
                   : _targetScale;

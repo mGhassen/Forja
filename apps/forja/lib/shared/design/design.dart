@@ -17,5 +17,4 @@ export 'src/forja_shell_colors.dart';
 export 'src/forja_frosted_panel.dart';
 export 'src/forja_shell_chip.dart';
 export 'src/forja_buttons.dart';
-export 'src/forja_focus_effects.dart';
 export 'src/forja_toast.dart';

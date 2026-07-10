@@ -98,7 +98,7 @@ class MyListButton extends StatelessWidget {
             pressScale: 0.94,
             onKeyEvent: (node, event) =>
                 shellTrapTvFocusHorizontalEdge(node, event, trapRight: true),
-            builder: (active, pressed, focused) {
+            builder: (active, pressed) {
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 140),
                 curve: Curves.easeOutCubic,

@@ -750,21 +750,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Returns in-progress continue-watching items (2–90%), one per tmdbId.
   List<Map<String, dynamic>> _inProgressPool(List<Map<String, dynamic>> history) {
-    final byShow = <int, Map<String, dynamic>>{};
-    for (final item in history) {
-      final pos = (item['position'] as int?) ?? 0;
-      final dur = (item['duration'] as int?) ?? 0;
-      if (dur <= 0) continue;
-      final progress = pos / dur;
-      if (progress < 0.02 || progress >= 0.9) continue;
-      final tmdbId = item['tmdbId'] as int?;
-      if (tmdbId == null) continue;
-      final existing = byShow[tmdbId];
-      final ts = (item['updatedAt'] as int?) ?? 0;
-      final existingTs = (existing?['updatedAt'] as int?) ?? -1;
-      if (ts > existingTs) byShow[tmdbId] = item;
-    }
-    return byShow.values.toList();
+    return inProgressPoolByShow(history);
   }
 
   String _seedMediaType(Map<String, dynamic> seed) {

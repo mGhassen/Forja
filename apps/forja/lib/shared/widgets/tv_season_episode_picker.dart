@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
-import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -45,7 +44,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final SeasonSelectCallback onSeasonSelected;
   final EpisodeSelectCallback onEpisodeSelected;
   final EpisodeWatchedToggle onToggleWatched;
-  final ValueChanged<int>? onEpisodeFocused;
+  final EpisodeSelectCallback? onEpisodeFocused;
   final Map<int, String> seasonPosters;
   final Map<String, Map<String, dynamic>> episodeProgress;
   final Map<int, List<Map<String, dynamic>>>? customEpisodesBySeason;
@@ -58,13 +57,18 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   bool _oldestFirst = true;
   int _episodeChunk = 0;
   final ScrollController _episodeScrollController = ScrollController();
+  final ScrollController _seasonScrollController = ScrollController();
 
   static const double _episodeCardStride = _EpisodeCard.cardWidth + 16;
+  static const double _seasonCardStride = _SeasonCard.cardWidth + 12;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncEpisodeChunk());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncEpisodeChunk();
+      _scrollToSelectedSeason();
+    });
   }
 
   void _syncEpisodeChunk() {
@@ -79,6 +83,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   @override
   void dispose() {
     _episodeScrollController.dispose();
+    _seasonScrollController.dispose();
     super.dispose();
   }
 
@@ -87,6 +92,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedSeason != widget.selectedSeason) {
       _episodeChunk = _chunkIndexForEpisode(widget.selectedEpisode);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedSeason());
     } else if (oldWidget.selectedEpisode != widget.selectedEpisode) {
       final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
       if (chunk != _episodeChunk) _episodeChunk = chunk;
@@ -159,6 +165,19 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     return widget.watchedEpisodes.contains('${widget.tmdbId}_S${season}_E$episode');
   }
 
+  void _scrollToSelectedSeason() {
+    if (!_seasonScrollController.hasClients || widget.seasonCount <= 1) return;
+    final index = widget.selectedSeason - 1;
+    if (index < 0) return;
+    final target = (index * _seasonCardStride)
+        .clamp(0.0, _seasonScrollController.position.maxScrollExtent);
+    _seasonScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   void _scrollToSelectedEpisode() {
     if (!_episodeScrollController.hasClients) return;
     final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
@@ -191,18 +210,40 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     return fb.isNotEmpty ? fb : null;
   }
 
+  String? _seasonPosterUrl(int season) {
+    final poster = widget.seasonPosters[season];
+    if (poster != null && poster.isNotEmpty) {
+      return poster.startsWith('http') ? poster : TmdbApi.getImageUrl(poster);
+    }
+    final fb = widget.fallbackPosterPath.trim();
+    if (fb.isEmpty) return null;
+    return fb.startsWith('http') ? fb : TmdbApi.getImageUrl(fb);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.seasonCount <= 0) return const SizedBox.shrink();
+
+    final episodeCount = _episodes.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Expanded(
-              child: Text('Episodes', style: ShellSectionTitle.titleStyle),
-            ),
+            const Text('Episodes', style: ShellSectionTitle.titleStyle),
+            if (episodeCount > 0) ...[
+              const SizedBox(width: 8),
+              Text(
+                '$episodeCount',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+            const Spacer(),
             _PickerPill(
               onTap: () => setState(() => _oldestFirst = !_oldestFirst),
               child: Row(
@@ -225,17 +266,39 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                 ],
               ),
             ),
-            const SizedBox(width: 10),
-            _SeasonPill(
-              seasonCount: widget.seasonCount,
-              selectedSeason: widget.selectedSeason,
-              onSeasonSelected: (season) {
-                setState(() => _episodeChunk = 0);
-                widget.onSeasonSelected(season);
-              },
-            ),
           ],
         ),
+        if (widget.seasonCount > 1) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            height: _SeasonCard.cardHeight,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _absorbHorizontalScroll,
+              child: ListView.separated(
+                controller: _seasonScrollController,
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                itemCount: widget.seasonCount,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (_, i) {
+                  final season = i + 1;
+                  return _SeasonCard(
+                    key: ValueKey('season-$season'),
+                    seasonNumber: season,
+                    selected: widget.selectedSeason == season,
+                    posterUrl: _seasonPosterUrl(season),
+                    onTap: () {
+                      if (season == widget.selectedSeason) return;
+                      setState(() => _episodeChunk = 0);
+                      widget.onSeasonSelected(season);
+                    },
+                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
         if (showEpisodeRangeBar(_episodeNumbers)) ...[
           const SizedBox(height: 12),
           EpisodeRangeBar(
@@ -262,59 +325,182 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
             height: 228,
             child: NotificationListener<ScrollNotification>(
               onNotification: _absorbHorizontalScroll,
-              child: FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: ListView.separated(
+              child: ListView.separated(
                 controller: _episodeScrollController,
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
                 itemCount: _visibleEpisodes.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 16),
                 itemBuilder: (_, i) {
-                final ep = _visibleEpisodes[i];
-                final epNum = (ep['episode_number'] ?? ep['episode']) as int;
-                final title =
-                    (ep['name'] ?? ep['title'] ?? 'Episode $epNum').toString();
-                final overview = (ep['overview'] ?? '').toString();
-                final runtime = ep['runtime'] as int? ?? 0;
-                final thumbnail = _resolveThumbnail(
-                  ep['still_path'] ?? ep['thumbnail'],
-                  widget.fallbackPosterPath,
-                );
-                final watched = _watchedKey(widget.selectedSeason, epNum);
-                final progKey = 'S${widget.selectedSeason}_E$epNum';
-                final prog = widget.episodeProgress[progKey];
-                final pos = prog?['position'] as int? ?? 0;
-                final dur = prog?['duration'] as int? ??
-                    (runtime > 0 ? runtime * 60000 : 0);
+                  final ep = _visibleEpisodes[i];
+                  final epNum = (ep['episode_number'] ?? ep['episode']) as int;
+                  final title =
+                      (ep['name'] ?? ep['title'] ?? 'Episode $epNum').toString();
+                  final overview = (ep['overview'] ?? '').toString();
+                  final runtime = ep['runtime'] as int? ?? 0;
+                  final thumbnail = _resolveThumbnail(
+                    ep['still_path'] ?? ep['thumbnail'],
+                    widget.fallbackPosterPath,
+                  );
+                  final watched = _watchedKey(widget.selectedSeason, epNum);
+                  final progKey = 'S${widget.selectedSeason}_E$epNum';
+                  final prog = widget.episodeProgress[progKey];
+                  final pos = prog?['position'] as int? ?? 0;
+                  final dur = prog?['duration'] as int? ??
+                      (runtime > 0 ? runtime * 60000 : 0);
 
-                return _EpisodeCard(
-                  key: ValueKey('ep-${widget.selectedSeason}-$epNum'),
-                  episodeNumber: epNum,
-                  title: title,
-                  overview: overview,
-                  runtime: runtime,
-                  thumbnail: thumbnail,
-                  selected: widget.selectedEpisode == epNum,
-                  watched: watched,
-                  positionMs: pos,
-                  durationMs: dur,
-                  onTap: () => widget.onEpisodeSelected(epNum),
-                  onFocused: () => widget.onEpisodeFocused?.call(epNum),
-                  onToggleWatched: () =>
-                      widget.onToggleWatched(widget.selectedSeason, epNum),
-                  onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
-                  onRightEdge: i == _visibleEpisodes.length - 1
-                      ? () {}
-                      : null,
-                );
-              },
-              ),
+                  return _EpisodeCard(
+                    key: ValueKey('ep-${widget.selectedSeason}-$epNum'),
+                    episodeNumber: epNum,
+                    title: title,
+                    overview: overview,
+                    runtime: runtime,
+                    thumbnail: thumbnail,
+                    selected: widget.selectedEpisode == epNum,
+                    watched: watched,
+                    positionMs: pos,
+                    durationMs: dur,
+                    onTap: () => widget.onEpisodeSelected(epNum),
+                    onFocusChange: widget.onEpisodeFocused == null
+                        ? null
+                        : (focused) {
+                            if (focused) widget.onEpisodeFocused!(epNum);
+                          },
+                    onToggleWatched: () =>
+                        widget.onToggleWatched(widget.selectedSeason, epNum),
+                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+                  );
+                },
               ),
             ),
           ),
       ],
     );
+  }
+}
+
+class _SeasonCard extends StatefulWidget {
+  const _SeasonCard({
+    super.key,
+    required this.seasonNumber,
+    required this.selected,
+    required this.posterUrl,
+    required this.onTap,
+    this.onLeftEdge,
+  });
+
+  final int seasonNumber;
+  final bool selected;
+  final String? posterUrl;
+  final VoidCallback onTap;
+  final VoidCallback? onLeftEdge;
+
+  static const double cardWidth = 104;
+  static const double cardHeight = 156;
+  static const double radius = 8;
+
+  @override
+  State<_SeasonCard> createState() => _SeasonCardState();
+}
+
+class _SeasonCardState extends State<_SeasonCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = widget.selected
+        ? ForjaShellColors.chipSelectedBorder
+        : ForjaShellColors.cinematic.borderSubtle;
+    final borderWidth = widget.selected ? 2.0 : 1.0;
+    final scale = _hovered && !widget.selected ? 1.04 : 1.0;
+
+    return FocusableControl(
+      onTap: widget.onTap,
+      borderRadius: _SeasonCard.radius,
+      scaleOnFocus: ShellTokens.focusActiveScale,
+      onLeftEdge: widget.onLeftEdge,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: AnimatedScale(
+          scale: scale,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: _SeasonCard.cardWidth,
+            height: _SeasonCard.cardHeight,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(_SeasonCard.radius),
+              border: Border.all(color: borderColor, width: borderWidth),
+              boxShadow: widget.selected
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(_SeasonCard.radius - borderWidth),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (widget.posterUrl != null)
+                    CachedNetworkImage(
+                      imageUrl: widget.posterUrl!,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) => _fallback(),
+                    )
+                  else
+                    _fallback(),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.85),
+                          ],
+                          stops: const [0.45, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 8,
+                    right: 8,
+                    bottom: 10,
+                    child: Text(
+                      'Season ${widget.seasonNumber}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(
+                          alpha: widget.selected ? 1.0 : 0.85,
+                        ),
+                        fontSize: 12,
+                        fontWeight:
+                            widget.selected ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fallback() {
+    return Container(color: Colors.white.withValues(alpha: 0.06));
   }
 }
 
@@ -350,96 +536,6 @@ class _PickerPill extends StatelessWidget {
   }
 }
 
-class _SeasonPill extends StatelessWidget {
-  const _SeasonPill({
-    required this.seasonCount,
-    required this.selectedSeason,
-    required this.onSeasonSelected,
-  });
-
-  final int seasonCount;
-  final int selectedSeason;
-  final SeasonSelectCallback onSeasonSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final useTvFocus = ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
-    final pillChild = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Season $selectedSeason',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.9),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Icon(
-          Icons.keyboard_arrow_down_rounded,
-          size: 20,
-          color: Colors.white.withValues(alpha: 0.85),
-        ),
-      ],
-    );
-
-    if (useTvFocus) {
-      return FocusableControl(
-        onTap: () => _openSeasonMenu(context),
-        borderRadius: 22,
-        scaleOnFocus: ShellTokens.focusActiveScale,
-        child: _PickerPill(child: pillChild),
-      );
-    }
-
-    return PopupMenuButton<int>(
-      initialValue: selectedSeason,
-      tooltip: 'Select season',
-      color: const Color(0xFF1E1E1E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      onSelected: onSeasonSelected,
-      itemBuilder: (context) => _seasonMenuItems(),
-      child: _PickerPill(child: pillChild),
-    );
-  }
-
-  List<PopupMenuEntry<int>> _seasonMenuItems() {
-    return List.generate(seasonCount, (i) {
-      final n = i + 1;
-      return PopupMenuItem<int>(
-        value: n,
-        child: Text(
-          'Season $n',
-          style: TextStyle(
-            color: n == selectedSeason ? Colors.white : Colors.white70,
-            fontWeight: n == selectedSeason ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
-      );
-    });
-  }
-
-  Future<void> _openSeasonMenu(BuildContext context) async {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    final offset = box.localToGlobal(Offset.zero);
-    final picked = await showMenu<int>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        offset.dx,
-        offset.dy + box.size.height,
-        offset.dx + box.size.width,
-        offset.dy,
-      ),
-      color: const Color(0xFF1E1E1E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      items: _seasonMenuItems(),
-    );
-    if (picked != null) onSeasonSelected(picked);
-  }
-}
-
 class _EpisodeCard extends StatefulWidget {
   const _EpisodeCard({
     super.key,
@@ -454,9 +550,8 @@ class _EpisodeCard extends StatefulWidget {
     required this.durationMs,
     required this.onTap,
     required this.onToggleWatched,
-    this.onFocused,
+    this.onFocusChange,
     this.onLeftEdge,
-    this.onRightEdge,
   });
 
   final int episodeNumber;
@@ -470,9 +565,8 @@ class _EpisodeCard extends StatefulWidget {
   final int durationMs;
   final VoidCallback onTap;
   final VoidCallback onToggleWatched;
-  final VoidCallback? onFocused;
+  final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onLeftEdge;
-  final VoidCallback? onRightEdge;
 
   static const double cardWidth = 268;
   static const double thumbRadius = 10;
@@ -504,11 +598,8 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       onTap: widget.onTap,
       borderRadius: _EpisodeCard.thumbRadius,
       scaleOnFocus: ShellTokens.focusActiveScale,
+      onFocusChange: widget.onFocusChange,
       onLeftEdge: widget.onLeftEdge,
-      onRightEdge: widget.onRightEdge,
-      onFocusChange: (focused) {
-        if (focused) widget.onFocused?.call();
-      },
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/design/src/forja_focus_effects.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
@@ -358,11 +357,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
             builder: (context, child) => Transform.scale(
               scale: _scale.value,
               alignment: Alignment.center,
-              child: ForjaFocusEffectStack(
-                focused: _isFocused,
-                borderRadius: BorderRadius.circular(widget.borderRadius),
-                child: child!,
-              ),
+              child: child,
             ),
             child: widget.child,
           ),

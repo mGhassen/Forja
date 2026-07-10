@@ -176,7 +176,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Map<String, Map<String, dynamic>> _episodeProgress = {};
 
   final ScrollController _episodeScrollController = ScrollController();
-  final ScrollController _seasonScrollController = ScrollController();
   final ScrollController _chipsScrollController = ScrollController();
   final FocusNode _detailsHeroPlayFocus = FocusNode(debugLabel: 'details-hero-play');
   bool _detailsHeroInitialFocusDone = false;
@@ -218,7 +217,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   void dispose() {
     _detailsHeroPlayFocus.dispose();
     _episodeScrollController.dispose();
-    _seasonScrollController.dispose();
     _chipsScrollController.dispose();
     _jackett.dispose();
     _prowlarr.dispose();
@@ -236,6 +234,19 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
     );
     if (mounted) setState(() => _lastProgress = progress);
+  }
+
+  Future<void> _resolveInitialSeasonEpisode() async {
+    if (widget.initialSeason != null) return;
+    final history = await WatchHistoryService().getHistory();
+    final entry = latestInProgressForShow(_movie.id, history);
+    if (entry == null || !mounted) return;
+    final season = entry['season'] as int?;
+    final episode = entry['episode'] as int?;
+    setState(() {
+      if (season != null && season > 0) _selectedSeason = season;
+      if (episode != null && episode > 0) _selectedEpisode = episode;
+    });
   }
 
   Future<void> _loadEpisodeProgressForSeason(int season) async {
@@ -1214,7 +1225,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       final RichMediaDetails rich;
       if (_movie.mediaType == 'tv') {
         rich = await _api.getRichTvDetails(widget.movie.id);
-        await _fetchSeason(widget.initialSeason ?? 1);
+        if (widget.initialSeason == null) {
+          await _resolveInitialSeasonEpisode();
+        }
+        if (mounted) {
+          setState(() => _seasonPosters.addAll(rich.extras.seasonPosters));
+        }
+        await _fetchSeason(_selectedSeason);
       } else {
         rich = await _api.getRichMovieDetails(widget.movie.id);
       }

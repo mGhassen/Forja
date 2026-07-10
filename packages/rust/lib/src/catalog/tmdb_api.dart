@@ -467,6 +467,21 @@ class TmdbApi {
     return trailers;
   }
 
+  /// TMDB `tv/{id}` seasons[] → season_number (≥1) → poster_path.
+  static Map<int, String> parseSeasonPosters(Map<String, dynamic> json) {
+    final seasons = json['seasons'] as List? ?? [];
+    final map = <int, String>{};
+    for (final raw in seasons) {
+      if (raw is! Map<String, dynamic>) continue;
+      final num = (raw['season_number'] as num?)?.toInt();
+      final poster = raw['poster_path']?.toString() ?? '';
+      if (num != null && num > 0 && poster.isNotEmpty) {
+        map[num] = poster;
+      }
+    }
+    return map;
+  }
+
   static MediaDetailsExtras parseMediaExtras(
     Map<String, dynamic> json, {
     required String mediaType,
@@ -587,6 +602,8 @@ class TmdbApi {
       lastAirDate: json['last_air_date']?.toString() ?? '',
       networks: networks,
       creators: creators,
+      seasonPosters:
+          mediaType == 'tv' ? parseSeasonPosters(json) : const {},
     );
   }
 

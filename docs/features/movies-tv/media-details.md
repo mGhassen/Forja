@@ -15,7 +15,7 @@ Hero text sits in the **upper** area of the hero (not pinned to the bottom). Bel
 
 Scroll below the hero for:
 
-1. **Episodes** (TV only) — horizontal episode rail with season picker; when a season has more than 50 episodes, numbered range chips (**1 - 50**, **51 - 100**, …) appear beside the season control to page the rail; visible on the first screen below the hero
+1. **Episodes** (TV only) — horizontal season poster cards (when the show has more than one season), then a horizontal episode rail; when a season has more than 50 episodes, numbered range chips (**1 - 50**, **51 - 100**, …) appear between the season row and the episode rail; visible on the first screen below the hero. Opening a show without a Continue Watching deep link selects season 1 unless you have an in-progress episode (2–90% watched), in which case that season and episode are selected.
 2. **Cast** — circular photos, actor and character names
 3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio, subtitles, quality, playback speed). When a trailer ends and more are available, an **Up next** prompt lets you continue to the next trailer.
 4. **More Like This** — recommendation row
@@ -38,7 +38,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 - Trakt/Simkl/collect actions via the **⋯** overflow menu in the hero
 - See resume progress in the hero for movies and the selected TV episode
 - Clear resume progress with the trash icon next to **Resume** (removes that movie or selected episode from continue watching)
-- For TV: pick a season from square cards, then tap an episode in the rail to select it and open **Sources** (resume position when you have history is applied when you pick a stream)
+- For TV: pick a season from the horizontal poster row (multi-season shows), then tap an episode in the rail to select it and open **Sources** (resume position when you have history is applied when you pick a stream). Without Continue Watching, the page opens season 1 unless you have an in-progress episode (2–90%), then that season is selected.
 - Browse main cast and “More Like This” recommendations below the hero
 - Search and sort torrent results in Sources (seeders, size, etc.)
 - Filter Sources by quality, size (`<1 GB` · `1–3 GB` · `3–8 GB` · `8–20 GB` · `20 GB+`, multi-select OR), language, tech, and audio
