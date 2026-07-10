@@ -11,12 +11,13 @@ Forja is a cross-platform Flutter app with a Rust engine under the hood. The sam
 | Platform | Format |
 |----------|--------|
 | **Android** | APK |
+| **Android TV** | APK (arm64 + armeabi-v7a) |
 | **iOS** | App Store / sideload |
 | **Windows** | Installer |
 | **Linux** | AppImage |
 | **macOS** | DMG |
 
-Download builds from [GitHub Releases](https://github.com/mGhassen/Forja/releases). Published installers ship via manual **Release Forja** workflow (Actions → Release Forja).
+Download builds from [GitHub Releases](https://github.com/mGhassen/Forja/releases). Published installers ship via manual **Release Forja** workflow (Actions → Release Forja). Toggle which platforms to build (macOS, Windows, Linux, Android TV) when dispatching the workflow.
 
 ## What you can do
 

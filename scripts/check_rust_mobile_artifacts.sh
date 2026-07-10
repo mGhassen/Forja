@@ -5,16 +5,21 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-all}"
-ANDROID_SO="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so"
+ANDROID_SO_ARM64="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so"
+ANDROID_SO_V7A="$ROOT/apps/forja/android/app/src/main/jniLibs/armeabi-v7a/libffi.so"
 IOS_DYLIB="$ROOT/apps/forja/ios/Runner/Frameworks/libffi.dylib"
 
 check_android() {
-  if [[ -f "$ANDROID_SO" ]]; then
-    echo "OK  $ANDROID_SO"
-  else
-    echo "MISSING  $ANDROID_SO"
-    return 1
-  fi
+  local missing=0
+  for so in "$ANDROID_SO_ARM64" "$ANDROID_SO_V7A"; do
+    if [[ -f "$so" ]]; then
+      echo "OK  $so"
+    else
+      echo "MISSING  $so"
+      missing=1
+    fi
+  done
+  return "$missing"
 }
 
 check_ios() {

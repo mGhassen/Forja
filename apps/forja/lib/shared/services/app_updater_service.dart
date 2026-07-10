@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -50,11 +51,7 @@ class AppUpdaterService {
           } else if (Platform.isMacOS) {
             downloadUrl = data['html_url'];
           } else if (Platform.isAndroid) {
-            final asset = assets.firstWhere(
-              (a) => (a['name'] as String).toLowerCase().endsWith('.apk'),
-              orElse: () => null,
-            );
-            downloadUrl = asset?['browser_download_url'];
+            downloadUrl = _pickAndroidApkUrl(assets);
           } else if (Platform.isIOS) {
             downloadUrl = data['html_url'];
           }
@@ -75,6 +72,33 @@ class AppUpdaterService {
       debugPrint('Error checking for updates: $e');
       return null;
     }
+  }
+
+  String? _pickAndroidApkUrl(List<dynamic> assets) {
+    final apks = assets
+        .where((a) => (a['name'] as String).toLowerCase().endsWith('.apk'))
+        .toList();
+    if (apks.isEmpty) return null;
+
+    final tvApks = apks
+        .where((a) => (a['name'] as String).toLowerCase().contains('android-tv'))
+        .toList();
+    final candidates = tvApks.isNotEmpty ? tvApks : apks;
+
+    final is64Bit = sizeOf<IntPtr>() == 8;
+    final abiNeedle = is64Bit ? 'arm64' : 'armeabi-v7a';
+    final abiFallback = is64Bit ? 'v7a' : 'arm64';
+
+    for (final needle in [abiNeedle, abiFallback]) {
+      for (final asset in candidates) {
+        final name = (asset['name'] as String).toLowerCase();
+        if (name.contains(needle)) {
+          return asset['browser_download_url'] as String;
+        }
+      }
+    }
+
+    return candidates.first['browser_download_url'] as String?;
   }
 
   bool _isNewerVersion(String current, String latest) {

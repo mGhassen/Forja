@@ -192,11 +192,14 @@ Add to `SettingsService` / `storage`:
 `.github/workflows/build.yml` is manual only (optional smoke builds, artifacts only). `.github/workflows/release.yml` is manual — bump version, tag, and publish GitHub Release with:
 
 ```
-Forja-1.2.3-android-arm64.apk
+Forja-1.2.3-android-tv-arm64.apk
+Forja-1.2.3-android-tv-armeabi-v7a.apk
 Forja-1.2.3-windows-setup.exe
 Forja-1.2.3-macos-arm64.dmg
 Forja-1.2.3-linux-x86_64.AppImage
 ```
+
+Release workflow supports per-platform toggles (macOS, Windows, Linux, Android TV). Android TV requires signing secrets (`FORJA_KEYSTORE_*`).
 
 GitHub Release created from tag with these assets attached. App updater matches by filename patterns.
 

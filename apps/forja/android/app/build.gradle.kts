@@ -12,7 +12,7 @@ val buildRust =
 if (buildRust) {
     tasks.register<Exec>("buildRustAndroid") {
         group = "rust"
-        description = "Cross-compile libffi.so (arm64-v8a) via scripts/build_rust_mobile.sh"
+        description = "Cross-compile libffi.so (arm64-v8a + armeabi-v7a) via scripts/build_rust_mobile.sh"
         workingDir = repoRoot
         commandLine("bash", "scripts/build_rust_mobile.sh", "android")
     }

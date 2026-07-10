@@ -127,20 +127,31 @@ build_android() {
   fi
 
   export ANDROID_NDK_HOME="$ndk"
-  echo "==> Android arm64 (NDK: $ndk)"
-  rustup target add aarch64-linux-android >/dev/null 2>&1 || true
+  export AR="$prebuilt/bin/llvm-ar"
 
+  echo "==> Android arm64-v8a (NDK: $ndk)"
+  rustup target add aarch64-linux-android >/dev/null 2>&1 || true
   export CC="$prebuilt/bin/aarch64-linux-android21-clang"
   export CXX="$prebuilt/bin/aarch64-linux-android21-clang++"
-  export AR="$prebuilt/bin/llvm-ar"
   export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
-
   cargo build -p ffi --target aarch64-linux-android "--$PROFILE" "${MOBILE_FLAGS[@]}"
-  local out="$ROOT/crates/target/aarch64-linux-android/$PROFILE/libffi.so"
-  local dest="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a"
-  mkdir -p "$dest"
-  cp -f "$out" "$dest/libffi.so"
-  echo "Copied -> $dest/libffi.so"
+  local out64="$ROOT/crates/target/aarch64-linux-android/$PROFILE/libffi.so"
+  local dest64="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a"
+  mkdir -p "$dest64"
+  cp -f "$out64" "$dest64/libffi.so"
+  echo "Copied -> $dest64/libffi.so"
+
+  echo "==> Android armeabi-v7a (NDK: $ndk)"
+  rustup target add armv7-linux-androideabi >/dev/null 2>&1 || true
+  export CC="$prebuilt/bin/armv7a-linux-androideabi21-clang"
+  export CXX="$prebuilt/bin/armv7a-linux-androideabi21-clang++"
+  export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$CC"
+  cargo build -p ffi --target armv7-linux-androideabi "--$PROFILE" "${MOBILE_FLAGS[@]}"
+  local out32="$ROOT/crates/target/armv7-linux-androideabi/$PROFILE/libffi.so"
+  local dest32="$ROOT/apps/forja/android/app/src/main/jniLibs/armeabi-v7a"
+  mkdir -p "$dest32"
+  cp -f "$out32" "$dest32/libffi.so"
+  echo "Copied -> $dest32/libffi.so"
 }
 
 case "${1:-all}" in
