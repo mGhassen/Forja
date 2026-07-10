@@ -61,8 +61,10 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
+      builder: (ctx) => ShellScope.rehost(
+        context,
+        StatefulBuilder(
+          builder: (ctx, setLocal) => AlertDialog(
           backgroundColor: IptvShellStyle.surface,
           title: Text('Add M3U Playlist',
               style: IptvShellStyle.pageTitle.copyWith(fontSize: 26)),
@@ -142,6 +144,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
                     },
             ),
           ],
+        ),
         ),
       ),
     );
@@ -233,7 +236,9 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
   Future<void> _delete(M3uPlaylist p) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => ShellScope.rehost(
+        context,
+        AlertDialog(
         backgroundColor: IptvShellStyle.surface,
         title: Text('Delete playlist?',
             style: IptvShellStyle.pageTitle.copyWith(fontSize: 24)),
@@ -254,6 +259,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
             onPressed: () => Navigator.of(ctx).pop(true),
           ),
         ],
+        ),
       ),
     );
     if (ok != true) return;

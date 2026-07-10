@@ -217,7 +217,6 @@ class _SourceChip extends StatelessWidget {
             context: context,
             onTap: enabled ? onTap : null,
             borderRadius: 12,
-            scaleOnFocus: 1.0,
             child: Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: 12, vertical: 8),
@@ -561,6 +560,7 @@ class _PortalListView extends StatelessWidget {
                     },
             ),
           ],
+        ),
         ),
       ),
     );
@@ -1181,7 +1181,6 @@ class _BrowserViewState extends State<_BrowserView> {
             context: context,
             onTap: () => ctrl.selectBrowserCategory(c.id),
             borderRadius: 8,
-            scaleOnFocus: 1.0,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
@@ -1234,7 +1233,6 @@ class _BrowserViewState extends State<_BrowserView> {
               context: context,
               onTap: () => ctrl.selectBrowserCategory(c.id),
               borderRadius: 20,
-              scaleOnFocus: 1.0,
               child: ChoiceChip(
                 label: Text(c.name.isEmpty ? 'Uncategorized' : c.name,
                     style: GoogleFonts.poppins(
@@ -1467,7 +1465,6 @@ class _StreamCard extends StatelessWidget {
                     context: context,
                     onTap: onTap,
                     borderRadius: 12,
-                    scaleOnFocus: 1.0,
                     child: column,
                   )
                 : InkWell(

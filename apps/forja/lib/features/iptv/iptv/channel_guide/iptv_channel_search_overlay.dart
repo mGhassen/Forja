@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/design/design.dart';
 
 class IptvChannelSearchOverlay extends StatefulWidget {
   const IptvChannelSearchOverlay({
@@ -399,7 +400,12 @@ class _SearchResultTileState extends State<_SearchResultTile> {
         widget.onHover();
       },
       onExit: (_) => setState(() => _hovered = false),
-      child: InkWell(
+      child: AnimatedScale(
+        scale: widget.focused ? ShellTokens.focusActiveScale : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.centerLeft,
+        child: InkWell(
         onTap: widget.onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -458,6 +464,7 @@ class _SearchResultTileState extends State<_SearchResultTile> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

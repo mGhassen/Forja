@@ -20,6 +20,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -1004,8 +1005,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   void _showSubtitleSettings() {
     showDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
+      builder: (ctx) => ShellScope.rehost(
+        context,
+        StatefulBuilder(
+          builder: (ctx, setDialog) => AlertDialog(
           backgroundColor: const Color(0xFF141414),
           title: const Text(
             'Subtitle delay',
@@ -1062,6 +1065,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               onPressed: () => Navigator.pop(ctx),
             ),
           ],
+        ),
         ),
       ),
     );

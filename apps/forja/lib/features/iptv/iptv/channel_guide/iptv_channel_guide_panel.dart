@@ -681,7 +681,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 if (_wide) _focusColumn = _FocusColumn.groups;
               });
             },
-            child: InkWell(
+            child: AnimatedScale(
+              scale: focused ? ShellTokens.focusActiveScale : 1.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.centerLeft,
+              child: InkWell(
             onTap: () {
               setState(() {
                 _focusedGroupIndex = i;
@@ -744,8 +749,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
               ),
             ),
           ),
-          ),
-        );
+        ),
+      ),
+    );
       },
     );
   }
@@ -846,7 +852,12 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
           widget.onProbe();
         },
         onExit: (_) => widget.onCancelProbe(),
-        child: Material(
+        child: AnimatedScale(
+          scale: focused ? ShellTokens.focusActiveScale : 1.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.centerLeft,
+          child: Material(
           elevation: 0,
           shadowColor: Colors.black.withValues(alpha: 0.4),
           color: active
@@ -921,6 +932,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
               ),
             ),
           ),
+        ),
         ),
       ),
     );
