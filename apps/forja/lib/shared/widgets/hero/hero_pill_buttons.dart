@@ -117,61 +117,65 @@ class HeroPillPlayButton extends StatelessWidget {
       builder: (focused, pressed) {
         final compact = _tvCompactUnfocused(policy, focused);
 
-        if (compact) {
-          final compactIcon = iconWidget ??
-              (icon != null
-                  ? Icon(icon, size: _kHeroPillIconSize, color: Colors.white)
-                  : null);
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            curve: Curves.easeOutCubic,
-            width: _kHeroPillHeight,
-            height: _kHeroPillHeight,
-            decoration: _heroPillDecoration(hover: false),
-            alignment: Alignment.center,
-            child: compactIcon,
-          );
-        }
+        final compactIcon = iconWidget ??
+            (icon != null
+                ? Icon(icon, size: _kHeroPillIconSize, color: Colors.white)
+                : null);
 
-        return AnimatedContainer(
+        return AnimatedSwitcher(
           duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOutCubic,
-          height: _kHeroPillHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: decoration(focused),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (leading != null) ...[
-                SizedBox(
-                  width: _kHeroPillIconSize,
-                  height: _kHeroPillIconSize,
-                  child: Center(
-                    child: IconTheme(
-                      data: IconThemeData(
-                        size: _kHeroPillIconSize,
-                        color: foreground,
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeOutCubic,
+          child: compact
+              ? Container(
+                  key: const ValueKey('hero-pill-compact'),
+                  width: _kHeroPillHeight,
+                  height: _kHeroPillHeight,
+                  decoration: _heroPillDecoration(hover: false),
+                  alignment: Alignment.center,
+                  child: compactIcon,
+                )
+              : AnimatedContainer(
+                  key: const ValueKey('hero-pill-expanded'),
+                  duration: const Duration(milliseconds: 140),
+                  curve: Curves.easeOutCubic,
+                  height: _kHeroPillHeight,
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  decoration: decoration(focused),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (leading != null) ...[
+                        SizedBox(
+                          width: _kHeroPillIconSize,
+                          height: _kHeroPillIconSize,
+                          child: Center(
+                            child: IconTheme(
+                              data: IconThemeData(
+                                size: _kHeroPillIconSize,
+                                color: foreground,
+                              ),
+                              child: leading,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        label,
+                        style: GoogleFonts.inter(
+                          color: foreground,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                          height: 1.0,
+                        ),
                       ),
-                      child: leading,
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  color: foreground,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.2,
-                  height: 1.0,
-                ),
-              ),
-            ],
-          ),
         );
       },
     );
