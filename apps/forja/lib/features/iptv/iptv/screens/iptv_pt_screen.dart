@@ -504,9 +504,11 @@ class _PortalListView extends StatelessWidget {
     final passCtrl = TextEditingController();
     await showDialog(
       context: context,
-      builder: (ctx) => AnimatedBuilder(
-        animation: ctrl,
-        builder: (_, _) => AlertDialog(
+      builder: (ctx) => ShellScope.rehost(
+        context,
+        AnimatedBuilder(
+          animation: ctrl,
+          builder: (_, _) => AlertDialog(
           backgroundColor: IptvShellStyle.surface,
           title: Text('Add Portal',
               style: IptvShellStyle.pageTitle.copyWith(fontSize: 26)),

@@ -35,6 +35,16 @@ class ShellScope extends InheritedWidget {
   static ShellScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<ShellScope>();
 
+  /// Re-provide shell context inside [showDialog] / overlay routes.
+  static Widget rehost(BuildContext hostContext, Widget child) {
+    final scope = of(hostContext);
+    return ShellScope(
+      profile: scope.profile,
+      config: scope.config,
+      child: child,
+    );
+  }
+
   @override
   bool updateShouldNotify(ShellScope oldWidget) =>
       profile != oldWidget.profile || config != oldWidget.config;
