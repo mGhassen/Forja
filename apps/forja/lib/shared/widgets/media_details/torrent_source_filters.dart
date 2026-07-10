@@ -1313,28 +1313,39 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
             ),
           ),
         ),
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
+        // Slot flush to Sources' left edge; clip so the panel only ever
+        // appears by sliding out from that edge (never from off-screen).
+        Positioned(
           top: 0,
           bottom: 0,
-          right: _open ? sourcesW : sourcesW - filterW,
+          right: sourcesW,
           width: filterW,
-          child: ForjaFrostedPanel(
-            // Details: BackdropFilter. Player: ImageFiltered via frozenFrame.
-            enableBlur: widget.frozenFrame == null ||
-                widget.frozenFrame!.isEmpty,
-            frozenFrame: widget.frozenFrame,
-            border: Border(
-              left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
-              right: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
-            ),
-            child: SafeArea(
-              left: false,
-              right: false,
-              child: Padding(
-                padding: padding,
-                child: widget.child,
+          child: ClipRect(
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              offset: _open ? Offset.zero : const Offset(1, 0),
+              child: ForjaFrostedPanel(
+                // Details: BackdropFilter. Player: ImageFiltered via frozenFrame.
+                enableBlur: widget.frozenFrame == null ||
+                    widget.frozenFrame!.isEmpty,
+                frozenFrame: widget.frozenFrame,
+                border: Border(
+                  left: BorderSide(
+                    color: ForjaShellColors.cinematic.borderSubtle,
+                  ),
+                  right: BorderSide(
+                    color: ForjaShellColors.cinematic.borderSubtle,
+                  ),
+                ),
+                child: SafeArea(
+                  left: false,
+                  right: false,
+                  child: Padding(
+                    padding: padding,
+                    child: widget.child,
+                  ),
+                ),
               ),
             ),
           ),

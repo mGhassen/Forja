@@ -104,7 +104,8 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      frozenFrame: widget.frozenFrame,
+      // No freeze-frame under the Sources shell — solid/translucent panel only.
+      // Filters still receives [frozenFrame] for its own frost path.
       child: _PlayerSourcesBody(
         movie: widget.movie,
         season: widget.season,
