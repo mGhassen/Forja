@@ -86,9 +86,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
     _syncTvRow(list.length);
 
     final sectionTop = _sectionTitleTop(context);
-    final metrics = ShellScope.metricsOf(context);
-    final horizontalPad =
-        metrics.usesTvDensity ? ShellTokens.tvBodyHorizontalPadding : 24.0;
+    const horizontalPad = 24.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

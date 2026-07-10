@@ -290,6 +290,9 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                 child: child ?? const SizedBox.shrink(),
               ),
             );
+            if (ShellTokens.isTvLayout(context)) {
+              content = TvUiScaler(child: content);
+            }
             if (ShellTokens.isAndroidTvDevice) {
               final mq = MediaQuery.of(context);
               content = MediaQuery(

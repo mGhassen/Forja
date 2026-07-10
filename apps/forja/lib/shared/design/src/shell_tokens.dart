@@ -303,7 +303,10 @@ abstract final class ShellTokens {
     return views.first.physicalSize;
   }
 
-  /// Scale shell/home fixed sizes on TV (cards, rails, etc.).
-  @Deprecated('TV uses desktop shell metrics — do not scale separately')
-  static double tvUiScale(BuildContext context) => 1.0;
+  /// Layout density for leanback: virtual viewport is 1/scale larger, then scaled to fit.
+  static const double tvUiScaleFactor = 0.80;
+
+  /// Returns [tvUiScaleFactor] on TV layout; 1.0 elsewhere.
+  static double tvUiScale(BuildContext context) =>
+      isTvLayout(context) ? tvUiScaleFactor : 1.0;
 }

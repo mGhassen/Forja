@@ -209,55 +209,60 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
         bottom: useTvTabs
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(48),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < tabLabels.length; i++) ...[
-                        if (i > 0) const SizedBox(width: 8),
-                        Expanded(
-                          child: AnimatedBuilder(
-                            animation: _tabController,
-                            builder: (context, _) {
-                              final selected = _tabController.index == i;
-                              return shellFocusableTap(
-                                context: context,
-                                onTap: () => _tabController.animateTo(i),
-                                borderRadius: 8,
-                                listIndex: i,
-                                tvTabId: 'mylist',
-                                tvZone: ShellTvZone.chipStrip,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? Colors.white.withValues(alpha: 0.1)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: selected
-                                          ? AppTheme.primaryColor
-                                          : Colors.white.withValues(alpha: 0.08),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < tabLabels.length; i++)
+                            Expanded(
+                              child: AnimatedBuilder(
+                                animation: _tabController,
+                                builder: (context, _) {
+                                  final selected = _tabController.index == i;
+                                  return shellFocusableTap(
+                                    context: context,
+                                    onTap: () => _tabController.animateTo(i),
+                                    borderRadius: 0,
+                                    listIndex: i,
+                                    tvTabId: 'mylist',
+                                    tvZone: ShellTvZone.chipStrip,
+                                    child: SizedBox(
+                                      height: 46,
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            tabLabels[i],
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: selected
+                                                  ? Colors.white
+                                                  : Colors.white54,
+                                              fontWeight: selected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          Container(
+                                            height: 2,
+                                            color: selected
+                                                ? AppTheme.primaryColor
+                                                : Colors.transparent,
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  child: Text(
-                                    tabLabels[i],
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: selected ? Colors.white : Colors.white54,
-                                      fontWeight:
-                                          selected ? FontWeight.w700 : FontWeight.w500,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               )
             : TabBar(

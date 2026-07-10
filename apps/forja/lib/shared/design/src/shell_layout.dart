@@ -16,12 +16,10 @@ bool shellUsesWideLayout(BuildContext context) {
 }
 
 double shellMovieCardWidth(BuildContext context) {
-  final metrics = ShellScope.metricsOf(context);
-  if (metrics.usesTvDensity) return metrics.homeMovieCardWidth;
   if (ShellScope.profileOf(context) == ShellProfile.mobile) {
     return MediaQuery.sizeOf(context).width > 900 ? 190.0 : 165.0;
   }
-  return metrics.homeMovieCardWidth;
+  return ShellScope.metricsOf(context).homeMovieCardWidth;
 }
 
 double shellMovieCardHeight(BuildContext context) =>
@@ -54,7 +52,5 @@ int shellGridCrossAxisCount(
   return w > 600 ? tablet : phone;
 }
 
-bool shellIptvUsesWideLayout(BuildContext context) {
-  if (ShellScope.profileOf(context) == ShellProfile.tv) return true;
-  return MediaQuery.sizeOf(context).width >= 1100;
-}
+bool shellIptvUsesWideLayout(BuildContext context) =>
+    MediaQuery.sizeOf(context).width >= 1100;

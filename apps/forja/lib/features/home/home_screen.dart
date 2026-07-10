@@ -45,12 +45,8 @@ bool _isFullCinematicHero(BuildContext context) {
   return MediaQuery.sizeOf(context).width >= ShellTokens.heroDesktopMinBodyWidth;
 }
 
-double _heroTextTopInset(BuildContext context) {
-  if (ShellScope.profileOf(context) == ShellProfile.tv) {
-    return ShellTokens.shellHeaderTopPadding;
-  }
-  return ShellTokens.heroTextColumnTopInsetDesktop;
-}
+double _heroTextTopInset(BuildContext context) =>
+    ShellTokens.heroTextColumnTopInsetDesktop;
 
 SliverToBoxAdapter _homeRowSliver(
   Widget section, {
@@ -122,7 +118,8 @@ class _HomeScreenState extends State<HomeScreen>
   late Future<List<Movie>> _featuredThisMonthFuture;
   late Future<List<Movie>> _nowPlayingFuture;
 
-  List<({String label, Future<List<Movie>> future})> _randomCategoryRows = [];
+  List<({String id, String label, Future<List<Movie>> future})>
+      _randomCategoryRows = [];
   int _homeFeedEpoch = 0;
 
   Timer? _heroTimer;
@@ -329,20 +326,27 @@ class _HomeScreenState extends State<HomeScreen>
     _randomCategoryRows = [
       for (final category in picked)
         (
+          id: category.id,
           label: category.label,
           future: _fetchCategoryRow(category),
         ),
     ];
   }
 
+  static const int _kGenreRowOrderBase = 21;
+
   List<Widget> _randomCategoryRowSlivers() => [
-        for (final row in _randomCategoryRows)
+        for (var i = 0; i < _randomCategoryRows.length; i++)
           _homeRowSliver(
             _MovieSection(
-              key: ValueKey('${row.label}-$_homeFeedEpoch'),
-              title: row.label,
-              future: row.future,
+              key: ValueKey(
+                '${_randomCategoryRows[i].id}-$_homeFeedEpoch',
+              ),
+              title: _randomCategoryRows[i].label,
+              future: _randomCategoryRows[i].future,
               onMovieTap: _openDetails,
+              tvRowId: 'genre-${_randomCategoryRows[i].id}',
+              tvRowOrder: _kGenreRowOrderBase + i,
             ),
             isFirstAfterHero: false,
           ),
@@ -1596,21 +1600,12 @@ class _HomeScreenState extends State<HomeScreen>
     return _desktopHeroHeight(context);
   }
 
-  double _desktopTopBarBleed(BuildContext context) {
-    if (ShellScope.profileOf(context) == ShellProfile.tv) return 0;
-    return MediaQuery.paddingOf(context).top;
-  }
+  double _desktopTopBarBleed(BuildContext context) =>
+      MediaQuery.paddingOf(context).top;
 
   double _desktopHeroHeight(BuildContext context) {
     final screenH = MediaQuery.sizeOf(context).height;
     final topBar = _desktopTopBarBleed(context);
-    final metrics = ShellScope.metricsOf(context);
-    if (metrics.usesTvDensity) {
-      return _snapToDevicePixels(
-        context,
-        screenH * ShellTokens.heroHeightFractionDesktop,
-      );
-    }
     final firstRowHeight =
         _MovieSection.sectionHeight(context, compactTop: true);
     final nextRowPeek = _MovieSection.sectionHeight(context) *
@@ -2967,21 +2962,11 @@ class _HistoryCard extends StatefulWidget {
     this.isLoading = false,
   });
 
-  static double cardWidth(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardWidthDesktop
-        : ShellTokens.shellContinueWatchingCardWidthCompact;
-  }
+  static double cardWidth(BuildContext context) =>
+      shellContinueWatchingCardWidth(context);
 
-  static double cardHeight(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardHeightDesktop
-        : ShellTokens.shellContinueWatchingCardHeightCompact;
-  }
+  static double cardHeight(BuildContext context) =>
+      shellContinueWatchingCardHeight(context);
 
   @override
   State<_HistoryCard> createState() => _HistoryCardState();
@@ -3928,59 +3913,26 @@ class _HeroTitleSlot extends StatelessWidget {
         alignment: Alignment.bottomLeft,
         child: Padding(
           padding: EdgeInsets.only(bottom: desktop || compact ? 0 : 14),
-          child: ShellScope.profileOf(context) == ShellProfile.tv
-              ? LayoutBuilder(
-                  builder: (context, constraints) {
-                    final resolvedWidth = compact && constraints.hasBoundedWidth
-                        ? constraints.maxWidth
-                        : maxWidth;
-                    final resolvedLogoHeight = compact &&
-                            constraints.hasBoundedHeight
-                        ? math.min(logoMaxHeight, constraints.maxHeight)
-                        : logoMaxHeight;
-                    return SizedBox(
-                      height: resolvedLogoHeight,
-                      width: resolvedWidth,
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: hasLogo
-                            ? CachedNetworkImage(
-                                imageUrl: logoUrl!,
-                                height: resolvedLogoHeight,
-                                width: resolvedWidth,
-                                fit: BoxFit.contain,
-                                alignment: Alignment.centerLeft,
-                                placeholder: (_, _) => title,
-                                errorWidget: (_, _, _) => title,
-                                fadeInDuration:
-                                    const Duration(milliseconds: 250),
-                                fadeOutDuration: Duration.zero,
-                              )
-                            : title,
-                      ),
-                    );
-                  },
-                )
-              : SizedBox(
-                  height: logoMaxHeight,
-                  width: maxWidth,
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: hasLogo
-                        ? CachedNetworkImage(
-                            imageUrl: logoUrl!,
-                            height: logoMaxHeight,
-                            width: maxWidth,
-                            fit: BoxFit.contain,
-                            alignment: Alignment.centerLeft,
-                            placeholder: (_, _) => title,
-                            errorWidget: (_, _, _) => title,
-                            fadeInDuration: const Duration(milliseconds: 250),
-                            fadeOutDuration: Duration.zero,
-                          )
-                        : title,
-                  ),
-                ),
+          child: SizedBox(
+            height: logoMaxHeight,
+            width: maxWidth,
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: hasLogo
+                  ? CachedNetworkImage(
+                      imageUrl: logoUrl!,
+                      height: logoMaxHeight,
+                      width: maxWidth,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
+                      placeholder: (_, _) => title,
+                      errorWidget: (_, _, _) => title,
+                      fadeInDuration: const Duration(milliseconds: 250),
+                      fadeOutDuration: Duration.zero,
+                    )
+                  : title,
+            ),
+          ),
         ),
       ),
     );

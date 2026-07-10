@@ -28,11 +28,12 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 ## Android TV
 
 - Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
+- UI renders at **80% density** (`tvUiScaleFactor`) — layout uses a larger virtual viewport then scales to fit, so cards, text, and spacing match desktop proportions on 1080p panels
 - **Nav rail:** UP/DOWN only move between nav items (trap at Home and Settings); LEFT is trapped; **RIGHT** returns to the **active** tab’s last focus (row, hero, or default) without switching tabs; **Enter/Select** switches to the focused nav tab and restores that tab’s focus
 - **Catalog rows:** LEFT/RIGHT move within the row only (no vertical scroll jump); DOWN/UP move between rows and restore each row’s own last-focused item (not the column from the row you left); last row DOWN stops (no escape to nav)
 - **Hero:** UP from the first row scrolls the hero fully visible and focuses Play; LEFT from Play focuses the **active** nav tab (not a geometric neighbor)
-- **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Matches** use TV-sized cards and coordinator-registered rows/chips; remote **Select** / **Enter** / **Space** activate focused controls
-- Search uses the **two-column desktop layout** on TV (trending suggestions + results grid); D-pad lands on suggestions first — not the search field
+- **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Matches** use the **same card sizes, spacing, and section layout as desktop**; D-pad focus and coordinator-registered rows/chips are unchanged
+- Search uses the **two-column desktop layout** on TV (trending suggestions, focused-result detail pane, fluid results grid); D-pad lands on suggestions first — not the search field
 - Phone layout is unchanged — TV behavior applies only on Android TV / leanback devices
 - **Dev:** `flutter run --dart-define=FORJA_ANDROID_TV=true` forces TV profile on any Android device (layout/defaults only — not leanback launcher proof). See [Platforms](platforms.md#android-tv-development).
 

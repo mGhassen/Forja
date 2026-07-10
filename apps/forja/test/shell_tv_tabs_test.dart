@@ -44,7 +44,7 @@ void main() {
         child: Builder(
           builder: (context) {
             expect(shellUsesWideLayout(context), isTrue);
-            expect(shellMovieCardWidth(context), 220);
+            expect(shellMovieCardWidth(context), 190);
             return const SizedBox.shrink();
           },
         ),

@@ -213,10 +213,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
                           );
                           final navColumn = buildNavColumn(itemSpacing);
 
-                          if (metrics.usesTvDensity) {
-                            return navColumn;
-                          }
-
                           return SingleChildScrollView(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             child: ConstrainedBox(
@@ -458,16 +454,21 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
     final active = _activeFor(policy);
-    final iconColor = widget.selected
-        ? ForjaShellColors.iconActive
-        : active
-            ? ForjaShellColors.iconHover
-            : ForjaShellColors.iconMuted;
-    final labelColor = widget.selected
-        ? ForjaShellColors.textPrimary
-        : active
-            ? ForjaShellColors.textSecondary
-            : ForjaShellColors.iconMuted;
+    final selectedFocused = widget.selected && active;
+    final iconColor = selectedFocused
+        ? Colors.white
+        : widget.selected
+            ? ForjaShellColors.iconActive
+            : active
+                ? ForjaShellColors.iconHover
+                : ForjaShellColors.iconMuted;
+    final labelColor = selectedFocused
+        ? Colors.white
+        : widget.selected
+            ? ForjaShellColors.textPrimary
+            : active
+                ? ForjaShellColors.textSecondary
+                : ForjaShellColors.iconMuted;
     final labelStyle = GoogleFonts.inter(
       color: labelColor,
       fontSize: ShellTokens.navRailLabelFontSize,
@@ -558,12 +559,15 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                   AnimatedContainer(
                                     duration:
                                         ShellTokens.navSelectionAnimation,
+                                    curve: Curves.easeOutCubic,
                                     height:
                                         ShellTokens.shellNavUnderlineHeight,
                                     width: widget.selected ? 24 : 0,
                                     decoration: BoxDecoration(
                                       color: widget.selected
-                                          ? ForjaShellColors.navUnderline
+                                          ? (selectedFocused
+                                              ? Colors.white
+                                              : ForjaShellColors.navUnderline)
                                           : Colors.transparent,
                                       borderRadius: BorderRadius.circular(2),
                                     ),

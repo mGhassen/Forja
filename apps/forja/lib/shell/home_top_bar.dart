@@ -223,14 +223,13 @@ class _HomeTopBarState extends State<HomeTopBar> {
       },
       child: SafeArea(
         bottom: false,
-        top: !tvFocus,
         child: SizedBox(
           height: ShellTokens.homeTopBarHeight,
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               ShellTokens.bodyHorizontalPadding +
                   (compactNav ? 0 : ShellTokens.homeTopBarMenuLeadingInset),
-              tvFocus ? 0 : ShellTokens.shellHeaderTopPadding,
+              ShellTokens.shellHeaderTopPadding,
               ShellTokens.bodyHorizontalPadding,
               0,
             ),
@@ -366,68 +365,96 @@ class _CategoryTab extends StatefulWidget {
 }
 
 class _CategoryTabState extends State<_CategoryTab> {
+  static const _animDuration = Duration(milliseconds: 280);
+  static const _animCurve = Curves.easeInOutCubic;
+  static const _hoverT = 0.62;
+  static const _selectedT = 1.0;
+
   bool _hovered = false;
   bool _focused = false;
 
+  double get _visualTarget {
+    if (widget.isActive) return _selectedT;
+    if (_hovered || _focused) return _hoverT;
+    return 0;
+  }
+
+  Color _lerpTabColor(double t) {
+    final idle = ForjaShellColors.cinematic.textSecondary;
+    const white = Colors.white;
+    final hoverWhite = Colors.white.withValues(alpha: 0.92);
+    if (t <= 0) return idle;
+    if (t < _hoverT) {
+      return Color.lerp(idle, hoverWhite, t / _hoverT)!;
+    }
+    return Color.lerp(hoverWhite, white, (t - _hoverT) / (_selectedT - _hoverT))!;
+  }
+
+  double _underlineWidth(double t) {
+    if (t <= 0) return 0;
+    if (t < _hoverT) return 28 * (t / _hoverT);
+    return 28 + 4 * ((t - _hoverT) / (_selectedT - _hoverT));
+  }
+
   Widget _buildContent() {
-    final selected = widget.isActive;
-    final highlighted = _hovered || _focused;
-    final showUnderline = selected || highlighted;
-    final textColor = selected
-        ? Colors.white
-        : highlighted
-            ? Colors.white.withValues(alpha: 0.92)
-            : ForjaShellColors.cinematic.textSecondary;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: 34,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.label,
-                  style: GoogleFonts.inter(
-                    fontSize: 17,
-                    fontWeight: selected
-                        ? FontWeight.w700
-                        : highlighted
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                    color: textColor,
-                    letterSpacing: 0.1,
-                  ),
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: _visualTarget),
+      duration: _animDuration,
+      curve: _animCurve,
+      builder: (context, t, _) {
+        final textColor = _lerpTabColor(t);
+        final fontWeight = FontWeight.lerp(FontWeight.w500, FontWeight.w700, t)!;
+        final underlineWidth = _underlineWidth(t);
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 34,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.label,
+                      style: GoogleFonts.inter(
+                        fontSize: 17,
+                        fontWeight: fontWeight,
+                        color: textColor,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                    if (widget.showChevron) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.expand_more_rounded,
+                        size: 18,
+                        color: textColor,
+                      ),
+                    ],
+                  ],
                 ),
-                if (widget.showChevron) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.expand_more_rounded,
-                    size: 18,
-                    color: textColor,
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-        ),
-        SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
-        AnimatedContainer(
-          duration: ShellTokens.navSelectionAnimation,
-          curve: Curves.easeOutCubic,
-          height: ShellTokens.shellNavUnderlineHeight,
-          width: showUnderline ? (selected ? 32 : 28) : 0,
-          decoration: BoxDecoration(
-            color: showUnderline
-                ? (selected ? Colors.white : Colors.white.withValues(alpha: 0.92))
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      ],
+            SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                height: ShellTokens.shellNavUnderlineHeight,
+                width: underlineWidth,
+                decoration: BoxDecoration(
+                  color: underlineWidth > 0
+                      ? textColor
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

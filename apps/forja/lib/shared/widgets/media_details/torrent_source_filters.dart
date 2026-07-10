@@ -870,7 +870,6 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metrics = ShellScope.metricsOf(context);
     final canFilter = showFilters &&
         (availableQualities.isNotEmpty ||
             availableLanguages.isNotEmpty ||
@@ -878,34 +877,6 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
             availableSizeRanges.isNotEmpty ||
             showAudioFilters ||
             sortPreference != null);
-
-    if (metrics.usesTvDensity) {
-      if (!canFilter) return const SizedBox.shrink();
-      return FocusableControl(
-        onTap: () => _openFilters(context),
-        borderRadius: 10,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          decoration: _torrentPanelControlDecoration(active: _activeCount > 0, radius: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.tune_rounded, size: 20, color: ForjaShellColors.cinematic.textPrimary),
-              const SizedBox(width: 8),
-              Text(
-                _activeCount > 0 ? 'Filters ($_activeCount)' : 'Filters & sort',
-                style: TextStyle(
-                  color: ForjaShellColors.cinematic.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     return Row(
       children: [
@@ -1297,10 +1268,7 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
   Widget build(BuildContext context) {
     final sourcesW = TorrentSourcesPanel.panelWidthOf(context);
     final filterW = TorrentSourcesPanel.filterPanelWidthOf(context);
-    final metrics = ShellScope.metricsOf(context);
-    final padding = metrics.usesTvDensity
-        ? const EdgeInsets.fromLTRB(16, 8, 12, 12)
-        : const EdgeInsets.fromLTRB(20, 8, 12, 16);
+    const padding = EdgeInsets.fromLTRB(20, 8, 12, 16);
 
     return Stack(
       fit: StackFit.expand,

@@ -73,7 +73,7 @@ void main() {
     expect(find.byType(ShellBottomNav), findsNothing);
   });
 
-  testWidgets('TV profile keeps nav rail on narrow width (no compact drawer)',
+  testWidgets('TV profile keeps nav rail on narrow logical width (1080p DPR)',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -87,6 +87,6 @@ void main() {
     );
 
     expect(find.byType(ShellNavRail), findsOneWidget);
-    expect(find.byIcon(Icons.menu), findsNothing);
+    expect(find.byType(ShellNavMenuButton), findsNothing);
   });
 }

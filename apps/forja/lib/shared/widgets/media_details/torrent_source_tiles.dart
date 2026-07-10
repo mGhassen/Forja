@@ -372,9 +372,8 @@ class _SourceBadgeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = ShellScope.metricsOf(context);
-    final usesTvDensity = metrics.usesTvDensity;
-    final padV = usesTvDensity ? 14.0 : 10.0;
-    final titleSize = usesTvDensity ? 15.0 : 13.0;
+    const padV = 10.0;
+    const titleSize = 13.0;
     final cinematic = ForjaShellColors.cinematic;
     final hasProvider =
         provider != null && provider!.trim().isNotEmpty;
@@ -434,7 +433,7 @@ class _SourceBadgeCard extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 title,
-                                maxLines: usesTvDensity ? 3 : 2,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: cinematic.textPrimary,
@@ -448,7 +447,7 @@ class _SourceBadgeCard extends StatelessWidget {
                               const SizedBox(width: 8),
                               ConstrainedBox(
                                 constraints: BoxConstraints(
-                                  maxWidth: usesTvDensity ? 120 : 96,
+                                  maxWidth: 96,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -512,10 +511,7 @@ class _SourceBadgeCard extends StatelessWidget {
                                   ),
                                 ),
                               for (final badge in badges)
-                                _SourceMetaBadge(
-                                  badge: badge,
-                                  usesTvDensity: usesTvDensity,
-                                ),
+                                _SourceMetaBadge(badge: badge),
                             ],
                           ),
                         ],
@@ -550,13 +546,9 @@ class _SourceBadgeCard extends StatelessWidget {
 }
 
 class _SourceMetaBadge extends StatelessWidget {
-  const _SourceMetaBadge({
-    required this.badge,
-    required this.usesTvDensity,
-  });
+  const _SourceMetaBadge({required this.badge});
 
   final _SourceBadgeSpec badge;
-  final bool usesTvDensity;
 
   @override
   Widget build(BuildContext context) {
@@ -585,10 +577,7 @@ class _SourceMetaBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: usesTvDensity ? 8 : 7,
-        vertical: usesTvDensity ? 4 : 3,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(6),
@@ -598,7 +587,7 @@ class _SourceMetaBadge extends StatelessWidget {
         badge.label,
         style: TextStyle(
           color: fg,
-          fontSize: usesTvDensity ? 12 : 11,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
           height: 1.1,
         ),

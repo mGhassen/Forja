@@ -157,7 +157,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         if (_query.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            if (_isTvSearch(context)) _focusFirstHelper();
+            if (_tvFocus(context)) _focusFirstHelper();
           });
         }
       }
@@ -195,7 +195,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         _focusedIndex = 0;
         _pendingGridFocusIndex = null;
       });
-      if (_isTvSearch(context) && _trendingHelperTitles.isNotEmpty) {
+      if (_tvFocus(context) && _trendingHelperTitles.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _focusFirstHelper();
         });
@@ -499,8 +499,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   bool _isDesktopLayout(BuildContext context) => shellUsesWideLayout(context);
 
-  bool _isTvSearch(BuildContext context) =>
-      ShellScope.metricsOf(context).usesTvDensity;
+  bool _tvFocus(BuildContext context) =>
+      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
   void _syncHelperResultsRow(int count) {
     if (count <= 0) {
@@ -522,7 +522,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 
   KeyEventResult _searchFieldKeyEvent(FocusNode node, KeyEvent event) {
-    if (!mounted || !_isTvSearch(context)) return KeyEventResult.ignored;
+    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
         _focusFirstHelper()) {
@@ -531,14 +531,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     return KeyEventResult.ignored;
   }
 
-  double _searchPageTopInset(BuildContext context) {
-    if (widget.overlay && !_isDesktopLayout(context)) {
-      return ShellTokens.searchPageInset;
-    }
-    final metrics = ShellScope.metricsOf(context);
-    if (metrics.usesTvDensity) return 24;
-    return ShellTokens.searchPageInset;
-  }
+  double _searchPageTopInset(BuildContext context) => ShellTokens.searchPageInset;
 
   PreferredSizeWidget _buildOverlayAppBar() {
     return AppBar(
@@ -685,15 +678,15 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 
   Widget _buildInputColumn(BuildContext context, List<_FlatSearchResult> results) {
-    final tv = _isTvSearch(context);
+    final tvFocus = _tvFocus(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextField(
             controller: _controller,
             focusNode: _focusNode,
-            autofocus: !tv,
-            canRequestFocus: !tv,
+            autofocus: !tvFocus,
+            canRequestFocus: !tvFocus,
             onChanged: _onSearchChanged,
             style: TextStyle(
               color: ForjaShellColors.textPrimary,
@@ -857,37 +850,27 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (focused != null && !_isTvSearch(context)) ...[
+        if (focused != null) ...[
           _buildResultDetail(focused),
           const SizedBox(height: 24),
         ],
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final tv = _isTvSearch(context);
-              const spacing = 12.0;
-              final gridDelegate = tv
-                  ? SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      mainAxisSpacing: spacing,
-                      crossAxisSpacing: spacing,
-                      childAspectRatio: 2 / 3,
-                    )
-                  : SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: _SearchFilmCard.cardWidth(context),
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 14,
-                      childAspectRatio: 2 / 3,
-                    );
+              final tvFocus = _tvFocus(context);
+              final gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: _SearchFilmCard.cardWidth(context),
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 14,
+                childAspectRatio: 2 / 3,
+              );
 
-              final gridColumns = tv
-                  ? 4
-                  : shellGridColumnCount(
-                      viewportWidth: constraints.maxWidth,
-                      itemStride: _SearchFilmCard.cardWidth(context) + 14,
-                    );
+              final gridColumns = shellGridColumnCount(
+                viewportWidth: constraints.maxWidth,
+                itemStride: _SearchFilmCard.cardWidth(context) + 14,
+              );
 
-              if (tv && results.isNotEmpty) {
+              if (tvFocus && results.isNotEmpty) {
                 shellTvRegisterRow(
                   tabId: 'search',
                   rowId: 'results',
@@ -904,7 +887,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                 itemBuilder: (context, index) {
                   final item = results[index];
                   return Padding(
-                    padding: EdgeInsets.all(tv ? 2 : 4),
+                    padding: const EdgeInsets.all(4),
                     child: _SearchFilmCard(
                       result: item,
                       selected: index == _focusedIndex,

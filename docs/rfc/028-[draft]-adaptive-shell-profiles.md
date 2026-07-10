@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **0 / 4** acceptance (slice 2 mobile) |
-| **Current slice** | TV D-pad coordinator shipped in code — leanback manual smoke blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md)) |
+| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **3 / 4** acceptance (slice 1d TV desktop visual parity) · **0 / 4** acceptance (slice 2 mobile) |
+| **Current slice** | Slice 1d TV desktop visual parity shipped in code — leanback manual smoke blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -64,6 +64,17 @@
 | 20 | R28-A20 | In-scope tabs register rows/zones; `FocusableControl` / `shellFocusableTap` unified Select keys; `TvRemoteDebug` log-only | ✅ |
 | 21 | R28-A21 | `shell_tv_coordinator_test` — nav trap, hero nav, row index, activate keys | ✅ |
 | 22 | R28-A22 | Nav RIGHT restores tab focus; tab switch in rail does not steal content focus until RIGHT | ✅ |
+
+---
+
+## Acceptance (slice 1d — TV desktop visual parity)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 23 | R28-A23 | `ShellMetrics.tv` visual tokens match desktop; fixed nav rail; `TvUiScaler` at 0.80 for leanback density | ✅ |
+| 24 | R28-A24 | No `usesTvDensity` / `ShellProfile.tv` visual layout branches in in-scope tabs, details, player sources panels | ✅ |
+| 25 | R28-A25 | TV `ShellInputPolicy` unchanged — focus rings, D-pad coordinator, hero Play autofocus | ✅ |
+| 26 | R28-A26 | Manual leanback smoke — all tabs + details + player sources at desktop sizing | ⬜ |
 
 ---
 

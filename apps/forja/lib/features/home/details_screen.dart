@@ -2949,8 +2949,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildSourcesPanelContent() {
-    final metrics = ShellScope.metricsOf(context);
-    final isTvLayout = metrics.usesTvDensity;
     final showMerged = _panelKindFilter == 'all' &&
         _panelShowTorrent &&
         _panelShowStremio;
@@ -3016,7 +3014,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             _isSearching,
           ),
         ),
-        SizedBox(height: isTvLayout ? 10 : 8),
+        const SizedBox(height: 8),
         Expanded(child: _buildStreamList(inPanel: true)),
       ],
     );

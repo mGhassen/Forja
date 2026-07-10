@@ -23,10 +23,7 @@ class TorrentSourcesPanel extends StatelessWidget {
 
   static double panelWidthOf(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final metrics = ShellScope.metricsOf(context);
-    return metrics.usesTvDensity
-        ? (screenWidth * 0.42).clamp(520.0, 720.0)
-        : (screenWidth < 700 ? screenWidth * 0.92 : 480.0);
+    return screenWidth < 700 ? screenWidth * 0.92 : 480.0;
   }
 
   static double filterPanelWidthOf(BuildContext context) {
@@ -39,11 +36,8 @@ class TorrentSourcesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metrics = ShellScope.metricsOf(context);
     final panelWidth = panelWidthOf(context);
-    final padding = metrics.usesTvDensity
-        ? const EdgeInsets.fromLTRB(16, 8, 12, 12)
-        : const EdgeInsets.fromLTRB(20, 8, 12, 16);
+    const padding = EdgeInsets.fromLTRB(20, 8, 12, 16);
     final playerFrost = !enableBlur;
 
     return Stack(
