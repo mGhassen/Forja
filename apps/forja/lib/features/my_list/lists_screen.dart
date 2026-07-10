@@ -196,23 +196,78 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final useTvTabs = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    const tabLabels = ['Trakt', 'MDBlist', 'Top Lists'];
+
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       appBar: AppBar(
         backgroundColor: AppTheme.bgDark,
         title: const Text('Lists', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
         iconTheme: const IconThemeData(color: Colors.white),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppTheme.primaryColor,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white54,
-          tabs: const [
-            Tab(text: 'Trakt'),
-            Tab(text: 'MDBlist'),
-            Tab(text: 'Top Lists'),
-          ],
-        ),
+        bottom: useTvTabs
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(48),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < tabLabels.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        Expanded(
+                          child: AnimatedBuilder(
+                            animation: _tabController,
+                            builder: (context, _) {
+                              final selected = _tabController.index == i;
+                              return shellFocusableTap(
+                                context: context,
+                                onTap: () => _tabController.animateTo(i),
+                                borderRadius: 8,
+                                listIndex: i,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? Colors.white.withValues(alpha: 0.1)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: selected
+                                          ? AppTheme.primaryColor
+                                          : Colors.white.withValues(alpha: 0.08),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    tabLabels[i],
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: selected ? Colors.white : Colors.white54,
+                                      fontWeight:
+                                          selected ? FontWeight.w700 : FontWeight.w500,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              )
+            : TabBar(
+                controller: _tabController,
+                indicatorColor: AppTheme.primaryColor,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white54,
+                tabs: const [
+                  Tab(text: 'Trakt'),
+                  Tab(text: 'MDBlist'),
+                  Tab(text: 'Top Lists'),
+                ],
+              ),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -355,6 +410,7 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
       context: context,
       onTap: onTap,
       borderRadius: 14,
+      navLeftAlways: true,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

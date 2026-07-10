@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
@@ -79,6 +80,7 @@ class _TrailerCard extends StatelessWidget {
     return FocusableControl(
       onTap: () => _open(context),
       borderRadius: 10,
+      onLeftEdge: shellTvNavLeftEdge(context, listIndex: index),
       child: SizedBox(
         width: _kTrailerCardWidth,
         child: Column(

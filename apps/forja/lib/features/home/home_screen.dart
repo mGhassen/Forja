@@ -27,6 +27,7 @@ import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
   if (!compactTop) return ShellTokens.homeSectionTitleTop;
@@ -2173,6 +2174,7 @@ class _HomeScreenState extends State<HomeScreen>
                 iconColor: Colors.white,
                 iconColorActive: Colors.white,
                 iconSize: 20,
+                heroPillSlot: true,
               ),
               tooltip: 'Add to My List',
             ),
@@ -2288,8 +2290,7 @@ class _MovieSectionState extends State<_MovieSection> {
                     movie: movies[index],
                     onTap: () => widget.onMovieTap(movies[index]),
                     rank: widget.showRank ? index + 1 : null,
-                    onLeftEdge:
-                        tvNav && index == 0 ? ShellTvFocus.focusCurrentNavTab : null,
+                    listIndex: index,
                     onUpEdge: tvNav && index == 0 ? widget.tvFocusUp : null,
                   );
                 },
@@ -2346,6 +2347,7 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
             itemBuilder: (context, index) => HomeMovieCard(
               movie: widget.movies[index],
               onTap: () => widget.onMovieTap(widget.movies[index]),
+              listIndex: index,
             ),
           ),
         ),
@@ -3242,6 +3244,7 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
               final item = widget.items[index];
               return _StremioCatalogCard(
                 item: item,
+                listIndex: index,
                 onTap: () => widget.onItemTap(item),
               );
             },
@@ -3254,9 +3257,14 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
 
 class _StremioCatalogCard extends StatelessWidget {
   final Map<String, dynamic> item;
+  final int? listIndex;
   final VoidCallback onTap;
 
-  const _StremioCatalogCard({required this.item, required this.onTap});
+  const _StremioCatalogCard({
+    required this.item,
+    required this.onTap,
+    this.listIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -3270,6 +3278,7 @@ class _StremioCatalogCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: 14,
       scaleOnFocus: 1.05,
+      onLeftEdge: shellTvNavLeftEdge(context, listIndex: listIndex ?? -1),
       child: Container(
         width: cardWidth,
         height: cardHeight,
@@ -3467,6 +3476,7 @@ class _MoodSectionState extends State<_MoodSection> {
                 return FocusableControl(
                   onTap: () => onSelect(m.id),
                   borderRadius: 24,
+                  onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
                   child: chip,
                 );
               }
@@ -3538,6 +3548,7 @@ class _MoodSectionState extends State<_MoodSection> {
                 itemBuilder: (context, i) => HomeMovieCard(
                   movie: movies[i],
                   onTap: () => onMovieTap(movies[i]),
+                  listIndex: i,
                 ),
               ),
             );
@@ -3702,6 +3713,7 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
                   itemBuilder: (context, i) => HomeMovieCard(
                     movie: movies[i],
                     onTap: () => widget.onMovieTap(movies[i]),
+                    listIndex: i,
                   ),
                 ),
               ),

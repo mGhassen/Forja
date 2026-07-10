@@ -12,6 +12,7 @@ class HomeMovieCard extends StatelessWidget {
     required this.movie,
     required this.onTap,
     this.rank,
+    this.listIndex,
     this.onLeftEdge,
     this.onUpEdge,
   });
@@ -19,6 +20,7 @@ class HomeMovieCard extends StatelessWidget {
   final Movie movie;
   final VoidCallback onTap;
   final int? rank;
+  final int? listIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onUpEdge;
 
@@ -39,6 +41,7 @@ class HomeMovieCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 14,
+      listIndex: listIndex,
       onLeftEdge: onLeftEdge,
       onUpEdge: onUpEdge,
       child: Container(

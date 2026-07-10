@@ -94,7 +94,7 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
   }
 }
 
-class ShellNavRail extends StatelessWidget {
+class ShellNavRail extends StatefulWidget {
   const ShellNavRail({
     super.key,
     required this.visibleIds,
@@ -106,18 +106,60 @@ class ShellNavRail extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
 
+  @override
+  State<ShellNavRail> createState() => _ShellNavRailState();
+}
+
+class _ShellNavRailState extends State<ShellNavRail> {
+  bool _mouseInRail = false;
+  bool _focusInRail = false;
+
+  bool get _railEngaged => _mouseInRail || _focusInRail;
+
   List<String> get _navIds =>
-      visibleIds.where((id) => id != 'settings').toList();
+      widget.visibleIds.where((id) => id != 'settings').toList();
 
   int? _indexForId(String id) {
-    final idx = visibleIds.indexOf(id);
+    final idx = widget.visibleIds.indexOf(id);
     return idx >= 0 ? idx : null;
+  }
+
+  void _syncFocusInRail() {
+    final engaged = ShellTvFocus.anyNavFocused;
+    if (engaged != _focusInRail) {
+      setState(() => _focusInRail = engaged);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final settingsIndex = _indexForId('settings');
     final metrics = ShellScope.metricsOf(context);
+
+    Widget buildNavColumn(double itemSpacing) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var i = 0; i < _navIds.length; i++)
+            Builder(
+              builder: (context) {
+                final id = _navIds[i];
+                final index = _indexForId(id)!;
+                final dest = navDestinations[id]!;
+                final selected = index == widget.selectedIndex;
+                return _ShellNavRailItem(
+                  destination: dest,
+                  selected: selected,
+                  onTap: () => widget.onDestinationSelected(index),
+                  itemSpacing: itemSpacing,
+                  railEngaged: _railEngaged,
+                  onFocusChanged: _syncFocusInRail,
+                );
+              },
+            ),
+        ],
+      );
+    }
 
     return Container(
       width: metrics.navRailWidth,
@@ -133,62 +175,56 @@ class ShellNavRail extends StatelessWidget {
             const _RailLogo(),
             SizedBox(height: metrics.navRailLogoGap),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final itemSpacing = _navRailItemSpacingForHeight(
-                    itemCount: _navIds.length,
-                    maxHeight: constraints.maxHeight,
-                    preferredSpacing: metrics.navRailItemSpacing,
-                  );
-                  final navColumn = Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      for (var i = 0; i < _navIds.length; i++)
-                        Builder(
-                          builder: (context) {
-                            final id = _navIds[i];
-                            final index = _indexForId(id)!;
-                            final dest = navDestinations[id]!;
-                            final selected = index == selectedIndex;
-                            return _ShellNavRailItem(
-                              destination: dest,
-                              selected: selected,
-                              onTap: () => onDestinationSelected(index),
-                              itemSpacing: itemSpacing,
-                            );
-                          },
-                        ),
-                    ],
-                  );
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _mouseInRail = true),
+                onExit: (_) => setState(() => _mouseInRail = false),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final itemSpacing = _navRailItemSpacingForHeight(
+                            itemCount: _navIds.length,
+                            maxHeight: constraints.maxHeight,
+                            preferredSpacing: metrics.navRailItemSpacing,
+                          );
+                          final navColumn = buildNavColumn(itemSpacing);
 
-                  if (metrics.usesTvDensity) {
-                    return navColumn;
-                  }
+                          if (metrics.usesTvDensity) {
+                            return navColumn;
+                          }
 
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: math.max(
-                          0,
-                          constraints.maxHeight - 16,
-                        ),
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: math.max(
+                                  0,
+                                  constraints.maxHeight - 16,
+                                ),
+                              ),
+                              child: navColumn,
+                            ),
+                          );
+                        },
                       ),
-                      child: navColumn,
                     ),
-                  );
-                },
+                    if (settingsIndex != null)
+                      _ShellNavRailItem(
+                        destination: navDestinations['settings']!,
+                        selected: settingsIndex == widget.selectedIndex,
+                        onTap: () =>
+                            widget.onDestinationSelected(settingsIndex),
+                        itemSpacing: metrics.navRailItemSpacing,
+                        railEngaged: _railEngaged,
+                        onFocusChanged: _syncFocusInRail,
+                      ),
+                  ],
+                ),
               ),
             ),
-            if (settingsIndex != null) ...[
-              _ShellNavRailItem(
-                destination: navDestinations['settings']!,
-                selected: settingsIndex == selectedIndex,
-                onTap: () => onDestinationSelected(settingsIndex),
-                itemSpacing: metrics.navRailItemSpacing,
-              ),
+            if (settingsIndex != null)
               SizedBox(height: metrics.navRailBottomPadding),
-            ],
           ],
         ),
       ),
@@ -300,12 +336,16 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.selected,
     required this.onTap,
     required this.itemSpacing,
+    required this.railEngaged,
+    required this.onFocusChanged,
   });
 
   final NavDestination destination;
   final bool selected;
   final VoidCallback onTap;
   final double itemSpacing;
+  final bool railEngaged;
+  final VoidCallback onFocusChanged;
 
   @override
   State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
@@ -356,13 +396,13 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   }
 
   double _scaleFor(ShellInputPolicy policy) {
-    final activeScale = (policy.scaleOnHover && _hover) ||
+    final big = ShellTokens.navRailIconHoverScale;
+    final small = ShellTokens.navRailIconIdleScale;
+    final itemActive = (policy.scaleOnHover && _hover) ||
         (policy.scaleOnFocus && _focused);
-    final base = activeScale
-        ? ShellTokens.navRailIconHoverScale
-        : ShellTokens.navRailIconIdleScale;
-    if (_pressed) return base * 0.92;
-    return base;
+    if (itemActive) return _pressed ? big * 0.92 : big;
+    if (!widget.railEngaged) return widget.selected ? big : small;
+    return small;
   }
 
   bool _activeFor(ShellInputPolicy policy) =>
@@ -399,7 +439,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       child: Focus(
         focusNode: _focusNode,
         debugLabel: 'nav-${widget.destination.id}',
-        onFocusChange: (focused) => setState(() => _focused = focused),
+        onFocusChange: (focused) {
+          setState(() => _focused = focused);
+          widget.onFocusChanged();
+        },
         onKeyEvent: (node, event) {
           if (event is! KeyDownEvent) return KeyEventResult.ignored;
           if (event.logicalKey == LogicalKeyboardKey.enter ||

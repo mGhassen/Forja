@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 
 class IptvChannelSearchOverlay extends StatefulWidget {
   const IptvChannelSearchOverlay({
@@ -300,7 +300,8 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
                 ),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: ForjaCloseButton(
+                  child: iptvCloseButton(
+                    context,
                     color: Colors.white70,
                     onTap: widget.onClose,
                   ),
@@ -322,9 +323,8 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
                     GoogleFonts.poppins(color: Colors.white30, fontSize: 13),
                 suffixIcon: _queryCtrl.text.isEmpty
                     ? null
-                    : ForjaCloseButton.compact(
-                        tooltip: null,
-                        color: Colors.white54,
+                    : iptvCloseButton(
+                        context,
                         onTap: () {
                           _queryCtrl.clear();
                           _onQueryChanged('');

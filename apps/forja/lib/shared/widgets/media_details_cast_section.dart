@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 class MediaDetailsCastSection extends StatefulWidget {
@@ -79,61 +81,66 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
               final profilePath = m['profilePath'] ?? '';
               final name = m['name'] ?? '';
               final character = m['character'] ?? '';
-              return SizedBox(
-                width: MediaDetailsCastSection._itemWidth,
-                child: Column(
-                  children: [
-                    ClipOval(
-                      child: profilePath.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: TmdbApi.getProfileUrl(profilePath),
-                              width: MediaDetailsCastSection._avatarSize,
-                              height: MediaDetailsCastSection._avatarSize,
-                              fit: BoxFit.cover,
-                            )
-                          : Container(
-                              width: MediaDetailsCastSection._avatarSize,
-                              height: MediaDetailsCastSection._avatarSize,
-                              color: Colors.white.withValues(alpha: 0.08),
-                              child: Icon(
-                                Icons.person,
-                                color: Colors.white.withValues(alpha: 0.24),
-                                size: 36,
+              return shellFocusableTap(
+                context: context,
+                borderRadius: MediaDetailsCastSection._avatarSize / 2,
+                listIndex: i,
+                child: SizedBox(
+                  width: MediaDetailsCastSection._itemWidth,
+                  child: Column(
+                    children: [
+                      ClipOval(
+                        child: profilePath.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: TmdbApi.getProfileUrl(profilePath),
+                                width: MediaDetailsCastSection._avatarSize,
+                                height: MediaDetailsCastSection._avatarSize,
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                width: MediaDetailsCastSection._avatarSize,
+                                height: MediaDetailsCastSection._avatarSize,
+                                color: Colors.white.withValues(alpha: 0.08),
+                                child: Icon(
+                                  Icons.person,
+                                  color: Colors.white.withValues(alpha: 0.24),
+                                  size: 36,
+                                ),
                               ),
-                            ),
-                    ),
-                    const SizedBox(
-                      height: MediaDetailsCastSection._avatarNameGap,
-                    ),
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
                       ),
-                    ),
-                    if (character.isNotEmpty) ...[
                       const SizedBox(
-                        height: MediaDetailsCastSection._nameCharacterGap,
+                        height: MediaDetailsCastSection._avatarNameGap,
                       ),
                       Text(
-                        character,
+                        name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
-                          fontSize: 12,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
                           height: 1.2,
                         ),
                       ),
+                      if (character.isNotEmpty) ...[
+                        const SizedBox(
+                          height: MediaDetailsCastSection._nameCharacterGap,
+                        ),
+                        Text(
+                          character,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 12,
+                            height: 1.2,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               );
             },

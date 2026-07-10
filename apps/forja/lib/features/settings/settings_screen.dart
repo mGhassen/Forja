@@ -3067,6 +3067,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       onTap: () => onChanged(!value),
       scaleOnFocus: 1.0,
+      navLeftAlways: true,
       child: content,
     );
   }
@@ -3117,6 +3118,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       onTap: () {},
       scaleOnFocus: 1.0,
+      navLeftAlways: true,
       child: content,
     );
   }

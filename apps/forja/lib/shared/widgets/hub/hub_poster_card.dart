@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 class HubPosterCard extends StatelessWidget {
@@ -40,14 +39,11 @@ class HubPosterCard extends StatelessWidget {
     final cardWidth = HubPosterCard.cardWidth(context);
     final cardHeight = HubPosterCard.cardHeight(context);
 
-    final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final card = shellFocusableTap(
       context: context,
       onTap: onTap,
       borderRadius: 14,
-      onLeftEdge: tvNav && listIndex == 0
-          ? ShellTvFocus.focusCurrentNavTab
-          : null,
+      listIndex: listIndex,
       child: Container(
         width: cardWidth,
         height: cardHeight,

@@ -10,6 +10,7 @@ import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Sentinel for the "All" entry in the categories popup menu.
@@ -67,50 +68,55 @@ class _HomeTopBarState extends State<HomeTopBar> {
       barrierLabel: 'Dismiss categories',
       barrierColor: Colors.transparent,
       transitionDuration: Duration.zero,
-      pageBuilder: (context, _, _) {
-        return Stack(
-          children: [
-            Positioned(
-              left: offset.dx,
-              top: offset.dy + box.size.height + 4,
-              child: Material(
-                color: ForjaShellColors.cinematic.menuSurface,
-                elevation: 8,
-                borderRadius: BorderRadius.circular(8),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: ForjaShellColors.cinematic.borderSubtle),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: IntrinsicWidth(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: ShellTokens.homeCategoriesMenuMaxHeight,
-                        ),
-                        child: SingleChildScrollView(
-                          padding: EdgeInsets.zero,
-                          physics: const ClampingScrollPhysics(),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _FlatMenuRow(
-                                label: 'All',
-                                selected: selectedId == null,
-                                onTap: () => Navigator.of(context)
-                                    .pop(_allGenresSentinel),
-                              ),
-                              for (final genre in homeGenreCategories)
+      pageBuilder: (dialogContext, _, _) {
+        final shellScope = ShellScope.of(context);
+        return ShellScope(
+          profile: shellScope.profile,
+          config: shellScope.config,
+          child: Stack(
+            children: [
+              Positioned(
+                left: offset.dx,
+                top: offset.dy + box.size.height + 4,
+                child: Material(
+                  color: ForjaShellColors.cinematic.menuSurface,
+                  elevation: 8,
+                  borderRadius: BorderRadius.circular(8),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: ForjaShellColors.cinematic.borderSubtle),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: IntrinsicWidth(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: ShellTokens.homeCategoriesMenuMaxHeight,
+                          ),
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.zero,
+                            physics: const ClampingScrollPhysics(),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                                 _FlatMenuRow(
-                                  label: genre.label,
-                                  selected: genre.id == selectedId,
-                                  onTap: () =>
-                                      Navigator.of(context).pop(genre.id),
+                                  label: 'All',
+                                  selected: selectedId == null,
+                                  onTap: () => Navigator.of(dialogContext)
+                                      .pop(_allGenresSentinel),
                                 ),
-                            ],
+                                for (final genre in homeGenreCategories)
+                                  _FlatMenuRow(
+                                    label: genre.label,
+                                    selected: genre.id == selectedId,
+                                    onTap: () =>
+                                        Navigator.of(dialogContext).pop(genre.id),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -118,8 +124,8 @@ class _HomeTopBarState extends State<HomeTopBar> {
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -147,34 +153,26 @@ class _HomeTopBarState extends State<HomeTopBar> {
       color: Colors.white,
       size: 30,
       hitSize: 44,
+      hoverScale: ShellTokens.focusActiveScale,
+      focusNode: tvFocus ? _searchFocus : null,
       onTap: _openSearch,
+      onKeyEvent: tvFocus
+          ? (node, event) {
+              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                if (ShellTvFocus.focusHomeMenu()) return KeyEventResult.handled;
+              }
+              if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                if (ShellTvFocus.focusHomeHeroPlay()) {
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            }
+          : null,
     );
 
-    if (!tvFocus) {
-      return SizedBox(height: 34, child: Center(child: icon));
-    }
-
-    return SizedBox(
-      height: 34,
-      child: Center(
-        child: ForjaInteractive(
-          focusNode: _searchFocus,
-          onTap: _openSearch,
-          hoverScale: ShellTokens.focusActiveScale,
-          onKeyEvent: (node, event) {
-            if (event is! KeyDownEvent) return KeyEventResult.ignored;
-            if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-              if (ShellTvFocus.focusHomeMenu()) return KeyEventResult.handled;
-            }
-            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-              if (ShellTvFocus.focusHomeHeroPlay()) return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          },
-          builder: (_, _) => icon,
-        ),
-      ),
-    );
+    return SizedBox(height: 34, child: Center(child: icon));
   }
 
   Widget _wrapMenuRow(Widget menu, {required bool tvFocus}) {
@@ -286,7 +284,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                       ],
                     );
 
-                    if (!compactNav) {
+                    if (!compactNav || tvFocus) {
                       return _wrapMenuRow(
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -354,53 +352,56 @@ class _CategoryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
-    final color =
-        isActive ? cinematic.textPrimary : cinematic.textSecondary;
 
-    final content = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: 34,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 17,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                    color: color,
-                    letterSpacing: 0.1,
+    Widget buildContent(bool focused) {
+      final active = isActive || focused;
+      final tabColor =
+          active ? cinematic.textPrimary : cinematic.textSecondary;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 34,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 17,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                      color: tabColor,
+                      letterSpacing: 0.1,
+                    ),
                   ),
-                ),
-                if (showChevron) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.expand_more_rounded,
-                    size: 18,
-                    color: color,
-                  ),
+                  if (showChevron) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.expand_more_rounded,
+                      size: 18,
+                      color: tabColor,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
-        ),
-        SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
-        AnimatedContainer(
-          duration: ShellTokens.navSelectionAnimation,
-          height: ShellTokens.shellNavUnderlineHeight,
-          width: isActive ? 28 : 0,
-          decoration: BoxDecoration(
-            color: isActive ? cinematic.navUnderline : Colors.transparent,
-            borderRadius: BorderRadius.circular(2),
+          SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
+          AnimatedContainer(
+            duration: ShellTokens.navSelectionAnimation,
+            height: ShellTokens.shellNavUnderlineHeight,
+            width: active ? 28 : 0,
+            decoration: BoxDecoration(
+              color: active ? cinematic.navUnderline : Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    }
 
     if (tvFocus) {
       return ForjaInteractive(
@@ -408,7 +409,7 @@ class _CategoryTab extends StatelessWidget {
         onTap: onTap,
         onKeyEvent: onKeyEvent,
         hoverScale: ShellTokens.focusActiveScale,
-        builder: (_, _) => content,
+        builder: (focused, _) => buildContent(focused),
       );
     }
 
@@ -417,7 +418,7 @@ class _CategoryTab extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: content,
+        child: buildContent(false),
       ),
     );
   }
@@ -437,25 +438,25 @@ class _FlatMenuRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: selected
-                  ? cinematic.textPrimary
-                  : cinematic.textSecondary,
-            ),
-          ),
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+          color: selected
+              ? cinematic.textPrimary
+              : cinematic.textSecondary,
         ),
       ),
+    );
+
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 4,
+      child: row,
     );
   }
 }

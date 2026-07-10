@@ -425,6 +425,28 @@ class _HeroPillIconSlotButton extends StatelessWidget {
           color: Colors.white,
         );
 
+    if (slot.child != null && slot.onTap == null) {
+      return SizedBox(
+        width: _kHeroPillHeight,
+        height: _kHeroPillHeight,
+        child: ClipRRect(
+          borderRadius: _heroPillSlotBorderRadius(
+            isFirst: isFirst,
+            isLast: isLast,
+          ),
+          child: Center(child: content),
+        ),
+      );
+    }
+
+    if (slot.onTap == null) {
+      return SizedBox(
+        width: _kHeroPillHeight,
+        height: _kHeroPillHeight,
+        child: Center(child: content),
+      );
+    }
+
     final button = ForjaInteractive(
       onTap: slot.onTap,
       hoverScale: 1.06,

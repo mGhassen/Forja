@@ -1,10 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
@@ -296,6 +298,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                   onTap: () => widget.onEpisodeSelected(epNum),
                   onToggleWatched: () =>
                       widget.onToggleWatched(widget.selectedSeason, epNum),
+                  onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
                 );
               },
               ),
@@ -306,7 +309,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   }
 }
 
-class _PickerPill extends StatefulWidget {
+class _PickerPill extends StatelessWidget {
   const _PickerPill({
     required this.child,
     this.onTap,
@@ -316,32 +319,24 @@ class _PickerPill extends StatefulWidget {
   final VoidCallback? onTap;
 
   @override
-  State<_PickerPill> createState() => _PickerPillState();
-}
-
-class _PickerPillState extends State<_PickerPill> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? const Color(0xFF3A3A3A)
-                : const Color(0xFF2A2A2A),
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: widget.child,
-        ),
+    final pill = AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A),
+        borderRadius: BorderRadius.circular(22),
       ),
+      child: child,
+    );
+
+    if (onTap == null) return pill;
+
+    return FocusableControl(
+      onTap: onTap,
+      borderRadius: 22,
+      scaleOnFocus: ShellTokens.focusActiveScale,
+      child: pill,
     );
   }
 }
@@ -359,47 +354,80 @@ class _SeasonPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useTvFocus = ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
+    final pillChild = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Season $selectedSeason',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.9),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Icon(
+          Icons.keyboard_arrow_down_rounded,
+          size: 20,
+          color: Colors.white.withValues(alpha: 0.85),
+        ),
+      ],
+    );
+
+    if (useTvFocus) {
+      return FocusableControl(
+        onTap: () => _openSeasonMenu(context),
+        borderRadius: 22,
+        scaleOnFocus: ShellTokens.focusActiveScale,
+        child: _PickerPill(child: pillChild),
+      );
+    }
+
     return PopupMenuButton<int>(
       initialValue: selectedSeason,
       tooltip: 'Select season',
       color: const Color(0xFF1E1E1E),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       onSelected: onSeasonSelected,
-      itemBuilder: (context) => List.generate(seasonCount, (i) {
-        final n = i + 1;
-        return PopupMenuItem<int>(
-          value: n,
-          child: Text(
-            'Season $n',
-            style: TextStyle(
-              color: n == selectedSeason ? Colors.white : Colors.white70,
-              fontWeight: n == selectedSeason ? FontWeight.w600 : FontWeight.w400,
-            ),
-          ),
-        );
-      }),
-      child: _PickerPill(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Season $selectedSeason',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 20,
-              color: Colors.white.withValues(alpha: 0.85),
-            ),
-          ],
-        ),
-      ),
+      itemBuilder: (context) => _seasonMenuItems(),
+      child: _PickerPill(child: pillChild),
     );
+  }
+
+  List<PopupMenuEntry<int>> _seasonMenuItems() {
+    return List.generate(seasonCount, (i) {
+      final n = i + 1;
+      return PopupMenuItem<int>(
+        value: n,
+        child: Text(
+          'Season $n',
+          style: TextStyle(
+            color: n == selectedSeason ? Colors.white : Colors.white70,
+            fontWeight: n == selectedSeason ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      );
+    });
+  }
+
+  Future<void> _openSeasonMenu(BuildContext context) async {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final offset = box.localToGlobal(Offset.zero);
+    final picked = await showMenu<int>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + box.size.height,
+        offset.dx + box.size.width,
+        offset.dy,
+      ),
+      color: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      items: _seasonMenuItems(),
+    );
+    if (picked != null) onSeasonSelected(picked);
   }
 }
 
@@ -417,6 +445,7 @@ class _EpisodeCard extends StatefulWidget {
     required this.durationMs,
     required this.onTap,
     required this.onToggleWatched,
+    this.onLeftEdge,
   });
 
   final int episodeNumber;
@@ -430,6 +459,7 @@ class _EpisodeCard extends StatefulWidget {
   final int durationMs;
   final VoidCallback onTap;
   final VoidCallback onToggleWatched;
+  final VoidCallback? onLeftEdge;
 
   static const double cardWidth = 268;
   static const double thumbRadius = 10;
@@ -461,6 +491,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       onTap: widget.onTap,
       borderRadius: _EpisodeCard.thumbRadius,
       scaleOnFocus: ShellTokens.focusActiveScale,
+      onLeftEdge: widget.onLeftEdge,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
 
@@ -11,6 +11,7 @@ class MyListButton extends StatelessWidget {
     this.iconColor,
     this.iconColorActive,
     this.iconSize,
+    this.heroPillSlot = false,
   }) : stremioItem = null;
 
   const MyListButton.stremio({
@@ -20,6 +21,7 @@ class MyListButton extends StatelessWidget {
     this.iconColor,
     this.iconColorActive,
     this.iconSize,
+    this.heroPillSlot = false,
   }) : movie = null;
 
   final Movie? movie;
@@ -28,10 +30,39 @@ class MyListButton extends StatelessWidget {
   final Color? iconColor;
   final Color? iconColorActive;
   final double? iconSize;
+  final bool heroPillSlot;
 
   String get _uniqueId {
     if (movie != null) return MyListService.movieId(movie!.id, movie!.mediaType);
     return MyListService.stremioItemId(stremioItem!);
+  }
+
+  Future<void> _toggle(BuildContext context) async {
+    if (movie != null) {
+      final added = await MyListService().toggleMovie(
+        tmdbId: movie!.id,
+        imdbId: movie!.imdbId,
+        title: movie!.title,
+        posterPath: movie!.posterPath,
+        mediaType: movie!.mediaType,
+        voteAverage: movie!.voteAverage,
+        releaseDate: movie!.releaseDate,
+      );
+      if (context.mounted) {
+        ForjaToast.success(
+          added ? 'Added to My List' : 'Removed from My List',
+          duration: const Duration(seconds: 1),
+        );
+      }
+    } else if (stremioItem != null) {
+      final added = await MyListService().toggleStremioItem(stremioItem!);
+      if (context.mounted) {
+        ForjaToast.success(
+          added ? 'Added to My List' : 'Removed from My List',
+          duration: const Duration(seconds: 1),
+        );
+      }
+    }
   }
 
   @override
@@ -40,38 +71,56 @@ class MyListButton extends StatelessWidget {
       valueListenable: MyListService.changeNotifier,
       builder: (context, _, _) {
         final inList = MyListService().contains(_uniqueId);
-        return GestureDetector(
-          onTap: () async {
-            if (movie != null) {
-              final added = await MyListService().toggleMovie(
-                tmdbId: movie!.id,
-                imdbId: movie!.imdbId,
-                title: movie!.title,
-                posterPath: movie!.posterPath,
-                mediaType: movie!.mediaType,
-                voteAverage: movie!.voteAverage,
-                releaseDate: movie!.releaseDate,
+        final icon = Icon(
+          useHeartIcon
+              ? (inList ? Icons.favorite_rounded : Icons.favorite_border_rounded)
+              : (inList ? Icons.bookmark_rounded : Icons.add_rounded),
+          size: iconSize ?? (useHeartIcon ? 24 : 20),
+          color: inList
+              ? (iconColorActive ??
+                  (useHeartIcon ? Colors.white : ForjaShellColors.iconActive))
+              : (iconColor ??
+                  (useHeartIcon ? Colors.white70 : ForjaShellColors.iconMuted)),
+        );
+
+        if (heroPillSlot) {
+          return ForjaInteractive(
+            onTap: () => _toggle(context),
+            hoverScale: 1.06,
+            pressScale: 0.94,
+            builder: (active, pressed) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOutCubic,
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: (active || pressed)
+                      ? Colors.white.withValues(alpha: pressed ? 0.12 : 0.08)
+                      : Colors.transparent,
+                ),
+                child: icon,
               );
-              if (context.mounted) {
-                ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
-              }
-            } else if (stremioItem != null) {
-              final added = await MyListService().toggleStremioItem(stremioItem!);
-              if (context.mounted) {
-                ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
-              }
-            }
-          },
-          child: Icon(
-            useHeartIcon
-                ? (inList ? Icons.favorite_rounded : Icons.favorite_border_rounded)
-                : (inList ? Icons.bookmark_rounded : Icons.add_rounded),
-            size: iconSize ?? (useHeartIcon ? 24 : 20),
-            color: inList
-                ? (iconColorActive ??
-                    (useHeartIcon ? Colors.white : ForjaShellColors.iconActive))
-                : (iconColor ??
-                    (useHeartIcon ? Colors.white70 : ForjaShellColors.iconMuted)),
+            },
+          );
+        }
+
+        if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+          return GestureDetector(
+            onTap: () => _toggle(context),
+            child: icon,
+          );
+        }
+
+        return FocusableControl(
+          onTap: () => _toggle(context),
+          borderRadius: 20,
+          scaleOnFocus: ShellTokens.focusActiveScale,
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Center(child: icon),
           ),
         );
       },

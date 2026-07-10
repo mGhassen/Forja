@@ -66,6 +66,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   final TmdbApi _api = TmdbApi();
   final StremioService _stremio = StremioService();
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _resultCardFocusNode = FocusNode();
 
   Timer? _debounce;
   String _query = '';
@@ -84,6 +85,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   int _focusedIndex = 0;
 
+  /// After picking a proposition, focus the matching grid card once results exist.
+  int? _pendingGridFocusIndex;
+
   List<String> _trendingHelperTitles = [];
 
   @override
@@ -97,7 +101,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     ShellBus.stremioSearchNotifier.addListener(_onExternalSearch);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ShellBus.notifyShellChromeChanged();
-      if (widget.overlay && mounted) {
+      if (widget.overlay && mounted && !_isDesktopLayout(context)) {
         _focusNode.requestFocus();
       }
     });
@@ -140,6 +144,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 
   void _applyHelperQuery(String title) {
+    _pendingGridFocusIndex = 0;
     _controller.text = title;
     _onSearchChanged(title);
   }
@@ -167,6 +172,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         _sections.clear();
         _isSearching = false;
         _focusedIndex = 0;
+        _pendingGridFocusIndex = null;
       });
       return;
     }
@@ -232,6 +238,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           ));
         }
       });
+      _scheduleFocusOnResultCardIfPending();
     } catch (e) {
       debugPrint('TMDB search error: $e');
     }
@@ -288,6 +295,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         ));
       }
     });
+    _scheduleFocusOnResultCardIfPending();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -356,6 +364,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     _controller.dispose();
     _debounce?.cancel();
     _focusNode.dispose();
+    _resultCardFocusNode.dispose();
     super.dispose();
   }
 
@@ -427,13 +436,49 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     setState(() => _focusedIndex = index.clamp(0, count - 1));
   }
 
+  void _focusResultCard(int index) {
+    final count = _flatResults().length;
+    if (count == 0) {
+      _pendingGridFocusIndex = index;
+      return;
+    }
+    _pendingGridFocusIndex = null;
+    _focusNode.unfocus();
+    setState(() => _focusedIndex = index.clamp(0, count - 1));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _resultCardFocusNode.requestFocus();
+    });
+  }
+
+  void _scheduleFocusOnResultCardIfPending() {
+    final pending = _pendingGridFocusIndex;
+    if (pending == null) return;
+    final count = _flatResults().length;
+    if (count == 0) return;
+
+    _pendingGridFocusIndex = null;
+    _focusNode.unfocus();
+    final index = pending.clamp(0, count - 1);
+    if (_focusedIndex != index) {
+      setState(() => _focusedIndex = index);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _resultCardFocusNode.requestFocus();
+    });
+  }
+
   bool _isDesktopLayout(BuildContext context) => shellUsesWideLayout(context);
 
+  bool _isTvSearch(BuildContext context) =>
+      ShellScope.metricsOf(context).usesTvDensity;
+
   double _searchPageTopInset(BuildContext context) {
-    if (widget.overlay) {
+    if (widget.overlay && !_isDesktopLayout(context)) {
       return ShellTokens.searchPageInset;
     }
-    return ShellTokens.searchPageTopInset;
+    final metrics = ShellScope.metricsOf(context);
+    if (metrics.usesTvDensity) return 24;
+    return ShellTokens.searchPageInset;
   }
 
   PreferredSizeWidget _buildOverlayAppBar() {
@@ -501,12 +546,16 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       return ValueListenableBuilder<AppThemePreset>(
         valueListenable: AppTheme.themeNotifier,
         builder: (context, _, _) {
+          if (_isDesktopLayout(context)) {
+            return ColoredBox(
+              color: AppTheme.bgDark,
+              child: _buildDesktopLayout(context),
+            );
+          }
           return Scaffold(
             backgroundColor: AppTheme.bgDark,
             appBar: _buildOverlayAppBar(),
-            body: _isDesktopLayout(context)
-                ? _buildDesktopLayout(context)
-                : _buildMobileBody(context),
+            body: _buildMobileBody(context),
           );
         },
       );
@@ -577,14 +626,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 
   Widget _buildInputColumn(BuildContext context, List<_FlatSearchResult> results) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        right: ShellTokens.searchLeftColumnPadding,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
             controller: _controller,
             focusNode: _focusNode,
             autofocus: true,
@@ -621,8 +666,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           const SizedBox(height: 16),
           Expanded(child: _buildHelpersList(context, results)),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildHelpersList(BuildContext context, List<_FlatSearchResult> results) {
@@ -644,31 +688,34 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       if (results.isEmpty) return const SizedBox.shrink();
 
       return ListView.separated(
+        clipBehavior: Clip.none,
+        padding: const EdgeInsets.only(right: 8, bottom: 8),
         itemCount: results.length,
         separatorBuilder: (_, _) => const SizedBox(height: 2),
         itemBuilder: (context, index) {
           final item = results[index];
-          final selected = index == _focusedIndex;
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _setFocusedIndex(index),
-              onDoubleTap: () => _openResult(item),
-              borderRadius: BorderRadius.circular(4),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Text(
-                  item.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: selected
-                        ? ForjaShellColors.textPrimary
-                        : ForjaShellColors.textSecondary,
-                    fontSize: 15,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    height: 1.25,
-                  ),
+          return shellFocusableTap(
+            context: context,
+            onTap: () => _focusResultCard(index),
+            borderRadius: 4,
+            navLeftAlways: true,
+            onFocusChange: (focused) {
+              if (focused) _setFocusedIndex(index);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+              child: Text(
+                item.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: index == _focusedIndex
+                      ? ForjaShellColors.textPrimary
+                      : ForjaShellColors.textSecondary,
+                  fontSize: 15,
+                  fontWeight:
+                      index == _focusedIndex ? FontWeight.w600 : FontWeight.w400,
+                  height: 1.25,
                 ),
               ),
             ),
@@ -680,26 +727,27 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     if (_trendingHelperTitles.isEmpty) return const SizedBox.shrink();
 
     return ListView.separated(
+      clipBehavior: Clip.none,
+      padding: const EdgeInsets.only(right: 8, bottom: 8),
       itemCount: _trendingHelperTitles.length,
       separatorBuilder: (_, _) => const SizedBox(height: 2),
       itemBuilder: (context, index) {
         final title = _trendingHelperTitles[index];
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _applyHelperQuery(title),
-            borderRadius: BorderRadius.circular(4),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Text(
-                title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: 15,
-                  height: 1.25,
-                ),
+        return shellFocusableTap(
+          context: context,
+          onTap: () => _applyHelperQuery(title),
+          borderRadius: 4,
+          navLeftAlways: true,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 15,
+                height: 1.25,
               ),
             ),
           ),
@@ -734,29 +782,60 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (focused != null) _buildResultDetail(focused),
-        const SizedBox(height: 24),
+        if (focused != null && !_isTvSearch(context)) ...[
+          _buildResultDetail(focused),
+          const SizedBox(height: 24),
+        ],
         Expanded(
-          child: GridView.builder(
-            clipBehavior: Clip.none,
-            padding: const EdgeInsets.only(bottom: 8),
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: _SearchFilmCard.cardWidth(context),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 14,
-              childAspectRatio: 2 / 3,
-            ),
-            itemCount: results.length,
-            itemBuilder: (context, index) {
-              final item = results[index];
-              return Padding(
-                padding: const EdgeInsets.all(4),
-                child: _SearchFilmCard(
-                  result: item,
-                  selected: index == _focusedIndex,
-                  onTap: () => _setFocusedIndex(index),
-                  onOpen: () => _openResult(item),
-                ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final tv = _isTvSearch(context);
+              const spacing = 12.0;
+              final gridDelegate = tv
+                  ? SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      mainAxisSpacing: spacing,
+                      crossAxisSpacing: spacing,
+                      childAspectRatio: 2 / 3,
+                    )
+                  : SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: _SearchFilmCard.cardWidth(context),
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 14,
+                      childAspectRatio: 2 / 3,
+                    );
+
+              final gridColumns = tv
+                  ? 4
+                  : shellGridColumnCount(
+                      viewportWidth: constraints.maxWidth,
+                      itemStride: _SearchFilmCard.cardWidth(context) + 14,
+                    );
+
+              return GridView.builder(
+                clipBehavior: Clip.none,
+                padding: const EdgeInsets.only(bottom: 8),
+                gridDelegate: gridDelegate,
+                itemCount: results.length,
+                itemBuilder: (context, index) {
+                  final item = results[index];
+                  return Padding(
+                    padding: EdgeInsets.all(tv ? 2 : 4),
+                    child: _SearchFilmCard(
+                      result: item,
+                      selected: index == _focusedIndex,
+                      focusNode:
+                          index == _focusedIndex ? _resultCardFocusNode : null,
+                      gridIndex: index,
+                      gridColumns: gridColumns,
+                      onTap: () => _setFocusedIndex(index),
+                      onOpen: () => _openResult(item),
+                      onFocusChange: (focused) {
+                        if (focused) _setFocusedIndex(index);
+                      },
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -773,7 +852,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           context: context,
           onTap: () => _openResult(result),
           borderRadius: 8,
-          scaleOnFocus: 1.0,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -975,13 +1053,21 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
               if (item is Movie) {
                 return SizedBox(
                   width: cardWidth,
-                  child: _SearchCard(movie: item, onTap: () => _openDetails(item)),
+                  child: _SearchCard(
+                    movie: item,
+                    listIndex: index,
+                    onTap: () => _openDetails(item),
+                  ),
                 );
               } else {
                 final map = item as Map<String, dynamic>;
                 return SizedBox(
                   width: cardWidth,
-                  child: _StremioSearchCard(item: map, onTap: () => _openStremioItem(map)),
+                  child: _StremioSearchCard(
+                    item: map,
+                    listIndex: index,
+                    onTap: () => _openStremioItem(map),
+                  ),
                 );
               }
             },
@@ -1014,12 +1100,20 @@ class _SearchFilmCard extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.onOpen,
+    this.onFocusChange,
+    this.focusNode,
+    this.gridIndex,
+    this.gridColumns,
   });
 
   final _FlatSearchResult result;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onOpen;
+  final ValueChanged<bool>? onFocusChange;
+  final FocusNode? focusNode;
+  final int? gridIndex;
+  final int? gridColumns;
 
   static double cardWidth(BuildContext context) => shellSearchGridCardWidth(context);
 
@@ -1031,7 +1125,10 @@ class _SearchFilmCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 14,
-      scaleOnFocus: 1.0,
+      focusNode: focusNode,
+      gridIndex: gridIndex,
+      gridColumns: gridColumns,
+      onFocusChange: onFocusChange,
       child: GestureDetector(
         onDoubleTap: onOpen,
         child: SizedBox.expand(
@@ -1314,8 +1411,13 @@ class _ArrowButton extends StatelessWidget {
 class _SearchCard extends StatelessWidget {
   final Movie movie;
   final VoidCallback onTap;
+  final int? listIndex;
 
-  const _SearchCard({required this.movie, required this.onTap});
+  const _SearchCard({
+    required this.movie,
+    required this.onTap,
+    this.listIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1325,6 +1427,7 @@ class _SearchCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 12,
+      listIndex: listIndex,
       child: Container(
         decoration: BoxDecoration(
           color: AppTheme.bgCard,
@@ -1395,8 +1498,13 @@ class _SearchCard extends StatelessWidget {
 class _StremioSearchCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onTap;
+  final int? listIndex;
 
-  const _StremioSearchCard({required this.item, required this.onTap});
+  const _StremioSearchCard({
+    required this.item,
+    required this.onTap,
+    this.listIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1409,11 +1517,18 @@ class _StremioSearchCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 12,
+      listIndex: listIndex,
       child: Container(
         decoration: BoxDecoration(
           color: AppTheme.bgCard,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(

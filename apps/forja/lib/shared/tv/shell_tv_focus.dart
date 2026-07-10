@@ -18,6 +18,9 @@ abstract final class ShellTvFocus {
     if (_navNodes[id] == node) _navNodes.remove(id);
   }
 
+  static bool get anyNavFocused =>
+      _navNodes.values.any((node) => node.hasFocus);
+
   static bool focusCurrentNavTab() {
     final id = currentNavTabId;
     if (id == null) return false;

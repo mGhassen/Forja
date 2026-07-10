@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
+import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
@@ -83,14 +84,16 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
             ),
           ),
           actions: [
-            TextButton(
+            IptvTextAction(
+              icon: Icons.close_rounded,
+              label: 'Cancel',
+              color: Colors.white70,
               onPressed: busy ? null : () => Navigator.of(ctx).pop(),
-              child: Text('Cancel',
-                  style: GoogleFonts.poppins(color: Colors.white70)),
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: IptvShellStyle.chipSelectedBg),
+            IptvPrimaryButton(
+              icon: Icons.add_rounded,
+              label: busy ? 'Adding…' : 'Add',
+              busy: busy,
               onPressed: busy
                   ? null
                   : () async {
@@ -137,15 +140,6 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
                         });
                       }
                     },
-              child: busy
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text('Add',
-                      style: GoogleFonts.poppins(color: Colors.white)),
             ),
           ],
         ),
@@ -248,17 +242,16 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
           style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13),
         ),
         actions: [
-          TextButton(
+          IptvTextAction(
+            icon: Icons.close_rounded,
+            label: 'Cancel',
+            color: Colors.white70,
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel',
-                style: GoogleFonts.poppins(color: Colors.white70)),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFEF4444)),
+          IptvPrimaryButton(
+            icon: Icons.delete_rounded,
+            label: 'Delete',
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Delete',
-                style: GoogleFonts.poppins(color: Colors.white)),
           ),
         ],
       ),
@@ -336,14 +329,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
       ),
       child: Row(
         children: [
-          ForjaPlainIcon(
-            icon: Icons.arrow_back_rounded,
-            onTap: () => Navigator.of(context).pop(),
-            color: Colors.white70,
-            size: 22,
-            hoverScale: 1.15,
-            tooltip: 'Back',
-          ),
+          iptvBackButton(context, onTap: () => Navigator.of(context).pop()),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,10 +381,11 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
                   color: const Color(0xFFEF4444), fontSize: 12),
             ),
           ),
-          ForjaCloseButton(
+          iptvCloseButton(
+            context,
+            color: const Color(0xFFEF4444),
             size: 16,
             hitSize: 28,
-            color: const Color(0xFFEF4444),
             onTap: () => setState(() => _error = null),
           ),
         ],
@@ -462,7 +449,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
       child: Row(
         children: [
           Expanded(
-            child: _PrimaryBtn(
+            child: IptvPrimaryButton(
               icon: Icons.link_rounded,
               label: 'Add from URL',
               onPressed: _busy ? null : _showAddUrlDialog,
@@ -470,7 +457,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: _PrimaryBtn(
+            child: IptvPrimaryButton(
               icon: Icons.upload_file_rounded,
               label: 'Upload File',
               subtle: true,
@@ -536,9 +523,10 @@ class _PlaylistCard extends StatelessWidget {
             ),
           ],
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+        child: iptvTap(
+          context: context,
           onTap: onTap,
+          borderRadius: 14,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -589,56 +577,23 @@ class _PlaylistCard extends StatelessWidget {
                   ),
                 ),
                 if (onRefresh != null)
-                  IconButton(
+                  IptvIconAction(
                     tooltip: 'Refresh from URL',
                     onPressed: onRefresh,
-                    icon: Icon(Icons.refresh_rounded,
-                        color: Colors.white70),
+                    icon: Icons.refresh_rounded,
+                    color: Colors.white70,
                   ),
-                IconButton(
+                IptvIconAction(
                   tooltip: 'Delete',
                   onPressed: onDelete,
-                  icon: Icon(Icons.delete_outline_rounded,
-                      color: Color(0xFFEF4444)),
+                  icon: Icons.delete_outline_rounded,
+                  color: const Color(0xFFEF4444),
                 ),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _PrimaryBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool subtle;
-  final VoidCallback? onPressed;
-  const _PrimaryBtn({
-    required this.icon,
-    required this.label,
-    this.subtle = false,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: subtle
-            ? Colors.white.withValues(alpha: 0.08)
-            : IptvShellStyle.chipSelectedBg,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      icon: Icon(icon, size: 18),
-      label: Text(label,
-          style: GoogleFonts.poppins(
-              fontSize: 13, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -789,14 +744,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
       ),
       child: Row(
         children: [
-          ForjaPlainIcon(
-            icon: Icons.arrow_back_rounded,
-            onTap: () => Navigator.of(context).pop(),
-            color: Colors.white70,
-            size: 22,
-            hoverScale: 1.15,
-            tooltip: 'Back',
-          ),
+          iptvBackButton(context, onTap: () => Navigator.of(context).pop()),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -930,9 +878,11 @@ class _GroupChip extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: IptvShellStyle.chipDecoration(selected: selected),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+        child: iptvTap(
+          context: context,
           onTap: onTap,
+          borderRadius: 10,
+          scaleOnFocus: 1.0,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Text(
@@ -984,9 +934,11 @@ class _ScrollArrow extends StatelessWidget {
           ),
           child: Material(
             color: Colors.transparent,
-            child: InkWell(
+            child: iptvTap(
+              context: context,
               onTap: onTap,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: 20,
+              scaleOnFocus: 1.0,
               child: Center(
                 child: Container(
                   width: 28,
@@ -1023,9 +975,10 @@ class _ChannelTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+        child: iptvTap(
+          context: context,
           onTap: onTap,
+          borderRadius: 10,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(

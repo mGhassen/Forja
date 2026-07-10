@@ -126,6 +126,8 @@ class FocusableControl extends StatefulWidget {
   final double scaleOnFocus;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onUpEdge;
+  final ValueChanged<bool>? onFocusChange;
+  final FocusNode? focusNode;
 
   const FocusableControl({
     super.key,
@@ -136,6 +138,8 @@ class FocusableControl extends StatefulWidget {
     this.scaleOnFocus = ShellTokens.focusActiveScale,
     this.onLeftEdge,
     this.onUpEdge,
+    this.onFocusChange,
+    this.focusNode,
   });
 
   @override
@@ -176,10 +180,12 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
     return Focus(
+      focusNode: widget.focusNode,
       autofocus: widget.autoFocus,
       onFocusChange: (f) {
         setState(() => _isFocused = f);
         _updateState(f || _isHovered);
+        widget.onFocusChange?.call(f);
         if (f && policy.ensureVisibleOnFocus) {
           Scrollable.ensureVisible(
             context,

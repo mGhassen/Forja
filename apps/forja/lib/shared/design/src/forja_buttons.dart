@@ -162,7 +162,7 @@ class ForjaGhostButton extends StatelessWidget {
   }
 }
 
-/// Bare icon action — soft circular fill on hover/press, no border.
+/// Bare icon action — soft circular fill on hover/press/focus, no border.
 class ForjaPlainIcon extends StatefulWidget {
   const ForjaPlainIcon({
     super.key,
@@ -175,6 +175,8 @@ class ForjaPlainIcon extends StatefulWidget {
     this.hoverScale = 1.08,
     this.pressScale = 0.94,
     this.child,
+    this.focusNode,
+    this.onKeyEvent,
   });
 
   final IconData icon;
@@ -186,6 +188,8 @@ class ForjaPlainIcon extends StatefulWidget {
   final double hoverScale;
   final double pressScale;
   final Widget? child;
+  final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   State<ForjaPlainIcon> createState() => _ForjaPlainIconState();
@@ -194,12 +198,25 @@ class ForjaPlainIcon extends StatefulWidget {
 class _ForjaPlainIconState extends State<ForjaPlainIcon> {
   bool _hover = false;
   bool _pressed = false;
+  bool _focused = false;
 
   double get _resolvedHitSize => widget.hitSize ?? widget.size + 12;
 
-  Color _resolveIconColor() {
-    return widget.color ??
-        (_hover ? ForjaShellColors.iconHover : ForjaShellColors.iconMuted);
+  ShellInputPolicy _policy(BuildContext context) =>
+      ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+
+  bool _activeFor(ShellInputPolicy policy) =>
+      (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+
+  Color _resolveIconColor(ShellInputPolicy policy) {
+    if (widget.color != null) {
+      return _activeFor(policy)
+          ? ForjaShellColors.iconHover
+          : widget.color!;
+    }
+    return _activeFor(policy)
+        ? ForjaShellColors.iconHover
+        : ForjaShellColors.iconMuted;
   }
 
   Color _resolveFillColor() {
@@ -207,14 +224,18 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
     return Colors.white.withValues(alpha: fillAlpha);
   }
 
+  double _scaleFor(ShellInputPolicy policy) {
+    if (_pressed) return widget.pressScale;
+    if (_activeFor(policy)) return widget.hoverScale;
+    return 1.0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final scale = _pressed
-        ? widget.pressScale
-        : (_hover ? widget.hoverScale : 1.0);
-    final showFill = _hover || _pressed;
+    final policy = _policy(context);
+    final showFill = _activeFor(policy) || _pressed;
 
-    final button = MouseRegion(
+    Widget button = MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() {
         _hover = false;
@@ -233,7 +254,7 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
         child: AnimatedScale(
-          scale: scale,
+          scale: _scaleFor(policy),
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           child: SizedBox(
@@ -249,7 +270,7 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
                     Icon(
                       widget.icon,
                       size: widget.size,
-                      color: _resolveIconColor(),
+                      color: _resolveIconColor(policy),
                     ),
               ),
             ),
@@ -257,6 +278,26 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
         ),
       ),
     );
+
+    if (widget.onTap != null) {
+      button = Focus(
+        focusNode: widget.focusNode,
+        debugLabel: widget.focusNode?.debugLabel ?? 'forja-plain-icon',
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onKeyEvent: (node, event) {
+          final custom = widget.onKeyEvent?.call(node, event);
+          if (custom == KeyEventResult.handled) return KeyEventResult.handled;
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey == LogicalKeyboardKey.enter ||
+              event.logicalKey == LogicalKeyboardKey.select) {
+            widget.onTap!();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: button,
+      );
+    }
 
     if (widget.tooltip != null) {
       return Tooltip(message: widget.tooltip!, child: button);

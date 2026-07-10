@@ -467,6 +467,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         itemCount: streams.length,
         itemBuilder: (context, i) => _DamiTvMatchCard(
           stream: streams[i],
+          gridIndex: i,
+          gridColumns: crossCount,
           onTap: () => _openDamiTvStream(streams[i]),
         ),
       );
@@ -522,6 +524,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
                 itemCount: channels.length,
                 itemBuilder: (context, i) => _CdnChannelCard(
                   channel: channels[i],
+                  gridIndex: i,
+                  gridColumns: crossCount,
                   onTap: () => _openCdnChannel(channels[i]),
                 ),
               );
@@ -579,6 +583,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
                 itemCount: sports.length,
                 itemBuilder: (context, i) => _CdnSportCard(
                   event: sports[i],
+                  gridIndex: i,
+                  gridColumns: crossCount,
                   onTap: () => _openCdnSportEvent(sports[i]),
                 ),
               );
@@ -679,7 +685,14 @@ class _TeamBadge extends StatelessWidget {
 class _CdnChannelCard extends StatefulWidget {
   final _CdnChannel channel;
   final VoidCallback onTap;
-  const _CdnChannelCard({required this.channel, required this.onTap});
+  final int? gridIndex;
+  final int? gridColumns;
+  const _CdnChannelCard({
+    required this.channel,
+    required this.onTap,
+    this.gridIndex,
+    this.gridColumns,
+  });
 
   @override
   State<_CdnChannelCard> createState() => _CdnChannelCardState();
@@ -695,6 +708,8 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
       context: context,
       onTap: widget.onTap,
       borderRadius: 16,
+      gridIndex: widget.gridIndex,
+      gridColumns: widget.gridColumns,
       child: MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -789,7 +804,14 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
 class _CdnSportCard extends StatefulWidget {
   final _CdnSportEvent event;
   final VoidCallback onTap;
-  const _CdnSportCard({required this.event, required this.onTap});
+  final int? gridIndex;
+  final int? gridColumns;
+  const _CdnSportCard({
+    required this.event,
+    required this.onTap,
+    this.gridIndex,
+    this.gridColumns,
+  });
 
   @override
   State<_CdnSportCard> createState() => _CdnSportCardState();
@@ -805,6 +827,8 @@ class _CdnSportCardState extends State<_CdnSportCard> {
       context: context,
       onTap: widget.onTap,
       borderRadius: 16,
+      gridIndex: widget.gridIndex,
+      gridColumns: widget.gridColumns,
       child: MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -956,6 +980,7 @@ class _CdnChannelSheet extends StatelessWidget {
             context: context,
             onTap: () => onChannelSelected(ch),
             borderRadius: 12,
+            navLeftAlways: true,
             child: ListTile(
             leading: ch.image.isNotEmpty
                 ? CachedNetworkImage(imageUrl: ch.image, width: 32, height: 32, fit: BoxFit.contain,
@@ -1082,7 +1107,14 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
 class _DamiTvMatchCard extends StatefulWidget {
   final _DamiTvStream stream;
   final VoidCallback onTap;
-  const _DamiTvMatchCard({required this.stream, required this.onTap});
+  final int? gridIndex;
+  final int? gridColumns;
+  const _DamiTvMatchCard({
+    required this.stream,
+    required this.onTap,
+    this.gridIndex,
+    this.gridColumns,
+  });
 
   @override
   State<_DamiTvMatchCard> createState() => _DamiTvMatchCardState();
@@ -1101,6 +1133,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       context: context,
       onTap: widget.onTap,
       borderRadius: 16,
+      gridIndex: widget.gridIndex,
+      gridColumns: widget.gridColumns,
       child: MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),

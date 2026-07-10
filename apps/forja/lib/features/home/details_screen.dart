@@ -179,6 +179,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   final ScrollController _seasonScrollController = ScrollController();
   final ScrollController _chipsScrollController = ScrollController();
   final FocusNode _keyboardFocusNode = FocusNode();
+  final FocusNode _detailsHeroPlayFocus = FocusNode(debugLabel: 'details-hero-play');
+  bool _detailsHeroInitialFocusDone = false;
 
   // MDBlist aggregated ratings
   Map<String, dynamic>? _mdblistRatings;
@@ -216,6 +218,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   @override
   void dispose() {
     _keyboardFocusNode.dispose();
+    _detailsHeroPlayFocus.dispose();
     _episodeScrollController.dispose();
     _seasonScrollController.dispose();
     _chipsScrollController.dispose();
@@ -725,6 +728,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final hasResume = _lastProgress != null &&
         ((_lastProgress!['position'] as int? ?? 0) > 0);
     final showPlay = _hasPanelPlaySources;
+    final policy = ShellScope.inputPolicyOf(context);
+    if (policy.heroPlayAutoFocus && !_detailsHeroInitialFocusDone && !_isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _detailsHeroInitialFocusDone) return;
+        if (_detailsHeroPlayFocus.canRequestFocus) {
+          _detailsHeroPlayFocus.requestFocus();
+          _detailsHeroInitialFocusDone = true;
+        }
+      });
+    }
     return MediaDetailsTorrentActionRow(
       movie: _movie,
       hasResume: hasResume,
@@ -741,6 +754,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       userTraktRating: _userTraktRating,
       userSimklRating: _userSimklRating,
       isInTraktCollection: _isInTraktCollection,
+      playFocusNode: policy.heroPlayAutoFocus ? _detailsHeroPlayFocus : null,
     );
   }
 
@@ -2831,44 +2845,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       );
     }
 
-    return Focus(
-      focusNode: _keyboardFocusNode,
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent || _movie.mediaType != 'tv' || _seasonData == null) {
-          return KeyEventResult.ignored;
-        }
-        final episodes = _seasonData!['episodes'] as List?;
-        if (episodes == null || episodes.isEmpty) return KeyEventResult.ignored;
-
-        if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-          if (_selectedEpisode > 1) {
-            setState(() => _selectedEpisode--);
-            _autoSearch();
-          }
-          return KeyEventResult.handled;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-          if (_selectedEpisode < episodes.length) {
-            setState(() => _selectedEpisode++);
-            _autoSearch();
-          }
-          return KeyEventResult.handled;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.arrowUp && _selectedSeason > 1) {
-          _fetchSeason(_selectedSeason - 1);
-          setState(() => _selectedEpisode = 1);
-          return KeyEventResult.handled;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
-            _selectedSeason < _movie.numberOfSeasons) {
-          _fetchSeason(_selectedSeason + 1);
-          setState(() => _selectedEpisode = 1);
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Scaffold(
+    final scaffold = Scaffold(
         backgroundColor: AppTheme.bgDark,
         body: Stack(children: [
           _buildScrollLayout(),
@@ -2880,8 +2857,50 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             ),
           const MediaDetailsBackButton(),
         ]),
-      ),
-    );
+      );
+
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv && _movie.mediaType == 'tv' && _seasonData != null) {
+      return Focus(
+        focusNode: _keyboardFocusNode,
+        skipTraversal: true,
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          final episodes = _seasonData!['episodes'] as List?;
+          if (episodes == null || episodes.isEmpty) return KeyEventResult.ignored;
+
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+            if (_selectedEpisode > 1) {
+              setState(() => _selectedEpisode--);
+              _autoSearch();
+            }
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+            if (_selectedEpisode < episodes.length) {
+              setState(() => _selectedEpisode++);
+              _autoSearch();
+            }
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp && _selectedSeason > 1) {
+            _fetchSeason(_selectedSeason - 1);
+            setState(() => _selectedEpisode = 1);
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
+              _selectedSeason < _movie.numberOfSeasons) {
+            _fetchSeason(_selectedSeason + 1);
+            setState(() => _selectedEpisode = 1);
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: scaffold,
+      );
+    }
+
+    return scaffold;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

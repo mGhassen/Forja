@@ -164,6 +164,8 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
                     final item = _items[index];
                     return _MyListCard(
                       item: item,
+                      gridIndex: index,
+                      gridColumns: crossAxisCount,
                       onTap: () => _openItem(item),
                       onRemove: () async {
                         await _myList.remove(item['uniqueId']);
@@ -218,8 +220,16 @@ class _MyListCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onTap;
   final VoidCallback onRemove;
+  final int? gridIndex;
+  final int? gridColumns;
 
-  const _MyListCard({required this.item, required this.onTap, required this.onRemove});
+  const _MyListCard({
+    required this.item,
+    required this.onTap,
+    required this.onRemove,
+    this.gridIndex,
+    this.gridColumns,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -238,6 +248,8 @@ class _MyListCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 12,
+      gridIndex: gridIndex,
+      gridColumns: gridColumns,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -330,9 +342,11 @@ class _MyListCard extends StatelessWidget {
             // Remove button — must be AFTER title so it renders on top
             Positioned(
               bottom: 4, right: 4,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
+              child: shellFocusableTap(
+                context: context,
                 onTap: onRemove,
+                borderRadius: 20,
+                scaleOnFocus: ShellTokens.focusActiveScale,
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
