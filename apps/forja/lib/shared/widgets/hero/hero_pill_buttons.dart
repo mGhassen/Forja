@@ -69,8 +69,15 @@ class HeroPillPlayButton extends StatelessWidget {
   HeroPillPlayTone get _tone =>
       tone ?? (primary ? HeroPillPlayTone.primary : HeroPillPlayTone.secondary);
 
+  bool _tvCompactUnfocused(ShellInputPolicy policy, bool focused) {
+    if (!policy.useFocusableMoodChips || focused) return false;
+    return _tone == HeroPillPlayTone.primary ||
+        _tone == HeroPillPlayTone.streaming;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
     final resolved = _tone;
     final Color foreground;
     late final BoxDecoration Function(bool hover) decoration;
@@ -104,13 +111,31 @@ class HeroPillPlayButton extends StatelessWidget {
       onKeyEvent: onKeyEvent,
       hoverScale: 1.03,
       pressScale: 0.97,
-      builder: (hover, pressed) {
+      builder: (focused, pressed) {
+        final compact = _tvCompactUnfocused(policy, focused);
+
+        if (compact) {
+          final compactIcon = iconWidget ??
+              (icon != null
+                  ? Icon(icon, size: _kHeroPillIconSize, color: Colors.white)
+                  : null);
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            curve: Curves.easeOutCubic,
+            width: _kHeroPillHeight,
+            height: _kHeroPillHeight,
+            decoration: _heroPillDecoration(hover: false),
+            alignment: Alignment.center,
+            child: compactIcon,
+          );
+        }
+
         return AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           height: _kHeroPillHeight,
           padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: decoration(hover),
+          decoration: decoration(focused),
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,
