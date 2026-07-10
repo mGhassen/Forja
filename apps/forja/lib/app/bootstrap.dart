@@ -31,6 +31,7 @@ import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/tv_remote_debug.dart';
+import 'package:forja/shared/platform/platform_channel.dart';
 
 bool _appShutdownStarted = false;
 
@@ -147,6 +148,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   AudiobookPlayerService().init(audioHandler);
   
   // Hydrate theme preset before first frame
+  await PlatformChannel.initialize();
   await Engine.init();
   _warnIfRustMissing();
   

@@ -58,6 +58,9 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
     if (list.isEmpty) return const SizedBox.shrink();
 
     final sectionTop = _sectionTitleTop(context);
+    final isTv = ShellTokens.isTvLayout(context);
+    final horizontalPad =
+        isTv ? ShellTokens.tvBodyHorizontalPadding : 24.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,21 +68,28 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
       children: [
         ShellSectionTitle(
           title: widget.title,
-          padding: EdgeInsets.fromLTRB(24, sectionTop, 24, 16),
+          padding: EdgeInsets.fromLTRB(
+            horizontalPad,
+            sectionTop,
+            horizontalPad,
+            16,
+          ),
         ),
         SizedBox(
           height: HubPosterCard.cardHeight(context),
-          child: ListView.separated(
-            clipBehavior: Clip.none,
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: list.length,
-            separatorBuilder: (_, _) =>
-                SizedBox(width: widget.showRank ? 6 : 14),
-            itemBuilder: (context, index) =>
-                widget.cardBuilder(context, list[index], index),
+          child: FocusTraversalGroup(
+            child: ListView.separated(
+              clipBehavior: Clip.none,
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.symmetric(horizontal: horizontalPad),
+              itemCount: list.length,
+              separatorBuilder: (_, _) =>
+                  SizedBox(width: widget.showRank ? 6 : 14),
+              itemBuilder: (context, index) =>
+                  widget.cardBuilder(context, list[index], index),
+            ),
           ),
         ),
       ],

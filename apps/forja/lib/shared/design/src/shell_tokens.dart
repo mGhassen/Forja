@@ -274,10 +274,15 @@ abstract final class ShellTokens {
   @Deprecated('Use navRailWidth')
   static const double navRailExpandedWidth = navRailWidth;
 
-  /// Android TV / leanback: 1080p+ landscape panel (uses physical pixels so TV
-  /// display scaling does not break detection).
+  static const double tvBodyHorizontalPadding = 48;
+
+  /// Set at boot by [PlatformChannel.initialize] when native leanback reports TV.
+  static bool nativeAndroidTvDetected = false;
+
+  /// Android TV / leanback: native leanback detection or 1080p+ landscape panel.
   static bool get isAndroidTvDevice {
     if (!Platform.isAndroid) return false;
+    if (nativeAndroidTvDetected) return true;
     final physical = _androidTvPhysicalSize();
     if (physical == null) return false;
     return physical.shortestSide >= 1080 && physical.width > physical.height;

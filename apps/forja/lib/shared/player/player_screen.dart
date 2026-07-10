@@ -4,6 +4,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';
+import 'package:forja/shared/player/player/tv_player_screen.dart';
 import 'package:forja/shared/player/player/desktop_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 
@@ -172,6 +173,40 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
 
     // Built-in player
+    if (Platform.isAndroid && ShellTokens.isAndroidTvDevice) {
+      return TvPlayerScreen(
+        mediaPath: widget.streamUrl,
+        title: widget.title,
+        audioUrl: widget.audioUrl,
+        headers: widget.headers,
+        movie: widget.movie,
+        selectedSeason: widget.selectedSeason,
+        selectedEpisode: widget.selectedEpisode,
+        magnetLink: widget.magnetLink,
+        activeProvider: widget.activeProvider,
+        startPosition: widget.startPosition,
+        sources: widget.sources,
+        fileIndex: widget.fileIndex,
+        externalSubtitles: widget.externalSubtitles,
+        stremioId: widget.stremioId,
+        stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+        providers: widget.providers,
+        onNextEpisode: widget.onNextEpisode,
+        hasNextEpisode: widget.hasNextEpisode,
+        hubEpisodes: widget.hubEpisodes,
+        hubEpisodeNumber: widget.hubEpisodeNumber,
+        onHubEpisodeSelected: widget.onHubEpisodeSelected,
+        episodeOverview: widget.episodeOverview,
+        onSaveProgress: widget.onSaveProgress,
+        onSourcePinned: widget.onSourcePinned,
+        pinSource: widget.pinSource,
+        onPlaybackStarted: widget.onPlaybackStarted,
+        onAllSourcesExhausted: widget.onAllSourcesExhausted,
+        onReloadStreams: widget.onReloadStreams,
+        sourcesListNotifier: widget.sourcesListNotifier,
+      );
+    }
+
     if (Platform.isAndroid || Platform.isIOS) {
       return MobilePlayerScreen(
         mediaPath: widget.streamUrl,

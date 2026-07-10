@@ -27,8 +27,19 @@ Download builds from [GitHub Releases](https://github.com/mGhassen/Forja/release
 ## Platform notes
 
 - **Android:** Picture-in-picture, background music playback, immersive navigation
+- **Android TV:** Leanback launcher entry, nav-rail shell (`ShellHost` TV profile), D-pad focus on in-scope tabs, built-in player remote keys (play/pause, seek ±10s, Back)
 - **macOS:** Hidden title bar with draggable window chrome
 - **Windows / Linux:** Custom window caption on desktop
+
+## Android TV development
+
+Test TV layout on a phone or emulator (not leanback proof):
+
+```bash
+flutter run -d <android-device> --dart-define=FORJA_ANDROID_TV=true
+```
+
+Forces TV profile and TV first-run nav defaults. Real leanback launcher smoke is tracked in [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md).
 
 ## Tips
 

@@ -378,6 +378,7 @@ class MobilePlayerScreen extends StatefulWidget {
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
   final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
+  final bool tvRemoteEnabled;
 
   const MobilePlayerScreen({
     super.key,
@@ -410,6 +411,7 @@ class MobilePlayerScreen extends StatefulWidget {
     this.onAllSourcesExhausted,
     this.onReloadStreams,
     this.sourcesListNotifier,
+    this.tvRemoteEnabled = false,
   });
 
   @override
@@ -563,6 +565,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     // ── Lifecycle Observer ───────────────────────────────────────────────
     WidgetsBinding.instance.addObserver(this);
+    if (widget.tvRemoteEnabled) {
+      HardwareKeyboard.instance.addHandler(_handleTvKeyEvent);
+    }
 
     _loadHeroMetadata();
 
@@ -726,6 +731,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     _disposed = true;
+    if (widget.tvRemoteEnabled) {
+      HardwareKeyboard.instance.removeHandler(_handleTvKeyEvent);
+    }
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _indicatorHideTimer?.cancel();
@@ -1833,6 +1841,69 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
     if (_showControls) _startHideTimer();
+  }
+
+  bool _handleTvKeyEvent(KeyEvent event) {
+    if (!widget.tvRemoteEnabled || _disposed || _hasError) return false;
+    if (event is! KeyDownEvent) return false;
+    if (_isLocked) return false;
+
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.goBack) {
+      unawaited(_exitPlayer());
+      return true;
+    }
+
+    if (key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.space ||
+        key == LogicalKeyboardKey.mediaPlayPause) {
+      if (!_showControls) {
+        setState(() => _showControls = true);
+        _startHideTimer();
+      } else {
+        _player.playOrPause();
+        _startHideTimer();
+      }
+      return true;
+    }
+
+    if (key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.mediaRewind) {
+      var newPos = _positionNotifier.value - const Duration(seconds: 10);
+      if (newPos < Duration.zero) newPos = Duration.zero;
+      _player.seek(newPos);
+      _startHideTimer();
+      return true;
+    }
+
+    if (key == LogicalKeyboardKey.arrowRight ||
+        key == LogicalKeyboardKey.mediaFastForward) {
+      final dur = _durationNotifier.value;
+      var newPos = _positionNotifier.value + const Duration(seconds: 10);
+      if (newPos > dur) newPos = dur;
+      _player.seek(newPos);
+      _startHideTimer();
+      return true;
+    }
+
+    if (key == LogicalKeyboardKey.arrowUp) {
+      _player.setVolume(
+        (_volume.clamp(0, 150) + 5).clamp(0, 150).toDouble(),
+      );
+      return true;
+    }
+
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _player.setVolume(
+        (_volume.clamp(0, 150) - 5).clamp(0, 150).toDouble(),
+      );
+      return true;
+    }
+
+    return false;
   }
 
   void _toggleLock() {
