@@ -2279,7 +2279,8 @@ class _MovieSectionState extends State<_MovieSection> {
             ),
             SizedBox(
               height: HomeMovieCard.cardHeight(context),
-              child: ListView.separated(
+              child: FocusTraversalGroup(
+                child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
@@ -2299,6 +2300,7 @@ class _MovieSectionState extends State<_MovieSection> {
                     onUpEdge: tvNav && index == 0 ? widget.tvFocusUp : null,
                   );
                 },
+              ),
               ),
             ),
           ],
@@ -2341,7 +2343,8 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
         ShellSectionTitle(title: widget.title),
         SizedBox(
           height: HomeMovieCard.cardHeight(context),
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -2354,6 +2357,7 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
               onTap: () => widget.onMovieTap(widget.movies[index]),
               listIndex: index,
             ),
+          ),
           ),
         ),
       ],
@@ -3348,7 +3352,10 @@ class _StremioCatalogCard extends StatelessWidget {
             // My List button
             Positioned(
               top: 8, left: 8,
-              child: MyListButton.stremio(stremioItem: item),
+              child: MyListButton.stremio(
+                stremioItem: item,
+                excludeFromTvTraversal: true,
+              ),
             ),
           ],
         ),

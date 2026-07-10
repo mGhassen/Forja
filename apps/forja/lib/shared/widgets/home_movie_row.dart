@@ -85,7 +85,8 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
         if (titleGap > 0) SizedBox(height: titleGap),
         SizedBox(
           height: HomeMovieCard.cardHeight(context),
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -102,6 +103,7 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
                 listIndex: index,
               );
             },
+          ),
           ),
         ),
       ],

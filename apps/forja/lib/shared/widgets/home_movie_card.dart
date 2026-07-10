@@ -175,7 +175,10 @@ class HomeMovieCard extends StatelessWidget {
               Positioned(
                 top: 8,
                 left: 8,
-                child: MyListButton.movie(movie: movie),
+                child: MyListButton.movie(
+                  movie: movie,
+                  excludeFromTvTraversal: true,
+                ),
               ),
             ],
           ),

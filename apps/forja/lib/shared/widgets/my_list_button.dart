@@ -13,6 +13,7 @@ class MyListButton extends StatelessWidget {
     this.iconColorActive,
     this.iconSize,
     this.heroPillSlot = false,
+    this.excludeFromTvTraversal = false,
   }) : stremioItem = null;
 
   const MyListButton.stremio({
@@ -23,6 +24,7 @@ class MyListButton extends StatelessWidget {
     this.iconColorActive,
     this.iconSize,
     this.heroPillSlot = false,
+    this.excludeFromTvTraversal = false,
   }) : movie = null;
 
   final Movie? movie;
@@ -32,6 +34,8 @@ class MyListButton extends StatelessWidget {
   final Color? iconColorActive;
   final double? iconSize;
   final bool heroPillSlot;
+  /// Row cards: keep D-pad on the poster tile, not the overlay button.
+  final bool excludeFromTvTraversal;
 
   String get _uniqueId {
     if (movie != null) return MyListService.movieId(movie!.id, movie!.mediaType);
@@ -68,7 +72,10 @@ class MyListButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
+    final policy = ShellScope.inputPolicyOf(context);
+    final exclude = excludeFromTvTraversal && policy.useFocusableMoodChips;
+
+    Widget body = ValueListenableBuilder<int>(
       valueListenable: MyListService.changeNotifier,
       builder: (context, _, _) {
         final inList = MyListService().contains(_uniqueId);
@@ -109,7 +116,7 @@ class MyListButton extends StatelessWidget {
           );
         }
 
-        if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+        if (!policy.useFocusableMoodChips) {
           return GestureDetector(
             onTap: () => _toggle(context),
             child: icon,
@@ -128,5 +135,10 @@ class MyListButton extends StatelessWidget {
         );
       },
     );
+
+    if (exclude) {
+      body = ExcludeFocus(child: body);
+    }
+    return body;
   }
 }
