@@ -4,14 +4,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
+import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
@@ -1585,16 +1585,13 @@ class _LiveHealthProbe extends StatelessWidget {
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   /// Android TV / leanback: tablet-sized wide landscape (not phone).
-  static bool isTvLayout(BuildContext context) {
-    if (!Platform.isAndroid) return false;
-    final size = MediaQuery.sizeOf(context);
-    if (size.shortestSide < 600) return false;
-    return size.longestSide >= 960 && size.width > size.height;
-  }
+  static bool isTvLayout(BuildContext context) =>
+      resolveShellProfile(context) == ShellProfile.tv;
 
   /// Mobile touch scrolling needs visibility + scroll debounce.
   static bool usesScrollDebounce(BuildContext context) =>
-      !isDesktopPlatform() && !isTvLayout(context);
+      !isDesktopPlatform() &&
+      resolveShellProfile(context) == ShellProfile.mobile;
 
   @override
   Widget build(BuildContext context) {

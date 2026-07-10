@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 /// Layout constants for the app shell nav chrome.
 abstract final class ShellTokens {
@@ -267,11 +268,31 @@ abstract final class ShellTokens {
   @Deprecated('Use navRailWidth')
   static const double navRailExpandedWidth = navRailWidth;
 
-  /// Android TV / leanback: wide landscape with tablet-class shortest side.
+  /// Android TV / leanback: 1080p+ landscape panel (uses physical pixels so TV
+  /// display scaling does not break detection).
+  static bool get isAndroidTvDevice {
+    if (!Platform.isAndroid) return false;
+    final physical = _androidTvPhysicalSize();
+    if (physical == null) return false;
+    return physical.shortestSide >= 1080 && physical.width > physical.height;
+  }
+
   static bool isTvLayout(BuildContext context) {
+    if (isAndroidTvDevice) return true;
     if (!Platform.isAndroid) return false;
     final size = MediaQuery.sizeOf(context);
     if (size.shortestSide < 600) return false;
     return size.longestSide >= 960 && size.width > size.height;
   }
+
+  static Size? _androidTvPhysicalSize() {
+    if (!Platform.isAndroid) return null;
+    final views = SchedulerBinding.instance.platformDispatcher.views;
+    if (views.isEmpty) return null;
+    return views.first.physicalSize;
+  }
+
+  /// Scale shell/home fixed sizes on TV (cards, rails, etc.).
+  @Deprecated('TV uses desktop shell metrics — do not scale separately')
+  static double tvUiScale(BuildContext context) => 1.0;
 }

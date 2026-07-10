@@ -49,6 +49,8 @@ class HeroPillPlayButton extends StatelessWidget {
     this.onTap,
     this.primary = true,
     this.tone,
+    this.autoFocus = false,
+    this.focusNode,
   });
 
   final String label;
@@ -57,6 +59,8 @@ class HeroPillPlayButton extends StatelessWidget {
   final VoidCallback? onTap;
   final bool primary;
   final HeroPillPlayTone? tone;
+  final bool autoFocus;
+  final FocusNode? focusNode;
 
   HeroPillPlayTone get _tone =>
       tone ?? (primary ? HeroPillPlayTone.primary : HeroPillPlayTone.secondary);
@@ -91,6 +95,8 @@ class HeroPillPlayButton extends StatelessWidget {
 
     return ForjaInteractive(
       onTap: onTap,
+      autoFocus: autoFocus,
+      focusNode: focusNode,
       hoverScale: 1.03,
       pressScale: 0.97,
       builder: (hover, pressed) {

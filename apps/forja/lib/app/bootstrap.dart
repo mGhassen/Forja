@@ -30,6 +30,7 @@ import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/tv_remote_debug.dart';
 
 bool _appShutdownStarted = false;
 
@@ -57,6 +58,9 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
+  if (Platform.isAndroid) {
+    TvRemoteDebug.install();
+  }
 
   // Configure InAppWebView (Android only — not supported on iOS)
   if (Platform.isAndroid) {
@@ -279,10 +283,14 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           theme: AppTheme.themeData,
           home: const SplashScreen(),
           builder: (context, child) {
-            return ForjaToastHost(
+            final content = ForjaToastHost(
               child: BackNavigationScope(
                 child: child ?? const SizedBox.shrink(),
               ),
+            );
+            return ShellInputPolicy.maybeWrapFocusTraversal(
+              enabled: ShellTokens.isAndroidTvDevice,
+              child: content,
             );
           },
         );

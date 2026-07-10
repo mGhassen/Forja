@@ -245,7 +245,11 @@ class StremioSourceTile extends StatelessWidget {
       isResumable: isResumable && !isExternal,
       highlightStart: highlightStart && !isExternal,
       leading: isExternal
-          ? Icon(leadingIcon, color: leadingColor, size: ShellTokens.isTvLayout(context) ? 26 : 22)
+          ? Icon(
+              leadingIcon,
+              color: leadingColor,
+              size: ShellScope.metricsOf(context).torrentPanelLeadingIconSize,
+            )
           : null,
       accentBorder: isExternal ? leadingColor.withValues(alpha: 0.25) : null,
       accentFill: isExternal ? leadingColor.withValues(alpha: 0.06) : null,
@@ -367,9 +371,10 @@ class _SourceBadgeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTv = ShellTokens.isTvLayout(context);
-    final padV = isTv ? 14.0 : 10.0;
-    final titleSize = isTv ? 15.0 : 13.0;
+    final metrics = ShellScope.metricsOf(context);
+    final usesTvDensity = metrics.usesTvDensity;
+    final padV = usesTvDensity ? 14.0 : 10.0;
+    final titleSize = usesTvDensity ? 15.0 : 13.0;
     final cinematic = ForjaShellColors.cinematic;
     final hasProvider =
         provider != null && provider!.trim().isNotEmpty;
@@ -429,7 +434,7 @@ class _SourceBadgeCard extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 title,
-                                maxLines: isTv ? 3 : 2,
+                                maxLines: usesTvDensity ? 3 : 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: cinematic.textPrimary,
@@ -443,7 +448,7 @@ class _SourceBadgeCard extends StatelessWidget {
                               const SizedBox(width: 8),
                               ConstrainedBox(
                                 constraints: BoxConstraints(
-                                  maxWidth: isTv ? 120 : 96,
+                                  maxWidth: usesTvDensity ? 120 : 96,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -456,7 +461,7 @@ class _SourceBadgeCard extends StatelessWidget {
                                         textAlign: TextAlign.right,
                                         style: TextStyle(
                                           color: cinematic.textSecondary,
-                                          fontSize: isTv ? 12 : 11,
+                                          fontSize: metrics.torrentPanelMetaFontSize,
                                           fontWeight: FontWeight.w500,
                                           height: 1.25,
                                         ),
@@ -468,7 +473,7 @@ class _SourceBadgeCard extends StatelessWidget {
                                         children: [
                                           Icon(
                                             Icons.arrow_upward_rounded,
-                                            size: isTv ? 12 : 11,
+                                            size: metrics.torrentPanelMetaFontSize,
                                             color: seedColor,
                                           ),
                                           const SizedBox(width: 2),
@@ -476,7 +481,7 @@ class _SourceBadgeCard extends StatelessWidget {
                                             seeders!,
                                             style: TextStyle(
                                               color: seedColor,
-                                              fontSize: isTv ? 12 : 11,
+                                              fontSize: metrics.torrentPanelMetaFontSize,
                                               fontWeight: FontWeight.w600,
                                               height: 1.1,
                                             ),
@@ -502,12 +507,15 @@ class _SourceBadgeCard extends StatelessWidget {
                                 Text(
                                   flags!,
                                   style: TextStyle(
-                                    fontSize: isTv ? 14 : 13,
+                                    fontSize: metrics.torrentPanelChipFontSize,
                                     height: 1.1,
                                   ),
                                 ),
                               for (final badge in badges)
-                                _SourceMetaBadge(badge: badge, isTv: isTv),
+                                _SourceMetaBadge(
+                                  badge: badge,
+                                  usesTvDensity: usesTvDensity,
+                                ),
                             ],
                           ),
                         ],
@@ -542,10 +550,13 @@ class _SourceBadgeCard extends StatelessWidget {
 }
 
 class _SourceMetaBadge extends StatelessWidget {
-  const _SourceMetaBadge({required this.badge, required this.isTv});
+  const _SourceMetaBadge({
+    required this.badge,
+    required this.usesTvDensity,
+  });
 
   final _SourceBadgeSpec badge;
-  final bool isTv;
+  final bool usesTvDensity;
 
   @override
   Widget build(BuildContext context) {
@@ -575,8 +586,8 @@ class _SourceMetaBadge extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isTv ? 8 : 7,
-        vertical: isTv ? 4 : 3,
+        horizontal: usesTvDensity ? 8 : 7,
+        vertical: usesTvDensity ? 4 : 3,
       ),
       decoration: BoxDecoration(
         color: bg,
@@ -587,7 +598,7 @@ class _SourceMetaBadge extends StatelessWidget {
         badge.label,
         style: TextStyle(
           color: fg,
-          fontSize: isTv ? 12 : 11,
+          fontSize: usesTvDensity ? 12 : 11,
           fontWeight: FontWeight.w600,
           height: 1.1,
         ),

@@ -3,14 +3,13 @@ import 'package:forja/shell/shell_body.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class ShellScaffold extends StatefulWidget {
   const ShellScaffold({
     super.key,
     required this.useNavRail,
-    required this.isDesktop,
     required this.visibleIds,
     required this.selectedIndex,
     required this.mountedTabIds,
@@ -22,7 +21,6 @@ class ShellScaffold extends StatefulWidget {
   });
 
   final bool useNavRail;
-  final bool isDesktop;
   final List<String> visibleIds;
   final int selectedIndex;
   final Set<String> mountedTabIds;
@@ -39,38 +37,41 @@ class ShellScaffold extends StatefulWidget {
 class _ShellScaffoldState extends State<ShellScaffold> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  bool _compactNav(BuildContext context) {
+    final metrics = ShellScope.metricsOf(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final showRail = widget.useNavRail && !widget.hideGlobalNav;
+    return showRail &&
+        metrics.allowCompactNavDrawer &&
+        width < ShellTokens.shellNavCompactMaxWidth;
+  }
+
   void _onNavSelected(int index) {
     popShellOverlayUntilRoot();
     widget.onDestinationSelected(index);
-    final width = MediaQuery.sizeOf(context).width;
-    final compactNav = widget.useNavRail &&
-        !widget.hideGlobalNav &&
-        width < ShellTokens.shellNavCompactMaxWidth;
-    if (compactNav) {
+    if (_compactNav(context)) {
       Navigator.of(context).pop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
+    final metrics = ShellScope.metricsOf(context);
     final showRail = widget.useNavRail && !widget.hideGlobalNav;
-    final compactNav =
-        showRail && width < ShellTokens.shellNavCompactMaxWidth;
+    final compactNav = _compactNav(context);
     final bodyInset =
-        showRail && !compactNav ? ShellTokens.navRailWidth : 0.0;
+        showRail && !compactNav ? metrics.navRailWidth : 0.0;
 
     return Scaffold(
       key: _scaffoldKey,
       drawer: compactNav
           ? Drawer(
-              width: ShellTokens.navRailWidth,
+              width: metrics.navRailWidth,
               backgroundColor: AppTheme.bgDark,
               child: ShellNavRail(
                 visibleIds: widget.visibleIds,
                 selectedIndex: widget.selectedIndex,
                 onDestinationSelected: _onNavSelected,
-                isDesktop: widget.isDesktop,
               ),
             )
           : null,
@@ -136,7 +137,6 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                 visibleIds: widget.visibleIds,
                 selectedIndex: widget.selectedIndex,
                 onDestinationSelected: _onNavSelected,
-                isDesktop: widget.isDesktop,
               ),
             ),
         ],

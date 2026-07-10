@@ -50,6 +50,8 @@ When adding a new surface, **extend `ShellTokens`** if the constant will be reus
 ## Focus / TV
 
 - Interactive list tiles and cards: wrap with `FocusableControl` from `app_theme.dart` (keyboard + focus ring).
+- Platform layout and input: read `ShellScope.metrics` / `ShellScope.inputPolicy` — not `ShellTokens.isTvLayout` in widgets.
+- Platform shell switches live only in `shell/adapters/` (`ShellHost`, `DesktopShell`, `TvShell`, `MobileShell`).
 
 ## Forbidden without explicit approval
 

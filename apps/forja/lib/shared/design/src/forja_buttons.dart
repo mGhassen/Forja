@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/src/shell_input_policy.dart';
+import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -12,12 +15,16 @@ class ForjaInteractive extends StatefulWidget {
     this.onTap,
     this.hoverScale = 1.06,
     this.pressScale = 0.94,
+    this.autoFocus = false,
+    this.focusNode,
   });
 
   final ForjaInteractiveBuilder builder;
   final VoidCallback? onTap;
   final double hoverScale;
   final double pressScale;
+  final bool autoFocus;
+  final FocusNode? focusNode;
 
   @override
   State<ForjaInteractive> createState() => _ForjaInteractiveState();
@@ -26,23 +33,32 @@ class ForjaInteractive extends StatefulWidget {
 class _ForjaInteractiveState extends State<ForjaInteractive> {
   bool _hover = false;
   bool _pressed = false;
+  bool _focused = false;
 
-  double get _scale {
+  ShellInputPolicy _policy(BuildContext context) =>
+      ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+
+  double _scaleFor(ShellInputPolicy policy) {
     if (_pressed) return widget.pressScale;
-    if (_hover) return widget.hoverScale;
+    if (policy.scaleOnHover && _hover) return widget.hoverScale;
+    if (policy.scaleOnFocus && _focused) return widget.hoverScale;
     return 1.0;
   }
 
+  bool _activeFor(ShellInputPolicy policy) =>
+      (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+
   @override
   Widget build(BuildContext context) {
+    final policy = _policy(context);
     final body = AnimatedScale(
-      scale: _scale,
+      scale: _scaleFor(policy),
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
-      child: widget.builder(_hover, _pressed),
+      child: widget.builder(_activeFor(policy), _pressed),
     );
 
-    return MouseRegion(
+    Widget interactive = MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() {
         _hover = false;
@@ -65,6 +81,30 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
               behavior: HitTestBehavior.translucent,
               child: body,
             ),
+    );
+
+    if (widget.onTap == null) return interactive;
+
+    final ring = _focused ? policy.focusRingDecoration(borderRadius: 10) : null;
+    if (ring != null) {
+      interactive = DecoratedBox(decoration: ring, child: interactive);
+    }
+
+    return Focus(
+      focusNode: widget.focusNode,
+      debugLabel: widget.focusNode?.debugLabel ?? 'forja-interactive',
+      autofocus: widget.autoFocus,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.select) {
+          widget.onTap!();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: interactive,
     );
   }
 }

@@ -14,10 +14,10 @@ import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -334,28 +334,29 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    final isLandscape = MediaQuery.orientationOf(context) == Orientation.landscape;
-    final useNavRail = isDesktop || isLandscape;
+    return ShellScopeBuilder(
+      builder: (context, profile) {
+        final config = shellPlatformConfigFor(profile);
+        final showHomeTopBar = _currentTabId == 'home' &&
+            config.showHomeTopBar &&
+            !ShellBus.shellOverlayHasPage.value;
 
-    return DesktopWindowChrome.wrapShell(
-      child: ShellScaffold(
-        useNavRail: useNavRail,
-        isDesktop: isDesktop,
-        visibleIds: _visibleIds,
-        selectedIndex: _selectedIndex,
-        mountedTabIds: _mountedTabIds,
-        onDestinationSelected: _selectTab,
-        tabFor: _tabFor,
-        shellHeader: _shellHeader(),
-        shellTopBar: _currentTabId == 'home' &&
-                useNavRail &&
-                isDesktop &&
-                !ShellBus.shellOverlayHasPage.value
-            ? const HomeTopBar()
-            : null,
-        hideGlobalNav: ShellBus.hideGlobalNav.value,
-      ),
+        final shell = ShellHost(
+          visibleIds: _visibleIds,
+          selectedIndex: _selectedIndex,
+          mountedTabIds: _mountedTabIds,
+          onDestinationSelected: _selectTab,
+          tabFor: _tabFor,
+          shellHeader: _shellHeader(),
+          shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
+          hideGlobalNav: ShellBus.hideGlobalNav.value,
+        );
+
+        if (DesktopWindowChrome.isDesktop) {
+          return DesktopWindowChrome.wrapShell(child: shell);
+        }
+        return shell;
+      },
     );
   }
 }

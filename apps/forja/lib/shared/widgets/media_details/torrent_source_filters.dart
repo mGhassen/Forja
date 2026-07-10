@@ -703,12 +703,16 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
-    final isTv = ShellTokens.isTvLayout(context);
+    final metrics = ShellScope.metricsOf(context);
     final hasData = _label != '0 B';
 
     return Row(
       children: [
-        Icon(Icons.storage_rounded, size: isTv ? 16 : 14, color: cinematic.textSecondary),
+        Icon(
+          Icons.storage_rounded,
+          size: metrics.torrentPanelMetaIconSize,
+          color: cinematic.textSecondary,
+        ),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
@@ -717,7 +721,7 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: cinematic.textSecondary,
-              fontSize: isTv ? 12 : 11,
+              fontSize: metrics.torrentPanelMetaFontSize,
             ),
           ),
         ),
@@ -731,7 +735,7 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
                 'Clear',
                 style: TextStyle(
                   color: cinematic.textSecondary,
-                  fontSize: isTv ? 12 : 11,
+                  fontSize: metrics.torrentPanelMetaFontSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -866,7 +870,7 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTv = ShellTokens.isTvLayout(context);
+    final metrics = ShellScope.metricsOf(context);
     final canFilter = showFilters &&
         (availableQualities.isNotEmpty ||
             availableLanguages.isNotEmpty ||
@@ -875,7 +879,7 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
             showAudioFilters ||
             sortPreference != null);
 
-    if (isTv) {
+    if (metrics.usesTvDensity) {
       if (!canFilter) return const SizedBox.shrink();
       return FocusableControl(
         onTap: () => _openFilters(context),
@@ -1087,9 +1091,9 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isTv = ShellTokens.isTvLayout(context);
+    final metrics = ShellScope.metricsOf(context);
     final cinematic = ForjaShellColors.cinematic;
-    final pad = isTv ? 24.0 : 16.0;
+    final pad = metrics.torrentPanelPadding;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -1103,7 +1107,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                   'Filters',
                   style: TextStyle(
                     color: cinematic.textPrimary,
-                    fontSize: isTv ? 18 : 16,
+                    fontSize: metrics.torrentPanelTitleFontSize,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1236,12 +1240,15 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    final isTv = ShellTokens.isTvLayout(context);
+    final metrics = ShellScope.metricsOf(context);
     return FocusableControl(
       onTap: onTap,
       borderRadius: 16,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: isTv ? 16 : 12, vertical: isTv ? 10 : 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: metrics.torrentPanelChipHorizontalPadding,
+          vertical: metrics.torrentPanelChipVerticalPadding,
+        ),
         decoration: _torrentPanelChipDecoration(selected: selected),
         child: Text(
           label,
@@ -1249,7 +1256,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
             color: selected
                 ? ForjaShellColors.cinematic.textPrimary
                 : ForjaShellColors.cinematic.textSecondary,
-            fontSize: isTv ? 14 : 12,
+            fontSize: metrics.torrentPanelChipFontSize,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1290,8 +1297,8 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
   Widget build(BuildContext context) {
     final sourcesW = TorrentSourcesPanel.panelWidthOf(context);
     final filterW = TorrentSourcesPanel.filterPanelWidthOf(context);
-    final isTv = ShellTokens.isTvLayout(context);
-    final padding = isTv
+    final metrics = ShellScope.metricsOf(context);
+    final padding = metrics.usesTvDensity
         ? const EdgeInsets.fromLTRB(16, 8, 12, 12)
         : const EdgeInsets.fromLTRB(20, 8, 12, 16);
 

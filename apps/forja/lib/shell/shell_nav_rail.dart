@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -20,30 +20,46 @@ class ShellNavMenuButton extends StatefulWidget {
 
 class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
   bool _hover = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          width: 34,
-          height: 34,
-          child: Center(
-            child: AnimatedScale(
-              scale: _hover ? ShellTokens.navRailIconHoverScale : 1.0,
-              duration: ShellTokens.navSelectionAnimation,
-              curve: Curves.easeOutCubic,
-              child: Icon(
-                Icons.menu_rounded,
-                color: _hover
-                    ? ForjaShellColors.iconHover
-                    : ForjaShellColors.iconMuted,
-                size: ShellTokens.navRailIconSize,
+    final policy = ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final active = (_hover && policy.scaleOnHover) ||
+        (_focused && policy.scaleOnFocus);
+    return Focus(
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.select) {
+          widget.onPressed();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onPressed,
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+            width: 34,
+            height: 34,
+            child: Center(
+              child: AnimatedScale(
+                scale: active ? ShellTokens.navRailIconHoverScale : 1.0,
+                duration: ShellTokens.navSelectionAnimation,
+                curve: Curves.easeOutCubic,
+                child: Icon(
+                  Icons.menu_rounded,
+                  color: active
+                      ? ForjaShellColors.iconHover
+                      : ForjaShellColors.iconMuted,
+                  size: ShellTokens.navRailIconSize,
+                ),
               ),
             ),
           ),
@@ -59,13 +75,11 @@ class ShellNavRail extends StatelessWidget {
     required this.visibleIds,
     required this.selectedIndex,
     required this.onDestinationSelected,
-    required this.isDesktop,
   });
 
   final List<String> visibleIds;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
-  final bool isDesktop;
 
   List<String> get _navIds =>
       visibleIds.where((id) => id != 'settings').toList();
@@ -78,12 +92,15 @@ class ShellNavRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settingsIndex = _indexForId('settings');
+    final metrics = ShellScope.metricsOf(context);
 
     return Container(
-      width: ShellTokens.navRailWidth,
+      width: metrics.navRailWidth,
       color: AppTheme.bgDark,
       child: SafeArea(
         right: false,
+        top: metrics.navRailSafeAreaVertical,
+        bottom: metrics.navRailSafeAreaVertical,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -104,16 +121,22 @@ class ShellNavRail extends StatelessWidget {
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: _navIds.map((id) {
-                          final index = _indexForId(id)!;
-                          final dest = navDestinations[id]!;
-                          final selected = index == selectedIndex;
-                          return _ShellNavRailItem(
-                            destination: dest,
-                            selected: selected,
-                            onTap: () => onDestinationSelected(index),
-                          );
-                        }).toList(),
+                        children: [
+                          for (var i = 0; i < _navIds.length; i++)
+                            Builder(
+                              builder: (context) {
+                                final id = _navIds[i];
+                                final index = _indexForId(id)!;
+                                final dest = navDestinations[id]!;
+                                final selected = index == selectedIndex;
+                                return _ShellNavRailItem(
+                                  destination: dest,
+                                  selected: selected,
+                                  onTap: () => onDestinationSelected(index),
+                                );
+                              },
+                            ),
+                        ],
                       ),
                     ),
                   );
@@ -251,6 +274,7 @@ class _ShellNavRailItem extends StatefulWidget {
 class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   bool _hover = false;
   bool _pressed = false;
+  bool _focused = false;
   bool _typing = false;
   Timer? _revealTimer;
 
@@ -281,11 +305,15 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     });
   }
 
-  double get _scale {
+  double _scaleFor(ShellInputPolicy policy) {
     if (_pressed) return 0.92;
-    if (_hover) return ShellTokens.navRailIconHoverScale;
+    if (policy.scaleOnHover && _hover) return ShellTokens.navRailIconHoverScale;
+    if (policy.scaleOnFocus && _focused) return ShellTokens.navRailIconHoverScale;
     return 1.0;
   }
+
+  bool _activeFor(ShellInputPolicy policy) =>
+      (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
 
   /// Fixed footprint: icon + label slot + underline gap — never grows on reveal.
   static double get _contentHeight =>
@@ -297,14 +325,16 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
 
   @override
   Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = _activeFor(policy);
     final iconColor = widget.selected
         ? ForjaShellColors.iconActive
-        : _hover
+        : active
             ? ForjaShellColors.iconHover
             : ForjaShellColors.iconMuted;
     final labelColor = widget.selected
         ? ForjaShellColors.textPrimary
-        : _hover
+        : active
             ? ForjaShellColors.textSecondary
             : ForjaShellColors.iconMuted;
     final labelStyle = GoogleFonts.inter(
@@ -318,66 +348,88 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       padding: const EdgeInsets.symmetric(
         vertical: ShellTokens.navRailItemSpacing / 2,
       ),
-      child: SizedBox(
-        width: ShellTokens.navRailWidth,
-        height: _contentHeight,
-        child: Center(
-          child: MouseRegion(
-            onEnter: (_) => _onHoverEnter(),
-            onExit: (_) => _onHoverExit(),
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTapDown: (_) => setState(() => _pressed = true),
-              onTapUp: (_) => setState(() => _pressed = false),
-              onTapCancel: () => setState(() => _pressed = false),
-              onTap: widget.onTap,
-              behavior: HitTestBehavior.opaque,
+      child: Focus(
+        debugLabel: 'nav-${widget.destination.id}',
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey == LogicalKeyboardKey.enter ||
+              event.logicalKey == LogicalKeyboardKey.select) {
+            widget.onTap();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Builder(
+          builder: (context) {
+            final ring =
+                _focused ? policy.focusRingDecoration(borderRadius: 12) : null;
+            return DecoratedBox(
+              decoration: ring ?? const BoxDecoration(),
               child: SizedBox(
                 width: ShellTokens.navRailWidth,
                 height: _contentHeight,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AnimatedScale(
-                      scale: _scale,
-                      duration: ShellTokens.navSelectionAnimation,
-                      curve: Curves.easeOutCubic,
-                      child: NavDestinationIcon(
-                        destination: widget.destination,
-                        selected: widget.selected,
-                        color: iconColor,
-                        size: ShellTokens.navRailIconSize,
-                      ),
-                    ),
-                    SizedBox(height: ShellTokens.navRailIconLabelGap),
-                    SizedBox(
-                      height: ShellTokens.navRailLabelFontSize,
-                      width: ShellTokens.navRailWidth,
-                      child: Center(
-                        child: _TypewriterLabel(
-                          text: widget.destination.label,
-                          active: _typing,
-                          style: labelStyle,
+                child: Center(
+                  child: MouseRegion(
+                    onEnter: (_) => _onHoverEnter(),
+                    onExit: (_) => _onHoverExit(),
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTapDown: (_) => setState(() => _pressed = true),
+                      onTapUp: (_) => setState(() => _pressed = false),
+                      onTapCancel: () => setState(() => _pressed = false),
+                      onTap: widget.onTap,
+                      behavior: HitTestBehavior.opaque,
+                      child: SizedBox(
+                        width: ShellTokens.navRailWidth,
+                        height: _contentHeight,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedScale(
+                              scale: _scaleFor(policy),
+                              duration: ShellTokens.navSelectionAnimation,
+                              curve: Curves.easeOutCubic,
+                              child: NavDestinationIcon(
+                                destination: widget.destination,
+                                selected: widget.selected,
+                                color: iconColor,
+                                size: ShellTokens.navRailIconSize,
+                              ),
+                            ),
+                            SizedBox(height: ShellTokens.navRailIconLabelGap),
+                            SizedBox(
+                              height: ShellTokens.navRailLabelFontSize,
+                              width: ShellTokens.navRailWidth,
+                              child: Center(
+                                child: _TypewriterLabel(
+                                  text: widget.destination.label,
+                                  active: _typing,
+                                  style: labelStyle,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            AnimatedContainer(
+                              duration: ShellTokens.navSelectionAnimation,
+                              height: ShellTokens.shellNavUnderlineHeight,
+                              width: widget.selected ? 24 : 0,
+                              decoration: BoxDecoration(
+                                color: widget.selected
+                                    ? ForjaShellColors.navUnderline
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    AnimatedContainer(
-                      duration: ShellTokens.navSelectionAnimation,
-                      height: ShellTokens.shellNavUnderlineHeight,
-                      width: widget.selected ? 24 : 0,
-                      decoration: BoxDecoration(
-                        color: widget.selected
-                            ? ForjaShellColors.navUnderline
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

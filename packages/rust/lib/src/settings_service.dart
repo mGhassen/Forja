@@ -350,10 +350,31 @@ class SettingsService {
   static const String _navbarKnownIdsKey = 'navbar_known_ids';
   static const String _navbarShell080Key = 'navbar_shell_080';
   static const String _navbarShell081Key = 'navbar_shell_081';
+  static const String _navbarShell084Key = 'navbar_shell_084';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Default visible tabs (settings appended in MainScreen).
-  static const List<String> defaultVisibleNavIds = ['home', 'search', 'mylist'];
+  static const List<String> defaultVisibleNavIds = [
+    'home',
+    'search',
+    'asian_drama',
+    'anime',
+    'iptv',
+    'live_matches',
+    'mylist',
+  ];
+
+  static bool _isLegacyDefaultNav(List<String> ids) {
+    if (ids.length == 2) {
+      return ids[0] == 'home' && ids[1] == 'search';
+    }
+    if (ids.length == 3) {
+      return ids[0] == 'home' &&
+          ids[1] == 'search' &&
+          ids[2] == 'mylist';
+    }
+    return false;
+  }
 
   static const List<String> allNavIds = [
     'home',
@@ -398,6 +419,16 @@ class SettingsService {
       }
       await kvSetStringList(_navbarConfigKey, updated);
       await kvSetString(_navbarShell081Key, '1');
+    }
+    if (!await kvHasKey(_navbarShell084Key)) {
+      final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+      if (_isLegacyDefaultNav(raw)) {
+        await kvSetStringList(
+          _navbarConfigKey,
+          List<String>.from(defaultVisibleNavIds),
+        );
+      }
+      await kvSetString(_navbarShell084Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

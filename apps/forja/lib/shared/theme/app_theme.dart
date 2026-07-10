@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/src/shell_input_policy.dart';
+import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Fixed Forja theme descriptor (single preset, not user-selectable).
@@ -168,11 +170,21 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
     return Focus(
       autofocus: widget.autoFocus,
       onFocusChange: (f) {
         setState(() => _isFocused = f);
         _updateState(f || _isHovered);
+        if (f && policy.ensureVisibleOnFocus) {
+          Scrollable.ensureVisible(
+            context,
+            alignment: 0.5,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+          );
+        }
       },
       onKeyEvent: (node, event) {
         if (widget.onTap != null && event is KeyDownEvent && 
@@ -201,6 +213,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(widget.borderRadius),
+                border: _isFocused && policy.showFocusRing
+                    ? Border.all(color: Colors.white, width: 3)
+                    : null,
                 boxShadow: (_isFocused || _isHovered) && widget.glowColor != null
                     ? [
                         BoxShadow(

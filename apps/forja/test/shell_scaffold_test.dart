@@ -13,7 +13,25 @@ import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:rust/src/settings_service.dart';
+
+Widget _wrapShellScope(
+  Widget child, {
+  ShellProfile profile = ShellProfile.desktop,
+  Size size = const Size(1200, 800),
+}) {
+  return MaterialApp(
+    home: MediaQuery(
+      data: MediaQueryData(size: size),
+      child: ShellScope(
+        profile: profile,
+        config: shellPlatformConfigFor(profile),
+        child: child,
+      ),
+    ),
+  );
+}
 
 void main() {
   const visibleIds = ['home', 'search', 'settings'];
@@ -31,16 +49,12 @@ void main() {
     WidgetTester tester,
     Widget child, {
     Size size = const Size(400, 800),
+    ShellProfile profile = ShellProfile.mobile,
   }) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData(size: size),
-          child: child,
-        ),
-      ),
+      _wrapShellScope(child, profile: profile, size: size),
     );
   }
 
@@ -50,7 +64,6 @@ void main() {
   }) {
     return ShellScaffold(
       useNavRail: true,
-      isDesktop: true,
       visibleIds: visibleIds,
       selectedIndex: 1,
       mountedTabIds: const {'home', 'search'},
@@ -66,7 +79,6 @@ void main() {
       tester,
       ShellScaffold(
         useNavRail: false,
-        isDesktop: false,
         visibleIds: visibleIds,
         selectedIndex: 0,
         mountedTabIds: const {'home'},
@@ -84,7 +96,6 @@ void main() {
       tester,
       ShellScaffold(
         useNavRail: false,
-        isDesktop: false,
         visibleIds: visibleIds,
         selectedIndex: 0,
         mountedTabIds: const {'home'},
@@ -102,6 +113,7 @@ void main() {
       tester,
       desktopScaffold(),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     expect(find.byType(ShellNavRail), findsOneWidget);
@@ -115,6 +127,7 @@ void main() {
       tester,
       desktopScaffold(shellTopBar: const HomeTopBar()),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     expect(find.byType(HomeTopBar), findsOneWidget);
@@ -127,6 +140,7 @@ void main() {
       tester,
       desktopScaffold(shellTopBar: const HomeTopBar()),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     await tester.tap(find.text('Categories'));
@@ -143,6 +157,7 @@ void main() {
       tester,
       desktopScaffold(shellTopBar: const HomeTopBar()),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     expect(ShellBus.homeCategory.value, isNull);
@@ -164,6 +179,7 @@ void main() {
       tester,
       desktopScaffold(shellTopBar: const HomeTopBar()),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     expect(find.text('Films'), findsOneWidget);
@@ -189,6 +205,7 @@ void main() {
       tester,
       desktopScaffold(),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     shellOverlayNavigatorKey.currentState!.push(
@@ -238,6 +255,7 @@ void main() {
       tester,
       desktopScaffold(),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     final railFinder = find.byType(ShellNavRail);
@@ -250,6 +268,7 @@ void main() {
       tester,
       desktopScaffold(),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     final searchIcon =
@@ -285,6 +304,7 @@ void main() {
       tester,
       desktopScaffold(),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     final bodyBox = tester.renderObject<RenderBox>(find.byType(ShellBody));
@@ -296,6 +316,7 @@ void main() {
       tester,
       desktopScaffold(hideGlobalNav: true),
       size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
     );
 
     expect(find.byType(ShellNavRail), findsNothing);
@@ -358,7 +379,6 @@ void main() {
       tester,
       ShellScaffold(
         useNavRail: false,
-        isDesktop: false,
         visibleIds: visibleIds,
         selectedIndex: 0,
         mountedTabIds: const {'home'},
@@ -379,8 +399,20 @@ void main() {
   test('navDestinations includes default shell tabs', () {
     expect(navDestinations.containsKey('home'), isTrue);
     expect(navDestinations.containsKey('search'), isTrue);
+    expect(navDestinations.containsKey('asian_drama'), isTrue);
+    expect(navDestinations.containsKey('anime'), isTrue);
+    expect(navDestinations.containsKey('iptv'), isTrue);
+    expect(navDestinations.containsKey('live_matches'), isTrue);
     expect(navDestinations.containsKey('mylist'), isTrue);
     expect(navDestinations.containsKey('settings'), isTrue);
-    expect(SettingsService.defaultVisibleNavIds, ['home', 'search', 'mylist']);
+    expect(SettingsService.defaultVisibleNavIds, [
+      'home',
+      'search',
+      'asian_drama',
+      'anime',
+      'iptv',
+      'live_matches',
+      'mylist',
+    ]);
   });
 }

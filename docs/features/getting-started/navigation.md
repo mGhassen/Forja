@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tabs:** Home, Search, My List, and Settings. On desktop you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder additional tabs in Settings.
+Forja uses a tab-based shell. **Default tabs:** Home, Search, Asian Drama, Anime, IPTV, Live Matches, My List, and Settings. On desktop you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder additional tabs in Settings.
 
 ## How to open it
 

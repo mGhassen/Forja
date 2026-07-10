@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'package:rust/rust.dart';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
@@ -36,11 +35,7 @@ double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
 }
 
 bool _usesShellHomeLayout(BuildContext context) {
-  if (!kIsWeb &&
-      (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-    return true;
-  }
-  return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+  return ShellScope.profileOf(context) != ShellProfile.mobile;
 }
 
 bool _isFullCinematicHero(BuildContext context) {
@@ -114,7 +109,8 @@ class _HomeScreenState extends State<HomeScreen>
   final PageController _heroController =
       PageController(initialPage: _heroLoopStart);
   final ScrollController _homeScrollController = ScrollController();
-  
+  final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'hero-play');
+  bool _tvHeroInitialFocusDone = false;
   late Future<List<Movie>> _trendingFuture;
   late Future<List<Movie>> _popularFuture;
   late Future<List<Movie>> _featuredThisMonthFuture;
@@ -1126,6 +1122,7 @@ class _HomeScreenState extends State<HomeScreen>
     ShellBus.homeHeroHeight.value = 0;
     _heroTimer?.cancel();
     _heroController.dispose();
+    _tvHeroPlayFocus.dispose();
     _historySeedSub?.cancel();
     super.dispose();
   }
@@ -1565,11 +1562,24 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildCinematicHeroBlock(List<Movie> movies, {required bool compact}) {
     final heroMovie = movies[_heroIndex];
+    final metrics = ShellScope.metricsOf(context);
+    final policy = ShellScope.inputPolicyOf(context);
+    if (policy.heroPlayAutoFocus && !_tvHeroInitialFocusDone) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _tvHeroInitialFocusDone) return;
+        if (_tvHeroPlayFocus.canRequestFocus) {
+          _tvHeroPlayFocus.requestFocus();
+          _tvHeroInitialFocusDone = true;
+        }
+      });
+    }
     final backdropHeight = _cinematicHeroHeight(context, compact: compact);
     final topBarBleed = _desktopTopBarBleed(context);
     final imageHeight =
         _snapToDevicePixels(context, backdropHeight + topBarBleed);
     final textTop = topBarBleed + _heroTextTopInset(context);
+    final compactRightInset =
+        compact ? metrics.heroCompactRightInset : 48.0;
 
     return SizedBox(
       height: imageHeight,
@@ -1590,10 +1600,31 @@ class _HomeScreenState extends State<HomeScreen>
           Positioned(
             left: ShellTokens.bodyHorizontalPadding,
             top: textTop,
-            right: compact ? 20 : 48,
+            right: compactRightInset,
             bottom: 16,
             child: compact
-                ? _buildCompactHeroTextColumn(heroMovie)
+                ? metrics.heroActionUseFittedBox
+                    ? LayoutBuilder(
+                        builder: (context, constraints) {
+                          return ClipRect(
+                            child: Align(
+                              alignment: Alignment.bottomLeft,
+                              child: _buildCompactHeroTextColumn(
+                                heroMovie,
+                                metrics: metrics,
+                                maxHeight: constraints.maxHeight,
+                                maxWidth: constraints.maxWidth,
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : _buildCompactHeroTextColumn(
+                        heroMovie,
+                        metrics: metrics,
+                        maxHeight: null,
+                        maxWidth: null,
+                      )
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       return ClipRect(
@@ -1633,7 +1664,60 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildCompactHeroTextColumn(Movie heroMovie) {
+  Widget _buildCompactHeroTextColumn(
+    Movie heroMovie, {
+    required ShellMetrics metrics,
+    double? maxHeight,
+    double? maxWidth,
+  }) {
+    if (metrics.heroActionUseFittedBox &&
+        maxHeight != null &&
+        maxWidth != null) {
+      const actionGap = 12.0;
+      const metaGap = 10.0;
+      const actionRowHeight = 40.0;
+      const metaRowHeight = 32.0;
+      final titleHeight = (maxHeight -
+              actionGap -
+              metaGap -
+              actionRowHeight -
+              metaRowHeight)
+          .clamp(40.0, ShellTokens.heroTitleSlotHeightCompact);
+
+      return SizedBox(
+        width: maxWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: titleHeight,
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: _buildHeroTitleBlock(
+                  heroMovie,
+                  isLandscape: false,
+                  desktop: true,
+                  compact: true,
+                ),
+              ),
+            ),
+            const SizedBox(height: metaGap),
+            SizedBox(
+              height: metaRowHeight,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _buildHeroMetaRow(heroMovie, singleLine: true),
+              ),
+            ),
+            const SizedBox(height: actionGap),
+            _buildHeroActionRow(heroMovie),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.end,
@@ -1745,7 +1829,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
     const titleGap = 20.0;
     const actionGap = 16.0;
-    const minTitleHeight = 72.0;
+    final minTitleHeight = ShellScope.metricsOf(context).heroMinTitleHeight;
 
     final baseWithoutOverview = titleGap +
         ShellTokens.heroMetaSlotHeightDesktop +
@@ -2022,10 +2106,14 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeroActionRow(Movie heroMovie) {
-    return Row(
+    final metrics = ShellScope.metricsOf(context);
+    final policy = ShellScope.inputPolicyOf(context);
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         HeroPillPlayButton(
           label: 'Play',
+          focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
           onTap: () => _watchNow(heroMovie),
         ),
         const SizedBox(width: 10),
@@ -2049,6 +2137,14 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ],
     );
+    if (metrics.heroActionUseFittedBox) {
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: row,
+      );
+    }
+    return row;
   }
 }
 
@@ -3276,10 +3372,55 @@ class _MoodSectionState extends State<_MoodSection> {
             itemBuilder: (context, i) {
               final m = moods[i];
               final isSelected = m.id == selectedId;
+              final chip = Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? ForjaShellColors.chipSelectedBg
+                      : Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isSelected
+                        ? ForjaShellColors.chipSelectedBorder
+                        : Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      m.icon,
+                      size: 14,
+                      color: isSelected
+                          ? ForjaShellColors.chipSelectedIcon
+                          : Colors.white.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      m.label,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.75),
+                        fontSize: 12.5,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+
+              if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+                return FocusableControl(
+                  onTap: () => onSelect(m.id),
+                  borderRadius: 24,
+                  child: chip,
+                );
+              }
+
               return Material(
-                color: isSelected
-                    ? ForjaShellColors.chipSelectedBg
-                    : Colors.white.withValues(alpha: 0.05),
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(24),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(24),
@@ -3287,38 +3428,7 @@ class _MoodSectionState extends State<_MoodSection> {
                   splashColor: ForjaShellColors.inkSplash,
                   highlightColor: ForjaShellColors.inkSplash,
                   onTap: () => onSelect(m.id),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: isSelected
-                            ? ForjaShellColors.chipSelectedBorder
-                            : Colors.white.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          m.icon,
-                          size: 14,
-                          color: isSelected
-                              ? ForjaShellColors.chipSelectedIcon
-                              : Colors.white.withValues(alpha: 0.7),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          m.label,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.75),
-                            fontSize: 12.5,
-                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: chip,
                 ),
               );
             },
@@ -3599,26 +3709,59 @@ class _HeroTitleSlot extends StatelessWidget {
         alignment: Alignment.bottomLeft,
         child: Padding(
           padding: EdgeInsets.only(bottom: desktop || compact ? 0 : 14),
-          child: SizedBox(
-            height: logoMaxHeight,
-            width: maxWidth,
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: hasLogo
-                  ? CachedNetworkImage(
-                      imageUrl: logoUrl!,
-                      height: logoMaxHeight,
-                      width: maxWidth,
-                      fit: BoxFit.contain,
-                      alignment: Alignment.centerLeft,
-                      placeholder: (_, _) => title,
-                      errorWidget: (_, _, _) => title,
-                      fadeInDuration: const Duration(milliseconds: 250),
-                      fadeOutDuration: Duration.zero,
-                    )
-                  : title,
-            ),
-          ),
+          child: ShellScope.profileOf(context) == ShellProfile.tv
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    final resolvedWidth = compact && constraints.hasBoundedWidth
+                        ? constraints.maxWidth
+                        : maxWidth;
+                    final resolvedLogoHeight = compact &&
+                            constraints.hasBoundedHeight
+                        ? math.min(logoMaxHeight, constraints.maxHeight)
+                        : logoMaxHeight;
+                    return SizedBox(
+                      height: resolvedLogoHeight,
+                      width: resolvedWidth,
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: hasLogo
+                            ? CachedNetworkImage(
+                                imageUrl: logoUrl!,
+                                height: resolvedLogoHeight,
+                                width: resolvedWidth,
+                                fit: BoxFit.contain,
+                                alignment: Alignment.centerLeft,
+                                placeholder: (_, _) => title,
+                                errorWidget: (_, _, _) => title,
+                                fadeInDuration:
+                                    const Duration(milliseconds: 250),
+                                fadeOutDuration: Duration.zero,
+                              )
+                            : title,
+                      ),
+                    );
+                  },
+                )
+              : SizedBox(
+                  height: logoMaxHeight,
+                  width: maxWidth,
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: hasLogo
+                        ? CachedNetworkImage(
+                            imageUrl: logoUrl!,
+                            height: logoMaxHeight,
+                            width: maxWidth,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.centerLeft,
+                            placeholder: (_, _) => title,
+                            errorWidget: (_, _, _) => title,
+                            fadeInDuration: const Duration(milliseconds: 250),
+                            fadeOutDuration: Duration.zero,
+                          )
+                        : title,
+                  ),
+                ),
         ),
       ),
     );
