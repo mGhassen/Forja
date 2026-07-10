@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 
 import 'miruro_pipe_session.dart';
-import 'anime_stream_nicknames.dart';
 
 /// Direct extractor for Miruro's secure pipe API (official domain mirrors).
 class MiruroExtractor {
@@ -151,7 +150,7 @@ class MiruroExtractor {
 
         if (kDebugMode) {
           debugPrint(
-            '[Miruro] OK ${AnimeStreamNicknames.forMiruroPipe(provider)} '
+            '[Miruro] OK ${upstreamLabel(provider)} '
             '($provider) ep=$episodeNumber cat=$category '
             'stream=$serverLabel referer=$referer url=$url tracks=${tracks.length}',
           );

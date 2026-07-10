@@ -10,7 +10,7 @@ class TorrentSourcesPanel extends StatelessWidget {
     required this.isOpen,
     required this.onClose,
     required this.child,
-    /// False + no [frozenFrame] → opaque. Prefer [frozenFrame] over video.
+    /// Details: true → BackdropFilter. Player: false + [frozenFrame].
     this.enableBlur = true,
     this.frozenFrame,
   });
@@ -21,16 +21,30 @@ class TorrentSourcesPanel extends StatelessWidget {
   final bool enableBlur;
   final Uint8List? frozenFrame;
 
-  @override
-  Widget build(BuildContext context) {
+  static double panelWidthOf(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isTv = ShellTokens.isTvLayout(context);
-    final panelWidth = isTv
+    return isTv
         ? (screenWidth * 0.42).clamp(520.0, 720.0)
         : (screenWidth < 700 ? screenWidth * 0.92 : 480.0);
+  }
+
+  static double filterPanelWidthOf(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final sources = panelWidthOf(context);
+    final remaining = screenWidth - sources;
+    if (remaining < 280) return (screenWidth * 0.88).clamp(260.0, 400.0);
+    return remaining.clamp(300.0, 420.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isTv = ShellTokens.isTvLayout(context);
+    final panelWidth = panelWidthOf(context);
     final padding = isTv
         ? const EdgeInsets.fromLTRB(16, 8, 12, 12)
         : const EdgeInsets.fromLTRB(20, 8, 12, 16);
+    final playerFrost = !enableBlur;
 
     return Stack(
       fit: StackFit.expand,
@@ -40,7 +54,9 @@ class TorrentSourcesPanel extends StatelessWidget {
             child: GestureDetector(
               onTap: onClose,
               behavior: HitTestBehavior.opaque,
-              child: const ColoredBox(color: Colors.black54),
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: playerFrost ? 0.22 : 0.54),
+              ),
             ),
           ),
         AnimatedPositioned(

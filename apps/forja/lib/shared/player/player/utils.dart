@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
@@ -69,6 +70,23 @@ bool isIgnorablePlayerError(String err) {
 bool isFatalPlayerOpenError(String err) =>
     !isIgnorablePlayerError(err) &&
     (err.contains('Failed') || err.contains('No such file'));
+
+/// Local librqbit HTTP URLs — mpv may emit "Failed to recognize file format"
+/// while the first pieces are still arriving; that is not a hard fail yet.
+bool isLocalTorrentStreamUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return false;
+  if (uri.host != '127.0.0.1' && uri.host != 'localhost') return false;
+  return uri.path.contains('/torrents/') && uri.path.contains('/stream/');
+}
+
+bool isTransientTorrentProbeError(String err) {
+  final lower = err.toLowerCase();
+  return lower.contains('failed to recognize file format') ||
+      lower.contains('failed to open') ||
+      lower.contains('error opening') ||
+      lower.contains('no data');
+}
 
 /// mpv is ready to play — VOD duration, decoded video, or live/buffered data.
 bool hasDecodedVideo(PlayerState state) {
@@ -173,13 +191,19 @@ Future<void> resetPlayerForOpen(Player player) async {
 
 /// Returns true once mpv reports playable media, false on fatal open error or
 /// [timeout].
+///
+/// Pass [streamUrl] for local torrent streams so early demux probe failures
+/// are ignored until the timeout — pieces may still be filling.
 Future<bool> waitForMediaOpen(
   Player player, {
   Duration timeout = const Duration(seconds: 12),
+  String? streamUrl,
 }) async {
   final completer = Completer<bool>();
   final subs = <StreamSubscription<dynamic>>[];
   var settled = false;
+  final tolerateProbe =
+      streamUrl != null && isLocalTorrentStreamUrl(streamUrl);
 
   void settle(bool ok) {
     if (settled) return;
@@ -196,7 +220,12 @@ Future<bool> waitForMediaOpen(
 
   subs.addAll([
     player.stream.error.listen((err) {
-      if (isFatalPlayerOpenError(err)) settle(false);
+      if (!isFatalPlayerOpenError(err)) return;
+      if (tolerateProbe && isTransientTorrentProbeError(err)) {
+        debugPrint('[Player] Transient torrent probe error (waiting): $err');
+        return;
+      }
+      settle(false);
     }),
     player.stream.duration.listen((_) => probe()),
     player.stream.videoParams.listen((_) => probe()),

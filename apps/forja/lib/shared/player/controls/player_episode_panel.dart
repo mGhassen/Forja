@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
+import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
@@ -76,72 +77,33 @@ class _EpisodePanelOverlay extends StatefulWidget {
   State<_EpisodePanelOverlay> createState() => _EpisodePanelOverlayState();
 }
 
-class _EpisodePanelOverlayState extends State<_EpisodePanelOverlay>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<Offset> _slide;
+class _EpisodePanelOverlayState extends State<_EpisodePanelOverlay> {
+  bool _open = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 280),
-    );
-    _slide = Tween<Offset>(
-      begin: const Offset(1, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _open = true);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final panelWidth = screenWidth < 700 ? screenWidth * 0.92 : 420.0;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        GestureDetector(
-          onTap: widget.onClose,
-          behavior: HitTestBehavior.opaque,
-          child: const ColoredBox(color: Colors.black54),
-        ),
-        SlideTransition(
-          position: _slide,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: panelWidth,
-              child: ForjaFrostedPanel(
-                enableBlur: false,
-                frozenFrame: widget.frozenFrame,
-                border: Border(
-                  left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
-                ),
-                child: SafeArea(
-                  left: false,
-                  child: _EpisodePanelBody(
-                    movie: widget.movie,
-                    initialSeason: widget.initialSeason,
-                    currentSeason: widget.currentSeason,
-                    currentEpisode: widget.currentEpisode,
-                    onEpisodeSelected: widget.onEpisodeSelected,
-                    onClose: widget.onClose,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+    // Same full-height shell as media-details Sources so frost has bounded height.
+    return TorrentSourcesPanel(
+      isOpen: _open,
+      onClose: widget.onClose,
+      enableBlur: false,
+      frozenFrame: widget.frozenFrame,
+      child: _EpisodePanelBody(
+        movie: widget.movie,
+        initialSeason: widget.initialSeason,
+        currentSeason: widget.currentSeason,
+        currentEpisode: widget.currentEpisode,
+        onEpisodeSelected: widget.onEpisodeSelected,
+        onClose: widget.onClose,
+      ),
     );
   }
 }
@@ -564,70 +526,30 @@ class _HubEpisodePanelOverlay extends StatefulWidget {
       _HubEpisodePanelOverlayState();
 }
 
-class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<Offset> _slide;
+class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay> {
+  bool _open = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 280),
-    );
-    _slide = Tween<Offset>(
-      begin: const Offset(1, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _open = true);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final panelWidth = screenWidth < 700 ? screenWidth * 0.92 : 420.0;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        GestureDetector(
-          onTap: widget.onClose,
-          behavior: HitTestBehavior.opaque,
-          child: const ColoredBox(color: Colors.black54),
-        ),
-        SlideTransition(
-          position: _slide,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: panelWidth,
-              child: ForjaFrostedPanel(
-                enableBlur: false,
-                frozenFrame: widget.frozenFrame,
-                border: Border(
-                  left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
-                ),
-                child: SafeArea(
-                  left: false,
-                  child: _HubEpisodePanelBody(
-                    episodes: widget.episodes,
-                    currentEpisode: widget.currentEpisode,
-                    onEpisodeSelected: widget.onEpisodeSelected,
-                    onClose: widget.onClose,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return TorrentSourcesPanel(
+      isOpen: _open,
+      onClose: widget.onClose,
+      enableBlur: false,
+      frozenFrame: widget.frozenFrame,
+      child: _HubEpisodePanelBody(
+        episodes: widget.episodes,
+        currentEpisode: widget.currentEpisode,
+        onEpisodeSelected: widget.onEpisodeSelected,
+        onClose: widget.onClose,
+      ),
     );
   }
 }

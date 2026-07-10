@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
@@ -46,6 +48,8 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
     this.onSortChanged,
     this.cacheRefreshToken,
     this.showCacheLine = false,
+    /// Player: screenshot still for Filters frost. Details: leave null.
+    this.filterFrozenFrame,
   });
 
   final VoidCallback onClose;
@@ -86,6 +90,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
   final ValueChanged<String>? onSortChanged;
   final int? cacheRefreshToken;
   final bool showCacheLine;
+  final Uint8List? filterFrozenFrame;
 
   @override
   Widget build(BuildContext context) {
@@ -147,6 +152,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           onSizeFiltersChanged: onSizeFiltersChanged,
           sortPreference: sortPreference,
           onSortChanged: onSortChanged,
+          frozenFrame: filterFrozenFrame,
         ),
         if (showCacheLine && cacheRefreshToken != null) ...[
           SizedBox(height: isTv ? 6 : 4),
@@ -177,71 +183,77 @@ class _TitleRow extends StatelessWidget {
     final cinematic = ForjaShellColors.cinematic;
     return Row(
       children: [
-        Text(
-          'Sources',
-          style: TextStyle(
-            color: cinematic.textPrimary,
-            fontWeight: FontWeight.w700,
-            fontSize: 17,
-            letterSpacing: -0.2,
+        Expanded(
+          child: Row(
+            children: [
+              Text(
+                'Sources',
+                style: TextStyle(
+                  color: cinematic.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              if (resultCount != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$resultCount',
+                    style: TextStyle(
+                      color: cinematic.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+              if (episodeLabel != null) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    episodeLabel!,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: cinematic.textSecondary.withValues(alpha: 0.75),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+              if (isFetching) ...[
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: ForjaShellColors.sectionAccent,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: onCancelFetch,
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: cinematic.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        if (resultCount != null) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              '$resultCount',
-              style: TextStyle(
-                color: cinematic.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-        if (episodeLabel != null) ...[
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              episodeLabel!,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: cinematic.textSecondary.withValues(alpha: 0.75),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-        if (isFetching) ...[
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: ForjaShellColors.sectionAccent,
-            ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: onCancelFetch,
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: cinematic.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-        const Spacer(),
         ForjaCloseButton(
           color: cinematic.textSecondary,
           onTap: onClose,

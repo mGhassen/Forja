@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 
 import 'forja_shell_colors.dart';
 
-/// Frosted sliding side-panel shell (Sources, Episodes, torrent files).
+/// Frosted sliding side-panel shell (Sources, Episodes, Filters).
 ///
-/// - Details / non-video: [enableBlur] → [BackdropFilter]
-/// - Player over live video: pass [frozenFrame] → [ImageFiltered] on that still
-///   (BackdropFilter over a Texture layer freezes the UI on macOS)
+/// Details ([enableBlur] true, no [frozenFrame]): [BackdropFilter] over the page.
+///
+/// Player: pass [frozenFrame] and set [enableBlur] false. Blurs the still with
+/// [ImageFiltered] (not [BackdropFilter]) so Overlay panels never sample the
+/// live video Texture (macOS freeze) and the frost is always visible.
 class ForjaFrostedPanel extends StatelessWidget {
   const ForjaFrostedPanel({
     super.key,
@@ -21,44 +23,26 @@ class ForjaFrostedPanel extends StatelessWidget {
     this.frozenFrame,
   });
 
-  static const double blurSigma = 22;
+  static const double blurSigma = 48;
 
-  /// [menuSurface] at ~72% so frosted glass reads clearly.
+  /// Light glass — blur must read through; keep alpha low.
   static Color get tint =>
-      ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.72);
+      ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.28);
 
   final Widget child;
   final BoxBorder? border;
   final BorderRadius? borderRadius;
   final double elevation;
   final bool enableBlur;
-
-  /// JPEG/PNG still (e.g. player screenshot). Prefer over BackdropFilter on video.
   final Uint8List? frozenFrame;
 
   @override
   Widget build(BuildContext context) {
     final radius = borderRadius ?? BorderRadius.zero;
-    final useFrozen = frozenFrame != null && frozenFrame!.isNotEmpty;
-    final useBackdrop = enableBlur && !useFrozen;
+    final hasFrame = frozenFrame != null && frozenFrame!.isNotEmpty;
 
-    final tintedChild = Material(
-      color: Colors.transparent,
-      elevation: elevation,
-      shadowColor: Colors.black.withValues(alpha: 0.5),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: (useBackdrop || useFrozen)
-              ? tint
-              : ForjaShellColors.cinematic.menuSurface,
-          borderRadius: radius,
-          border: border,
-        ),
-        child: child,
-      ),
-    );
-
-    if (useFrozen) {
+    // Player / Overlay path — blur the still locally (ImageFiltered).
+    if (hasFrame) {
       return ClipRRect(
         borderRadius: radius,
         child: Stack(
@@ -80,24 +64,62 @@ class ForjaFrostedPanel extends StatelessWidget {
                 ),
               ),
             ),
-            tintedChild,
+            Positioned.fill(
+              child: Material(
+                color: Colors.transparent,
+                elevation: elevation,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: tint,
+                    borderRadius: radius,
+                    border: border,
+                  ),
+                  child: child,
+                ),
+              ),
+            ),
           ],
         ),
       );
     }
 
-    if (!useBackdrop) {
+    // Player without a frame — translucent dark, not opaque #141414.
+    if (!enableBlur) {
       return ClipRRect(
         borderRadius: radius,
-        child: tintedChild,
+        child: Material(
+          color: Colors.transparent,
+          elevation: elevation,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: ForjaShellColors.cinematic.menuSurface
+                  .withValues(alpha: 0.82),
+              borderRadius: radius,
+              border: border,
+            ),
+            child: child,
+          ),
+        ),
       );
     }
 
+    // Details page — blur whatever is behind the panel.
     return ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-        child: tintedChild,
+        child: Material(
+          color: Colors.transparent,
+          elevation: elevation,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: tint,
+              borderRadius: radius,
+              border: border,
+            ),
+            child: child,
+          ),
+        ),
       ),
     );
   }

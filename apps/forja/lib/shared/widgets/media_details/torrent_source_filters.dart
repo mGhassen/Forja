@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
+import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
@@ -782,6 +786,8 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
     this.onSizeFiltersChanged,
     this.sortPreference,
     this.onSortChanged,
+    /// Player: screenshot still for ImageFiltered frost. Details: null → BackdropFilter.
+    this.frozenFrame,
   });
 
   final String searchQuery;
@@ -804,6 +810,7 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final String? sortPreference;
   final ValueChanged<String>? onSortChanged;
+  final Uint8List? frozenFrame;
 
   int get _activeCount =>
       activeQualityFilters.length +
@@ -813,39 +820,54 @@ class TorrentSourcePanelToolbar extends StatelessWidget {
       activeSizeFilters.length;
 
   Future<void> _openFilters(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: ForjaShellColors.cinematic.menuSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => _TorrentSourceFilterSheet(
-        availableQualities: availableQualities,
-        availableLanguages: availableLanguages,
-        availableTech: availableTech,
-        availableSizeRanges: availableSizeRanges,
-        activeQualityFilters: activeQualityFilters,
-        activeLanguageFilters: activeLanguageFilters,
-        activeTechFilters: activeTechFilters,
-        activeAudioFilters: activeAudioFilters,
-        activeSizeFilters: activeSizeFilters,
-        showAudioFilters: showAudioFilters,
-        sortPreference: sortPreference,
-        onQualityFiltersChanged: onQualityFiltersChanged,
-        onLanguageFiltersChanged: onLanguageFiltersChanged,
-        onTechFiltersChanged: onTechFiltersChanged,
-        onAudioFiltersChanged: onAudioFiltersChanged,
-        onSizeFiltersChanged: onSizeFiltersChanged,
-        onSortChanged: onSortChanged,
-        onClearAll: () {
-          onQualityFiltersChanged({});
-          onLanguageFiltersChanged({});
-          onTechFiltersChanged({});
-          onAudioFiltersChanged?.call({});
-          onSizeFiltersChanged?.call({});
-        },
+    await _openFiltersSidePanel(context);
+  }
+
+  Future<void> _openFiltersSidePanel(BuildContext context) async {
+    final overlay = Overlay.of(context, rootOverlay: true);
+    late OverlayEntry entry;
+    final completer = Completer<void>();
+
+    void close() {
+      entry.remove();
+      if (!completer.isCompleted) completer.complete();
+    }
+
+    entry = OverlayEntry(
+      builder: (ctx) => _TorrentFiltersSidePanel(
+        frozenFrame: frozenFrame,
+        onClose: close,
+        child: _TorrentSourceFilterSheet(
+          availableQualities: availableQualities,
+          availableLanguages: availableLanguages,
+          availableTech: availableTech,
+          availableSizeRanges: availableSizeRanges,
+          activeQualityFilters: activeQualityFilters,
+          activeLanguageFilters: activeLanguageFilters,
+          activeTechFilters: activeTechFilters,
+          activeAudioFilters: activeAudioFilters,
+          activeSizeFilters: activeSizeFilters,
+          showAudioFilters: showAudioFilters,
+          sortPreference: sortPreference,
+          onQualityFiltersChanged: onQualityFiltersChanged,
+          onLanguageFiltersChanged: onLanguageFiltersChanged,
+          onTechFiltersChanged: onTechFiltersChanged,
+          onAudioFiltersChanged: onAudioFiltersChanged,
+          onSizeFiltersChanged: onSizeFiltersChanged,
+          onSortChanged: onSortChanged,
+          onClearAll: () {
+            onQualityFiltersChanged({});
+            onLanguageFiltersChanged({});
+            onTechFiltersChanged({});
+            onAudioFiltersChanged?.call({});
+            onSizeFiltersChanged?.call({});
+          },
+          onRequestClose: close,
+        ),
       ),
     );
+    overlay.insert(entry);
+    await completer.future;
   }
 
   @override
@@ -1012,6 +1034,7 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
     this.onSortChanged,
     this.onAudioFiltersChanged,
     this.onSizeFiltersChanged,
+    this.onRequestClose,
   });
 
   final Set<String> availableQualities;
@@ -1032,6 +1055,7 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final ValueChanged<String>? onSortChanged;
   final VoidCallback onClearAll;
+  final VoidCallback? onRequestClose;
 
   @override
   State<_TorrentSourceFilterSheet> createState() => _TorrentSourceFilterSheetState();
@@ -1093,10 +1117,22 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                 TextButton(
                   onPressed: () {
                     widget.onClearAll();
-                    Navigator.pop(context);
+                    final close = widget.onRequestClose;
+                    if (close != null) {
+                      close();
+                    } else {
+                      Navigator.pop(context);
+                    }
                   },
                   child: Text('Clear', style: TextStyle(color: cinematic.textSecondary)),
                 ),
+                if (widget.onRequestClose != null) ...[
+                  const SizedBox(width: 4),
+                  ForjaCloseButton(
+                    color: cinematic.textSecondary,
+                    onTap: widget.onRequestClose,
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 8),
@@ -1224,6 +1260,86 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Full-height frosted Filters panel docked to the left of Sources (player).
+class _TorrentFiltersSidePanel extends StatefulWidget {
+  const _TorrentFiltersSidePanel({
+    required this.child,
+    required this.onClose,
+    this.frozenFrame,
+  });
+
+  final Widget child;
+  final VoidCallback onClose;
+  final Uint8List? frozenFrame;
+
+  @override
+  State<_TorrentFiltersSidePanel> createState() =>
+      _TorrentFiltersSidePanelState();
+}
+
+class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
+  bool _open = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _open = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sourcesW = TorrentSourcesPanel.panelWidthOf(context);
+    final filterW = TorrentSourcesPanel.filterPanelWidthOf(context);
+    final isTv = ShellTokens.isTvLayout(context);
+    final padding = isTv
+        ? const EdgeInsets.fromLTRB(16, 8, 12, 12)
+        : const EdgeInsets.fromLTRB(20, 8, 12, 16);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: widget.onClose,
+            behavior: HitTestBehavior.opaque,
+            child: ColoredBox(
+              color: Colors.black.withValues(alpha: 0.12),
+            ),
+          ),
+        ),
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          top: 0,
+          bottom: 0,
+          right: _open ? sourcesW : sourcesW - filterW,
+          width: filterW,
+          child: ForjaFrostedPanel(
+            // Details: BackdropFilter. Player: ImageFiltered via frozenFrame.
+            enableBlur: widget.frozenFrame == null ||
+                widget.frozenFrame!.isEmpty,
+            frozenFrame: widget.frozenFrame,
+            border: Border(
+              left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
+              right: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
+            ),
+            child: SafeArea(
+              left: false,
+              right: false,
+              child: Padding(
+                padding: padding,
+                child: widget.child,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

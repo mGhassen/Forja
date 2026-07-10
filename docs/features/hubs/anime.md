@@ -25,7 +25,7 @@ Tap **Anime** in the navigation bar.
 ## Tips
 
 - Anime uses its own player and history — separate from TMDB TV details
-- Reorder anime sources under **Settings → Playback → Anime provider order** (real provider names; no nicknames in that list)
+- Reorder anime sources under **Settings → Playback → Anime provider order** (same real provider names as the in-player source menu)
 - Megaplay / Vidwish need Anikoto catalog linkage; Miruro and AnimeRealms work from AniList id alone
 - Playback shows a backdrop + title loading screen before the player opens (same pattern as films and Asian drama) — progress shows `N / M CHECKED · K UP` for how many sources responded successfully so far
 - Part of [content hub scrapers](../scrapers/content-hub-scrapers.md)

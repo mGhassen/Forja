@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/anime/catalog/allanime_extractor.dart';
 import 'package:forja/features/anime/catalog/watchhentai_extractor.dart';
 import 'package:forja/features/anime/catalog/hentaini_extractor.dart';
-import 'package:forja/features/anime/catalog/anime_stream_nicknames.dart';
+import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/features/anime/catalog/animerealms_extractor.dart';
 import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 
@@ -667,19 +667,27 @@ class AnimeService {
     if (embedId != null && embedId.isNotEmpty) {
       all.addAll([
         AnimeEmbed(
-          label: AnimeStreamNicknames.megaplay, server: 'megaplay', category: 'sub',
+          label: AnimeStreamProviders.displayName('megaplay'),
+          server: 'megaplay',
+          category: 'sub',
           url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
         ),
         AnimeEmbed(
-          label: AnimeStreamNicknames.vidwish, server: 'vidwish', category: 'sub',
+          label: AnimeStreamProviders.displayName('vidwish'),
+          server: 'vidwish',
+          category: 'sub',
           url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'sub', embedId: embedId)!,
         ),
         AnimeEmbed(
-          label: AnimeStreamNicknames.megaplay, server: 'megaplay', category: 'dub',
+          label: AnimeStreamProviders.displayName('megaplay'),
+          server: 'megaplay',
+          category: 'dub',
           url: _embed(host: 'megaplay.buzz', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
         ),
         AnimeEmbed(
-          label: AnimeStreamNicknames.vidwish, server: 'vidwish', category: 'dub',
+          label: AnimeStreamProviders.displayName('vidwish'),
+          server: 'vidwish',
+          category: 'dub',
           url: _embed(host: 'vidwish.live', anilistId: anilistId, episode: episode, category: 'dub', embedId: embedId)!,
         ),
       ]);
@@ -691,7 +699,7 @@ class AnimeService {
     for (final cat in const ['sub', 'dub']) {
       for (final prov in MiruroExtractor.knownProviders) {
         all.add(AnimeEmbed(
-          label: AnimeStreamNicknames.forMiruroPipe(prov),
+          label: AnimeStreamProviders.displayName('miruro:$prov'),
           server: 'miruro',
           category: cat,
           url: 'miruro://anilist/$anilistId/$episode/$cat/$prov',
@@ -708,7 +716,7 @@ class AnimeService {
       for (final cat in const ['sub', 'dub']) {
         for (final prov in AllAnimeExtractor.knownProviders) {
           all.add(AnimeEmbed(
-            label: AnimeStreamNicknames.forAllAnime(prov),
+            label: AnimeStreamProviders.displayName('allanime:$prov'),
             server: 'allanime',
             category: cat,
             url: 'allanime://search/$episode/$cat/$prov?t=$titles',
@@ -721,7 +729,7 @@ class AnimeService {
     for (final cat in const ['sub', 'dub']) {
       for (final prov in AnimeRealmsExtractor.defaultProviders) {
         all.add(AnimeEmbed(
-          label: AnimeStreamNicknames.forServer('animerealms', key: prov),
+          label: AnimeStreamProviders.displayName('animerealms:$prov'),
           server: 'animerealms',
           category: cat,
           url: 'animerealms://anilist/$anilistId/$episode/$prov',
@@ -732,13 +740,13 @@ class AnimeService {
     // searches watchhentai.net's catalog for any of the provided titles.
     if (isAdult && titles.isNotEmpty) {
       all.add(AnimeEmbed(
-        label: AnimeStreamNicknames.watchhentai,
+        label: AnimeStreamProviders.displayName('watchhentai'),
         server: 'watchhentai',
         category: 'sub',
         url: 'watchhentai://discover/$episode?t=$titles',
       ));
       all.add(AnimeEmbed(
-        label: AnimeStreamNicknames.hentaini,
+        label: AnimeStreamProviders.displayName('hentaini'),
         server: 'hentaini',
         category: 'sub',
         url: 'hentaini://discover/$episode?t=$titles',
@@ -1517,7 +1525,7 @@ class AnimeStreamPref {
 }
 
 class AnimeEmbed {
-  final String label;     // e.g. Kaiju, Ronin, Chibi
+  final String label;     // real upstream name, e.g. Megaplay, HiAnime
   final String server;    // 'megaplay' | 'vidwish'
   final String category;  // 'sub' | 'dub'
   final String url;

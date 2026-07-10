@@ -13,6 +13,7 @@ use librqbit::{
     AddTorrent, AddTorrentOptions, AddTorrentResponse, DhtSessionConfig, Session, SessionOptions,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -20,6 +21,11 @@ use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt};
 use tokio::sync::oneshot;
 use tokio_util::io::ReaderStream;
+
+/// Bytes to pull from the selected file before handing the URL to mpv.
+/// Enough for container probe (MKV/MP4 headers); keeps startup snappy.
+const STREAM_HEAD_BYTES: u64 = 256 * 1024;
+const STREAM_HEAD_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TorrentStatus {
@@ -294,6 +300,34 @@ impl TorrentEngine {
             preferred_idx.map(|v| v as usize),
         )
         .ok_or("No suitable video file found")?;
+
+        let api = {
+            let inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
+            inner.api.clone().ok_or("Torrent engine not started")?
+        };
+
+        // Download only the selected file — otherwise peers fill random pieces
+        // and the stream head stays empty while mpv probes.
+        let only_files = HashSet::from([file_idx]);
+        api.api_torrent_action_update_only_files(
+            TorrentIdOrHash::Id(prepared.torrent_id),
+            &only_files,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+        // Block until the first bytes of the file are actually available.
+        // Returning the URL at metadata-ready lets mpv open an empty stream
+        // and die with "Failed to recognize file format".
+        wait_for_stream_head(
+            &api,
+            prepared.torrent_id,
+            file_idx,
+            STREAM_HEAD_BYTES,
+            STREAM_HEAD_TIMEOUT,
+        )
+        .await?;
+
         let file_name = prepared
             .files
             .get(file_idx)
@@ -505,6 +539,48 @@ impl TorrentEngine {
             None => "null".into(),
         }
     }
+}
+
+/// Opens a librqbit file stream (registers piece priority) and reads until
+/// [min_bytes] arrive or [timeout] elapses. Dropping the stream keeps the
+/// downloaded head on disk for the subsequent HTTP open from mpv.
+async fn wait_for_stream_head(
+    api: &Api,
+    torrent_id: usize,
+    file_idx: usize,
+    min_bytes: u64,
+    timeout: Duration,
+) -> Result<(), String> {
+    let mut stream = api
+        .api_stream(TorrentIdOrHash::Id(torrent_id), file_idx)
+        .await
+        .map_err(|e| e.to_string())?;
+    let need = min_bytes.min(stream.len()).max(1) as usize;
+    let mut buf = vec![0u8; need];
+    let mut read = 0usize;
+
+    tokio::time::timeout(timeout, async {
+        while read < need {
+            let n = stream
+                .read(&mut buf[read..])
+                .await
+                .map_err(|e| e.to_string())?;
+            if n == 0 {
+                break;
+            }
+            read += n;
+        }
+        Ok::<(), String>(())
+    })
+    .await
+    .map_err(|_| {
+        "Timed out waiting for torrent stream head (no peers / slow swarm)".to_string()
+    })??;
+
+    if read == 0 {
+        return Err("Torrent stream head empty".into());
+    }
+    Ok(())
 }
 
 async fn stream_file_handler(

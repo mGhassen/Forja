@@ -4,14 +4,14 @@ import 'package:forja/features/anime/catalog/miruro_extractor.dart';
 
 /// Flat catalog of every anime stream source the player can race.
 ///
-/// Keys match [AnimeEmbed.sourceKey]. Display names are real upstream labels
-/// (no player nicknames) — used in Settings → Playback → Anime provider order.
+/// Keys match [AnimeEmbed.sourceKey]. Display names are real upstream labels —
+/// used in Settings → Playback → Anime provider order and the anime player.
 class AnimeStreamProviders {
   AnimeStreamProviders._();
 
   /// Default try order — strongest / most reliable first.
   static const List<String> defaultOrder = [
-    // Tofu (Miruro bee / AniKoto) — preferred first
+    // AniKoto (Miruro bee) — preferred first
     'miruro:bee',
     // AllAnime direct CDNs
     'allanime:Default',
@@ -55,7 +55,7 @@ class AnimeStreamProviders {
     'hentaini',
   ];
 
-  /// key → display name for settings (real names, no nicknames).
+  /// key → display name (real upstream labels).
   static Map<String, String> get catalog {
     final out = <String, String>{
       'megaplay': 'Megaplay',

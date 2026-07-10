@@ -1,39 +1,27 @@
 /// Player-facing labels for built-in web stream providers.
 ///
-/// Settings and extraction still use real provider ids; only the in-player
-/// Servers menu shows disguised names plus real region flags.
+/// Settings, extraction, and the in-player Servers menu all use real provider
+/// names. Region flags still come from profiles / contentLanguage.
 class StreamProviderDisplay {
   const StreamProviderDisplay._();
 
   static const _profiles = <String, ({String label, List<String> countries})>{
-    'videasy': (label: 'Lumen', countries: ['multi']),
-    'vidsrc': (label: 'Prism', countries: ['multi']),
-    'vidnest': (label: 'Atlas', countries: ['multi']),
-    'vidlink': (label: 'Echo', countries: ['multi']),
-    'vixsrc': (label: 'Nova', countries: ['multi']),
-    'vidzee': (label: 'Pulse', countries: ['multi']),
-    'vidrock': (label: 'Summit', countries: ['multi']),
-    'service111477': (label: 'Axis', countries: ['en']),
-    'webstreamr': (label: 'Orbit', countries: ['multi']),
-    'vidfast': (label: 'Quasar', countries: ['multi']),
-    'stremio_direct': (label: 'Relay', countries: ['multi']),
-    'amri': (label: 'Mirage', countries: ['multi']),
-    'arabic': (label: 'Oasis', countries: ['ar']),
-    'kisskh': (label: 'Jade', countries: ['ko']),
-    'torrent': (label: 'Forge', countries: ['multi']),
+    'videasy': (label: 'Videasy', countries: ['multi']),
+    'vidsrc': (label: 'Vidsrc', countries: ['multi']),
+    'vidnest': (label: 'Vidnest', countries: ['multi']),
+    'vidlink': (label: 'VidLink', countries: ['multi']),
+    'vixsrc': (label: 'VixSrc', countries: ['multi']),
+    'vidzee': (label: 'Vidzee', countries: ['multi']),
+    'vidrock': (label: 'VidRock', countries: ['multi']),
+    'service111477': (label: '111477', countries: ['en']),
+    'webstreamr': (label: 'WebStreamr', countries: ['multi']),
+    'vidfast': (label: 'VidFast', countries: ['multi']),
+    'stremio_direct': (label: 'Stremio Direct', countries: ['multi']),
+    'amri': (label: 'Amri', countries: ['multi']),
+    'arabic': (label: 'Arabic', countries: ['ar']),
+    'kisskh': (label: 'KissKH', countries: ['ko']),
+    'torrent': (label: 'Torrent', countries: ['multi']),
   };
-
-  static const _disguisedPool = <String>[
-    'Aurora', 'Beacon', 'Canyon', 'Delta', 'Ember', 'Fjord', 'Glacier',
-    'Harbor', 'Iris', 'Juniper', 'Kestrel', 'Lagoon', 'Meadow', 'Nimbus',
-    'Opal', 'Pioneer', 'Quartz', 'River', 'Sage', 'Timber', 'Umber',
-    'Violet', 'Willow', 'Zenith', 'Breeze', 'Coral', 'Dune', 'Elm',
-    'Falcon', 'Grove', 'Haven', 'Indigo', 'Jasper', 'Kite', 'Lotus',
-    'Mist', 'North', 'Olive', 'Pine', 'Quest', 'Ridge', 'Stone', 'Tide',
-    'Union', 'Vale', 'Wave', 'Yarrow', 'Zephyr', 'Ash', 'Brook', 'Cedar',
-    'Drift', 'Echo Bay', 'Flint', 'Glen', 'Haze', 'Ivory', 'Jade Gate',
-    'Knoll', 'Lark', 'Marble', 'Nest', 'Orchid',
-  ];
 
   static const _flags = <String, String>{
     'multi': '🌐',
@@ -110,10 +98,8 @@ class StreamProviderDisplay {
     final canonical = canonicalId(providerId);
     final profile = _profiles[canonical];
     if (profile != null) return profile.label;
-    if (providerId.startsWith('nuvio:')) {
-      return _disguisedLabel(canonical);
-    }
-    return fallbackName ?? providerId;
+    if (fallbackName != null && fallbackName.isNotEmpty) return fallbackName;
+    return _titleCaseId(canonical);
   }
 
   static List<String> countryCodes(
@@ -167,11 +153,15 @@ class StreamProviderDisplay {
     return out;
   }
 
-  static String _disguisedLabel(String id) {
-    var sum = 0;
-    for (final unit in id.codeUnits) {
-      sum = (sum + unit) % 100000;
-    }
-    return _disguisedPool[sum % _disguisedPool.length];
+  static String _titleCaseId(String id) {
+    if (id.isEmpty) return id;
+    return id
+        .split(RegExp(r'[-_]'))
+        .where((p) => p.isNotEmpty)
+        .map((part) {
+          if (part.toLowerCase() == 'tv') return 'TV';
+          return '${part[0].toUpperCase()}${part.substring(1)}';
+        })
+        .join(' ');
   }
 }

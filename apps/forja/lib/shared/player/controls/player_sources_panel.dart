@@ -33,6 +33,8 @@ class PlayerSourcesPanel {
     int? episode,
     String? currentMagnet,
     required Future<void> Function(TorrentResult result) onTorrentSelected,
+    required Future<void> Function(Map<String, dynamic> stream)
+        onStremioSelected,
     Uint8List? frozenFrame,
   }) {
     dismiss();
@@ -49,6 +51,7 @@ class PlayerSourcesPanel {
         episode: episode,
         currentMagnet: currentMagnet,
         onTorrentSelected: onTorrentSelected,
+        onStremioSelected: onStremioSelected,
         onClose: dismiss,
         frozenFrame: frozenFrame,
       ),
@@ -63,6 +66,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   const _PlayerSourcesOverlay({
     required this.movie,
     required this.onTorrentSelected,
+    required this.onStremioSelected,
     required this.onClose,
     this.season,
     this.episode,
@@ -75,6 +79,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final int? episode;
   final String? currentMagnet;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
+  final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
   final Uint8List? frozenFrame;
 
@@ -106,7 +111,9 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
         episode: widget.episode,
         currentMagnet: widget.currentMagnet,
         onTorrentSelected: widget.onTorrentSelected,
+        onStremioSelected: widget.onStremioSelected,
         onClose: widget.onClose,
+        frozenFrame: widget.frozenFrame,
       ),
     );
   }
@@ -116,10 +123,12 @@ class _PlayerSourcesBody extends StatefulWidget {
   const _PlayerSourcesBody({
     required this.movie,
     required this.onTorrentSelected,
+    required this.onStremioSelected,
     required this.onClose,
     this.season,
     this.episode,
     this.currentMagnet,
+    this.frozenFrame,
   });
 
   final Movie movie;
@@ -127,7 +136,9 @@ class _PlayerSourcesBody extends StatefulWidget {
   final int? episode;
   final String? currentMagnet;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
+  final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
+  final Uint8List? frozenFrame;
 
   @override
   State<_PlayerSourcesBody> createState() => _PlayerSourcesBodyState();
@@ -135,14 +146,25 @@ class _PlayerSourcesBody extends StatefulWidget {
 
 class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   final _settings = SettingsService();
+  final _stremio = StremioService();
   final _chipsScrollController = ScrollController();
+  final _profile = PlatformPlayback.capabilities;
 
   List<TorrentResult> _results = [];
+  List<Map<String, dynamic>> _stremioStreams = [];
+  List<Map<String, dynamic>> _streamAddons = [];
+  final Set<String> _loadedAddonBaseUrls = {};
+
   bool _searching = false;
+  bool _stremioFetching = false;
   int _searchGen = 0;
+  int _stremioGen = 0;
   String? _error;
   String? _switchingMagnet;
+  String? _switchingStremioKey;
 
+  bool _showTorrents = true;
+  bool _showStremio = false;
   String _kindFilter = 'torrents';
   String _selectedSourceId = 'forja';
   String _searchQuery = '';
@@ -157,6 +179,12 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   bool _prowlarrConfigured = false;
   bool _localTorrentEngine = true;
 
+  bool get _showsTorrents =>
+      _kindFilter == 'torrents' || _kindFilter == 'all';
+  bool get _showsStremio =>
+      _kindFilter == 'stremio' || _kindFilter == 'all';
+  bool get _showsMerged => _kindFilter == 'all';
+
   @override
   void initState() {
     super.initState();
@@ -166,6 +194,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   @override
   void dispose() {
     _searchGen++;
+    _stremioGen++;
     _chipsScrollController.dispose();
     super.dispose();
   }
@@ -174,18 +203,47 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     final sort = await _settings.getSortPreference();
     final jackett = await _settings.isJackettConfigured();
     final prowlarr = await _settings.isProwlarrConfigured();
-    final local = PlatformPlayback.capabilities.localTorrentEngine;
+    final torrentOn = await _settings.isPlaySourceTorrentEnabled();
+    final stremioOn = await _settings.isPlaySourceStremioEnabled();
+    final local = _profile.localTorrentEngine;
+    List<Map<String, dynamic>> addons = const [];
+    if (stremioOn) {
+      try {
+        addons = await _stremio.getAddonsForResource('stream');
+      } catch (_) {}
+    }
     if (!mounted) return;
+
+    final hasStremio = stremioOn && addons.isNotEmpty;
+    final hasTorrent = torrentOn;
+    String kind;
+    if (hasTorrent && hasStremio) {
+      kind = 'all';
+    } else if (hasStremio) {
+      kind = 'stremio';
+    } else {
+      kind = 'torrents';
+    }
+
     setState(() {
       _sortPreference = sort;
       _jackettConfigured = jackett;
       _prowlarrConfigured = prowlarr;
       _localTorrentEngine = local;
+      _showTorrents = hasTorrent;
+      _showStremio = hasStremio;
+      _streamAddons = addons;
+      _kindFilter = kind;
+      _selectedSourceId = kind == 'stremio'
+          ? (addons.length > 1 ? 'all_stremio' : (addons.isNotEmpty ? addons.first['baseUrl'] as String : 'forja'))
+          : 'forja';
     });
-    await _runSearch();
+
+    if (_showsTorrents) unawaited(_runTorrentSearch());
+    if (_showsStremio) unawaited(_fetchStremioStreams());
   }
 
-  List<TorrentResult> get _filtered {
+  List<TorrentResult> get _filteredTorrents {
     final list = filterTorrentResults(
       _results,
       searchQuery: _searchQuery,
@@ -196,6 +254,17 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       sizeFilters: _sizeFilters,
     );
     return List<TorrentResult>.from(list)..sort(_compare);
+  }
+
+  List<Map<String, dynamic>> get _filteredStremio {
+    final q = _searchQuery.trim().toLowerCase();
+    return _stremioStreams.where((s) {
+      if (q.isEmpty) return true;
+      final blob =
+          '${s['title'] ?? ''} ${s['name'] ?? ''} ${s['description'] ?? ''}'
+              .toLowerCase();
+      return blob.contains(q);
+    }).toList();
   }
 
   int _compare(TorrentResult a, TorrentResult b) {
@@ -210,12 +279,22 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
   }
 
-  Set<String> get _availableQualities =>
-      collectQualities(_results.map((r) => r.name));
-  Set<String> get _availableLanguages =>
-      collectLanguages(_results.map((r) => r.name));
-  Set<String> get _availableTech =>
-      collectTechTags(_results.map((r) => r.name));
+  Iterable<String> get _filterNames sync* {
+    if (_showsTorrents) {
+      for (final r in _results) {
+        yield r.name;
+      }
+    }
+    if (_showsStremio) {
+      for (final s in _stremioStreams) {
+        yield '${s['title'] ?? ''} ${s['name'] ?? ''} ${s['description'] ?? ''}';
+      }
+    }
+  }
+
+  Set<String> get _availableQualities => collectQualities(_filterNames);
+  Set<String> get _availableLanguages => collectLanguages(_filterNames);
+  Set<String> get _availableTech => collectTechTags(_filterNames);
   Set<String> get _availableSizes => collectSizeRanges(
         _results.map(
           (r) => r.sizeInBytes > 0
@@ -225,19 +304,44 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       );
 
   List<Map<String, dynamic>> get _providerChips {
-    final chips = <Map<String, dynamic>>[
-      {'id': 'forja', 'label': 'Forja'},
-    ];
-    if (_jackettConfigured) {
-      chips.add({'id': 'jackett', 'label': '🔍 Jackett'});
+    if (_kindFilter == 'stremio') {
+      final chips = <Map<String, dynamic>>[];
+      if (_streamAddons.length > 1) {
+        chips.add({'id': 'all_stremio', 'label': '⚡ All'});
+      }
+      for (final a in _streamAddons) {
+        if (_loadedAddonBaseUrls.contains(a['baseUrl'])) {
+          chips.add({'id': a['baseUrl'], 'label': a['name']});
+        }
+      }
+      return chips;
     }
-    if (_prowlarrConfigured) {
-      chips.add({'id': 'prowlarr', 'label': '🔍 Prowlarr'});
+    if (_kindFilter == 'torrents') {
+      final chips = <Map<String, dynamic>>[
+        {'id': 'forja', 'label': 'Forja'},
+      ];
+      if (_jackettConfigured) {
+        chips.add({'id': 'jackett', 'label': '🔍 Jackett'});
+      }
+      if (_prowlarrConfigured) {
+        chips.add({'id': 'prowlarr', 'label': '🔍 Prowlarr'});
+      }
+      return chips;
     }
-    return chips;
+    return const [];
   }
 
-  Future<void> _runSearch() async {
+  int get _visibleCount {
+    var n = 0;
+    if (_showsTorrents) n += _filteredTorrents.length;
+    if (_showsStremio) n += _filteredStremio.length;
+    return n;
+  }
+
+  bool get _isFetching =>
+      (_showsTorrents && _searching) || (_showsStremio && _stremioFetching);
+
+  Future<void> _runTorrentSearch() async {
     final gen = ++_searchGen;
     setState(() {
       _searching = true;
@@ -252,9 +356,11 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       final episode = widget.episode ?? 1;
 
       if (_selectedSourceId == 'jackett') {
-        found = await _searchJackett(isTv: isTv, season: season, episode: episode);
+        found =
+            await _searchJackett(isTv: isTv, season: season, episode: episode);
       } else if (_selectedSourceId == 'prowlarr') {
-        found = await _searchProwlarr(isTv: isTv, season: season, episode: episode);
+        found =
+            await _searchProwlarr(isTv: isTv, season: season, episode: episode);
       } else if (isTv) {
         found = await _searchForjaTv(season: season, episode: episode);
       } else {
@@ -265,7 +371,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       setState(() {
         _results = found;
         _searching = false;
-        if (found.isEmpty) {
+        if (found.isEmpty && !_showsStremio) {
           _error = 'No torrents found';
         }
       });
@@ -275,6 +381,108 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         _searching = false;
         _error = e.toString().replaceFirst('Exception: ', '');
       });
+    }
+  }
+
+  Future<void> _fetchStremioStreams() async {
+    if (_streamAddons.isEmpty) return;
+    final imdb = widget.movie.imdbId ?? '';
+    if (imdb.isEmpty) {
+      setState(() {
+        _stremioFetching = false;
+        if (!_showsTorrents) _error = 'No IMDb id for Stremio streams';
+      });
+      return;
+    }
+
+    final gen = ++_stremioGen;
+    setState(() {
+      _stremioFetching = true;
+      _stremioStreams = [];
+      _loadedAddonBaseUrls.clear();
+      _error = null;
+    });
+
+    var stremioId = imdb;
+    if (widget.movie.mediaType == 'tv') {
+      stremioId = '$imdb:${widget.season ?? 1}:${widget.episode ?? 1}';
+    }
+    final type = widget.movie.mediaType == 'tv' ? 'series' : 'movie';
+    var pending = _streamAddons.length;
+
+    void completeOne() {
+      if (!mounted || gen != _stremioGen) return;
+      pending--;
+      if (pending <= 0) {
+        setState(() {
+          _stremioFetching = false;
+          if (_stremioStreams.isEmpty && !_showsTorrents) {
+            _error = 'No streams found from any addon';
+          }
+        });
+      }
+    }
+
+    for (final addon in _streamAddons) {
+      _stremio
+          .getStreams(
+        baseUrl: addon['baseUrl'] as String,
+        type: type,
+        id: stremioId,
+      )
+          .then((streams) {
+        if (!mounted || gen != _stremioGen) return;
+        final tagged = filterStremioStreamsForProfile(
+          streams.map((s) {
+            if (s is Map<String, dynamic>) {
+              return <String, dynamic>{
+                ...s,
+                '_addonName': addon['name'] ?? 'Unknown',
+                '_addonBaseUrl': addon['baseUrl'],
+              };
+            }
+            return <String, dynamic>{
+              '_addonName': addon['name'],
+              '_addonBaseUrl': addon['baseUrl'],
+            };
+          }).toList(),
+          _profile,
+        );
+        setState(() {
+          if (tagged.isNotEmpty) {
+            _loadedAddonBaseUrls.add(addon['baseUrl'] as String);
+          }
+          _stremioStreams.addAll(tagged);
+        });
+      }).catchError((_) {
+        // skip failed addon
+      }).whenComplete(completeOne);
+    }
+  }
+
+  void _onKindChanged(String kind) {
+    if (kind == _kindFilter) return;
+    setState(() {
+      _kindFilter = kind;
+      _qualityFilters = {};
+      _languageFilters = {};
+      _techFilters = {};
+      _audioFilters = {};
+      _sizeFilters = {};
+      _searchQuery = '';
+      if (kind == 'stremio') {
+        _selectedSourceId = _streamAddons.length > 1
+            ? 'all_stremio'
+            : (_streamAddons.isNotEmpty
+                ? _streamAddons.first['baseUrl'] as String
+                : 'all_stremio');
+      } else if (kind == 'torrents') {
+        _selectedSourceId = 'forja';
+      }
+    });
+    if (_showsTorrents && _results.isEmpty) unawaited(_runTorrentSearch());
+    if (_showsStremio && _stremioStreams.isEmpty) {
+      unawaited(_fetchStremioStreams());
     }
   }
 
@@ -470,10 +678,22 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       _sizeFilters = {};
       _searchQuery = '';
     });
-    _runSearch();
+    if (_kindFilter == 'stremio') {
+      // Streams already fetched; chip only filters which addon rows show.
+      setState(() {
+        if (id == 'all_stremio') {
+          // keep full list from last fetch — re-fetch to rebuild cleanly
+          unawaited(_fetchStremioStreams());
+        } else {
+          unawaited(_fetchStremioStreams());
+        }
+      });
+    } else {
+      unawaited(_runTorrentSearch());
+    }
   }
 
-  Future<void> _select(TorrentResult result) async {
+  Future<void> _selectTorrent(TorrentResult result) async {
     final current = widget.currentMagnet?.toLowerCase();
     if (current != null &&
         current.isNotEmpty &&
@@ -490,6 +710,19 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
   }
 
+  Future<void> _selectStremio(Map<String, dynamic> stream) async {
+    final key = stream['infoHash']?.toString() ??
+        stream['url']?.toString() ??
+        stream.hashCode.toString();
+    setState(() => _switchingStremioKey = key);
+    try {
+      await widget.onStremioSelected(stream);
+      widget.onClose();
+    } catch (_) {
+      if (mounted) setState(() => _switchingStremioKey = null);
+    }
+  }
+
   String? get _episodeLabel {
     if (widget.movie.mediaType != 'tv') return null;
     final s = (widget.season ?? 1).toString().padLeft(2, '0');
@@ -500,7 +733,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   @override
   Widget build(BuildContext context) {
     final isTv = ShellTokens.isTvLayout(context);
-    final filtered = _filtered;
+    final torrents = _showsTorrents ? _filteredTorrents : <TorrentResult>[];
+    final stremio = _showsStremio ? _visibleStremioStreams : <Map<String, dynamic>>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -508,16 +742,20 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         TorrentSourcesPanelChrome(
           onClose: widget.onClose,
           kindFilter: _kindFilter,
-          showTorrents: true,
-          showStremio: false,
+          showTorrents: _showTorrents,
+          showStremio: _showStremio,
           showNuvio: false,
-          onKindChanged: (v) => setState(() => _kindFilter = v),
-          resultCount: filtered.length,
+          onKindChanged: _onKindChanged,
+          resultCount: _visibleCount,
           episodeLabel: _episodeLabel,
-          isFetching: _searching,
+          isFetching: _isFetching,
           onCancelFetch: () {
             _searchGen++;
-            setState(() => _searching = false);
+            _stremioGen++;
+            setState(() {
+              _searching = false;
+              _stremioFetching = false;
+            });
           },
           providerChips: _providerChips,
           selectedSourceId: _selectedSourceId,
@@ -557,28 +795,45 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
           onLanguageFiltersChanged: (v) => setState(() => _languageFilters = v),
           onTechFiltersChanged: (v) => setState(() => _techFilters = v),
           onSizeFiltersChanged: (v) => setState(() => _sizeFilters = v),
-          showAudioFilters: true,
+          showAudioFilters: _showsTorrents,
           activeAudioFilters: _audioFilters,
           onAudioFiltersChanged: (v) => setState(() => _audioFilters = v),
-          sortPreference: _sortPreference,
-          onSortChanged: (val) {
-            setState(() => _sortPreference = val);
-            _settings.setSortPreference(val);
-          },
-          showCacheLine: _localTorrentEngine,
-          cacheRefreshToken: Object.hash(_openToken, _results.length, _searching),
+          sortPreference: _showsTorrents ? _sortPreference : null,
+          onSortChanged: _showsTorrents
+              ? (val) {
+                  setState(() => _sortPreference = val);
+                  _settings.setSortPreference(val);
+                }
+              : null,
+          showCacheLine: _showsTorrents && _localTorrentEngine,
+          cacheRefreshToken:
+              Object.hash(_openToken, _results.length, _searching),
+          filterFrozenFrame: widget.frozenFrame,
         ),
         SizedBox(height: isTv ? 10 : 8),
-        Expanded(child: _buildList(filtered)),
+        Expanded(child: _buildList(torrents, stremio)),
       ],
     );
+  }
+
+  List<Map<String, dynamic>> get _visibleStremioStreams {
+    final filtered = _filteredStremio;
+    if (_kindFilter != 'stremio') return filtered;
+    if (_selectedSourceId == 'all_stremio') return filtered;
+    return filtered
+        .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
+        .toList();
   }
 
   // Stable-ish token so cache line can refresh when panel content changes.
   int get _openToken => identityHashCode(this);
 
-  Widget _buildList(List<TorrentResult> filtered) {
-    if (_searching && filtered.isEmpty) {
+  Widget _buildList(
+    List<TorrentResult> torrents,
+    List<Map<String, dynamic>> stremio,
+  ) {
+    final count = torrents.length + stremio.length;
+    if (_isFetching && count == 0) {
       return const Center(
         child: SizedBox(
           width: 28,
@@ -587,7 +842,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         ),
       );
     }
-    if (_error != null && filtered.isEmpty) {
+    if (_error != null && count == 0) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -603,16 +858,22 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextButton(onPressed: _runSearch, child: const Text('Retry')),
+              TextButton(
+                onPressed: () {
+                  if (_showsTorrents) unawaited(_runTorrentSearch());
+                  if (_showsStremio) unawaited(_fetchStremioStreams());
+                },
+                child: const Text('Retry'),
+              ),
             ],
           ),
         ),
       );
     }
-    if (filtered.isEmpty) {
+    if (count == 0) {
       return Center(
         child: Text(
-          'No matching torrents',
+          'No matching sources',
           style: TextStyle(
             color: ForjaShellColors.cinematic.textSecondary,
             fontSize: 13,
@@ -622,18 +883,63 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
 
     final current = widget.currentMagnet?.toLowerCase();
+    final showAddonName = _showsMerged || _selectedSourceId == 'all_stremio';
+
     return ListView.separated(
-      itemCount: filtered.length,
+      itemCount: count,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
-        final r = filtered[i];
-        final isCurrent =
-            current != null && r.magnet.toLowerCase() == current;
-        final switching = _switchingMagnet == r.magnet;
-        final tile = TorrentSourceTile(
-          result: r,
-          highlightStart: isCurrent,
-          onPlay: () => _select(r),
+        if (i < torrents.length) {
+          final r = torrents[i];
+          final isCurrent =
+              current != null && r.magnet.toLowerCase() == current;
+          final switching = _switchingMagnet == r.magnet;
+          final tile = TorrentSourceTile(
+            result: r,
+            highlightStart: isCurrent,
+            onPlay: () => _selectTorrent(r),
+          );
+          if (!switching) return tile;
+          return Stack(
+            children: [
+              Opacity(opacity: 0.55, child: IgnorePointer(child: tile)),
+              const Positioned.fill(
+                child: Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white54,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        final s = stremio[i - torrents.length];
+        final title = (s['title'] ?? s['name'] ?? 'Unknown Stream').toString();
+        final description = (s['description'] ?? '').toString();
+        final presentation =
+            stremioTilePresentation(s, isResumable: false);
+        final key = s['infoHash']?.toString() ??
+            s['url']?.toString() ??
+            s.hashCode.toString();
+        final switching = _switchingStremioKey == key;
+        final tile = StremioSourceTile(
+          title: title,
+          description: description,
+          leadingIcon: presentation.leadingIcon,
+          leadingColor: presentation.leadingColor,
+          isExternal: presentation.isExternal,
+          addonName: s['_addonName']?.toString(),
+          showAddonName: showAddonName,
+          sizeText: s['size']?.toString(),
+          seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
+          stream: s,
+          onTap: () => _selectStremio(s),
         );
         if (!switching) return tile;
         return Stack(

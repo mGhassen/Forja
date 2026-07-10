@@ -1016,7 +1016,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         await applyMediaHttpHeaders(_player, srcHeaders);
         await _player.open(Media(openUrl, httpHeaders: srcHeaders));
         _player.setVolume(_volume);
-        final opened = await waitForMediaOpen(_player);
+        final opened = await waitForMediaOpen(
+          _player,
+          streamUrl: openUrl,
+          timeout: isLocalTorrentStreamUrl(openUrl)
+              ? const Duration(seconds: 45)
+              : const Duration(seconds: 12),
+        );
         if (!opened) {
           debugPrint('[Player] Source $i failed to open: $openUrl');
           await _player.stop();
@@ -1122,21 +1128,48 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _notifyAllSourcesExhausted();
       }
     } else {
-      // No sources list, just try the primary mediaPath
+      // No sources list — primary mediaPath (torrent localhost or direct URL).
+      final openUrl = widget.mediaPath;
+      final isTorrent = isLocalTorrentStreamUrl(openUrl) ||
+          widget.magnetLink != null;
       int retryCount = 0;
       const maxRetries = 2;
-      
+
       while (retryCount < maxRetries) {
         try {
           _subscribeToStreams();
           await _configureMpvProperties();
-          await _player.open(Media(widget.mediaPath, httpHeaders: widget.headers));
+          await resetPlayerForOpen(_player);
+          await applyMediaHttpHeaders(_player, widget.headers);
+          await _player.open(Media(openUrl, httpHeaders: widget.headers));
           _player.setVolume(_volume);
-          _detectHlsQualities(widget.mediaPath, widget.headers);
+          final opened = await waitForMediaOpen(
+            _player,
+            streamUrl: openUrl,
+            timeout: isTorrent
+                ? const Duration(seconds: 45)
+                : const Duration(seconds: 12),
+          );
+          if (!opened) {
+            throw Exception('Failed to open media');
+          }
+          _detectHlsQualities(openUrl, widget.headers);
+          _playbackConfirmed = true;
+          widget.onPlaybackStarted?.call();
           return;
         } catch (e) {
           retryCount++;
+          debugPrint('[Player] Primary open failed ($retryCount/$maxRetries): $e');
           if (retryCount >= maxRetries) {
+            if (mounted) {
+              setState(() {
+                _hasError = true;
+                _showControls = true;
+                _errorMessage = isTorrent
+                    ? 'Torrent stream failed to open.'
+                    : 'Playback failed.';
+              });
+            }
             await _autoFallbackToNextProvider();
             return;
           }
@@ -1689,7 +1722,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       // Torrent engine feeds bytes from disk as pieces complete — a small
       // forward window is enough and keeps memory pressure low.
       await safeSet('cache', 'yes');
-      await safeSet('network-timeout', '15');
+      await safeSet('network-timeout', '60');
+      await safeSet('demuxer-readahead-secs', '20');
       await safeSet('force-seekable', 'yes');
       await safeSet('hr-seek', 'yes');
       await safeSet('hr-seek-framedrop', 'no');
@@ -2914,10 +2948,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
   Future<Uint8List?> _capturePanelFrostFrame() async {
     try {
-      return await _player.screenshot(format: 'image/jpeg');
-    } catch (_) {
-      return null;
-    }
+      final jpeg = await _player.screenshot(format: 'image/jpeg');
+      if (jpeg != null && jpeg.isNotEmpty) return jpeg;
+    } catch (_) {}
+    try {
+      final png = await _player.screenshot(format: 'image/png');
+      if (png != null && png.isNotEmpty) return png;
+    } catch (_) {}
+    return null;
   }
 
   Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
@@ -2965,8 +3003,78 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       episode: widget.selectedEpisode,
       currentMagnet: _activeMagnet ?? widget.magnetLink,
       onTorrentSelected: _switchTorrentSource,
+      onStremioSelected: _switchStremioSource,
       frozenFrame: frame,
     );
+  }
+
+  Future<void> _switchStremioSource(Map<String, dynamic> stream) async {
+    final title =
+        (stream['title'] ?? stream['name'] ?? 'Stremio stream').toString();
+    final statusId = 'stremio-source-${stream.hashCode}';
+    _statusController.upsert(
+      statusId,
+      title,
+      kind: StatusRouletteKind.loading,
+    );
+
+    final resolved = await resolveStremioStream(
+      stream: stream,
+      profile: PlatformPlayback.capabilities,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    if (!mounted) return;
+
+    if (resolved is! StremioPlayable) {
+      final msg = resolved is StremioResolveFailure
+          ? resolved.message
+          : 'Failed to resolve stream';
+      _statusController.upsert(
+        statusId,
+        title,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      throw Exception(msg);
+    }
+
+    await _configureMpvProperties();
+    await resetPlayerForOpen(_player);
+    await _player.open(
+      Media(resolved.streamUrl, httpHeaders: resolved.headers),
+    );
+    _player.setVolume(_volume);
+
+    final opened = await waitForMediaOpen(
+      _player,
+      streamUrl: resolved.streamUrl,
+      timeout: isLocalTorrentStreamUrl(resolved.streamUrl)
+          ? const Duration(seconds: 45)
+          : const Duration(seconds: 12),
+    );
+    if (!mounted) return;
+    if (!opened) {
+      _statusController.upsert(
+        statusId,
+        title,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      throw Exception('Stream failed to open');
+    }
+
+    setState(() {
+      _currentUrl = resolved.streamUrl;
+      _activeMagnet = resolved.magnetLink;
+      _hasError = false;
+      _errorMessage = '';
+      _currentSources = null;
+    });
+    _playbackConfirmed = true;
+    _statusController.complete();
+    widget.onPlaybackStarted?.call();
+    _startHideTimer();
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
@@ -3006,7 +3114,11 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     await _player.open(Media(playback.url));
     _player.setVolume(_volume);
 
-    final opened = await waitForMediaOpen(_player);
+    final opened = await waitForMediaOpen(
+      _player,
+      streamUrl: playback.url,
+      timeout: const Duration(seconds: 45),
+    );
     if (!mounted) return;
     if (!opened) {
       _statusController.upsert(
