@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:google_fonts/google_fonts.dart';
@@ -1027,8 +1028,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        final needsVideo = sourceExpectsDuration(openUrl, type: source.type);
-        if (needsVideo && !await waitForVideoDecode(_player)) {
+        final needsDuration =
+            sourceExpectsDuration(openUrl, type: source.type);
+        if (sourceRequiresVideoDecode(openUrl, type: source.type) &&
+            !await waitForVideoDecode(_player)) {
           debugPrint('[Player] Source $i opened without video: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -1041,7 +1044,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        if (needsVideo && !await waitForSeekableDuration(_player)) {
+        if (needsDuration && !await waitForSeekableDuration(_player)) {
           debugPrint('[Player] Source $i opened without duration: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -2907,7 +2910,17 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     await _switchToEpisode(season, episode);
   }
 
-  void _showEpisodesMenu(BuildContext anchorContext) {
+  Future<Uint8List?> _capturePanelFrostFrame() async {
+    try {
+      return await _player.screenshot(format: 'image/jpeg');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
+    final frame = await _capturePanelFrostFrame();
+    if (!mounted) return;
     if (widget.hubEpisodes != null &&
         widget.hubEpisodes!.isNotEmpty &&
         widget.onHubEpisodeSelected != null) {
@@ -2918,6 +2931,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         currentEpisode:
             widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: widget.onHubEpisodeSelected!,
+        frozenFrame: frame,
       );
       return;
     }
@@ -2932,18 +2946,22 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       currentEpisode: episode,
       onEpisodeSelected: _goToEpisode,
       anchorContext: anchorContext,
+      frozenFrame: frame,
     );
   }
 
-  void _showTorrentFilesPanel() {
+  Future<void> _showTorrentFilesPanel() async {
     final magnet = widget.magnetLink;
     if (magnet == null || magnet.isEmpty) return;
     _hideTimer?.cancel();
+    final frame = await _capturePanelFrostFrame();
+    if (!mounted) return;
     PlayerTorrentFilePanel.show(
       context: context,
       magnetLink: magnet,
       currentFileIndex: _activeFileIndex,
       onFileSelected: _switchTorrentFile,
+      frozenFrame: frame,
     );
   }
 

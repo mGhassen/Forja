@@ -83,8 +83,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
         if (showPlay) ...[
           HeroPillPlayButton(
             label: playLabel,
-            icon: null,
-            iconWidget: const HeroMagnetIcon(),
+            icon: Icons.link_rounded,
             tone: showPlayStreaming
                 ? HeroPillPlayTone.streaming
                 : HeroPillPlayTone.primary,

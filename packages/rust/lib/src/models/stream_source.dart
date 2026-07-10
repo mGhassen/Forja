@@ -12,12 +12,27 @@ class StreamSource {
   });
 
   factory StreamSource.fromJson(Map<String, dynamic> json) {
+    Map<String, String>? headers;
+    final rawHeaders = json['headers'];
+    if (rawHeaders is Map) {
+      headers = rawHeaders.map(
+        (k, v) => MapEntry(k.toString(), v.toString()),
+      );
+    }
     return StreamSource(
       url: json['url'] ?? json['file'] ?? json['src'] ?? '',
       title: json['title'] ?? json['label'] ?? json['quality'] ?? 'Unknown',
       type: json['type'] ?? 'video',
+      headers: headers,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'url': url,
+        'title': title,
+        'type': type,
+        if (headers != null) 'headers': headers,
+      };
 }
 
 int streamSourcePlayPriority(StreamSource source) {

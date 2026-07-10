@@ -8,7 +8,7 @@ When you open a title from Home, Discover, Search, or lists, you get the **media
 
 The hero overlay is split into two columns on wide screens:
 
-- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then green **Play** / **Resume** with play icon (webstreaming best extractor when enabled), white **Play** / **Resume** with magnet icon (opens the **Sources** panel for torrent / Stremio), a trash icon next to Resume when you have watch progress (clears that title/episode from history), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download (opens **Sources**), and overflow; watch progress when you have history appears below the actions.
+- **Left:** TMDB logo or stylized title, inline genres (`Horror • Thriller`), year · runtime · certification · rating, director line, synopsis (left **40%** of the screen), then green **Play** / **Resume** with play icon (webstreaming best extractor when enabled), white **Play** / **Resume** with link icon (opens the **Sources** panel for torrent / Stremio), a trash icon next to Resume when you have watch progress (clears that title/episode from history), **Trailer** (when TMDB has videos — opens the in-app trailer player on the best match), and a combined **+ | download | ⋯** pill for My List, download (opens **Sources**), and overflow; watch progress when you have history appears below the actions.
 - **Right:** **Production Info** panel — status, language, and TV fields (first/last aired, seasons, episodes, network, production companies, origin, creators) or movie fields (release date, runtime, production, origin, budget/revenue) from TMDB rich details.
 
 Hero text sits in the **upper** area of the hero (not pinned to the bottom). Below the hero, the page uses a **flat shell background** (same `#141414` as the left nav rail and Home catalog rows) — no blurred backdrop bleed-through.
@@ -20,7 +20,7 @@ Scroll below the hero for:
 3. **Trailers** — horizontal row of YouTube trailers/teasers from TMDB; tap to open the in-app trailer player (seek bar, ±10s skip, volume, audio, subtitles, quality, playback speed). When a trailer ends and more are available, an **Up next** prompt lets you continue to the next trailer.
 4. **More Like This** — recommendation row
 
-Torrent search and Stremio streams share one **Sources** list. The panel chrome is compact: **Sources** + count, then **All / Torrents / Stremio** (and **Nuvio** when installed) chips, optional provider chips when filtered, then search + filters. Each torrent/Stremio row uses the same card: **title + provider** (plain text, e.g. Knaben / PirateBay / Torrentio addon name), then one badge row for **quality**, **file size** (scraper / Torrentio `behaviorHints.videoSize` / size token in stream title), **seeds**, codec, and tech tags when known. **Webstreaming** is started from the hero green **Play** / **Resume** (play icon) — it is not in Sources. Only torrent/Stremio play sources enabled in **Settings → Playback** appear in the panel.
+Torrent search and Stremio streams share one **Sources** list in a frosted right-side panel (blurred glass over the details page). The panel chrome is compact: **Sources** + count, then **All / Torrents / Stremio** (and **Nuvio** when installed) chips, optional provider chips when filtered, then search + filters. Each torrent/Stremio row uses the same card: **title** on the left with **provider** and seed count (↑ number, no badge) stacked on the right, then a meta row with language **flags** as plain emoji (no pill) plus badges for **quality**, **file size** (scraper / Torrentio `behaviorHints.videoSize` / size token in stream title), codec, and tech tags when known. **Webstreaming** is started from the hero green **Play** / **Resume** (play icon) — it is not in Sources. Only torrent/Stremio play sources enabled in **Settings → Playback** appear in the panel.
 
 ## How to open it
 
@@ -30,7 +30,8 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 
 - Watch the Ken Burns backdrop (12–20s), then chromeless autoplay trailer in the hero when TMDB has one; alternates after each trailer ends (sound on, volume ramps up; mute toggle bottom-right)
 - Green **Play** / **Resume** (play icon) auto-extracts the best direct webstreaming link when that play source is enabled
-- White **Play** / **Resume** (magnet icon) opens **Sources** so you pick a torrent/Stremio stream
+- Returning to the same title/episode reuses a cached webstreaming extract when still reachable (see [Webstreaming](direct-streaming-mode.md))
+- White **Play** / **Resume** (link icon) opens **Sources** so you pick a torrent/Stremio stream
 - **Download** or an episode tap opens **Sources** to pick a torrent/Stremio stream manually
 - **Trailer** (when available) opens the in-app trailer player on the best-matching official trailer
 - Add or remove from **My List** (**+** button in hero)

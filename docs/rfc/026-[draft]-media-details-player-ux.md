@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 18** components · **6 / 14** acceptance (1.0.1 UX slice) · **2 / 18** components in progress (details screen thin-wrap) |
-| **Current slice** | Shared hero + details scroll shell + sources panel extraction (torrent + streaming) |
+| **Progress** | **10 / 18** components · **7 / 15** acceptance (1.0.1 UX slice) · **2 / 18** components in progress (details screen thin-wrap) |
+| **Current slice** | Shared hero + details scroll shell + sources panel extraction (torrent + streaming); webstreaming extract cache shipped |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -65,6 +65,7 @@
 | 5 | R26-A12 | `StreamSourcePanel` switches among `_currentSources` without engine change | ✅ |
 | 6 | R26-A13 | Seek hover preview shows frame when `screenshot()` succeeds; timestamp-only fallback otherwise | ✅ |
 | 7 | R26-A14 | TV season poster cards + expandable episode rail with thumbnails, progress, synopsis, watched | ✅ |
+| 8 | R26-A15 | Webstreaming green Play reuses session/disk extract cache on reopen (probe; stale → re-race) | ✅ |
 
 ---
 

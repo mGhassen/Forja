@@ -9,6 +9,8 @@ import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'stremio_catalog_screen.dart';
@@ -279,6 +281,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   void _onEpisodeSelected(int episode) {
     setState(() {
       _selectedEpisode = episode;
+      _webstreamingStreams = [];
+      _webstreamingActiveProviderId = null;
       _syncSelectedSourceToPlaySources();
       if (_hasPanelPlaySources) {
         _sourcesPanelOpen = true;
@@ -412,15 +416,73 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     unawaited(_startWebstreamingOnlyPlayback());
   }
 
+  String _webstreamingCacheKey() => WebstreamingStreamCache.cacheKey(
+        tmdbId: _movie.id,
+        mediaType: _movie.mediaType,
+        season: _movie.mediaType == 'tv' ? _selectedSeason : 0,
+        episode: _movie.mediaType == 'tv' ? _selectedEpisode : 0,
+      );
+
+  void _applyWebstreamingCacheHit(WebstreamingCacheHit hit) {
+    _webstreamingStreams = hit.sources;
+    _webstreamingActiveProviderId = hit.providerId;
+  }
+
+  Future<void> _persistWebstreamingCache({
+    required String providerId,
+    required List<StreamSource> sources,
+  }) async {
+    if (sources.isEmpty) return;
+    await WebstreamingStreamCache.write(
+      _webstreamingCacheKey(),
+      WebstreamingCacheHit(providerId: providerId, sources: sources),
+    );
+  }
+
+  Future<bool> _anyWebstreamingSourcePlayable(
+    List<StreamSource> sources,
+  ) async {
+    for (final s in sources) {
+      if (await probeStreamSourceUrl(s.url, s.headers)) return true;
+    }
+    return false;
+  }
+
   Future<void> _startWebstreamingOnlyPlayback() async {
     final startPosition = _startPositionForAutoPlay(fromRoute: false);
     if (_webstreamingStreams.isNotEmpty) {
-      await _playWebstreamingStream(
-        _webstreamingStreams.first,
-        startPosition: startPosition,
-      );
-      return;
+      if (await _anyWebstreamingSourcePlayable(_webstreamingStreams)) {
+        await _playWebstreamingStream(
+          _webstreamingStreams.first,
+          startPosition: startPosition,
+        );
+        return;
+      }
+      debugPrint('[DetailsScreen] in-memory webstreaming stale — rechecking');
+      _webstreamingStreams = [];
+      _webstreamingActiveProviderId = null;
+      await WebstreamingStreamCache.drop(_webstreamingCacheKey());
     }
+
+    final cached = await WebstreamingStreamCache.read(_webstreamingCacheKey());
+    if (cached != null && cached.sources.isNotEmpty) {
+      if (await _anyWebstreamingSourcePlayable(cached.sources)) {
+        if (!mounted) return;
+        setState(() => _applyWebstreamingCacheHit(cached));
+        debugPrint(
+          '[DetailsScreen] webstreaming cache hit '
+          '${cached.providerId} (${cached.sources.length})',
+        );
+        await _playWebstreamingStream(
+          cached.sources.first,
+          startPosition: startPosition,
+        );
+        return;
+      }
+      debugPrint('[DetailsScreen] webstreaming cache stale — rechecking');
+      await WebstreamingStreamCache.drop(_webstreamingCacheKey());
+    }
+
     if (_isWebstreamingOnlyExtracting) return;
     await _runWebstreamingOnlyExtraction(startPosition: startPosition);
   }
@@ -527,6 +589,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             _webstreamingStreams = sources;
             _webstreamingActiveProviderId = key;
           });
+          unawaited(
+            _persistWebstreamingCache(providerId: key, sources: sources),
+          );
 
           final isTv = _movie.mediaType == 'tv';
           final title = isTv
@@ -596,6 +661,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       setState(() {
         _selectedSeason = season;
         _selectedEpisode = 1;
+        _webstreamingStreams = [];
+        _webstreamingActiveProviderId = null;
       });
       _fetchStremioStreamsForCustomId(widget.stremioItem!);
       _checkHistory();
@@ -1670,6 +1737,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _seasonData = data;
           _isLoadingSeason = false;
           _selectedSeason = seasonNumber;
+          _webstreamingStreams = [];
+          _webstreamingActiveProviderId = null;
           if (poster != null && poster.isNotEmpty) {
             _seasonPosters[seasonNumber] = poster;
           }

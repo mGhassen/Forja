@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
@@ -11,6 +13,7 @@ class PlayerEpisodeMenu {
     required int currentEpisode,
     required Future<void> Function(int season, int episode) onEpisodeSelected,
     BuildContext? anchorContext,
+    Uint8List? frozenFrame,
   }) async {
     PlayerPopupPanel.dismiss();
     await PlayerEpisodePanel.show(
@@ -19,6 +22,7 @@ class PlayerEpisodeMenu {
       currentSeason: currentSeason,
       currentEpisode: currentEpisode,
       onEpisodeSelected: onEpisodeSelected,
+      frozenFrame: frozenFrame,
     );
   }
 }

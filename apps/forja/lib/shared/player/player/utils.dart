@@ -102,8 +102,17 @@ bool sourceExpectsDuration(String url, {String? type}) {
       lower.contains('.mpd');
 }
 
-/// VOD streams need a known duration before the seekbar can work.
-/// HLS/VOD opens must decode at least one video frame before we treat them as
+/// Adaptive playlists can report buffer/duration while serving HTML/empty
+/// segments. Progressive containers (mkv/mp4) get real demuxer duration —
+/// do not require a decoded frame or large remote files fail the 8s probe.
+bool sourceRequiresVideoDecode(String url, {String? type}) {
+  final normalizedType = type?.toLowerCase() ?? '';
+  if (normalizedType == 'hls' || normalizedType == 'dash') return true;
+  final lower = url.toLowerCase();
+  return lower.contains('.m3u8') || lower.contains('.mpd');
+}
+
+/// Adaptive opens must decode at least one video frame before we treat them as
 /// playable — buffer/position alone false-positives on dead CDNs.
 Future<bool> waitForVideoDecode(
   Player player, {

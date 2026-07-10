@@ -26,4 +26,18 @@ void main() {
     final deduped = dedupeStreamSources(sources);
     expect(deduped.first.url, contains('h264'));
   });
+
+  test('StreamSource toJson/fromJson round-trips headers', () {
+    final source = StreamSource(
+      url: 'https://cdn/a.m3u8',
+      title: '1080p',
+      type: 'hls',
+      headers: {'Referer': 'https://example.com', 'User-Agent': 'Forja'},
+    );
+    final restored = StreamSource.fromJson(source.toJson());
+    expect(restored.url, source.url);
+    expect(restored.title, source.title);
+    expect(restored.type, source.type);
+    expect(restored.headers, source.headers);
+  });
 }

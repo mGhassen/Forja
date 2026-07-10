@@ -28,6 +28,10 @@ pub struct TorrentStatus {
     pub download_rate: u64,
     pub upload_rate: u64,
     pub num_peers: u32,
+    pub num_seen: u32,
+    pub progress_bytes: u64,
+    pub total_bytes: u64,
+    pub eta_secs: u64,
     pub state: String,
 }
 
@@ -457,15 +461,23 @@ impl TorrentEngine {
         } else {
             stats.progress_bytes as f64 / stats.total_bytes as f64
         };
-        let (download_rate, upload_rate, num_peers) = if let Some(live) = stats.live.as_ref() {
-            (
-                (live.download_speed.mbps * 1_000_000.0) as u64,
-                (live.upload_speed.mbps * 1_000_000.0) as u64,
-                live.snapshot.peer_stats.live,
-            )
-        } else {
-            (0, stats.uploaded_bytes, 0)
-        };
+        let (download_rate, upload_rate, num_peers, num_seen, eta_secs) =
+            if let Some(live) = stats.live.as_ref() {
+                let eta_secs = handle
+                    .live()
+                    .and_then(|l| l.down_speed_estimator().time_remaining())
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                (
+                    live.download_speed.as_bytes(),
+                    live.upload_speed.as_bytes(),
+                    live.snapshot.peer_stats.live,
+                    live.snapshot.peer_stats.seen,
+                    eta_secs,
+                )
+            } else {
+                (0, 0, 0, 0, 0)
+            };
         let state = if stats.finished {
             "seeding".into()
         } else if stats.progress_bytes > 0 {
@@ -479,6 +491,10 @@ impl TorrentEngine {
             download_rate,
             upload_rate,
             num_peers,
+            num_seen,
+            progress_bytes: stats.progress_bytes,
+            total_bytes: stats.total_bytes,
+            eta_secs,
             state,
         })
     }

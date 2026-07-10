@@ -16,7 +16,8 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 
 - Start playback while the torrent still buffers
 - Select which file to play in multi-file torrents
-- Switch files mid-playback via the link (magnet) button in the player controls — opens a right-side torrent file panel
+- Switch files mid-playback via the link (magnet) button in the player controls — opens the same right-side Sources panel shell as media details, listing torrent files as the same source cards, with frosted blur from a video freeze-frame
+- On desktop, optionally show a live torrent stats card (Settings → Torrent stats, off by default) above the seek bar while controls are visible: download/upload speed, live peers, downloaded size / %, ETA
 - Adjust cache type and size in Settings for smoother streaming
 
 ## Setup (if needed)

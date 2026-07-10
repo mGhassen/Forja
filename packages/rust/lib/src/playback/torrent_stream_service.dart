@@ -10,32 +10,61 @@ import 'torrent_engine_backend.dart';
 
 /// Rich torrent statistics object.
 class TorrentStats {
-  final double speedMbps;
+  final double downloadMbps;
+  final double uploadMbps;
   final int activePeers;
   final int totalPeers;
   final double cachePercent;
   final int loadedBytes;
   final int totalBytes;
+  final int? etaSeconds;
   final String hash;
   final bool isConnected;
 
   const TorrentStats({
-    required this.speedMbps,
+    required this.downloadMbps,
+    required this.uploadMbps,
     required this.activePeers,
     required this.totalPeers,
     required this.cachePercent,
     required this.loadedBytes,
     required this.totalBytes,
+    required this.etaSeconds,
     required this.hash,
     required this.isConnected,
   });
 
-  double get speedKbps => speedMbps * 1024;
-  String get speedLabel => speedMbps >= 1.0
-      ? '${speedMbps.toStringAsFixed(2)} MB/s'
-      : '${speedKbps.toStringAsFixed(0)} KB/s';
+  /// Backward-compatible alias for download speed.
+  double get speedMbps => downloadMbps;
+
+  double get downloadKbps => downloadMbps * 1024;
+  double get uploadKbps => uploadMbps * 1024;
+
+  String get speedLabel => _formatMbps(downloadMbps);
+  String get uploadLabel => _formatMbps(uploadMbps);
   String get peersLabel => '$activePeers / $totalPeers';
   String get cacheLabel => '${cachePercent.toStringAsFixed(1)}%';
+  String get sizeLabel {
+    final loaded = TorrentStreamService.formatStorageBytes(loadedBytes);
+    final total = TorrentStreamService.formatStorageBytes(totalBytes);
+    return '$loaded / $total';
+  }
+
+  String get etaLabel {
+    final secs = etaSeconds;
+    if (secs == null || secs <= 0) return '—';
+    final h = secs ~/ 3600;
+    final m = (secs % 3600) ~/ 60;
+    final s = secs % 60;
+    if (h > 0) return '${h}h ${m}m';
+    if (m > 0) return '${m}m ${s}s';
+    return '${s}s';
+  }
+
+  static String _formatMbps(double mbps) {
+    if (mbps >= 1.0) return '${mbps.toStringAsFixed(2)} MB/s';
+    return '${(mbps * 1024).toStringAsFixed(0)} KB/s';
+  }
 }
 
 /// Engine lifecycle states.
@@ -325,16 +354,22 @@ class TorrentStreamService {
     try {
       final m = jsonDecode(json) as Map<String, dynamic>;
       final downloadRate = (m['download_rate'] as num?)?.toInt() ?? 0;
+      final uploadRate = (m['upload_rate'] as num?)?.toInt() ?? 0;
       final progress = (m['progress'] as num?)?.toDouble() ?? 0.0;
       final numPeers = (m['num_peers'] as num?)?.toInt() ?? 0;
-      final speedMbps = downloadRate / 1024 / 1024;
+      final numSeen = (m['num_seen'] as num?)?.toInt() ?? numPeers;
+      final progressBytes = (m['progress_bytes'] as num?)?.toInt() ?? 0;
+      final totalBytes = (m['total_bytes'] as num?)?.toInt() ?? 0;
+      final etaSecs = (m['eta_secs'] as num?)?.toInt() ?? 0;
       return TorrentStats(
-        speedMbps: speedMbps,
+        downloadMbps: downloadRate / 1024 / 1024,
+        uploadMbps: uploadRate / 1024 / 1024,
         activePeers: numPeers,
-        totalPeers: numPeers,
+        totalPeers: numSeen,
         cachePercent: progress * 100,
-        loadedBytes: 0,
-        totalBytes: 0,
+        loadedBytes: progressBytes,
+        totalBytes: totalBytes,
+        etaSeconds: etaSecs > 0 ? etaSecs : null,
         hash: hash,
         isConnected: numPeers > 0,
       );

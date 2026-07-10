@@ -40,6 +40,7 @@ import 'package:forja/shared/player/controls/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
+import 'package:forja/shared/player/controls/player_torrent_stats_card.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
@@ -472,6 +473,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
   Timer? _hideTimer;
+  bool _showTorrentStatsOverlay = false;
+  StreamSubscription<TorrentStats>? _torrentStatsSub;
+  TorrentStats? _torrentStats;
   Movie? _heroMovie;
   String? _episodeOverview;
   bool _isFullscreen = false;
@@ -638,6 +642,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       await waitForRouteTransition(context);
       if (!mounted || !_playerReady) return;
       _loadSubtitlePrefs();
+      _loadTorrentStatsPref();
       _initPlayback();
       _startHideTimer();
       _fetchSubtitles();
@@ -689,6 +694,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _pipSub?.cancel();
+    _torrentStatsSub?.cancel();
     PlayerTorrentFilePanel.dismiss();
     // If we tear down while in PiP, restore window chrome so the next
     // screen doesn't inherit a tiny frameless 480x270 window.
@@ -978,8 +984,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        final needsVideo = sourceExpectsDuration(openUrl, type: source.type);
-        if (needsVideo && !await waitForVideoDecode(_player)) {
+        final needsDuration =
+            sourceExpectsDuration(openUrl, type: source.type);
+        if (sourceRequiresVideoDecode(openUrl, type: source.type) &&
+            !await waitForVideoDecode(_player)) {
           debugPrint('[Player] Source $i opened without video: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -992,7 +1000,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        if (needsVideo && !await waitForSeekableDuration(_player)) {
+        if (needsDuration && !await waitForSeekableDuration(_player)) {
           debugPrint('[Player] Source $i opened without duration: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -2043,6 +2051,32 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
   }
 
+  Future<void> _loadTorrentStatsPref() async {
+    final show = await SettingsService().getShowTorrentStatsOverlay();
+    if (!mounted) return;
+    setState(() => _showTorrentStatsOverlay = show);
+    _syncTorrentStatsSubscription();
+  }
+
+  void _syncTorrentStatsSubscription() {
+    _torrentStatsSub?.cancel();
+    _torrentStatsSub = null;
+    final magnet = widget.magnetLink;
+    if (!_showTorrentStatsOverlay || magnet == null || magnet.isEmpty) {
+      if (_torrentStats != null && mounted) {
+        setState(() => _torrentStats = null);
+      } else {
+        _torrentStats = null;
+      }
+      return;
+    }
+    _torrentStatsSub =
+        TorrentStreamService().statsStream(magnet).listen((stats) {
+      if (!mounted) return;
+      setState(() => _torrentStats = stats);
+    });
+  }
+
   TextStyle _buildSubtitleTextStyle({double scale = 1.0}) {
     final base = TextStyle(
       height: 1.4,
@@ -2780,7 +2814,17 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     await _switchToEpisode(season, episode);
   }
 
-  void _showEpisodesMenu(BuildContext anchorContext) {
+  Future<Uint8List?> _capturePanelFrostFrame() async {
+    try {
+      return await _player.screenshot(format: 'image/jpeg');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
+    final frame = await _capturePanelFrostFrame();
+    if (!mounted) return;
     if (widget.hubEpisodes != null &&
         widget.hubEpisodes!.isNotEmpty &&
         widget.onHubEpisodeSelected != null) {
@@ -2791,6 +2835,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         currentEpisode:
             widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: widget.onHubEpisodeSelected!,
+        frozenFrame: frame,
       );
       return;
     }
@@ -2805,18 +2850,22 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       currentEpisode: episode,
       onEpisodeSelected: _goToEpisode,
       anchorContext: anchorContext,
+      frozenFrame: frame,
     );
   }
 
-  void _showTorrentFilesPanel() {
+  Future<void> _showTorrentFilesPanel() async {
     final magnet = widget.magnetLink;
     if (magnet == null || magnet.isEmpty) return;
     _hideTimer?.cancel();
+    final frame = await _capturePanelFrostFrame();
+    if (!mounted) return;
     PlayerTorrentFilePanel.show(
       context: context,
       magnetLink: magnet,
       currentFileIndex: _activeFileIndex,
       onFileSelected: _switchTorrentFile,
+      frozenFrame: frame,
     );
   }
 
@@ -2965,6 +3014,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   _showSubtitleSettings();
                 },
               ),
+              if (widget.magnetLink != null && widget.magnetLink!.isNotEmpty)
+                PlayerPopupListTile(
+                  label: 'Torrent stats',
+                  subtitle: _showTorrentStatsOverlay ? 'On' : 'Off',
+                  selected: _showTorrentStatsOverlay,
+                  onTap: () async {
+                    final next = !_showTorrentStatsOverlay;
+                    setState(() => _showTorrentStatsOverlay = next);
+                    setPanelState(() {});
+                    await SettingsService().setShowTorrentStatsOverlay(next);
+                    _syncTorrentStatsSubscription();
+                  },
+                ),
             ],
           );
         },
@@ -3355,6 +3417,17 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   ),
                 ),
 
+                // Double-click empty video area → toggle fullscreen
+                // (controls chrome sits above and keeps its own hit targets).
+                if (!_isPipMode)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onDoubleTap: () => unawaited(_toggleFullscreen()),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+
                 // ── Custom subtitle overlay ──────────────────────────────
                 // Auto-scales relative to the rendered window height so
                 // the text stays readable in normal mode, fullscreen, AND
@@ -3727,6 +3800,16 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (_showTorrentStatsOverlay &&
+                _torrentStats != null &&
+                widget.magnetLink != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: PlayerTorrentStatsCard(stats: _torrentStats!),
+                ),
+              ),
             ValueListenableBuilder<Duration>(
               valueListenable: _durationNotifier,
               builder: (context, duration, _) =>

@@ -1,11 +1,18 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
+import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
 
-/// Right-side sliding panel to pick another file inside the active torrent.
+/// Right-side panel to pick another file inside the active torrent.
+///
+/// Same shell + source cards as media-details [TorrentSourcesPanel].
+/// Pass [frozenFrame] (player screenshot) for frosted glass without
+/// BackdropFilter on the live video texture.
 class PlayerTorrentFilePanel {
   static OverlayEntry? _entry;
   static Completer<void>? _completer;
@@ -24,6 +31,7 @@ class PlayerTorrentFilePanel {
     required String magnetLink,
     required int? currentFileIndex,
     required Future<void> Function(TorrentFileEntry file) onFileSelected,
+    Uint8List? frozenFrame,
   }) {
     dismiss();
     PlayerPopupPanel.dismiss();
@@ -37,6 +45,7 @@ class PlayerTorrentFilePanel {
         currentFileIndex: currentFileIndex,
         onFileSelected: onFileSelected,
         onClose: dismiss,
+        frozenFrame: frozenFrame,
       ),
     );
 
@@ -51,78 +60,44 @@ class _TorrentFilePanelOverlay extends StatefulWidget {
     required this.currentFileIndex,
     required this.onFileSelected,
     required this.onClose,
+    this.frozenFrame,
   });
 
   final String magnetLink;
   final int? currentFileIndex;
   final Future<void> Function(TorrentFileEntry file) onFileSelected;
   final VoidCallback onClose;
+  final Uint8List? frozenFrame;
 
   @override
   State<_TorrentFilePanelOverlay> createState() =>
       _TorrentFilePanelOverlayState();
 }
 
-class _TorrentFilePanelOverlayState extends State<_TorrentFilePanelOverlay>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<Offset> _slide;
+class _TorrentFilePanelOverlayState extends State<_TorrentFilePanelOverlay> {
+  bool _open = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 280),
-    );
-    _slide = Tween<Offset>(
-      begin: const Offset(1, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _open = true);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final panelWidth = screenWidth < 700 ? screenWidth * 0.92 : 420.0;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        GestureDetector(
-          onTap: widget.onClose,
-          behavior: HitTestBehavior.opaque,
-          child: const ColoredBox(color: Colors.black54),
-        ),
-        SlideTransition(
-          position: _slide,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: panelWidth,
-              child: Material(
-                color: ForjaShellColors.cinematic.menuSurface,
-                child: SafeArea(
-                  left: false,
-                  child: _TorrentFilePanelBody(
-                    magnetLink: widget.magnetLink,
-                    currentFileIndex: widget.currentFileIndex,
-                    onFileSelected: widget.onFileSelected,
-                    onClose: widget.onClose,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return TorrentSourcesPanel(
+      isOpen: _open,
+      onClose: widget.onClose,
+      enableBlur: false,
+      frozenFrame: widget.frozenFrame,
+      child: _TorrentFilePanelBody(
+        magnetLink: widget.magnetLink,
+        currentFileIndex: widget.currentFileIndex,
+        onFileSelected: widget.onFileSelected,
+        onClose: widget.onClose,
+      ),
     );
   }
 }
@@ -201,7 +176,7 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
     }
     final index = files.indexWhere((f) => f.index == current);
     if (index < 0) return;
-    const rowHeight = 72.0;
+    const rowHeight = 88.0;
     final offset =
         (index * rowHeight).clamp(0.0, _scrollController.position.maxScrollExtent);
     _scrollController.animateTo(
@@ -226,62 +201,43 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
     }
   }
 
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-  }
-
-  IconData _fileIcon(TorrentFileEntry file) {
-    if (file.isStreamable) return Icons.movie_outlined;
-    final lower = file.name.toLowerCase();
-    if (lower.endsWith('.srt') ||
-        lower.endsWith('.ass') ||
-        lower.endsWith('.sub') ||
-        lower.endsWith('.vtt')) {
-      return Icons.subtitles_outlined;
-    }
-    return Icons.insert_drive_file_outlined;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isTv = ShellTokens.isTvLayout(context);
+    final count = _files?.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-          child: Row(
-            children: [
-              Icon(
-                Icons.link_rounded,
-                color: ForjaShellColors.cinematic.textSecondary,
-                size: 20,
+        Row(
+          children: [
+            Text(
+              'Torrent files',
+              style: TextStyle(
+                color: ForjaShellColors.cinematic.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
               ),
+            ),
+            if (count != null) ...[
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Torrent files',
-                  style: TextStyle(
-                    color: ForjaShellColors.cinematic.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
+              Text(
+                '$count',
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
               ),
-              ForjaCloseButton(
-                color: ForjaShellColors.cinematic.textSecondary,
-                onTap: widget.onClose,
-              ),
             ],
-          ),
+            const Spacer(),
+            ForjaCloseButton(
+              color: ForjaShellColors.cinematic.textSecondary,
+              onTap: widget.onClose,
+            ),
+          ],
         ),
-        Divider(height: 1, color: ForjaShellColors.cinematic.borderSubtle),
+        SizedBox(height: isTv ? 10 : 8),
         Expanded(child: _buildBody()),
       ],
     );
@@ -324,81 +280,23 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
     }
 
     final files = _files!;
-    return ListView.builder(
+    return ListView.separated(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: files.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
         final file = files[i];
         final isCurrent = file.index == widget.currentFileIndex;
         final isSwitching = _switchingIndex == file.index;
         final enabled = file.isStreamable && _switchingIndex == null;
 
-        return InkWell(
-          onTap: enabled ? () => _select(file) : null,
-          child: Container(
-            height: 72,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            color: isCurrent
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.transparent,
-            child: Row(
-              children: [
-                Icon(
-                  _fileIcon(file),
-                  size: 22,
-                  color: file.isStreamable
-                      ? ForjaShellColors.cinematic.textPrimary
-                      : ForjaShellColors.cinematic.textSecondary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        file.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: file.isStreamable
-                              ? ForjaShellColors.cinematic.textPrimary
-                              : ForjaShellColors.cinematic.textSecondary,
-                          fontSize: 13,
-                          fontWeight:
-                              isCurrent ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatSize(file.size),
-                        style: TextStyle(
-                          color: ForjaShellColors.cinematic.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isSwitching)
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white54,
-                    ),
-                  )
-                else if (isCurrent)
-                  Icon(
-                    Icons.play_circle_filled_rounded,
-                    color: ForjaShellColors.cinematic.textPrimary,
-                    size: 20,
-                  ),
-              ],
-            ),
-          ),
+        return TorrentFileSourceTile(
+          fileName: file.name,
+          sizeBytes: file.size,
+          isCurrent: isCurrent,
+          isSwitching: isSwitching,
+          enabled: enabled,
+          onPlay: () => _select(file),
         );
       },
     );

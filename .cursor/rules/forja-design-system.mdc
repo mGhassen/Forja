@@ -10,7 +10,8 @@ alwaysApply: false
 
 ## Visual language
 
-- **Flat cinematic shell** — no `BackdropFilter`, frosted glass, or ambient glows on shell, details, or player chrome.
+- **Flat cinematic shell** — no `BackdropFilter`, frosted glass, or ambient glows on shell nav, home chrome, or player control bars.
+- **Exception — sliding side panels:** media-details Sources uses `ForjaFrostedPanel` with `BackdropFilter`. Player overlays (Episodes, torrent files) pass a video screenshot as `frozenFrame` and blur that with `ImageFiltered` — do **not** put `BackdropFilter` over live video (freezes macOS). Do not scatter ad-hoc blur elsewhere.
 - **Hero overlays** use `ForjaShellColors.cinematic` (fixed light-on-imagery), not `AppTheme.primaryColor`.
 - **Spacing and breakpoints** come from `ShellTokens` — do not hardcode magic numbers that already exist there.
 
@@ -52,6 +53,6 @@ When adding a new surface, **extend `ShellTokens`** if the constant will be reus
 
 ## Forbidden without explicit approval
 
-- `BackdropFilter`, `ImageFilter.blur` for decorative chrome
+- Ad-hoc `BackdropFilter` / `ImageFilter.blur` outside `ForjaFrostedPanel` (and existing IPTV frosted panels)
 - Ad-hoc pill/chip styles that duplicate `TorrentSourceToggle` / chip selected tokens
 - Duplicating hero title or meta rendering — use `shared/widgets/hero/` (see `forja-shared-ui.mdc`)

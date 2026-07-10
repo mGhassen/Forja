@@ -37,6 +37,7 @@ class SettingsService {
   static const String _subBoldKey = 'sub_bold';
   static const String _subBottomPaddingKey = 'sub_bottom_padding';
   static const String _subFontKey = 'sub_font';
+  static const String _showTorrentStatsOverlayKey = 'show_torrent_stats_overlay';
   static const String _preferredAudioLangKey = 'preferred_audio_lang';
   static const String _avoidUnsupportedAudioKey = 'avoid_unsupported_audio';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
@@ -94,6 +95,14 @@ class SettingsService {
       await kvGetString(_subFontKey) ?? 'Default';
 
   Future<void> setSubFont(String v) async => kvSetString(_subFontKey, v);
+
+  /// Desktop player: show live torrent stats card over the seek bar.
+  /// Default off.
+  Future<bool> getShowTorrentStatsOverlay() async =>
+      kvGetBool(_showTorrentStatsOverlayKey, fallback: false);
+
+  Future<void> setShowTorrentStatsOverlay(bool v) async =>
+      kvSetBool(_showTorrentStatsOverlayKey, v);
 
   Future<List<Map<String, dynamic>>> getStremioAddons() async =>
       kvGetMapList(_stremioAddonsKey);

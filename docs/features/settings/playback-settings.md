@@ -22,7 +22,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 
 ## Tips
 
-- Play source toggles: green **Play** (play icon) uses webstreaming; white magnet **Play** / **Sources** use torrent + Stremio (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel merges torrent and Stremio into one list with an **All / Torrents / Stremio** filter.
+- Play source toggles: green **Play** (play icon) uses webstreaming; white link **Play** / **Sources** use torrent + Stremio (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel merges torrent and Stremio into one list with an **All / Torrents / Stremio** filter.
 - Provider order is the main lever for web link quality — see [Stream providers](../sources/stream-providers.md)
 - Anime provider order sets try priority. The player launches after ~4 working sources, then keeps probing in the background so more options appear in the source menu while you watch.
 - External player bypasses built-in subtitle UI

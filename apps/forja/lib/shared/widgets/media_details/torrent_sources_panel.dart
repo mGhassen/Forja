@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 
@@ -8,11 +10,16 @@ class TorrentSourcesPanel extends StatelessWidget {
     required this.isOpen,
     required this.onClose,
     required this.child,
+    /// False + no [frozenFrame] → opaque. Prefer [frozenFrame] over video.
+    this.enableBlur = true,
+    this.frozenFrame,
   });
 
   final bool isOpen;
   final VoidCallback onClose;
   final Widget child;
+  final bool enableBlur;
+  final Uint8List? frozenFrame;
 
   @override
   Widget build(BuildContext context) {
@@ -26,12 +33,14 @@ class TorrentSourcesPanel extends StatelessWidget {
         : const EdgeInsets.fromLTRB(20, 8, 12, 16);
 
     return Stack(
+      fit: StackFit.expand,
       children: [
         if (isOpen)
           Positioned.fill(
             child: GestureDetector(
               onTap: onClose,
-              child: Container(color: Colors.black54),
+              behavior: HitTestBehavior.opaque,
+              child: const ColoredBox(color: Colors.black54),
             ),
           ),
         AnimatedPositioned(
@@ -41,21 +50,17 @@ class TorrentSourcesPanel extends StatelessWidget {
           bottom: 0,
           right: isOpen ? 0 : -panelWidth,
           width: panelWidth,
-          child: Material(
-            color: ForjaShellColors.cinematic.menuSurface,
-            elevation: 0,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
-                ),
-              ),
-              child: SafeArea(
-                left: false,
-                child: Padding(
-                  padding: padding,
-                  child: child,
-                ),
+          child: ForjaFrostedPanel(
+            enableBlur: enableBlur,
+            frozenFrame: frozenFrame,
+            border: Border(
+              left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
+            ),
+            child: SafeArea(
+              left: false,
+              child: Padding(
+                padding: padding,
+                child: child,
               ),
             ),
           ),
@@ -67,16 +72,21 @@ class TorrentSourcesPanel extends StatelessWidget {
 
 /// Header row inside [TorrentSourcesPanel].
 class TorrentSourcesPanelHeader extends StatelessWidget {
-  const TorrentSourcesPanelHeader({super.key, required this.onClose});
+  const TorrentSourcesPanelHeader({
+    super.key,
+    required this.onClose,
+    this.title = 'Sources',
+  });
 
   final VoidCallback onClose;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Text(
-          'Sources',
+          title,
           style: TextStyle(
             color: ForjaShellColors.cinematic.textPrimary,
             fontWeight: FontWeight.w700,

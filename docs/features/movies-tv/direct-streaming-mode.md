@@ -6,7 +6,7 @@
 
 **Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Nuvio scrapers, …) and starts playback when one works (loading roulette overlay).
 
-The white **Play** / **Resume** with magnet icon opens **Sources** (torrent / Stremio). The **Sources** panel is only for those backends.
+The white **Play** / **Resume** with link icon opens **Sources** (torrent / Stremio). The **Sources** panel is only for those backends.
 
 ## How to open it
 
@@ -19,6 +19,7 @@ The white **Play** / **Resume** with magnet icon opens **Sources** (torrent / St
 - Let green **Play** / **Resume** auto-extract the best working link in provider order
 - Fall through extractors in the order you set in Settings
 - While a stream is starting, a right-side roulette cycles through each server as it is checked — ✓ when one works, ✗ when it fails, spinner on the active one (★ on your top-priority server)
+- Leave the player and tap green **Play** again on the same title (or same TV episode) — Forja reuses the last working extract (session ~2h, disk ~25 min) instead of re-racing providers. If that link is dead, it drops the cache and runs the roulette again.
 
 ## Setup (if needed)
 

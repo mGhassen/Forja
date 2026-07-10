@@ -23,12 +23,9 @@ class TorrentSourceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meta = TorrentReleaseMetadata.parse(result.name);
-    final seeds = result.seedersCount > 0
+    final seedsLabel = result.seedersCount > 0
         ? '${result.seedersCount}'
         : (result.seeders.trim().isEmpty ? null : result.seeders.trim());
-    final hasSeeds = result.seedersCount > 0 ||
-        (int.tryParse(result.seeders.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0) >
-            0;
     final sizeLabel = TorrentReleaseMetadata.resolveSizeLabel(
       sizeText: result.size,
       fallbackText: result.name,
@@ -40,6 +37,7 @@ class TorrentSourceTile extends StatelessWidget {
         ? source
         : null;
 
+    final flags = meta.flags.trim();
     return _SourceBadgeCard(
       onTap: onPlay,
       progress: progress,
@@ -47,22 +45,17 @@ class TorrentSourceTile extends StatelessWidget {
       highlightStart: highlightStart,
       title: result.name,
       provider: provider,
+      seeders: seedsLabel,
+      flags: flags.isEmpty ? null : flags,
       badges: [
         if (meta.quality != null)
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
         if (sizeLabel != null)
           _SourceBadgeSpec(sizeLabel, tone: _SourceBadgeTone.size),
-        if (seeds != null)
-          _SourceBadgeSpec(
-            '$seeds seeds',
-            tone: hasSeeds ? _SourceBadgeTone.seeds : _SourceBadgeTone.muted,
-          ),
         if (meta.videoCodec != null) _SourceBadgeSpec(meta.videoCodec!),
         ...meta.audioTags.take(1).map(_SourceBadgeSpec.new),
         ...meta.techTags.take(2).map(_SourceBadgeSpec.new),
         ...meta.sourceTags.take(1).map(_SourceBadgeSpec.new),
-        if (meta.flags.trim().isNotEmpty)
-          _SourceBadgeSpec(meta.flags.trim()),
       ],
     );
   }
@@ -74,11 +67,19 @@ class WebstreamingSourceTile extends StatelessWidget {
     required this.title,
     this.subtitle,
     required this.onPlay,
+    this.progress = 0,
+    this.isResumable = false,
+    this.highlightStart = false,
+    this.provider,
   });
 
   final String title;
   final String? subtitle;
   final VoidCallback onPlay;
+  final double progress;
+  final bool isResumable;
+  final bool highlightStart;
+  final String? provider;
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +91,11 @@ class WebstreamingSourceTile extends StatelessWidget {
 
     return _SourceBadgeCard(
       onTap: onPlay,
+      progress: progress,
+      isResumable: isResumable,
+      highlightStart: highlightStart,
       title: title,
+      provider: provider,
       badges: [
         if (meta.quality != null)
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
@@ -102,6 +107,72 @@ class WebstreamingSourceTile extends StatelessWidget {
             subtitle!.trim().isNotEmpty &&
             sizeLabel == null)
           _SourceBadgeSpec(subtitle!.trim()),
+      ],
+    );
+  }
+}
+
+/// Multi-file torrent file row — same card as Sources / [WebstreamingSourceTile].
+class TorrentFileSourceTile extends StatelessWidget {
+  const TorrentFileSourceTile({
+    super.key,
+    required this.fileName,
+    required this.sizeBytes,
+    required this.onPlay,
+    this.isCurrent = false,
+    this.isSwitching = false,
+    this.enabled = true,
+  });
+
+  final String fileName;
+  final int sizeBytes;
+  final VoidCallback onPlay;
+  final bool isCurrent;
+  final bool isSwitching;
+  final bool enabled;
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    }
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tile = WebstreamingSourceTile(
+      title: fileName,
+      subtitle: _formatSize(sizeBytes),
+      highlightStart: isCurrent,
+      provider: isCurrent ? 'Playing' : null,
+      onPlay: onPlay,
+    );
+
+    if (!enabled && !isSwitching) {
+      return Opacity(opacity: 0.4, child: IgnorePointer(child: tile));
+    }
+
+    if (!isSwitching) return tile;
+
+    return Stack(
+      children: [
+        Opacity(opacity: 0.55, child: IgnorePointer(child: tile)),
+        const Positioned.fill(
+          child: Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white54,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -164,8 +235,10 @@ class StremioSourceTile extends StatelessWidget {
     final seedsRaw = seeders?.trim();
     final seedsCount =
         int.tryParse((seedsRaw ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final seedsLabel = seedsCount > 0 ? '$seedsCount' : null;
     final provider = addonName != null && showAddonName ? addonName : null;
 
+    final flags = isExternal ? '' : meta.flags.trim();
     return _SourceBadgeCard(
       onTap: onTap,
       progress: progress,
@@ -178,6 +251,8 @@ class StremioSourceTile extends StatelessWidget {
       accentFill: isExternal ? leadingColor.withValues(alpha: 0.06) : null,
       title: title,
       provider: provider,
+      seeders: isExternal ? null : seedsLabel,
+      flags: flags.isEmpty ? null : flags,
       badges: isExternal
           ? [
               if (description.trim().isNotEmpty)
@@ -188,17 +263,10 @@ class StremioSourceTile extends StatelessWidget {
                 _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
               if (sizeLabel != null)
                 _SourceBadgeSpec(sizeLabel, tone: _SourceBadgeTone.size),
-              if (seedsCount > 0)
-                _SourceBadgeSpec(
-                  '$seedsCount seeds',
-                  tone: _SourceBadgeTone.seeds,
-                ),
               if (meta.videoCodec != null) _SourceBadgeSpec(meta.videoCodec!),
               ...meta.audioTags.take(1).map(_SourceBadgeSpec.new),
               ...meta.techTags.take(2).map(_SourceBadgeSpec.new),
               ...meta.sourceTags.take(1).map(_SourceBadgeSpec.new),
-              if (meta.flags.trim().isNotEmpty)
-                _SourceBadgeSpec(meta.flags.trim()),
             ],
     );
   }
@@ -259,7 +327,7 @@ class StremioTilePresentation {
   final bool isExternal;
 }
 
-enum _SourceBadgeTone { muted, emphasis, size, seeds, accent }
+enum _SourceBadgeTone { muted, emphasis, size, accent }
 
 class _SourceBadgeSpec {
   const _SourceBadgeSpec(this.label, {this.tone = _SourceBadgeTone.muted});
@@ -280,6 +348,8 @@ class _SourceBadgeCard extends StatelessWidget {
     this.accentBorder,
     this.accentFill,
     this.provider,
+    this.seeders,
+    this.flags,
   });
 
   final VoidCallback onTap;
@@ -292,6 +362,8 @@ class _SourceBadgeCard extends StatelessWidget {
   final Color? accentBorder;
   final Color? accentFill;
   final String? provider;
+  final String? seeders;
+  final String? flags;
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +371,11 @@ class _SourceBadgeCard extends StatelessWidget {
     final padV = isTv ? 14.0 : 10.0;
     final titleSize = isTv ? 15.0 : 13.0;
     final cinematic = ForjaShellColors.cinematic;
+    final hasProvider =
+        provider != null && provider!.trim().isNotEmpty;
+    final hasSeeders = seeders != null && seeders!.trim().isNotEmpty;
+    final hasFlags = flags != null && flags!.trim().isNotEmpty;
+    const seedColor = Color(0xFF22C55E);
 
     return FocusableControl(
       onTap: onTap,
@@ -345,7 +422,7 @@ class _SourceBadgeCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                        // Row 1: title + provider (plain text, no badge)
+                        // Row 1: title + provider / seeders column
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -362,36 +439,73 @@ class _SourceBadgeCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            if (provider != null &&
-                                provider!.trim().isNotEmpty) ...[
+                            if (hasProvider || hasSeeders) ...[
                               const SizedBox(width: 8),
                               ConstrainedBox(
                                 constraints: BoxConstraints(
                                   maxWidth: isTv ? 120 : 96,
                                 ),
-                                child: Text(
-                                  provider!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: cinematic.textSecondary,
-                                    fontSize: isTv ? 12 : 11,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.25,
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    if (hasProvider)
+                                      Text(
+                                        provider!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          color: cinematic.textSecondary,
+                                          fontSize: isTv ? 12 : 11,
+                                          fontWeight: FontWeight.w500,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    if (hasSeeders) ...[
+                                      if (hasProvider) const SizedBox(height: 2),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.arrow_upward_rounded,
+                                            size: isTv ? 12 : 11,
+                                            color: seedColor,
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            seeders!,
+                                            style: TextStyle(
+                                              color: seedColor,
+                                              fontSize: isTv ? 12 : 11,
+                                              fontWeight: FontWeight.w600,
+                                              height: 1.1,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ],
                           ],
                         ),
-                        // Row 2: quality / size / seeds / codec / tech
-                        if (badges.isNotEmpty) ...[
+                        // Row 2: plain flags + quality / size / codec / tech
+                        if (hasFlags || badges.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
+                              if (hasFlags)
+                                Text(
+                                  flags!,
+                                  style: TextStyle(
+                                    fontSize: isTv ? 14 : 13,
+                                    height: 1.1,
+                                  ),
+                                ),
                               for (final badge in badges)
                                 _SourceMetaBadge(badge: badge, isTv: isTv),
                             ],
@@ -449,10 +563,6 @@ class _SourceMetaBadge extends StatelessWidget {
         fg = cinematic.textPrimary;
         bg = Colors.white.withValues(alpha: 0.10);
         border = Colors.white.withValues(alpha: 0.18);
-      case _SourceBadgeTone.seeds:
-        fg = const Color(0xFF22C55E);
-        bg = const Color(0xFF22C55E).withValues(alpha: 0.12);
-        border = const Color(0xFF22C55E).withValues(alpha: 0.28);
       case _SourceBadgeTone.accent:
         fg = const Color(0xFF60A5FA);
         bg = const Color(0xFF60A5FA).withValues(alpha: 0.10);

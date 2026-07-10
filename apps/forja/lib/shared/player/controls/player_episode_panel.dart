@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,7 @@ class PlayerEpisodePanel {
     required int currentSeason,
     required int currentEpisode,
     required Future<void> Function(int season, int episode) onEpisodeSelected,
+    Uint8List? frozenFrame,
   }) {
     dismiss();
 
@@ -42,6 +44,7 @@ class PlayerEpisodePanel {
         currentEpisode: currentEpisode,
         onEpisodeSelected: onEpisodeSelected,
         onClose: dismiss,
+        frozenFrame: frozenFrame,
       ),
     );
 
@@ -58,6 +61,7 @@ class _EpisodePanelOverlay extends StatefulWidget {
     required this.currentEpisode,
     required this.onEpisodeSelected,
     required this.onClose,
+    this.frozenFrame,
   });
 
   final Movie movie;
@@ -66,6 +70,7 @@ class _EpisodePanelOverlay extends StatefulWidget {
   final int currentEpisode;
   final Future<void> Function(int season, int episode) onEpisodeSelected;
   final VoidCallback onClose;
+  final Uint8List? frozenFrame;
 
   @override
   State<_EpisodePanelOverlay> createState() => _EpisodePanelOverlayState();
@@ -115,8 +120,12 @@ class _EpisodePanelOverlayState extends State<_EpisodePanelOverlay>
             alignment: Alignment.centerRight,
             child: SizedBox(
               width: panelWidth,
-              child: Material(
-                color: ForjaShellColors.cinematic.menuSurface,
+              child: ForjaFrostedPanel(
+                enableBlur: false,
+                frozenFrame: widget.frozenFrame,
+                border: Border(
+                  left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
+                ),
                 child: SafeArea(
                   left: false,
                   child: _EpisodePanelBody(
@@ -513,6 +522,7 @@ class PlayerHubEpisodePanel {
     required List<PlayerHubEpisode> episodes,
     required num currentEpisode,
     required Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected,
+    Uint8List? frozenFrame,
   }) {
     dismiss();
 
@@ -525,6 +535,7 @@ class PlayerHubEpisodePanel {
         currentEpisode: currentEpisode,
         onEpisodeSelected: onEpisodeSelected,
         onClose: dismiss,
+        frozenFrame: frozenFrame,
       ),
     );
 
@@ -539,12 +550,14 @@ class _HubEpisodePanelOverlay extends StatefulWidget {
     required this.currentEpisode,
     required this.onEpisodeSelected,
     required this.onClose,
+    this.frozenFrame,
   });
 
   final List<PlayerHubEpisode> episodes;
   final num currentEpisode;
   final Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected;
   final VoidCallback onClose;
+  final Uint8List? frozenFrame;
 
   @override
   State<_HubEpisodePanelOverlay> createState() =>
@@ -595,8 +608,12 @@ class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay>
             alignment: Alignment.centerRight,
             child: SizedBox(
               width: panelWidth,
-              child: Material(
-                color: ForjaShellColors.cinematic.menuSurface,
+              child: ForjaFrostedPanel(
+                enableBlur: false,
+                frozenFrame: widget.frozenFrame,
+                border: Border(
+                  left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
+                ),
                 child: SafeArea(
                   left: false,
                   child: _HubEpisodePanelBody(
