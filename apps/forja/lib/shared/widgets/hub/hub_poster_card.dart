@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 class HubPosterCard extends StatelessWidget {
   const HubPosterCard({
@@ -32,14 +33,14 @@ class HubPosterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width > 900;
+    final titleSize = shellHubCardTitleFontSize(context);
     final cardWidth = HubPosterCard.cardWidth(context);
     final cardHeight = HubPosterCard.cardHeight(context);
 
-    final card = FocusableControl(
+    final card = shellFocusableTap(
+      context: context,
       onTap: onTap,
       borderRadius: 14,
-      scaleOnFocus: 1.05,
       child: Container(
         width: cardWidth,
         height: cardHeight,
@@ -151,7 +152,7 @@ class HubPosterCard extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: isDesktop ? 14 : 13,
+                        fontSize: titleSize,
                         height: 1.2,
                       ),
                     ),

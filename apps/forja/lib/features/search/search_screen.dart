@@ -7,6 +7,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// A single result section that streams in dynamically.
 class _SearchSection {
@@ -426,9 +427,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     setState(() => _focusedIndex = index.clamp(0, count - 1));
   }
 
-  bool _isDesktopLayout(BuildContext context) {
-    return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-  }
+  bool _isDesktopLayout(BuildContext context) => shellUsesWideLayout(context);
 
   double _searchPageTopInset(BuildContext context) {
     if (widget.overlay) {
@@ -770,9 +769,11 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FocusableControl(
+        shellFocusableTap(
+          context: context,
           onTap: () => _openResult(result),
           borderRadius: 8,
+          scaleOnFocus: 1.0,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -886,9 +887,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 
   Widget _buildMobileBody(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final isDesktop = width > ShellTokens.musicDesktopBreakpoint;
-    final bottomPad = isDesktop ? 24.0 : ShellTokens.bottomNavHeight;
+    final isWide = shellUsesWideLayout(context);
+    final bottomPad = isWide ? 24.0 : ShellTokens.bottomNavHeight;
 
     Widget body;
     if (_query.isEmpty) {
@@ -922,9 +922,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 
   Widget _buildSliderSection(_SearchSection section) {
-    final width = MediaQuery.sizeOf(context).width;
-    final isDesktop = width > ShellTokens.musicDesktopBreakpoint;
-    final cardWidth = isDesktop
+    final isWide = shellUsesWideLayout(context);
+    final cardWidth = isWide
         ? ShellTokens.searchCardWidthDesktop
         : ShellTokens.searchCardWidthCompact;
     final cardHeight = cardWidth * 1.5;
@@ -1022,15 +1021,14 @@ class _SearchFilmCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onOpen;
 
-  static double cardWidth(BuildContext context) {
-    return MediaQuery.sizeOf(context).width > 900 ? 190.0 : 165.0;
-  }
+  static double cardWidth(BuildContext context) => shellSearchGridCardWidth(context);
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width > 900;
+    final titleSize = shellHubCardTitleFontSize(context);
 
-    return FocusableControl(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
       borderRadius: 14,
       scaleOnFocus: 1.0,
@@ -1139,7 +1137,7 @@ class _SearchFilmCard extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: isDesktop ? 14 : 13,
+                          fontSize: titleSize,
                           height: 1.2,
                         ),
                       ),
@@ -1323,7 +1321,8 @@ class _SearchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '';
 
-    return FocusableControl(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
       borderRadius: 12,
       child: Container(
@@ -1406,7 +1405,8 @@ class _StremioSearchCard extends StatelessWidget {
     final rating = item['imdbRating']?.toString() ?? '';
     final type = item['type']?.toString() ?? '';
 
-    return FocusableControl(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
       borderRadius: 12,
       child: Container(

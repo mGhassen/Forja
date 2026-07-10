@@ -5,6 +5,7 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 class MyListScreen extends StatefulWidget {
   const MyListScreen({super.key});
@@ -102,9 +103,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final isDesktop = screenWidth > ShellTokens.musicDesktopBreakpoint;
-    final crossAxisCount = isDesktop ? 6 : (screenWidth > 600 ? 4 : 3);
+    final crossAxisCount = shellGridCrossAxisCount(context);
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -235,7 +234,8 @@ class _MyListCard extends StatelessWidget {
         ? TmdbApi.getImageUrl(poster)
         : poster;
 
-    return FocusableControl(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
       borderRadius: 12,
       child: Container(

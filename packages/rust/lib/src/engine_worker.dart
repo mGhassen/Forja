@@ -61,6 +61,12 @@ class _WorkerReply {
   final String? error;
 }
 
+class _WorkerStartupFailure {
+  _WorkerStartupFailure(this.error);
+
+  final String error;
+}
+
 /// Pool of worker isolates with Rust dylib loaded once each.
 abstract final class EngineWorkerPool {
   static const _poolSize = 3;
@@ -100,7 +106,13 @@ abstract final class EngineWorkerPool {
           [readyPorts[i].sendPort, libraryPath],
           debugName: 'forja-engine-worker-$i',
         );
-        _ports.add(await readyPorts[i].first as SendPort);
+        final startup = await readyPorts[i].first;
+        if (startup is _WorkerStartupFailure) {
+          throw StateError(
+            'Engine worker failed to load Rust library: ${startup.error}',
+          );
+        }
+        _ports.add(startup as SendPort);
       }
     } finally {
       for (final p in readyPorts) {
@@ -137,7 +149,12 @@ abstract final class EngineWorkerPool {
 void _engineWorkerMain(List<Object?> startArgs) {
   final readyPort = startArgs[0] as SendPort;
   final libraryPath = startArgs[1] as String;
-  RustLib.initSync(libraryPath);
+  try {
+    RustLib.initSync(libraryPath);
+  } catch (e) {
+    readyPort.send(_WorkerStartupFailure(e.toString()));
+    return;
+  }
   final jobs = ReceivePort();
   readyPort.send(jobs.sendPort);
 

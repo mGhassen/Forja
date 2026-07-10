@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Flat shell chip fill + border — matches sources panel / home filter style.
@@ -47,43 +48,59 @@ class ForjaShellChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final fg = selected ? cinematic.textPrimary : cinematic.textSecondary;
-
     final borderRadius = BorderRadius.circular(radius);
+
+    final chip = Ink(
+      decoration: shellChipDecoration(selected: selected, radius: radius),
+      child: Padding(
+        padding: padding,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 14, color: fg),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                color: fg,
+                fontSize: fontSize,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: 4),
+              trailing!,
+            ],
+          ],
+        ),
+      ),
+    );
+
+    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return shellFocusableTap(
+        context: context,
+        onTap: onTap,
+        borderRadius: radius,
+        scaleOnFocus: 1.0,
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: borderRadius,
+          clipBehavior: Clip.antiAlias,
+          child: chip,
+        ),
+      );
+    }
 
     return Material(
       color: Colors.transparent,
       borderRadius: borderRadius,
       clipBehavior: Clip.antiAlias,
-      child: Ink(
-        decoration: shellChipDecoration(selected: selected, radius: radius),
-        child: InkWell(
-          borderRadius: borderRadius,
-          onTap: onTap,
-          child: Padding(
-            padding: padding,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 14, color: fg),
-                  const SizedBox(width: 6),
-                ],
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    color: fg,
-                    fontSize: fontSize,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  ),
-                ),
-                if (trailing != null) ...[
-                  const SizedBox(width: 4),
-                  trailing!,
-                ],
-              ],
-            ),
-          ),
-        ),
+      child: InkWell(
+        borderRadius: borderRadius,
+        onTap: onTap,
+        child: chip,
       ),
     );
   }

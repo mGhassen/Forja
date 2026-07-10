@@ -21,6 +21,15 @@ void main() {
     expect(ShellMetrics.tv.homeMovieCardWidth, 220);
   });
 
+  test('tv hub metrics use larger continue watching and title sizes', () {
+    expect(ShellMetrics.tv.continueWatchingCardWidth, greaterThan(
+      ShellMetrics.mobile.continueWatchingCardWidth,
+    ));
+    expect(ShellMetrics.tv.hubCardTitleFontSize, greaterThan(
+      ShellMetrics.mobile.hubCardTitleFontSize,
+    ));
+  });
+
   test('input policies match profile expectations', () {
     expect(ShellInputPolicy.desktop.scaleOnHover, isTrue);
     expect(ShellInputPolicy.desktop.showFocusRing, isFalse);

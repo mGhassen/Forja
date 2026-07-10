@@ -25,6 +25,13 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 - **Left rail:** Forja logo (top), your configured tabs (center), Settings (bottom); muted grey icons with hover feedback
 - **Body:** flat `bgDark`; Home hero is full-bleed with pill **Play** plus a combined **info | add** pill for details and My List
 
+## Android TV
+
+- Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
+- **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Matches** use TV-sized cards and focusable rows/chips (remote **Select** activates)
+- Search uses the **two-column desktop layout** on TV (results grid + detail pane)
+- Phone layout is unchanged — TV behavior applies only on Android TV / leanback devices
+
 ## Available tabs
 
 Home · Discover · Similar · Media Downloader · Search · My List · Magnet · Live Matches · IPTV · Audiobooks · Books · Music · Comics · Manga · Jellyfin · Anime · Anime Arabic · Asian Drama · Arabic · Settings

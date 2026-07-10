@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **7 / 10** acceptance (slice 1 desktop + TV) · **0 / 4** acceptance (slice 2 mobile) |
-| **Current slice** | Slice 1 shipped in code — manual TV/macOS smoke (R28-A08–A10) pending |
+| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **0 / 4** acceptance (slice 2 mobile) |
+| **Current slice** | Slice 1b TV tabs shipped — slice 2 mobile metrics deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -38,10 +38,21 @@
 | 4 | R28-A04 | TV focus ring, D-pad traversal, hero Play focus — TV policy only | ✅ |
 | 5 | R28-A05 | Torrent/sources/player panels use `ShellScope.metrics` not `isTvLayout` | ✅ |
 | 6 | R28-A06 | Navbar defaults + legacy migration; no forced Home on startup | ✅ |
-| 7 | R28-A07 | `shell_profile_test` + `shell_metrics_test` + updated `shell_scaffold_test` | ✅ |
-| 8 | R28-A08 | macOS desktop smoke — nav rail hover-only, hero pills full size | ⬜ |
-| 9 | R28-A09 | Android TV smoke — focus rings, mood chips, nav rail | ⬜ |
-| 10 | R28-A10 | Android phone unchanged — bottom nav, no app-root traversal | ⬜ |
+| 7 | R28-A07 | `shell_profile_test` + `shell_metrics_test` + `shell_scaffold_test` + `shell_adapters_test` + `shell_profile_behavior_test` | ✅ |
+| 8 | R28-A08 | Desktop profile — nav rail hover-only, hero pills full size (no `FittedBox`) | ✅ |
+| 9 | R28-A09 | TV profile — focus rings, focusable mood chips, nav rail focus scale | ✅ |
+| 10 | R28-A10 | Mobile profile — bottom nav, no app-root traversal wrapper when disabled | ✅ |
+
+---
+
+## Acceptance (slice 1b — Android TV tabs, pre-player)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 15 | R28-A15 | `ShellLayout` helpers + extended `ShellMetrics` (hub CW, card title); `shellFocusableTap` | ✅ |
+| 16 | R28-A16 | Search, anime, asian drama, mylist, lists, settings — TV focus + wide layout | ✅ |
+| 17 | R28-A17 | IPTV stream cards + live matches cards/sheet — D-pad focus on TV | ✅ |
+| 18 | R28-A18 | `shell_tv_tabs_test` + details collection rows policy-gated | ✅ |
 
 ---
 

@@ -15,6 +15,10 @@ copy_lib() {
   local src="$1" dest_dir="$2"
   mkdir -p "$dest_dir"
   cp -f "$src" "$dest_dir/"
+  if [[ "$(uname -s)" == Darwin && "$(basename "$src")" == libffi.dylib ]]; then
+    install_name_tool -id "@rpath/libffi.dylib" "$dest_dir/libffi.dylib"
+    codesign --force --sign - "$dest_dir/libffi.dylib" 2>/dev/null || true
+  fi
   echo "Copied $(basename "$src") -> $dest_dir"
 }
 

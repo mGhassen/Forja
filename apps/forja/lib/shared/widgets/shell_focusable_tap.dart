@@ -1,0 +1,32 @@
+import 'package:flutter/material.dart';
+
+import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+
+/// TV: [FocusableControl] with D-pad ring. Phone/desktop: plain [InkWell].
+Widget shellFocusableTap({
+  required BuildContext context,
+  required Widget child,
+  VoidCallback? onTap,
+  double borderRadius = 12,
+  double scaleOnFocus = 1.05,
+}) {
+  final policy = ShellScope.inputPolicyOf(context);
+  if (policy.useFocusableMoodChips) {
+    return FocusableControl(
+      onTap: onTap,
+      borderRadius: borderRadius,
+      scaleOnFocus: scaleOnFocus,
+      child: child,
+    );
+  }
+  return Material(
+    color: Colors.transparent,
+    borderRadius: BorderRadius.circular(borderRadius),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(borderRadius),
+      onTap: onTap,
+      child: child,
+    ),
+  );
+}

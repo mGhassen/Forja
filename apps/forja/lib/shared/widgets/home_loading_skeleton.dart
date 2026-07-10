@@ -1,7 +1,5 @@
-import 'dart:io' show Platform;
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -40,39 +38,21 @@ Widget homeCardSkeleton(BuildContext context, {double? width}) {
   );
 }
 
-bool homeUsesShellLayout(BuildContext context) {
-  if (!kIsWeb &&
-      (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-    return true;
-  }
-  return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-}
+bool homeUsesShellLayout(BuildContext context) => shellUsesWideLayout(context);
 
 double homeSectionTitleTop(
   BuildContext context, {
   bool compactTop = false,
 }) {
   if (!compactTop) return ShellTokens.homeSectionTitleTop;
-  return homeUsesShellLayout(context)
-      ? ShellTokens.homeSectionTitleTopCompactDesktop
-      : ShellTokens.homeSectionTitleTopCompactMobile;
+  return shellSectionTitleTopCompact(context);
 }
 
-double homeContinueWatchingCardWidth(BuildContext context) {
-  final isDesktop =
-      MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-  return isDesktop
-      ? ShellTokens.shellContinueWatchingCardWidthDesktop
-      : ShellTokens.shellContinueWatchingCardWidthCompact;
-}
+double homeContinueWatchingCardWidth(BuildContext context) =>
+    shellContinueWatchingCardWidth(context);
 
-double homeContinueWatchingCardHeight(BuildContext context) {
-  final isDesktop =
-      MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-  return isDesktop
-      ? ShellTokens.shellContinueWatchingCardHeightDesktop
-      : ShellTokens.shellContinueWatchingCardHeightCompact;
-}
+double homeContinueWatchingCardHeight(BuildContext context) =>
+    shellContinueWatchingCardHeight(context);
 
 Widget homeMovieRowSkeleton(
   BuildContext context, {

@@ -12,7 +12,7 @@ import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
@@ -75,7 +75,7 @@ class _IptvPtScreenState extends State<IptvPtScreen> with ShellTabRefresh<IptvPt
   }
 
   bool _isCompact(BuildContext c) => MediaQuery.sizeOf(c).width < 720;
-  bool _isWide(BuildContext c) => MediaQuery.sizeOf(c).width >= 1100;
+  bool _isWide(BuildContext c) => shellIptvUsesWideLayout(c);
 
   @override
   Widget build(BuildContext context) {
@@ -1457,23 +1457,7 @@ class _StreamCard extends StatelessWidget {
       builder: (_, _) {
         final health =
             stream.kind == 'live' ? ctrl.healthFor(stream.streamId) : null;
-        final card = Material(
-          color: Colors.transparent,
-          child: Ink(
-            decoration: BoxDecoration(
-              color: health == false
-                  ? const Color(0xFFEF4444).withValues(alpha: 0.08)
-                  : Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _borderColor(health)),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: onTap,
-              onLongPress: stream.kind == 'live' && ctrl.epgEnabled
-                  ? () => _showEpgSheet(context)
-                  : null,
-              child: Column(
+        final column = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
@@ -1545,8 +1529,35 @@ class _StreamCard extends StatelessWidget {
                   if (stream.kind == 'live')
                     _EpgNowFooter(stream: stream, ctrl: ctrl),
                 ],
-              ),
+              );
+        final useTvFocus =
+            ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+        final card = Material(
+          color: Colors.transparent,
+          child: Ink(
+            decoration: BoxDecoration(
+              color: health == false
+                  ? const Color(0xFFEF4444).withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _borderColor(health)),
             ),
+            child: useTvFocus
+                ? shellFocusableTap(
+                    context: context,
+                    onTap: onTap,
+                    borderRadius: 12,
+                    scaleOnFocus: 1.0,
+                    child: column,
+                  )
+                : InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: onTap,
+                    onLongPress: stream.kind == 'live' && ctrl.epgEnabled
+                        ? () => _showEpgSheet(context)
+                        : null,
+                    child: column,
+                  ),
           ),
         );
 

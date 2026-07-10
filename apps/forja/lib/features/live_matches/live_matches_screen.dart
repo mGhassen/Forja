@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
@@ -689,13 +690,15 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
   @override
   Widget build(BuildContext context) {
     final c = widget.channel;
-    return MouseRegion(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 16,
+      child: MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit:  (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
+      child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
@@ -797,13 +800,15 @@ class _CdnSportCardState extends State<_CdnSportCard> {
   @override
   Widget build(BuildContext context) {
     final e = widget.event;
-    return MouseRegion(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 16,
+      child: MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit:  (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
+      child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
@@ -946,8 +951,11 @@ class _CdnChannelSheet extends StatelessWidget {
           const SizedBox(height: 6),
           const Text('Choose a channel:', style: TextStyle(color: Colors.white54, fontSize: 13)),
           const SizedBox(height: 16),
-          ...event.channels.map((ch) => ListTile(
+          ...event.channels.map((ch) => shellFocusableTap(
+            context: context,
             onTap: () => onChannelSelected(ch),
+            borderRadius: 12,
+            child: ListTile(
             leading: ch.image.isNotEmpty
                 ? CachedNetworkImage(imageUrl: ch.image, width: 32, height: 32, fit: BoxFit.contain,
                     errorWidget: (_, _, _) => Icon(Icons.tv_rounded, color: ForjaShellColors.sectionAccent))
@@ -958,7 +966,7 @@ class _CdnChannelSheet extends StatelessWidget {
                 ? Text('${ch.viewers} viewers', style: const TextStyle(color: Colors.white38, fontSize: 11))
                 : null,
             trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-          )),
+          ))),
         ],
       ),
     );
@@ -1086,13 +1094,15 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final hasIframe = s.iframe.isNotEmpty;
     final hasTeams = s.homeTeam != null && s.awayTeam != null;
 
-    return MouseRegion(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 16,
+      child: MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit:  (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
+      child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),

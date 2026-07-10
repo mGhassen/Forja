@@ -4,11 +4,13 @@ set -e
 DEST="${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}"
 mkdir -p "$DEST"
 for SRC in \
-  "${SRCROOT}/../../crates/target/release/libffi.dylib" \
+  "${SRCROOT}/../../../crates/target/release/libffi.dylib" \
   "${SRCROOT}/Runner/Frameworks/libffi.dylib"
 do
   if [ -f "$SRC" ]; then
     cp -f "$SRC" "$DEST/libffi.dylib"
+    install_name_tool -id "@rpath/libffi.dylib" "$DEST/libffi.dylib"
+    codesign --force --sign - "$DEST/libffi.dylib" 2>/dev/null || true
     echo "Copied Rust engine: $SRC -> $DEST"
     exit 0
   fi

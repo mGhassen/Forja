@@ -4,6 +4,9 @@ import 'package:forja/shared/design/src/shell_tokens.dart';
 class ShellMetrics {
   const ShellMetrics({
     required this.homeMovieCardWidth,
+    required this.continueWatchingCardWidth,
+    required this.continueWatchingCardHeight,
+    required this.hubCardTitleFontSize,
     required this.heroCompactRightInset,
     required this.heroMinTitleHeight,
     required this.heroActionUseFittedBox,
@@ -22,6 +25,9 @@ class ShellMetrics {
   });
 
   final double homeMovieCardWidth;
+  final double continueWatchingCardWidth;
+  final double continueWatchingCardHeight;
+  final double hubCardTitleFontSize;
   final double heroCompactRightInset;
   final double heroMinTitleHeight;
   final bool heroActionUseFittedBox;
@@ -40,6 +46,9 @@ class ShellMetrics {
 
   static const mobile = ShellMetrics(
     homeMovieCardWidth: 165,
+    continueWatchingCardWidth: ShellTokens.shellContinueWatchingCardWidthCompact,
+    continueWatchingCardHeight: ShellTokens.shellContinueWatchingCardHeightCompact,
+    hubCardTitleFontSize: 13,
     heroCompactRightInset: 20,
     heroMinTitleHeight: 72,
     heroActionUseFittedBox: false,
@@ -59,6 +68,9 @@ class ShellMetrics {
 
   static const desktop = ShellMetrics(
     homeMovieCardWidth: 190,
+    continueWatchingCardWidth: ShellTokens.shellContinueWatchingCardWidthDesktop,
+    continueWatchingCardHeight: ShellTokens.shellContinueWatchingCardHeightDesktop,
+    hubCardTitleFontSize: 14,
     heroCompactRightInset: 20,
     heroMinTitleHeight: 72,
     heroActionUseFittedBox: false,
@@ -78,6 +90,9 @@ class ShellMetrics {
 
   static const tv = ShellMetrics(
     homeMovieCardWidth: 220,
+    continueWatchingCardWidth: 300,
+    continueWatchingCardHeight: 300 * 9 / 16,
+    hubCardTitleFontSize: 15,
     heroCompactRightInset: 88,
     heroMinTitleHeight: 0,
     heroActionUseFittedBox: true,

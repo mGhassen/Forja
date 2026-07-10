@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 class HomeMovieCard extends StatelessWidget {
@@ -17,30 +18,23 @@ class HomeMovieCard extends StatelessWidget {
   final VoidCallback onTap;
   final int? rank;
 
-  static double cardWidth(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width > 900;
-    return isDesktop ? 190.0 : 165.0;
-  }
+  static double cardWidth(BuildContext context) => shellMovieCardWidth(context);
 
-  static double cardHeight(BuildContext context) =>
-      _snapPosterHeight(cardWidth(context));
-
-  static double _snapPosterHeight(double width) =>
-      (width * 1.5).roundToDouble();
+  static double cardHeight(BuildContext context) => shellMovieCardHeight(context);
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width > 900;
+    final titleSize = shellHubCardTitleFontSize(context);
     final cardWidth = HomeMovieCard.cardWidth(context);
     final cardHeight = HomeMovieCard.cardHeight(context);
     final imageUrl = movie.posterPath.isNotEmpty
         ? TmdbApi.getImageUrl(movie.posterPath)
         : '';
 
-    final card = FocusableControl(
+    final card = shellFocusableTap(
+      context: context,
       onTap: onTap,
       borderRadius: 14,
-      scaleOnFocus: 1.05,
       child: Container(
         width: cardWidth,
         height: cardHeight,
@@ -129,7 +123,7 @@ class HomeMovieCard extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: isDesktop ? 14 : 13,
+                        fontSize: titleSize,
                         height: 1.2,
                       ),
                     ),

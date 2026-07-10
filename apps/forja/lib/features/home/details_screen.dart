@@ -30,6 +30,7 @@ import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class DetailsScreen extends StatefulWidget {
@@ -3376,7 +3377,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             final ratings = item['ratings']?.toString() ?? '';
             final overview = item['overview']?.toString() ?? '';
 
-            return FocusableControl(
+            return shellFocusableTap(
+              context: context,
               onTap: () => _openCollectionItem(id),
               borderRadius: 12,
               child: Container(

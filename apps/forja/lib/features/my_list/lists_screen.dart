@@ -4,6 +4,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 class ListsScreen extends StatefulWidget {
   const ListsScreen({super.key});
@@ -350,8 +351,10 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
+      borderRadius: 14,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -495,6 +498,7 @@ class _TraktListItemsScreenState extends State<_TraktListItemsScreen> {
               itemBuilder: (context, index) {
                 final movie = _movies[index];
                 return _movieListTile(
+                  context: context,
                   movie: movie,
                   onTap: () => AppRouter.openDetails(context, movie: movie),
                   onRemove: () => _removeItem(movie),
@@ -600,6 +604,7 @@ class _MdblistItemsScreenState extends State<_MdblistItemsScreen> {
               itemBuilder: (context, index) {
                 final movie = _movies[index];
                 return _movieListTile(
+                  context: context,
                   movie: movie,
                   onTap: () => AppRouter.openDetails(context, movie: movie),
                   onRemove: widget.isUserList ? () => _removeItem(movie) : null,
@@ -615,6 +620,7 @@ class _MdblistItemsScreenState extends State<_MdblistItemsScreen> {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Widget _movieListTile({
+  required BuildContext context,
   required Movie movie,
   required VoidCallback onTap,
   VoidCallback? onRemove,
@@ -623,8 +629,10 @@ Widget _movieListTile({
       ? TmdbApi.getImageUrl(movie.posterPath)
       : '';
 
-  return GestureDetector(
+  return shellFocusableTap(
+    context: context,
     onTap: onTap,
+    borderRadius: 14,
     child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

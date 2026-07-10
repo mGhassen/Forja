@@ -434,21 +434,11 @@ class _AsianDramaContinueWatchingCard extends StatefulWidget {
     required this.onInfo,
   });
 
-  static double cardWidth(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardWidthDesktop
-        : ShellTokens.shellContinueWatchingCardWidthCompact;
-  }
+  static double cardWidth(BuildContext context) =>
+      shellContinueWatchingCardWidth(context);
 
-  static double cardHeight(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardHeightDesktop
-        : ShellTokens.shellContinueWatchingCardHeightCompact;
-  }
+  static double cardHeight(BuildContext context) =>
+      shellContinueWatchingCardHeight(context);
 
   @override
   State<_AsianDramaContinueWatchingCard> createState() =>
@@ -460,10 +450,12 @@ class _AsianDramaContinueWatchingCardState
   bool _hovered = false;
   bool _focused = false;
 
-  bool get _active => _hovered || _focused;
+  bool _activeFor(ShellInputPolicy policy) =>
+      (policy.scaleOnHover && _hovered) || (policy.scaleOnFocus && _focused);
 
   @override
   Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
     final cover = widget.entry['cover'] as String?;
     final title = widget.entry['title'] as String? ?? '';
     final epNum = (widget.entry['episodeNumber'] as num?)?.toDouble() ?? 1.0;
@@ -504,7 +496,7 @@ class _AsianDramaContinueWatchingCardState
         child: GestureDetector(
           onTap: widget.onTap,
           child: AnimatedScale(
-            scale: _active ? 1.05 : 1.0,
+            scale: _activeFor(policy) ? 1.05 : 1.0,
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
             child: Container(
@@ -663,7 +655,7 @@ class _AsianDramaContinueWatchingCardState
                     Positioned.fill(
                       child: IgnorePointer(
                         child: AnimatedOpacity(
-                          opacity: _active ? 1.0 : 0.0,
+                          opacity: _activeFor(policy) ? 1.0 : 0.0,
                           duration: const Duration(milliseconds: 200),
                           child: Center(
                             child: Container(

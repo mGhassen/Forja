@@ -23,6 +23,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Settings tab — RFC-024 R24-A13: local prefs only; no ShellTabRefresh / API stale policy.
 class SettingsScreen extends StatefulWidget {
@@ -3040,39 +3041,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildFocusableToggle(String title, String subtitle, bool value, ValueChanged<bool> onChanged) {
-    return FocusableControl(
-      onTap: () => onChanged(!value),
-      scaleOnFocus: 1.0, // Disable scaling
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(fontSize: 13, color: Colors.white54)),
-                ],
-              ),
+    final content = Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: const TextStyle(fontSize: 13, color: Colors.white54)),
+              ],
             ),
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              activeTrackColor: AppTheme.current.primaryColor,
-            ),
-          ],
-        ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: AppTheme.current.primaryColor,
+          ),
+        ],
       ),
+    );
+    return shellFocusableTap(
+      context: context,
+      onTap: () => onChanged(!value),
+      scaleOnFocus: 1.0,
+      child: content,
     );
   }
 
   Widget _buildFocusableDropdown(String title, String subtitle, String value, List<String> options, ValueChanged<String?> onChanged) {
-    return FocusableControl(
-      onTap: () {},
-      scaleOnFocus: 1.0, // Disable scaling
-      child: Padding(
+    final content = Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
@@ -3112,7 +3112,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
-      ),
+    );
+    return shellFocusableTap(
+      context: context,
+      onTap: () {},
+      scaleOnFocus: 1.0,
+      child: content,
     );
   }
 }
