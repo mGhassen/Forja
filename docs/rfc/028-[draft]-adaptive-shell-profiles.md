@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **0 / 4** acceptance (slice 2 mobile) |
-| **Current slice** | Slice 1b TV tabs shipped — slice 2 mobile metrics deferred |
+| **Current slice** | Architecture contract + CI enforced — leanback manual smoke blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -64,6 +64,20 @@
 | 12 | R28-A12 | Mobile metrics row verified against production layout | ⏭️ |
 | 13 | R28-A13 | `MobileShell` owns bottom-nav spacing tokens | ⏭️ |
 | 14 | R28-A14 | No raw width breakpoints in migrated mobile widgets | ⏭️ |
+
+---
+
+## Architecture
+
+Three layers — feature code must not bypass them:
+
+| Layer | API | Used for |
+|-------|-----|----------|
+| **Boot** | `PlatformChannel`, `PlatformProfile`, `PlatformInfo` | Leanback detection, defaults seeding, no-context routes (player, webview, bootstrap) |
+| **Resolver** | `resolveShellProfile()` only | Maps boot flag + layout → `ShellProfile` (`ShellTokens.isTvLayout` allowed here only) |
+| **Feature** | `ShellScope.metricsOf` / `inputPolicyOf`, `isTvProfile`, `shellFocusableTap` | All in-tree widgets with `BuildContext` |
+
+CI: `scripts/check_tv_shell_boundary.sh` (melos `rust:check-tv-shell`, Rust workflow).
 
 ---
 

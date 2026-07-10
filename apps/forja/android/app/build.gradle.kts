@@ -41,6 +41,12 @@ android {
         multiDexEnabled = true
     }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

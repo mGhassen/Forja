@@ -184,7 +184,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       autofocus: widget.autoFocus,
       onFocusChange: (f) {
         setState(() => _isFocused = f);
-        _updateState(f || _isHovered);
+        _updateState(f || (policy.scaleOnHover && _isHovered));
         widget.onFocusChange?.call(f);
         if (f && policy.ensureVisibleOnFocus) {
           Scrollable.ensureVisible(
@@ -217,10 +217,12 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       },
       child: MouseRegion(
         onEnter: (_) {
+          if (!policy.scaleOnHover) return;
           setState(() => _isHovered = true);
           _updateState(true);
         },
         onExit: (_) {
+          if (!policy.scaleOnHover) return;
           setState(() => _isHovered = false);
           _updateState(_isFocused);
         },

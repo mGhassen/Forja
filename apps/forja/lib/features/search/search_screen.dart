@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:rust/rust.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -66,6 +67,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   final TmdbApi _api = TmdbApi();
   final StremioService _stremio = StremioService();
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _firstHelperFocusNode = FocusNode();
   final FocusNode _resultCardFocusNode = FocusNode();
 
   Timer? _debounce;
@@ -96,6 +98,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   @override
   void initState() {
     super.initState();
+    _focusNode.onKeyEvent = _searchFieldKeyEvent;
     _loadProviders();
     _loadTrendingHelpers();
     ShellBus.stremioSearchNotifier.addListener(_onExternalSearch);
@@ -139,7 +142,15 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         titles.add(item.title);
         if (titles.length >= 12) break;
       }
-      if (mounted) setState(() => _trendingHelperTitles = titles);
+      if (mounted) {
+        setState(() => _trendingHelperTitles = titles);
+        if (_query.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (_isTvSearch(context)) _focusFirstHelper();
+          });
+        }
+      }
     } catch (_) {}
   }
 
@@ -174,6 +185,11 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         _focusedIndex = 0;
         _pendingGridFocusIndex = null;
       });
+      if (_isTvSearch(context) && _trendingHelperTitles.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _focusFirstHelper();
+        });
+      }
       return;
     }
     _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -364,6 +380,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     _controller.dispose();
     _debounce?.cancel();
     _focusNode.dispose();
+    _firstHelperFocusNode.dispose();
     _resultCardFocusNode.dispose();
     super.dispose();
   }
@@ -471,6 +488,22 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   bool _isTvSearch(BuildContext context) =>
       ShellScope.metricsOf(context).usesTvDensity;
+
+  bool _focusFirstHelper() {
+    if (!_firstHelperFocusNode.canRequestFocus) return false;
+    _firstHelperFocusNode.requestFocus();
+    return true;
+  }
+
+  KeyEventResult _searchFieldKeyEvent(FocusNode node, KeyEvent event) {
+    if (!mounted || !_isTvSearch(context)) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
+        _focusFirstHelper()) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
 
   double _searchPageTopInset(BuildContext context) {
     if (widget.overlay && !_isDesktopLayout(context)) {
@@ -626,13 +659,15 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   }
 
   Widget _buildInputColumn(BuildContext context, List<_FlatSearchResult> results) {
+    final tv = _isTvSearch(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextField(
             controller: _controller,
             focusNode: _focusNode,
-            autofocus: true,
+            autofocus: !tv,
+            canRequestFocus: !tv,
             onChanged: _onSearchChanged,
             style: TextStyle(
               color: ForjaShellColors.textPrimary,
@@ -699,6 +734,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             onTap: () => _focusResultCard(index),
             borderRadius: 4,
             navLeftAlways: true,
+            focusNode: index == 0 ? _firstHelperFocusNode : null,
+            onUpEdge: index == 0 ? () => _focusNode.requestFocus() : null,
             onFocusChange: (focused) {
               if (focused) _setFocusedIndex(index);
             },
@@ -738,6 +775,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           onTap: () => _applyHelperQuery(title),
           borderRadius: 4,
           navLeftAlways: true,
+          focusNode: index == 0 ? _firstHelperFocusNode : null,
+          onUpEdge: index == 0 ? () => _focusNode.requestFocus() : null,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
             child: Text(

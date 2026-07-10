@@ -30,6 +30,7 @@ import 'menus.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/player_tv_remote.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
@@ -1845,65 +1846,43 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
   bool _handleTvKeyEvent(KeyEvent event) {
     if (!widget.tvRemoteEnabled || _disposed || _hasError) return false;
-    if (event is! KeyDownEvent) return false;
     if (_isLocked) return false;
 
-    final key = event.logicalKey;
-
-    if (key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.goBack) {
-      unawaited(_exitPlayer());
-      return true;
-    }
-
-    if (key == LogicalKeyboardKey.select ||
-        key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.space ||
-        key == LogicalKeyboardKey.mediaPlayPause) {
-      if (!_showControls) {
-        setState(() => _showControls = true);
-        _startHideTimer();
-      } else {
+    return PlayerTvRemoteKeyHandler(
+      onBack: () => unawaited(_exitPlayer()),
+      onPlayPause: () {
         _player.playOrPause();
         _startHideTimer();
-      }
-      return true;
-    }
-
-    if (key == LogicalKeyboardKey.arrowLeft ||
-        key == LogicalKeyboardKey.mediaRewind) {
-      var newPos = _positionNotifier.value - const Duration(seconds: 10);
-      if (newPos < Duration.zero) newPos = Duration.zero;
-      _player.seek(newPos);
-      _startHideTimer();
-      return true;
-    }
-
-    if (key == LogicalKeyboardKey.arrowRight ||
-        key == LogicalKeyboardKey.mediaFastForward) {
-      final dur = _durationNotifier.value;
-      var newPos = _positionNotifier.value + const Duration(seconds: 10);
-      if (newPos > dur) newPos = dur;
-      _player.seek(newPos);
-      _startHideTimer();
-      return true;
-    }
-
-    if (key == LogicalKeyboardKey.arrowUp) {
-      _player.setVolume(
-        (_volume.clamp(0, 150) + 5).clamp(0, 150).toDouble(),
-      );
-      return true;
-    }
-
-    if (key == LogicalKeyboardKey.arrowDown) {
-      _player.setVolume(
-        (_volume.clamp(0, 150) - 5).clamp(0, 150).toDouble(),
-      );
-      return true;
-    }
-
-    return false;
+      },
+      onShowControls: () {
+        setState(() => _showControls = true);
+        _startHideTimer();
+      },
+      onSeekBack: () {
+        var newPos = _positionNotifier.value - const Duration(seconds: 10);
+        if (newPos < Duration.zero) newPos = Duration.zero;
+        _player.seek(newPos);
+        _startHideTimer();
+      },
+      onSeekForward: () {
+        final dur = _durationNotifier.value;
+        var newPos = _positionNotifier.value + const Duration(seconds: 10);
+        if (newPos > dur) newPos = dur;
+        _player.seek(newPos);
+        _startHideTimer();
+      },
+      onVolumeUp: () {
+        _player.setVolume(
+          (_volume.clamp(0, 150) + 5).clamp(0, 150).toDouble(),
+        );
+      },
+      onVolumeDown: () {
+        _player.setVolume(
+          (_volume.clamp(0, 150) - 5).clamp(0, 150).toDouble(),
+        );
+      },
+      onToggleControls: _toggleControls,
+    ).handle(event, showControls: _showControls);
   }
 
   void _toggleLock() {
@@ -3930,8 +3909,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       hasStatusMessage: _hasError,
       hasStatusActions: _hasError,
     );
+    final tvFocus = widget.tvRemoteEnabled;
 
-    return Stack(children: [
+    final overlay = Stack(children: [
       const Positioned(
           top: 0, left: 0, right: 0,
           child: PlayerOverlayGradient(isTop: true)),
@@ -3958,6 +3938,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                 )
               : null,
           onBack: _exitPlayer,
+          tvFocusable: tvFocus,
           trailing: PlayerTopBarActions(
             showCast: CastingService.instance.isAirPlayAvailable ||
                 CastingService.instance.isChromecastAvailable,
@@ -4032,6 +4013,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       PlayerCenterActionButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.replay_10_rounded,
                         onPressed: () {
                           final pos = _positionNotifier.value -
@@ -4046,6 +4028,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                         valueListenable: _isPlayingNotifier,
                         builder: (context, playing, _) =>
                             PlayerCenterActionButton(
+                          tvFocusable: tvFocus,
                           icon: playing
                               ? Icons.pause_rounded
                               : Icons.play_arrow_rounded,
@@ -4059,6 +4042,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       ),
                       const SizedBox(width: 24),
                       PlayerCenterActionButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.forward_10_rounded,
                         onPressed: () {
                           final dur = _durationNotifier.value;
@@ -4112,6 +4096,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                     ValueListenableBuilder<bool>(
                       valueListenable: _isPlayingNotifier,
                       builder: (context, playing, _) => PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                         size: btnSize,
                         iconSize: iconSz,
@@ -4122,6 +4107,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       ),
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.replay_10_rounded,
                       size: btnSize,
                       iconSize: iconSz,
@@ -4132,6 +4118,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       },
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.forward_10_rounded,
                       size: btnSize,
                       iconSize: iconSz,
@@ -4143,6 +4130,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       },
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.volume_up_rounded,
                       size: btnSize,
                       iconSize: iconSz,
@@ -4168,6 +4156,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                   Row(children: [
                     if (hasTorrentSources)
                       PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.link_rounded,
                         size: btnSize,
                         iconSize: iconSz,
@@ -4176,6 +4165,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       ),
                     if (hasSources) ...[
                       PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.dns_outlined,
                         size: btnSize,
                         iconSize: iconSz,
@@ -4185,6 +4175,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                     ],
                     if (hasProviders) ...[
                       PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.cloud_outlined,
                         size: btnSize,
                         iconSize: iconSz,
@@ -4197,12 +4188,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                     ],
                     if (hasEpisodePicker)
                       PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.video_library_outlined,
                         size: btnSize,
                         iconSize: iconSz,
                         onPressedWithContext: _showEpisodesMenu,
                       ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.audiotrack_rounded,
                       size: btnSize,
                       iconSize: iconSz,
@@ -4210,12 +4203,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       onPressedWithContext: _showAudioMenu,
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.subtitles_outlined,
                       size: btnSize,
                       iconSize: iconSz,
                       onPressedWithContext: _showSubtitlesMenu,
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.hd_outlined,
                       size: btnSize,
                       iconSize: iconSz,
@@ -4223,12 +4218,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       onPressedWithContext: _showQualityMenu,
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.settings_outlined,
                       size: btnSize,
                       iconSize: iconSz,
                       onPressedWithContext: _showSettingsMenu,
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: _isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
                       active: _isLocked,
                       size: btnSize,
@@ -4243,6 +4240,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         ),
       ),
     ]);
+    if (!tvFocus) return overlay;
+    return FocusTraversalGroup(child: overlay);
   }
 
 }

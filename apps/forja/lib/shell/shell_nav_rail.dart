@@ -375,6 +375,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   }
 
   void _onHoverEnter() {
+    final policy = ShellScope.inputPolicyOf(context);
+    if (!policy.scaleOnHover) return;
     setState(() {
       _hover = true;
       _typing = false;
@@ -387,6 +389,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   }
 
   void _onHoverExit() {
+    if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
     _revealTimer?.cancel();
     setState(() {
       _hover = false;

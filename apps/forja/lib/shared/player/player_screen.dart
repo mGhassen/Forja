@@ -7,6 +7,7 @@ import 'package:forja/shared/player/player/mobile_player_screen.dart';
 import 'package:forja/shared/player/player/tv_player_screen.dart';
 import 'package:forja/shared/player/player/desktop_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
@@ -173,7 +174,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
 
     // Built-in player
-    if (Platform.isAndroid && ShellTokens.isAndroidTvDevice) {
+    if (Platform.isAndroid && PlatformInfo.isAndroidTv) {
       return TvPlayerScreen(
         mediaPath: widget.streamUrl,
         title: widget.title,

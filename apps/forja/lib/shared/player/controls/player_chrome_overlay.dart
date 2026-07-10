@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
@@ -9,6 +10,7 @@ import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 
 class PlayerFlatIconButton extends StatelessWidget {
   const PlayerFlatIconButton({
@@ -21,6 +23,8 @@ class PlayerFlatIconButton extends StatelessWidget {
     this.active = false,
     this.size = 40,
     this.iconSize = 22,
+    this.tvFocusable = false,
+    this.focusNode,
   }) : assert(onPressed != null || onPressedWithContext != null);
 
   final IconData icon;
@@ -31,16 +35,19 @@ class PlayerFlatIconButton extends StatelessWidget {
   final bool active;
   final double size;
   final double iconSize;
+  final bool tvFocusable;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
+    final onTap = onPressedWithContext != null
+        ? () => onPressedWithContext!(context)
+        : onPressed;
     final child = Material(
       color: active ? Colors.white.withValues(alpha: 0.18) : Colors.transparent,
       shape: label == null ? const CircleBorder() : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: InkWell(
-        onTap: onPressedWithContext != null
-            ? () => onPressedWithContext!(context)
-            : onPressed,
+        onTap: onTap,
         customBorder: label == null ? const CircleBorder() : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         child: SizedBox(
           width: label == null ? size : null,
@@ -61,8 +68,16 @@ class PlayerFlatIconButton extends StatelessWidget {
         ),
       ),
     );
-    if (tooltip == null) return child;
-    return Tooltip(message: tooltip!, child: child);
+    final button = tvFocusable
+        ? FocusableControl(
+            focusNode: focusNode,
+            onTap: onTap,
+            borderRadius: label == null ? size / 2 : 8,
+            child: child,
+          )
+        : child;
+    if (tooltip == null) return button;
+    return Tooltip(message: tooltip!, child: button);
   }
 }
 
@@ -77,6 +92,7 @@ class PlayerTopBar extends StatelessWidget {
     this.statusActions,
     required this.onBack,
     this.trailing,
+    this.tvFocusable = false,
   });
 
   final String title;
@@ -87,6 +103,7 @@ class PlayerTopBar extends StatelessWidget {
   final Widget? statusActions;
   final VoidCallback onBack;
   final Widget? trailing;
+  final bool tvFocusable;
 
   String? get _episodeLine {
     if (episodeLine != null && episodeLine!.isNotEmpty) return episodeLine;
@@ -127,6 +144,7 @@ class PlayerTopBar extends StatelessWidget {
               icon: Icons.arrow_back_rounded,
               onPressed: onBack,
               size: 44,
+              tvFocusable: tvFocusable,
             ),
             Expanded(
               child: Column(
@@ -568,6 +586,8 @@ class PlayerCenterActionButton extends StatefulWidget {
     this.size = 64,
     this.iconSize = 32,
     this.showSpinner = false,
+    this.tvFocusable = false,
+    this.focusNode,
   });
 
   final IconData icon;
@@ -575,6 +595,8 @@ class PlayerCenterActionButton extends StatefulWidget {
   final double size;
   final double iconSize;
   final bool showSpinner;
+  final bool tvFocusable;
+  final FocusNode? focusNode;
 
   @override
   State<PlayerCenterActionButton> createState() =>
@@ -587,29 +609,38 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final hoverActive = policy.scaleOnHover && _hovered;
+    final core = MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() {
-        _hovered = false;
-        _pressed = false;
-      }),
+      onEnter: (_) {
+        if (!policy.scaleOnHover) return;
+        setState(() => _hovered = true);
+      },
+      onExit: (_) {
+        if (!policy.scaleOnHover) return;
+        setState(() {
+          _hovered = false;
+          _pressed = false;
+        });
+      },
       child: GestureDetector(
         onTap: widget.onPressed,
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
         child: AnimatedScale(
-          scale: _pressed ? 0.9 : (_hovered ? 1.06 : 1.0),
+          scale: _pressed ? 0.9 : (hoverActive ? 1.06 : 1.0),
           duration: const Duration(milliseconds: 100),
           child: Container(
             width: widget.size,
             height: widget.size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: _hovered ? 0.22 : 0.14),
+              color: Colors.white.withValues(alpha: hoverActive ? 0.22 : 0.14),
               border: Border.all(
-                color: Colors.white.withValues(alpha: _hovered ? 0.35 : 0.2),
+                color: Colors.white.withValues(alpha: hoverActive ? 0.35 : 0.2),
               ),
             ),
             child: widget.showSpinner
@@ -631,6 +662,13 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
           ),
         ),
       ),
+    );
+    if (!widget.tvFocusable) return core;
+    return FocusableControl(
+      focusNode: widget.focusNode,
+      onTap: widget.onPressed,
+      borderRadius: widget.size / 2,
+      child: core,
     );
   }
 }

@@ -58,9 +58,9 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
     if (list.isEmpty) return const SizedBox.shrink();
 
     final sectionTop = _sectionTitleTop(context);
-    final isTv = ShellTokens.isTvLayout(context);
+    final metrics = ShellScope.metricsOf(context);
     final horizontalPad =
-        isTv ? ShellTokens.tvBodyHorizontalPadding : 24.0;
+        metrics.usesTvDensity ? ShellTokens.tvBodyHorizontalPadding : 24.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -2894,7 +2894,11 @@ class _HistoryCardState extends State<_HistoryCard> {
   bool _hovered = false;
   bool _focused = false;
 
-  bool get _active => _hovered || _focused;
+  bool _active(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    return (policy.scaleOnHover && _hovered) ||
+        (policy.scaleOnFocus && _focused);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2938,13 +2942,16 @@ class _HistoryCardState extends State<_HistoryCard> {
         return KeyEventResult.ignored;
       },
       child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
+        onEnter: (_) {
+          if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
+          setState(() => _hovered = true);
+        },
         onExit: (_) => setState(() => _hovered = false),
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: widget.isLoading ? null : widget.onTap,
           child: AnimatedScale(
-            scale: _active ? 1.05 : 1.0,
+            scale: _active(context) ? 1.05 : 1.0,
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
             child: Container(
@@ -3090,7 +3097,7 @@ class _HistoryCardState extends State<_HistoryCard> {
             Positioned.fill(
               child: IgnorePointer(
                 child: AnimatedOpacity(
-                  opacity: _active && !widget.isLoading ? 1.0 : 0.0,
+                  opacity: _active(context) && !widget.isLoading ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 200),
                   child: Center(
                     child: Container(

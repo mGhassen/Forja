@@ -1512,10 +1512,6 @@ class _LiveHealthProbe extends StatelessWidget {
   static bool isDesktopPlatform() =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
-  /// Android TV / leanback: tablet-sized wide landscape (not phone).
-  static bool isTvLayout(BuildContext context) =>
-      resolveShellProfile(context) == ShellProfile.tv;
-
   /// Mobile touch scrolling needs visibility + scroll debounce.
   static bool usesScrollDebounce(BuildContext context) =>
       !isDesktopPlatform() &&
@@ -1531,7 +1527,7 @@ class _LiveHealthProbe extends StatelessWidget {
       );
     }
 
-    if (isTvLayout(context)) {
+    if (isTvProfile(context)) {
       return Focus(
         onFocusChange: (focused) {
           if (focused) {

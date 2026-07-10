@@ -33,13 +33,29 @@ Download builds from [GitHub Releases](https://github.com/mGhassen/Forja/release
 
 ## Android TV development
 
+### Leanback AVD (launcher smoke)
+
+1. Android Studio → **Device Manager** → **Create device** → **TV** category → e.g. **1080p Android TV (Google APIs)**.
+2. System image: API 34+ with **Google APIs** (not Google Play if unavailable for TV).
+3. Confirm `LEANBACK_LAUNCHER` in `apps/forja/android/app/src/main/AndroidManifest.xml`.
+4. Run on the TV AVD **without** dart-define:
+
+```bash
+flutter emulators --launch <tv_avd_id>
+flutter run -d <tv_avd_id>
+```
+
+Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md) (`I25-M01`–`M08`).
+
+### Phone / generic emulator (layout only)
+
 Test TV layout on a phone or emulator (not leanback proof):
 
 ```bash
 flutter run -d <android-device> --dart-define=FORJA_ANDROID_TV=true
 ```
 
-Forces TV profile and TV first-run nav defaults. Real leanback launcher smoke is tracked in [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md).
+Forces TV profile and TV first-run nav defaults via `PlatformChannel` + `PlatformInfo`. Does **not** replace leanback launcher smoke.
 
 ## Tips
 

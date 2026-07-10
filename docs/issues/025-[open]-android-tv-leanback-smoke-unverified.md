@@ -11,7 +11,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 11** verification |
+| **Progress** | **4 / 12** verification |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,7 @@
 | 1 | I25-T01 | `platform_defaults_test.dart` + `settings_service_platform_defaults_test.dart` | ✅ |
 | 2 | I25-T02 | `shell_adapters_test.dart` — TV profile uses nav rail via `ShellHost` | ✅ |
 | 3 | I25-T03 | `main_screen_shell_test.dart` + `platform_channel_test.dart` | ✅ |
+| 4 | I25-T04 | `check_tv_shell_boundary.sh` + `player_tv_remote_test.dart` + `shell_profile_behavior_test` TV boot | ✅ |
 
 ---
 
@@ -44,7 +45,11 @@
 
 ## Summary
 
-[RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md) adaptive shell ships native leanback detection (`MainActivity` MethodChannel), platform defaults seeding, `ShellHost` TV profile, `TvPlayerScreen` D-pad keys, and leanback manifest banner. **Leanback launcher and full D-pad flows are not verified** on this machine (no Android TV AVD / `adb`).
+[RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md) adaptive shell ships native leanback detection (`MainActivity` MethodChannel), platform defaults seeding, `ShellHost` TV profile, `TvPlayerScreen` D-pad keys, focusable player chrome, and leanback manifest banner. **Leanback launcher and full D-pad flows are not verified** on this machine (no Android TV AVD / `adb` as of 2026-07-10).
+
+## Blocker (manual matrix)
+
+Run `I25-M01`–`M08` on a leanback TV AVD or device per [platforms.md](../features/getting-started/platforms.md#android-tv-development). `FORJA_ANDROID_TV` dart-define does not satisfy these rows.
 
 ## Dev workaround (not leanback proof)
 

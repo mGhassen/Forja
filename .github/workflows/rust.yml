@@ -32,6 +32,8 @@ jobs:
         run: |
           flutter pub get
           flutter test test/engine_smoke_test.dart
+      - name: TV shell boundary check
+        run: ./scripts/check_tv_shell_boundary.sh
 
   android-ffi:
     name: Android arm64 FFI

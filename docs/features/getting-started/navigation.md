@@ -29,8 +29,9 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 
 - Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
 - **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Matches** use TV-sized cards and focusable rows/chips (remote **Select** activates)
-- Search uses the **two-column desktop layout** on TV (results grid + detail pane)
+- Search uses the **two-column desktop layout** on TV (trending suggestions + results grid); D-pad lands on suggestions first — not the search field
 - Phone layout is unchanged — TV behavior applies only on Android TV / leanback devices
+- **Dev:** `flutter run --dart-define=FORJA_ANDROID_TV=true` forces TV profile on any Android device (layout/defaults only — not leanback launcher proof). See [Platforms](platforms.md#android-tv-development).
 
 ## Available tabs
 

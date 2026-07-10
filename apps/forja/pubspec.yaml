@@ -35,7 +35,7 @@ dependencies:
   screen_brightness: ^2.1.7
   volume_controller: ^3.4.1
   wakelock_plus: ^1.4.0
-  floating: ^5.0.0
+  floating: ^6.0.0
   android_intent_plus: ^5.1.0
   shared_preferences: ^2.5.2
   window_manager: ^0.5.1
@@ -54,6 +54,10 @@ dependencies:
     git:
       url: https://github.com/AimesSoft/media-kit.git
       path: media_kit_video
+  media_kit_libs_android_video:
+    git:
+      url: https://github.com/AimesSoft/media-kit.git
+      path: libs/android/media_kit_libs_android_video
   media_kit_libs_macos_video:
     git:
       url: https://github.com/AimesSoft/media-kit.git

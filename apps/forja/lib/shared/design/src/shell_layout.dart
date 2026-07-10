@@ -4,6 +4,10 @@ import 'package:forja/shared/design/src/shell_profile.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 
+/// True when [ShellScope] resolved the TV profile (nav-rail TV chrome).
+bool isTvProfile(BuildContext context) =>
+    ShellScope.profileOf(context) == ShellProfile.tv;
+
 /// Wide hub/search/mylist layout (nav-rail spacing, two-column search, dense grids).
 bool shellUsesWideLayout(BuildContext context) {
   final profile = ShellScope.profileOf(context);

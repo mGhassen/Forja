@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/platform/platform_channel.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:rust/rust.dart';
 
 Widget _wrapProfile({
   required ShellProfile profile,
@@ -192,4 +195,42 @@ void main() {
     );
     expect(wrapped, isA<Shortcuts>());
   });
+
+  test('PlatformChannel boot sets PlatformInfo TV alignment (R28-A01)', () async {
+    PlatformChannel.debugOverrideProfile = PlatformProfile.androidTv;
+    addTearDown(() {
+      PlatformChannel.debugOverrideProfile = null;
+      ShellTokens.nativeAndroidTvDetected = false;
+      SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    });
+
+    await PlatformChannel.initialize();
+    expect(ShellTokens.nativeAndroidTvDetected, isTrue);
+    expect(PlatformInfo.isAndroidTv, isTrue);
+  });
+
+  testWidgets(
+    'nativeAndroidTvDetected resolves TV profile on Android wide layout',
+    (tester) async {
+      if (!Platform.isAndroid) return;
+
+      ShellTokens.nativeAndroidTvDetected = true;
+      addTearDown(() => ShellTokens.nativeAndroidTvDetected = false);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: Builder(
+              builder: (context) {
+                expect(resolveShellProfile(context), ShellProfile.tv);
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+    },
+    skip: !Platform.isAndroid,
+  );
 }
