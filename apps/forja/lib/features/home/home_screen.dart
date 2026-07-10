@@ -2875,7 +2875,10 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
             compactTop: widget.compactTop,
           );
         }
-        if (snapshot.data!.isEmpty) return const SizedBox.shrink();
+        if (snapshot.data!.isEmpty) {
+          shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
+          return const SizedBox.shrink();
+        }
         final raw = snapshot.data!;
         if (_resolvedBackdrops.length < raw.length) {
           _resolveMissingBackdrops(raw);
@@ -3571,6 +3574,7 @@ class _MoodSectionState extends State<_MoodSection> {
                   icon: m.icon,
                   listIndex: i,
                   tvTabId: 'home',
+                  tvRowId: 'mood-chips',
                   onTap: () => onSelect(m.id),
                   onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
                     'home',

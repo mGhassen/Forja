@@ -87,9 +87,9 @@ void main() {
     settings.dispose();
   });
 
-  testWidgets('row down preserves column index', (tester) async {
+  testWidgets('row down restores next row focus history', (tester) async {
     final nodes = List.generate(3, (i) => FocusNode(debugLabel: 'a-$i'));
-    final nodesB = List.generate(2, (i) => FocusNode(debugLabel: 'b-$i'));
+    final nodesB = List.generate(3, (i) => FocusNode(debugLabel: 'b-$i'));
 
     for (var i = 0; i < nodes.length; i++) {
       ShellTvFocusCoordinator.registerItemNode(
@@ -117,8 +117,8 @@ void main() {
     shellTvRegisterRow(
       tabId: 'home',
       rowId: 'row-b',
-      sortOrder: 1,
-      itemCount: 2,
+      sortOrder: 2,
+      itemCount: 3,
     );
 
     await tester.pumpWidget(
@@ -140,20 +140,27 @@ void main() {
       ),
     );
     await tester.pump();
-    nodes[2].requestFocus();
+
+    ShellTvFocusCoordinator.onRowItemFocused(
+      tabId: 'home',
+      rowId: 'row-b',
+      index: 2,
+      node: nodesB[2],
+    );
+    nodes[1].requestFocus();
     await tester.pump();
 
     expect(
       ShellTvFocusCoordinator.moveVerticalInTab(
         tabId: 'home',
         rowId: 'row-a',
-        currentIndex: 2,
+        currentIndex: 1,
         down: true,
       ),
       isTrue,
     );
     await tester.pump();
-    expect(nodesB[1].hasFocus, isTrue);
+    expect(nodesB[2].hasFocus, isTrue);
 
     for (final n in [...nodes, ...nodesB]) {
       n.dispose();

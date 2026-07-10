@@ -236,6 +236,7 @@ abstract final class ShellTvFocusCoordinator {
 
   static void registerRow(ShellTvRowHandle handle) {
     final list = _rowsByTab.putIfAbsent(handle.tabId, () => []);
+    final existing = _rowHandle(handle.tabId, handle.rowId);
     list.removeWhere((r) => r.rowId == handle.rowId);
     final h = ShellTvRowHandle(
       tabId: handle.tabId,
@@ -248,7 +249,8 @@ abstract final class ShellTvFocusCoordinator {
       isLastRow: handle.isLastRow,
       onFocusUp: handle.onFocusUp,
       onFocusDown: handle.onFocusDown,
-    )..lastFocusedIndex = handle.lastFocusedIndex;
+    )..lastFocusedIndex =
+        existing?.lastFocusedIndex ?? handle.lastFocusedIndex;
     list.add(h);
     list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     _recomputeRowEdges(handle.tabId);
@@ -289,13 +291,26 @@ abstract final class ShellTvFocusCoordinator {
     return null;
   }
 
-  static ShellTvRowHandle? _rowAtOrder(String tabId, int sortOrder) {
+  static ShellTvRowHandle? _nextRow(String tabId, int currentSortOrder) {
     final list = _rowsByTab[tabId];
     if (list == null) return null;
+    ShellTvRowHandle? best;
     for (final row in list) {
-      if (row.sortOrder == sortOrder) return row;
+      if (row.sortOrder <= currentSortOrder) continue;
+      if (best == null || row.sortOrder < best.sortOrder) best = row;
     }
-    return null;
+    return best;
+  }
+
+  static ShellTvRowHandle? _prevRow(String tabId, int currentSortOrder) {
+    final list = _rowsByTab[tabId];
+    if (list == null) return null;
+    ShellTvRowHandle? best;
+    for (final row in list) {
+      if (row.sortOrder >= currentSortOrder) continue;
+      if (best == null || row.sortOrder > best.sortOrder) best = row;
+    }
+    return best;
   }
 
   static bool focusRowItem(String tabId, String rowId, int index) {
@@ -350,7 +365,7 @@ abstract final class ShellTvFocusCoordinator {
         handle.onFocusUp?.call();
         return focusHero(revealFull: true, tabId: tabId);
       }
-      final prev = _rowAtOrder(tabId, handle.sortOrder - 1);
+      final prev = _prevRow(tabId, handle.sortOrder);
       if (prev == null) return false;
       final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
       return focusRowItem(tabId, prev.rowId, target);
@@ -359,16 +374,9 @@ abstract final class ShellTvFocusCoordinator {
     if (handle.isLastRow) {
       return true; // trap — handled, no move
     }
-    final next = _rowAtOrder(tabId, handle.sortOrder + 1);
+    final next = _nextRow(tabId, handle.sortOrder);
     if (next == null) return true;
-    final target = currentIndex.clamp(0, next.itemCount - 1);
-    if (next.lastFocusedIndex > 0) {
-      return focusRowItem(
-        tabId,
-        next.rowId,
-        currentIndex.clamp(0, next.itemCount - 1),
-      );
-    }
+    final target = next.lastFocusedIndex.clamp(0, next.itemCount - 1);
     return focusRowItem(tabId, next.rowId, target);
   }
 
@@ -430,38 +438,34 @@ class ShellTvFocusMeta {
   final int? itemIndex;
   final void Function(FocusNode node)? onSave;
 
-  VoidCallback? resolveDownEdge() {
+  bool Function()? resolveDownEdge() {
     if (zone != ShellTvZone.row || rowId == null || itemIndex == null) {
       return null;
     }
     final tid = tabId;
     final rid = rowId!;
     final idx = itemIndex!;
-    return () {
-      ShellTvFocusCoordinator.moveVerticalInTab(
-        tabId: tid,
-        rowId: rid,
-        currentIndex: idx,
-        down: true,
-      );
-    };
+    return () => ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          down: true,
+        );
   }
 
-  VoidCallback? resolveUpEdge() {
+  bool Function()? resolveUpEdge() {
     if (zone != ShellTvZone.row || rowId == null || itemIndex == null) {
       return null;
     }
     final tid = tabId;
     final rid = rowId!;
     final idx = itemIndex!;
-    return () {
-      ShellTvFocusCoordinator.moveVerticalInTab(
-        tabId: tid,
-        rowId: rid,
-        currentIndex: idx,
-        down: false,
-      );
-    };
+    return () => ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          down: false,
+        );
   }
 
   void notifyFocused(FocusNode node) {

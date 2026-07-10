@@ -473,10 +473,10 @@ class TmdbApi {
     final map = <int, String>{};
     for (final raw in seasons) {
       if (raw is! Map<String, dynamic>) continue;
-      final num = (raw['season_number'] as num?)?.toInt();
+      final seasonNumber = (raw['season_number'] as num?)?.toInt();
       final poster = raw['poster_path']?.toString() ?? '';
-      if (num != null && num > 0 && poster.isNotEmpty) {
-        map[num] = poster;
+      if (seasonNumber != null && seasonNumber > 0 && poster.isNotEmpty) {
+        map[seasonNumber] = poster;
       }
     }
     return map;

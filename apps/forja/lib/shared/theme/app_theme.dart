@@ -201,8 +201,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
   void _registerTvItemNode() {
     final meta = widget.tvMeta;
-    if (meta == null ||
-        (meta.zone != ShellTvZone.row && meta.zone != ShellTvZone.grid)) {
+    if (meta == null) return;
+    if (meta.zone != ShellTvZone.row &&
+        meta.zone != ShellTvZone.grid &&
+        meta.zone != ShellTvZone.chipStrip) {
       return;
     }
     if (meta.rowId == null || meta.itemIndex == null) return;
@@ -215,8 +217,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   }
 
   void _unregisterTvItemNode(ShellTvFocusMeta? meta, {FocusNode? node}) {
-    if (meta == null ||
-        (meta.zone != ShellTvZone.row && meta.zone != ShellTvZone.grid)) {
+    if (meta == null) return;
+    if (meta.zone != ShellTvZone.row &&
+        meta.zone != ShellTvZone.grid &&
+        meta.zone != ShellTvZone.chipStrip) {
       return;
     }
     if (meta.rowId == null || meta.itemIndex == null) return;
@@ -281,8 +285,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       }
       final up = widget.tvMeta?.resolveUpEdge();
       if (up != null) {
-        up();
-        return KeyEventResult.handled;
+        if (up()) return KeyEventResult.handled;
+        return KeyEventResult.ignored;
       }
       return KeyEventResult.ignored;
     }
@@ -293,8 +297,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       }
       final down = widget.tvMeta?.resolveDownEdge();
       if (down != null) {
-        down();
-        return KeyEventResult.handled;
+        if (down()) return KeyEventResult.handled;
+        return KeyEventResult.ignored;
       }
       return KeyEventResult.ignored;
     }
