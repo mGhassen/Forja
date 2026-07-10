@@ -11,7 +11,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 12** verification |
+| **Progress** | **5 / 13** verification |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 2 | I25-T02 | `shell_adapters_test.dart` — TV profile uses nav rail via `ShellHost` | ✅ |
 | 3 | I25-T03 | `main_screen_shell_test.dart` + `platform_channel_test.dart` | ✅ |
 | 4 | I25-T04 | `check_tv_shell_boundary.sh` + `player_tv_remote_test.dart` + `shell_profile_behavior_test` TV boot | ✅ |
+| 5 | I25-T05 | `shell_tv_coordinator_test` — nav trap, row column memory, Select activate | ✅ |
 
 ---
 

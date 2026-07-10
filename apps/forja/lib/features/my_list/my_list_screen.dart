@@ -6,6 +6,7 @@ import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 class MyListScreen extends StatefulWidget {
   const MyListScreen({super.key});
@@ -44,6 +45,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('mylist');
     MyListService.changeNotifier.removeListener(_onListChanged);
     super.dispose();
   }
@@ -161,6 +163,14 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
+                    if (index == 0 && _items.isNotEmpty) {
+                      shellTvRegisterRow(
+                        tabId: 'mylist',
+                        rowId: 'grid',
+                        sortOrder: 0,
+                        itemCount: _items.length,
+                      );
+                    }
                     final item = _items[index];
                     return _MyListCard(
                       item: item,
@@ -250,6 +260,9 @@ class _MyListCard extends StatelessWidget {
       borderRadius: 12,
       gridIndex: gridIndex,
       gridColumns: gridColumns,
+      tvTabId: 'mylist',
+      tvZone: ShellTvZone.grid,
+      tvItemIndex: gridIndex,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(

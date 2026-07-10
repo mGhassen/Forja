@@ -15,6 +15,7 @@ class HomeMovieCard extends StatelessWidget {
     this.listIndex,
     this.onLeftEdge,
     this.onUpEdge,
+    this.tvRowId,
   });
 
   final Movie movie;
@@ -23,6 +24,7 @@ class HomeMovieCard extends StatelessWidget {
   final int? listIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onUpEdge;
+  final String? tvRowId;
 
   static double cardWidth(BuildContext context) => shellMovieCardWidth(context);
 
@@ -44,6 +46,8 @@ class HomeMovieCard extends StatelessWidget {
       listIndex: listIndex,
       onLeftEdge: onLeftEdge,
       onUpEdge: onUpEdge,
+      tvRowId: tvRowId,
+      tvItemIndex: listIndex,
       child: Container(
         width: cardWidth,
         height: cardHeight,

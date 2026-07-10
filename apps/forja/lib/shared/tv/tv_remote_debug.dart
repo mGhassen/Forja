@@ -4,8 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// Android TV: routes D-pad arrows through [FocusNode.focusInDirection] and logs
-/// keys/focus in debug builds.
+/// Android TV: logs D-pad keys and focus changes in debug builds.
 abstract final class TvRemoteDebug {
   static bool _installed = false;
 
@@ -15,7 +14,7 @@ abstract final class TvRemoteDebug {
     HardwareKeyboard.instance.addHandler(_onKey);
     if (kDebugMode) {
       FocusManager.instance.addListener(_onFocusChange);
-      debugPrint('[TV-KEY] debug handlers installed');
+      debugPrint('[TV-KEY] debug handlers installed (log only)');
     }
   }
 
@@ -46,43 +45,15 @@ abstract final class TvRemoteDebug {
     );
   }
 
-  static TraversalDirection? _directionFor(LogicalKeyboardKey key) {
-    return switch (key) {
-      LogicalKeyboardKey.arrowUp => TraversalDirection.up,
-      LogicalKeyboardKey.arrowDown => TraversalDirection.down,
-      LogicalKeyboardKey.arrowLeft => TraversalDirection.left,
-      LogicalKeyboardKey.arrowRight => TraversalDirection.right,
-      _ => null,
-    };
-  }
-
   static bool _onKey(KeyEvent event) {
+    if (!kDebugMode) return false;
     final primary = FocusManager.instance.primaryFocus;
-    if (kDebugMode) {
-      debugPrint(
-        '[TV-KEY] ${event.runtimeType} '
-        'logical=${event.logicalKey.keyLabel} '
-        'physical=${event.physicalKey.usbHidUsage} '
-        'focus=${_focusLabel(primary)}',
-      );
-    }
-
-    if (event is! KeyDownEvent) return false;
-
-    final direction = _directionFor(event.logicalKey);
-    if (direction == null) return false;
-    if (primary == null || primary.context == null) return false;
-
-    final moved = primary.focusInDirection(direction);
-    if (kDebugMode) {
-      final group = FocusTraversalGroup.maybeOf(primary.context!);
-      debugPrint(
-        '[TV-FOCUS] focusInDirection($direction) moved=$moved '
-        'traversalGroup=${group?.runtimeType} '
-        'from=${_focusLabel(primary)} '
-        'to=${_focusLabel(FocusManager.instance.primaryFocus)}',
-      );
-    }
-    return moved;
+    debugPrint(
+      '[TV-KEY] ${event.runtimeType} '
+      'logical=${event.logicalKey.keyLabel} '
+      'physical=${event.physicalKey.usbHidUsage} '
+      'focus=${_focusLabel(primary)}',
+    );
+    return false;
   }
 }

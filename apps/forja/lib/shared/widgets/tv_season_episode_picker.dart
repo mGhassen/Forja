@@ -28,6 +28,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     required this.onSeasonSelected,
     required this.onEpisodeSelected,
     required this.onToggleWatched,
+    this.onEpisodeFocused,
     this.seasonPosters = const {},
     this.episodeProgress = const {},
     this.customEpisodesBySeason,
@@ -44,6 +45,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final SeasonSelectCallback onSeasonSelected;
   final EpisodeSelectCallback onEpisodeSelected;
   final EpisodeWatchedToggle onToggleWatched;
+  final ValueChanged<int>? onEpisodeFocused;
   final Map<int, String> seasonPosters;
   final Map<String, Map<String, dynamic>> episodeProgress;
   final Map<int, List<Map<String, dynamic>>>? customEpisodesBySeason;
@@ -260,7 +262,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
             height: 228,
             child: NotificationListener<ScrollNotification>(
               onNotification: _absorbHorizontalScroll,
-              child: ListView.separated(
+              child: FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ListView.separated(
                 controller: _episodeScrollController,
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
@@ -296,11 +300,16 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                   positionMs: pos,
                   durationMs: dur,
                   onTap: () => widget.onEpisodeSelected(epNum),
+                  onFocused: () => widget.onEpisodeFocused?.call(epNum),
                   onToggleWatched: () =>
                       widget.onToggleWatched(widget.selectedSeason, epNum),
                   onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+                  onRightEdge: i == _visibleEpisodes.length - 1
+                      ? () {}
+                      : null,
                 );
               },
+              ),
               ),
             ),
           ),
@@ -445,7 +454,9 @@ class _EpisodeCard extends StatefulWidget {
     required this.durationMs,
     required this.onTap,
     required this.onToggleWatched,
+    this.onFocused,
     this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final int episodeNumber;
@@ -459,7 +470,9 @@ class _EpisodeCard extends StatefulWidget {
   final int durationMs;
   final VoidCallback onTap;
   final VoidCallback onToggleWatched;
+  final VoidCallback? onFocused;
   final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   static const double cardWidth = 268;
   static const double thumbRadius = 10;
@@ -492,6 +505,10 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       borderRadius: _EpisodeCard.thumbRadius,
       scaleOnFocus: ShellTokens.focusActiveScale,
       onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onFocusChange: (focused) {
+        if (focused) widget.onFocused?.call();
+      },
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),

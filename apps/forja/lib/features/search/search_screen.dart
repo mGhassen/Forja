@@ -9,6 +9,7 @@ import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// A single result section that streams in dynamically.
 class _SearchSection {
@@ -98,6 +99,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   @override
   void initState() {
     super.initState();
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'search',
+      defaultFocus: () => _firstHelperFocusNode,
+    );
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
     _loadProviders();
     _loadTrendingHelpers();
@@ -144,6 +149,12 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       }
       if (mounted) {
         setState(() => _trendingHelperTitles = titles);
+        shellTvRegisterRow(
+          tabId: 'search',
+          rowId: 'helpers',
+          sortOrder: 0,
+          itemCount: titles.length,
+        );
         if (_query.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
@@ -376,6 +387,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('search');
     ShellBus.stremioSearchNotifier.removeListener(_onExternalSearch);
     _controller.dispose();
     _debounce?.cancel();
@@ -488,6 +500,19 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   bool _isTvSearch(BuildContext context) =>
       ShellScope.metricsOf(context).usesTvDensity;
+
+  void _syncHelperResultsRow(int count) {
+    if (count <= 0) {
+      shellTvUnregisterRow(tabId: 'search', rowId: 'helper-results');
+      return;
+    }
+    shellTvRegisterRow(
+      tabId: 'search',
+      rowId: 'helper-results',
+      sortOrder: 0,
+      itemCount: count,
+    );
+  }
 
   bool _focusFirstHelper() {
     if (!_firstHelperFocusNode.canRequestFocus) return false;
@@ -722,6 +747,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       }
       if (results.isEmpty) return const SizedBox.shrink();
 
+      _syncHelperResultsRow(results.length);
+
       return ListView.separated(
         clipBehavior: Clip.none,
         padding: const EdgeInsets.only(right: 8, bottom: 8),
@@ -734,6 +761,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             onTap: () => _focusResultCard(index),
             borderRadius: 4,
             navLeftAlways: true,
+            listIndex: index,
+            tvTabId: 'search',
+            tvRowId: 'helper-results',
+            tvItemIndex: index,
             focusNode: index == 0 ? _firstHelperFocusNode : null,
             onUpEdge: index == 0 ? () => _focusNode.requestFocus() : null,
             onFocusChange: (focused) {
@@ -775,6 +806,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           onTap: () => _applyHelperQuery(title),
           borderRadius: 4,
           navLeftAlways: true,
+          listIndex: index,
+          tvTabId: 'search',
+          tvRowId: 'helpers',
+          tvItemIndex: index,
           focusNode: index == 0 ? _firstHelperFocusNode : null,
           onUpEdge: index == 0 ? () => _focusNode.requestFocus() : null,
           child: Padding(
@@ -850,6 +885,15 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                       viewportWidth: constraints.maxWidth,
                       itemStride: _SearchFilmCard.cardWidth(context) + 14,
                     );
+
+              if (tv && results.isNotEmpty) {
+                shellTvRegisterRow(
+                  tabId: 'search',
+                  rowId: 'results',
+                  sortOrder: 1,
+                  itemCount: results.length,
+                );
+              }
 
               return GridView.builder(
                 clipBehavior: Clip.none,
@@ -1167,6 +1211,9 @@ class _SearchFilmCard extends StatelessWidget {
       focusNode: focusNode,
       gridIndex: gridIndex,
       gridColumns: gridColumns,
+      tvTabId: 'search',
+      tvZone: ShellTvZone.grid,
+      tvItemIndex: gridIndex,
       onFocusChange: onFocusChange,
       child: GestureDetector(
         onDoubleTap: onOpen,

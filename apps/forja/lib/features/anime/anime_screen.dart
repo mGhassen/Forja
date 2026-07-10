@@ -18,6 +18,8 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 class AnimeScreen extends StatefulWidget {
   const AnimeScreen({super.key});
@@ -74,6 +76,18 @@ class _AnimeScreenState extends State<AnimeScreen>
   @override
   void initState() {
     super.initState();
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'anime',
+      defaultFocus: () => ShellTvFocus.homeHeroPlay,
+      heroReveal: () {
+        if (!_scroll.hasClients) return;
+        _scroll.animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      },
+    );
     WidgetsBinding.instance.addObserver(this);
     AppTheme.themeNotifier.addListener(_onTheme);
     AnimeService.watchHistoryRevision.addListener(_onHistoryChanged);
@@ -82,6 +96,7 @@ class _AnimeScreenState extends State<AnimeScreen>
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('anime');
     WidgetsBinding.instance.removeObserver(this);
     AppTheme.themeNotifier.removeListener(_onTheme);
     AnimeService.watchHistoryRevision.removeListener(_onHistoryChanged);
@@ -275,7 +290,12 @@ class _AnimeScreenState extends State<AnimeScreen>
         .toList();
   }
 
-  HubPosterCard _animePosterCard(AnimeCard anime, {int? rank, int? listIndex}) {
+  HubPosterCard _animePosterCard(
+    AnimeCard anime, {
+    int? rank,
+    int? listIndex,
+    String? tvRowId,
+  }) {
     final subtitle = [
       if (anime.seasonYear != null) '${anime.seasonYear}',
       if (anime.episodes != null) '${anime.episodes} eps',
@@ -289,6 +309,7 @@ class _AnimeScreenState extends State<AnimeScreen>
       badge: anime.format,
       rank: rank,
       listIndex: listIndex,
+      tvRowId: tvRowId,
       onTap: () => _openDetails(anime),
     );
   }
@@ -359,8 +380,18 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Trending Now',
                                   future: _trendingFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'trending',
+                                  tvRowOrder: 0,
+                                  tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
+                                    tabId: 'anime',
+                                  ),
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime, listIndex: index),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'trending',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -368,8 +399,15 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top Airing',
                                   future: _topAiringFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'top-airing',
+                                  tvRowOrder: 1,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime, listIndex: index),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'top-airing',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -378,11 +416,15 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   title: 'Top 10 Today',
                                   future: _top10Future,
                                   showRank: true,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'top-10',
+                                  tvRowOrder: 2,
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
                                     rank: index + 1,
                                     listIndex: index,
+                                    tvRowId: 'top-10',
                                   ),
                                 ),
                                 isFirstAfterHero: false,
@@ -391,8 +433,15 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Most Popular',
                                   future: _mostPopularFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'most-popular',
+                                  tvRowOrder: 3,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime, listIndex: index),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'most-popular',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -400,8 +449,15 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Latest Episodes',
                                   future: _recentEpisodesFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'latest-eps',
+                                  tvRowOrder: 4,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime, listIndex: index),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'latest-eps',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -409,8 +465,15 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top Rated',
                                   future: _topRatedFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'top-rated',
+                                  tvRowOrder: 5,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime, listIndex: index),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'top-rated',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -418,8 +481,15 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Most Favorited',
                                   future: _mostFavoriteFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'most-favorited',
+                                  tvRowOrder: 6,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime, listIndex: index),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'most-favorited',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -427,8 +497,15 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Recently Completed',
                                   future: _latestCompletedFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'recently-completed',
+                                  tvRowOrder: 7,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime, listIndex: index),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'recently-completed',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),

@@ -4,6 +4,7 @@ import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 typedef ForjaInteractiveBuilder = Widget Function(bool hover, bool pressed);
@@ -96,8 +97,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
         final custom = widget.onKeyEvent?.call(node, event);
         if (custom == KeyEventResult.handled) return KeyEventResult.handled;
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        if (event.logicalKey == LogicalKeyboardKey.enter ||
-            event.logicalKey == LogicalKeyboardKey.select) {
+        if (shellTvIsActivateKey(event)) {
           widget.onTap!();
           return KeyEventResult.handled;
         }

@@ -31,6 +31,8 @@ abstract final class ShellTvFocus {
     return true;
   }
 
+  static FocusNode? navNode(String id) => _navNodes[id];
+
   static bool focusHomeHeroPlay() {
     final node = homeHeroPlay;
     if (node == null || !node.canRequestFocus) return false;

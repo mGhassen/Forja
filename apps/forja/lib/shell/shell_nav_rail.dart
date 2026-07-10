@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -132,6 +133,26 @@ class _ShellNavRailState extends State<ShellNavRail> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _syncNavOrder();
+  }
+
+  @override
+  void didUpdateWidget(covariant ShellNavRail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncNavOrder();
+  }
+
+  void _syncNavOrder() {
+    final order = [
+      ..._navIds,
+      if (_indexForId('settings') != null) 'settings',
+    ];
+    ShellTvFocusCoordinator.setNavOrder(order);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final settingsIndex = _indexForId('settings');
     final metrics = ShellScope.metricsOf(context);
@@ -161,7 +182,9 @@ class _ShellNavRailState extends State<ShellNavRail> {
       );
     }
 
-    return Container(
+    return FocusTraversalGroup(
+      policy: OrderedTraversalPolicy(),
+      child: Container(
       width: metrics.navRailWidth,
       color: AppTheme.bgDark,
       child: SafeArea(
@@ -227,6 +250,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
               SizedBox(height: metrics.navRailBottomPadding),
           ],
         ),
+      ),
       ),
     );
   }
@@ -445,13 +469,34 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         onFocusChange: (focused) {
           setState(() => _focused = focused);
           widget.onFocusChanged();
+          if (focused && ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+            final tabId = ShellTvFocus.currentNavTabId ?? widget.destination.id;
+            ShellTvFocusCoordinator.saveFocus(
+              tabId,
+              const ShellTvFocusMemory(zone: ShellTvZone.nav),
+            );
+          }
         },
         onKeyEvent: (node, event) {
           if (event is! KeyDownEvent) return KeyEventResult.ignored;
           if (event.logicalKey == LogicalKeyboardKey.enter ||
-              event.logicalKey == LogicalKeyboardKey.select) {
+              event.logicalKey == LogicalKeyboardKey.select ||
+              event.logicalKey == LogicalKeyboardKey.space ||
+              event.logicalKey == LogicalKeyboardKey.numpadEnter) {
             widget.onTap();
             return KeyEventResult.handled;
+          }
+          if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+            final arrow = event.logicalKey;
+            if (arrow == LogicalKeyboardKey.arrowUp ||
+                arrow == LogicalKeyboardKey.arrowDown ||
+                arrow == LogicalKeyboardKey.arrowLeft ||
+                arrow == LogicalKeyboardKey.arrowRight) {
+              if (ShellTvFocusCoordinator.handleNavKey(arrow)) {
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.handled;
+            }
           }
           return KeyEventResult.ignored;
         },

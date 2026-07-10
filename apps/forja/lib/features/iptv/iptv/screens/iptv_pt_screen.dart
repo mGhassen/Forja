@@ -13,6 +13,7 @@ import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
@@ -69,6 +70,7 @@ class _IptvPtScreenState extends State<IptvPtScreen> with ShellTabRefresh<IptvPt
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('iptv');
     _ctrl.removeListener(_syncShellNav);
     _ctrl.dispose();
     super.dispose();

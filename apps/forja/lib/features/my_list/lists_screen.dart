@@ -5,6 +5,7 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 class ListsScreen extends StatefulWidget {
   const ListsScreen({super.key});
@@ -224,6 +225,8 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
                                 onTap: () => _tabController.animateTo(i),
                                 borderRadius: 8,
                                 listIndex: i,
+                                tvTabId: 'mylist',
+                                tvZone: ShellTvZone.chipStrip,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 10),
                                   decoration: BoxDecoration(
@@ -411,6 +414,8 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
       onTap: onTap,
       borderRadius: 14,
       navLeftAlways: true,
+      tvTabId: 'mylist',
+      tvZone: ShellTvZone.row,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -689,6 +694,8 @@ Widget _movieListTile({
     context: context,
     onTap: onTap,
     borderRadius: 14,
+    tvTabId: 'mylist',
+    tvZone: ShellTvZone.row,
     child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

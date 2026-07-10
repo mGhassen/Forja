@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **0 / 4** acceptance (slice 2 mobile) |
-| **Current slice** | Architecture contract + CI enforced — leanback manual smoke blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md)) |
+| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **0 / 4** acceptance (slice 2 mobile) |
+| **Current slice** | TV D-pad coordinator shipped in code — leanback manual smoke blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -53,6 +53,17 @@
 | 16 | R28-A16 | Search, anime, asian drama, mylist, lists, settings — TV focus + wide layout | ✅ |
 | 17 | R28-A17 | IPTV stream cards + live matches cards/sheet — D-pad focus on TV | ✅ |
 | 18 | R28-A18 | `shell_tv_tabs_test` + details collection rows policy-gated | ✅ |
+
+---
+
+## Acceptance (slice 1c — TV D-pad coordinator)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 19 | R28-A19 | `ShellTvFocusCoordinator` — nav vertical trap, per-tab memory, row column preserve, hero LEFT → active nav tab | ✅ |
+| 20 | R28-A20 | In-scope tabs register rows/zones; `FocusableControl` / `shellFocusableTap` unified Select keys; `TvRemoteDebug` log-only | ✅ |
+| 21 | R28-A21 | `shell_tv_coordinator_test` — nav trap, hero nav, row index, activate keys | ✅ |
+| 22 | R28-A22 | Nav RIGHT restores tab focus; tab switch in rail does not steal content focus until RIGHT | ✅ |
 
 ---
 

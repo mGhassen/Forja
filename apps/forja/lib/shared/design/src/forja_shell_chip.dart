@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Flat shell chip fill + border — matches sources panel / home filter style.
@@ -33,6 +34,8 @@ class ForjaShellChip extends StatelessWidget {
     this.radius = 20,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     this.fontSize = 12.5,
+    this.listIndex,
+    this.tvTabId,
   });
 
   final String label;
@@ -43,6 +46,8 @@ class ForjaShellChip extends StatelessWidget {
   final double radius;
   final EdgeInsetsGeometry padding;
   final double fontSize;
+  final int? listIndex;
+  final String? tvTabId;
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +89,9 @@ class ForjaShellChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: radius,
         scaleOnFocus: 1.0,
+        listIndex: listIndex,
+        tvTabId: tvTabId,
+        tvZone: ShellTvZone.chipStrip,
         child: Material(
           color: Colors.transparent,
           borderRadius: borderRadius,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 class HubCatalogSection<T> extends StatefulWidget {
   const HubCatalogSection({
@@ -12,6 +14,10 @@ class HubCatalogSection<T> extends StatefulWidget {
     this.items,
     this.compactTop = false,
     this.showRank = false,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvRowOrder = 0,
+    this.tvFocusUp,
   }) : assert(future != null || items != null);
 
   final String title;
@@ -19,6 +25,10 @@ class HubCatalogSection<T> extends StatefulWidget {
   final List<T>? items;
   final bool compactTop;
   final bool showRank;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int tvRowOrder;
+  final VoidCallback? tvFocusUp;
   final HubPosterCard Function(BuildContext context, T item, int index)
       cardBuilder;
 
@@ -43,8 +53,25 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
 
   @override
   void dispose() {
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    if (tabId != null && widget.tvRowId != null) {
+      shellTvUnregisterRow(tabId: tabId, rowId: widget.tvRowId!);
+    }
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _syncTvRow(int itemCount) {
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    final rowId = widget.tvRowId;
+    if (tabId == null || rowId == null || itemCount <= 0) return;
+    shellTvRegisterRow(
+      tabId: tabId,
+      rowId: rowId,
+      sortOrder: widget.tvRowOrder,
+      itemCount: itemCount,
+      onFocusUp: widget.tvFocusUp,
+    );
   }
 
   double _sectionTitleTop(BuildContext context) {
@@ -56,6 +83,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
 
   Widget _buildRow(List<T> list) {
     if (list.isEmpty) return const SizedBox.shrink();
+    _syncTvRow(list.length);
 
     final sectionTop = _sectionTitleTop(context);
     final metrics = ShellScope.metricsOf(context);

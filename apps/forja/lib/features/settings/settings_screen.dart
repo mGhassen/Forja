@@ -24,6 +24,7 @@ import 'package:forja/shell/nav_config.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// Settings tab — RFC-024 R24-A13: local prefs only; no ShellTabRefresh / API stale policy.
 class SettingsScreen extends StatefulWidget {
@@ -310,6 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('settings');
     NuvioService.changeNotifier.removeListener(_loadNuvioAddons);
     _addonController.dispose();
     _nuvioController.dispose();
@@ -3068,6 +3070,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       onTap: () => onChanged(!value),
       scaleOnFocus: 1.0,
       navLeftAlways: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
       child: content,
     );
   }
@@ -3119,6 +3123,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       onTap: () {},
       scaleOnFocus: 1.0,
       navLeftAlways: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
       child: content,
     );
   }

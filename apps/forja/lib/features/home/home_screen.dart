@@ -26,6 +26,7 @@ import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
@@ -647,12 +648,22 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  void _scrollHeroIntoView() {
+    if (!_homeScrollController.hasClients) return;
+    _homeScrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   void _revealedHeroPlayFocus() {
     void focusPlay() {
       if (!mounted) return;
       ShellTvFocus.focusHomeHeroPlay();
     }
 
+    _scrollHeroIntoView();
     if (!_homeScrollController.hasClients) {
       focusPlay();
       return;
@@ -670,6 +681,11 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'home',
+      defaultFocus: () => _tvHeroPlayFocus,
+      heroReveal: _scrollHeroIntoView,
+    );
     _homeScrollController.addListener(_syncHomeScrollOffset);
     _resetHomeCategoryFeeds(useBootCache: true);
 
@@ -1367,6 +1383,8 @@ class _HomeScreenState extends State<HomeScreen>
                     onMovieTap: _openDetails,
                     compactTop: true,
                     tvFocusUp: _revealedHeroPlayFocus,
+                    tvRowId: 'featured',
+                    tvRowOrder: 0,
                   ),
                   isFirstAfterHero: false,
                 ),
@@ -1378,13 +1396,19 @@ class _HomeScreenState extends State<HomeScreen>
                     future: _popularFuture,
                     onMovieTap: _openDetails,
                     showRank: true,
+                    tvRowId: 'popular',
+                    tvRowOrder: 1,
                   ),
                   isFirstAfterHero: false,
                 ),
 
               if (usesShellHome)
                 _homeRowSliver(
-                  const _ContinueWatchingSection(compactTop: false),
+                  _ContinueWatchingSection(
+                    compactTop: false,
+                    tvRowId: 'continue',
+                    tvRowOrder: 2,
+                  ),
                   isFirstAfterHero: false,
                 ),
 
@@ -1397,6 +1421,7 @@ class _HomeScreenState extends State<HomeScreen>
                   future: _moodFuture,
                   onMovieTap: _openDetails,
                   compactTop: false,
+                  tvRowOrder: 3,
                 ),
                 isFirstAfterHero: false,
               ),
@@ -1479,7 +1504,13 @@ class _HomeScreenState extends State<HomeScreen>
                 )
               else if (_traktRecommendations.isNotEmpty)
                 _homeRowSliver(
-                  _StaticMovieSection(title: 'Recommended for You', movies: _traktRecommendations, onMovieTap: _openDetails),
+                  _StaticMovieSection(
+                    title: 'Recommended for You',
+                    movies: _traktRecommendations,
+                    onMovieTap: _openDetails,
+                    tvRowId: 'trakt-recs',
+                    tvRowOrder: 11,
+                  ),
                   isFirstAfterHero: false,
                 ),
 
@@ -1493,7 +1524,13 @@ class _HomeScreenState extends State<HomeScreen>
                 )
               else if (_traktUpcomingShows.isNotEmpty)
                 _homeRowSliver(
-                  _StaticMovieSection(title: 'Upcoming Schedule', movies: _traktUpcomingShows, onMovieTap: _openDetails),
+                  _StaticMovieSection(
+                    title: 'Upcoming Schedule',
+                    movies: _traktUpcomingShows,
+                    onMovieTap: _openDetails,
+                    tvRowId: 'trakt-shows',
+                    tvRowOrder: 12,
+                  ),
                   isFirstAfterHero: false,
                 ),
 
@@ -1506,13 +1543,25 @@ class _HomeScreenState extends State<HomeScreen>
                 )
               else if (_traktUpcomingMovies.isNotEmpty)
                 _homeRowSliver(
-                  _StaticMovieSection(title: 'Upcoming Movies', movies: _traktUpcomingMovies, onMovieTap: _openDetails),
+                  _StaticMovieSection(
+                    title: 'Upcoming Movies',
+                    movies: _traktUpcomingMovies,
+                    onMovieTap: _openDetails,
+                    tvRowId: 'trakt-movies',
+                    tvRowOrder: 13,
+                  ),
                   isFirstAfterHero: false,
                 ),
 
               // New Releases
               _homeRowSliver(
-                _MovieSection(title: 'New Releases', future: _nowPlayingFuture, onMovieTap: _openDetails),
+                _MovieSection(
+                  title: 'New Releases',
+                  future: _nowPlayingFuture,
+                  onMovieTap: _openDetails,
+                  tvRowId: 'new-releases',
+                  tvRowOrder: 20,
+                ),
                 isFirstAfterHero: false,
               ),
 
@@ -2147,8 +2196,13 @@ class _HomeScreenState extends State<HomeScreen>
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
       onKeyEvent: policy.heroPlayAutoFocus
           ? (node, event) {
-              if (event is KeyDownEvent &&
-                  event.logicalKey == LogicalKeyboardKey.arrowUp) {
+              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                if (ShellTvFocusCoordinator.focusActiveNavTab()) {
+                  return KeyEventResult.handled;
+                }
+              }
+              if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
                 if (ShellTvFocus.focusHomeSearch()) {
                   return KeyEventResult.handled;
                 }
@@ -2205,6 +2259,8 @@ class _MovieSection extends StatefulWidget {
   final bool compactTop;
   final bool showRank;
   final VoidCallback? tvFocusUp;
+  final String? tvRowId;
+  final int tvRowOrder;
 
   const _MovieSection({
     super.key,
@@ -2214,6 +2270,8 @@ class _MovieSection extends StatefulWidget {
     this.compactTop = false,
     this.showRank = false,
     this.tvFocusUp,
+    this.tvRowId,
+    this.tvRowOrder = 0,
   });
 
   static double sectionHeight(
@@ -2234,9 +2292,11 @@ class _MovieSection extends StatefulWidget {
 
 class _MovieSectionState extends State<_MovieSection> {
   final ScrollController _scrollController = ScrollController();
+  String get _rowId => widget.tvRowId ?? widget.title;
 
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _scrollController.dispose();
     super.dispose();
   }
@@ -2264,6 +2324,14 @@ class _MovieSectionState extends State<_MovieSection> {
           return const SizedBox.shrink();
         }
 
+        shellTvRegisterRow(
+          tabId: 'home',
+          rowId: _rowId,
+          sortOrder: widget.tvRowOrder,
+          itemCount: movies.length,
+          onFocusUp: widget.tvFocusUp,
+        );
+
         final sectionTop = _homeSectionTitleTop(
           context,
           compactTop: widget.compactTop,
@@ -2290,14 +2358,12 @@ class _MovieSectionState extends State<_MovieSection> {
                 separatorBuilder: (_, _) =>
                     SizedBox(width: widget.showRank ? 6 : 14),
                 itemBuilder: (context, index) {
-                  final policy = ShellScope.inputPolicyOf(context);
-                  final tvNav = policy.useFocusableMoodChips;
                   return HomeMovieCard(
                     movie: movies[index],
                     onTap: () => widget.onMovieTap(movies[index]),
                     rank: widget.showRank ? index + 1 : null,
                     listIndex: index,
-                    onUpEdge: tvNav && index == 0 ? widget.tvFocusUp : null,
+                    tvRowId: _rowId,
                   );
                 },
               ),
@@ -2314,11 +2380,15 @@ class _StaticMovieSection extends StatefulWidget {
   final String title;
   final List<Movie> movies;
   final Function(Movie) onMovieTap;
+  final String? tvRowId;
+  final int tvRowOrder;
 
   const _StaticMovieSection({
     required this.title,
     required this.movies,
     required this.onMovieTap,
+    this.tvRowId,
+    this.tvRowOrder = 10,
   });
 
   @override
@@ -2327,9 +2397,11 @@ class _StaticMovieSection extends StatefulWidget {
 
 class _StaticMovieSectionState extends State<_StaticMovieSection> {
   final ScrollController _scrollController = ScrollController();
+  String get _rowId => widget.tvRowId ?? widget.title;
 
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _scrollController.dispose();
     super.dispose();
   }
@@ -2337,6 +2409,12 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
   @override
   Widget build(BuildContext context) {
     if (widget.movies.isEmpty) return const SizedBox.shrink();
+    shellTvRegisterRow(
+      tabId: 'home',
+      rowId: _rowId,
+      sortOrder: widget.tvRowOrder,
+      itemCount: widget.movies.length,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2356,6 +2434,7 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
               movie: widget.movies[index],
               onTap: () => widget.onMovieTap(widget.movies[index]),
               listIndex: index,
+              tvRowId: _rowId,
             ),
           ),
           ),
@@ -2659,8 +2738,14 @@ Future<void> resumePlaybackFromHistory(
 
 class _ContinueWatchingSection extends StatefulWidget {
   final bool compactTop;
+  final String? tvRowId;
+  final int tvRowOrder;
 
-  const _ContinueWatchingSection({this.compactTop = false});
+  const _ContinueWatchingSection({
+    this.compactTop = false,
+    this.tvRowId,
+    this.tvRowOrder = 2,
+  });
 
   @override
   State<_ContinueWatchingSection> createState() => _ContinueWatchingSectionState();
@@ -2670,6 +2755,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
   final ScrollController _scrollController = ScrollController();
   String? _loadingItemId;
   final Map<int, String> _resolvedBackdrops = {};
+  String get _rowId => widget.tvRowId ?? 'continue-watching';
 
   @override
   void initState() {
@@ -2679,6 +2765,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
 
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _scrollController.dispose();
     super.dispose();
   }
@@ -2813,6 +2900,13 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
           if (seen.add(key)) history.add(item);
         }
 
+        shellTvRegisterRow(
+          tabId: 'home',
+          rowId: _rowId,
+          sortOrder: widget.tvRowOrder,
+          itemCount: history.length,
+        );
+
         final titleTop = _homeSectionTitleTop(
           context,
           compactTop: widget.compactTop,
@@ -2840,6 +2934,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
                   final itemId = historyItem['uniqueId'] as String;
                   return _HistoryCard(
                     listIndex: index,
+                    tvRowId: _rowId,
                     item: historyItem,
                     resolvedBackdropPath:
                         _resolvedBackdrops[historyItem['tmdbId'] as int?],
@@ -2866,6 +2961,7 @@ class _HistoryCard extends StatefulWidget {
   final VoidCallback onInfo;
   final bool isLoading;
   final int listIndex;
+  final String? tvRowId;
 
   const _HistoryCard({
     required this.item,
@@ -2874,6 +2970,7 @@ class _HistoryCard extends StatefulWidget {
     required this.onRemove,
     required this.onInfo,
     required this.listIndex,
+    this.tvRowId,
     this.isLoading = false,
   });
 
@@ -2940,6 +3037,8 @@ class _HistoryCardState extends State<_HistoryCard> {
       context: context,
       onTap: widget.isLoading ? null : widget.onTap,
       listIndex: widget.listIndex,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.listIndex,
       borderRadius: 14,
       scaleOnFocus: 1.0,
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -3176,8 +3275,14 @@ class _StremioCatalogSection extends StatefulWidget {
 class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
   final ScrollController _scrollController = ScrollController();
 
+  String get _rowId {
+    final cat = widget.catalog;
+    return 'stremio-${cat['addonBaseUrl']}-${cat['catalogId']}';
+  }
+
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _scrollController.dispose();
     super.dispose();
   }
@@ -3187,6 +3292,13 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
     final cat = widget.catalog;
     final addonName = cat['addonName'] as String;
     final catalogName = cat['catalogName'] as String;
+    final itemCount = widget.items.length.clamp(0, 20);
+    shellTvRegisterRow(
+      tabId: 'home',
+      rowId: _rowId,
+      sortOrder: 15,
+      itemCount: itemCount,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3236,22 +3348,25 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
         ),
         SizedBox(
           height: HomeMovieCard.cardHeight(context),
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: widget.items.length.clamp(0, 20),
+            itemCount: itemCount,
             separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
               final item = widget.items[index];
               return _StremioCatalogCard(
                 item: item,
                 listIndex: index,
+                tvRowId: _rowId,
                 onTap: () => widget.onItemTap(item),
               );
             },
+          ),
           ),
         ),
       ],
@@ -3262,12 +3377,14 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
 class _StremioCatalogCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final int? listIndex;
+  final String? tvRowId;
   final VoidCallback onTap;
 
   const _StremioCatalogCard({
     required this.item,
     required this.onTap,
     this.listIndex,
+    this.tvRowId,
   });
 
   @override
@@ -3278,11 +3395,14 @@ class _StremioCatalogCard extends StatelessWidget {
     final cardWidth = HomeMovieCard.cardWidth(context);
     final cardHeight = HomeMovieCard.cardHeight(context);
 
-    return FocusableControl(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
       borderRadius: 14,
       scaleOnFocus: 1.05,
-      onLeftEdge: shellTvNavLeftEdge(context, listIndex: listIndex ?? -1),
+      listIndex: listIndex,
+      tvRowId: tvRowId,
+      tvItemIndex: listIndex,
       child: Container(
         width: cardWidth,
         height: cardHeight,
@@ -3383,6 +3503,7 @@ class _MoodSection extends StatefulWidget {
   final Future<List<Movie>>? future;
   final Function(Movie) onMovieTap;
   final bool compactTop;
+  final int tvRowOrder;
 
   const _MoodSection({
     required this.moods,
@@ -3391,6 +3512,7 @@ class _MoodSection extends StatefulWidget {
     required this.future,
     required this.onMovieTap,
     this.compactTop = false,
+    this.tvRowOrder = 3,
   });
 
   @override
@@ -3542,21 +3664,31 @@ class _MoodSectionState extends State<_MoodSection> {
                 ),
               );
             }
+            final count = movies.length.clamp(0, 20);
+            shellTvRegisterRow(
+              tabId: 'home',
+              rowId: 'mood-results',
+              sortOrder: widget.tvRowOrder,
+              itemCount: count,
+            );
             return SizedBox(
               height: HomeMovieCard.cardHeight(context),
-              child: ListView.separated(
+              child: FocusTraversalGroup(
+                child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _resultsCtrl,
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                itemCount: movies.length.clamp(0, 20),
+                itemCount: count,
                 separatorBuilder: (_, _) => const SizedBox(width: 14),
                 itemBuilder: (context, i) => HomeMovieCard(
                   movie: movies[i],
                   onTap: () => onMovieTap(movies[i]),
                   listIndex: i,
+                  tvRowId: 'mood-results',
                 ),
+              ),
               ),
             );
           },

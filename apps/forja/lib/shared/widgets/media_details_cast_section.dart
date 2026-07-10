@@ -65,7 +65,9 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
         ],
         SizedBox(
           height: MediaDetailsCastSection._rowHeight,
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -144,6 +146,7 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
                 ),
               );
             },
+          ),
           ),
         ),
       ],

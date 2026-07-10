@@ -6,6 +6,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/webview/forja_webview_settings.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -257,6 +258,13 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     _load();
   }
 
+  @override
+  void dispose() {
+    ShellTvFocusCoordinator.clearTab('live_matches');
+    _tabController?.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; _sportFilter = 'all'; });
     if (_provider == _DataProvider.damiTv) {
@@ -348,12 +356,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       ? _damiTvStreams
       : _damiTvStreams.where((s) => s.categoryName == _sportFilter).toList();
 
-  @override
-  void dispose() {
-    _tabController?.dispose();
-    super.dispose();
-  }
-
   // ── build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -392,6 +394,32 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   }
 
   Widget _buildSportTabs() {
+    final policy = ShellScope.inputPolicyOf(context);
+    if (policy.useFocusableMoodChips && _tabController != null) {
+      final labels = [
+        'All',
+        ..._sports.map((s) => s.name),
+      ];
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            for (var i = 0; i < labels.length; i++)
+              Padding(
+                padding: EdgeInsets.only(right: i < labels.length - 1 ? 8 : 0),
+                child: ForjaShellChip(
+                  label: labels[i],
+                  selected: _tabController!.index == i,
+                  onTap: () => _tabController!.animateTo(i),
+                  listIndex: i,
+                  tvTabId: 'live_matches',
+                ),
+              ),
+          ],
+        ),
+      );
+    }
     final tabs = [
       const Tab(text: 'All'),
       ..._sports.map((s) => Tab(text: s.name)),
@@ -717,6 +745,9 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
       borderRadius: 16,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
+      tvTabId: 'live_matches',
+      tvZone: ShellTvZone.grid,
+      tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
@@ -840,6 +871,9 @@ class _CdnSportCardState extends State<_CdnSportCard> {
       borderRadius: 16,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
+      tvTabId: 'live_matches',
+      tvZone: ShellTvZone.grid,
+      tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
@@ -989,6 +1023,8 @@ class _CdnChannelSheet extends StatelessWidget {
             onTap: () => onChannelSelected(ch),
             borderRadius: 12,
             navLeftAlways: true,
+            tvTabId: 'live_matches',
+            tvZone: ShellTvZone.row,
             child: ListTile(
             leading: ch.image.isNotEmpty
                 ? CachedNetworkImage(imageUrl: ch.image, width: 32, height: 32, fit: BoxFit.contain,
@@ -1150,6 +1186,9 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       borderRadius: 16,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
+      tvTabId: 'live_matches',
+      tvZone: ShellTvZone.grid,
+      tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(

@@ -3,7 +3,10 @@ import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
@@ -68,6 +71,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   @override
   void initState() {
     super.initState();
+    ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
     _startTimer();
   }
 
@@ -82,6 +86,9 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   @override
   void dispose() {
     _timer?.cancel();
+    if (ShellTvFocus.homeHeroPlay == _tvHeroPlayFocus) {
+      ShellTvFocus.homeHeroPlay = null;
+    }
     _controller.dispose();
     _tvHeroPlayFocus.dispose();
     super.dispose();
@@ -607,6 +614,17 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       label: 'Play',
       onTap: slide.onPlay,
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+      onKeyEvent: tvNav
+          ? (node, event) {
+              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                if (ShellTvFocusCoordinator.focusActiveNavTab()) {
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            }
+          : null,
     );
     return HeroPillActionRow(
       children: [

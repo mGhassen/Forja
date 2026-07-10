@@ -19,6 +19,8 @@ import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 class AsianDramaScreen extends StatefulWidget {
   const AsianDramaScreen({super.key});
@@ -45,6 +47,18 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   @override
   void initState() {
     super.initState();
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'asian_drama',
+      defaultFocus: () => ShellTvFocus.homeHeroPlay,
+      heroReveal: () {
+        if (!_scroll.hasClients) return;
+        _scroll.animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      },
+    );
     WidgetsBinding.instance.addObserver(this);
     AppTheme.themeNotifier.addListener(_onTheme);
     KissKhService.watchHistoryRevision.addListener(_onHistoryChanged);
@@ -53,6 +67,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('asian_drama');
     WidgetsBinding.instance.removeObserver(this);
     AppTheme.themeNotifier.removeListener(_onTheme);
     KissKhService.watchHistoryRevision.removeListener(_onHistoryChanged);
@@ -198,7 +213,12 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     );
   }
 
-  HubPosterCard _dramaPosterCard(KdramaCard card, {int? rank, int? listIndex}) {
+  HubPosterCard _dramaPosterCard(
+    KdramaCard card, {
+    int? rank,
+    int? listIndex,
+    String? tvRowId,
+  }) {
     final subtitle = [
       if (card.year != null) card.year!,
       if (card.cardMediaLabel != null) card.cardMediaLabel!,
@@ -210,6 +230,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       badge: card.label,
       rank: rank,
       listIndex: listIndex,
+      tvRowId: tvRowId,
       onTap: () => _openDetails(card),
     );
   }
@@ -275,8 +296,19 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       title: 'Latest Update',
                                       items: _feed!.latest,
                                       compactTop: _continueWatching.isEmpty,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'latest',
+                                      tvRowOrder: 0,
+                                      tvFocusUp: () =>
+                                          ShellTvFocusCoordinator.focusHero(
+                                        tabId: 'asian_drama',
+                                      ),
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card, listIndex: index),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'latest',
+                                      ),
                                     ),
                                     isFirstAfterHero: _continueWatching.isEmpty,
                                   ),
@@ -285,8 +317,15 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Trending',
                                       items: _feed!.trending,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'trending',
+                                      tvRowOrder: 1,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card, listIndex: index),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'trending',
+                                      ),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
@@ -296,11 +335,15 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       title: 'Top Rated',
                                       items: _feed!.topRated,
                                       showRank: true,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'top-rated',
+                                      tvRowOrder: 2,
                                       cardBuilder: (context, card, index) =>
                                           _dramaPosterCard(
                                         card,
                                         rank: index + 1,
                                         listIndex: index,
+                                        tvRowId: 'top-rated',
                                       ),
                                     ),
                                     isFirstAfterHero: false,
@@ -310,8 +353,15 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Most Viewed',
                                       items: _feed!.mostViewed,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'most-viewed',
+                                      tvRowOrder: 3,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card, listIndex: index),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'most-viewed',
+                                      ),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
@@ -320,8 +370,15 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Anime',
                                       items: _feed!.anime,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'anime',
+                                      tvRowOrder: 4,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card, listIndex: index),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'anime',
+                                      ),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
@@ -330,8 +387,15 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Upcoming',
                                       items: _feed!.upcoming,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'upcoming',
+                                      tvRowOrder: 5,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card, listIndex: index),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'upcoming',
+                                      ),
                                     ),
                                     isFirstAfterHero: false,
                                   ),

@@ -4,6 +4,7 @@ import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Fixed Forja theme descriptor (single preset, not user-selectable).
@@ -126,8 +127,12 @@ class FocusableControl extends StatefulWidget {
   final double scaleOnFocus;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onRightEdge;
   final ValueChanged<bool>? onFocusChange;
   final FocusNode? focusNode;
+  final ShellTvFocusMeta? tvMeta;
+  final ShellTvEnsureVisibleMode ensureVisibleMode;
 
   const FocusableControl({
     super.key,
@@ -138,8 +143,12 @@ class FocusableControl extends StatefulWidget {
     this.scaleOnFocus = ShellTokens.focusActiveScale,
     this.onLeftEdge,
     this.onUpEdge,
+    this.onDownEdge,
+    this.onRightEdge,
     this.onFocusChange,
     this.focusNode,
+    this.tvMeta,
+    this.ensureVisibleMode = ShellTvEnsureVisibleMode.row,
   });
 
   @override
@@ -151,10 +160,17 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   bool _isHovered = false;
   late AnimationController _controller;
   late Animation<double> _scale;
+  FocusNode? _ownedNode;
+
+  FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
 
   @override
   void initState() {
     super.initState();
+    if (widget.focusNode == null) {
+      _ownedNode = FocusNode(debugLabel: 'focusable-control');
+    }
+    _registerTvItemNode();
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
     _scale = Tween<double>(begin: 1.0, end: widget.scaleOnFocus).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
@@ -162,7 +178,42 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   }
 
   @override
+  void didUpdateWidget(covariant FocusableControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
+        oldWidget.tvMeta?.itemIndex != widget.tvMeta?.itemIndex) {
+      _unregisterTvItemNode(oldWidget.tvMeta);
+      _registerTvItemNode();
+    }
+  }
+
+  void _registerTvItemNode() {
+    final meta = widget.tvMeta;
+    if (meta == null || meta.zone != ShellTvZone.row) return;
+    if (meta.rowId == null || meta.itemIndex == null) return;
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: meta.tabId,
+      rowId: meta.rowId!,
+      index: meta.itemIndex!,
+      node: _effectiveNode,
+    );
+  }
+
+  void _unregisterTvItemNode(ShellTvFocusMeta? meta) {
+    if (meta == null || meta.zone != ShellTvZone.row) return;
+    if (meta.rowId == null || meta.itemIndex == null) return;
+    ShellTvFocusCoordinator.unregisterItemNode(
+      tabId: meta.tabId,
+      rowId: meta.rowId!,
+      index: meta.itemIndex!,
+      node: _effectiveNode,
+    );
+  }
+
+  @override
   void dispose() {
+    _unregisterTvItemNode(widget.tvMeta);
+    _ownedNode?.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -175,43 +226,97 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     }
   }
 
+  void _ensureVisible(BuildContext context, ShellInputPolicy policy) {
+    if (!policy.ensureVisibleOnFocus) return;
+    if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.off) return;
+
+    final alignment =
+        widget.ensureVisibleMode == ShellTvEnsureVisibleMode.item ? 0.5 : 0.2;
+    Scrollable.ensureVisible(
+      context,
+      alignment: alignment,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  KeyEventResult _handleArrow(KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      if (widget.onLeftEdge != null) {
+        widget.onLeftEdge!();
+        return KeyEventResult.handled;
+      }
+      if (FocusManager.instance.primaryFocus
+              ?.focusInDirection(TraversalDirection.left) ??
+          false) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      if (widget.onUpEdge != null) {
+        widget.onUpEdge!();
+        return KeyEventResult.handled;
+      }
+      final up = widget.tvMeta?.resolveUpEdge();
+      if (up != null) {
+        up();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      if (widget.onDownEdge != null) {
+        widget.onDownEdge!();
+        return KeyEventResult.handled;
+      }
+      final down = widget.tvMeta?.resolveDownEdge();
+      if (down != null) {
+        down();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      if (widget.onRightEdge != null) {
+        widget.onRightEdge!();
+        return KeyEventResult.handled;
+      }
+      if (FocusManager.instance.primaryFocus
+              ?.focusInDirection(TraversalDirection.right) ??
+          false) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
     return Focus(
-      focusNode: widget.focusNode,
+      focusNode: _effectiveNode,
       autofocus: widget.autoFocus,
       onFocusChange: (f) {
         setState(() => _isFocused = f);
         _updateState(f || (policy.scaleOnHover && _isHovered));
         widget.onFocusChange?.call(f);
-        if (f && policy.ensureVisibleOnFocus) {
-          Scrollable.ensureVisible(
-            context,
-            alignment: 0.5,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-          );
+        if (f) {
+          widget.tvMeta?.notifyFocused(_effectiveNode);
+          _ensureVisible(context, policy);
         }
       },
       onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
-              widget.onLeftEdge != null) {
-            widget.onLeftEdge!();
-            return KeyEventResult.handled;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.arrowUp &&
-              widget.onUpEdge != null) {
-            widget.onUpEdge!();
-            return KeyEventResult.handled;
-          }
-        }
-        if (widget.onTap != null && event is KeyDownEvent && 
-           (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.select)) {
-             widget.onTap!(); 
-             return KeyEventResult.handled;
+        final arrow = _handleArrow(event);
+        if (arrow == KeyEventResult.handled) return arrow;
+        if (widget.onTap != null && shellTvIsActivateKey(event)) {
+          widget.onTap!();
+          return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },

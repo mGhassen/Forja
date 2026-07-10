@@ -178,7 +178,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   final ScrollController _episodeScrollController = ScrollController();
   final ScrollController _seasonScrollController = ScrollController();
   final ScrollController _chipsScrollController = ScrollController();
-  final FocusNode _keyboardFocusNode = FocusNode();
   final FocusNode _detailsHeroPlayFocus = FocusNode(debugLabel: 'details-hero-play');
   bool _detailsHeroInitialFocusDone = false;
 
@@ -217,7 +216,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   @override
   void dispose() {
-    _keyboardFocusNode.dispose();
     _detailsHeroPlayFocus.dispose();
     _episodeScrollController.dispose();
     _seasonScrollController.dispose();
@@ -280,6 +278,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     } else {
       _fetchStremioStreams();
     }
+  }
+
+  void _highlightEpisode(int episode) {
+    if (_selectedEpisode == episode) return;
+    setState(() => _selectedEpisode = episode);
+    _autoSearch();
   }
 
   void _onEpisodeSelected(int episode) {
@@ -827,6 +831,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       customEpisodesBySeason: customEpisodes,
       onSeasonSelected: _onSeasonSelected,
       onEpisodeSelected: _onEpisodeSelected,
+      onEpisodeFocused: _highlightEpisode,
       onToggleWatched: _toggleEpisodeWatched,
     );
   }
@@ -2858,47 +2863,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           const MediaDetailsBackButton(),
         ]),
       );
-
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv && _movie.mediaType == 'tv' && _seasonData != null) {
-      return Focus(
-        focusNode: _keyboardFocusNode,
-        skipTraversal: true,
-        onKeyEvent: (node, event) {
-          if (event is! KeyDownEvent) return KeyEventResult.ignored;
-          final episodes = _seasonData!['episodes'] as List?;
-          if (episodes == null || episodes.isEmpty) return KeyEventResult.ignored;
-
-          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-            if (_selectedEpisode > 1) {
-              setState(() => _selectedEpisode--);
-              _autoSearch();
-            }
-            return KeyEventResult.handled;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-            if (_selectedEpisode < episodes.length) {
-              setState(() => _selectedEpisode++);
-              _autoSearch();
-            }
-            return KeyEventResult.handled;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.arrowUp && _selectedSeason > 1) {
-            _fetchSeason(_selectedSeason - 1);
-            setState(() => _selectedEpisode = 1);
-            return KeyEventResult.handled;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
-              _selectedSeason < _movie.numberOfSeasons) {
-            _fetchSeason(_selectedSeason + 1);
-            setState(() => _selectedEpisode = 1);
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
-        child: scaffold,
-      );
-    }
 
     return scaffold;
   }

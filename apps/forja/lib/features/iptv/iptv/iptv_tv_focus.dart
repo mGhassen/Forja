@@ -17,6 +17,10 @@ Widget iptvTap({
   VoidCallback? onTap,
   double borderRadius = 12,
   double scaleOnFocus = ShellTokens.focusActiveScale,
+  int? listIndex,
+  int? gridIndex,
+  int? gridColumns,
+  bool navLeftAlways = false,
 }) {
   if (onTap == null) return child;
   return shellFocusableTap(
@@ -24,6 +28,11 @@ Widget iptvTap({
     onTap: onTap,
     borderRadius: borderRadius,
     scaleOnFocus: scaleOnFocus,
+    listIndex: listIndex,
+    gridIndex: gridIndex,
+    gridColumns: gridColumns,
+    navLeftAlways: navLeftAlways,
+    tvTabId: 'iptv',
     child: child,
   );
 }

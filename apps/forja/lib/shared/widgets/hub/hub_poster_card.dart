@@ -16,6 +16,7 @@ class HubPosterCard extends StatelessWidget {
     this.rank,
     this.badge,
     this.listIndex,
+    this.tvRowId,
   });
 
   final String imageUrl;
@@ -25,6 +26,7 @@ class HubPosterCard extends StatelessWidget {
   final int? rank;
   final String? badge;
   final int? listIndex;
+  final String? tvRowId;
   final VoidCallback onTap;
 
   static double cardWidth(BuildContext context) =>
@@ -44,6 +46,8 @@ class HubPosterCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: 14,
       listIndex: listIndex,
+      tvRowId: tvRowId,
+      tvItemIndex: listIndex,
       child: Container(
         width: cardWidth,
         height: cardHeight,
