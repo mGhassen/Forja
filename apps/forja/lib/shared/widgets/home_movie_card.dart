@@ -12,11 +12,15 @@ class HomeMovieCard extends StatelessWidget {
     required this.movie,
     required this.onTap,
     this.rank,
+    this.onLeftEdge,
+    this.onUpEdge,
   });
 
   final Movie movie;
   final VoidCallback onTap;
   final int? rank;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onUpEdge;
 
   static double cardWidth(BuildContext context) => shellMovieCardWidth(context);
 
@@ -35,6 +39,8 @@ class HomeMovieCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 14,
+      onLeftEdge: onLeftEdge,
+      onUpEdge: onUpEdge,
       child: Container(
         width: cardWidth,
         height: cardHeight,

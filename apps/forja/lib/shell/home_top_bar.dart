@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shell/app_router.dart';
@@ -8,6 +9,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Sentinel for the "All" entry in the categories popup menu.
@@ -26,6 +28,24 @@ class HomeTopBar extends StatefulWidget {
 class _HomeTopBarState extends State<HomeTopBar> {
   final GlobalKey _categoriesKey = GlobalKey();
   bool _categoriesOpen = false;
+  final FocusNode _menuFocus = FocusNode(debugLabel: 'home-menu');
+  final FocusNode _searchFocus = FocusNode(debugLabel: 'home-search');
+
+  @override
+  void initState() {
+    super.initState();
+    ShellTvFocus.homeMenu = _menuFocus;
+    ShellTvFocus.homeSearch = _searchFocus;
+  }
+
+  @override
+  void dispose() {
+    if (ShellTvFocus.homeMenu == _menuFocus) ShellTvFocus.homeMenu = null;
+    if (ShellTvFocus.homeSearch == _searchFocus) ShellTvFocus.homeSearch = null;
+    _menuFocus.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
 
   void _toggleMediaFilter(ShellHomeCategory target) {
     final current = ShellBus.homeCategory.value;
@@ -121,27 +141,48 @@ class _HomeTopBarState extends State<HomeTopBar> {
     );
   }
 
-  Widget _buildSearchAction() {
+  Widget _buildSearchAction({required bool tvFocus}) {
+    final icon = ForjaPlainIcon(
+      icon: Icons.search_rounded,
+      color: Colors.white,
+      size: 30,
+      hitSize: 44,
+      onTap: _openSearch,
+    );
+
+    if (!tvFocus) {
+      return SizedBox(height: 34, child: Center(child: icon));
+    }
+
     return SizedBox(
       height: 34,
       child: Center(
-        child: ForjaPlainIcon(
-          icon: Icons.search_rounded,
-          color: Colors.white,
-          size: 30,
-          hitSize: 44,
+        child: ForjaInteractive(
+          focusNode: _searchFocus,
           onTap: _openSearch,
+          hoverScale: ShellTokens.focusActiveScale,
+          onKeyEvent: (node, event) {
+            if (event is! KeyDownEvent) return KeyEventResult.ignored;
+            if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+              if (ShellTvFocus.focusHomeMenu()) return KeyEventResult.handled;
+            }
+            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              if (ShellTvFocus.focusHomeHeroPlay()) return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          builder: (_, _) => icon,
         ),
       ),
     );
   }
 
-  Widget _wrapMenuRow(Widget menu) {
+  Widget _wrapMenuRow(Widget menu, {required bool tvFocus}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(child: menu),
-        _buildSearchAction(),
+        _buildSearchAction(tvFocus: tvFocus),
       ],
     );
   }
@@ -150,6 +191,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
   Widget build(BuildContext context) {
     final compactNav =
         MediaQuery.sizeOf(context).width < ShellTokens.shellNavCompactMaxWidth;
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     return ValueListenableBuilder<double>(
       valueListenable: ShellBus.homeScrollOffset,
@@ -174,13 +216,14 @@ class _HomeTopBarState extends State<HomeTopBar> {
       },
       child: SafeArea(
         bottom: false,
+        top: !tvFocus,
         child: SizedBox(
           height: ShellTokens.homeTopBarHeight,
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               ShellTokens.bodyHorizontalPadding +
                   (compactNav ? 0 : ShellTokens.homeTopBarMenuLeadingInset),
-              ShellTokens.shellHeaderTopPadding,
+              tvFocus ? 0 : ShellTokens.shellHeaderTopPadding,
               ShellTokens.bodyHorizontalPadding,
               0,
             ),
@@ -206,6 +249,22 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           isActive: mediaFilter == ShellHomeCategory.films,
                           onTap: () =>
                               _toggleMediaFilter(ShellHomeCategory.films),
+                          tvFocus: tvFocus,
+                          focusNode: tvFocus ? _menuFocus : null,
+                          onKeyEvent: tvFocus
+                              ? (node, event) {
+                                  if (event is! KeyDownEvent) {
+                                    return KeyEventResult.ignored;
+                                  }
+                                  if (event.logicalKey ==
+                                      LogicalKeyboardKey.arrowDown) {
+                                    if (ShellTvFocus.focusHomeSearch()) {
+                                      return KeyEventResult.handled;
+                                    }
+                                  }
+                                  return KeyEventResult.ignored;
+                                }
+                              : null,
                         ),
                         SizedBox(width: tabGap),
                         _CategoryTab(
@@ -213,6 +272,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           isActive: mediaFilter == ShellHomeCategory.tvShows,
                           onTap: () =>
                               _toggleMediaFilter(ShellHomeCategory.tvShows),
+                          tvFocus: tvFocus,
                         ),
                         SizedBox(width: tabGap),
                         _CategoryTab(
@@ -221,6 +281,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           isActive: categoriesActive,
                           showChevron: true,
                           onTap: _openCategoriesMenu,
+                          tvFocus: tvFocus,
                         ),
                       ],
                     );
@@ -232,6 +293,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           physics: const ClampingScrollPhysics(),
                           child: tabs,
                         ),
+                        tvFocus: tvFocus,
                       );
                     }
 
@@ -256,6 +318,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           ],
                         ),
                       ),
+                      tvFocus: tvFocus,
                     );
                   },
                 );
@@ -275,12 +338,18 @@ class _CategoryTab extends StatelessWidget {
     required this.isActive,
     required this.onTap,
     this.showChevron = false,
+    this.tvFocus = false,
+    this.focusNode,
+    this.onKeyEvent,
   });
 
   final String label;
   final bool isActive;
   final VoidCallback onTap;
   final bool showChevron;
+  final bool tvFocus;
+  final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -288,55 +357,67 @@ class _CategoryTab extends StatelessWidget {
     final color =
         isActive ? cinematic.textPrimary : cinematic.textSecondary;
 
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 34,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 17,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                    color: color,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+                if (showChevron) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.expand_more_rounded,
+                    size: 18,
+                    color: color,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
+        AnimatedContainer(
+          duration: ShellTokens.navSelectionAnimation,
+          height: ShellTokens.shellNavUnderlineHeight,
+          width: isActive ? 28 : 0,
+          decoration: BoxDecoration(
+            color: isActive ? cinematic.navUnderline : Colors.transparent,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
+    );
+
+    if (tvFocus) {
+      return ForjaInteractive(
+        focusNode: focusNode,
+        onTap: onTap,
+        onKeyEvent: onKeyEvent,
+        hoverScale: ShellTokens.focusActiveScale,
+        builder: (_, _) => content,
+      );
+    }
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 34,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: GoogleFonts.inter(
-                        fontSize: 17,
-                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                        color: color,
-                        letterSpacing: 0.1,
-                      ),
-                    ),
-                    if (showChevron) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.expand_more_rounded,
-                        size: 18,
-                        color: color,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
-            AnimatedContainer(
-              duration: ShellTokens.navSelectionAnimation,
-              height: ShellTokens.shellNavUnderlineHeight,
-              width: isActive ? 28 : 0,
-              decoration: BoxDecoration(
-                color: isActive ? cinematic.navUnderline : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
-        ),
+        child: content,
       ),
     );
   }

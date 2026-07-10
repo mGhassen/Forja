@@ -274,7 +274,7 @@ class _AnimeScreenState extends State<AnimeScreen>
         .toList();
   }
 
-  HubPosterCard _animePosterCard(AnimeCard anime, {int? rank}) {
+  HubPosterCard _animePosterCard(AnimeCard anime, {int? rank, int? listIndex}) {
     final subtitle = [
       if (anime.seasonYear != null) '${anime.seasonYear}',
       if (anime.episodes != null) '${anime.episodes} eps',
@@ -287,6 +287,7 @@ class _AnimeScreenState extends State<AnimeScreen>
       rating: (anime.averageScore ?? 0) > 0 ? (anime.averageScore! / 10) : null,
       badge: anime.format,
       rank: rank,
+      listIndex: listIndex,
       onTap: () => _openDetails(anime),
     );
   }
@@ -358,7 +359,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   title: 'Trending Now',
                                   future: _trendingFuture,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(anime, listIndex: index),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -367,7 +368,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   title: 'Top Airing',
                                   future: _topAiringFuture,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(anime, listIndex: index),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -380,6 +381,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                       _animePosterCard(
                                     anime,
                                     rank: index + 1,
+                                    listIndex: index,
                                   ),
                                 ),
                                 isFirstAfterHero: false,
@@ -389,7 +391,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   title: 'Most Popular',
                                   future: _mostPopularFuture,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(anime, listIndex: index),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -398,7 +400,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   title: 'Latest Episodes',
                                   future: _recentEpisodesFuture,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(anime, listIndex: index),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -407,7 +409,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   title: 'Top Rated',
                                   future: _topRatedFuture,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(anime, listIndex: index),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -416,7 +418,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   title: 'Most Favorited',
                                   future: _mostFavoriteFuture,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(anime, listIndex: index),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -425,7 +427,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   title: 'Recently Completed',
                                   future: _latestCompletedFuture,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(anime, listIndex: index),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -607,7 +609,8 @@ class _AnimeScreenState extends State<AnimeScreen>
             padding: const EdgeInsets.symmetric(horizontal: 24),
             itemCount: list.length,
             separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (context, index) => _animePosterCard(list[index]),
+            itemBuilder: (context, index) =>
+                _animePosterCard(list[index], listIndex: index),
           ),
         );
       },

@@ -17,6 +17,7 @@ class ForjaInteractive extends StatefulWidget {
     this.pressScale = 0.94,
     this.autoFocus = false,
     this.focusNode,
+    this.onKeyEvent,
   });
 
   final ForjaInteractiveBuilder builder;
@@ -25,6 +26,7 @@ class ForjaInteractive extends StatefulWidget {
   final double pressScale;
   final bool autoFocus;
   final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   State<ForjaInteractive> createState() => _ForjaInteractiveState();
@@ -91,6 +93,8 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       autofocus: widget.autoFocus,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onKeyEvent: (node, event) {
+        final custom = widget.onKeyEvent?.call(node, event);
+        if (custom == KeyEventResult.handled) return KeyEventResult.handled;
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
         if (event.logicalKey == LogicalKeyboardKey.enter ||
             event.logicalKey == LogicalKeyboardKey.select) {

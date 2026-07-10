@@ -124,6 +124,8 @@ class FocusableControl extends StatefulWidget {
   final bool autoFocus;
   final double borderRadius;
   final double scaleOnFocus;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onUpEdge;
 
   const FocusableControl({
     super.key,
@@ -132,6 +134,8 @@ class FocusableControl extends StatefulWidget {
     this.autoFocus = false,
     this.borderRadius = 12.0,
     this.scaleOnFocus = ShellTokens.focusActiveScale,
+    this.onLeftEdge,
+    this.onUpEdge,
   });
 
   @override
@@ -186,6 +190,18 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         }
       },
       onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+              widget.onLeftEdge != null) {
+            widget.onLeftEdge!();
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp &&
+              widget.onUpEdge != null) {
+            widget.onUpEdge!();
+            return KeyEventResult.handled;
+          }
+        }
         if (widget.onTap != null && event is KeyDownEvent && 
            (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.select)) {
              widget.onTap!(); 

@@ -10,6 +10,8 @@ Widget shellFocusableTap({
   VoidCallback? onTap,
   double borderRadius = 12,
   double scaleOnFocus = ShellTokens.focusActiveScale,
+  VoidCallback? onLeftEdge,
+  VoidCallback? onUpEdge,
 }) {
   final policy = ShellScope.inputPolicyOf(context);
   if (policy.useFocusableMoodChips) {
@@ -17,6 +19,8 @@ Widget shellFocusableTap({
       onTap: onTap,
       borderRadius: borderRadius,
       scaleOnFocus: scaleOnFocus,
+      onLeftEdge: onLeftEdge,
+      onUpEdge: onUpEdge,
       child: child,
     );
   }

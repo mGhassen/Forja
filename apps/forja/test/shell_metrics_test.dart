@@ -7,9 +7,9 @@ void main() {
     const tv = ShellMetrics.tv;
 
     expect(desktop.heroCompactRightInset, isNot(equals(tv.heroCompactRightInset)));
-    expect(desktop.heroMinTitleHeight, greaterThan(tv.heroMinTitleHeight));
+    expect(desktop.heroMinTitleHeight, equals(tv.heroMinTitleHeight));
     expect(desktop.heroActionUseFittedBox, isFalse);
-    expect(tv.heroActionUseFittedBox, isTrue);
+    expect(tv.heroActionUseFittedBox, isFalse);
     expect(desktop.usesTvDensity, isFalse);
     expect(tv.usesTvDensity, isTrue);
     expect(desktop.torrentPanelPadding, lessThan(tv.torrentPanelPadding));

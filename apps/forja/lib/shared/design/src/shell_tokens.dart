@@ -21,8 +21,12 @@ abstract final class ShellTokens {
   /// Width reserved for the shell menu button when the rail is collapsed.
   static const double shellNavMenuButtonWidth = 56;
   static const double navRailIconSize = 30;
-  /// Immediate hover grow for rail icons (and compact ☰).
-  static const double navRailIconHoverScale = 1.15;
+  /// Resting rail icon scale (below [navRailIconSize]).
+  static const double navRailIconIdleScale = 0.82;
+  /// Immediate hover / focus grow for rail icons (and compact ☰).
+  static const double navRailIconHoverScale = 1.28;
+  /// Gap between icon and selection underline in the nav rail.
+  static const double navRailIconUnderlineGap = 2;
   /// D-pad / TV focus scale.
   static const double focusActiveScale = 1.08;
   static const double navRailIconRevealedScale = 0.78;

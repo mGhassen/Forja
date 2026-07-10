@@ -92,7 +92,8 @@ void main() {
     expect(find.byType(FittedBox), findsNothing);
   });
 
-  testWidgets('tv hero action row wraps actions in FittedBox (R28-A09)', (tester) async {
+  testWidgets('tv hero action row does not wrap actions in FittedBox (R28-A09)',
+      (tester) async {
     await tester.pumpWidget(
       _wrapProfile(
         profile: ShellProfile.tv,
@@ -100,7 +101,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(FittedBox), findsOneWidget);
+    expect(find.byType(FittedBox), findsNothing);
   });
 
   testWidgets('desktop nav rail scales on hover not keyboard focus (R28-A08)', (tester) async {
@@ -116,7 +117,10 @@ void main() {
     );
 
     await _focusNavItem(tester, 'search');
-    expect(_navItemScale(tester, 'search').scale, 1.0);
+    expect(
+      _navItemScale(tester, 'search').scale,
+      ShellTokens.navRailIconIdleScale,
+    );
 
     final searchIcon =
         find.image(const AssetImage('assets/images/nav/search.png'));

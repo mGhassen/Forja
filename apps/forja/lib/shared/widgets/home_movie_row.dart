@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
 import 'package:rust/rust.dart';
 
@@ -94,11 +95,16 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
             itemCount: widget.movies.length,
             separatorBuilder: (_, _) =>
                 SizedBox(width: widget.showRank ? 6 : 14),
-            itemBuilder: (context, index) => HomeMovieCard(
-              movie: widget.movies[index],
-              onTap: () => widget.onMovieTap(widget.movies[index]),
-              rank: widget.showRank ? index + 1 : null,
-            ),
+            itemBuilder: (context, index) {
+              final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+              return HomeMovieCard(
+                movie: widget.movies[index],
+                onTap: () => widget.onMovieTap(widget.movies[index]),
+                rank: widget.showRank ? index + 1 : null,
+                onLeftEdge:
+                    tvNav && index == 0 ? ShellTvFocus.focusCurrentNavTab : null,
+              );
+            },
           ),
         ),
       ],

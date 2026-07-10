@@ -6,7 +6,30 @@ import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+const double _kNavRailItemContentHeight =
+    ShellTokens.navRailIconSize * ShellTokens.navRailIconHoverScale +
+    ShellTokens.navRailIconUnderlineGap +
+    ShellTokens.shellNavUnderlineHeight +
+    ShellTokens.navRailIconLabelGap +
+    ShellTokens.navRailLabelFontSize;
+
+double _navRailItemSpacingForHeight({
+  required int itemCount,
+  required double maxHeight,
+  required double preferredSpacing,
+}) {
+  if (itemCount <= 0) return preferredSpacing;
+  final naturalHeight =
+      itemCount * (_kNavRailItemContentHeight + preferredSpacing);
+  if (naturalHeight <= maxHeight) return preferredSpacing;
+  return math.max(
+    0,
+    (maxHeight - itemCount * _kNavRailItemContentHeight) / itemCount,
+  );
+}
 
 /// Opens the shell nav drawer when the rail is collapsed on narrow windows.
 class ShellNavMenuButton extends StatefulWidget {
@@ -50,7 +73,9 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
             height: 34,
             child: Center(
               child: AnimatedScale(
-                scale: active ? ShellTokens.navRailIconHoverScale : 1.0,
+                scale: active
+                    ? ShellTokens.navRailIconHoverScale
+                    : ShellTokens.navRailIconIdleScale,
                 duration: ShellTokens.navSelectionAnimation,
                 curve: Curves.easeOutCubic,
                 child: Icon(
@@ -110,6 +135,11 @@ class ShellNavRail extends StatelessWidget {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  final itemSpacing = _navRailItemSpacingForHeight(
+                    itemCount: _navIds.length,
+                    maxHeight: constraints.maxHeight,
+                    preferredSpacing: metrics.navRailItemSpacing,
+                  );
                   final navColumn = Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -124,7 +154,7 @@ class ShellNavRail extends StatelessWidget {
                               destination: dest,
                               selected: selected,
                               onTap: () => onDestinationSelected(index),
-                              itemSpacing: metrics.navRailItemSpacing,
+                              itemSpacing: itemSpacing,
                             );
                           },
                         ),
@@ -287,9 +317,19 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   bool _focused = false;
   bool _typing = false;
   Timer? _revealTimer;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode(debugLabel: 'nav-${widget.destination.id}');
+    ShellTvFocus.registerNav(widget.destination.id, _focusNode);
+  }
 
   @override
   void dispose() {
+    ShellTvFocus.unregisterNav(widget.destination.id, _focusNode);
+    _focusNode.dispose();
     _revealTimer?.cancel();
     super.dispose();
   }
@@ -316,22 +356,20 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   }
 
   double _scaleFor(ShellInputPolicy policy) {
-    if (_pressed) return 0.92;
-    if (policy.scaleOnHover && _hover) return ShellTokens.navRailIconHoverScale;
-    if (policy.scaleOnFocus && _focused) return ShellTokens.navRailIconHoverScale;
-    return 1.0;
+    final activeScale = (policy.scaleOnHover && _hover) ||
+        (policy.scaleOnFocus && _focused);
+    final base = activeScale
+        ? ShellTokens.navRailIconHoverScale
+        : ShellTokens.navRailIconIdleScale;
+    if (_pressed) return base * 0.92;
+    return base;
   }
 
   bool _activeFor(ShellInputPolicy policy) =>
       (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
 
   /// Fixed footprint: icon + label slot + underline gap — never grows on reveal.
-  static double get _contentHeight =>
-      ShellTokens.navRailIconSize +
-      ShellTokens.navRailIconLabelGap +
-      ShellTokens.navRailLabelFontSize +
-      6 +
-      ShellTokens.shellNavUnderlineHeight;
+  static double get _contentHeight => _kNavRailItemContentHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -359,6 +397,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         vertical: widget.itemSpacing / 2,
       ),
       child: Focus(
+        focusNode: _focusNode,
         debugLabel: 'nav-${widget.destination.id}',
         onFocusChange: (focused) => setState(() => _focused = focused),
         onKeyEvent: (node, event) {
@@ -392,15 +431,44 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            AnimatedScale(
-                              scale: _scaleFor(policy),
-                              duration: ShellTokens.navSelectionAnimation,
-                              curve: Curves.easeOutCubic,
-                              child: NavDestinationIcon(
-                                destination: widget.destination,
-                                selected: widget.selected,
-                                color: iconColor,
-                                size: ShellTokens.navRailIconSize,
+                            SizedBox(
+                              height: ShellTokens.navRailIconSize *
+                                  ShellTokens.navRailIconHoverScale +
+                                  ShellTokens.navRailIconUnderlineGap +
+                                  ShellTokens.shellNavUnderlineHeight,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: Center(
+                                      child: AnimatedScale(
+                                        scale: _scaleFor(policy),
+                                        duration:
+                                            ShellTokens.navSelectionAnimation,
+                                        curve: Curves.easeOutCubic,
+                                        child: NavDestinationIcon(
+                                          destination: widget.destination,
+                                          selected: widget.selected,
+                                          color: iconColor,
+                                          size: ShellTokens.navRailIconSize,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  AnimatedContainer(
+                                    duration:
+                                        ShellTokens.navSelectionAnimation,
+                                    height:
+                                        ShellTokens.shellNavUnderlineHeight,
+                                    width: widget.selected ? 24 : 0,
+                                    decoration: BoxDecoration(
+                                      color: widget.selected
+                                          ? ForjaShellColors.navUnderline
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             SizedBox(height: ShellTokens.navRailIconLabelGap),
@@ -413,18 +481,6 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                   active: _typing,
                                   style: labelStyle,
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            AnimatedContainer(
-                              duration: ShellTokens.navSelectionAnimation,
-                              height: ShellTokens.shellNavUnderlineHeight,
-                              width: widget.selected ? 24 : 0,
-                              decoration: BoxDecoration(
-                                color: widget.selected
-                                    ? ForjaShellColors.navUnderline
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(2),
                               ),
                             ),
                           ],

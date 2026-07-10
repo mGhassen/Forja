@@ -197,7 +197,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     );
   }
 
-  HubPosterCard _dramaPosterCard(KdramaCard card, {int? rank}) {
+  HubPosterCard _dramaPosterCard(KdramaCard card, {int? rank, int? listIndex}) {
     final subtitle = [
       if (card.year != null) card.year!,
       if (card.cardMediaLabel != null) card.cardMediaLabel!,
@@ -208,6 +208,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       subtitle: subtitle.isEmpty ? null : subtitle,
       badge: card.label,
       rank: rank,
+      listIndex: listIndex,
       onTap: () => _openDetails(card),
     );
   }
@@ -274,7 +275,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       items: _feed!.latest,
                                       compactTop: _continueWatching.isEmpty,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(card, listIndex: index),
                                     ),
                                     isFirstAfterHero: _continueWatching.isEmpty,
                                   ),
@@ -284,7 +285,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       title: 'Trending',
                                       items: _feed!.trending,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(card, listIndex: index),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
@@ -298,6 +299,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                           _dramaPosterCard(
                                         card,
                                         rank: index + 1,
+                                        listIndex: index,
                                       ),
                                     ),
                                     isFirstAfterHero: false,
@@ -308,7 +310,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       title: 'Most Viewed',
                                       items: _feed!.mostViewed,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(card, listIndex: index),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
@@ -318,7 +320,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       title: 'Anime',
                                       items: _feed!.anime,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(card, listIndex: index),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
@@ -328,7 +330,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       title: 'Upcoming',
                                       items: _feed!.upcoming,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(card, listIndex: index),
                                     ),
                                     isFirstAfterHero: false,
                                   ),

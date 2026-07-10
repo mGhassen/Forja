@@ -26,6 +26,7 @@ import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
   if (!compactTop) return ShellTokens.homeSectionTitleTop;
@@ -645,9 +646,29 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  void _revealedHeroPlayFocus() {
+    void focusPlay() {
+      if (!mounted) return;
+      ShellTvFocus.focusHomeHeroPlay();
+    }
+
+    if (!_homeScrollController.hasClients) {
+      focusPlay();
+      return;
+    }
+    _homeScrollController
+        .animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(focusPlay);
+  }
+
   @override
   void initState() {
     super.initState();
+    ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
     _homeScrollController.addListener(_syncHomeScrollOffset);
     _resetHomeCategoryFeeds(useBootCache: true);
 
@@ -1120,6 +1141,9 @@ class _HomeScreenState extends State<HomeScreen>
     _homeScrollController.dispose();
     ShellBus.homeScrollOffset.value = 0;
     ShellBus.homeHeroHeight.value = 0;
+    if (ShellTvFocus.homeHeroPlay == _tvHeroPlayFocus) {
+      ShellTvFocus.homeHeroPlay = null;
+    }
     _heroTimer?.cancel();
     _heroController.dispose();
     _tvHeroPlayFocus.dispose();
@@ -1341,6 +1365,7 @@ class _HomeScreenState extends State<HomeScreen>
                     future: _featuredThisMonthFuture,
                     onMovieTap: _openDetails,
                     compactTop: true,
+                    tvFocusUp: _revealedHeroPlayFocus,
                   ),
                   isFirstAfterHero: false,
                 ),
@@ -1539,6 +1564,13 @@ class _HomeScreenState extends State<HomeScreen>
   double _desktopHeroHeight(BuildContext context) {
     final screenH = MediaQuery.sizeOf(context).height;
     final topBar = _desktopTopBarBleed(context);
+    final metrics = ShellScope.metricsOf(context);
+    if (metrics.usesTvDensity) {
+      return _snapToDevicePixels(
+        context,
+        screenH * ShellTokens.heroHeightFractionDesktop,
+      );
+    }
     final firstRowHeight =
         _MovieSection.sectionHeight(context, compactTop: true);
     final nextRowPeek = _MovieSection.sectionHeight(context) *
@@ -2114,6 +2146,17 @@ class _HomeScreenState extends State<HomeScreen>
         HeroPillPlayButton(
           label: 'Play',
           focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+          onKeyEvent: policy.heroPlayAutoFocus
+              ? (node, event) {
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                    if (ShellTvFocus.focusHomeSearch()) {
+                      return KeyEventResult.handled;
+                    }
+                  }
+                  return KeyEventResult.ignored;
+                }
+              : null,
           onTap: () => _watchNow(heroMovie),
         ),
         const SizedBox(width: 10),
@@ -2154,6 +2197,7 @@ class _MovieSection extends StatefulWidget {
   final Function(Movie) onMovieTap;
   final bool compactTop;
   final bool showRank;
+  final VoidCallback? tvFocusUp;
 
   const _MovieSection({
     super.key,
@@ -2162,6 +2206,7 @@ class _MovieSection extends StatefulWidget {
     required this.onMovieTap,
     this.compactTop = false,
     this.showRank = false,
+    this.tvFocusUp,
   });
 
   static double sectionHeight(
@@ -2236,11 +2281,18 @@ class _MovieSectionState extends State<_MovieSection> {
                 itemCount: movies.length,
                 separatorBuilder: (_, _) =>
                     SizedBox(width: widget.showRank ? 6 : 14),
-                itemBuilder: (context, index) => HomeMovieCard(
-                  movie: movies[index],
-                  onTap: () => widget.onMovieTap(movies[index]),
-                  rank: widget.showRank ? index + 1 : null,
-                ),
+                itemBuilder: (context, index) {
+                  final policy = ShellScope.inputPolicyOf(context);
+                  final tvNav = policy.useFocusableMoodChips;
+                  return HomeMovieCard(
+                    movie: movies[index],
+                    onTap: () => widget.onMovieTap(movies[index]),
+                    rank: widget.showRank ? index + 1 : null,
+                    onLeftEdge:
+                        tvNav && index == 0 ? ShellTvFocus.focusCurrentNavTab : null,
+                    onUpEdge: tvNav && index == 0 ? widget.tvFocusUp : null,
+                  );
+                },
               ),
             ),
           ],

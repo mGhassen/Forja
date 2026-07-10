@@ -18,6 +18,7 @@ import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -161,12 +162,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return _searchKey.currentState?.buildShellSearchBar();
   }
 
+  void _syncCurrentNavTab() {
+    ShellTvFocus.currentNavTabId = _currentTabId;
+  }
+
   void _selectTab(int index) {
     final id = _visibleIds[index];
     setState(() {
       _mountedTabIds.add(id);
       _selectedIndex = index;
     });
+    _syncCurrentNavTab();
     _touchTab(id);
     _enforceTabCap();
     _applyTabShellChrome(id);
@@ -208,6 +214,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
 
     _loadNavbarConfig();
+    _syncCurrentNavTab();
     _checkForUpdates();
   }
 
@@ -253,6 +260,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _evictTabsNotInNavbar(_visibleIds);
       _enforceTabCap();
     });
+    _syncCurrentNavTab();
   }
 
   void _onNavbarConfigChanged() {

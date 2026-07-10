@@ -51,6 +51,7 @@ class HeroPillPlayButton extends StatelessWidget {
     this.tone,
     this.autoFocus = false,
     this.focusNode,
+    this.onKeyEvent,
   });
 
   final String label;
@@ -61,6 +62,7 @@ class HeroPillPlayButton extends StatelessWidget {
   final HeroPillPlayTone? tone;
   final bool autoFocus;
   final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   HeroPillPlayTone get _tone =>
       tone ?? (primary ? HeroPillPlayTone.primary : HeroPillPlayTone.secondary);
@@ -97,6 +99,7 @@ class HeroPillPlayButton extends StatelessWidget {
       onTap: onTap,
       autoFocus: autoFocus,
       focusNode: focusNode,
+      onKeyEvent: onKeyEvent,
       hoverScale: 1.03,
       pressScale: 0.97,
       builder: (hover, pressed) {
