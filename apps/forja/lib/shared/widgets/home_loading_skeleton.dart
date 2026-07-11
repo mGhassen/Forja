@@ -17,9 +17,11 @@ Widget homeLoadingShimmer(Widget child) {
 
 Widget homeTitleBarSkeleton(BuildContext context, {double width = 140, double? height}) {
   final h = height ?? shellScaled(context, 18).clamp(10.0, 18.0);
+  const minWidth = 60.0;
+  final maxWidth = math.max(minWidth, width);
   return Container(
     height: h,
-    width: shellScaled(context, width).clamp(60.0, width),
+    width: shellScaled(context, width).clamp(minWidth, maxWidth),
     decoration: BoxDecoration(
       color: AppTheme.bgCard,
       borderRadius: BorderRadius.circular(shellScaled(context, 6).clamp(3.0, 6.0)),

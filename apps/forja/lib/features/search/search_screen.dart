@@ -9,6 +9,7 @@ import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/tv_search_browse_overlay.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
@@ -566,6 +567,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   void _focusHelperAtLast() => _focusHelperAtIndex(_helperFocusedIndex ?? 0);
 
   void _onSearchFieldFocusChange() {
+    if (mounted) setState(() {});
+    ShellBus.notifyShellChromeChanged();
     if (!_focusNode.hasFocus) {
       if (_searchFieldEditing && mounted) {
         setState(() => _searchFieldEditing = false);
@@ -582,6 +585,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     if (!_focusNode.canRequestFocus) return;
     if (_searchFieldEditing) {
       setState(() => _searchFieldEditing = false);
+      ShellBus.notifyShellChromeChanged();
     }
     _focusNode.requestFocus();
     ShellTvFocusCoordinator.saveFocus(
@@ -614,6 +618,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   void _beginSearchFieldEditing() {
     setState(() => _searchFieldEditing = true);
+    ShellBus.notifyShellChromeChanged();
     if (!_focusNode.hasFocus) {
       _focusNode.requestFocus();
     }
@@ -692,6 +697,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   Widget buildShellSearchBar() {
     if (_isDesktopLayout(context)) return const SizedBox.shrink();
+    final tvFocus = _tvFocus(context);
+    final browseOnly = tvFocus && !_searchFieldEditing;
     return ShellSearchBar(
       controller: _controller,
       focusNode: _focusNode,
@@ -701,6 +708,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         _controller.clear();
         _onSearchChanged('');
       },
+      tvBrowseMode: browseOnly,
     );
   }
 
@@ -804,41 +812,73 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   Widget _buildSearchField(BuildContext context) {
     final tvFocus = _tvFocus(context);
     final browseOnly = tvFocus && !_searchFieldEditing;
-    return TextField(
-      controller: _controller,
-      focusNode: _focusNode,
-      autofocus: !tvFocus,
-      readOnly: browseOnly,
-      showCursor: !browseOnly,
-      enableInteractiveSelection: !browseOnly,
-      onChanged: _onSearchChanged,
-      style: TextStyle(
-        color: ForjaShellColors.textPrimary,
-        fontSize: 32,
-        fontWeight: FontWeight.w600,
-        height: 1.15,
-      ),
-      cursorColor: ForjaShellColors.textPrimary,
-      decoration: InputDecoration(
-        hintText: 'Search movies, shows...',
-        hintStyle: TextStyle(
-          color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
-          fontSize: 32,
-          fontWeight: FontWeight.w600,
-        ),
-        border: InputBorder.none,
-        isDense: true,
-        contentPadding: EdgeInsets.zero,
-        suffixIcon: _query.isNotEmpty
-            ? ForjaCloseButton.compact(
-                tooltip: null,
-                color: ForjaShellColors.textSecondary,
-                onTap: () {
-                  _controller.clear();
-                  _onSearchChanged('');
-                },
+    const hint = 'Search movies, shows...';
+    final hintStyle = TextStyle(
+      color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
+      fontSize: 32,
+      fontWeight: FontWeight.w600,
+      height: 1.15,
+    );
+    final showBrowsePlaceholder =
+        browseOnly && _focusNode.hasFocus && _query.isEmpty;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: browseOnly && _focusNode.hasFocus
+            ? Border.all(
+                color: ForjaShellColors.textPrimary.withValues(alpha: 0.35),
               )
             : null,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Stack(
+          alignment: Alignment.centerLeft,
+          children: [
+            TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              autofocus: !tvFocus,
+              readOnly: browseOnly,
+              showCursor: browseOnly && _query.isNotEmpty,
+              enableInteractiveSelection: !browseOnly,
+              onChanged: _onSearchChanged,
+              style: TextStyle(
+                color: ForjaShellColors.textPrimary,
+                fontSize: 32,
+                fontWeight: FontWeight.w600,
+                height: 1.15,
+              ),
+              cursorColor: ForjaShellColors.textPrimary,
+              decoration: InputDecoration(
+                hintText: showBrowsePlaceholder ? null : hint,
+                hintStyle: hintStyle,
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                suffixIcon: _query.isNotEmpty
+                    ? ForjaCloseButton.compact(
+                        tooltip: null,
+                        color: ForjaShellColors.textSecondary,
+                        onTap: () {
+                          _controller.clear();
+                          _onSearchChanged('');
+                        },
+                      )
+                    : null,
+              ),
+            ),
+            if (showBrowsePlaceholder)
+              TvSearchBrowsePlaceholder(
+                active: true,
+                placeholder: hint,
+                hintStyle: hintStyle,
+                caretColor: ForjaShellColors.textPrimary,
+                caretHeight: 36,
+              ),
+          ],
+        ),
       ),
     );
   }
