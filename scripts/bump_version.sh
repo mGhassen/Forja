@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Bump apps/forja semver and increment build number.
-# Default: patch (used by release.yml on every push to main).
+# Default: patch (used by auto-patch-tag.yml on push to main; release.yml on manual dispatch).
 # Updates installer/windows/setup.iss MyAppVersion.
 # Prints new version to stdout (for CI: echo "version=$NEW" >> "$GITHUB_OUTPUT").
 
@@ -16,6 +16,14 @@ current="$(grep '^version:' "$PUBSPEC" | sed 's/version: *//')"
 semver="${current%%+*}"
 build="${current#*+}"
 [[ "$build" == "$current" ]] && build=0
+
+if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  latest_tag="$(git -C "$ROOT" tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -1 || true)"
+  if [[ -n "$latest_tag" ]]; then
+    tag_semver="${latest_tag#v}"
+    semver="$(printf '%s\n%s\n' "$semver" "$tag_semver" | sort -V | tail -1)"
+  fi
+fi
 
 IFS=. read -r major minor patch <<<"$semver"
 
