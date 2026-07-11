@@ -747,49 +747,56 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
               right: 0,
               top: heroContentTop,
               bottom: 72 + bottomInset,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: ShellTokens.bodyMaxWidthDesktop,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: contentInset),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        _HeroLayout(
-                          movie: widget.movie,
-                          logoUrl: _logoUrl,
-                          directorName: widget.directorName,
-                          budget: widget.budget,
-                          revenue: widget.revenue,
-                          languageCode: widget.languageCode,
-                          spokenLanguages: widget.spokenLanguages,
-                          productionCompanies: widget.productionCompanies,
-                          originCountries: widget.originCountries,
-                          status: widget.status,
-                          lastAirDate: widget.lastAirDate,
-                          networks: widget.networks,
-                          creators: widget.creators,
-                          certification: widget.certification,
-                          imdbRating: widget.imdbRating,
-                          actionRow: widget.actionRow,
-                          positionMs: _positionMs,
-                          durationMs: _durationMs,
-                        ),
-                        if (_showTrailer)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: _TrailerMuteButton(
-                              muted: _trailerMuted,
-                              onTap: _toggleTrailerMute,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: ShellTokens.bodyMaxWidthDesktop,
+                        maxHeight: constraints.maxHeight,
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: contentInset),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            _HeroLayout(
+                              movie: widget.movie,
+                              logoUrl: _logoUrl,
+                              directorName: widget.directorName,
+                              budget: widget.budget,
+                              revenue: widget.revenue,
+                              languageCode: widget.languageCode,
+                              spokenLanguages: widget.spokenLanguages,
+                              productionCompanies: widget.productionCompanies,
+                              originCountries: widget.originCountries,
+                              status: widget.status,
+                              lastAirDate: widget.lastAirDate,
+                              networks: widget.networks,
+                              creators: widget.creators,
+                              certification: widget.certification,
+                              imdbRating: widget.imdbRating,
+                              actionRow: widget.actionRow,
+                              positionMs: _positionMs,
+                              durationMs: _durationMs,
+                              maxHeight: constraints.maxHeight,
                             ),
-                          ),
-                      ],
+                            if (_showTrailer)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: _TrailerMuteButton(
+                                  muted: _trailerMuted,
+                                  onTap: _toggleTrailerMute,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -936,6 +943,7 @@ class _HeroLayout extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.maxHeight,
   });
 
   final Movie movie;
@@ -956,6 +964,7 @@ class _HeroLayout extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final double? maxHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -973,10 +982,15 @@ class _HeroLayout extends StatelessWidget {
       positionMs: positionMs,
       durationMs: durationMs,
       maxContentWidth: compact ? width : leftColumnWidth,
+      maxHeight: maxHeight,
     );
 
     if (compact) {
-      return mainColumn;
+      return SizedBox(
+        width: double.infinity,
+        height: maxHeight,
+        child: mainColumn,
+      );
     }
 
     final factsPanel = HeroFactsPanel(
@@ -995,22 +1009,35 @@ class _HeroLayout extends StatelessWidget {
       durationMs: durationMs,
     );
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Align(
-          alignment: Alignment.topLeft,
-          child: SizedBox(
-            width: leftColumnWidth,
-            child: mainColumn,
-          ),
-        ),
-        if (factsPanel.hasContent)
+    return SizedBox(
+      width: double.infinity,
+      height: maxHeight,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
           Align(
-            alignment: Alignment.bottomRight,
-            child: SizedBox(width: 300, child: factsPanel),
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: leftColumnWidth,
+              height: maxHeight,
+              child: mainColumn,
+            ),
           ),
-      ],
+          if (factsPanel.hasContent && maxHeight != null)
+            Align(
+              alignment: Alignment.bottomRight,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 300,
+                  maxHeight: maxHeight!,
+                ),
+                child: SingleChildScrollView(
+                  child: factsPanel,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -1026,7 +1053,21 @@ class _HeroMainColumn extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.maxHeight,
   });
+
+  static const _overviewStyle = TextStyle(
+    fontSize: 14,
+    height: 1.6,
+    color: Color(0xB8FFFFFF),
+  );
+  static const _titleBlockHeight = 96.0;
+  static const _genreBlockHeight = 30.0;
+  static const _metaBlockHeight = 24.0;
+  static const _directorBlockHeight = 30.0;
+  static const _overviewGap = 14.0;
+  static const _actionGap = 18.0;
+  static const _progressBlockHeight = 22.0;
 
   final Movie movie;
   final String? logoUrl;
@@ -1037,10 +1078,44 @@ class _HeroMainColumn extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final double? maxHeight;
+
+  static double get _overviewSlotHeight =>
+      _overviewStyle.fontSize! *
+          _overviewStyle.height! *
+          ShellTokens.heroOverviewMaxLinesDesktop +
+      ShellTokens.heroOverviewReadMoreGap +
+      _overviewStyle.fontSize! * _overviewStyle.height!;
+
+  double _usedHeight({required bool showDirector, required bool showOverview}) {
+    var used = _titleBlockHeight;
+    if (movie.genres.isNotEmpty) used += _genreBlockHeight;
+    used += 14 + _metaBlockHeight;
+    if (showDirector) used += _directorBlockHeight;
+    if (showOverview) used += _overviewGap + _overviewSlotHeight;
+    if (actionRow != null) used += _actionGap + ShellTokens.shellButtonHeight;
+    if (positionMs != null && durationMs != null) used += _progressBlockHeight;
+    return used;
+  }
 
   @override
   Widget build(BuildContext context) {
     final director = directorName?.trim();
+    final hasDirector = director != null && director.isNotEmpty;
+    final bounded = maxHeight != null && maxHeight!.isFinite && maxHeight! > 0;
+
+    var showDirector = hasDirector;
+    var showOverview = movie.overview.isNotEmpty;
+    if (bounded) {
+      if (_usedHeight(showDirector: showDirector, showOverview: showOverview) >
+          maxHeight!) {
+        showDirector = false;
+      }
+      if (_usedHeight(showDirector: showDirector, showOverview: showOverview) >
+          maxHeight!) {
+        showOverview = false;
+      }
+    }
 
     return SizedBox(
       width: maxContentWidth,
@@ -1048,11 +1123,19 @@ class _HeroMainColumn extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          HeroTitle(movie: movie, logoUrl: logoUrl),
+          SizedBox(
+            height: _titleBlockHeight,
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: HeroTitle(movie: movie, logoUrl: logoUrl),
+            ),
+          ),
           if (movie.genres.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
               movie.genres.take(4).join(' • '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -1067,10 +1150,12 @@ class _HeroMainColumn extends StatelessWidget {
             certification: certification,
             imdbRating: imdbRating,
           ),
-          if (director != null && director.isNotEmpty) ...[
+          if (showDirector) ...[
             const SizedBox(height: 10),
             Text(
               'Director: $director',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -1078,20 +1163,31 @@ class _HeroMainColumn extends StatelessWidget {
               ),
             ),
           ],
-          if (movie.overview.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            HeroOverviewText(
-              overview: movie.overview,
-              maxLines: 3,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.6,
-                color: Colors.white.withValues(alpha: 0.72),
+          if (showOverview) ...[
+            const SizedBox(height: _overviewGap),
+            SizedBox(
+              height: bounded
+                  ? (maxHeight! -
+                          _usedHeight(
+                            showDirector: showDirector,
+                            showOverview: false,
+                          ) -
+                          _overviewGap)
+                      .clamp(48.0, _overviewSlotHeight)
+                  : _overviewSlotHeight,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: HeroOverviewText(
+                  overview: movie.overview,
+                  maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+                  shrinkWrap: !bounded,
+                  style: _overviewStyle,
+                ),
               ),
             ),
           ],
           if (actionRow != null) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: _actionGap),
             actionRow!,
           ],
           if (positionMs != null && durationMs != null) ...[
