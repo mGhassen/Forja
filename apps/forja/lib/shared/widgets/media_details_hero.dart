@@ -1062,12 +1062,13 @@ class _HeroMainColumn extends StatelessWidget {
     color: Color(0xB8FFFFFF),
   );
   static const _titleBlockHeight = 96.0;
-  static const _genreBlockHeight = 30.0;
+  static const _genreBlockHeight = 20.0;
   static const _metaBlockHeight = 24.0;
-  static const _directorBlockHeight = 30.0;
+  static const _metaBlockHeightWrapped = 48.0;
+  static const _directorBlockHeight = 20.0;
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
-  static const _progressBlockHeight = 22.0;
+  static const _progressBlockHeight = 36.0;
 
   final Movie movie;
   final String? logoUrl;
@@ -1087,19 +1088,25 @@ class _HeroMainColumn extends StatelessWidget {
       ShellTokens.heroOverviewReadMoreGap +
       _overviewStyle.fontSize! * _overviewStyle.height!;
 
+  bool get _metaWraps => maxContentWidth < 480;
+
+  double _metaHeight() =>
+      _metaWraps ? _metaBlockHeightWrapped : _metaBlockHeight;
+
   double _usedHeight({
     required bool showDirector,
+    required bool showGenres,
     required bool showOverview,
     required bool showProgress,
     required double titleHeight,
   }) {
     var used = titleHeight;
-    if (movie.genres.isNotEmpty) used += _genreBlockHeight;
-    used += 14 + _metaBlockHeight;
-    if (showDirector) used += _directorBlockHeight;
+    if (showGenres) used += 10 + _genreBlockHeight;
+    used += 14 + _metaHeight();
+    if (showDirector) used += 10 + _directorBlockHeight;
     if (showOverview) used += _overviewGap + _overviewSlotHeight;
     if (actionRow != null) used += _actionGap + ShellTokens.shellButtonHeight;
-    if (showProgress) used += _progressBlockHeight;
+    if (showProgress) used += 14 + _progressBlockHeight;
     return used;
   }
 
@@ -1111,6 +1118,7 @@ class _HeroMainColumn extends StatelessWidget {
     final hasProgress = positionMs != null && durationMs != null;
 
     var showDirector = hasDirector;
+    var showGenres = movie.genres.isNotEmpty;
     var showOverview = movie.overview.isNotEmpty;
     var showProgress = hasProgress;
     var titleHeight = _titleBlockHeight;
@@ -1118,6 +1126,7 @@ class _HeroMainColumn extends StatelessWidget {
     if (bounded) {
       if (_usedHeight(
             showDirector: showDirector,
+            showGenres: showGenres,
             showOverview: showOverview,
             showProgress: showProgress,
             titleHeight: titleHeight,
@@ -1127,6 +1136,7 @@ class _HeroMainColumn extends StatelessWidget {
       }
       if (_usedHeight(
             showDirector: showDirector,
+            showGenres: showGenres,
             showOverview: showOverview,
             showProgress: showProgress,
             titleHeight: titleHeight,
@@ -1136,6 +1146,17 @@ class _HeroMainColumn extends StatelessWidget {
       }
       if (_usedHeight(
             showDirector: showDirector,
+            showGenres: showGenres,
+            showOverview: showOverview,
+            showProgress: showProgress,
+            titleHeight: titleHeight,
+          ) >
+          maxHeight!) {
+        showGenres = false;
+      }
+      if (_usedHeight(
+            showDirector: showDirector,
+            showGenres: showGenres,
             showOverview: showOverview,
             showProgress: showProgress,
             titleHeight: titleHeight,
@@ -1145,6 +1166,7 @@ class _HeroMainColumn extends StatelessWidget {
       }
       if (_usedHeight(
             showDirector: showDirector,
+            showGenres: showGenres,
             showOverview: showOverview,
             showProgress: showProgress,
             titleHeight: titleHeight,
@@ -1153,6 +1175,7 @@ class _HeroMainColumn extends StatelessWidget {
         titleHeight = (maxHeight! -
                 _usedHeight(
                   showDirector: showDirector,
+                  showGenres: showGenres,
                   showOverview: showOverview,
                   showProgress: showProgress,
                   titleHeight: 0,
@@ -1171,12 +1194,18 @@ class _HeroMainColumn extends StatelessWidget {
           children: [
             SizedBox(
               height: titleHeight,
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: HeroTitle(movie: movie, logoUrl: logoUrl),
+              child: ClipRect(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: HeroTitle(
+                    movie: movie,
+                    logoUrl: logoUrl,
+                    slotHeight: bounded ? titleHeight : null,
+                  ),
+                ),
               ),
             ),
-          if (movie.genres.isNotEmpty) ...[
+          if (showGenres) ...[
             const SizedBox(height: 10),
             Text(
               movie.genres.take(4).join(' • '),
@@ -1216,6 +1245,7 @@ class _HeroMainColumn extends StatelessWidget {
                   ? (maxHeight! -
                           _usedHeight(
                             showDirector: showDirector,
+                            showGenres: showGenres,
                             showOverview: false,
                             showProgress: showProgress,
                             titleHeight: titleHeight,

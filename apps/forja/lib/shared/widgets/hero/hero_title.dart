@@ -32,7 +32,11 @@ class HeroTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (style == HeroTitleStyle.details) {
-      return _DetailsHeroTitle(movie: movie, logoUrl: logoUrl);
+      return _DetailsHeroTitle(
+        movie: movie,
+        logoUrl: logoUrl,
+        slotHeight: slotHeight,
+      );
     }
     return _HomeHeroTitleSlot(
       movie: movie,
@@ -47,30 +51,38 @@ class HeroTitle extends StatelessWidget {
 }
 
 class _DetailsHeroTitle extends StatelessWidget {
-  const _DetailsHeroTitle({required this.movie, this.logoUrl});
+  const _DetailsHeroTitle({
+    required this.movie,
+    this.logoUrl,
+    this.slotHeight,
+  });
 
   final Movie movie;
   final String? logoUrl;
+  final double? slotHeight;
 
   @override
   Widget build(BuildContext context) {
     final hasLogo = logoUrl != null && logoUrl!.isNotEmpty;
+    final logoHeight = slotHeight ?? 96.0;
     if (hasLogo) {
       return CachedNetworkImage(
         imageUrl: logoUrl!,
-        height: 96,
+        height: logoHeight,
         fit: BoxFit.contain,
         alignment: Alignment.centerLeft,
-        placeholder: (_, _) => _chromaticTitle(movie),
-        errorWidget: (_, _, _) => _chromaticTitle(movie),
+        placeholder: (_, _) => _chromaticTitle(movie, logoHeight),
+        errorWidget: (_, _, _) => _chromaticTitle(movie, logoHeight),
       );
     }
-    return _chromaticTitle(movie);
+    return _chromaticTitle(movie, logoHeight);
   }
 
-  Widget _chromaticTitle(Movie movie) {
-    const style = TextStyle(
-      fontSize: 48,
+  Widget _chromaticTitle(Movie movie, double maxHeight) {
+    final fontSize = maxHeight <= 56 ? 32.0 : maxHeight <= 72 ? 40.0 : 48.0;
+    final maxLines = maxHeight <= 56 ? 1 : 2;
+    final style = TextStyle(
+      fontSize: fontSize,
       fontWeight: FontWeight.w900,
       color: Colors.white,
       height: 1.0,
@@ -84,7 +96,7 @@ class _DetailsHeroTitle extends StatelessWidget {
           child: Text(
             movie.title,
             style: style.copyWith(color: const Color(0xFF38BDF8).withValues(alpha: 0.45)),
-            maxLines: 2,
+            maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -93,14 +105,14 @@ class _DetailsHeroTitle extends StatelessWidget {
           child: Text(
             movie.title,
             style: style.copyWith(color: const Color(0xFFFBBF24).withValues(alpha: 0.4)),
-            maxLines: 2,
+            maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
           ),
         ),
         Text(
           movie.title,
           style: style,
-          maxLines: 2,
+          maxLines: maxLines,
           overflow: TextOverflow.ellipsis,
         ),
       ],
