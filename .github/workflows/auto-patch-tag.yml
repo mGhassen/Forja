@@ -1,5 +1,5 @@
-# Bump patch semver, commit, and tag on every push to main.
-# Full release builds stay manual: .github/workflows/release.yml
+# Tag every push to main with the next patch version. No build, no version commit.
+# Full release builds: .github/workflows/release.yml (manual)
 name: Auto patch tag
 
 on:
@@ -15,41 +15,38 @@ permissions:
   contents: write
 
 jobs:
-  bump_and_tag:
-    name: Bump patch and tag
+  tag:
+    name: Tag next patch
     if: >
       github.actor != 'github-actions[bot]' &&
-      !contains(github.event.head_commit.message, '[skip ci]') &&
-      !startsWith(github.event.head_commit.message, 'chore: release')
+      !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-tags: true
 
-      - name: Configure git
+      - name: Compute next patch
+        id: next
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Bump version
-        id: bump
-        run: |
-          chmod +x scripts/bump_version.sh
-          NEW="$(./scripts/bump_version.sh patch)"
-          echo "version=$NEW" >> "$GITHUB_OUTPUT"
-          echo "Bumped to $NEW"
-
-      - name: Commit and tag
-        run: |
-          VERSION="${{ steps.bump.outputs.version }}"
-          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
-            echo "::error::Tag v${VERSION} already exists — sync pubspec to the latest tag, push, then re-run."
-            exit 1
+          latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
+          if [[ -n "$latest" ]]; then
+            semver="${latest#v}"
+          else
+            semver="$(grep '^version:' apps/forja/pubspec.yaml | sed 's/version: *//' | cut -d+ -f1)"
           fi
-          git add apps/forja/pubspec.yaml installer/windows/setup.iss
-          git commit -m "chore: release v${VERSION}"
-          git tag -a "v${VERSION}" -m "Forja ${VERSION}"
-          git push origin HEAD
+          IFS=. read -r major minor patch <<<"$semver"
+          patch=$((patch + 1))
+          echo "version=${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
+          echo "Next tag: v${major}.${minor}.${patch}"
+
+      - name: Create and push tag
+        run: |
+          VERSION="${{ steps.next.outputs.version }}"
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists — skipping."
+            exit 0
+          fi
+          git tag -a "v${VERSION}" -m "Forja ${VERSION}" "${{ github.sha }}"
           git push origin "v${VERSION}"
