@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_back_exit.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -160,20 +160,62 @@ abstract final class ShellTvFocusCoordinator {
   /// Second Back on nav requests app exit. Returns true when consumed.
   static VoidCallback? onRequestExitApp;
 
-  static bool _backConsumedThisFrame = false;
+  /// Set from [ShellScaffold] when TV input policy is active — same signal as
+  /// shell nav rail / D-pad focus (not [ShellTokens.isAndroidTvDevice] alone).
+  static bool tvBackPolicyEnabled = false;
+
+  static DateTime? _lastBackHandledAt;
+  static const Duration _backDebounceWindow = Duration(milliseconds: 400);
 
   /// Test-only — clears back debounce between widget tests.
   static void resetBackDebounceForTest() {
-    _backConsumedThisFrame = false;
+    _lastBackHandledAt = null;
   }
 
-  static bool handleShellBackKey() {
-    if (_backConsumedThisFrame) return true;
-    _backConsumedThisFrame = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _backConsumedThisFrame = false;
-    });
+  static bool _consumeDuplicateBack() {
+    final now = DateTime.now();
+    final last = _lastBackHandledAt;
+    if (last != null && now.difference(last) < _backDebounceWindow) {
+      return true;
+    }
+    _lastBackHandledAt = now;
+    return false;
+  }
 
+  /// Level-aware back — see [ShellNavigationLevels].
+  /// Always returns true when [tvBackPolicyEnabled] (never delegates kill to caller).
+  static bool handleShellBackKey() {
+    if (_consumeDuplicateBack()) return true;
+
+    if (!tvBackPolicyEnabled) {
+      return _handleLegacyBackKey();
+    }
+
+    switch (ShellNavigationLevels.resolveBackTarget()) {
+      case ShellNavLevel.player:
+        ShellTvBackExit.reset();
+        ShellNavigationLevels.popRootRoute();
+        return true;
+      case ShellNavLevel.detail:
+        ShellTvBackExit.reset();
+        maybePopShellOverlay();
+        return true;
+      case ShellNavLevel.tabStack:
+        ShellTvBackExit.reset();
+        if (ShellNavigationLevels.popTabStack()) return true;
+        _focusActiveNavFromPage();
+        return true;
+      case ShellNavLevel.page:
+        ShellTvBackExit.reset();
+        _focusActiveNavFromPage();
+        return true;
+      case ShellNavLevel.menu:
+        ShellTvBackExit.onNavBack(onRequestExitApp ?? SystemNavigator.pop);
+        return true;
+    }
+  }
+
+  static bool _handleLegacyBackKey() {
     if (shellOverlayCanPop()) {
       ShellTvBackExit.reset();
       maybePopShellOverlay();
@@ -186,10 +228,6 @@ abstract final class ShellTvFocusCoordinator {
     }
 
     if (ShellTvFocus.currentNavTabId == null) {
-      if (ShellTokens.isAndroidTvDevice) {
-        _focusActiveNavFromPage();
-        return true;
-      }
       return false;
     }
 

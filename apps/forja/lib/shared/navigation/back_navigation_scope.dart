@@ -29,6 +29,10 @@ class BackNavigationScope extends StatelessWidget {
     if (ShellTvFocusCoordinator.handleShellBackKey()) {
       return;
     }
+    // TV shell: only double-back on nav rail may exit (handled in coordinator).
+    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+      return;
+    }
     if (_popNavigatorOrOverlay(context)) {
       return;
     }

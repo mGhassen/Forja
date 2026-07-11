@@ -59,6 +59,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
+    ShellTvFocusCoordinator.tvBackPolicyEnabled = policy.useFocusableMoodChips;
     if (policy.useFocusableMoodChips &&
         widget.visibleIds.isNotEmpty &&
         widget.selectedIndex < widget.visibleIds.length) {
@@ -176,17 +177,6 @@ class _ShellScaffoldState extends State<ShellScaffold> {
               onItemTapped: _onNavSelected,
             ),
     );
-
-    if (policy.useFocusableMoodChips) {
-      shell = PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
-          if (didPop) return;
-          ShellTvFocusCoordinator.handleShellBackKey();
-        },
-        child: shell,
-      );
-    }
 
     return shell;
   }
