@@ -168,10 +168,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     final nextRowPeek =
         HubCatalogSection.sectionHeight(context) *
             ShellTokens.heroNextRowPeekFraction;
-    final reservedBelow = ShellTokens.homeRowSpacing +
+    final reservedBelow = shellHomeRowSpacing(context) +
         firstRowHeight +
         nextRowPeek;
-    final target = screenH * ShellTokens.heroHeightFractionDesktop;
+    final target = screenH * shellHeroHeightFraction(context);
     final maxHero = screenH - topBar - reservedBelow;
     return _snapToDevicePixels(
       math.min(target, math.max(320.0, maxHero)),

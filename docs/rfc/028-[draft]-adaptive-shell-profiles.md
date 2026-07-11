@@ -71,7 +71,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 23 | R28-A23 | `ShellMetrics.tv` visual tokens match desktop; fixed nav rail; `TvUiScaler` at 0.80 for leanback density | ✅ |
+| 23 | R28-A23 | TV leanback density — smaller `ShellMetrics.tv`, tighter row spacing, larger hero share; fixed nav rail | ✅ |
 | 24 | R28-A24 | No `usesTvDensity` / `ShellProfile.tv` visual layout branches in in-scope tabs, details, player sources panels | ✅ |
 | 25 | R28-A25 | TV `ShellInputPolicy` unchanged — focus rings, D-pad coordinator, hero Play autofocus | ✅ |
 | 26 | R28-A26 | Manual leanback smoke — all tabs + details + player sources at desktop sizing | ⬜ |

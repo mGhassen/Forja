@@ -11,7 +11,6 @@ export 'src/shell_input_policy.dart';
 export 'src/shell_platform.dart';
 export 'src/shell_scope.dart';
 export 'src/shell_layout.dart';
-export 'src/shell_tv_ui_scale.dart';
 export 'src/shell_tab_header.dart';
 export 'src/shell_section_title.dart';
 export 'src/forja_shell_colors.dart';

@@ -288,12 +288,12 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                   ),
                                 ),
                                 if (_continueWatching.isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     _buildContinueWatching(),
                                     isFirstAfterHero: true,
                                   ),
                                 if ((_feed?.latest ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Latest Update',
                                       items: _feed!.latest,
@@ -315,7 +315,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     isFirstAfterHero: _continueWatching.isEmpty,
                                   ),
                                 if ((_feed?.trending ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Trending',
                                       items: _feed!.trending,
@@ -332,7 +332,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.topRated ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Top Rated',
                                       items: _feed!.topRated,
@@ -351,7 +351,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.mostViewed ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Most Viewed',
                                       items: _feed!.mostViewed,
@@ -368,7 +368,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.anime ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Anime',
                                       items: _feed!.anime,
@@ -385,7 +385,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                     isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.upcoming ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Upcoming',
                                       items: _feed!.upcoming,

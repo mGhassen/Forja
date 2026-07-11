@@ -515,6 +515,16 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     );
   }
 
+  void _focusHelperAtIndex(int index) {
+    final rowId = _query.trim().isEmpty ? 'helpers' : 'helper-results';
+    final node = ShellTvFocusCoordinator.itemNode('search', rowId, index);
+    if (node != null && node.canRequestFocus) {
+      node.requestFocus();
+      return;
+    }
+    _focusFirstHelper();
+  }
+
   bool _focusFirstHelper() {
     if (!_firstHelperFocusNode.canRequestFocus) return false;
     _firstHelperFocusNode.requestFocus();
@@ -743,7 +753,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
       _syncHelperResultsRow(results.length);
 
-      return ListView.separated(
+      return FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: ListView.separated(
         clipBehavior: Clip.none,
         padding: const EdgeInsets.only(right: 8, bottom: 8),
         itemCount: results.length,
@@ -758,9 +770,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             listIndex: index,
             tvTabId: 'search',
             tvRowId: 'helper-results',
+            tvZone: ShellTvZone.chipStrip,
             tvItemIndex: index,
             focusNode: index == 0 ? _firstHelperFocusNode : null,
-            onUpEdge: index == 0 ? () => _focusNode.requestFocus() : null,
+            onRightEdge: () => _focusResultCard(index),
             onFocusChange: (focused) {
               if (focused) _setFocusedIndex(index);
             },
@@ -783,12 +796,23 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             ),
           );
         },
+      ),
       );
     }
 
-    if (_trendingHelperTitles.isEmpty) return const SizedBox.shrink();
+    if (_trendingHelperTitles.isEmpty) {
+      return const Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
 
-    return ListView.separated(
+    return FocusTraversalGroup(
+      policy: OrderedTraversalPolicy(),
+      child: ListView.separated(
       clipBehavior: Clip.none,
       padding: const EdgeInsets.only(right: 8, bottom: 8),
       itemCount: _trendingHelperTitles.length,
@@ -803,9 +827,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           listIndex: index,
           tvTabId: 'search',
           tvRowId: 'helpers',
+          tvZone: ShellTvZone.chipStrip,
           tvItemIndex: index,
           focusNode: index == 0 ? _firstHelperFocusNode : null,
-          onUpEdge: index == 0 ? () => _focusNode.requestFocus() : null,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
             child: Text(
@@ -821,6 +845,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           ),
         );
       },
+    ),
     );
   }
 
@@ -879,13 +904,17 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                 );
               }
 
-              return GridView.builder(
+              return FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: GridView.builder(
                 clipBehavior: Clip.none,
                 padding: const EdgeInsets.only(bottom: 8),
                 gridDelegate: gridDelegate,
                 itemCount: results.length,
                 itemBuilder: (context, index) {
                   final item = results[index];
+                  final firstColumn =
+                      gridColumns > 0 && index % gridColumns == 0;
                   return Padding(
                     padding: const EdgeInsets.all(4),
                     child: _SearchFilmCard(
@@ -895,12 +924,16 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                       gridColumns: gridColumns,
                       onTap: () => _setFocusedIndex(index),
                       onOpen: () => _openResult(item),
+                      onLeftEdge: firstColumn && tvFocus
+                          ? () => _focusHelperAtIndex(index)
+                          : null,
                       onFocusChange: (focused) {
                         if (focused) _setFocusedIndex(index);
                       },
                     ),
                   );
                 },
+              ),
               );
             },
           ),
@@ -1166,6 +1199,7 @@ class _SearchFilmCard extends StatelessWidget {
     required this.onTap,
     required this.onOpen,
     this.onFocusChange,
+    this.onLeftEdge,
     this.gridIndex,
     this.gridColumns,
   });
@@ -1175,6 +1209,7 @@ class _SearchFilmCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onOpen;
   final ValueChanged<bool>? onFocusChange;
+  final VoidCallback? onLeftEdge;
   final int? gridIndex;
   final int? gridColumns;
 
@@ -1188,6 +1223,7 @@ class _SearchFilmCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 14,
+      onLeftEdge: onLeftEdge,
       gridIndex: gridIndex,
       gridColumns: gridColumns,
       tvTabId: 'search',

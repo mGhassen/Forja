@@ -69,7 +69,7 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
       onFocusUp: widget.tvFocusUp,
     );
 
-    final homePad = ShellTokens.homeSectionHorizontalPadding;
+    final homePad = shellHomeSectionHorizontalPadding(context);
     final outdent = widget.outdentHorizontal;
     final useHomeInsets = outdent > 0;
 
@@ -115,7 +115,7 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
             padding: listPadding,
             itemCount: widget.movies.length,
             separatorBuilder: (_, _) =>
-                SizedBox(width: widget.showRank ? 6 : 14),
+                SizedBox(width: widget.showRank ? 6 : shellMovieCardRowGap(context)),
             itemBuilder: (context, index) {
               return HomeMovieCard(
                 movie: widget.movies[index],

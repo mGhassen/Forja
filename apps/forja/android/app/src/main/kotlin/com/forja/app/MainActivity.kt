@@ -1,7 +1,5 @@
 package com.forja.app
 
-import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
 import com.ryanheise.audioservice.AudioServiceActivity
@@ -25,16 +23,16 @@ class MainActivity : AudioServiceActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isAndroidTv" -> result.success(isAndroidTv())
+                "prepareWebViewForTv" -> {
+                    WebViewTvWorkaround.warmUpSoftwareWebView(applicationContext)
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
     }
 
-    private fun isAndroidTv(): Boolean {
-        val uiMode = resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
-        if (uiMode == Configuration.UI_MODE_TYPE_TELEVISION) return true
-        return packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
-    }
+    private fun isAndroidTv(): Boolean = PlatformUtils.isAndroidTv(this)
 
     companion object {
         private val APP_BACKGROUND = Color.parseColor("#141414")

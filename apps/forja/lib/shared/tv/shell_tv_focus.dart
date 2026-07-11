@@ -22,6 +22,15 @@ abstract final class ShellTvFocus {
   static bool get anyNavFocused =>
       _navNodes.values.any((node) => node.hasFocus);
 
+  static bool get primaryFocusIsNav {
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null) return false;
+    for (final node in _navNodes.values) {
+      if (identical(node, primary)) return true;
+    }
+    return false;
+  }
+
   static bool focusCurrentNavTab() {
     final id = currentNavTabId;
     if (id == null) return false;

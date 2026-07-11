@@ -357,12 +357,12 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 ),
                               ),
                               if (_continueWatching.isNotEmpty)
-                                hubRowSliver(
+                                hubRowSliver(context,
                                   _buildContinueWatching(),
                                   isFirstAfterHero: true,
                                 )
                               else
-                                hubRowSliver(
+                                hubRowSliver(context,
                                   FutureBuilder<List<Map<String, dynamic>>>(
                                     future: _historyFuture,
                                     builder: (context, snap) {
@@ -377,8 +377,8 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   ),
                                   isFirstAfterHero: true,
                                 ),
-                              hubRowSliver(_buildMoodChips(), isFirstAfterHero: false),
-                              hubRowSliver(
+                              hubRowSliver(context,_buildMoodChips(), isFirstAfterHero: false),
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Trending Now',
                                   future: _trendingFuture,
@@ -397,7 +397,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top Airing',
                                   future: _topAiringFuture,
@@ -413,7 +413,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top 10 Today',
                                   future: _top10Future,
@@ -431,7 +431,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Most Popular',
                                   future: _mostPopularFuture,
@@ -447,7 +447,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Latest Episodes',
                                   future: _recentEpisodesFuture,
@@ -463,7 +463,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top Rated',
                                   future: _topRatedFuture,
@@ -479,7 +479,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Most Favorited',
                                   future: _mostFavoriteFuture,
@@ -495,7 +495,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Recently Completed',
                                   future: _latestCompletedFuture,

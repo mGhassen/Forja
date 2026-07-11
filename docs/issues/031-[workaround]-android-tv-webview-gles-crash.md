@@ -3,13 +3,13 @@
 **Status:** workaround  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `apps/forja/lib/shared/webview/`, WebView extractors, live embeds, trailer hero
+**Area:** `apps/forja/android/`, `apps/forja/lib/shared/webview/`, WebView extractors, live embeds, trailer hero
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **2 / 2** workaround · **0 / 1** root |
+| **Progress** | **3 / 3** workaround · **0 / 1** root |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -19,8 +19,9 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I31-T01 | `ForjaInAppWebView` / `ForjaHeadlessInAppWebView` — TV software compositing patch | ✅ |
+| 1 | I31-T01 | Dart wrappers — `hardwareAcceleration: false` (View `LAYER_TYPE_NONE`; insufficient alone for Chromium GPU) | ✅ |
 | 2 | I31-T02 | Unit test + repo guard — no direct plugin WebView outside `shared/webview/` | ✅ |
+| 3 | I31-T03 | Native TV prep — `ForjaApplication` software WebView warm-up + defer boot `setWebContentsDebuggingEnabled` on TV | ✅ |
 
 ---
 
@@ -44,9 +45,11 @@ Thread name: `Chrome_InProcGp`. This is **not** `media_kit` / player UI — it i
 
 ## Workaround (shipped)
 
-[`forja_webview_settings.dart`](../../apps/forja/lib/shared/webview/forja_webview_settings.dart) sets `hardwareAcceleration: false` when [`PlatformInfo.isAndroidTv`](../../apps/forja/lib/shared/platform/platform_info.dart) is true. All app WebViews go through [`ForjaInAppWebView`](../../apps/forja/lib/shared/webview/forja_in_app_webview.dart) / [`ForjaHeadlessInAppWebView`](../../apps/forja/lib/shared/webview/forja_headless_in_app_webview.dart) so the patch cannot be skipped.
+**Dart (View layer — supplement only):** [`forja_webview_settings.dart`](../../apps/forja/lib/shared/webview/forja_webview_settings.dart) sets `hardwareAcceleration: false` when [`PlatformInfo.isAndroidTv`](../../apps/forja/lib/shared/platform/platform_info.dart) is true. All app WebViews go through [`ForjaInAppWebView`](../../apps/forja/lib/shared/webview/forja_in_app_webview.dart) / [`ForjaHeadlessInAppWebView`](../../apps/forja/lib/shared/webview/forja_headless_in_app_webview.dart). This maps to `LAYER_TYPE_NONE` in the plugin and does **not** stop `Chrome_InProcGp` from starting.
 
-Desktop and phone profiles are unchanged — patch is a no-op outside Android TV.
+**Native (Chromium layer):** [`ForjaApplication.kt`](../../apps/forja/android/app/src/main/kotlin/com/forja/app/ForjaApplication.kt) calls [`WebViewTvWorkaround.kt`](../../apps/forja/android/app/src/main/kotlin/com/forja/app/WebViewTvWorkaround.kt) on TV — `WebView.enableSlowWholeDocumentDraw()` plus a one-shot software-layer WebView warm-up. Trichrome 143+ has no Java `org.chromium.base.CommandLine` in the provider APK, so `--disable-gpu` reflection does not apply. [`bootstrap.dart`](../../apps/forja/lib/app/bootstrap.dart) skips boot-time `setWebContentsDebuggingEnabled` on TV (loads Chromium only when a feature needs WebView) and calls `PlatformChannel.prepareWebViewForTv()` first.
+
+Desktop and phone profiles are unchanged — both patches are no-ops outside Android TV.
 
 ## Root fix (open)
 
@@ -59,6 +62,8 @@ Desktop and phone profiles are unchanged — patch is a no-op outside Android TV
 2. Details hero trailer play  
 3. Webstreaming play (headless `StreamExtractor`)  
 4. Live matches CDN/DamiTV embed
+
+**Dev fallback** (if reflection fails on a device): `adb shell 'echo "_ --disable-gpu" > /data/local/tmp/webview-command-line'` then cold-start the app.
 
 ## Related
 

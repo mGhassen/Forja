@@ -53,14 +53,16 @@ SliverToBoxAdapter _homeRowSliver(
   required bool isFirstAfterHero,
 }) {
   return SliverToBoxAdapter(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (!isFirstAfterHero)
-          const SizedBox(height: ShellTokens.homeRowSpacing),
-        RepaintBoundary(child: section),
-      ],
+    child: Builder(
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!isFirstAfterHero)
+            SizedBox(height: shellHomeRowSpacing(context)),
+          RepaintBoundary(child: section),
+        ],
+      ),
     ),
   );
 }
@@ -1610,10 +1612,10 @@ class _HomeScreenState extends State<HomeScreen>
         _MovieSection.sectionHeight(context, compactTop: true);
     final nextRowPeek = _MovieSection.sectionHeight(context) *
         ShellTokens.heroNextRowPeekFraction;
-    final reservedBelow = ShellTokens.homeRowSpacing +
+    final reservedBelow = shellHomeRowSpacing(context) +
         firstRowHeight +
         nextRowPeek;
-    final target = screenH * ShellTokens.heroHeightFractionDesktop;
+    final target = screenH * shellHeroHeightFraction(context);
     final maxHero = screenH - topBar - reservedBelow;
     return _snapToDevicePixels(
       context,
@@ -2263,12 +2265,11 @@ class _MovieSection extends StatefulWidget {
     BuildContext context, {
     bool compactTop = false,
   }) {
-    final top = compactTop
-        ? ShellTokens.homeSectionTitleTopCompactDesktop
-        : ShellTokens.homeSectionTitleTop;
-    const headerRow = 28.0;
-    const bottomGap = 16.0;
-    return top + headerRow + bottomGap + HomeMovieCard.cardHeight(context);
+    return shellCatalogSectionHeight(
+      context,
+      compactTop: compactTop,
+      cardHeight: HomeMovieCard.cardHeight(context),
+    );
   }
 
   @override

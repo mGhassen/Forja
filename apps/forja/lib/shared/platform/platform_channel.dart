@@ -45,4 +45,14 @@ abstract final class PlatformChannel {
         profile == PlatformProfile.androidTv;
     await SettingsService().ensurePlatformDefaultsSeeded(profile);
   }
+
+  /// Android TV only — software WebView warm-up before first real WebView use.
+  static Future<void> prepareWebViewForTv() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('prepareWebViewForTv');
+    } catch (e) {
+      debugPrint('[PlatformChannel] prepareWebViewForTv failed: $e');
+    }
+  }
 }

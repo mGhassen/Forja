@@ -291,4 +291,51 @@ void main() {
 
     pageNode.dispose();
   });
+
+  testWidgets('handleShellBackKey focuses active nav from page content', (tester) async {
+    final homeNav = FocusNode(debugLabel: 'nav-home');
+    final page = FocusNode(debugLabel: 'page-item');
+    ShellTvFocus.registerNav('home', homeNav);
+    ShellTvFocus.currentNavTabId = 'home';
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
+            Focus(focusNode: page, child: const SizedBox(width: 40, height: 40)),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    page.requestFocus();
+    await tester.pump();
+
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pump();
+    expect(homeNav.hasFocus, isTrue);
+
+    homeNav.dispose();
+    page.dispose();
+  });
+
+  testWidgets('handleShellBackKey ignored when nav already focused', (tester) async {
+    final homeNav = FocusNode(debugLabel: 'nav-home');
+    ShellTvFocus.registerNav('home', homeNav);
+    ShellTvFocus.currentNavTabId = 'home';
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
+      ),
+    );
+    await tester.pump();
+    homeNav.requestFocus();
+    await tester.pump();
+
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isFalse);
+
+    homeNav.dispose();
+  });
 }

@@ -36,12 +36,11 @@ class HubCatalogSection<T> extends StatefulWidget {
     BuildContext context, {
     bool compactTop = false,
   }) {
-    final top = compactTop
-        ? ShellTokens.homeSectionTitleTopCompactDesktop
-        : ShellTokens.homeSectionTitleTop;
-    const headerRow = 28.0;
-    const bottomGap = 16.0;
-    return top + headerRow + bottomGap + HubPosterCard.cardHeight(context);
+    return shellCatalogSectionHeight(
+      context,
+      compactTop: compactTop,
+      cardHeight: HubPosterCard.cardHeight(context),
+    );
   }
 
   @override
@@ -75,10 +74,8 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
   }
 
   double _sectionTitleTop(BuildContext context) {
-    if (!widget.compactTop) return ShellTokens.homeSectionTitleTop;
-    return homeUsesShellLayout(context)
-        ? ShellTokens.homeSectionTitleTopCompactDesktop
-        : ShellTokens.homeSectionTitleTopCompactMobile;
+    if (!widget.compactTop) return shellHomeSectionTitleTop(context);
+    return shellSectionTitleTopCompact(context);
   }
 
   Widget _buildRow(List<T> list) {
@@ -86,7 +83,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
     _syncTvRow(list.length);
 
     final sectionTop = _sectionTitleTop(context);
-    const horizontalPad = 24.0;
+    final horizontalPad = shellHomeSectionHorizontalPadding(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,6 +154,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
 }
 
 SliverToBoxAdapter hubRowSliver(
+  BuildContext context,
   Widget section, {
   required bool isFirstAfterHero,
 }) {
@@ -166,7 +164,7 @@ SliverToBoxAdapter hubRowSliver(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!isFirstAfterHero)
-          const SizedBox(height: ShellTokens.homeRowSpacing),
+          SizedBox(height: shellHomeRowSpacing(context)),
         RepaintBoundary(child: section),
       ],
     ),

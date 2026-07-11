@@ -10,12 +10,12 @@ const double _kHeroPillIconSize = 20;
 Color _heroPillSlotActiveFill({required bool pressed}) =>
     Colors.white.withValues(alpha: pressed ? 0.24 : 0.18);
 
-BoxDecoration _heroPillDecoration({required bool hover}) {
+BoxDecoration _heroPillDecoration() {
   return BoxDecoration(
-    color: Colors.black.withValues(alpha: hover ? 0.62 : 0.42),
+    color: Colors.black.withValues(alpha: 0.42),
     borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
     border: Border.all(
-      color: Colors.white.withValues(alpha: hover ? 0.48 : 0.24),
+      color: Colors.white.withValues(alpha: 0.24),
     ),
   );
 }
@@ -99,74 +99,270 @@ class HeroPillPlayButton extends StatelessWidget {
             );
       case HeroPillPlayTone.secondary:
         foreground = Colors.white;
-        decoration = (hover) => _heroPillDecoration(hover: hover);
+        decoration = (_) => _heroPillDecoration();
     }
 
     final leading = iconWidget ??
-        (icon != null
-            ? Icon(icon, size: _kHeroPillIconSize, color: foreground)
-            : null);
+        (icon != null ? Icon(icon, size: _kHeroPillIconSize) : null);
 
-    return ForjaInteractive(
-      onTap: onTap,
-      autoFocus: autoFocus,
-      focusNode: focusNode,
-      onKeyEvent: onKeyEvent,
-      hoverScale: 1.03,
-      pressScale: 0.97,
-      builder: (focused, pressed) {
-        final compact = _tvCompactUnfocused(policy, focused);
+    final useTvCompact = policy.useFocusableMoodChips &&
+        (resolved == HeroPillPlayTone.primary ||
+            resolved == HeroPillPlayTone.streaming);
 
-        final compactIcon = iconWidget ??
-            (icon != null
-                ? Icon(icon, size: _kHeroPillIconSize, color: Colors.white)
-                : null);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ForjaInteractive(
+        onTap: onTap,
+        autoFocus: autoFocus,
+        focusNode: focusNode,
+        onKeyEvent: onKeyEvent,
+        hoverScale: 1.03,
+        pressScale: 0.97,
+        builder: (active, pressed) {
+          return _HeroPillPlaySurface(
+            tone: resolved,
+            active: active,
+            pressed: pressed,
+            compact: _tvCompactUnfocused(policy, active),
+            useTvCompact: useTvCompact,
+            label: label,
+            leading: leading,
+            foreground: foreground,
+            filledDecoration: resolved == HeroPillPlayTone.secondary
+                ? null
+                : decoration(active),
+            compactDecoration: _heroPillDecoration(),
+          );
+        },
+      ),
+    );
+  }
+}
 
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 140),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeOutCubic,
-          child: compact
-              ? Container(
-                  key: const ValueKey('hero-pill-compact'),
-                  width: _kHeroPillHeight,
-                  height: _kHeroPillHeight,
-                  decoration: _heroPillDecoration(hover: false),
-                  alignment: Alignment.center,
-                  child: compactIcon,
-                )
-              : AnimatedContainer(
-                  key: const ValueKey('hero-pill-expanded'),
-                  duration: const Duration(milliseconds: 140),
-                  curve: Curves.easeOutCubic,
-                  height: _kHeroPillHeight,
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  decoration: decoration(focused),
-                  alignment: Alignment.center,
+class _HeroPillPlaySurface extends StatefulWidget {
+  const _HeroPillPlaySurface({
+    required this.tone,
+    required this.active,
+    required this.pressed,
+    required this.compact,
+    required this.useTvCompact,
+    required this.label,
+    required this.leading,
+    required this.foreground,
+    required this.filledDecoration,
+    required this.compactDecoration,
+  });
+
+  final HeroPillPlayTone tone;
+  final bool active;
+  final bool pressed;
+  final bool compact;
+  final bool useTvCompact;
+  final String label;
+  final Widget? leading;
+  final Color foreground;
+  final BoxDecoration? filledDecoration;
+  final BoxDecoration compactDecoration;
+
+  @override
+  State<_HeroPillPlaySurface> createState() => _HeroPillPlaySurfaceState();
+}
+
+class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
+    with SingleTickerProviderStateMixin {
+  static const _duration = Duration(milliseconds: 480);
+
+  late final AnimationController _controller;
+  late final Animation<double> _expand;
+  late final Animation<double> _labelOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: _duration);
+    _expand = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0, 0.65, curve: Curves.easeOutCubic),
+    );
+    _labelOpacity = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.5, 0.85, curve: Curves.easeOut),
+    );
+    _syncController(animate: false);
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeroPillPlaySurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.compact != oldWidget.compact ||
+        widget.useTvCompact != oldWidget.useTvCompact) {
+      _syncController(animate: true);
+    }
+  }
+
+  void _syncController({required bool animate}) {
+    final target = widget.useTvCompact && widget.compact ? 0.0 : 1.0;
+    if (!animate) {
+      _controller.value = target;
+      return;
+    }
+    if (target == 0) {
+      _controller.reverse();
+    } else {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  BoxDecoration _blendDecoration(double t) {
+    if (!widget.useTvCompact || t <= 0) return widget.compactDecoration;
+    final filled = widget.filledDecoration;
+    if (filled == null || t >= 1) return filled ?? widget.compactDecoration;
+    return BoxDecoration.lerp(widget.compactDecoration, filled, t) ??
+        filled;
+  }
+
+  Widget _buildPillContent() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (widget.leading != null) ...[
+          SizedBox(
+            width: _kHeroPillIconSize,
+            height: _kHeroPillIconSize,
+            child: Center(
+              child: IconTheme(
+                data: IconThemeData(
+                  size: _kHeroPillIconSize,
+                  color: widget.foreground,
+                ),
+                child: widget.leading!,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+        Text(
+          widget.label,
+          style: GoogleFonts.inter(
+            color: widget.foreground,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+            height: 1.0,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGlassShell({
+    required Widget child,
+    EdgeInsetsGeometry? padding,
+    bool clip = true,
+  }) {
+    return Container(
+      height: _kHeroPillHeight,
+      decoration: _heroPillDecoration(),
+      clipBehavior: clip ? Clip.antiAlias : Clip.none,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        padding: padding ?? const EdgeInsets.symmetric(horizontal: 18),
+        decoration: BoxDecoration(
+          color: widget.active
+              ? _heroPillSlotActiveFill(pressed: widget.pressed)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.useTvCompact) {
+      return _buildStaticPill();
+    }
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return _buildTvExpandPill(
+          expand: _expand.value,
+          labelOpacity: _labelOpacity.value,
+          decorationT: _expand.value,
+        );
+      },
+    );
+  }
+
+  Widget _buildStaticPill() {
+    if (widget.tone == HeroPillPlayTone.secondary) {
+      return _buildGlassShell(child: _buildPillContent());
+    }
+
+    return Container(
+      height: _kHeroPillHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      decoration: widget.filledDecoration,
+      child: _buildPillContent(),
+    );
+  }
+
+  Widget _buildTvExpandPill({
+    required double expand,
+    required double labelOpacity,
+    required double decorationT,
+  }) {
+    final iconColor = Color.lerp(Colors.white, widget.foreground, decorationT) ??
+        widget.foreground;
+
+    return Container(
+      height: _kHeroPillHeight,
+      clipBehavior: Clip.antiAlias,
+      decoration: _blendDecoration(decorationT),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: _kHeroPillHeight,
+            height: _kHeroPillHeight,
+            child: Center(
+              child: widget.leading == null
+                  ? null
+                  : IconTheme(
+                      data: IconThemeData(
+                        size: _kHeroPillIconSize,
+                        color: iconColor,
+                      ),
+                      child: widget.leading!,
+                    ),
+            ),
+          ),
+          ClipRect(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              widthFactor: expand,
+              child: Opacity(
+                opacity: labelOpacity,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 18),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      if (leading != null) ...[
-                        SizedBox(
-                          width: _kHeroPillIconSize,
-                          height: _kHeroPillIconSize,
-                          child: Center(
-                            child: IconTheme(
-                              data: IconThemeData(
-                                size: _kHeroPillIconSize,
-                                color: foreground,
-                              ),
-                              child: leading,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
+                      if (widget.leading != null) const SizedBox(width: 8),
                       Text(
-                        label,
+                        widget.label,
                         style: GoogleFonts.inter(
-                          color: foreground,
+                          color: widget.foreground,
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.2,
@@ -176,8 +372,11 @@ class HeroPillPlayButton extends StatelessWidget {
                     ],
                   ),
                 ),
-        );
-      },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -323,7 +522,7 @@ class HeroPillIconGroup extends StatelessWidget {
     return Container(
       height: _kHeroPillHeight,
       clipBehavior: Clip.antiAlias,
-      decoration: _heroPillDecoration(hover: false),
+      decoration: _heroPillDecoration(),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -381,7 +580,7 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
     return Container(
       height: _kHeroPillHeight,
       clipBehavior: Clip.antiAlias,
-      decoration: _heroPillDecoration(hover: false),
+      decoration: _heroPillDecoration(),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -429,8 +628,8 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
 
     return ForjaInteractive(
       onTap: onTap,
-      hoverScale: 1.06,
-      pressScale: 0.94,
+      hoverScale: 1.03,
+      pressScale: 0.97,
       builder: (hover, pressed) {
         final active = selected || hover || pressed;
         return AnimatedContainer(
@@ -533,8 +732,8 @@ class _HeroPillIconSlotButton extends StatelessWidget {
 
     final button = ForjaInteractive(
       onTap: slot.onTap,
-      hoverScale: 1.06,
-      pressScale: 0.94,
+      hoverScale: 1.03,
+      pressScale: 0.97,
       onKeyEvent: _onKeyEvent,
       builder: (hover, pressed) {
         return AnimatedContainer(

@@ -2,24 +2,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/design/design.dart';
 
 void main() {
-  test('tv visual metrics match desktop; usesTvDensity marks profile only', () {
+  test('tv metrics are denser than desktop for leanback', () {
     const desktop = ShellMetrics.desktop;
     const tv = ShellMetrics.tv;
 
-    expect(tv.homeMovieCardWidth, equals(desktop.homeMovieCardWidth));
-    expect(tv.continueWatchingCardWidth, equals(desktop.continueWatchingCardWidth));
-    expect(tv.hubCardTitleFontSize, equals(desktop.hubCardTitleFontSize));
-    expect(tv.heroCompactRightInset, equals(desktop.heroCompactRightInset));
-    expect(tv.torrentPanelPadding, equals(desktop.torrentPanelPadding));
-    expect(tv.navRailItemSpacing, equals(desktop.navRailItemSpacing));
+    expect(tv.homeMovieCardWidth, lessThan(desktop.homeMovieCardWidth));
+    expect(tv.continueWatchingCardWidth, lessThan(desktop.continueWatchingCardWidth));
+    expect(tv.navRailItemSpacing, lessThan(desktop.navRailItemSpacing));
     expect(desktop.usesTvDensity, isFalse);
     expect(tv.usesTvDensity, isTrue);
+    expect(tv.allowCompactNavDrawer, isFalse);
   });
 
   test('mobile metrics row exists with compact card width', () {
     expect(ShellMetrics.mobile.homeMovieCardWidth, 165);
     expect(ShellMetrics.desktop.homeMovieCardWidth, 190);
-    expect(ShellMetrics.tv.homeMovieCardWidth, 190);
+    expect(ShellMetrics.tv.homeMovieCardWidth, 58);
   });
 
   test('input policies match profile expectations', () {

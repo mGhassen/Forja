@@ -30,8 +30,10 @@ import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_back_handler.dart';
 import 'package:forja/shared/tv/tv_remote_debug.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 
 bool _appShutdownStarted = false;
 
@@ -62,13 +64,23 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   if (Platform.isAndroid) {
     TvRemoteDebug.install();
   }
+  ShellTvBackHandler.install();
+
+  // TV profile must be set before any WebView warm-up (native workaround in
+  // ForjaApplication.onCreate; Dart patch uses PlatformInfo).
+  await PlatformChannel.initialize();
 
   // Configure InAppWebView (Android only — not supported on iOS)
   if (Platform.isAndroid) {
     try {
-      debugPrint('[Boot] Setting up InAppWebView...');
-      await InAppWebViewController.setWebContentsDebuggingEnabled(true);
-      debugPrint('[Boot] InAppWebView OK');
+      if (PlatformInfo.isAndroidTv) {
+        await PlatformChannel.prepareWebViewForTv();
+        debugPrint('[Boot] TV WebView software warm-up OK');
+      } else {
+        debugPrint('[Boot] Setting up InAppWebView...');
+        await InAppWebViewController.setWebContentsDebuggingEnabled(true);
+        debugPrint('[Boot] InAppWebView OK');
+      }
     } catch (e) {
       debugPrint('[Boot] InAppWebView setup failed (non-fatal): $e');
     }
@@ -148,7 +160,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   AudiobookPlayerService().init(audioHandler);
   
   // Hydrate theme preset before first frame
-  await PlatformChannel.initialize();
   await Engine.init();
   _warnIfRustMissing();
   
@@ -290,9 +301,6 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                 child: child ?? const SizedBox.shrink(),
               ),
             );
-            if (ShellTokens.isTvLayout(context)) {
-              content = TvUiScaler(child: content);
-            }
             if (ShellTokens.isAndroidTvDevice) {
               final mq = MediaQuery.of(context);
               content = MediaQuery(

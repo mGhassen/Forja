@@ -16,7 +16,7 @@
 
     <application
         android:label="Forja"
-        android:name="${applicationName}"
+        android:name=".ForjaApplication"
         android:banner="@drawable/ic_banner"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"

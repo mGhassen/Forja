@@ -31,10 +31,66 @@ double shellContinueWatchingCardWidth(BuildContext context) =>
 double shellContinueWatchingCardHeight(BuildContext context) =>
     ShellScope.metricsOf(context).continueWatchingCardHeight;
 
-double shellSectionTitleTopCompact(BuildContext context) =>
-    shellUsesWideLayout(context)
-        ? ShellTokens.homeSectionTitleTopCompactDesktop
-        : ShellTokens.homeSectionTitleTopCompactMobile;
+double shellSectionTitleTopCompact(BuildContext context) {
+  if (ShellScope.metricsOf(context).usesTvDensity) {
+    return ShellTokens.tvHomeSectionTitleTopCompact;
+  }
+  return shellUsesWideLayout(context)
+      ? ShellTokens.homeSectionTitleTopCompactDesktop
+      : ShellTokens.homeSectionTitleTopCompactMobile;
+}
+
+double shellHomeSectionHorizontalPadding(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.tvHomeSectionHorizontalPadding
+        : ShellTokens.homeSectionHorizontalPadding;
+
+double shellHomeRowSpacing(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.tvHomeRowSpacing
+        : ShellTokens.homeRowSpacing;
+
+double shellHeroHeightFraction(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.tvHeroHeightFraction
+        : ShellTokens.heroHeightFractionDesktop;
+
+double shellMovieCardRowGap(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.tvMovieCardRowGap
+        : 14.0;
+
+double shellHomeSectionTitleTop(
+  BuildContext context, {
+  bool compact = false,
+}) {
+  if (compact) return shellSectionTitleTopCompact(context);
+  if (ShellScope.metricsOf(context).usesTvDensity) {
+    return ShellTokens.tvHomeSectionTitleTop;
+  }
+  return ShellTokens.homeSectionTitleTop;
+}
+
+double shellHomeSectionHeaderHeight(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.tvHomeSectionHeaderHeight
+        : 28.0;
+
+double shellHomeSectionBottomGap(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.tvHomeSectionBottomGap
+        : 16.0;
+
+double shellCatalogSectionHeight(
+  BuildContext context, {
+  bool compactTop = false,
+  required double cardHeight,
+}) {
+  return shellHomeSectionTitleTop(context, compact: compactTop) +
+      shellHomeSectionHeaderHeight(context) +
+      shellHomeSectionBottomGap(context) +
+      cardHeight;
+}
 
 double shellHubCardTitleFontSize(BuildContext context) =>
     ShellScope.metricsOf(context).hubCardTitleFontSize;

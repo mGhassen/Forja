@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Focus zone within a shell tab.
@@ -130,6 +131,31 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   static bool focusActiveNavTab() => ShellTvFocus.focusCurrentNavTab();
+
+  /// TV remote Back: pop overlay/route first, else focus active nav tab.
+  /// Returns true when the key was consumed.
+  static bool handleShellBackKey() {
+    if (shellOverlayCanPop()) {
+      maybePopShellOverlay();
+      return true;
+    }
+
+    final primary = FocusManager.instance.primaryFocus;
+    final ctx = primary?.context;
+    if (ctx != null) {
+      final rootNav = Navigator.maybeOf(ctx, rootNavigator: true);
+      if (rootNav != null && rootNav.canPop()) {
+        rootNav.maybePop();
+        return true;
+      }
+    }
+
+    if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
+      return false;
+    }
+    if (ShellTvFocus.currentNavTabId == null) return false;
+    return focusActiveNavTab();
+  }
 
   static bool focusNextNavItem() {
     final current = _focusedNavId() ?? ShellTvFocus.currentNavTabId;

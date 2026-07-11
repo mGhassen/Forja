@@ -52,7 +52,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [028-[draft]-…](028-[draft]-desktop-lan-client-not-implemented.md) | Desktop LAN client not implemented | P2 | Medium | draft | 0/3 · 0/2 | — |
 | [029-[draft]-…](029-[draft]-lan-range-seek-unverified.md) | LAN range seek unverified | P3 | Low | draft | 0/2 | — |
 | [030-[draft]-…](030-[draft]-lan-hdr-passthrough-unverified.md) | LAN HDR passthrough unverified | P3 | Low | draft | 0/1 | — |
-| [031-[workaround]-…](031-[workaround]-android-tv-webview-gles-crash.md) | Android TV WebView GLES crash | P1 | High | workaround | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [031-[workaround]-…](031-[workaround]-android-tv-webview-gles-crash.md) | Android TV WebView GLES crash | P1 | High | workaround | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

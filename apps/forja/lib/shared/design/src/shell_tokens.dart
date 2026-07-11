@@ -228,6 +228,15 @@ abstract final class ShellTokens {
 
   /// Vertical gap between Home content rows (not hero → first row).
   static const double homeRowSpacing = 24;
+  static const double tvHomeRowSpacing = 3;
+  static const double tvHomeSectionHorizontalPadding = 12;
+  static const double tvHeroHeightFraction = 0.72;
+  static const double tvHeroNextRowPeekFraction = 0.10;
+  static const double tvHomeSectionTitleTopCompact = 2;
+  static const double tvHomeSectionTitleTop = 10;
+  static const double tvHomeSectionHeaderHeight = 11;
+  static const double tvHomeSectionBottomGap = 4;
+  static const double tvMovieCardRowGap = 4;
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
   static const double homeSectionTitleTop = 36;
@@ -302,11 +311,4 @@ abstract final class ShellTokens {
     if (views.isEmpty) return null;
     return views.first.physicalSize;
   }
-
-  /// Layout density for leanback: virtual viewport is 1/scale larger, then scaled to fit.
-  static const double tvUiScaleFactor = 0.80;
-
-  /// Returns [tvUiScaleFactor] on TV layout; 1.0 elsewhere.
-  static double tvUiScale(BuildContext context) =>
-      isTvLayout(context) ? tvUiScaleFactor : 1.0;
 }
