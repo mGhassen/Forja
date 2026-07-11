@@ -38,6 +38,7 @@ bool _usesShellHomeLayout(BuildContext context) {
 }
 
 bool _isFullCinematicHero(BuildContext context) {
+  if (ShellScope.metricsOf(context).usesTvDensity) return true;
   return MediaQuery.sizeOf(context).width >= ShellTokens.heroDesktopMinBodyWidth;
 }
 
@@ -1609,7 +1610,7 @@ class _HomeScreenState extends State<HomeScreen>
     final firstRowHeight =
         _MovieSection.sectionHeight(context, compactTop: true);
     final nextRowPeek = _MovieSection.sectionHeight(context) *
-        ShellTokens.heroNextRowPeekFraction;
+        shellHeroNextRowPeekFraction(context);
     final reservedBelow = shellHomeRowSpacing(context) +
         firstRowHeight +
         nextRowPeek;
@@ -1617,7 +1618,7 @@ class _HomeScreenState extends State<HomeScreen>
     final maxHero = screenH - topBar - reservedBelow;
     return _snapToDevicePixels(
       context,
-      math.min(target, math.max(320.0, maxHero)),
+      math.min(target, math.max(shellHeroMinHeight(context), maxHero)),
     );
   }
 
@@ -1742,8 +1743,8 @@ class _HomeScreenState extends State<HomeScreen>
     if (metrics.heroActionUseFittedBox &&
         maxHeight != null &&
         maxWidth != null) {
-      const actionGap = 12.0;
-      const metaGap = 10.0;
+      final actionGap = shellHeroActionGap(context);
+      final metaGap = shellHeroMetaGap(context);
       const actionRowHeight = 40.0;
       const metaRowHeight = 32.0;
       final titleHeight = (maxHeight -
@@ -1772,7 +1773,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ),
-            const SizedBox(height: metaGap),
+            SizedBox(height: metaGap),
             SizedBox(
               height: metaRowHeight,
               child: Align(
@@ -1780,7 +1781,7 @@ class _HomeScreenState extends State<HomeScreen>
                 child: _buildHeroMetaRow(heroMovie, singleLine: true),
               ),
             ),
-            const SizedBox(height: actionGap),
+            SizedBox(height: actionGap),
             _buildHeroActionRow(heroMovie),
           ],
         ),
@@ -1798,9 +1799,9 @@ class _HomeScreenState extends State<HomeScreen>
           desktop: true,
           compact: true,
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: shellHeroMetaGap(context)),
         _buildHeroMetaRow(heroMovie, singleLine: true),
-        SizedBox(height: shellScaled(context, 12).clamp(6.0, 12.0)),
+        SizedBox(height: shellHeroActionGap(context)),
         _buildHeroActionRow(heroMovie),
       ],
     );
@@ -2079,7 +2080,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildHeroMetaRow(Movie heroMovie, {bool singleLine = false}) {
     final metaFont = shellScaled(context, 13).clamp(9.0, 13.0);
     final genreFont = shellScaled(context, 12).clamp(8.0, 12.0);
-    final gap = shellScaled(context, 10).clamp(4.0, 10.0);
+    final gap = shellScaled(context, 10).clamp(7.0, 10.0);
     final rating = Container(
       padding: EdgeInsets.symmetric(
         horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
@@ -2230,8 +2231,6 @@ class _HomeScreenState extends State<HomeScreen>
             HeroPillIconSlot(
               child: MyListButton.movie(
                 movie: heroMovie,
-                iconColor: Colors.white,
-                iconColorActive: Colors.white,
                 iconSize: 20,
                 heroPillSlot: true,
               ),
@@ -3602,10 +3601,9 @@ class _MoodSectionState extends State<_MoodSection> {
                   tvTabId: 'home',
                   tvRowId: 'mood-chips',
                   onTap: () => onSelect(m.id),
-                  onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
-                    'home',
-                    'mood-results',
-                    0,
+                  onDownEdge: shellTvChipDownToRow(
+                    tabId: 'home',
+                    resultsRowId: 'mood-results',
                   ),
                 );
               }

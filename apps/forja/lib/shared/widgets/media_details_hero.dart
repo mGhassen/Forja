@@ -41,6 +41,7 @@ class MediaDetailsHero extends StatefulWidget {
     this.lastAirDate,
     this.networks = const [],
     this.creators = const [],
+    this.bodyOverlap,
   });
 
   final Movie movie;
@@ -64,6 +65,7 @@ class MediaDetailsHero extends StatefulWidget {
   final String? lastAirDate;
   final List<String> networks;
   final List<String> creators;
+  final double? bodyOverlap;
 
   @override
   State<MediaDetailsHero> createState() => _MediaDetailsHeroState();
@@ -615,6 +617,8 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
     final contentInset =
         ShellTokens.detailsContentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + ShellTokens.detailsHeroContentTopInset;
+    final bodyOverlap =
+        widget.bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
 
     return VisibilityDetector(
       key: ValueKey('media-hero-${widget.movie.id}'),
@@ -650,7 +654,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                     opacity: _showTrailer ? 0 : 1,
                     child: _CinematicHeroBottomGradient(
                       shellBg: shellBg,
-                      overlap: ShellTokens.detailsHeroBodyOverlap,
+                      overlap: bodyOverlap,
                     ),
                   ),
                 ),
@@ -729,7 +733,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: h * 0.55 + ShellTokens.detailsHeroBodyOverlap,
+                height: h * 0.55 + bodyOverlap,
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 600),

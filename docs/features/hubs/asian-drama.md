@@ -13,7 +13,7 @@ Tap **Asian Drama** in the navigation bar.
 ## What you can do
 
 - Browse hero and explore sections
-- Search dramas
+- Search dramas — **desktop / TV:** same layout as the Search tab (large search field, trending title suggestions on the left, poster grid on the right; **Select** a suggestion to run that search); **mobile:** search bar + results grid
 - Open details with episodes
 - Play with subtitle support where available
 - While a stream resolves, the loading screen shows the drama artwork (same style as Movies & TV playback)

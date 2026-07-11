@@ -689,13 +689,19 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _fetchSeason(season);
   }
 
-  Widget _buildDetailsHero({required double heroHeight}) {
+  Widget _buildDetailsHero({
+    required double heroHeight,
+    bool showEpisodeRail = false,
+  }) {
     return MediaDetailsHero(
       movie: _movie,
       trailerYoutubeKey: _trailerKey,
       trailerLanguageCode: _originalLanguage,
       progress: _lastProgress,
       height: heroHeight,
+      bodyOverlap: showEpisodeRail
+          ? ShellTokens.detailsHeroBodyOverlapWithEpisodes
+          : null,
       tagline: _tagline,
       certification: _certification,
       status: _status,
@@ -2899,7 +2905,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDetailsHero(heroHeight: heroHeight),
+          _buildDetailsHero(
+            heroHeight: heroHeight,
+            showEpisodeRail: showEpisodeRail,
+          ),
           MediaDetailsBody(
             backgroundColor: AppTheme.bgDark,
             bodyOverlap: showEpisodeRail

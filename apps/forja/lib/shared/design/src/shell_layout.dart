@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/design/src/shell_metrics.dart';
@@ -31,6 +33,9 @@ double shellContinueWatchingCardWidth(BuildContext context) =>
 
 double shellContinueWatchingCardHeight(BuildContext context) =>
     ShellScope.metricsOf(context).continueWatchingCardHeight;
+
+double shellHubCardTitleFontSize(BuildContext context) =>
+    ShellScope.metricsOf(context).hubCardTitleFontSize;
 
 double shellSectionTitleTopCompact(BuildContext context) {
   if (ShellScope.metricsOf(context).usesTvDensity) {
@@ -93,8 +98,13 @@ double shellCatalogSectionHeight(
       cardHeight;
 }
 
-double shellHubCardTitleFontSize(BuildContext context) =>
-    ShellScope.metricsOf(context).hubCardTitleFontSize;
+double shellHeroNextRowPeekFraction(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.tvHeroNextRowPeekFraction
+        : ShellTokens.heroNextRowPeekFraction;
+
+double shellHeroMinHeight(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity ? 400.0 : 320.0;
 
 double shellSearchGridCardWidth(BuildContext context) => shellMovieCardWidth(context);
 
@@ -112,12 +122,19 @@ int shellGridCrossAxisCount(
 bool shellIptvUsesWideLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= 1100;
 
-/// TV density vs desktop card baseline (190px). Drives proportional chrome sizing.
+/// TV density vs desktop card baseline (190px). Typography uses [ShellTokens.tvLayoutScaleFloor].
 double shellLayoutScale(BuildContext context) {
   if (!ShellScope.metricsOf(context).usesTvDensity) return 1.0;
-  return ShellScope.metricsOf(context).homeMovieCardWidth /
+  final raw = ShellScope.metricsOf(context).homeMovieCardWidth /
       ShellMetrics.desktop.homeMovieCardWidth;
+  return math.max(ShellTokens.tvLayoutScaleFloor, raw);
 }
+
+double shellHeroMetaGap(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity ? 14.0 : 10.0;
+
+double shellHeroActionGap(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity ? 16.0 : 12.0;
 
 double shellScaled(BuildContext context, double value) =>
     value * shellLayoutScale(context);
@@ -151,11 +168,11 @@ EdgeInsets shellHomeSectionTitlePadding(
 
 double shellNavRailIconSize(BuildContext context) =>
     shellScaled(context, ShellTokens.navRailIconSize)
-        .clamp(16.0, ShellTokens.navRailIconSize);
+        .clamp(20.0, ShellTokens.navRailIconSize);
 
 double shellNavRailLabelFontSize(BuildContext context) =>
     shellScaled(context, ShellTokens.navRailLabelFontSize)
-        .clamp(9.0, ShellTokens.navRailLabelFontSize);
+        .clamp(11.0, ShellTokens.navRailLabelFontSize);
 
 double shellNavRailItemContentHeight(BuildContext context) {
   final icon = shellNavRailIconSize(context);
@@ -168,12 +185,12 @@ double shellNavRailItemContentHeight(BuildContext context) {
 
 TextStyle shellSectionTitleTextStyle(BuildContext context) => TextStyle(
       color: Colors.white,
-      fontSize: shellScaled(context, 20).clamp(11.0, 20.0),
+      fontSize: shellScaled(context, 20).clamp(15.0, 20.0),
       fontWeight: FontWeight.w800,
       letterSpacing: -0.3,
     );
 
 TextStyle shellSectionSubtitleTextStyle(BuildContext context) => TextStyle(
       color: Colors.white.withValues(alpha: 0.3),
-      fontSize: shellScaled(context, 11).clamp(8.0, 11.0),
+      fontSize: shellScaled(context, 11).clamp(10.0, 11.0),
     );

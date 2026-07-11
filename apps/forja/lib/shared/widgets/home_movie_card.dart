@@ -38,7 +38,7 @@ class HomeMovieCard extends StatelessWidget {
     final radius = shellCardBorderRadius(context);
     final inset = shellScaled(context, 10).clamp(4.0, 10.0);
     final metaSize = shellScaled(context, 11).clamp(7.0, 11.0);
-    final compact = cardWidth < 95;
+    final compact = cardWidth < 85;
     final imageUrl = movie.posterPath.isNotEmpty
         ? TmdbApi.getImageUrl(movie.posterPath)
         : '';

@@ -6,29 +6,20 @@ import 'package:google_fonts/google_fonts.dart';
 
 const double _kHeroPillHeight = 40;
 const double _kHeroPillIconSize = 20;
+const Color _kHeroPillForeground = Color(0xFF111827);
+const double _kHeroPillGap = 10;
 
-Color _heroPillSlotActiveFill({required bool pressed}) =>
-    Colors.white.withValues(alpha: pressed ? 0.24 : 0.18);
-
-BoxDecoration _heroPillDecoration() {
+BoxDecoration _heroSolidDecoration({required bool hover}) {
   return BoxDecoration(
-    color: Colors.black.withValues(alpha: 0.42),
-    borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
-    border: Border.all(
-      color: Colors.white.withValues(alpha: 0.24),
-    ),
-  );
-}
-
-BoxDecoration _heroPlayDecoration({
-  required bool hover,
-  required Color color,
-}) {
-  return BoxDecoration(
-    color: hover ? color.withValues(alpha: 0.92) : color,
+    color: hover
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.92)
+        : ForjaShellColors.brandGreen,
     borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
   );
 }
+
+Color _heroSegmentOverlay({required bool pressed}) =>
+    _kHeroPillForeground.withValues(alpha: pressed ? 0.14 : 0.10);
 
 BorderRadius _heroPillSlotBorderRadius({
   required bool isFirst,
@@ -41,7 +32,7 @@ BorderRadius _heroPillSlotBorderRadius({
   return BorderRadius.zero;
 }
 
-/// Hero play CTA tone — [primary] brand green, [streaming] white fill.
+/// Hero play CTA tone — all tones share the same solid green pill chrome.
 enum HeroPillPlayTone { primary, secondary, streaming }
 
 /// Primary hero CTA — pill with optional icon + label (Play, Watch Now, Resume).
@@ -69,45 +60,17 @@ class HeroPillPlayButton extends StatelessWidget {
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
-  HeroPillPlayTone get _tone =>
-      tone ?? (primary ? HeroPillPlayTone.primary : HeroPillPlayTone.secondary);
-
   bool _tvCompactUnfocused(ShellInputPolicy policy, bool focused) {
     if (!policy.useFocusableMoodChips || focused) return false;
-    return _tone == HeroPillPlayTone.primary ||
-        _tone == HeroPillPlayTone.streaming;
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final resolved = _tone;
-    final Color foreground;
-    late final BoxDecoration Function(bool hover) decoration;
-    switch (resolved) {
-      case HeroPillPlayTone.primary:
-        foreground = const Color(0xFF111827);
-        decoration = (hover) => _heroPlayDecoration(
-              hover: hover,
-              color: ForjaShellColors.brandGreen,
-            );
-      case HeroPillPlayTone.streaming:
-        foreground = const Color(0xFF111827);
-        decoration = (hover) => _heroPlayDecoration(
-              hover: hover,
-              color: Colors.white,
-            );
-      case HeroPillPlayTone.secondary:
-        foreground = Colors.white;
-        decoration = (_) => _heroPillDecoration();
-    }
-
     final leading = iconWidget ??
         (icon != null ? Icon(icon, size: _kHeroPillIconSize) : null);
-
-    final useTvCompact = policy.useFocusableMoodChips &&
-        (resolved == HeroPillPlayTone.primary ||
-            resolved == HeroPillPlayTone.streaming);
+    final useTvCompact = policy.useFocusableMoodChips;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -120,18 +83,12 @@ class HeroPillPlayButton extends StatelessWidget {
         pressScale: 0.97,
         builder: (active, pressed) {
           return _HeroPillPlaySurface(
-            tone: resolved,
             active: active,
-            pressed: pressed,
             compact: _tvCompactUnfocused(policy, active),
             useTvCompact: useTvCompact,
             label: label,
             leading: leading,
-            foreground: foreground,
-            filledDecoration: resolved == HeroPillPlayTone.secondary
-                ? null
-                : decoration(active),
-            compactDecoration: _heroPillDecoration(),
+            decoration: _heroSolidDecoration(hover: active),
           );
         },
       ),
@@ -141,28 +98,20 @@ class HeroPillPlayButton extends StatelessWidget {
 
 class _HeroPillPlaySurface extends StatefulWidget {
   const _HeroPillPlaySurface({
-    required this.tone,
     required this.active,
-    required this.pressed,
     required this.compact,
     required this.useTvCompact,
     required this.label,
     required this.leading,
-    required this.foreground,
-    required this.filledDecoration,
-    required this.compactDecoration,
+    required this.decoration,
   });
 
-  final HeroPillPlayTone tone;
   final bool active;
-  final bool pressed;
   final bool compact;
   final bool useTvCompact;
   final String label;
   final Widget? leading;
-  final Color foreground;
-  final BoxDecoration? filledDecoration;
-  final BoxDecoration compactDecoration;
+  final BoxDecoration decoration;
 
   @override
   State<_HeroPillPlaySurface> createState() => _HeroPillPlaySurfaceState();
@@ -219,14 +168,6 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
     super.dispose();
   }
 
-  BoxDecoration _blendDecoration(double t) {
-    if (!widget.useTvCompact || t <= 0) return widget.compactDecoration;
-    final filled = widget.filledDecoration;
-    if (filled == null || t >= 1) return filled ?? widget.compactDecoration;
-    return BoxDecoration.lerp(widget.compactDecoration, filled, t) ??
-        filled;
-  }
-
   Widget _buildPillContent() {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -238,9 +179,9 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
             height: _kHeroPillIconSize,
             child: Center(
               child: IconTheme(
-                data: IconThemeData(
+                data: const IconThemeData(
                   size: _kHeroPillIconSize,
-                  color: widget.foreground,
+                  color: _kHeroPillForeground,
                 ),
                 child: widget.leading!,
               ),
@@ -251,7 +192,7 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
         Text(
           widget.label,
           style: GoogleFonts.inter(
-            color: widget.foreground,
+            color: _kHeroPillForeground,
             fontSize: 15,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
@@ -262,121 +203,74 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
     );
   }
 
-  Widget _buildGlassShell({
-    required Widget child,
-    EdgeInsetsGeometry? padding,
-    bool clip = true,
-  }) {
-    return Container(
-      height: _kHeroPillHeight,
-      decoration: _heroPillDecoration(),
-      clipBehavior: clip ? Clip.antiAlias : Clip.none,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOutCubic,
-        padding: padding ?? const EdgeInsets.symmetric(horizontal: 18),
-        decoration: BoxDecoration(
-          color: widget.active
-              ? _heroPillSlotActiveFill(pressed: widget.pressed)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
-        ),
-        child: child,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (!widget.useTvCompact) {
-      return _buildStaticPill();
+      return Container(
+        height: _kHeroPillHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        decoration: widget.decoration,
+        child: _buildPillContent(),
+      );
     }
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        return _buildTvExpandPill(
-          expand: _expand.value,
-          labelOpacity: _labelOpacity.value,
-          decorationT: _expand.value,
-        );
-      },
-    );
-  }
-
-  Widget _buildStaticPill() {
-    if (widget.tone == HeroPillPlayTone.secondary) {
-      return _buildGlassShell(child: _buildPillContent());
-    }
-
-    return Container(
-      height: _kHeroPillHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: widget.filledDecoration,
-      child: _buildPillContent(),
-    );
-  }
-
-  Widget _buildTvExpandPill({
-    required double expand,
-    required double labelOpacity,
-    required double decorationT,
-  }) {
-    final iconColor = Color.lerp(Colors.white, widget.foreground, decorationT) ??
-        widget.foreground;
-
-    return Container(
-      height: _kHeroPillHeight,
-      clipBehavior: Clip.antiAlias,
-      decoration: _blendDecoration(decorationT),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: _kHeroPillHeight,
-            height: _kHeroPillHeight,
-            child: Center(
-              child: widget.leading == null
-                  ? null
-                  : IconTheme(
-                      data: IconThemeData(
-                        size: _kHeroPillIconSize,
-                        color: iconColor,
-                      ),
-                      child: widget.leading!,
-                    ),
-            ),
-          ),
-          ClipRect(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              widthFactor: expand,
-              child: Opacity(
-                opacity: labelOpacity,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 18),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.leading != null) const SizedBox(width: 8),
-                      Text(
-                        widget.label,
-                        style: GoogleFonts.inter(
-                          color: widget.foreground,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
-                          height: 1.0,
+        return Container(
+          height: _kHeroPillHeight,
+          clipBehavior: Clip.antiAlias,
+          decoration: widget.decoration,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: _kHeroPillHeight,
+                height: _kHeroPillHeight,
+                child: Center(
+                  child: widget.leading == null
+                      ? null
+                      : IconTheme(
+                          data: const IconThemeData(
+                            size: _kHeroPillIconSize,
+                            color: _kHeroPillForeground,
+                          ),
+                          child: widget.leading!,
                         ),
+                ),
+              ),
+              ClipRect(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: _expand.value,
+                  child: Opacity(
+                    opacity: _labelOpacity.value,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 18),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (widget.leading != null) const SizedBox(width: 8),
+                          Text(
+                            widget.label,
+                            style: GoogleFonts.inter(
+                              color: _kHeroPillForeground,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                              height: 1.0,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -392,7 +286,7 @@ class HeroMagnetIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final iconTheme = IconTheme.of(context);
     final resolvedSize = size ?? iconTheme.size ?? _kHeroPillIconSize;
-    final resolvedColor = color ?? iconTheme.color ?? Colors.black;
+    final resolvedColor = color ?? iconTheme.color ?? _kHeroPillForeground;
     return SizedBox(
       width: resolvedSize,
       height: resolvedSize,
@@ -412,7 +306,6 @@ class _MagnetIconPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    // Keep the horseshoe optically centered in the icon box.
     final top = h * 0.16;
     final bottom = h * 0.86;
     final left = w * 0.28;
@@ -503,7 +396,7 @@ class HeroPillActionRow extends StatelessWidget {
   }
 }
 
-/// Secondary hero actions grouped in one pill (info | add, etc.).
+/// Secondary hero actions as individual solid pills (info, add, etc.).
 class HeroPillIconGroup extends StatelessWidget {
   const HeroPillIconGroup({
     super.key,
@@ -519,31 +412,19 @@ class HeroPillIconGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     if (slots.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      height: _kHeroPillHeight,
-      clipBehavior: Clip.antiAlias,
-      decoration: _heroPillDecoration(),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < slots.length; i++) ...[
-            if (i > 0)
-              Container(
-                width: 1,
-                height: 18,
-                color: Colors.white.withValues(alpha: 0.22),
-              ),
-            _HeroPillIconSlotButton(
-              slot: slots[i],
-              isFirst: i == 0,
-              isLast: i == slots.length - 1,
-              focusOrder: tvFocusOrderStart != null
-                  ? NumericFocusOrder((tvFocusOrderStart! + i).toDouble())
-                  : null,
-            ),
-          ],
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < slots.length; i++) ...[
+          if (i > 0) const SizedBox(width: _kHeroPillGap),
+          _HeroPillIconSlotButton(
+            slot: slots[i],
+            focusOrder: tvFocusOrderStart != null
+                ? NumericFocusOrder((tvFocusOrderStart! + i).toDouble())
+                : null,
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -560,7 +441,7 @@ class HeroPillSegment<T> {
   final IconData icon;
 }
 
-/// Segmented hero pill (e.g. SUB | DUB) — matches [HeroPillIconGroup] chrome.
+/// Segmented hero pill (e.g. SUB | DUB) — solid green shell like [HeroPillPlayButton].
 class HeroPillSegmentedChoice<T> extends StatelessWidget {
   const HeroPillSegmentedChoice({
     super.key,
@@ -580,7 +461,7 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
     return Container(
       height: _kHeroPillHeight,
       clipBehavior: Clip.antiAlias,
-      decoration: _heroPillDecoration(),
+      decoration: _heroSolidDecoration(hover: false),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -589,7 +470,7 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
               Container(
                 width: 1,
                 height: 18,
-                color: Colors.white.withValues(alpha: 0.22),
+                color: _kHeroPillForeground.withValues(alpha: 0.18),
               ),
             _HeroPillSegmentButton<T>(
               segment: segments[i],
@@ -623,8 +504,8 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foreground = selected
-        ? Colors.white
-        : Colors.white.withValues(alpha: 0.55);
+        ? _kHeroPillForeground
+        : _kHeroPillForeground.withValues(alpha: 0.55);
 
     return ForjaInteractive(
       onTap: onTap,
@@ -640,7 +521,7 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: active
-                ? _heroPillSlotActiveFill(pressed: pressed)
+                ? _heroSegmentOverlay(pressed: pressed)
                 : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(
               isFirst: isFirst,
@@ -672,21 +553,14 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
 class _HeroPillIconSlotButton extends StatelessWidget {
   const _HeroPillIconSlotButton({
     required this.slot,
-    required this.isFirst,
-    required this.isLast,
     this.focusOrder,
   });
 
   final HeroPillIconSlot slot;
-  final bool isFirst;
-  final bool isLast;
   final FocusOrder? focusOrder;
 
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
-    if (isLast) {
-      return shellTrapTvFocusHorizontalEdge(node, event, trapRight: true);
-    }
-    return KeyEventResult.ignored;
+    return shellTrapTvFocusHorizontalEdge(node, event, trapRight: true);
   }
 
   Widget _wrapOrder(Widget child) {
@@ -701,7 +575,7 @@ class _HeroPillIconSlotButton extends StatelessWidget {
         Icon(
           slot.icon,
           size: _kHeroPillIconSize,
-          color: Colors.white,
+          color: _kHeroPillForeground,
         );
 
     if (slot.child != null && slot.onTap == null) {
@@ -709,13 +583,7 @@ class _HeroPillIconSlotButton extends StatelessWidget {
         SizedBox(
           width: _kHeroPillHeight,
           height: _kHeroPillHeight,
-          child: ClipRRect(
-            borderRadius: _heroPillSlotBorderRadius(
-              isFirst: isFirst,
-              isLast: isLast,
-            ),
-            child: Center(child: content),
-          ),
+          child: Center(child: content),
         ),
       );
     }
@@ -742,15 +610,7 @@ class _HeroPillIconSlotButton extends StatelessWidget {
           width: _kHeroPillHeight,
           height: _kHeroPillHeight,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: (hover || pressed)
-                ? _heroPillSlotActiveFill(pressed: pressed)
-                : Colors.transparent,
-            borderRadius: _heroPillSlotBorderRadius(
-              isFirst: isFirst,
-              isLast: isLast,
-            ),
-          ),
+          decoration: _heroSolidDecoration(hover: hover || pressed),
           child: content,
         );
       },

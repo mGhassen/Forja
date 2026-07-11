@@ -52,7 +52,9 @@ class _AnimeScreenState extends State<AnimeScreen>
   // Continue watching
   List<Map<String, dynamic>> _continueWatching = [];
 
-  int get _catalogRowBase => _continueWatching.isNotEmpty ? 1 : 0;
+  int get _moodChipsOrder => _continueWatching.isNotEmpty ? 1 : 0;
+  int get _moodResultsOrder => _moodChipsOrder + 1;
+  int get _catalogRowBase => _moodResultsOrder + 1;
 
   // Mood / genre filter
   String _selectedMood = 'shonen';
@@ -648,7 +650,7 @@ class _AnimeScreenState extends State<AnimeScreen>
               shellTvRegisterRow(
                 tabId: 'anime',
                 rowId: 'mood-chips',
-                sortOrder: _catalogRowBase,
+                sortOrder: _moodChipsOrder,
                 itemCount: _moods.length,
               );
               return FocusTraversalGroup(
@@ -671,11 +673,11 @@ class _AnimeScreenState extends State<AnimeScreen>
                 icon: m.icon,
                 listIndex: i,
                 tvTabId: 'anime',
+                tvRowId: 'mood-chips',
                 onTap: () => _selectMood(m.id),
-                onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
-                  'anime',
-                  'mood-results',
-                  0,
+                onDownEdge: shellTvChipDownToRow(
+                  tabId: 'anime',
+                  resultsRowId: 'mood-results',
                 ),
               );
             },
@@ -729,7 +731,7 @@ class _AnimeScreenState extends State<AnimeScreen>
               shellTvRegisterRow(
                 tabId: 'anime',
                 rowId: 'mood-results',
-                sortOrder: _catalogRowBase + 1,
+                sortOrder: _moodResultsOrder,
                 itemCount: list.length,
               );
               return FocusTraversalGroup(

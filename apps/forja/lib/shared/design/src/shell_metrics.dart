@@ -104,12 +104,12 @@ class ShellMetrics {
     navRailBottomPadding: 16,
   );
 
-  /// Compact leanback density — small cards so multiple rows fit like desktop.
+  /// Leanback density — ~90px cards; spacing aligned with media details (24px inset).
   static const tv = ShellMetrics(
-    homeMovieCardWidth: 70,
-    continueWatchingCardWidth: 120,
-    continueWatchingCardHeight: 120 * 9 / 16,
-    hubCardTitleFontSize: 9,
+    homeMovieCardWidth: 90,
+    continueWatchingCardWidth: 140,
+    continueWatchingCardHeight: 140 * 9 / 16,
+    hubCardTitleFontSize: 12,
     heroCompactRightInset: 16,
     heroMinTitleHeight: 64,
     heroActionUseFittedBox: false,
@@ -125,10 +125,10 @@ class ShellMetrics {
     torrentPanelLeadingIconSize: 20,
     torrentPanelSectionFontSize: 15,
     usesTvDensity: true,
-    navRailItemSpacing: 12,
-    navRailLogoGap: 8,
-    navRailTopPadding: 8,
-    navRailBottomPadding: 8,
+    navRailItemSpacing: 16,
+    navRailLogoGap: 16,
+    navRailTopPadding: 14,
+    navRailBottomPadding: 12,
   );
 
   double get navRailWidth => ShellTokens.navRailWidth;

@@ -246,9 +246,12 @@ class _HomeTopBarState extends State<HomeTopBar> {
                         homeGenreLabel(genreId) ?? 'Categories';
                     final categoriesActive =
                         _categoriesOpen || genreId != null;
-                    final tabGap = MediaQuery.sizeOf(context).width < 560
-                        ? 20.0
-                        : 36.0;
+                    final usesTv = ShellScope.metricsOf(context).usesTvDensity;
+                    final tabGap = usesTv
+                        ? 28.0
+                        : MediaQuery.sizeOf(context).width < 560
+                            ? 20.0
+                            : 36.0;
 
                     final tabs = FocusTraversalGroup(
                       policy: OrderedTraversalPolicy(),
@@ -410,9 +413,9 @@ class _CategoryTabState extends State<_CategoryTab> {
         final textColor = _lerpTabColor(t);
         final fontWeight = FontWeight.lerp(FontWeight.w500, FontWeight.w700, t)!;
         final underlineWidth = _underlineWidth(t, context);
-        final tabHeight = shellScaled(context, 34).clamp(24.0, 34.0);
-        final tabFont = shellScaled(context, 17).clamp(12.0, 17.0);
-        final chevronSize = shellScaled(context, 18).clamp(12.0, 18.0);
+        final tabHeight = shellScaled(context, 34).clamp(28.0, 34.0);
+        final tabFont = shellScaled(context, 17).clamp(14.0, 17.0);
+        final chevronSize = shellScaled(context, 18).clamp(14.0, 18.0);
 
         return Column(
           mainAxisSize: MainAxisSize.min,

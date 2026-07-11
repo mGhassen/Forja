@@ -133,28 +133,43 @@ abstract final class ShellTvFocusCoordinator {
   static bool focusActiveNavTab() => ShellTvFocus.focusCurrentNavTab();
 
   /// TV remote Back: pop overlay/route first, else focus active nav tab.
-  /// Returns true when the key was consumed.
+  /// Second Back on nav requests app exit. Returns true when consumed.
+  static VoidCallback? onRequestExitApp;
+
   static bool handleShellBackKey() {
     if (shellOverlayCanPop()) {
       maybePopShellOverlay();
       return true;
     }
 
-    final primary = FocusManager.instance.primaryFocus;
-    final ctx = primary?.context;
-    if (ctx != null) {
-      final rootNav = Navigator.maybeOf(ctx, rootNavigator: true);
-      if (rootNav != null && rootNav.canPop()) {
-        rootNav.maybePop();
-        return true;
-      }
+    if (_tryPopFocusedNavigator()) {
+      return true;
     }
 
     if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
-      return false;
+      (onRequestExitApp ?? SystemNavigator.pop)();
+      return true;
     }
     if (ShellTvFocus.currentNavTabId == null) return false;
     return focusActiveNavTab();
+  }
+
+  static bool _tryPopFocusedNavigator() {
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null) return false;
+
+    final nav = Navigator.maybeOf(ctx);
+    if (nav != null && nav.canPop()) {
+      nav.maybePop();
+      return true;
+    }
+
+    final rootNav = Navigator.maybeOf(ctx, rootNavigator: true);
+    if (rootNav != null && rootNav != nav && rootNav.canPop()) {
+      rootNav.maybePop();
+      return true;
+    }
+    return false;
   }
 
   static bool focusNextNavItem() {
@@ -358,6 +373,21 @@ abstract final class ShellTvFocusCoordinator {
     return _request(node);
   }
 
+  /// Focus a row item, or the next registered row below when empty/unavailable.
+  static bool focusRowItemOrNextBelow(
+    String tabId,
+    String rowId,
+    int index,
+  ) {
+    if (focusRowItem(tabId, rowId, index)) return true;
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null) return false;
+    final next = _nextRow(tabId, handle.sortOrder);
+    if (next == null || next.itemCount <= 0) return false;
+    final target = next.lastFocusedIndex.clamp(0, next.itemCount - 1);
+    return focusRowItem(tabId, next.rowId, target);
+  }
+
   static void onRowItemFocused({
     required String tabId,
     required String rowId,
@@ -465,7 +495,8 @@ class ShellTvFocusMeta {
   final void Function(FocusNode node)? onSave;
 
   bool Function()? resolveDownEdge() {
-    if (zone != ShellTvZone.row || rowId == null || itemIndex == null) {
+    if (rowId == null || itemIndex == null) return null;
+    if (zone != ShellTvZone.row && zone != ShellTvZone.chipStrip) {
       return null;
     }
     final tid = tabId;
@@ -480,7 +511,8 @@ class ShellTvFocusMeta {
   }
 
   bool Function()? resolveUpEdge() {
-    if (zone != ShellTvZone.row || rowId == null || itemIndex == null) {
+    if (rowId == null || itemIndex == null) return null;
+    if (zone != ShellTvZone.row && zone != ShellTvZone.chipStrip) {
       return null;
     }
     final tid = tabId;
@@ -496,16 +528,17 @@ class ShellTvFocusMeta {
 
   void notifyFocused(FocusNode node) {
     onSave?.call(node);
+    if ((zone == ShellTvZone.row || zone == ShellTvZone.chipStrip) &&
+        rowId != null &&
+        itemIndex != null) {
+      ShellTvFocusCoordinator.onRowItemFocused(
+        tabId: tabId,
+        rowId: rowId!,
+        index: itemIndex!,
+        node: node,
+      );
+    }
     switch (zone) {
-      case ShellTvZone.row:
-        if (rowId != null && itemIndex != null) {
-          ShellTvFocusCoordinator.onRowItemFocused(
-            tabId: tabId,
-            rowId: rowId!,
-            index: itemIndex!,
-            node: node,
-          );
-        }
       case ShellTvZone.hero:
         ShellTvFocusCoordinator.saveFocus(
           tabId,
@@ -517,12 +550,19 @@ class ShellTvFocusMeta {
           ShellTvFocusMemory(zone: ShellTvZone.topBar, node: node),
         );
       case ShellTvZone.chipStrip:
+        if (rowId == null) {
+          ShellTvFocusCoordinator.saveFocus(
+            tabId,
+            ShellTvFocusMemory(zone: zone, node: node),
+          );
+        }
       case ShellTvZone.grid:
       case ShellTvZone.settings:
         ShellTvFocusCoordinator.saveFocus(
           tabId,
           ShellTvFocusMemory(zone: zone, node: node),
         );
+      case ShellTvZone.row:
       case ShellTvZone.nav:
         break;
     }

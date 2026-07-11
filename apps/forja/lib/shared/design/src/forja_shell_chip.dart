@@ -90,6 +90,7 @@ class ForjaShellChip extends StatelessWidget {
     );
 
     if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      final zone = tvRowId != null ? ShellTvZone.row : ShellTvZone.chipStrip;
       return shellFocusableTap(
         context: context,
         onTap: onTap,
@@ -98,7 +99,8 @@ class ForjaShellChip extends StatelessWidget {
         listIndex: listIndex,
         tvTabId: tvTabId,
         tvRowId: tvRowId,
-        tvZone: tvRowId == null ? ShellTvZone.chipStrip : null,
+        tvItemIndex: listIndex,
+        tvZone: zone,
         onDownEdge: onDownEdge,
         onUpEdge: onUpEdge,
         child: Material(

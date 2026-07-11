@@ -203,3 +203,15 @@ void shellTvUpdateRowCount({
 }) {
   ShellTvFocusCoordinator.updateRowItemCount(tabId, rowId, itemCount);
 }
+
+/// D-pad down from a chip strip → mood results, or the next row if empty.
+VoidCallback shellTvChipDownToRow({
+  required String tabId,
+  required String resultsRowId,
+}) {
+  return () => ShellTvFocusCoordinator.focusRowItemOrNextBelow(
+        tabId,
+        resultsRowId,
+        0,
+      );
+}

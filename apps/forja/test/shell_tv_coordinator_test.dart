@@ -320,7 +320,11 @@ void main() {
     page.dispose();
   });
 
-  testWidgets('handleShellBackKey ignored when nav already focused', (tester) async {
+  testWidgets('handleShellBackKey exits when nav already focused', (tester) async {
+    var exitRequested = false;
+    ShellTvFocusCoordinator.onRequestExitApp = () => exitRequested = true;
+    addTearDown(() => ShellTvFocusCoordinator.onRequestExitApp = null);
+
     final homeNav = FocusNode(debugLabel: 'nav-home');
     ShellTvFocus.registerNav('home', homeNav);
     ShellTvFocus.currentNavTabId = 'home';
@@ -334,7 +338,8 @@ void main() {
     homeNav.requestFocus();
     await tester.pump();
 
-    expect(ShellTvFocusCoordinator.handleShellBackKey(), isFalse);
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    expect(exitRequested, isTrue);
 
     homeNav.dispose();
   });

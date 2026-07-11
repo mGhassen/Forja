@@ -65,8 +65,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   int _index = 0;
   bool _tvHeroInitialFocusDone = false;
 
-  bool get _compact =>
-      MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
+  bool get _compact {
+    if (ShellScope.metricsOf(context).usesTvDensity) return false;
+    return MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
+  }
 
   @override
   void initState() {
@@ -167,14 +169,14 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         HubCatalogSection.sectionHeight(context, compactTop: true);
     final nextRowPeek =
         HubCatalogSection.sectionHeight(context) *
-            ShellTokens.heroNextRowPeekFraction;
+            shellHeroNextRowPeekFraction(context);
     final reservedBelow = shellHomeRowSpacing(context) +
         firstRowHeight +
         nextRowPeek;
     final target = screenH * shellHeroHeightFraction(context);
     final maxHero = screenH - topBar - reservedBelow;
     return _snapToDevicePixels(
-      math.min(target, math.max(320.0, maxHero)),
+      math.min(target, math.max(shellHeroMinHeight(context), maxHero)),
     );
   }
 
@@ -410,9 +412,9 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildTitle(slide, compact: true),
-        SizedBox(height: shellScaled(context, 10).clamp(4.0, 10.0)),
+        SizedBox(height: shellHeroMetaGap(context)),
         _buildMetaRow(slide),
-        SizedBox(height: shellScaled(context, 12).clamp(6.0, 12.0)),
+        SizedBox(height: shellHeroActionGap(context)),
         _buildActionRow(slide),
       ],
     );
@@ -534,7 +536,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   Widget _buildMetaRow(HubHeroSlide slide) {
     final metaFont = shellScaled(context, 13).clamp(9.0, 13.0);
     final genreFont = shellScaled(context, 12).clamp(8.0, 12.0);
-    final gap = shellScaled(context, 10).clamp(4.0, 10.0);
+    final gap = shellScaled(context, 10).clamp(7.0, 10.0);
     final rating = slide.rating != null && slide.rating! > 0
         ? Container(
             padding: EdgeInsets.symmetric(

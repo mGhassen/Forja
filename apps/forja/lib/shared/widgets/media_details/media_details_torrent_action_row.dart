@@ -123,54 +123,10 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   }
 
   HeroPillIconSlot _buildOverflowSlot(BuildContext context) {
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv) {
-      return HeroPillIconSlot(
-        icon: Icons.more_vert_rounded,
-        tooltip: 'More',
-        onTap: () => _showOverflowMenu(context),
-      );
-    }
     return HeroPillIconSlot(
+      icon: Icons.more_vert_rounded,
       tooltip: 'More',
-      child: PopupMenuButton<String>(
-        padding: EdgeInsets.zero,
-        color: ForjaShellColors.cinematic.menuSurface,
-        onSelected: onOverflowAction,
-        itemBuilder: (context) => [
-          PopupMenuItem(
-            value: 'trakt_rate',
-            child: Text(userTraktRating != null
-                ? 'Trakt rating: $userTraktRating'
-                : 'Rate on Trakt'),
-          ),
-          PopupMenuItem(
-            value: 'simkl_rate',
-            child: Text(userSimklRating != null
-                ? 'Simkl rating: $userSimklRating'
-                : 'Rate on Simkl'),
-          ),
-          PopupMenuItem(
-            value: 'collect',
-            child: Text(isInTraktCollection
-                ? 'Remove from collection'
-                : 'Add to collection'),
-          ),
-          const PopupMenuItem(
-            value: 'checkin',
-            child: Text('Trakt check-in'),
-          ),
-          const PopupMenuItem(
-            value: 'trakt_list',
-            child: Text('Add to Trakt list'),
-          ),
-        ],
-        child: const Icon(
-          Icons.more_vert_rounded,
-          size: 20,
-          color: Colors.white,
-        ),
-      ),
+      onTap: () => _showOverflowMenu(context),
     );
   }
 
@@ -259,8 +215,6 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
           HeroPillIconSlot(
             child: MyListButton.movie(
               movie: movie,
-              iconColor: Colors.white,
-              iconColorActive: Colors.white,
               iconSize: 20,
               heroPillSlot: true,
             ),

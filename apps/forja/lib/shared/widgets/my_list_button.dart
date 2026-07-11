@@ -92,10 +92,21 @@ class MyListButton extends StatelessWidget {
         );
 
         if (heroPillSlot) {
+          const pillForeground = Color(0xFF111827);
+          final inactive = iconColor ?? pillForeground.withValues(alpha: 0.72);
+          final activeColor = iconColorActive ?? pillForeground;
+          final resolvedIcon = Icon(
+            useHeartIcon
+                ? (inList ? Icons.favorite_rounded : Icons.favorite_border_rounded)
+                : (inList ? Icons.bookmark_rounded : Icons.add_rounded),
+            size: iconSize ?? 20,
+            color: inList ? activeColor : inactive,
+          );
+
           return ForjaInteractive(
             onTap: () => _toggle(context),
-            hoverScale: 1.06,
-            pressScale: 0.94,
+            hoverScale: 1.03,
+            pressScale: 0.97,
             onKeyEvent: (node, event) =>
                 shellTrapTvFocusHorizontalEdge(node, event, trapRight: true),
             builder: (active, pressed) {
@@ -106,11 +117,12 @@ class MyListButton extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: (active || pressed)
-                      ? Colors.white.withValues(alpha: pressed ? 0.12 : 0.08)
-                      : Colors.transparent,
+                  color: active || pressed
+                      ? ForjaShellColors.brandGreen.withValues(alpha: 0.92)
+                      : ForjaShellColors.brandGreen,
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                child: icon,
+                child: resolvedIcon,
               );
             },
           );

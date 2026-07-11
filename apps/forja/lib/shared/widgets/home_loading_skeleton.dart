@@ -186,7 +186,7 @@ double homeCinematicHeroBodyHeight(
 }
 
 Widget homeCinematicHeroShimmer(BuildContext context) {
-  final compact =
+  final compact = !ShellScope.metricsOf(context).usesTvDensity &&
       MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
   final height = homeCinematicHeroBodyHeight(context, compact: compact) +
       MediaQuery.paddingOf(context).top;

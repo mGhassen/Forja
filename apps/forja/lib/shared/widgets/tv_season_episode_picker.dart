@@ -1,8 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
-import 'package:forja/shared/design/src/shell_section_title.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -92,14 +90,20 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedSeason != widget.selectedSeason) {
       _episodeChunk = _chunkIndexForEpisode(widget.selectedEpisode);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedSeason());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToSelectedSeason();
+        _scrollToSelectedEpisode();
+      });
     } else if (oldWidget.selectedEpisode != widget.selectedEpisode) {
       final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
-      if (chunk != _episodeChunk) _episodeChunk = chunk;
+      if (chunk != _episodeChunk) {
+        setState(() => _episodeChunk = chunk);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToSelectedEpisode();
+        });
+      }
     }
-    if (oldWidget.selectedEpisode != widget.selectedEpisode ||
-        oldWidget.selectedSeason != widget.selectedSeason ||
-        oldWidget.isLoadingSeason != widget.isLoadingSeason ||
+    if (oldWidget.isLoadingSeason != widget.isLoadingSeason ||
         oldWidget.customEpisodesBySeason != widget.customEpisodesBySeason ||
         oldWidget.seasonData != widget.seasonData) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _syncEpisodeChunk());
@@ -277,7 +281,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
               child: ListView.separated(
                 controller: _seasonScrollController,
                 scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
+                clipBehavior: Clip.hardEdge,
                 itemCount: widget.seasonCount,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (_, i) {
@@ -322,13 +326,14 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           const SizedBox.shrink()
         else
           SizedBox(
-            height: 228,
+            height: 240,
             child: NotificationListener<ScrollNotification>(
               onNotification: _absorbHorizontalScroll,
               child: ListView.separated(
                 controller: _episodeScrollController,
                 scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
+                clipBehavior: Clip.hardEdge,
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 itemCount: _visibleEpisodes.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 16),
                 itemBuilder: (_, i) {
@@ -360,7 +365,12 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                     watched: watched,
                     positionMs: pos,
                     durationMs: dur,
-                    onTap: () => widget.onEpisodeSelected(epNum),
+                    onTap: () {
+                      widget.onEpisodeSelected(epNum);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _scrollToSelectedEpisode();
+                      });
+                    },
                     onFocusChange: widget.onEpisodeFocused == null
                         ? null
                         : (focused) {
@@ -417,7 +427,7 @@ class _SeasonCardState extends State<_SeasonCard> {
     return FocusableControl(
       onTap: widget.onTap,
       borderRadius: _SeasonCard.radius,
-      scaleOnFocus: ShellTokens.focusActiveScale,
+      scaleOnFocus: 1.0,
       onLeftEdge: widget.onLeftEdge,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
@@ -592,12 +602,13 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     final showProgress =
         WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
     final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
-    final scale = _scale;
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final scale = tvFocus ? 1.0 : _scale;
 
     return FocusableControl(
       onTap: widget.onTap,
       borderRadius: _EpisodeCard.thumbRadius,
-      scaleOnFocus: ShellTokens.focusActiveScale,
+      scaleOnFocus: 1.0,
       onFocusChange: widget.onFocusChange,
       onLeftEdge: widget.onLeftEdge,
       child: MouseRegion(

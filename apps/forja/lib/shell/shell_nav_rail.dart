@@ -254,14 +254,12 @@ class _RailLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logoWidth = shellScaled(context, ShellTokens.navRailLogoWidth)
-        .clamp(28.0, ShellTokens.navRailLogoWidth);
     return SizedBox(
       width: ShellTokens.navRailWidth,
       child: Center(
         child: Image.asset(
           'assets/icon/logo-dark.png',
-          width: logoWidth,
+          width: ShellTokens.navRailLogoWidth,
           fit: BoxFit.contain,
         ),
       ),

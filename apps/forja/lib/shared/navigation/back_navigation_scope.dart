@@ -2,8 +2,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
-/// Mouse back and Escape pop the top route (root navigator, then shell overlay).
+/// Mouse back, Escape, and TV Back — pop routes or shell TV back chain.
 class BackNavigationScope extends StatelessWidget {
   const BackNavigationScope({super.key, required this.child});
 
@@ -18,17 +20,26 @@ class BackNavigationScope extends StatelessWidget {
     maybePopShellOverlay();
   }
 
+  void _onBack(BuildContext context) {
+    if (ShellTvFocus.currentNavTabId != null &&
+        ShellTvFocusCoordinator.handleShellBackKey()) {
+      return;
+    }
+    _pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Shortcuts(
       shortcuts: const {
-        SingleActivator(LogicalKeyboardKey.escape): _PopIntent(),
+        SingleActivator(LogicalKeyboardKey.escape): _BackIntent(),
+        SingleActivator(LogicalKeyboardKey.goBack): _BackIntent(),
       },
       child: Actions(
         actions: {
-          _PopIntent: CallbackAction<_PopIntent>(
+          _BackIntent: CallbackAction<_BackIntent>(
             onInvoke: (_) {
-              _pop(context);
+              _onBack(context);
               return null;
             },
           ),
@@ -36,7 +47,7 @@ class BackNavigationScope extends StatelessWidget {
         child: Listener(
           behavior: HitTestBehavior.translucent,
           onPointerDown: (event) {
-            if (event.buttons == kBackMouseButton) _pop(context);
+            if (event.buttons == kBackMouseButton) _onBack(context);
           },
           child: child,
         ),
@@ -45,6 +56,6 @@ class BackNavigationScope extends StatelessWidget {
   }
 }
 
-class _PopIntent extends Intent {
-  const _PopIntent();
+class _BackIntent extends Intent {
+  const _BackIntent();
 }

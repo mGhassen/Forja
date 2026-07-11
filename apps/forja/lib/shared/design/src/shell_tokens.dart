@@ -228,15 +228,18 @@ abstract final class ShellTokens {
 
   /// Vertical gap between Home content rows (not hero → first row).
   static const double homeRowSpacing = 24;
-  static const double tvHomeRowSpacing = 3;
-  static const double tvHomeSectionHorizontalPadding = 12;
-  static const double tvHeroHeightFraction = 0.72;
-  static const double tvHeroNextRowPeekFraction = 0.10;
-  static const double tvHomeSectionTitleTopCompact = 2;
-  static const double tvHomeSectionTitleTop = 10;
-  static const double tvHomeSectionHeaderHeight = 11;
-  static const double tvHomeSectionBottomGap = 4;
-  static const double tvMovieCardRowGap = 4;
+  /// TV catalog spacing — aligned with desktop/detail rhythm (cards stay 90px).
+  static const double tvHomeRowSpacing = 20;
+  static const double tvHomeSectionHorizontalPadding = 24;
+  static const double tvHeroHeightFraction = 0.78;
+  static const double tvHeroNextRowPeekFraction = 0.06;
+  static const double tvHomeSectionTitleTopCompact = 16;
+  static const double tvHomeSectionTitleTop = 24;
+  static const double tvHomeSectionHeaderHeight = 26;
+  static const double tvHomeSectionBottomGap = 14;
+  static const double tvMovieCardRowGap = 12;
+  /// Floor for TV typography/chrome — cards scale down, text/spacing does not crush.
+  static const double tvLayoutScaleFloor = 0.75;
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
   static const double homeSectionTitleTop = 36;
