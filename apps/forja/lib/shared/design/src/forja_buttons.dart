@@ -19,6 +19,7 @@ class ForjaInteractive extends StatefulWidget {
     this.autoFocus = false,
     this.focusNode,
     this.onKeyEvent,
+    this.tvMeta,
   });
 
   final ForjaInteractiveBuilder builder;
@@ -28,6 +29,7 @@ class ForjaInteractive extends StatefulWidget {
   final bool autoFocus;
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
+  final ShellTvFocusMeta? tvMeta;
 
   @override
   State<ForjaInteractive> createState() => _ForjaInteractiveState();
@@ -37,9 +39,39 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   bool _hover = false;
   bool _pressed = false;
   bool _focused = false;
+  FocusNode? _ownedNode;
+
+  FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
 
   ShellInputPolicy _policy(BuildContext context) =>
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.focusNode == null) {
+      _ownedNode = FocusNode(debugLabel: 'forja-interactive');
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ForjaInteractive oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      if (widget.focusNode == null) {
+        _ownedNode ??= FocusNode(debugLabel: 'forja-interactive');
+      } else {
+        _ownedNode?.dispose();
+        _ownedNode = null;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _ownedNode?.dispose();
+    super.dispose();
+  }
 
   double _scaleFor(ShellInputPolicy policy) {
     if (_pressed) return widget.pressScale;
@@ -89,10 +121,15 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     if (widget.onTap == null) return interactive;
 
     return Focus(
-      focusNode: widget.focusNode,
-      debugLabel: widget.focusNode?.debugLabel ?? 'forja-interactive',
+      focusNode: _effectiveNode,
+      debugLabel: _effectiveNode.debugLabel ?? 'forja-interactive',
       autofocus: widget.autoFocus,
-      onFocusChange: (focused) => setState(() => _focused = focused),
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        if (focused) {
+          widget.tvMeta?.notifyFocused(_effectiveNode);
+        }
+      },
       onKeyEvent: (node, event) {
         final custom = widget.onKeyEvent?.call(node, event);
         if (custom == KeyEventResult.handled) return KeyEventResult.handled;

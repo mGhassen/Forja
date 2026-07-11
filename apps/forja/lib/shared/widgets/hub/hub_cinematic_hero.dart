@@ -44,11 +44,13 @@ class HubCinematicHero extends StatefulWidget {
     required this.slides,
     this.firstRowHeight,
     this.onSearch,
+    this.tvTabId,
   });
 
   final List<HubHeroSlide> slides;
   final double? firstRowHeight;
   final VoidCallback? onSearch;
+  final String? tvTabId;
 
   @override
   State<HubCinematicHero> createState() => _HubCinematicHeroState();
@@ -636,6 +638,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       label: 'Play',
       onTap: slide.onPlay,
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+      tvTabId: tvNav ? widget.tvTabId : null,
       onKeyEvent: tvNav
           ? (node, event) {
               if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -657,6 +660,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         const SizedBox(width: 10),
         HeroPillIconGroup(
           tvFocusOrderStart: tvNav ? 2 : null,
+          tvTabId: tvNav ? widget.tvTabId : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,

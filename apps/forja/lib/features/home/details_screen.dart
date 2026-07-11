@@ -31,6 +31,7 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class DetailsScreen extends StatefulWidget {
@@ -177,6 +178,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   final ScrollController _episodeScrollController = ScrollController();
   final ScrollController _chipsScrollController = ScrollController();
+  final ScrollController _detailsScrollController = ScrollController();
   final FocusNode _detailsHeroPlayFocus = FocusNode(debugLabel: 'details-hero-play');
   bool _detailsHeroInitialFocusDone = false;
 
@@ -216,6 +218,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   @override
   void dispose() {
     _detailsHeroPlayFocus.dispose();
+    _detailsScrollController.dispose();
     _episodeScrollController.dispose();
     _chipsScrollController.dispose();
     _jackett.dispose();
@@ -819,7 +822,47 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
   }
 
-  Widget _buildTvPicker() {
+  void _scrollDetailsHeroIntoView() {
+    if (!_detailsScrollController.hasClients) return;
+    _detailsScrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _revealedDetailsHeroPlayFocus() {
+    void focusPlay() {
+      if (!mounted) return;
+      if (_detailsHeroPlayFocus.canRequestFocus) {
+        _detailsHeroPlayFocus.requestFocus();
+      }
+    }
+
+    _scrollDetailsHeroIntoView();
+    if (!_detailsScrollController.hasClients) {
+      focusPlay();
+      return;
+    }
+    _detailsScrollController
+        .animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(focusPlay);
+  }
+
+  int _detailsPickerRowCount() {
+    var seasonCount = _movie.numberOfSeasons;
+    if (_seasonData != null && _seasonData!['seasons'] != null) {
+      seasonCount = (_seasonData!['seasons'] as List).length;
+    }
+    if (seasonCount <= 0) return 0;
+    return seasonCount > 1 ? 2 : 1;
+  }
+
+  Widget _buildTvPicker({required int tvRowOrderBase, VoidCallback? tvFocusUp}) {
     int seasonCount = _movie.numberOfSeasons;
     if (_seasonData != null && _seasonData!['seasons'] != null) {
       seasonCount = (_seasonData!['seasons'] as List).length;
@@ -850,6 +893,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       onEpisodeSelected: _onEpisodeSelected,
       onEpisodeFocused: _highlightEpisode,
       onToggleWatched: _toggleEpisodeWatched,
+      tvTabId: MediaDetailsTv.tabId,
+      tvSeasonRowId: 'seasons',
+      tvEpisodeRowId: 'episodes',
+      tvRowOrderBase: tvRowOrderBase,
+      tvFocusUp: tvFocusUp,
     );
   }
 
@@ -2900,7 +2948,26 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       context,
       showEpisodeRail: showEpisodeRail,
     );
-    return SingleChildScrollView(
+    final showTvPicker = showEpisodeRail;
+    final showCast = _castMembers.isNotEmpty;
+    final showTrailers = _trailers.isNotEmpty;
+    final heroFocusUp = _revealedDetailsHeroPlayFocus;
+    final firstRowIsCast = !showTvPicker && showCast;
+    final firstRowIsTrailers = !showTvPicker && !showCast && showTrailers;
+    final firstRowIsRecs =
+        !showTvPicker && !showCast && !showTrailers;
+
+    var rowOrder = 0;
+    final pickerBase = rowOrder;
+    if (showTvPicker) {
+      rowOrder += _detailsPickerRowCount();
+    }
+    final castOrder = showCast ? rowOrder++ : null;
+    final trailersOrder = showTrailers ? rowOrder++ : null;
+    final recsOrder = rowOrder;
+
+    final scroll = SingleChildScrollView(
+      controller: _detailsScrollController,
       physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2918,38 +2985,63 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 ? ShellTokens.detailsBodyTopSpacingWithEpisodes
                 : null,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_isCollection && _collectionItems.isNotEmpty) ...[
-                  _buildCollectionItemsSection(),
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
-                ],
-                if (_movie.mediaType == 'tv' && !_isCollection) ...[
-                  _buildTvPicker(),
-                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
-                ],
-                if (_castMembers.isNotEmpty) ...[
-                  MediaDetailsCastSection(
-                    cast: _castMembers,
-                    title: 'Main Characters',
-                    outdentHorizontal: ShellTokens.homeSectionHorizontalPadding,
+                  MediaDetailsBody.padContent(
+                    context,
+                    _buildCollectionItemsSection(),
                   ),
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
-                if (_trailers.isNotEmpty) ...[
+                if (showTvPicker) ...[
+                  MediaDetailsBody.padContent(
+                    context,
+                    _buildTvPicker(
+                      tvRowOrderBase: pickerBase,
+                      tvFocusUp: heroFocusUp,
+                    ),
+                  ),
+                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
+                ],
+                if (showCast) ...[
+                  MediaDetailsCastSection(
+                    cast: _castMembers,
+                    title: 'Main Characters',
+                    tvTabId: MediaDetailsTv.tabId,
+                    tvRowId: 'cast',
+                    tvRowOrder: castOrder!,
+                    tvFocusUp: firstRowIsCast ? heroFocusUp : null,
+                  ),
+                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
+                ],
+                if (showTrailers) ...[
                   MediaDetailsTrailersSection(
                     trailers: _trailers,
                     movie: _movie,
                     languageCode: _originalLanguage,
+                    tvTabId: MediaDetailsTv.tabId,
+                    tvRowId: 'trailers',
+                    tvRowOrder: trailersOrder!,
+                    tvFocusUp: firstRowIsTrailers ? heroFocusUp : null,
                   ),
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
-                _buildRecommendationsSection(),
+                _buildRecommendationsSection(
+                  tvRowOrder: recsOrder,
+                  tvFocusUp: firstRowIsRecs ? heroFocusUp : null,
+                ),
               ],
             ),
           ),
         ],
       ),
+    );
+
+    return MediaDetailsTvScope(
+      heroPlayFocus: _detailsHeroPlayFocus,
+      scrollController: _detailsScrollController,
+      child: scroll,
     );
   }
 
@@ -3500,12 +3592,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   //  RECOMMENDATIONS SECTION
   // ═════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildRecommendationsSection() {
+  Widget _buildRecommendationsSection({
+    required int tvRowOrder,
+    VoidCallback? tvFocusUp,
+  }) {
     return HomeMovieRow(
       title: 'More Like This',
       movies: _similarMovies,
-      outdentHorizontal: ShellTokens.homeSectionHorizontalPadding,
       onMovieTap: (movie) => AppRouter.openMovie(context, movie: movie),
+      tvTabId: MediaDetailsTv.tabId,
+      tvRowId: 'recommendations',
+      tvRowOrder: tvRowOrder,
+      tvFocusUp: tvFocusUp,
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shell/shell_bus.dart';
 
 class ShellBody extends StatelessWidget {
   const ShellBody({
@@ -16,14 +17,22 @@ class ShellBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IndexedStack(
-      index: selectedIndex,
-      children: visibleIds.map((id) {
-        if (!mountedTabIds.contains(id)) {
-          return const SizedBox.shrink();
-        }
-        return tabFor(id);
-      }).toList(),
+    return ValueListenableBuilder<bool>(
+      valueListenable: ShellBus.shellOverlayHasPage,
+      builder: (context, overlayOpen, _) {
+        return ExcludeFocus(
+          excluding: overlayOpen,
+          child: IndexedStack(
+            index: selectedIndex,
+            children: visibleIds.map((id) {
+              if (!mountedTabIds.contains(id)) {
+                return const SizedBox.shrink();
+              }
+              return tabFor(id);
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 }

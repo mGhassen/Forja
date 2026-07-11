@@ -2195,6 +2195,7 @@ class _HomeScreenState extends State<HomeScreen>
     final play = HeroPillPlayButton(
       label: 'Play',
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+      tvTabId: tvNav ? 'home' : null,
       onKeyEvent: policy.heroPlayAutoFocus
           ? (node, event) {
               if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -2222,15 +2223,14 @@ class _HomeScreenState extends State<HomeScreen>
         const SizedBox(width: 10),
         HeroPillIconGroup(
           tvFocusOrderStart: tvNav ? 2 : null,
+          tvTabId: tvNav ? 'home' : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,
               tooltip: 'Details',
               onTap: () => _openDetails(heroMovie),
             ),
-            HeroPillIconSlot(
-              child: MyListHeroPillButton.movie(movie: heroMovie),
-            ),
+            MyListHeroPillButton.movieSlot(context, movie: heroMovie),
           ],
         ),
       ],

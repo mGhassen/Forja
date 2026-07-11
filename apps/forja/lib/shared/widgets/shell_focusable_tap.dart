@@ -5,6 +5,10 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
+/// Prevents nested horizontal rows from scrolling the parent vertical list.
+bool shellAbsorbHorizontalScroll(ScrollNotification notification) =>
+    notification.metrics.axis == Axis.horizontal;
+
 /// Left D-pad from the first item in a horizontal row → active shell nav tab.
 VoidCallback? shellTvNavLeftEdge(
   BuildContext context, {

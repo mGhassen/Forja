@@ -16,6 +16,7 @@ class HubPosterCard extends StatelessWidget {
     this.rank,
     this.badge,
     this.listIndex,
+    this.tvTabId,
     this.tvRowId,
   });
 
@@ -26,6 +27,7 @@ class HubPosterCard extends StatelessWidget {
   final int? rank;
   final String? badge;
   final int? listIndex;
+  final String? tvTabId;
   final String? tvRowId;
   final VoidCallback onTap;
 
@@ -50,6 +52,7 @@ class HubPosterCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: radius,
       listIndex: listIndex,
+      tvTabId: tvTabId,
       tvRowId: tvRowId,
       tvItemIndex: listIndex,
       child: Container(

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
@@ -29,6 +30,11 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     this.seasonPosters = const {},
     this.episodeProgress = const {},
     this.customEpisodesBySeason,
+    this.tvTabId,
+    this.tvSeasonRowId,
+    this.tvEpisodeRowId,
+    this.tvRowOrderBase = 0,
+    this.tvFocusUp,
   });
 
   final int tmdbId;
@@ -46,6 +52,11 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final Map<int, String> seasonPosters;
   final Map<String, Map<String, dynamic>> episodeProgress;
   final Map<int, List<Map<String, dynamic>>>? customEpisodesBySeason;
+  final String? tvTabId;
+  final String? tvSeasonRowId;
+  final String? tvEpisodeRowId;
+  final int tvRowOrderBase;
+  final VoidCallback? tvFocusUp;
 
   @override
   State<TvSeasonEpisodePicker> createState() => _TvSeasonEpisodePickerState();
@@ -56,6 +67,25 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   int _episodeChunk = 0;
   final ScrollController _episodeScrollController = ScrollController();
   final ScrollController _seasonScrollController = ScrollController();
+
+  String get _seasonRowId => widget.tvSeasonRowId ?? 'seasons';
+  String get _episodeRowId => widget.tvEpisodeRowId ?? 'episodes';
+
+  @override
+  void dispose() {
+    final tabId = widget.tvTabId;
+    if (tabId != null) {
+      if (widget.tvSeasonRowId != null) {
+        shellTvUnregisterRow(tabId: tabId, rowId: _seasonRowId);
+      }
+      if (widget.tvEpisodeRowId != null) {
+        shellTvUnregisterRow(tabId: tabId, rowId: _episodeRowId);
+      }
+    }
+    _episodeScrollController.dispose();
+    _seasonScrollController.dispose();
+    super.dispose();
+  }
 
   static const double _episodeCardStride = _EpisodeCard.cardWidth + 16;
   static const double _seasonCardStride = _SeasonCard.cardWidth + 12;
@@ -76,13 +106,6 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       setState(() => _episodeChunk = chunk);
     }
     _scrollToSelectedEpisode();
-  }
-
-  @override
-  void dispose() {
-    _episodeScrollController.dispose();
-    _seasonScrollController.dispose();
-    super.dispose();
   }
 
   @override
@@ -229,6 +252,32 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     if (widget.seasonCount <= 0) return const SizedBox.shrink();
 
     final episodeCount = _episodes.length;
+    final tabId = widget.tvTabId;
+    final hasMultiSeason = widget.seasonCount > 1;
+    final episodeRowOrder = widget.tvRowOrderBase + (hasMultiSeason ? 1 : 0);
+
+    if (tabId != null && widget.tvSeasonRowId != null && hasMultiSeason) {
+      shellTvRegisterRow(
+        tabId: tabId,
+        rowId: _seasonRowId,
+        sortOrder: widget.tvRowOrderBase,
+        itemCount: widget.seasonCount,
+        onFocusUp: widget.tvFocusUp,
+      );
+    }
+
+    if (tabId != null &&
+        widget.tvEpisodeRowId != null &&
+        !widget.isLoadingSeason &&
+        _visibleEpisodes.isNotEmpty) {
+      shellTvRegisterRow(
+        tabId: tabId,
+        rowId: _episodeRowId,
+        sortOrder: episodeRowOrder,
+        itemCount: _visibleEpisodes.length,
+        onFocusUp: hasMultiSeason ? null : widget.tvFocusUp,
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,6 +346,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                       widget.onSeasonSelected(season);
                     },
                     onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+                    tvTabId: tabId,
+                    tvRowId: widget.tvSeasonRowId != null ? _seasonRowId : null,
+                    listIndex: i,
                   );
                 },
               ),
@@ -379,6 +431,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                     onToggleWatched: () =>
                         widget.onToggleWatched(widget.selectedSeason, epNum),
                     onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+                    tvTabId: tabId,
+                    tvRowId: widget.tvEpisodeRowId != null ? _episodeRowId : null,
+                    listIndex: i,
                   );
                 },
               ),
@@ -397,6 +452,9 @@ class _SeasonCard extends StatefulWidget {
     required this.posterUrl,
     required this.onTap,
     this.onLeftEdge,
+    this.tvTabId,
+    this.tvRowId,
+    this.listIndex,
   });
 
   final int seasonNumber;
@@ -404,6 +462,9 @@ class _SeasonCard extends StatefulWidget {
   final String? posterUrl;
   final VoidCallback onTap;
   final VoidCallback? onLeftEdge;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int? listIndex;
 
   static const double cardWidth = 104;
   static const double cardHeight = 156;
@@ -429,6 +490,16 @@ class _SeasonCardState extends State<_SeasonCard> {
       borderRadius: _SeasonCard.radius,
       scaleOnFocus: 1.0,
       onLeftEdge: widget.onLeftEdge,
+      tvMeta: widget.tvTabId != null &&
+              widget.tvRowId != null &&
+              widget.listIndex != null
+          ? ShellTvFocusMeta(
+              tabId: widget.tvTabId!,
+              zone: ShellTvZone.row,
+              rowId: widget.tvRowId,
+              itemIndex: widget.listIndex,
+            )
+          : null,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
@@ -562,6 +633,9 @@ class _EpisodeCard extends StatefulWidget {
     required this.onToggleWatched,
     this.onFocusChange,
     this.onLeftEdge,
+    this.tvTabId,
+    this.tvRowId,
+    this.listIndex,
   });
 
   final int episodeNumber;
@@ -577,6 +651,9 @@ class _EpisodeCard extends StatefulWidget {
   final VoidCallback onToggleWatched;
   final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onLeftEdge;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int? listIndex;
 
   static const double cardWidth = 268;
   static const double thumbRadius = 10;
@@ -611,6 +688,16 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       scaleOnFocus: 1.0,
       onFocusChange: widget.onFocusChange,
       onLeftEdge: widget.onLeftEdge,
+      tvMeta: widget.tvTabId != null &&
+              widget.tvRowId != null &&
+              widget.listIndex != null
+          ? ShellTvFocusMeta(
+              tabId: widget.tvTabId!,
+              zone: ShellTvZone.row,
+              rowId: widget.tvRowId,
+              itemIndex: widget.listIndex,
+            )
+          : null,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),

@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
-import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
@@ -12,12 +12,20 @@ class MediaDetailsCastSection extends StatefulWidget {
     required this.cast,
     this.title = 'Cast',
     this.outdentHorizontal = 0,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvRowOrder = 0,
+    this.tvFocusUp,
   });
 
   final List<Map<String, String>> cast;
   final String title;
   /// Cancels parent horizontal padding so row insets match home catalog rows.
   final double outdentHorizontal;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int tvRowOrder;
+  final VoidCallback? tvFocusUp;
 
   static const double _avatarSize = 88;
   static const double _itemWidth = 112;
@@ -36,9 +44,14 @@ class MediaDetailsCastSection extends StatefulWidget {
 
 class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
   final ScrollController _scrollController = ScrollController();
+  String get _rowId => widget.tvRowId ?? 'cast';
 
   @override
   void dispose() {
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    if (tabId != null && widget.tvRowId != null) {
+      shellTvUnregisterRow(tabId: tabId, rowId: _rowId);
+    }
     _scrollController.dispose();
     super.dispose();
   }
@@ -46,6 +59,17 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
   @override
   Widget build(BuildContext context) {
     if (widget.cast.isEmpty) return const SizedBox.shrink();
+
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    if (tabId != null && widget.tvRowId != null) {
+      shellTvRegisterRow(
+        tabId: tabId,
+        rowId: _rowId,
+        sortOrder: widget.tvRowOrder,
+        itemCount: widget.cast.length,
+        onFocusUp: widget.tvFocusUp,
+      );
+    }
 
     final homePad = ShellTokens.homeSectionHorizontalPadding;
     final outdent = widget.outdentHorizontal;
@@ -66,8 +90,9 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
         SizedBox(
           height: MediaDetailsCastSection._rowHeight,
           child: FocusTraversalGroup(
-            policy: OrderedTraversalPolicy(),
-            child: ListView.separated(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: shellAbsorbHorizontalScroll,
+              child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -87,6 +112,9 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
                 context: context,
                 borderRadius: MediaDetailsCastSection._avatarSize / 2,
                 listIndex: i,
+                tvTabId: tabId,
+                tvRowId: widget.tvRowId != null ? _rowId : null,
+                tvItemIndex: i,
                 child: SizedBox(
                   width: MediaDetailsCastSection._itemWidth,
                   child: Column(
@@ -147,6 +175,7 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
               );
             },
           ),
+            ),
           ),
         ),
       ],

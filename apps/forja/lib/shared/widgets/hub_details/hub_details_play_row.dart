@@ -8,17 +8,20 @@ class HubDetailsPlayRow extends StatelessWidget {
     required this.label,
     this.onPlay,
     this.enabled = true,
+    this.focusNode,
   });
 
   final String label;
   final VoidCallback? onPlay;
   final bool enabled;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     return HeroPillPlayButton(
       label: label,
       onTap: enabled ? onPlay : null,
+      focusNode: focusNode,
     );
   }
 }

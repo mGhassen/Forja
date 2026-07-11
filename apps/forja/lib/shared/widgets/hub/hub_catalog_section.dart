@@ -101,7 +101,9 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
         SizedBox(
           height: HubPosterCard.cardHeight(context),
           child: FocusTraversalGroup(
-            child: ListView.separated(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: shellAbsorbHorizontalScroll,
+              child: ListView.separated(
               clipBehavior: Clip.none,
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
@@ -115,6 +117,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
               ),
               itemBuilder: (context, index) =>
                   widget.cardBuilder(context, list[index], index),
+            ),
             ),
           ),
         ),

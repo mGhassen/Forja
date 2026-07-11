@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:rust/rust.dart';
 
@@ -116,12 +115,11 @@ class MyListButton extends StatelessWidget {
   }
 }
 
-/// Hero-row My List CTA — glass pill + TV expand label like other hero actions.
-class MyListHeroPillButton extends StatelessWidget {
-  const MyListHeroPillButton.movie({super.key, required this.movie})
-      : stremioItem = null;
+/// Dynamic icon for the grouped hero My List slice.
+class MyListHeroIcon extends StatelessWidget {
+  const MyListHeroIcon.movie({super.key, required this.movie}) : stremioItem = null;
 
-  const MyListHeroPillButton.stremio({
+  const MyListHeroIcon.stremio({
     super.key,
     required Map<String, dynamic> this.stremioItem,
   }) : movie = null;
@@ -134,16 +132,40 @@ class MyListHeroPillButton extends StatelessWidget {
     return MyListService.stremioItemId(stremioItem!);
   }
 
-  Future<void> _toggle(BuildContext context) async {
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: MyListService.changeNotifier,
+      builder: (context, _, _) {
+        final inList = MyListService().contains(_uniqueId);
+        return Icon(
+          inList ? Icons.bookmark_rounded : Icons.add_rounded,
+          size: 20,
+          color: Colors.white,
+        );
+      },
+    );
+  }
+}
+
+/// Hero-row My List slice inside [HeroPillIconGroup].
+class MyListHeroPillButton {
+  MyListHeroPillButton._();
+
+  static Future<void> _toggle(
+    BuildContext context, {
+    Movie? movie,
+    Map<String, dynamic>? stremioItem,
+  }) async {
     if (movie != null) {
       final added = await MyListService().toggleMovie(
-        tmdbId: movie!.id,
-        imdbId: movie!.imdbId,
-        title: movie!.title,
-        posterPath: movie!.posterPath,
-        mediaType: movie!.mediaType,
-        voteAverage: movie!.voteAverage,
-        releaseDate: movie!.releaseDate,
+        tmdbId: movie.id,
+        imdbId: movie.imdbId,
+        title: movie.title,
+        posterPath: movie.posterPath,
+        mediaType: movie.mediaType,
+        voteAverage: movie.voteAverage,
+        releaseDate: movie.releaseDate,
       );
       if (context.mounted) {
         ForjaToast.success(
@@ -152,7 +174,7 @@ class MyListHeroPillButton extends StatelessWidget {
         );
       }
     } else if (stremioItem != null) {
-      final added = await MyListService().toggleStremioItem(stremioItem!);
+      final added = await MyListService().toggleStremioItem(stremioItem);
       if (context.mounted) {
         ForjaToast.success(
           added ? 'Added to My List' : 'Removed from My List',
@@ -162,21 +184,25 @@ class MyListHeroPillButton extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: MyListService.changeNotifier,
-      builder: (context, _, _) {
-        final inList = MyListService().contains(_uniqueId);
-        return HeroPillPlayButton(
-          label: 'My List',
-          icon: inList ? Icons.bookmark_rounded : Icons.add_rounded,
-          tone: HeroPillPlayTone.secondary,
-          onTap: () => _toggle(context),
-          onKeyEvent: (node, event) =>
-              shellTrapTvFocusHorizontalEdge(node, event, trapRight: true),
-        );
-      },
+  static HeroPillIconSlot movieSlot(
+    BuildContext context, {
+    required Movie movie,
+  }) {
+    return HeroPillIconSlot(
+      label: 'My List',
+      iconWidget: MyListHeroIcon.movie(movie: movie),
+      onTap: () => _toggle(context, movie: movie),
+    );
+  }
+
+  static HeroPillIconSlot stremioSlot(
+    BuildContext context, {
+    required Map<String, dynamic> stremioItem,
+  }) {
+    return HeroPillIconSlot(
+      label: 'My List',
+      iconWidget: MyListHeroIcon.stremio(stremioItem: stremioItem),
+      onTap: () => _toggle(context, stremioItem: stremioItem),
     );
   }
 }

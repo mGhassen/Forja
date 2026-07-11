@@ -285,6 +285,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                   child: HubCinematicHero(
                                     slides: _heroSlides(_spotlight),
                                     onSearch: _openSearch,
+                                    tvTabId: 'asian_drama',
                                   ),
                                 ),
                                 if (_continueWatching.isNotEmpty)

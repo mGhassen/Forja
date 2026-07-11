@@ -51,8 +51,9 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
   @override
   void dispose() {
     final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
-    if (tabId != null && widget.tvRowId != null) {
-      shellTvUnregisterRow(tabId: tabId, rowId: widget.tvRowId!);
+    final rowId = widget.tvRowId ?? widget.title;
+    if (tabId != null) {
+      shellTvUnregisterRow(tabId: tabId, rowId: rowId);
     }
     _scrollController.dispose();
     super.dispose();
@@ -111,7 +112,9 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
         SizedBox(
           height: HomeMovieCard.cardHeight(context),
           child: FocusTraversalGroup(
-            child: ListView.separated(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: shellAbsorbHorizontalScroll,
+              child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -126,10 +129,12 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
                 onTap: () => widget.onMovieTap(widget.movies[index]),
                 rank: widget.showRank ? index + 1 : null,
                 listIndex: index,
+                tvTabId: widget.tvTabId ?? ShellTvFocus.currentNavTabId,
                 tvRowId: widget.tvRowId ?? widget.title,
               );
             },
           ),
+            ),
           ),
         ),
       ],

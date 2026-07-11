@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 const double _kHeroPillHeight = 40;
 const double _kHeroPillIconSize = 20;
 const Color _kHeroPillForegroundDark = Color(0xFF111827);
-const double _kHeroPillGap = 10;
 
 Color _heroPillHoverFill({required bool pressed}) =>
     Colors.white.withValues(alpha: pressed ? 0.24 : 0.18);
@@ -115,6 +115,7 @@ class HeroPillPlayButton extends StatelessWidget {
     this.autoFocus = false,
     this.focusNode,
     this.onKeyEvent,
+    this.tvTabId,
   });
 
   final String label;
@@ -126,6 +127,7 @@ class HeroPillPlayButton extends StatelessWidget {
   final bool autoFocus;
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
+  final String? tvTabId;
 
   HeroPillPlayTone get _tone =>
       tone ?? (primary ? HeroPillPlayTone.primary : HeroPillPlayTone.secondary);
@@ -138,6 +140,9 @@ class HeroPillPlayButton extends StatelessWidget {
     final leading = iconWidget ??
         (icon != null ? Icon(icon, size: _kHeroPillIconSize) : null);
     final useTvCompact = policy.useFocusableMoodChips;
+    final tvMeta = tvTabId != null && useTvCompact
+        ? ShellTvFocusMeta(tabId: tvTabId!, zone: ShellTvZone.hero)
+        : null;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -146,6 +151,7 @@ class HeroPillPlayButton extends StatelessWidget {
         autoFocus: autoFocus,
         focusNode: focusNode,
         onKeyEvent: onKeyEvent,
+        tvMeta: tvMeta,
         hoverScale: 1.03,
         pressScale: 0.97,
         builder: (active, pressed) {
@@ -442,17 +448,17 @@ class _MagnetIconPainter extends CustomPainter {
 class HeroPillIconSlot {
   const HeroPillIconSlot({
     this.icon,
+    this.iconWidget,
     this.onTap,
     this.tooltip,
     this.label,
-    this.child,
   });
 
   final IconData? icon;
+  final Widget? iconWidget;
   final VoidCallback? onTap;
   final String? tooltip;
   final String? label;
-  final Widget? child;
 
   String get resolvedLabel => label ?? tooltip ?? '';
 }
@@ -479,38 +485,62 @@ class HeroPillActionRow extends StatelessWidget {
   }
 }
 
-/// Secondary hero actions — each slot uses the same expand + label animation.
+/// Secondary hero actions in one sliced glass pill — focused slot expands right.
 class HeroPillIconGroup extends StatelessWidget {
   const HeroPillIconGroup({
     super.key,
     required this.slots,
     this.tvFocusOrderStart,
+    this.tvTabId,
   });
 
   final List<HeroPillIconSlot> slots;
   final int? tvFocusOrderStart;
+  final String? tvTabId;
 
   @override
   Widget build(BuildContext context) {
     if (slots.isEmpty) return const SizedBox.shrink();
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < slots.length; i++) ...[
-          if (i > 0) const SizedBox(width: _kHeroPillGap),
-          _HeroPillIconSlotButton(
-            slot: slots[i],
-            focusOrder: tvFocusOrderStart != null
-                ? NumericFocusOrder((tvFocusOrderStart! + i).toDouble())
-                : null,
-            onKeyEvent: slots[i].child == null && i == slots.length - 1
-                ? (node, event) =>
-                    shellTrapTvFocusHorizontalEdge(node, event, trapRight: true)
-                : null,
-          ),
+    final useTvCompact = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+    return Container(
+      height: _kHeroPillHeight,
+      clipBehavior: Clip.antiAlias,
+      decoration: _heroGlassDecoration(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < slots.length; i++) ...[
+            if (i > 0)
+              Container(
+                width: 1,
+                height: 18,
+                color: Colors.white.withValues(alpha: 0.22),
+              ),
+            _HeroPillGroupedSlot(
+              label: slots[i].resolvedLabel,
+              icon: slots[i].icon,
+              iconWidget: slots[i].iconWidget,
+              onTap: slots[i].onTap,
+              isFirst: i == 0,
+              isLast: i == slots.length - 1,
+              useTvCompact: useTvCompact,
+              tvTabId: tvTabId,
+              focusOrder: tvFocusOrderStart != null
+                  ? NumericFocusOrder((tvFocusOrderStart! + i).toDouble())
+                  : null,
+              onKeyEvent: i == slots.length - 1
+                  ? (node, event) => shellTrapTvFocusHorizontalEdge(
+                        node,
+                        event,
+                        trapRight: true,
+                      )
+                  : null,
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -636,16 +666,30 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
   }
 }
 
-class _HeroPillIconSlotButton extends StatelessWidget {
-  const _HeroPillIconSlotButton({
-    required this.slot,
+class _HeroPillGroupedSlot extends StatelessWidget {
+  const _HeroPillGroupedSlot({
+    required this.label,
+    required this.isFirst,
+    required this.isLast,
+    required this.useTvCompact,
+    this.icon,
+    this.iconWidget,
+    this.onTap,
     this.focusOrder,
     this.onKeyEvent,
+    this.tvTabId,
   });
 
-  final HeroPillIconSlot slot;
+  final String label;
+  final IconData? icon;
+  final Widget? iconWidget;
+  final VoidCallback? onTap;
+  final bool isFirst;
+  final bool isLast;
+  final bool useTvCompact;
   final FocusOrder? focusOrder;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
+  final String? tvTabId;
 
   Widget _wrapOrder(Widget child) {
     final order = focusOrder;
@@ -655,18 +699,201 @@ class _HeroPillIconSlotButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (slot.child != null) {
-      return _wrapOrder(slot.child!);
-    }
+    final tvMeta = tvTabId != null && useTvCompact
+        ? ShellTvFocusMeta(tabId: tvTabId!, zone: ShellTvZone.hero)
+        : null;
 
     return _wrapOrder(
-      HeroPillPlayButton(
-        label: slot.resolvedLabel,
-        icon: slot.icon,
-        tone: HeroPillPlayTone.secondary,
-        onTap: slot.onTap,
+      ForjaInteractive(
+        onTap: onTap,
         onKeyEvent: onKeyEvent,
+        tvMeta: tvMeta,
+        hoverScale: 1,
+        pressScale: 1,
+        builder: (active, pressed) {
+          return _HeroPillGroupedSlotSurface(
+            label: label,
+            icon: icon,
+            iconWidget: iconWidget,
+            active: active,
+            pressed: pressed,
+            compact: useTvCompact && !active,
+            useTvCompact: useTvCompact,
+            isFirst: isFirst,
+            isLast: isLast,
+          );
+        },
       ),
+    );
+  }
+}
+
+class _HeroPillGroupedSlotSurface extends StatefulWidget {
+  const _HeroPillGroupedSlotSurface({
+    required this.label,
+    required this.active,
+    required this.pressed,
+    required this.compact,
+    required this.useTvCompact,
+    required this.isFirst,
+    required this.isLast,
+    this.icon,
+    this.iconWidget,
+  });
+
+  final String label;
+  final IconData? icon;
+  final Widget? iconWidget;
+  final bool active;
+  final bool pressed;
+  final bool compact;
+  final bool useTvCompact;
+  final bool isFirst;
+  final bool isLast;
+
+  @override
+  State<_HeroPillGroupedSlotSurface> createState() =>
+      _HeroPillGroupedSlotSurfaceState();
+}
+
+class _HeroPillGroupedSlotSurfaceState extends State<_HeroPillGroupedSlotSurface>
+    with SingleTickerProviderStateMixin {
+  static const _duration = Duration(milliseconds: 480);
+
+  late final AnimationController _controller;
+  late final Animation<double> _expand;
+  late final Animation<double> _labelOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: _duration);
+    _expand = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0, 0.65, curve: Curves.easeOutCubic),
+    );
+    _labelOpacity = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.5, 0.85, curve: Curves.easeOut),
+    );
+    _syncController(animate: false);
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeroPillGroupedSlotSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.compact != oldWidget.compact ||
+        widget.useTvCompact != oldWidget.useTvCompact) {
+      _syncController(animate: true);
+    }
+  }
+
+  void _syncController({required bool animate}) {
+    final target = widget.useTvCompact && widget.compact ? 0.0 : 1.0;
+    if (!animate) {
+      _controller.value = target;
+      return;
+    }
+    if (target == 0) {
+      _controller.reverse();
+    } else {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget? _leading() {
+    return widget.iconWidget ??
+        (widget.icon != null
+            ? Icon(widget.icon, size: _kHeroPillIconSize, color: Colors.white)
+            : null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final leading = _leading();
+
+    return SizedBox(
+      height: _kHeroPillHeight,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: widget.active
+                    ? _heroPillHoverFill(pressed: widget.pressed)
+                    : Colors.transparent,
+                borderRadius: _heroPillSlotBorderRadius(
+                  isFirst: widget.isFirst,
+                  isLast: widget.isLast,
+                ),
+              ),
+            ),
+          ),
+          if (widget.useTvCompact)
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                return _groupedSlotRow(
+                  leading: leading,
+                  morph: _expand.value,
+                  labelOpacity: _labelOpacity.value,
+                );
+              },
+            )
+          else
+            SizedBox(
+              width: _kHeroPillHeight,
+              child: Center(child: leading),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _groupedSlotRow({
+    required Widget? leading,
+    required double morph,
+    required double labelOpacity,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: _kHeroPillHeight,
+          height: _kHeroPillHeight,
+          child: Center(child: leading),
+        ),
+        if (widget.label.isNotEmpty)
+          ClipRect(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              widthFactor: morph,
+              child: Opacity(
+                opacity: labelOpacity,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: Text(
+                    widget.label,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                      height: 1.0,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -354,6 +354,7 @@ class _AnimeScreenState extends State<AnimeScreen>
                                         snap.data!.take(5).toList(),
                                       ),
                                       onSearch: _openSearch,
+                                      tvTabId: 'anime',
                                     );
                                   },
                                 ),

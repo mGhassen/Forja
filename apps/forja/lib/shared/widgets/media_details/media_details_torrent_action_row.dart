@@ -212,9 +212,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
     children.add(
       HeroPillIconGroup(
         slots: [
-          HeroPillIconSlot(
-            child: MyListHeroPillButton.movie(movie: movie),
-          ),
+          MyListHeroPillButton.movieSlot(context, movie: movie),
           if (showPlay)
             HeroPillIconSlot(
               icon: Icons.download_outlined,

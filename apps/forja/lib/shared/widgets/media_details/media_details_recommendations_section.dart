@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/widgets/home_movie_row.dart';
 import 'package:rust/rust.dart';
 
@@ -10,11 +9,19 @@ class MediaDetailsRecommendationsSection extends StatelessWidget {
     required this.movies,
     required this.onMovieTap,
     this.title = 'More Like This',
+    this.tvTabId,
+    this.tvRowId,
+    this.tvRowOrder = 0,
+    this.tvFocusUp,
   });
 
   final List<Movie> movies;
   final void Function(Movie movie) onMovieTap;
   final String title;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int tvRowOrder;
+  final VoidCallback? tvFocusUp;
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +30,11 @@ class MediaDetailsRecommendationsSection extends StatelessWidget {
     return HomeMovieRow(
       title: title,
       movies: movies,
-      outdentHorizontal: ShellTokens.homeSectionHorizontalPadding,
       onMovieTap: onMovieTap,
+      tvTabId: tvTabId,
+      tvRowId: tvRowId ?? 'recommendations',
+      tvRowOrder: tvRowOrder,
+      tvFocusUp: tvFocusUp,
     );
   }
 }

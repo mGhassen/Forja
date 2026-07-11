@@ -1,49 +1,127 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
-import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
 const _kTrailerCardWidth = 200.0;
 
-class MediaDetailsTrailersSection extends StatelessWidget {
+class MediaDetailsTrailersSection extends StatefulWidget {
   const MediaDetailsTrailersSection({
     super.key,
     required this.trailers,
     this.movie,
     this.languageCode,
+    this.outdentHorizontal = 0,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvRowOrder = 0,
+    this.tvFocusUp,
   });
 
   final List<MediaTrailer> trailers;
   final Movie? movie;
   final String? languageCode;
+  final double outdentHorizontal;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int tvRowOrder;
+  final VoidCallback? tvFocusUp;
+
+  @override
+  State<MediaDetailsTrailersSection> createState() =>
+      _MediaDetailsTrailersSectionState();
+}
+
+class _MediaDetailsTrailersSectionState
+    extends State<MediaDetailsTrailersSection> {
+  final ScrollController _scrollController = ScrollController();
+  String get _rowId => widget.tvRowId ?? 'trailers';
+
+  @override
+  void dispose() {
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    if (tabId != null && widget.tvRowId != null) {
+      shellTvUnregisterRow(tabId: tabId, rowId: _rowId);
+    }
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (trailers.isEmpty) return const SizedBox.shrink();
+    if (widget.trailers.isEmpty) return const SizedBox.shrink();
 
-    return Column(
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    if (tabId != null && widget.tvRowId != null) {
+      shellTvRegisterRow(
+        tabId: tabId,
+        rowId: _rowId,
+        sortOrder: widget.tvRowOrder,
+        itemCount: widget.trailers.length,
+        onFocusUp: widget.tvFocusUp,
+      );
+    }
+
+    final outdent = widget.outdentHorizontal;
+    final useHomeInsets = outdent > 0;
+    final homePad = ShellTokens.homeSectionHorizontalPadding;
+
+    final row = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Trailers', style: ShellSectionTitle.titleStyle),
-        const SizedBox(height: 12),
+        if (useHomeInsets)
+          ShellSectionTitle(
+            title: 'Trailers',
+            padding: EdgeInsets.fromLTRB(homePad, 0, homePad, 12),
+          )
+        else ...[
+          Text('Trailers', style: ShellSectionTitle.titleStyle),
+          const SizedBox(height: 12),
+        ],
         SizedBox(
           height: 156,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: trailers.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => _TrailerCard(
-              trailers: trailers,
-              index: index,
-              movie: movie,
-              languageCode: languageCode,
+          child: FocusTraversalGroup(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: shellAbsorbHorizontalScroll,
+              child: ListView.separated(
+                clipBehavior: Clip.none,
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: useHomeInsets ? EdgeInsets.only(left: homePad) : null,
+                itemCount: widget.trailers.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, index) => _TrailerCard(
+                  trailers: widget.trailers,
+                  index: index,
+                  movie: widget.movie,
+                  languageCode: widget.languageCode,
+                  tvTabId: tabId,
+                  tvRowId: widget.tvRowId != null ? _rowId : null,
+                ),
+              ),
             ),
           ),
         ),
       ],
+    );
+
+    if (outdent <= 0) return row;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          width: constraints.maxWidth + outdent * 2,
+          child: Transform.translate(
+            offset: Offset(-outdent, 0),
+            child: row,
+          ),
+        );
+      },
     );
   }
 }
@@ -54,12 +132,16 @@ class _TrailerCard extends StatelessWidget {
     required this.index,
     this.movie,
     this.languageCode,
+    this.tvTabId,
+    this.tvRowId,
   });
 
   final List<MediaTrailer> trailers;
   final int index;
   final Movie? movie;
   final String? languageCode;
+  final String? tvTabId;
+  final String? tvRowId;
 
   MediaTrailer get trailer => trailers[index];
 
@@ -77,10 +159,14 @@ class _TrailerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final thumbHeight = _kTrailerCardWidth * 9 / 16;
 
-    return FocusableControl(
+    return shellFocusableTap(
+      context: context,
       onTap: () => _open(context),
       borderRadius: 10,
-      onLeftEdge: shellTvNavLeftEdge(context, listIndex: index),
+      listIndex: index,
+      tvTabId: tvTabId,
+      tvRowId: tvRowId,
+      tvItemIndex: index,
       child: SizedBox(
         width: _kTrailerCardWidth,
         child: Column(

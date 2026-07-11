@@ -7,6 +7,7 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shell/app_router.dart';
@@ -38,6 +39,8 @@ class AsianDramaDetailsScreen extends StatefulWidget {
 
 class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   final KissKhService _service = KissKhService();
+  final ScrollController _detailsScrollController = ScrollController();
+  final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'asian-drama-details-play');
   KdramaDetails? _details;
   Map<String, dynamic>? _progress;
   bool _loading = true;
@@ -54,7 +57,30 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   @override
   void dispose() {
     KissKhService.watchHistoryRevision.removeListener(_onHistoryChanged);
+    _heroPlayFocus.dispose();
+    _detailsScrollController.dispose();
     super.dispose();
+  }
+
+  void _revealedDetailsHeroPlayFocus() {
+    void focusPlay() {
+      if (!mounted) return;
+      if (_heroPlayFocus.canRequestFocus) {
+        _heroPlayFocus.requestFocus();
+      }
+    }
+
+    if (!_detailsScrollController.hasClients) {
+      focusPlay();
+      return;
+    }
+    _detailsScrollController
+        .animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(focusPlay);
   }
 
   void _onHistoryChanged() => _refreshProgress();
@@ -276,7 +302,10 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     final durMs = (_progress?['durationMs'] as num?)?.toInt();
     final lookup = _episodeLookup(det);
 
-    return SingleChildScrollView(
+    final heroFocusUp = _revealedDetailsHeroPlayFocus;
+
+    final scroll = SingleChildScrollView(
+      controller: _detailsScrollController,
       physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,6 +325,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
                   label: hasResume ? 'Resume' : 'Play',
                   enabled: det.episodes.isNotEmpty,
                   onPlay: hasResume ? _resume : _playFirst,
+                  focusNode: _heroPlayFocus,
                 ),
                 if (hasResume) ...[
                   const SizedBox(width: 10),
@@ -317,34 +347,45 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
             bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
             topSpacing: ShellTokens.detailsBodyTopSpacingWithEpisodes,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (det.episodes.isNotEmpty)
-                  TvSeasonEpisodePicker(
-                    tmdbId: det.id,
-                    seasonCount: 1,
-                    selectedSeason: 1,
-                    selectedEpisode: _selectedEpisode,
-                    isLoadingSeason: false,
-                    seasonData: null,
-                    watchedEpisodes: const {},
-                    fallbackPosterPath: det.cover,
-                    customEpisodesBySeason: _episodeMaps(det),
-                    episodeProgress: _episodeProgressMap(),
-                    onSeasonSelected: (_) {},
-                    onEpisodeSelected: (ep) {
-                      setState(() => _selectedEpisode = ep);
-                      final match = lookup[ep];
-                      if (match != null) _play(match);
-                    },
-                    onToggleWatched: (_, _) {},
+                  MediaDetailsBody.padContent(
+                    context,
+                    TvSeasonEpisodePicker(
+                      tmdbId: det.id,
+                      seasonCount: 1,
+                      selectedSeason: 1,
+                      selectedEpisode: _selectedEpisode,
+                      isLoadingSeason: false,
+                      seasonData: null,
+                      watchedEpisodes: const {},
+                      fallbackPosterPath: det.cover,
+                      customEpisodesBySeason: _episodeMaps(det),
+                      episodeProgress: _episodeProgressMap(),
+                      onSeasonSelected: (_) {},
+                      onEpisodeSelected: (ep) {
+                        setState(() => _selectedEpisode = ep);
+                        final match = lookup[ep];
+                        if (match != null) _play(match);
+                      },
+                      onToggleWatched: (_, _) {},
+                      tvTabId: MediaDetailsTv.tabId,
+                      tvSeasonRowId: 'seasons',
+                      tvEpisodeRowId: 'episodes',
+                      tvRowOrderBase: 0,
+                      tvFocusUp: heroFocusUp,
+                    ),
                   )
                 else
-                  Text(
-                    'No episodes available yet',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 14,
+                  MediaDetailsBody.padContent(
+                    context,
+                    Text(
+                      'No episodes available yet',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 14,
+                      ),
                     ),
                   ),
               ],
@@ -352,6 +393,12 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
           ),
         ],
       ),
+    );
+
+    return MediaDetailsTvScope(
+      heroPlayFocus: _heroPlayFocus,
+      scrollController: _detailsScrollController,
+      child: scroll,
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/shell_tv_back_exit.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Focus zone within a shell tab.
@@ -154,20 +156,34 @@ abstract final class ShellTvFocusCoordinator {
 
   static bool handleShellBackKey() {
     if (shellOverlayCanPop()) {
+      ShellTvBackExit.reset();
       maybePopShellOverlay();
       return true;
     }
 
     if (_tryPopFocusedNavigator()) {
+      ShellTvBackExit.reset();
       return true;
     }
 
+    if (ShellTvFocus.currentNavTabId == null) return false;
+
     if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
-      (onRequestExitApp ?? SystemNavigator.pop)();
+      ShellTvBackExit.onNavBack(onRequestExitApp ?? SystemNavigator.pop);
       return true;
     }
-    if (ShellTvFocus.currentNavTabId == null) return false;
-    return focusActiveNavTab();
+
+    ShellTvBackExit.reset();
+    _focusActiveNavFromPage();
+    return true;
+  }
+
+  static void _focusActiveNavFromPage() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (focusActiveNavTab()) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      focusActiveNavTab();
+    });
   }
 
   static bool _tryPopFocusedNavigator() {
@@ -223,13 +239,28 @@ abstract final class ShellTvFocusCoordinator {
 
   /// Nav RIGHT — return to the active tab page without switching tabs.
   static bool _restorePageFromNav(String tabId) {
-    restoreTabFocusAfterNav(tabId);
+    restoreTabFocusAfterNav(_navRestoreTabId(tabId));
     return true;
+  }
+
+  /// Overlay routes (details, search) own their own TV tab memory.
+  static String _navRestoreTabId(String shellTabId) {
+    if (!shellOverlayCanPop()) return shellTabId;
+    final detailsRows = _rowsByTab[MediaDetailsTv.tabId];
+    if (detailsRows != null && detailsRows.isNotEmpty) {
+      return MediaDetailsTv.tabId;
+    }
+    if (_tabMemory.containsKey('search') ||
+        (_rowsByTab['search']?.isNotEmpty ?? false)) {
+      return 'search';
+    }
+    return shellTabId;
   }
 
   /// Release nav and restore page focus after the rail handles RIGHT.
   static void restoreTabFocusAfterNav(String tabId) {
     if (tabId.isEmpty) return;
+    ShellTvBackExit.reset();
     _releaseNavFocus();
     void attempt() {
       if (!restoreTabFocus(tabId)) {
@@ -271,6 +302,9 @@ abstract final class ShellTvFocusCoordinator {
       heroReveal?.call();
     }
   }
+
+  /// Scroll the active tab's hero into view (e.g. when a hero CTA gains focus).
+  static void revealHeroForTab(String tabId) => _revealHeroForTab(tabId);
 
   // --- Tab memory ---
 
@@ -348,6 +382,10 @@ abstract final class ShellTvFocusCoordinator {
     final tid = tabId ?? ShellTvFocus.currentNavTabId ?? '';
     if (revealFull) {
       _revealHeroForTab(tid);
+    }
+    final node = _tabDefaultFocus[tid]?.call();
+    if (node != null && node.canRequestFocus) {
+      return _request(node);
     }
     return ShellTvFocus.focusHomeHeroPlay();
   }
@@ -665,6 +703,7 @@ class ShellTvFocusMeta {
     }
     switch (zone) {
       case ShellTvZone.hero:
+        ShellTvFocusCoordinator.revealHeroForTab(tabId);
         ShellTvFocusCoordinator.saveFocus(
           tabId,
           ShellTvFocusMemory(zone: ShellTvZone.hero, node: node),
