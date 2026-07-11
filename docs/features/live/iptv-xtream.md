@@ -34,6 +34,7 @@ Tap **IPTV** in the navigation bar → add or select an Xtream portal.
 ## Tips
 
 - While browsing **Live TV**, **Movies**, or **Series**, tap the **search** icon in the top bar to open the catalog search field — type to filter category groups and channels; tap the icon again or press Escape to close and clear the filter
+- On **Android TV**, search fields focus in browse mode first — press **Enter** on the remote to open the keyboard, then type
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide — pick a category on the left (desktop) or from the list (phone), then tap a channel to zap without leaving playback
 - Tap the **search** icon next to the guide to open a centered channel search — type to filter by channel or category name, then tap a result to switch
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests

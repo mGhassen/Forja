@@ -27,6 +27,7 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 
 ## Android TV
 
+- **Nav rail order:** Search, then Home, then your other tabs; the app **opens on Home** on cold start
 - Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
 - **Layout:** catalog rows fill the body edge-to-edge (no extra section gutters); only the fixed nav rail insets content on the left; device-reported overscan padding is applied once at the shell when present
 - **Leanback density:** **115px** poster cards, 6px row gaps, tight section chrome — hero + first row peek like desktop, multiple rows visible when scrolling

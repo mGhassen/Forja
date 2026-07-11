@@ -36,7 +36,15 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
-  int _selectedIndex = 0;
+  static List<String> _bootstrapVisibleNavIds() {
+    final base = SettingsService.platformProfile == PlatformProfile.androidTv
+        ? SettingsService.defaultTvVisibleNavIds
+        : SettingsService.defaultVisibleNavIds;
+    return [...base, 'settings'];
+  }
+
+  int _selectedIndex =
+      SettingsService.initialShellTabIndex(_bootstrapVisibleNavIds());
   Timer? _metricsDebounce;
   Timer? _metricsSafety;
 
@@ -71,7 +79,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final Map<String, Widget> _tabCache = {};
   final Set<String> _mountedTabIds = {'home'};
   final List<String> _tabLru = ['home'];
-  List<String> _visibleIds = [...SettingsService.defaultVisibleNavIds, 'settings'];
+  List<String> _visibleIds = _bootstrapVisibleNavIds();
+  bool _initialNavResolved = false;
 
   String? get _currentTabId =>
       _visibleIds.isEmpty || _selectedIndex >= _visibleIds.length
@@ -249,7 +258,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           ? _visibleIds[_selectedIndex]
           : null;
       _visibleIds = [...visible, 'settings'];
-      if (currentId != null) {
+      if (!_initialNavResolved) {
+        _initialNavResolved = true;
+        _selectedIndex = SettingsService.initialShellTabIndex(_visibleIds);
+      } else if (currentId != null) {
         final newIndex = _visibleIds.indexOf(currentId);
         if (newIndex >= 0) {
           _selectedIndex = newIndex;

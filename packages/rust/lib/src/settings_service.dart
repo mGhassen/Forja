@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'built_in_player_engine.dart';
 import 'kv.dart';
 import 'platform_defaults.dart';
 import 'platform_profile.dart';
@@ -36,6 +37,7 @@ class SettingsService {
   static const String _debridServiceKey = 'debrid_service';
   static const String _stremioAddonsKey = 'stremio_addons';
   static const String _externalPlayerKey = 'external_player';
+  static const String _builtInPlayerEngineKey = 'built_in_player_engine';
   static const String _jackettBaseUrlKey = 'jackett_base_url';
   static const String _jackettApiKeyKey = 'jackett_api_key';
   static const String _prowlarrBaseUrlKey = 'prowlarr_base_url';
@@ -287,6 +289,17 @@ class SettingsService {
   Future<void> setExternalPlayer(String player) async =>
       kvSetString(_externalPlayerKey, player);
 
+  Future<BuiltInPlayerEngine> getBuiltInPlayerEngine() async {
+    final raw = await kvGetString(_builtInPlayerEngineKey);
+    if (raw == null || raw.isEmpty) {
+      return BuiltInPlayerEngine.platformDefault();
+    }
+    return BuiltInPlayerEngine.fromStorage(raw);
+  }
+
+  Future<void> setBuiltInPlayerEngine(BuiltInPlayerEngine engine) async =>
+      kvSetString(_builtInPlayerEngineKey, engine.storageKey);
+
   Future<String?> getJackettBaseUrl() async =>
       kvGetString(_jackettBaseUrlKey);
 
@@ -374,6 +387,7 @@ class SettingsService {
   static const String _navbarShell080Key = 'navbar_shell_080';
   static const String _navbarShell081Key = 'navbar_shell_081';
   static const String _navbarShell084Key = 'navbar_shell_084';
+  static const String _navbarShell085Key = 'navbar_shell_085';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Default visible tabs (settings appended in MainScreen).
@@ -389,6 +403,27 @@ class SettingsService {
     'live_matches',
     'mylist',
   ];
+
+  static List<String> _migrateAndroidTvSearchFirstNav(List<String> ids) {
+    if (ids.length < 2 || ids[0] != 'home' || ids[1] != 'search') {
+      return ids;
+    }
+    final migrated = List<String>.from(ids);
+    migrated[0] = 'search';
+    migrated[1] = 'home';
+    return migrated;
+  }
+
+  static int _initialShellTabIndex(List<String> visibleIds) {
+    if (platformProfile == PlatformProfile.androidTv) {
+      final homeIdx = visibleIds.indexOf('home');
+      if (homeIdx >= 0) return homeIdx;
+    }
+    return 0;
+  }
+
+  static int initialShellTabIndex(List<String> visibleIds) =>
+      _initialShellTabIndex(visibleIds);
 
   static bool _isLegacyDefaultNav(List<String> ids) {
     if (ids.length == 2) {
@@ -495,6 +530,17 @@ class SettingsService {
         );
       }
       await kvSetString(_navbarShell084Key, '1');
+    }
+    if (!await kvHasKey(_navbarShell085Key)) {
+      if (platformProfile == PlatformProfile.androidTv &&
+          await kvHasKey(_navbarConfigKey)) {
+        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+        final migrated = _migrateAndroidTvSearchFirstNav(raw);
+        if (raw.length >= 2 && raw[0] == 'home' && raw[1] == 'search') {
+          await kvSetStringList(_navbarConfigKey, migrated);
+        }
+      }
+      await kvSetString(_navbarShell085Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

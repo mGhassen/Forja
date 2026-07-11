@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+
 /// TV D-pad focus anchors shared across shell nav, home chrome, and catalog rows.
 abstract final class ShellTvFocus {
   static String? currentNavTabId;
@@ -95,6 +97,106 @@ KeyEventResult shellTrapTvFocusHorizontalEdge(
     return KeyEventResult.handled;
   }
   if (trapLeft && event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+    return KeyEventResult.handled;
+  }
+  return KeyEventResult.ignored;
+}
+
+/// Coordinator-first D-pad arrows for catalog rows — traps horizontal edges.
+KeyEventResult shellTvHandleRowArrows({
+  required KeyEvent event,
+  ShellTvFocusMeta? tvMeta,
+  VoidCallback? onLeftEdge,
+  VoidCallback? onRightEdge,
+  VoidCallback? onUpEdge,
+  VoidCallback? onDownEdge,
+}) {
+  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+  final key = event.logicalKey;
+  final rowBound = tvMeta != null &&
+      tvMeta.rowId != null &&
+      (tvMeta.zone == ShellTvZone.row || tvMeta.zone == ShellTvZone.chipStrip);
+
+  if (key == LogicalKeyboardKey.arrowLeft) {
+    if (onLeftEdge != null) {
+      onLeftEdge();
+      return KeyEventResult.handled;
+    }
+    final left = tvMeta?.resolveLeftEdge();
+    if (left != null) {
+      left();
+      return KeyEventResult.handled;
+    }
+    if (tvMeta?.zone == ShellTvZone.chipStrip || rowBound) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+  if (key == LogicalKeyboardKey.arrowUp) {
+    if (onUpEdge != null) {
+      onUpEdge();
+      return KeyEventResult.handled;
+    }
+    final up = tvMeta?.resolveUpEdge();
+    if (up != null) {
+      up();
+      return KeyEventResult.handled;
+    }
+    if (rowBound) return KeyEventResult.handled;
+    return KeyEventResult.ignored;
+  }
+  if (key == LogicalKeyboardKey.arrowDown) {
+    if (onDownEdge != null) {
+      onDownEdge();
+      return KeyEventResult.handled;
+    }
+    final down = tvMeta?.resolveDownEdge();
+    if (down != null) {
+      down();
+      return KeyEventResult.handled;
+    }
+    if (rowBound) return KeyEventResult.handled;
+    return KeyEventResult.ignored;
+  }
+  if (key == LogicalKeyboardKey.arrowRight) {
+    if (onRightEdge != null) {
+      onRightEdge();
+      return KeyEventResult.handled;
+    }
+    final right = tvMeta?.resolveRightEdge();
+    if (right != null) {
+      right();
+      return KeyEventResult.handled;
+    }
+    if (tvMeta?.zone == ShellTvZone.chipStrip || rowBound) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+  return KeyEventResult.ignored;
+}
+
+/// TV catalog item — block Flutter geometry from moving focus across rows.
+KeyEventResult shellTvTrapRowGeometry({
+  required KeyEvent event,
+  required bool tvFocus,
+  ShellTvFocusMeta? tvMeta,
+  bool trapHorizontal = false,
+}) {
+  if (!tvFocus || event is! KeyDownEvent) return KeyEventResult.ignored;
+  final key = event.logicalKey;
+  final rowBound = tvMeta?.rowId != null;
+  final chip = tvMeta?.zone == ShellTvZone.chipStrip;
+
+  if (trapHorizontal || rowBound || chip) {
+    if (key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight) {
+      return KeyEventResult.handled;
+    }
+  }
+  if (rowBound &&
+      (key == LogicalKeyboardKey.arrowUp ||
+          key == LogicalKeyboardKey.arrowDown)) {
     return KeyEventResult.handled;
   }
   return KeyEventResult.ignored;

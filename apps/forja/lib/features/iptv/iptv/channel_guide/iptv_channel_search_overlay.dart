@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/shared/design/design.dart';
 
 class IptvChannelSearchOverlay extends StatefulWidget {
@@ -47,7 +48,6 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   @override
   void initState() {
     super.initState();
-    _queryFocus.onKeyEvent = _onSearchFieldKey;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _queryFocus.requestFocus();
     });
@@ -312,10 +312,17 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: TextField(
+            child: TvBrowseTextField(
               controller: _queryCtrl,
               focusNode: _queryFocus,
-              autofocus: true,
+              onChanged: _onQueryChanged,
+              onSubmitted: (_) => _activateFocusedResult(),
+              onEscape: widget.onClose,
+              onKeyEvent: _onSearchFieldKey,
+              browsePlaceholder: 'Search channels or categories…',
+              browseHintStyle:
+                  GoogleFonts.poppins(color: Colors.white30, fontSize: 13),
+              caretHeight: 18,
               style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
               decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search_rounded, color: Colors.white60),
@@ -352,8 +359,6 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
                   ),
                 ),
               ),
-              onChanged: _onQueryChanged,
-              onSubmitted: (_) => _activateFocusedResult(),
             ),
           ),
         ],

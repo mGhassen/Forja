@@ -45,6 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
   String _externalPlayer = 'Built-in Player';
+  BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   String _sortPreference = 'Seeders (High to Low)';
   // Track auto-select
   String _preferredAudioLang = 'None';
@@ -147,6 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final playSourceWebstreaming =
         await _settings.isPlaySourceWebstreamingEnabled();
     final externalPlayer = await _settings.getExternalPlayer();
+    final builtInEngine = await _settings.getBuiltInPlayerEngine();
     final sort = await _settings.getSortPreference();
     final useDebrid = await _settings.useDebridForStreams();
     final service = await _settings.getDebridService();
@@ -231,6 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _externalPlayer = validNames.contains(externalPlayer)
             ? externalPlayer
             : 'Built-in Player';
+        _builtInEngine = builtInEngine;
         _sortPreference = sort;
         _installedAddons = addons;
         _useDebrid = useDebrid;
@@ -454,7 +457,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildAnimeProviderOrder(),
                         _buildFocusableDropdown(
                           'Video Player',
-                          'Choose which player opens videos.',
+                          'Open in another app (VLC, MX Player, …). Built-in uses the engine below.',
                           _externalPlayer,
                           ExternalPlayerService.playerNames,
                           (val) async {
@@ -464,6 +467,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             }
                           },
                         ),
+                        if (Platform.isAndroid)
+                          _buildFocusableDropdown(
+                            'Built-in engine',
+                            'Decoder when Video Player is Built-in.',
+                            _builtInEngine.displayName,
+                            builtInPlayerEngineOptions
+                                .map((e) => e.displayName)
+                                .toList(),
+                            (val) async {
+                              if (val == null) return;
+                              final match = builtInPlayerEngineOptions
+                                  .where((e) => e.displayName == val)
+                                  .toList();
+                              if (match.isEmpty) return;
+                              await _settings.setBuiltInPlayerEngine(match.first);
+                              setState(() => _builtInEngine = match.first);
+                            },
+                          ),
                         _buildFocusableDropdown(
                           'Preferred Audio Language',
                           'When a video starts, automatically switch to a matching audio track. Pick "None" to leave the default.',

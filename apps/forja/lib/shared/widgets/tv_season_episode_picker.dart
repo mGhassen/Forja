@@ -345,7 +345,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                       setState(() => _episodeChunk = 0);
                       widget.onSeasonSelected(season);
                     },
-                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+                    onLeftEdge: tabId == 'home'
+                        ? shellTvNavLeftEdge(context, listIndex: i)
+                        : null,
                     tvTabId: tabId,
                     tvRowId: widget.tvSeasonRowId != null ? _seasonRowId : null,
                     listIndex: i,
@@ -430,7 +432,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                           },
                     onToggleWatched: () =>
                         widget.onToggleWatched(widget.selectedSeason, epNum),
-                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+                    onLeftEdge: tabId == 'home'
+                        ? shellTvNavLeftEdge(context, listIndex: i)
+                        : null,
                     tvTabId: tabId,
                     tvRowId: widget.tvEpisodeRowId != null ? _episodeRowId : null,
                     listIndex: i,

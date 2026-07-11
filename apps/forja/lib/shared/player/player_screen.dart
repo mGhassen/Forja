@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/player/exo_player_screen.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';
 import 'package:forja/shared/player/player/tv_player_screen.dart';
 import 'package:forja/shared/player/player/desktop_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/player/controls/player_app_menu.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
@@ -94,15 +96,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _externalLaunched = false;
   bool _checkingPlayer = true;
   String _externalPlayerName = '';
+  BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
+  Duration? _resumePosition;
+
+  Duration get _effectiveStartPosition =>
+      _resumePosition ?? widget.startPosition ?? Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _checkExternalPlayer();
+    _checkPlayerSettings();
   }
 
-  Future<void> _checkExternalPlayer() async {
+  Future<void> _checkPlayerSettings() async {
     final playerName = await SettingsService().getExternalPlayer();
+    final engine = await SettingsService().getBuiltInPlayerEngine();
     final isExternal = playerName != 'Built-in Player';
 
     if (!mounted) return;
@@ -111,12 +119,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
       setState(() {
         _useExternalPlayer = true;
         _externalPlayerName = playerName;
+        _builtInEngine = engine;
         _checkingPlayer = false;
       });
       _launchExternal();
     } else {
       setState(() {
         _useExternalPlayer = false;
+        _builtInEngine = engine;
         _checkingPlayer = false;
       });
     }
@@ -142,6 +152,37 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _externalLaunched = false;
       });
     }
+  }
+
+  Future<void> _switchPlayer(
+    Duration resumePosition, {
+    BuiltInPlayerEngine? builtInEngine,
+    String? externalPlayer,
+  }) async {
+    if (resumePosition > Duration.zero) {
+      _resumePosition = resumePosition;
+    }
+
+    if (externalPlayer != null) {
+      await SettingsService().setExternalPlayer(externalPlayer);
+      if (!mounted) return;
+      setState(() {
+        _useExternalPlayer = true;
+        _externalPlayerName = externalPlayer;
+      });
+      await _launchExternal();
+      return;
+    }
+
+    if (builtInEngine == null) return;
+
+    await SettingsService().setExternalPlayer('Built-in Player');
+    await SettingsService().setBuiltInPlayerEngine(builtInEngine);
+    if (!mounted) return;
+    setState(() {
+      _useExternalPlayer = false;
+      _builtInEngine = builtInEngine;
+    });
   }
 
   @override
@@ -170,11 +211,53 @@ class _PlayerScreenState extends State<PlayerScreen> {
             _externalLaunched = false;
           });
         },
+        onChangePlayer: () {
+          PlayerAppMenu.show(
+            context,
+            usingBuiltIn: false,
+            builtInEngine: _builtInEngine,
+            externalPlayerName: _externalPlayerName,
+            onSelect: ({builtInEngine, externalPlayer}) => _switchPlayer(
+              Duration.zero,
+              builtInEngine: builtInEngine,
+              externalPlayer: externalPlayer,
+            ),
+          );
+        },
       );
     }
 
-    // Built-in player
+    // Built-in player — Android TV defaults to ExoPlayer (media_kit EGL fails on TV).
     if (Platform.isAndroid && PlatformInfo.isAndroidTv) {
+      if (_builtInEngine == BuiltInPlayerEngine.exoPlayer) {
+        return ExoPlayerScreen(
+          key: ValueKey('exo_tv_${_builtInEngine.name}'),
+          mediaPath: widget.streamUrl,
+          title: widget.title,
+          audioUrl: widget.audioUrl,
+          headers: widget.headers,
+          movie: widget.movie,
+          selectedSeason: widget.selectedSeason,
+          selectedEpisode: widget.selectedEpisode,
+          magnetLink: widget.magnetLink,
+          activeProvider: widget.activeProvider,
+          startPosition: _effectiveStartPosition,
+          sources: widget.sources,
+          fileIndex: widget.fileIndex,
+          externalSubtitles: widget.externalSubtitles,
+          onNextEpisode: widget.onNextEpisode,
+          hasNextEpisode: widget.hasNextEpisode,
+          hubEpisodes: widget.hubEpisodes,
+          hubEpisodeNumber: widget.hubEpisodeNumber,
+          onHubEpisodeSelected: widget.onHubEpisodeSelected,
+          episodeOverview: widget.episodeOverview,
+          onSaveProgress: widget.onSaveProgress,
+          onPlaybackStarted: widget.onPlaybackStarted,
+          onAllSourcesExhausted: widget.onAllSourcesExhausted,
+          builtInEngine: _builtInEngine,
+          onSwitchPlayer: _switchPlayer,
+        );
+      }
       return TvPlayerScreen(
         mediaPath: widget.streamUrl,
         title: widget.title,
@@ -185,7 +268,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         selectedEpisode: widget.selectedEpisode,
         magnetLink: widget.magnetLink,
         activeProvider: widget.activeProvider,
-        startPosition: widget.startPosition,
+        startPosition: _effectiveStartPosition,
         sources: widget.sources,
         fileIndex: widget.fileIndex,
         externalSubtitles: widget.externalSubtitles,
@@ -209,7 +292,38 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
 
     if (Platform.isAndroid || Platform.isIOS) {
+      if (Platform.isAndroid &&
+          _builtInEngine == BuiltInPlayerEngine.exoPlayer) {
+        return ExoPlayerScreen(
+          key: ValueKey('exo_${_builtInEngine.name}'),
+          mediaPath: widget.streamUrl,
+          title: widget.title,
+          audioUrl: widget.audioUrl,
+          headers: widget.headers,
+          movie: widget.movie,
+          selectedSeason: widget.selectedSeason,
+          selectedEpisode: widget.selectedEpisode,
+          magnetLink: widget.magnetLink,
+          activeProvider: widget.activeProvider,
+          startPosition: _effectiveStartPosition,
+          sources: widget.sources,
+          fileIndex: widget.fileIndex,
+          externalSubtitles: widget.externalSubtitles,
+          onNextEpisode: widget.onNextEpisode,
+          hasNextEpisode: widget.hasNextEpisode,
+          hubEpisodes: widget.hubEpisodes,
+          hubEpisodeNumber: widget.hubEpisodeNumber,
+          onHubEpisodeSelected: widget.onHubEpisodeSelected,
+          episodeOverview: widget.episodeOverview,
+          onSaveProgress: widget.onSaveProgress,
+          onPlaybackStarted: widget.onPlaybackStarted,
+          onAllSourcesExhausted: widget.onAllSourcesExhausted,
+          builtInEngine: _builtInEngine,
+          onSwitchPlayer: _switchPlayer,
+        );
+      }
       return MobilePlayerScreen(
+        key: ValueKey('mk_${_builtInEngine.name}'),
         mediaPath: widget.streamUrl,
         title: widget.title,
         audioUrl: widget.audioUrl,
@@ -219,7 +333,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         selectedEpisode: widget.selectedEpisode,
         magnetLink: widget.magnetLink,
         activeProvider: widget.activeProvider,
-        startPosition: widget.startPosition,
+        startPosition: _effectiveStartPosition,
         sources: widget.sources,
         fileIndex: widget.fileIndex,
         externalSubtitles: widget.externalSubtitles,
@@ -239,9 +353,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,
         sourcesListNotifier: widget.sourcesListNotifier,
+        builtInEngine: _builtInEngine,
+        onSwitchPlayer: _switchPlayer,
       );
     } else {
       return DesktopPlayerScreen(
+        key: ValueKey('desktop_${_builtInEngine.name}'),
         mediaPath: widget.streamUrl,
         title: widget.title,
         audioUrl: widget.audioUrl,
@@ -251,7 +368,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         selectedEpisode: widget.selectedEpisode,
         magnetLink: widget.magnetLink,
         activeProvider: widget.activeProvider,
-        startPosition: widget.startPosition,
+        startPosition: _effectiveStartPosition,
         sources: widget.sources,
         fileIndex: widget.fileIndex,
         externalSubtitles: widget.externalSubtitles,
@@ -271,6 +388,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onAllSourcesExhausted: widget.onAllSourcesExhausted,
         onReloadStreams: widget.onReloadStreams,
         sourcesListNotifier: widget.sourcesListNotifier,
+        builtInEngine: _builtInEngine,
+        onSwitchPlayer: _switchPlayer,
       );
     }
   }
@@ -290,6 +409,7 @@ class _ExternalPlayerWaitScreen extends StatelessWidget {
   final bool launched;
   final VoidCallback onRelaunch;
   final VoidCallback onSwitchBuiltIn;
+  final VoidCallback? onChangePlayer;
 
   const _ExternalPlayerWaitScreen({
     required this.title,
@@ -298,6 +418,7 @@ class _ExternalPlayerWaitScreen extends StatelessWidget {
     required this.launched,
     required this.onRelaunch,
     required this.onSwitchBuiltIn,
+    this.onChangePlayer,
   });
 
   @override
@@ -380,6 +501,27 @@ class _ExternalPlayerWaitScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
+
+                  if (onChangePlayer != null)
+                    SizedBox(
+                      width: 260,
+                      child: OutlinedButton.icon(
+                        onPressed: onChangePlayer,
+                        icon: const Icon(Icons.smart_display_outlined, size: 20),
+                        label: const Text('Change player'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          side: const BorderSide(color: Colors.white24),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 20),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  if (onChangePlayer != null) const SizedBox(height: 12),
 
                   // Switch to built-in button
                   SizedBox(

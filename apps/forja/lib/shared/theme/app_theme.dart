@@ -5,6 +5,7 @@ import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Fixed Forja theme descriptor (single preset, not user-selectable).
@@ -263,63 +264,26 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   }
 
   KeyEventResult _handleArrow(KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final key = event.logicalKey;
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final handled = shellTvHandleRowArrows(
+      event: event,
+      tvMeta: widget.tvMeta,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onUpEdge: widget.onUpEdge,
+      onDownEdge: widget.onDownEdge,
+    );
+    if (handled == KeyEventResult.handled) return handled;
 
-    if (key == LogicalKeyboardKey.arrowLeft) {
-      if (widget.onLeftEdge != null) {
-        widget.onLeftEdge!();
-        return KeyEventResult.handled;
-      }
-      if (FocusManager.instance.primaryFocus
-              ?.focusInDirection(TraversalDirection.left) ??
-          false) {
-        return KeyEventResult.handled;
-      }
-      if (widget.tvMeta?.zone == ShellTvZone.chipStrip) {
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
-    }
-    if (key == LogicalKeyboardKey.arrowUp) {
-      if (widget.onUpEdge != null) {
-        widget.onUpEdge!();
-        return KeyEventResult.handled;
-      }
-      final up = widget.tvMeta?.resolveUpEdge();
-      if (up != null) {
-        if (up()) return KeyEventResult.handled;
-        return KeyEventResult.ignored;
-      }
-      return KeyEventResult.ignored;
-    }
-    if (key == LogicalKeyboardKey.arrowDown) {
-      if (widget.onDownEdge != null) {
-        widget.onDownEdge!();
-        return KeyEventResult.handled;
-      }
-      final down = widget.tvMeta?.resolveDownEdge();
-      if (down != null) {
-        if (down()) return KeyEventResult.handled;
-        return KeyEventResult.ignored;
-      }
-      return KeyEventResult.ignored;
-    }
-    if (key == LogicalKeyboardKey.arrowRight) {
-      if (widget.onRightEdge != null) {
-        widget.onRightEdge!();
-        return KeyEventResult.handled;
-      }
-      if (FocusManager.instance.primaryFocus
-              ?.focusInDirection(TraversalDirection.right) ??
-          false) {
-        return KeyEventResult.handled;
-      }
-      if (widget.tvMeta?.zone == ShellTvZone.chipStrip) {
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
-    }
+    final trap = shellTvTrapRowGeometry(
+      event: event,
+      tvFocus: policy.useFocusableMoodChips,
+      tvMeta: widget.tvMeta,
+      trapHorizontal: policy.useFocusableMoodChips,
+    );
+    if (trap == KeyEventResult.handled) return trap;
+
     return KeyEventResult.ignored;
   }
 

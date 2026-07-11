@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
 /// Hero actions shared by torrent and direct-streaming details.
-class MediaDetailsTorrentActionRow extends StatelessWidget {
+class MediaDetailsTorrentActionRow extends StatefulWidget {
   const MediaDetailsTorrentActionRow({
     super.key,
     required this.movie,
@@ -27,6 +29,8 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
     this.statusMessage,
     this.playFocusNode,
     this.onPlayKeyEvent,
+    this.tvTabId,
+    this.tvFocusUp,
   });
 
   final Movie movie;
@@ -47,15 +51,33 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   final String? statusMessage;
   final FocusNode? playFocusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onPlayKeyEvent;
+  final String? tvTabId;
+  final VoidCallback? tvFocusUp;
+
+  @override
+  State<MediaDetailsTorrentActionRow> createState() =>
+      _MediaDetailsTorrentActionRowState();
+}
+
+class _MediaDetailsTorrentActionRowState
+    extends State<MediaDetailsTorrentActionRow> {
+  @override
+  void dispose() {
+    final tabId = widget.tvTabId;
+    if (tabId != null) {
+      shellTvUnregisterRow(tabId: tabId, rowId: MediaDetailsTv.heroRowId);
+    }
+    super.dispose();
+  }
 
   void _openBestTrailer(BuildContext context) {
-    if (trailers.isEmpty) return;
+    if (widget.trailers.isEmpty) return;
     AppRouter.openTrailerPlayer(
       context,
-      trailers: trailers,
+      trailers: widget.trailers,
       initialIndex: 0,
-      movie: movie,
-      languageCode: trailerLanguageCode,
+      movie: widget.movie,
+      languageCode: widget.trailerLanguageCode,
     );
   }
 
@@ -69,23 +91,23 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
             SimpleDialogOption(
               onPressed: () => Navigator.pop(dialogContext, 'trakt_rate'),
               child: Text(
-                userTraktRating != null
-                    ? 'Trakt rating: $userTraktRating'
+                widget.userTraktRating != null
+                    ? 'Trakt rating: ${widget.userTraktRating}'
                     : 'Rate on Trakt',
               ),
             ),
             SimpleDialogOption(
               onPressed: () => Navigator.pop(dialogContext, 'simkl_rate'),
               child: Text(
-                userSimklRating != null
-                    ? 'Simkl rating: $userSimklRating'
+                widget.userSimklRating != null
+                    ? 'Simkl rating: ${widget.userSimklRating}'
                     : 'Rate on Simkl',
               ),
             ),
             SimpleDialogOption(
               onPressed: () => Navigator.pop(dialogContext, 'collect'),
               child: Text(
-                isInTraktCollection
+                widget.isInTraktCollection
                     ? 'Remove from collection'
                     : 'Add to collection',
               ),
@@ -102,7 +124,25 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
         );
       },
     );
-    if (value != null) onOverflowAction(value);
+    if (value != null) widget.onOverflowAction(value);
+  }
+
+  int _iconGroupSlotCount() {
+    var n = 1;
+    if (widget.showPlay) n++;
+    n++;
+    return n;
+  }
+
+  int _focusableActionCount() {
+    final canPlay = !widget.isStreamingExtracting;
+    var n = 0;
+    if (widget.showPlayStreaming && canPlay) n++;
+    if (widget.showPlay && canPlay) n++;
+    if (widget.hasResume && widget.onClearProgress != null) n++;
+    if (widget.trailers.isNotEmpty) n++;
+    n += _iconGroupSlotCount();
+    return n;
   }
 
   HeroPillPlayButton _playButton({
@@ -111,14 +151,18 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
     required HeroPillPlayTone tone,
     VoidCallback? onTap,
     required bool attachFocus,
+    required int? tvItemIndex,
   }) {
     return HeroPillPlayButton(
       label: label,
       icon: icon,
       tone: tone,
       onTap: onTap,
-      focusNode: attachFocus ? playFocusNode : null,
-      onKeyEvent: attachFocus ? onPlayKeyEvent : null,
+      focusNode: attachFocus ? widget.playFocusNode : null,
+      onKeyEvent: attachFocus ? widget.onPlayKeyEvent : null,
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.tvTabId != null ? MediaDetailsTv.heroRowId : null,
+      tvItemIndex: tvItemIndex,
     );
   }
 
@@ -131,12 +175,13 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
   }
 
   Widget _buildRow(BuildContext context) {
-    final playLabel = hasResume ? 'Resume' : 'Play';
-    var attachNextPlayFocus = playFocusNode != null;
-    final canPlay = !isStreamingExtracting;
+    final playLabel = widget.hasResume ? 'Resume' : 'Play';
+    var attachNextPlayFocus = widget.playFocusNode != null;
+    final canPlay = !widget.isStreamingExtracting;
     final children = <Widget>[];
+    var tvIndex = 0;
 
-    if (isStreamingExtracting) {
+    if (widget.isStreamingExtracting) {
       children.add(
         const Padding(
           padding: EdgeInsets.only(right: 8),
@@ -152,44 +197,54 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
       );
     }
 
-    if (showPlayStreaming) {
+    if (widget.showPlayStreaming) {
+      final idx = tvIndex;
       children.addAll([
         _playButton(
-          label: isStreamingExtracting ? 'Loading' : playLabel,
-          icon: isStreamingExtracting ? null : Icons.play_arrow_rounded,
+          label: widget.isStreamingExtracting ? 'Loading' : playLabel,
+          icon: widget.isStreamingExtracting ? null : Icons.play_arrow_rounded,
           tone: HeroPillPlayTone.primary,
-          onTap: canPlay ? onPlayStreaming : null,
+          onTap: canPlay ? widget.onPlayStreaming : null,
           attachFocus: attachNextPlayFocus && canPlay,
+          tvItemIndex: canPlay ? idx : null,
         ),
         const SizedBox(width: 10),
       ]);
+      if (canPlay) tvIndex++;
       if (attachNextPlayFocus && canPlay) attachNextPlayFocus = false;
     }
 
-    if (showPlay) {
+    if (widget.showPlay) {
+      final idx = tvIndex;
       children.addAll([
         _playButton(
           label: playLabel,
           icon: Icons.link_rounded,
-          tone: showPlayStreaming
+          tone: widget.showPlayStreaming
               ? HeroPillPlayTone.streaming
               : HeroPillPlayTone.primary,
-          onTap: canPlay ? onOpenSources : null,
+          onTap: canPlay ? widget.onOpenSources : null,
           attachFocus: attachNextPlayFocus && canPlay,
+          tvItemIndex: canPlay ? idx : null,
         ),
         const SizedBox(width: 10),
       ]);
+      if (canPlay) tvIndex++;
       if (attachNextPlayFocus && canPlay) attachNextPlayFocus = false;
     }
 
-    if (hasResume && onClearProgress != null) {
+    if (widget.hasResume && widget.onClearProgress != null) {
+      final idx = tvIndex++;
       children.addAll([
         HeroPillIconGroup(
+          tvTabId: widget.tvTabId,
+          tvRowId: widget.tvTabId != null ? MediaDetailsTv.heroRowId : null,
+          tvItemIndexStart: idx,
           slots: [
             HeroPillIconSlot(
               icon: Icons.delete_outline_rounded,
               tooltip: 'Clear progress',
-              onTap: onClearProgress,
+              onTap: widget.onClearProgress,
             ),
           ],
         ),
@@ -197,40 +252,61 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
       ]);
     }
 
-    if (trailers.isNotEmpty) {
+    if (widget.trailers.isNotEmpty) {
+      final idx = tvIndex++;
       children.addAll([
         HeroPillPlayButton(
           label: 'Trailer',
           icon: Icons.smart_display_outlined,
           tone: HeroPillPlayTone.secondary,
           onTap: () => _openBestTrailer(context),
+          tvTabId: widget.tvTabId,
+          tvRowId: widget.tvTabId != null ? MediaDetailsTv.heroRowId : null,
+          tvItemIndex: idx,
         ),
         const SizedBox(width: 10),
       ]);
     }
 
+    final iconStart = tvIndex;
     children.add(
       HeroPillIconGroup(
+        tvTabId: widget.tvTabId,
+        tvRowId: widget.tvTabId != null ? MediaDetailsTv.heroRowId : null,
+        tvItemIndexStart: iconStart,
         slots: [
-          MyListHeroPillButton.movieSlot(context, movie: movie),
-          if (showPlay)
+          MyListHeroPillButton.movieSlot(context, movie: widget.movie),
+          if (widget.showPlay)
             HeroPillIconSlot(
               icon: Icons.download_outlined,
               tooltip: 'Download',
-              onTap: onDownload ?? onOpenSources,
+              onTap: widget.onDownload ?? widget.onOpenSources,
             ),
           _buildOverflowSlot(context),
         ],
       ),
     );
 
-    return Row(children: children);
+    return HeroPillActionRow(children: children);
   }
 
   @override
   Widget build(BuildContext context) {
+    final tabId = widget.tvTabId;
+    if (tabId != null) {
+      shellTvRegisterRow(
+        tabId: tabId,
+        rowId: MediaDetailsTv.heroRowId,
+        sortOrder: MediaDetailsTv.heroRowSortOrder,
+        itemCount: _focusableActionCount(),
+        onFocusUp: widget.tvFocusUp,
+      );
+    }
+
     final row = _buildRow(context);
-    if (!isStreamingExtracting || statusMessage == null) return row;
+    if (!widget.isStreamingExtracting || widget.statusMessage == null) {
+      return row;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,7 +314,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
         row,
         const SizedBox(height: 8),
         Text(
-          statusMessage!,
+          widget.statusMessage!,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.7),
             fontSize: 12,

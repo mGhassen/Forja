@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/shared/design/design.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
@@ -619,6 +620,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
   String _query = '';
   String? _group; // null = "All"
   final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   final ScrollController _groupScrollCtrl = ScrollController();
 
   /// Whether the group strip currently has room to scroll left / right.
@@ -670,6 +672,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
 
   @override
   void dispose() {
+    _searchFocus.dispose();
     _searchCtrl.dispose();
     _groupScrollCtrl.removeListener(_updateScrollArrows);
     _groupScrollCtrl.dispose();
@@ -780,9 +783,14 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
       child: Column(
         children: [
-          TextField(
+          TvBrowseTextField(
             controller: _searchCtrl,
+            focusNode: _searchFocus,
             onChanged: (v) => setState(() => _query = v),
+            browsePlaceholder: 'Search channels...',
+            browseHintStyle:
+                GoogleFonts.poppins(color: Colors.white38, fontSize: 13),
+            caretHeight: 18,
             style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
             decoration: InputDecoration(
               prefixIcon:

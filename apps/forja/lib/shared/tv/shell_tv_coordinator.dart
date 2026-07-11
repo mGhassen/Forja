@@ -46,6 +46,9 @@ class ShellTvFocusMemory {
   }
 }
 
+/// Horizontal vs vertical item layout within a registered TV row.
+enum ShellTvRowOrientation { horizontal, vertical }
+
 /// Horizontal catalog row registered with the coordinator.
 class ShellTvRowHandle {
   ShellTvRowHandle({
@@ -54,6 +57,7 @@ class ShellTvRowHandle {
     required this.sortOrder,
     required this.itemCount,
     required this.nodeAt,
+    this.orientation = ShellTvRowOrientation.horizontal,
     this.isFirstRow = false,
     this.isLastRow = false,
     this.onFocusUp,
@@ -66,6 +70,7 @@ class ShellTvRowHandle {
   int itemCount;
   int lastFocusedIndex = 0;
   final FocusNode? Function(int index) nodeAt;
+  final ShellTvRowOrientation orientation;
   bool isFirstRow;
   bool isLastRow;
   final VoidCallback? onFocusUp;
@@ -423,6 +428,7 @@ abstract final class ShellTvFocusCoordinator {
       itemCount: handle.itemCount,
       nodeAt: (index) =>
           itemNode(handle.tabId, handle.rowId, index) ?? handle.nodeAt(index),
+      orientation: handle.orientation,
       isFirstRow: handle.isFirstRow,
       isLastRow: handle.isLastRow,
       onFocusUp: handle.onFocusUp,
@@ -459,6 +465,9 @@ abstract final class ShellTvFocusCoordinator {
       list[i].isLastRow = i == list.length - 1;
     }
   }
+
+  static ShellTvRowHandle? rowHandle(String tabId, String rowId) =>
+      _rowHandle(tabId, rowId);
 
   static ShellTvRowHandle? _rowHandle(String tabId, String rowId) {
     final list = _rowsByTab[tabId];
@@ -605,7 +614,9 @@ abstract final class ShellTvFocusCoordinator {
       }
       final prev = _prevRow(tabId, handle.sortOrder);
       if (prev == null) return false;
-      final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
+      final target = prev.sortOrder < 0
+          ? 0
+          : prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
       return focusRowItem(tabId, prev.rowId, target);
     }
 
@@ -685,6 +696,25 @@ class ShellTvFocusMeta {
     final tid = tabId;
     final rid = rowId!;
     final idx = itemIndex!;
+    final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+    if (handle?.orientation == ShellTvRowOrientation.vertical) {
+      return () {
+        if (idx >= handle!.itemCount - 1) {
+          return ShellTvFocusCoordinator.moveVerticalInTab(
+            tabId: tid,
+            rowId: rid,
+            currentIndex: idx,
+            down: true,
+          );
+        }
+        return ShellTvFocusCoordinator.focusAdjacentInRow(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          right: true,
+        );
+      };
+    }
     return () => ShellTvFocusCoordinator.moveVerticalInTab(
           tabId: tid,
           rowId: rid,
@@ -701,12 +731,77 @@ class ShellTvFocusMeta {
     final tid = tabId;
     final rid = rowId!;
     final idx = itemIndex!;
+    final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+    if (handle?.orientation == ShellTvRowOrientation.vertical) {
+      return () {
+        if (idx <= 0) {
+          return ShellTvFocusCoordinator.moveVerticalInTab(
+            tabId: tid,
+            rowId: rid,
+            currentIndex: idx,
+            down: false,
+          );
+        }
+        return ShellTvFocusCoordinator.focusAdjacentInRow(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          right: false,
+        );
+      };
+    }
     return () => ShellTvFocusCoordinator.moveVerticalInTab(
           tabId: tid,
           rowId: rid,
           currentIndex: idx,
           down: false,
         );
+  }
+
+  bool Function()? resolveLeftEdge() {
+    if (rowId == null || itemIndex == null) return null;
+    if (zone != ShellTvZone.row && zone != ShellTvZone.chipStrip) {
+      return null;
+    }
+    final tid = tabId;
+    final rid = rowId!;
+    final idx = itemIndex!;
+    final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+    if (handle?.orientation == ShellTvRowOrientation.vertical) {
+      return () => true;
+    }
+    return () {
+      if (idx <= 0) return true;
+      return ShellTvFocusCoordinator.focusAdjacentInRow(
+        tabId: tid,
+        rowId: rid,
+        currentIndex: idx,
+        right: false,
+      );
+    };
+  }
+
+  bool Function()? resolveRightEdge() {
+    if (rowId == null || itemIndex == null) return null;
+    if (zone != ShellTvZone.row && zone != ShellTvZone.chipStrip) {
+      return null;
+    }
+    final tid = tabId;
+    final rid = rowId!;
+    final idx = itemIndex!;
+    final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+    if (handle?.orientation == ShellTvRowOrientation.vertical) {
+      return () => true;
+    }
+    return () {
+      ShellTvFocusCoordinator.focusAdjacentInRow(
+        tabId: tid,
+        rowId: rid,
+        currentIndex: idx,
+        right: true,
+      );
+      return true;
+    };
   }
 
   void notifyFocused(FocusNode node) {

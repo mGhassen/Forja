@@ -9,6 +9,8 @@ allprojects {
     }
 }
 
+apply(from = "gradle/jvm_compat.gradle")
+
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")

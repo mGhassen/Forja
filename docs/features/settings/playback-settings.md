@@ -14,6 +14,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 
 - Enable **Play sources**: direct torrent, Stremio, and webstreaming (all on by default on phone and desktop; **Android TV** fresh install enables **Webstreaming** only — turn on torrent or Stremio in this screen if you want **Sources**)
 - Select **External player** (built-in or VLC, mpv, etc.)
+- On **Android**, choose **Built-in engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — in Settings or from the **Player** button in the playback controls
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
 - Toggle **IPTV programme guide (EPG)** — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
@@ -26,6 +27,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - Provider order is the main lever for web link quality — see [Stream providers](../sources/stream-providers.md)
 - Anime provider order sets try priority. The player launches after ~4 working sources, then keeps probing in the background so more options appear in the source menu while you watch.
 - External player bypasses built-in subtitle UI
+- **Built-in engine** (Android only) applies when Video Player is **Built-in** — desktop/iOS always use MediaKit
 
 ## Related
 

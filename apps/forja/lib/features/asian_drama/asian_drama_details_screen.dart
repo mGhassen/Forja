@@ -295,27 +295,37 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
             bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
             positionMs: posMs,
             durationMs: durMs,
-            actionRow: Row(
-              children: [
-                HubDetailsPlayRow(
-                  label: hasResume ? 'Resume' : 'Play',
-                  enabled: det.episodes.isNotEmpty,
-                  onPlay: hasResume ? _resume : _playFirst,
-                  focusNode: _heroPlayFocus,
-                ),
-                if (hasResume) ...[
-                  const SizedBox(width: 10),
-                  HeroPillIconGroup(
-                    slots: [
-                      HeroPillIconSlot(
-                        icon: Icons.delete_outline_rounded,
-                        tooltip: 'Clear progress',
-                        onTap: _clearProgress,
-                      ),
-                    ],
+            actionRow: DetailsHeroTvActionScope(
+              tabId: MediaDetailsTv.tabId,
+              itemCount: hasResume ? 2 : 1,
+              onFocusUp: heroFocusUp,
+              child: Row(
+                children: [
+                  HubDetailsPlayRow(
+                    label: hasResume ? 'Resume' : 'Play',
+                    enabled: det.episodes.isNotEmpty,
+                    onPlay: hasResume ? _resume : _playFirst,
+                    focusNode: _heroPlayFocus,
+                    tvTabId: MediaDetailsTv.tabId,
+                    tvItemIndex: 0,
                   ),
+                  if (hasResume) ...[
+                    const SizedBox(width: 10),
+                    HeroPillIconGroup(
+                      tvTabId: MediaDetailsTv.tabId,
+                      tvRowId: MediaDetailsTv.heroRowId,
+                      tvItemIndexStart: 1,
+                      slots: [
+                        HeroPillIconSlot(
+                          icon: Icons.delete_outline_rounded,
+                          tooltip: 'Clear progress',
+                          onTap: _clearProgress,
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           MediaDetailsBody(

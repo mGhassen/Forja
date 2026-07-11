@@ -257,6 +257,8 @@ class PlayerTopBarActions extends StatelessWidget {
     this.onPip,
     this.showPip = false,
     this.pipActive = false,
+    this.onPlayer,
+    this.showPlayer = false,
   });
 
   final VoidCallback? onCast;
@@ -264,12 +266,21 @@ class PlayerTopBarActions extends StatelessWidget {
   final VoidCallback? onPip;
   final bool showPip;
   final bool pipActive;
+  final VoidCallback? onPlayer;
+  final bool showPlayer;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (showPlayer && onPlayer != null)
+          PlayerFlatIconButton(
+            icon: Icons.smart_display_outlined,
+            tooltip: 'Player',
+            onPressed: onPlayer!,
+            size: 44,
+          ),
         if (showCast && onCast != null)
           PlayerFlatIconButton(
             icon: Icons.cast_rounded,

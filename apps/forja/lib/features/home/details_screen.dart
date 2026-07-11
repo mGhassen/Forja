@@ -34,6 +34,7 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class DetailsScreen extends StatefulWidget {
@@ -783,6 +784,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       userSimklRating: _userSimklRating,
       isInTraktCollection: _isInTraktCollection,
       playFocusNode: policy.heroPlayAutoFocus ? _detailsHeroPlayFocus : null,
+      tvTabId: policy.useFocusableMoodChips ? MediaDetailsTv.tabId : null,
+      tvFocusUp: _revealedDetailsHeroPlayFocus,
     );
   }
 
@@ -2956,12 +2959,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final showCast = _castMembers.isNotEmpty;
     final showTrailers = _trailers.isNotEmpty;
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
-    final firstRowIsCast = !showTvPicker && showCast;
-    final firstRowIsTrailers = !showTvPicker && !showCast && showTrailers;
+    final showCollection = _isCollection && _collectionItems.isNotEmpty;
+    final firstRowIsCollection = showCollection;
+    final firstRowIsCast = !showCollection && !showTvPicker && showCast;
+    final firstRowIsTrailers =
+        !showCollection && !showTvPicker && !showCast && showTrailers;
     final firstRowIsRecs =
-        !showTvPicker && !showCast && !showTrailers;
+        !showCollection && !showTvPicker && !showCast && !showTrailers;
 
     var rowOrder = 0;
+    final collectionOrder = showCollection ? rowOrder++ : null;
     final pickerBase = rowOrder;
     if (showTvPicker) {
       rowOrder += _detailsPickerRowCount();
@@ -2991,10 +2998,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (_isCollection && _collectionItems.isNotEmpty) ...[
+                if (showCollection) ...[
                   MediaDetailsBody.padContent(
                     context,
-                    _buildCollectionItemsSection(),
+                    _buildCollectionItemsSection(
+                      tvRowOrder: collectionOrder!,
+                      tvFocusUp: firstRowIsCollection ? heroFocusUp : null,
+                    ),
                   ),
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
                 ],
@@ -3461,7 +3471,22 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       );
 
 
-  Widget _buildCollectionItemsSection() {
+  Widget _buildCollectionItemsSection({
+    required int tvRowOrder,
+    VoidCallback? tvFocusUp,
+  }) {
+    final policy = ShellScope.inputPolicyOf(context);
+    if (policy.useFocusableMoodChips) {
+      shellTvRegisterRow(
+        tabId: MediaDetailsTv.tabId,
+        rowId: 'collection',
+        sortOrder: tvRowOrder,
+        itemCount: _collectionItems.length,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: tvFocusUp,
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -3484,6 +3509,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               context: context,
               onTap: () => _openCollectionItem(id),
               borderRadius: 12,
+              tvTabId: policy.useFocusableMoodChips ? MediaDetailsTv.tabId : null,
+              tvRowId: policy.useFocusableMoodChips ? 'collection' : null,
+              tvItemIndex: index,
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(

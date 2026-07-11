@@ -4,6 +4,8 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Prevents nested horizontal rows from scrolling the parent vertical list.
 bool shellAbsorbHorizontalScroll(ScrollNotification notification) =>
@@ -19,6 +21,7 @@ VoidCallback? shellTvNavLeftEdge(
   final tvFocus = policy?.useFocusableMoodChips ??
       resolveShellProfile(context) == ShellProfile.tv;
   if (!tvFocus) return null;
+  if (ShellBus.shellOverlayHasPage.value) return null;
   if (!navLeftAlways && listIndex != 0) return null;
   return ShellTvFocusCoordinator.focusActiveNavTab;
 }
@@ -54,8 +57,14 @@ VoidCallback? _resolveTvNavLeftEdge(
   bool navLeftAlways = false,
   int? gridIndex,
   int? gridColumns,
+  String? tvTabId,
 }) {
   if (onLeftEdge != null) return onLeftEdge;
+  if (tvTabId != null &&
+      tvTabId != ShellTvFocus.currentNavTabId &&
+      tvTabId != 'home') {
+    return null;
+  }
   if (gridIndex != null && gridColumns != null) {
     return shellTvNavLeftEdgeGrid(
       context,
@@ -117,6 +126,7 @@ Widget shellFocusableTap({
 }) {
   final policy =
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+  final tabId = tvTabId ?? ShellTvFocus.currentNavTabId;
   final resolvedLeftEdge = _resolveTvNavLeftEdge(
     context,
     onLeftEdge: onLeftEdge,
@@ -124,8 +134,8 @@ Widget shellFocusableTap({
     navLeftAlways: navLeftAlways,
     gridIndex: gridIndex,
     gridColumns: gridColumns,
+    tvTabId: tabId,
   );
-  final tabId = tvTabId ?? ShellTvFocus.currentNavTabId;
   final tvMeta = _resolveTvMeta(
     tabId: tabId,
     tvRowId: tvRowId,
@@ -179,6 +189,7 @@ void shellTvRegisterRow({
   required int sortOrder,
   required int itemCount,
   VoidCallback? onFocusUp,
+  ShellTvRowOrientation orientation = ShellTvRowOrientation.horizontal,
 }) {
   ShellTvFocusCoordinator.registerRow(
     ShellTvRowHandle(
@@ -186,6 +197,7 @@ void shellTvRegisterRow({
       rowId: rowId,
       sortOrder: sortOrder,
       itemCount: itemCount,
+      orientation: orientation,
       nodeAt: (index) =>
           ShellTvFocusCoordinator.itemNode(tabId, rowId, index),
       onFocusUp: onFocusUp,

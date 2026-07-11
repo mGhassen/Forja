@@ -13,9 +13,9 @@ import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
@@ -926,16 +926,6 @@ class _BrowserViewState extends State<_BrowserView> {
   void initState() {
     super.initState();
     _searchCtrl.text = widget.ctrl.browserSearch;
-    _searchFocus.onKeyEvent = _onSearchKey;
-  }
-
-  KeyEventResult _onSearchKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
-      _closeSearch();
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
   }
 
   void _openSearch() {
@@ -1128,6 +1118,7 @@ class _BrowserViewState extends State<_BrowserView> {
       hintText: 'Search channels or categories…',
       onChanged: widget.ctrl.setBrowserSearch,
       onClear: _clearSearchQuery,
+      onEscape: _closeSearch,
       clearSuffix: query.isNotEmpty
           ? iptvCloseButton(
               context,
@@ -1344,13 +1335,25 @@ class _BrowserViewState extends State<_BrowserView> {
     final list = _filteredStreams;
     if (list.isEmpty) {
       if (ctrl.browserAllStreams.isEmpty) {
-        return ShellErrorRetryPanel(
-          message:
-              ctrl.error ?? 'Failed to load channels — check connection',
-          label: 'Reload',
-          onRetry: ctrl.activeSection == null
-              ? null
-              : () => ctrl.openSection(ctrl.activeSection!),
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                ctrl.error ?? 'Failed to load channels — check connection',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(color: Colors.white60),
+              ),
+              const SizedBox(height: 16),
+              IptvPrimaryButton(
+                icon: Icons.refresh_rounded,
+                label: 'Reload',
+                onPressed: ctrl.activeSection == null
+                    ? null
+                    : () => ctrl.openSection(ctrl.activeSection!),
+              ),
+            ],
+          ),
         );
       }
       if (ctrl.activeSection == IptvSection.live && ctrl.liveOnly) {
@@ -1985,10 +1988,12 @@ class _ChannelsHubView extends StatefulWidget {
 
 class _ChannelsHubViewState extends State<_ChannelsHubView> {
   final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   String _query = '';
 
   @override
   void dispose() {
+    _searchFocus.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -2015,9 +2020,14 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-            child: TextField(
+            child: TvBrowseTextField(
               controller: _searchCtrl,
+              focusNode: _searchFocus,
               onChanged: (v) => setState(() => _query = v),
+              browsePlaceholder: 'Search channels…',
+              browseHintStyle:
+                  GoogleFonts.poppins(color: Colors.white38, fontSize: 14),
+              caretHeight: 18,
               style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search channels…',
@@ -2154,10 +2164,12 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
   /// displayed list is filtered/sorted by the search box & EPG-first sort.
   final Set<String> _selected = {};
   final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   String _query = '';
 
   @override
   void dispose() {
+    _searchFocus.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -2223,9 +2235,14 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
           if (ctrl.channelResults.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-              child: TextField(
+              child: TvBrowseTextField(
                 controller: _searchCtrl,
+                focusNode: _searchFocus,
                 onChanged: (v) => setState(() => _query = v),
+                browsePlaceholder: 'Search hits…',
+                browseHintStyle: GoogleFonts.poppins(
+                    color: Colors.white38, fontSize: 14),
+                caretHeight: 18,
                 style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Search hits…',

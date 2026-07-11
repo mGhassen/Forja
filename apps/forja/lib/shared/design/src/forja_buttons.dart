@@ -5,6 +5,7 @@ import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 typedef ForjaInteractiveBuilder = Widget Function(bool hover, bool pressed);
@@ -54,23 +55,60 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     if (widget.focusNode == null) {
       _ownedNode = FocusNode(debugLabel: 'forja-interactive');
     }
+    _registerTvItemNode();
   }
 
   @override
   void didUpdateWidget(covariant ForjaInteractive oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.focusNode != widget.focusNode) {
+      _unregisterTvItemNode(oldWidget.tvMeta);
       if (widget.focusNode == null) {
         _ownedNode ??= FocusNode(debugLabel: 'forja-interactive');
       } else {
         _ownedNode?.dispose();
         _ownedNode = null;
       }
+      _registerTvItemNode();
+    } else if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
+        oldWidget.tvMeta?.itemIndex != widget.tvMeta?.itemIndex) {
+      _unregisterTvItemNode(oldWidget.tvMeta);
+      _registerTvItemNode();
     }
+  }
+
+  void _registerTvItemNode() {
+    final meta = widget.tvMeta;
+    if (meta == null) return;
+    if (meta.zone != ShellTvZone.row && meta.zone != ShellTvZone.chipStrip) {
+      return;
+    }
+    if (meta.rowId == null || meta.itemIndex == null) return;
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: meta.tabId,
+      rowId: meta.rowId!,
+      index: meta.itemIndex!,
+      node: _effectiveNode,
+    );
+  }
+
+  void _unregisterTvItemNode(ShellTvFocusMeta? meta) {
+    if (meta == null) return;
+    if (meta.zone != ShellTvZone.row && meta.zone != ShellTvZone.chipStrip) {
+      return;
+    }
+    if (meta.rowId == null || meta.itemIndex == null) return;
+    ShellTvFocusCoordinator.unregisterItemNode(
+      tabId: meta.tabId,
+      rowId: meta.rowId!,
+      index: meta.itemIndex!,
+      node: _effectiveNode,
+    );
   }
 
   @override
   void dispose() {
+    _unregisterTvItemNode(widget.tvMeta);
     _ownedNode?.dispose();
     super.dispose();
   }
@@ -136,6 +174,16 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       onKeyEvent: (node, event) {
         final custom = widget.onKeyEvent?.call(node, event);
         if (custom == KeyEventResult.handled) return KeyEventResult.handled;
+        final arrow = shellTvHandleRowArrows(event: event, tvMeta: widget.tvMeta);
+        if (arrow == KeyEventResult.handled) return arrow;
+        final trap = shellTvTrapRowGeometry(
+          event: event,
+          tvFocus: policy.useFocusableMoodChips,
+          tvMeta: widget.tvMeta,
+          trapHorizontal: widget.tvMeta?.rowId != null ||
+              widget.tvMeta?.zone == ShellTvZone.chipStrip,
+        );
+        if (trap == KeyEventResult.handled) return trap;
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
         if (shellTvIsActivateKey(event)) {
           widget.onTap!();

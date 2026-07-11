@@ -1,36 +1,45 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
 
-/// Mouse back, Escape, and TV Back — pop routes or shell TV back chain.
+/// Mouse back, Escape, and Android system / remote Back — pop routes or shell TV back chain.
 class BackNavigationScope extends StatelessWidget {
   const BackNavigationScope({super.key, required this.child});
 
   final Widget child;
 
-  void _pop(BuildContext context) {
+  bool _popNavigatorOrOverlay(BuildContext context) {
     final rootNav = Navigator.maybeOf(context, rootNavigator: true);
     if (rootNav != null && rootNav.canPop()) {
       rootNav.maybePop();
-      return;
+      return true;
     }
-    maybePopShellOverlay();
+    if (shellOverlayCanPop()) {
+      maybePopShellOverlay();
+      return true;
+    }
+    return false;
   }
 
   void _onBack(BuildContext context) {
-    if (ShellTvFocus.currentNavTabId != null &&
-        ShellTvFocusCoordinator.handleShellBackKey()) {
+    if (ShellTvFocusCoordinator.handleShellBackKey()) {
       return;
     }
-    _pop(context);
+    if (_popNavigatorOrOverlay(context)) {
+      return;
+    }
+    if (Platform.isAndroid) {
+      SystemNavigator.pop();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Shortcuts(
+    Widget scope = Shortcuts(
       shortcuts: const {
         SingleActivator(LogicalKeyboardKey.escape): _BackIntent(),
         SingleActivator(LogicalKeyboardKey.goBack): _BackIntent(),
@@ -53,6 +62,19 @@ class BackNavigationScope extends StatelessWidget {
         ),
       ),
     );
+
+    if (Platform.isAndroid) {
+      scope = PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          _onBack(context);
+        },
+        child: scope,
+      );
+    }
+
+    return scope;
   }
 }
 

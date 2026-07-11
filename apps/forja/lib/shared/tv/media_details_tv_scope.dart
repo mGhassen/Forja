@@ -4,6 +4,8 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 /// Isolated TV coordinator tab for media details overlays.
 abstract final class MediaDetailsTv {
   static const tabId = 'media-details';
+  static const heroRowId = 'hero-actions';
+  static const heroRowSortOrder = -1;
 }
 
 /// Registers [MediaDetailsTv.tabId] row memory and hero restore for a details page.

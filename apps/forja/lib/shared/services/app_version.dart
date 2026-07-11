@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-/// Release codename for the current minor arc (1.0.x → Bab Souika).
-const kReleaseCodename = 'Bab Souika';
+/// Release codename for the current **minor** arc only (patches inherit; no per-patch names).
+/// Runway: docs/backlog/README.md#codename-runway — update when shipping minor changes.
+const kReleaseCodename = 'Salon el-Khotla';
 
 final class AppVersion {
   AppVersion._();

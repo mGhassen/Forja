@@ -300,46 +300,56 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
             positionMs: posMs,
             durationMs: durMs,
-            actionRow: Row(
-              children: [
-                HubDetailsPlayRow(
-                  label: hasProgress && resumeEp != null
-                      ? 'Resume Ep $resumeEp'
-                      : 'Play Ep 1',
-                  enabled: _episodes.isNotEmpty,
-                  onPlay: () => _play(resumeEp ?? 1),
-                  focusNode: _heroPlayFocus,
-                ),
-                if (hasProgress) ...[
+            actionRow: DetailsHeroTvActionScope(
+              tabId: MediaDetailsTv.tabId,
+              itemCount: hasProgress ? 2 : 1,
+              onFocusUp: heroFocusUp,
+              child: Row(
+                children: [
+                  HubDetailsPlayRow(
+                    label: hasProgress && resumeEp != null
+                        ? 'Resume Ep $resumeEp'
+                        : 'Play Ep 1',
+                    enabled: _episodes.isNotEmpty,
+                    onPlay: () => _play(resumeEp ?? 1),
+                    focusNode: _heroPlayFocus,
+                    tvTabId: MediaDetailsTv.tabId,
+                    tvItemIndex: 0,
+                  ),
+                  if (hasProgress) ...[
+                    const SizedBox(width: 10),
+                    HeroPillIconGroup(
+                      tvTabId: MediaDetailsTv.tabId,
+                      tvRowId: MediaDetailsTv.heroRowId,
+                      tvItemIndexStart: 1,
+                      slots: [
+                        HeroPillIconSlot(
+                          icon: Icons.delete_outline_rounded,
+                          tooltip: 'Clear progress',
+                          onTap: _clearProgress,
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(width: 10),
-                  HeroPillIconGroup(
-                    slots: [
-                      HeroPillIconSlot(
-                        icon: Icons.delete_outline_rounded,
-                        tooltip: 'Clear progress',
-                        onTap: _clearProgress,
+                  HeroPillSegmentedChoice<String>(
+                    selected: _category,
+                    onSelected: (cat) => setState(() => _category = cat),
+                    segments: const [
+                      HeroPillSegment(
+                        value: 'sub',
+                        label: 'SUB',
+                        icon: Icons.subtitles_rounded,
+                      ),
+                      HeroPillSegment(
+                        value: 'dub',
+                        label: 'DUB',
+                        icon: Icons.mic_rounded,
                       ),
                     ],
                   ),
                 ],
-                const SizedBox(width: 10),
-                HeroPillSegmentedChoice<String>(
-                  selected: _category,
-                  onSelected: (cat) => setState(() => _category = cat),
-                  segments: const [
-                    HeroPillSegment(
-                      value: 'sub',
-                      label: 'SUB',
-                      icon: Icons.subtitles_rounded,
-                    ),
-                    HeroPillSegment(
-                      value: 'dub',
-                      label: 'DUB',
-                      icon: Icons.mic_rounded,
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
           MediaDetailsBody(

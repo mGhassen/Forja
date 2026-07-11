@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/design/src/forja_shell_chip.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -391,5 +392,41 @@ void main() {
 
     homeNav.dispose();
     page.dispose();
+  });
+
+  testWidgets('handleShellBackKey pops shell overlay before nav focus', (tester) async {
+    ShellTvFocusCoordinator.resetBackDebounceForTest();
+    ShellTvFocus.currentNavTabId = null;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(400, 800)),
+          child: ShellScope(
+            profile: ShellProfile.mobile,
+            config: shellPlatformConfigFor(ShellProfile.mobile),
+            child: const Stack(
+              children: [
+                SizedBox.expand(),
+                ShellOverlayNavigator(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    shellOverlayNavigatorKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('Details')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Details'), findsOneWidget);
+
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('Details'), findsNothing);
   });
 }

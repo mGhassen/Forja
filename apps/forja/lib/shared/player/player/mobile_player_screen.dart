@@ -24,6 +24,7 @@ import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/extractors/arabic_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
+import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'menus.dart';
@@ -45,6 +46,7 @@ import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
+import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shell/app_router.dart';
 
@@ -381,6 +383,8 @@ class MobilePlayerScreen extends StatefulWidget {
   final Future<List<StreamSource>?> Function()? onReloadStreams;
   final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
   final bool tvRemoteEnabled;
+  final BuiltInPlayerEngine builtInEngine;
+  final PlayerSwitchHandler? onSwitchPlayer;
 
   const MobilePlayerScreen({
     super.key,
@@ -414,6 +418,8 @@ class MobilePlayerScreen extends StatefulWidget {
     this.onReloadStreams,
     this.sourcesListNotifier,
     this.tvRemoteEnabled = false,
+    this.builtInEngine = BuiltInPlayerEngine.mediaKit,
+    this.onSwitchPlayer,
   });
 
   @override
@@ -454,6 +460,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   StreamSubscription<Tracks>? _tracksSub;
   StreamSubscription<bool>? _pipSub;
   bool _autoTracksAppliedForSource = false;
+  bool _androidMediaKitSafeMode = false;
+  bool _isAndroidTv = false;
 
   // ── PiP State ─────────────────────────────────────────────────────────────
   bool _isPipMode = false;
@@ -604,6 +612,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // the widget tree is still building.
     WakelockPlus.enable();
 
+    // Android MediaKit fallback: software-friendly decode (user chose MediaKit
+    // over ExoPlayer in Settings).
+    if (Platform.isAndroid) {
+      _androidMediaKitSafeMode = true;
+      _hwDecMode = _HwDecMode.software;
+    }
+
     // ── Player ───────────────────────────────────────────────────────────
     _player = Player(
       configuration: const PlayerConfiguration(
@@ -627,8 +642,11 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _controller = VideoController(
       _player,
       configuration: VideoControllerConfiguration(
-        enableHardwareAcceleration: !widget.tvRemoteEnabled,
-        hwdec: widget.tvRemoteEnabled ? 'no' : null,
+        enableHardwareAcceleration:
+            !widget.tvRemoteEnabled && !_androidMediaKitSafeMode,
+        hwdec: (widget.tvRemoteEnabled || _androidMediaKitSafeMode)
+            ? 'no'
+            : null,
         androidAttachSurfaceAfterVideoParameters: false,
       ),
     );
@@ -652,9 +670,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      if (Platform.isAndroid) {
+        _isAndroidTv = await ExoPlayerBridge.isTelevision();
+      }
       await waitForRouteTransition(context);
       if (!mounted) return;
-      if (!widget.tvRemoteEnabled) {
+      if (!widget.tvRemoteEnabled && !_isAndroidTv) {
         // Lock to landscape and wait for the rotation to physically
         // complete before starting heavy media work.  Starting codec
         // initialization while the surface is still rotating causes
@@ -1724,9 +1745,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // whitelisted to formats each platform reliably supports.
     // TV: full software path — GLES/EGL is unreliable on leanback emulators.
     await safeSet('hwdec', _hwDecMode.mpvValue);
-    await safeSet('vd-lavc-dr', widget.tvRemoteEnabled ? 'no' : 'yes');
-
-    if (widget.tvRemoteEnabled && Platform.isAndroid) {
+    final mediaKitSafeMode =
+        widget.tvRemoteEnabled || _androidMediaKitSafeMode;
+    await safeSet('vd-lavc-dr', mediaKitSafeMode ? 'no' : 'yes');
+    if (mediaKitSafeMode && Platform.isAndroid) {
       // OpenSLES misconfigures on some ATV images (0 frames delivered).
       await safeSet('ao', 'audiotrack');
     }
@@ -3239,6 +3261,33 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _startHideTimer();
   }
 
+  Future<void> _persistProgressForSwitch() async {
+    if (widget.onSaveProgress == null) return;
+    final pos = _positionNotifier.value;
+    final dur = _durationNotifier.value;
+    if (pos.inMilliseconds <= 0 || dur.inMilliseconds <= 0) return;
+    await widget.onSaveProgress!(pos, dur);
+  }
+
+  Future<void> _showPlayerMenu(BuildContext anchorContext) async {
+    final handler = widget.onSwitchPlayer;
+    if (handler == null) return;
+    await _persistProgressForSwitch();
+    if (!mounted) return;
+    PlayerAppMenu.show(
+      context,
+      anchorContext: anchorContext,
+      usingBuiltIn: true,
+      builtInEngine: widget.builtInEngine,
+      onSelect: ({builtInEngine, externalPlayer}) => handler(
+        _positionNotifier.value,
+        builtInEngine: builtInEngine,
+        externalPlayer: externalPlayer,
+      ),
+    );
+    _startHideTimer();
+  }
+
   void _showSettingsMenu(BuildContext anchorContext) {
     PlayerPopupPanel.show(
       context: context,
@@ -4019,6 +4068,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           onBack: _exitPlayer,
           tvFocusable: tvFocus,
           trailing: PlayerTopBarActions(
+            showPlayer: widget.onSwitchPlayer != null,
+            onPlayer: widget.onSwitchPlayer != null
+                ? () => unawaited(_showPlayerMenu(context))
+                : null,
             showCast: CastingService.instance.isAirPlayAvailable ||
                 CastingService.instance.isChromecastAvailable,
             onCast: () {
@@ -4296,6 +4349,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       tooltip: 'Quality',
                       onPressedWithContext: _showQualityMenu,
                     ),
+                    if (widget.onSwitchPlayer != null)
+                      PlayerFlatIconButton(
+                        icon: Icons.smart_display_outlined,
+                        size: btnSize,
+                        iconSize: iconSz,
+                        tooltip: 'Player',
+                        onPressedWithContext: _showPlayerMenu,
+                      ),
                     PlayerFlatIconButton(
                       tvFocusable: tvFocus,
                       icon: Icons.settings_outlined,

@@ -7,6 +7,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : AudioServiceActivity() {
+    private val exoPlugin = ForjaExoPlayerPlugin()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (isAndroidTv()) {
@@ -17,6 +19,11 @@ class MainActivity : AudioServiceActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        exoPlugin.bindEngine(
+            this,
+            flutterEngine.dartExecutor.binaryMessenger,
+            flutterEngine.platformViewsController.registry,
+        )
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "forja/platform",

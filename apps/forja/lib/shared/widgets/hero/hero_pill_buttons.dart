@@ -117,6 +117,8 @@ class HeroPillPlayButton extends StatelessWidget {
     this.onKeyEvent,
     this.tvTabId,
     this.onUpEdge,
+    this.tvRowId,
+    this.tvItemIndex,
   });
 
   final String label;
@@ -130,6 +132,8 @@ class HeroPillPlayButton extends StatelessWidget {
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
   final String? tvTabId;
   final VoidCallback? onUpEdge;
+  final String? tvRowId;
+  final int? tvItemIndex;
 
   HeroPillPlayTone get _tone =>
       tone ?? (primary ? HeroPillPlayTone.primary : HeroPillPlayTone.secondary);
@@ -143,7 +147,14 @@ class HeroPillPlayButton extends StatelessWidget {
         (icon != null ? Icon(icon, size: _kHeroPillIconSize) : null);
     final useTvCompact = policy.useFocusableMoodChips;
     final tvMeta = tvTabId != null && useTvCompact
-        ? ShellTvFocusMeta(tabId: tvTabId!, zone: ShellTvZone.hero)
+        ? ShellTvFocusMeta(
+            tabId: tvTabId!,
+            zone: tvRowId != null && tvItemIndex != null
+                ? ShellTvZone.row
+                : ShellTvZone.hero,
+            rowId: tvRowId,
+            itemIndex: tvItemIndex,
+          )
         : null;
     final effectiveOnKey = onUpEdge != null || onKeyEvent != null
         ? (FocusNode node, KeyEvent event) {
@@ -508,12 +519,16 @@ class HeroPillIconGroup extends StatelessWidget {
     this.tvFocusOrderStart,
     this.tvTabId,
     this.onUpEdge,
+    this.tvRowId,
+    this.tvItemIndexStart,
   });
 
   final List<HeroPillIconSlot> slots;
   final int? tvFocusOrderStart;
   final String? tvTabId;
   final VoidCallback? onUpEdge;
+  final String? tvRowId;
+  final int? tvItemIndexStart;
 
   @override
   Widget build(BuildContext context) {
@@ -545,15 +560,12 @@ class HeroPillIconGroup extends StatelessWidget {
               useTvCompact: useTvCompact,
               tvTabId: tvTabId,
               onUpEdge: onUpEdge,
+              tvRowId: tvRowId,
+              tvItemIndex: tvItemIndexStart != null
+                  ? tvItemIndexStart! + i
+                  : null,
               focusOrder: tvFocusOrderStart != null
                   ? NumericFocusOrder((tvFocusOrderStart! + i).toDouble())
-                  : null,
-              onKeyEvent: i == slots.length - 1
-                  ? (node, event) => shellTrapTvFocusHorizontalEdge(
-                        node,
-                        event,
-                        trapRight: true,
-                      )
                   : null,
             ),
           ],
@@ -694,9 +706,10 @@ class _HeroPillGroupedSlot extends StatelessWidget {
     this.iconWidget,
     this.onTap,
     this.focusOrder,
-    this.onKeyEvent,
     this.tvTabId,
     this.onUpEdge,
+    this.tvRowId,
+    this.tvItemIndex,
   });
 
   final String label;
@@ -707,9 +720,10 @@ class _HeroPillGroupedSlot extends StatelessWidget {
   final bool isLast;
   final bool useTvCompact;
   final FocusOrder? focusOrder;
-  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
   final String? tvTabId;
   final VoidCallback? onUpEdge;
+  final String? tvRowId;
+  final int? tvItemIndex;
 
   Widget _wrapOrder(Widget child) {
     final order = focusOrder;
@@ -720,18 +734,23 @@ class _HeroPillGroupedSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tvMeta = tvTabId != null && useTvCompact
-        ? ShellTvFocusMeta(tabId: tvTabId!, zone: ShellTvZone.hero)
+        ? ShellTvFocusMeta(
+            tabId: tvTabId!,
+            zone: tvRowId != null && tvItemIndex != null
+                ? ShellTvZone.row
+                : ShellTvZone.hero,
+            rowId: tvRowId,
+            itemIndex: tvItemIndex,
+          )
         : null;
-    final effectiveOnKey = onUpEdge != null || onKeyEvent != null
+    final effectiveOnKey = onUpEdge != null
         ? (FocusNode node, KeyEvent event) {
-            if (onUpEdge != null) {
-              final up = ShellTvFocus.onArrowUp(event, () {
-                onUpEdge!();
-                return true;
-              });
-              if (up == KeyEventResult.handled) return up;
-            }
-            return onKeyEvent?.call(node, event) ?? KeyEventResult.ignored;
+            final up = ShellTvFocus.onArrowUp(event, () {
+              onUpEdge!();
+              return true;
+            });
+            if (up == KeyEventResult.handled) return up;
+            return KeyEventResult.ignored;
           }
         : null;
 

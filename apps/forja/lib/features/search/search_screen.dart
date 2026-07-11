@@ -73,8 +73,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   final FocusNode _firstHelperFocusNode = FocusNode();
   final ScrollController _helpersScrollController = ScrollController();
 
-  static const double _helperRowExtent = 30;
-
   Timer? _debounce;
   String _query = '';
 
@@ -163,6 +161,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           rowId: 'helpers',
           sortOrder: 0,
           itemCount: titles.length,
+          orientation: ShellTvRowOrientation.vertical,
         );
         if (_query.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -534,17 +533,13 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
   void _focusHelperAtIndex(int index) {
-    const rowId = 'helpers';
     final count = _helperItemCount();
     if (count == 0) return;
     final clamped = index.clamp(0, count - 1);
     setState(() => _helperFocusedIndex = clamped);
-    _scrollHelperIntoView(clamped);
 
     void tryFocus({int attempt = 0}) {
-      final node = ShellTvFocusCoordinator.itemNode('search', rowId, clamped);
-      if (node != null && node.canRequestFocus) {
-        node.requestFocus();
+      if (ShellTvFocusCoordinator.focusRowItem('search', 'helpers', clamped)) {
         return;
       }
       if (attempt >= 4) return;
@@ -557,14 +552,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     tryFocus();
   }
 
-  void _scrollHelperIntoView(int index) {
+  void _resetHelpersScroll() {
     if (!_helpersScrollController.hasClients) return;
-    final offset = index * _helperRowExtent;
-    _helpersScrollController.animateTo(
-      offset.clamp(0.0, _helpersScrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 150),
-      curve: Curves.easeOutCubic,
-    );
+    if (_helpersScrollController.offset <= 0) return;
+    _helpersScrollController.jumpTo(0);
   }
 
   VoidCallback? _helperUpEdge(int index) {
@@ -603,6 +594,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       setState(() => _searchFieldEditing = false);
       ShellBus.notifyShellChromeChanged();
     }
+    _resetHelpersScroll();
     _focusNode.requestFocus();
     ShellTvFocusCoordinator.saveFocus(
       'search',
@@ -706,8 +698,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   Widget buildShellSearchBar() {
     if (_isDesktopLayout(context)) return const SizedBox.shrink();
-    final tvFocus = _tvFocus(context);
-    final browseOnly = tvFocus && !_searchFieldEditing;
     return ShellSearchBar(
       controller: _controller,
       focusNode: _focusNode,
@@ -717,7 +707,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         _controller.clear();
         _onSearchChanged('');
       },
-      tvBrowseMode: browseOnly,
     );
   }
 
@@ -880,7 +869,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   Widget _buildHelperTitle(String title, {required bool selected}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
@@ -891,9 +880,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             color: selected
                 ? ForjaShellColors.textPrimary
                 : ForjaShellColors.textSecondary,
-            fontSize: selected ? 17 : 15,
+            fontSize: selected ? 14 : 13,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            height: 1.25,
+            height: 1.2,
           ),
         ),
       ),
@@ -917,8 +906,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       controller: _helpersScrollController,
       clipBehavior: Clip.none,
       padding: const EdgeInsets.only(right: 8, bottom: 8),
+      physics: const ClampingScrollPhysics(),
       itemCount: _trendingHelperTitles.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 2),
+      separatorBuilder: (_, _) => const SizedBox(height: 1),
       itemBuilder: (context, index) {
         final title = _trendingHelperTitles[index];
         final count = _trendingHelperTitles.length;
@@ -939,7 +929,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           onUpEdge: _helperUpEdge(index),
           onDownEdge: _helperDownEdge(index, count),
           onRightEdge: _helperRightEdge(),
-          ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+          ensureVisibleMode: ShellTvEnsureVisibleMode.row,
           onFocusChange: (focused) {
             if (focused) {
               _setHelperFocusedIndex(index);
