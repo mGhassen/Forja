@@ -28,7 +28,7 @@ Download builds from [GitHub Releases](https://github.com/mGhassen/Forja/release
 ## Platform notes
 
 - **Android:** Picture-in-picture, background music playback, immersive navigation
-- **Android TV:** Leanback launcher entry, nav-rail shell (`ShellHost` TV profile), D-pad focus on in-scope tabs, built-in player remote keys (play/pause, seek ±10s, Back). WebViews on TV disable Chromium GPU at process start (`ForjaApplication`) and use software compositing in Dart — trailer and live embeds may be slower than on phone/desktop.
+- **Android TV:** Leanback launcher entry, nav-rail shell (`ShellHost` TV profile), D-pad focus on in-scope tabs, built-in player remote keys (play/pause, seek ±10s, Back). First-run **Play sources** default to **Webstreaming** only (green hero **Play**); enable Direct torrent or Stremio under **Settings → Playback** for the **Sources** panel. WebViews on TV disable Chromium GPU at process start (`ForjaApplication`) and use software compositing in Dart — trailer and live embeds may be slower than on phone/desktop.
 - **macOS:** Hidden title bar with draggable window chrome
 - **Windows / Linux:** Custom window caption on desktop
 

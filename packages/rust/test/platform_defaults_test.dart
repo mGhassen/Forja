@@ -25,6 +25,9 @@ void main() {
       expect(tv.subSize, 52);
       expect(tv.subBottomPadding, 48);
       expect(tv.torrentRamCacheMb, 128);
+      expect(tv.playSourceWebstreaming, isTrue);
+      expect(tv.playSourceTorrent, isFalse);
+      expect(tv.playSourceStremio, isFalse);
     });
 
     test('phone defaults unchanged', () {

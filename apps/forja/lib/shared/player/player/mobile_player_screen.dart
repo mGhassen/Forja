@@ -31,6 +31,7 @@ import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_tv_remote.dart';
+import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
@@ -432,6 +433,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
+  final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   Movie? _heroMovie;
   String? _episodeOverview;
   bool _isLocked = false;
@@ -735,6 +737,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     if (widget.tvRemoteEnabled) {
       HardwareKeyboard.instance.removeHandler(_handleTvKeyEvent);
     }
+    _playerTvKeyFocus.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _indicatorHideTimer?.cancel();
@@ -1847,43 +1850,48 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _handleTvKeyEvent(KeyEvent event) {
     if (!widget.tvRemoteEnabled || _disposed || _hasError) return false;
     if (_isLocked) return false;
+    if (_showControls && playerTvChromeHasFocus(_playerTvKeyFocus)) {
+      return false;
+    }
 
-    return PlayerTvRemoteKeyHandler(
-      onBack: () => unawaited(_exitPlayer()),
-      onPlayPause: () {
-        _player.playOrPause();
-        _startHideTimer();
-      },
-      onShowControls: () {
-        setState(() => _showControls = true);
-        _startHideTimer();
-      },
-      onSeekBack: () {
-        var newPos = _positionNotifier.value - const Duration(seconds: 10);
-        if (newPos < Duration.zero) newPos = Duration.zero;
-        _player.seek(newPos);
-        _startHideTimer();
-      },
-      onSeekForward: () {
-        final dur = _durationNotifier.value;
-        var newPos = _positionNotifier.value + const Duration(seconds: 10);
-        if (newPos > dur) newPos = dur;
-        _player.seek(newPos);
-        _startHideTimer();
-      },
-      onVolumeUp: () {
-        _player.setVolume(
-          (_volume.clamp(0, 150) + 5).clamp(0, 150).toDouble(),
-        );
-      },
-      onVolumeDown: () {
-        _player.setVolume(
-          (_volume.clamp(0, 150) - 5).clamp(0, 150).toDouble(),
-        );
-      },
-      onToggleControls: _toggleControls,
-    ).handle(event, showControls: _showControls);
+    return _playerTvHandler().handle(event, showControls: _showControls);
   }
+
+  PlayerTvRemoteKeyHandler _playerTvHandler() => PlayerTvRemoteKeyHandler(
+        onBack: () => unawaited(_exitPlayer()),
+        onPlayPause: () {
+          _player.playOrPause();
+          _startHideTimer();
+        },
+        onShowControls: () {
+          setState(() => _showControls = true);
+          _startHideTimer();
+        },
+        onSeekBack: () {
+          var newPos = _positionNotifier.value - const Duration(seconds: 10);
+          if (newPos < Duration.zero) newPos = Duration.zero;
+          _player.seek(newPos);
+          _startHideTimer();
+        },
+        onSeekForward: () {
+          final dur = _durationNotifier.value;
+          var newPos = _positionNotifier.value + const Duration(seconds: 10);
+          if (newPos > dur) newPos = dur;
+          _player.seek(newPos);
+          _startHideTimer();
+        },
+        onVolumeUp: () {
+          _player.setVolume(
+            (_volume.clamp(0, 150) + 5).clamp(0, 150).toDouble(),
+          );
+        },
+        onVolumeDown: () {
+          _player.setVolume(
+            (_volume.clamp(0, 150) - 5).clamp(0, 150).toDouble(),
+          );
+        },
+        onToggleControls: _toggleControls,
+      );
 
   void _toggleLock() {
     setState(() {
@@ -3642,7 +3650,44 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         if (didPop) return;
         _exitPlayer();
       },
-      child: Theme(
+      child: PlayerTvKeyScope(
+        enabled: widget.tvRemoteEnabled,
+        focusNode: _playerTvKeyFocus,
+        showControls: _showControls,
+        onBack: () => unawaited(_exitPlayer()),
+        onPlayPause: () {
+          _player.playOrPause();
+          _startHideTimer();
+        },
+        onShowControls: () {
+          setState(() => _showControls = true);
+          _startHideTimer();
+        },
+        onSeekBack: () {
+          var newPos = _positionNotifier.value - const Duration(seconds: 10);
+          if (newPos < Duration.zero) newPos = Duration.zero;
+          _player.seek(newPos);
+          _startHideTimer();
+        },
+        onSeekForward: () {
+          final dur = _durationNotifier.value;
+          var newPos = _positionNotifier.value + const Duration(seconds: 10);
+          if (newPos > dur) newPos = dur;
+          _player.seek(newPos);
+          _startHideTimer();
+        },
+        onVolumeUp: () {
+          _player.setVolume(
+            (_volume.clamp(0, 150) + 5).clamp(0, 150).toDouble(),
+          );
+        },
+        onVolumeDown: () {
+          _player.setVolume(
+            (_volume.clamp(0, 150) - 5).clamp(0, 150).toDouble(),
+          );
+        },
+        onToggleControls: _toggleControls,
+        child: Theme(
         data: ThemeData.dark(),
         child: Scaffold(
           backgroundColor: Colors.black,
@@ -3760,9 +3805,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
               AnimatedOpacity(
                 opacity: (_showControls && !_isLocked && !_isPipMode) ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
-                child: IgnorePointer(
+                child: ExcludeFocus(
+                  excluding: widget.tvRemoteEnabled &&
+                      !(_showControls && !_isLocked && !_isPipMode),
+                  child: IgnorePointer(
                   ignoring: !(_showControls && !_isLocked) || _isPipMode,
                   child: _buildControlsOverlay(),
+                ),
                 ),
               ),
 
@@ -3886,11 +3935,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                 controller: _statusController,
                 bufferingListenable: _isBufferingNotifier,
               ),
-              ],
-              ),
-              ),
-              ),
-              );
+            ],
+          ),
+        ),
+      ),
+    ),
+    );
   }
 
   Widget _buildControlsOverlay() {
@@ -4241,7 +4291,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       ),
     ]);
     if (!tvFocus) return overlay;
-    return FocusTraversalGroup(child: overlay);
+    return FocusScope(
+      debugLabel: 'player-chrome',
+      child: FocusTraversalGroup(child: overlay),
+    );
   }
 
 }

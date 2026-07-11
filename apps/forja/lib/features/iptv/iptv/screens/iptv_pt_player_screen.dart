@@ -21,6 +21,7 @@ import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -129,6 +130,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   String? _statusBanner;
   bool _controlsVisible = true;
   Timer? _hideControlsTimer;
+  final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
 
   bool _guideVisible = false;
   bool _searchVisible = false;
@@ -1095,6 +1097,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
+    _playerTvKeyFocus.dispose();
     unawaited(_finalizeExit());
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -1139,21 +1142,48 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         : null;
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Focus(
-        autofocus: iptvUseTvFocus(context),
-        onKeyEvent: (node, event) {
-          if (!iptvUseTvFocus(context)) return KeyEventResult.ignored;
-          if (event is! KeyDownEvent) return KeyEventResult.ignored;
-          if (_guideVisible || _searchVisible) return KeyEventResult.ignored;
-          final key = event.logicalKey;
-          if (key == LogicalKeyboardKey.enter ||
-              key == LogicalKeyboardKey.select ||
-              key == LogicalKeyboardKey.numpadEnter) {
-            _toggleControls();
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
+      body: PlayerTvKeyScope(
+        enabled: iptvUseTvFocus(context) && !_guideVisible && !_searchVisible,
+        focusNode: _playerTvKeyFocus,
+        showControls: _controlsVisible,
+        onBack: () {
+          if (Navigator.canPop(context)) Navigator.pop(context);
         },
+        onPlayPause: () {
+          if (_playing) {
+            _player.pause();
+          } else {
+            unawaited(_player.play());
+          }
+          _scheduleHideControls();
+        },
+        onShowControls: () {
+          setState(() => _controlsVisible = true);
+          _scheduleHideControls();
+        },
+        onSeekBack: () {
+          if (!_isVod) return;
+          var target = _position - const Duration(seconds: 10);
+          if (target < Duration.zero) target = Duration.zero;
+          unawaited(_player.seek(target));
+          _scheduleHideControls();
+        },
+        onSeekForward: () {
+          if (!_isVod) return;
+          var target = _position + const Duration(seconds: 10);
+          if (target > _duration) target = _duration;
+          unawaited(_player.seek(target));
+          _scheduleHideControls();
+        },
+        onVolumeUp: () {
+          _player.setVolume((_volume + 5).clamp(0, 100));
+          setState(() => _volume = (_volume + 5).clamp(0, 100));
+        },
+        onVolumeDown: () {
+          _player.setVolume((_volume - 5).clamp(0, 100));
+          setState(() => _volume = (_volume - 5).clamp(0, 100));
+        },
+        onToggleControls: _toggleControls,
         child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _toggleControls,
@@ -1176,9 +1206,13 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             AnimatedOpacity(
               duration: const Duration(milliseconds: 220),
               opacity: _controlsVisible ? 1 : 0,
-              child: IgnorePointer(
+              child: ExcludeFocus(
+                excluding: iptvUseTvFocus(context) &&
+                    (!_controlsVisible || _guideVisible || _searchVisible),
+                child: IgnorePointer(
                 ignoring: !_controlsVisible || _guideVisible || _searchVisible,
                 child: _buildOverlay(compact),
+              ),
               ),
             ),
             if (_searchVisible && widget.channelGuide != null)

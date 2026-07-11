@@ -43,6 +43,9 @@ void main() {
     expect(await service.getSubSize(), 52);
     expect(await service.getSubBottomPadding(), 48);
     expect(await service.getTorrentRamCacheMb(), 128);
+    expect(await service.isPlaySourceWebstreamingEnabled(), isTrue);
+    expect(await service.isPlaySourceTorrentEnabled(), isFalse);
+    expect(await service.isPlaySourceStremioEnabled(), isFalse);
   });
 
   test('fresh phone install seeds phone nav defaults', () async {

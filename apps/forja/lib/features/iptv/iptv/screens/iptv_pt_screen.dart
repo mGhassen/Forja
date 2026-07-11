@@ -11,6 +11,7 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -916,17 +917,59 @@ class _BrowserView extends StatefulWidget {
 
 class _BrowserViewState extends State<_BrowserView> {
   final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   Timer? _scrollSettleTimer;
+  bool _searchOpen = false;
 
   @override
   void initState() {
     super.initState();
     _searchCtrl.text = widget.ctrl.browserSearch;
+    _searchFocus.onKeyEvent = _onSearchKey;
+  }
+
+  KeyEventResult _onSearchKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      _closeSearch();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _openSearch() {
+    setState(() => _searchOpen = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocus.requestFocus();
+    });
+  }
+
+  void _closeSearch() {
+    if (!_searchOpen && widget.ctrl.browserSearch.isEmpty) return;
+    _searchCtrl.clear();
+    widget.ctrl.setBrowserSearch('');
+    if (mounted) setState(() => _searchOpen = false);
+    _searchFocus.unfocus();
+  }
+
+  void _clearSearchQuery() {
+    _searchCtrl.clear();
+    widget.ctrl.setBrowserSearch('');
+    if (mounted) setState(() {});
+  }
+
+  void _toggleSearch() {
+    if (_searchOpen) {
+      _closeSearch();
+    } else {
+      _openSearch();
+    }
   }
 
   @override
   void dispose() {
     _scrollSettleTimer?.cancel();
+    _searchFocus.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -1013,6 +1056,14 @@ class _BrowserViewState extends State<_BrowserView> {
             subtitle: ctrl.activePortal?.name,
             onBack: ctrl.back,
             actions: [
+              IptvIconAction(
+                tooltip: _searchOpen ? 'Close search' : 'Search channels',
+                onPressed: _toggleSearch,
+                icon: _searchOpen
+                    ? Icons.close_rounded
+                    : Icons.search_rounded,
+                color: _searchOpen ? IptvShellStyle.accent : null,
+              ),
               if (ctrl.activeSection == IptvSection.live) ...[
                 IptvIconAction(
                   tooltip: 'Reload channels',
@@ -1035,7 +1086,15 @@ class _BrowserViewState extends State<_BrowserView> {
               ],
             ],
           ),
-          _buildSearch(),
+          ClipRect(
+            child: AnimatedAlign(
+              alignment: Alignment.topCenter,
+              heightFactor: _searchOpen ? 1 : 0,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+              child: _buildOverlaySearchBar(),
+            ),
+          ),
           if (ctrl.activeSection == IptvSection.live && ctrl.isVerifyingAlive)
             _buildAliveProgress(),
           if (ctrl.activeSection == IptvSection.live && !ctrl.isVerifyingAlive)
@@ -1058,30 +1117,22 @@ class _BrowserViewState extends State<_BrowserView> {
     );
   }
 
-  Widget _buildSearch() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: TextField(
-        controller: _searchCtrl,
-        onChanged: widget.ctrl.setBrowserSearch,
-        style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
-        decoration: InputDecoration(
-          prefixIcon: Icon(Icons.search_rounded, color: Colors.white60),
-          hintText: 'Search channels or categories…',
-          hintStyle: GoogleFonts.poppins(color: Colors.white30, fontSize: 13),
-          filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.05),
-          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-          ),
-        ),
-      ),
+  Widget _buildOverlaySearchBar() {
+    final query = widget.ctrl.browserSearch;
+    return ShellSearchBar(
+      controller: _searchCtrl,
+      focusNode: _searchFocus,
+      query: query,
+      wrapSafeArea: false,
+      hintText: 'Search channels or categories…',
+      onChanged: widget.ctrl.setBrowserSearch,
+      onClear: _clearSearchQuery,
+      clearSuffix: query.isNotEmpty
+          ? iptvCloseButton(
+              context,
+              onTap: _clearSearchQuery,
+            )
+          : null,
     );
   }
 

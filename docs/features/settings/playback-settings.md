@@ -12,7 +12,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 
 ## What you can do
 
-- Enable **Play sources**: direct torrent, Stremio, and webstreaming (all on by default)
+- Enable **Play sources**: direct torrent, Stremio, and webstreaming (all on by default on phone and desktop; **Android TV** fresh install enables **Webstreaming** only — turn on torrent or Stremio in this screen if you want **Sources**)
 - Select **External player** (built-in or VLC, mpv, etc.)
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
