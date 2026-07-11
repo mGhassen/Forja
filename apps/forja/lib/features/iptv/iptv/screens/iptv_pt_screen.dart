@@ -15,6 +15,7 @@ import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
@@ -1343,25 +1344,13 @@ class _BrowserViewState extends State<_BrowserView> {
     final list = _filteredStreams;
     if (list.isEmpty) {
       if (ctrl.browserAllStreams.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                ctrl.error ?? 'Failed to load channels — check connection',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(color: Colors.white60),
-              ),
-              const SizedBox(height: 16),
-              IptvPrimaryButton(
-                icon: Icons.refresh_rounded,
-                label: 'Reload',
-                onPressed: ctrl.activeSection == null
-                    ? null
-                    : () => ctrl.openSection(ctrl.activeSection!),
-              ),
-            ],
-          ),
+        return ShellErrorRetryPanel(
+          message:
+              ctrl.error ?? 'Failed to load channels — check connection',
+          label: 'Reload',
+          onRetry: ctrl.activeSection == null
+              ? null
+              : () => ctrl.openSection(ctrl.activeSection!),
         );
       }
       if (ctrl.activeSection == IptvSection.live && ctrl.liveOnly) {

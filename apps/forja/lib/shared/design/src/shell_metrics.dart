@@ -104,7 +104,7 @@ class ShellMetrics {
     navRailBottomPadding: 16,
   );
 
-  /// Leanback density — ~90px cards; spacing aligned with media details (24px inset).
+  /// Leanback density — ~90px cards; rows fill the body edge-to-edge after the nav rail.
   static const tv = ShellMetrics(
     homeMovieCardWidth: 90,
     continueWatchingCardWidth: 140,

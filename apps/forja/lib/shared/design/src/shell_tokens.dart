@@ -230,7 +230,7 @@ abstract final class ShellTokens {
   static const double homeRowSpacing = 24;
   /// TV catalog spacing — aligned with desktop/detail rhythm (cards stay 90px).
   static const double tvHomeRowSpacing = 20;
-  static const double tvHomeSectionHorizontalPadding = 24;
+  static const double tvHomeSectionHorizontalPadding = 0;
   static const double tvHeroHeightFraction = 0.78;
   static const double tvHeroNextRowPeekFraction = 0.06;
   static const double tvHomeSectionTitleTopCompact = 16;
@@ -286,7 +286,7 @@ abstract final class ShellTokens {
   @Deprecated('Use navRailWidth')
   static const double navRailExpandedWidth = navRailWidth;
 
-  static const double tvBodyHorizontalPadding = 48;
+  static const double tvBodyHorizontalPadding = 0;
 
   /// Set at boot by [PlatformChannel.initialize] when native leanback reports TV.
   static bool nativeAndroidTvDetected = false;

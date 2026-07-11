@@ -6,6 +6,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 
@@ -441,25 +442,11 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       return Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent));
     }
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
-            const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.white54)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-              ),
-            ),
-          ],
-        ),
+      return ShellErrorRetryPanel(
+        message: _error!,
+        onRetry: _load,
+        statusIcon: Icons.error_outline,
+        buttonIcon: Icons.refresh,
       );
     }
     if (_provider == _DataProvider.damiTv) return _buildDamiTvBody();

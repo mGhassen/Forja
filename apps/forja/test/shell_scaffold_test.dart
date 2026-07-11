@@ -312,8 +312,8 @@ void main() {
     expect(bodyBox.size.width, 1200 - ShellTokens.navRailWidth);
   });
 
-  testWidgets('ShellScaffold TV profile applies overscan inset once', (tester) async {
-    const tvInset = ShellTokens.tvBodyHorizontalPadding;
+  testWidgets('ShellScaffold TV profile applies system overscan inset once', (tester) async {
+    const systemOverscan = 24.0;
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -321,7 +321,7 @@ void main() {
         desktopScaffold(),
         profile: ShellProfile.tv,
         size: const Size(1920, 1080),
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: systemOverscan),
       ),
     );
     await tester.pumpAndSettle();
@@ -329,12 +329,12 @@ void main() {
     final bodyBox = tester.renderObject<RenderBox>(find.byType(ShellBody));
     expect(
       bodyBox.size.width,
-      1920 - ShellTokens.navRailWidth - tvInset * 2,
+      1920 - ShellTokens.navRailWidth - systemOverscan * 2,
     );
 
     final railBox =
         tester.renderObject<RenderBox>(find.byType(ShellNavRail));
-    expect(railBox.localToGlobal(Offset.zero).dx, tvInset);
+    expect(railBox.localToGlobal(Offset.zero).dx, systemOverscan);
   });
 
   testWidgets('ShellScaffold hides rail when hideGlobalNav is true', (tester) async {

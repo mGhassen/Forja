@@ -44,11 +44,7 @@ class ShellSearchBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppTheme.current.bgCard.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: showBrowsePlaceholder
-                  ? Colors.white.withValues(alpha: 0.35)
-                  : Colors.white.withValues(alpha: 0.08),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: Stack(
             alignment: Alignment.centerLeft,
@@ -86,7 +82,6 @@ class ShellSearchBar extends StatelessWidget {
                     active: true,
                     placeholder: hintText,
                     hintStyle: hintStyle,
-                    caretColor: Colors.white,
                     caretHeight: 20,
                   ),
                 ),

@@ -239,7 +239,8 @@ class _HubHeroMainColumn extends StatelessWidget {
   static const _titleBlockHeight = 96.0;
   static const _subtitleBlockHeight = 26.0;
   static const _genreBlockHeight = 30.0;
-  static const _metaBlockHeight = 32.0;
+  static const _metaBlockHeight = 24.0;
+  static const _metaBlockHeightWrapped = 40.0;
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
   static const _progressBlockHeight = 36.0;
@@ -270,15 +271,17 @@ class _HubHeroMainColumn extends StatelessWidget {
     required bool showSubtitle,
     required bool showGenres,
     required bool showOverview,
+    required bool showProgress,
+    required bool singleLineMeta,
   }) {
-    var used = _titleBlockHeight + 14 + _metaBlockHeight;
+    final metaHeight =
+        singleLineMeta ? _metaBlockHeight : _metaBlockHeightWrapped;
+    var used = _titleBlockHeight + 14 + metaHeight;
     if (showSubtitle) used += 6 + _subtitleBlockHeight;
     if (showGenres) used += 10 + _genreBlockHeight;
     if (showOverview) used += _overviewGap + _overviewSlotHeight;
     if (actionRow != null) used += _actionGap + ShellTokens.shellButtonHeight;
-    if (positionMs != null && durationMs != null && durationMs! > 0) {
-      used += 14 + _progressBlockHeight;
-    }
+    if (showProgress) used += 14 + _progressBlockHeight;
     return used;
   }
 
@@ -289,12 +292,16 @@ class _HubHeroMainColumn extends StatelessWidget {
     var showSubtitle = _hasSubtitle;
     var showGenres = genres.isNotEmpty;
     var showOverview = overview.isNotEmpty;
+    var showProgress =
+        positionMs != null && durationMs != null && durationMs! > 0;
 
     if (bounded) {
       if (_usedHeight(
             showSubtitle: showSubtitle,
             showGenres: showGenres,
             showOverview: showOverview,
+            showProgress: showProgress,
+            singleLineMeta: true,
           ) >
           maxHeight!) {
         showOverview = false;
@@ -303,6 +310,8 @@ class _HubHeroMainColumn extends StatelessWidget {
             showSubtitle: showSubtitle,
             showGenres: showGenres,
             showOverview: showOverview,
+            showProgress: showProgress,
+            singleLineMeta: true,
           ) >
           maxHeight!) {
         showGenres = false;
@@ -311,15 +320,29 @@ class _HubHeroMainColumn extends StatelessWidget {
             showSubtitle: showSubtitle,
             showGenres: showGenres,
             showOverview: showOverview,
+            showProgress: showProgress,
+            singleLineMeta: true,
           ) >
           maxHeight!) {
         showSubtitle = false;
       }
+      if (_usedHeight(
+            showSubtitle: showSubtitle,
+            showGenres: showGenres,
+            showOverview: showOverview,
+            showProgress: showProgress,
+            singleLineMeta: true,
+          ) >
+          maxHeight!) {
+        showProgress = false;
+      }
     }
 
-    return SizedBox(
-      width: maxContentWidth,
-      child: Column(
+    return ClipRect(
+      child: SizedBox(
+        width: maxContentWidth,
+        height: bounded ? maxHeight : null,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -358,7 +381,11 @@ class _HubHeroMainColumn extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-          HubHeroMetaLine(parts: metaParts, rating: rating),
+          HubHeroMetaLine(
+            parts: metaParts,
+            rating: rating,
+            singleLine: bounded,
+          ),
           if (showOverview) ...[
             const SizedBox(height: _overviewGap),
             SizedBox(
@@ -368,6 +395,8 @@ class _HubHeroMainColumn extends StatelessWidget {
                             showSubtitle: showSubtitle,
                             showGenres: showGenres,
                             showOverview: false,
+                            showProgress: showProgress,
+                            singleLineMeta: bounded,
                           ) -
                           _overviewGap)
                       .clamp(48.0, _overviewSlotHeight)
@@ -387,7 +416,7 @@ class _HubHeroMainColumn extends StatelessWidget {
             const SizedBox(height: _actionGap),
             actionRow!,
           ],
-          if (positionMs != null && durationMs != null && durationMs! > 0) ...[
+          if (showProgress) ...[
             const SizedBox(height: 14),
             SizedBox(
               width: 220,
@@ -398,6 +427,7 @@ class _HubHeroMainColumn extends StatelessWidget {
             ),
           ],
         ],
+      ),
       ),
     );
   }
@@ -450,35 +480,72 @@ class HubHeroTitle extends StatelessWidget {
 }
 
 class HubHeroMetaLine extends StatelessWidget {
-  const HubHeroMetaLine({super.key, required this.parts, this.rating});
+  const HubHeroMetaLine({
+    super.key,
+    required this.parts,
+    this.rating,
+    this.singleLine = false,
+  });
 
   final List<String> parts;
   final double? rating;
+  final bool singleLine;
 
   @override
   Widget build(BuildContext context) {
+    final textParts = parts.where((p) => p.trim().isNotEmpty).toList();
+    final ratingWidget = rating != null && rating! > 0
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.star_rounded, size: 16, color: Colors.amber.shade400),
+              const SizedBox(width: 4),
+              Text(
+                rating!.toStringAsFixed(1),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          )
+        : null;
+
+    if (textParts.isEmpty && ratingWidget == null) {
+      return const SizedBox.shrink();
+    }
+
+    if (singleLine) {
+      final line = textParts.join(' • ');
+      return Row(
+        children: [
+          if (line.isNotEmpty)
+            Flexible(
+              child: Text(
+                line,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          if (ratingWidget != null) ...[
+            if (line.isNotEmpty) const SizedBox(width: 12),
+            ratingWidget,
+          ],
+        ],
+      );
+    }
+
     final items = <Widget>[];
-    for (final part in parts) {
-      if (part.trim().isEmpty) continue;
+    for (final part in textParts) {
       items.add(_metaText(part));
     }
-    if (rating != null && rating! > 0) {
-      items.add(Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.star_rounded, size: 16, color: Colors.amber.shade400),
-          const SizedBox(width: 4),
-          Text(
-            rating!.toStringAsFixed(1),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ));
-    }
+    if (ratingWidget != null) items.add(ratingWidget);
     if (items.isEmpty) return const SizedBox.shrink();
 
     return Wrap(

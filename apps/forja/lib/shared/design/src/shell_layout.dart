@@ -11,8 +11,8 @@ import 'package:forja/shared/design/src/shell_tokens.dart';
 bool isTvProfile(BuildContext context) =>
     ShellScope.profileOf(context) == ShellProfile.tv;
 
-/// Leanback overscan inset — applied once in [ShellScaffold]; child [SafeArea]
-/// must not add horizontal padding again (see shell body [MediaQuery.removePadding]).
+/// System overscan inset (when the device reports padding) — applied once in
+/// [ShellScaffold]; child [SafeArea] must not add horizontal padding again.
 double shellTvSafeHorizontalInset(BuildContext context) {
   if (!isTvProfile(context)) return 0;
   return math.max(

@@ -8,6 +8,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 
 class HubSearchResult {
   const HubSearchResult({
@@ -732,36 +733,9 @@ class _HubSearchPageState extends State<HubSearchPage> {
   }
 
   Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              color: ForjaShellColors.sectionAccent,
-              size: 48,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: ForjaShellColors.cinematic.textSecondary),
-            ),
-            const SizedBox(height: 14),
-            ElevatedButton.icon(
-              onPressed: () => _performSearch(_query),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ShellErrorRetryPanel(
+      message: _error!,
+      onRetry: () => _performSearch(_query),
     );
   }
 }
