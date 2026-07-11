@@ -2229,12 +2229,7 @@ class _HomeScreenState extends State<HomeScreen>
               onTap: () => _openDetails(heroMovie),
             ),
             HeroPillIconSlot(
-              child: MyListButton.movie(
-                movie: heroMovie,
-                iconSize: 20,
-                heroPillSlot: true,
-              ),
-              tooltip: 'Add to My List',
+              child: MyListHeroPillButton.movie(movie: heroMovie),
             ),
           ],
         ),

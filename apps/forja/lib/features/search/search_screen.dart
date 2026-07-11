@@ -10,6 +10,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// A single result section that streams in dynamically.
 class _SearchSection {
@@ -92,6 +93,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   int? _pendingGridFocusIndex;
 
   List<String> _trendingHelperTitles = [];
+  bool _searchFieldEditing = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -101,8 +103,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     super.initState();
     ShellTvFocusCoordinator.registerTabDefaults(
       'search',
-      defaultFocus: () => _firstHelperFocusNode,
+      defaultFocus: () => _focusNode,
+      enterFromNavFocus: _focusSearchFieldBrowse,
     );
+    _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
     _loadProviders();
     _loadTrendingHelpers();
@@ -158,7 +162,11 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         if (_query.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            if (_tvFocus(context)) _focusFirstHelper();
+            if (_tvFocus(context) &&
+                ShellTvFocus.currentNavTabId == 'search' &&
+                !_focusNode.hasFocus) {
+              _focusSearchFieldBrowse();
+            }
           });
         }
       }
@@ -198,7 +206,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       _gridFocusedIndex = 0;
         _pendingGridFocusIndex = null;
       });
-      if (_tvFocus(context) && _trendingHelperTitles.isNotEmpty) {
+      if (_tvFocus(context) && _focusNode.hasFocus) {
+        _focusSearchFieldBrowse();
+      } else if (_tvFocus(context) && _trendingHelperTitles.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _focusFirstHelper();
         });
@@ -390,6 +400,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onSearchFieldFocusChange);
     ShellTvFocusCoordinator.clearTab('search');
     ShellBus.stremioSearchNotifier.removeListener(_onExternalSearch);
     _controller.dispose();
@@ -557,6 +568,34 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   void _focusHelperAtLast() => _focusHelperAtIndex(_helperFocusedIndex ?? 0);
 
+  void _onSearchFieldFocusChange() {
+    if (!_focusNode.hasFocus) {
+      if (_searchFieldEditing && mounted) {
+        setState(() => _searchFieldEditing = false);
+      }
+      return;
+    }
+    ShellTvFocusCoordinator.saveFocus(
+      'search',
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _focusNode),
+    );
+  }
+
+  void _focusSearchFieldBrowse() {
+    if (!_focusNode.canRequestFocus) return;
+    if (_searchFieldEditing) {
+      setState(() => _searchFieldEditing = false);
+    }
+    _focusNode.requestFocus();
+  }
+
+  void _beginSearchFieldEditing() {
+    setState(() => _searchFieldEditing = true);
+    if (!_focusNode.hasFocus) {
+      _focusNode.requestFocus();
+    }
+  }
+
   bool _focusFirstHelper() {
     if (!_firstHelperFocusNode.canRequestFocus) return false;
     _firstHelperFocusNode.requestFocus();
@@ -568,6 +607,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
         _focusFirstHelper()) {
+      return KeyEventResult.handled;
+    }
+    if (shellTvIsActivateKey(event) && !_searchFieldEditing) {
+      _beginSearchFieldEditing();
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -731,11 +774,14 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   Widget _buildSearchField(BuildContext context) {
     final tvFocus = _tvFocus(context);
+    final browseOnly = tvFocus && !_searchFieldEditing;
     return TextField(
       controller: _controller,
       focusNode: _focusNode,
       autofocus: !tvFocus,
-      canRequestFocus: !tvFocus,
+      readOnly: browseOnly,
+      showCursor: !browseOnly,
+      enableInteractiveSelection: !browseOnly,
       onChanged: _onSearchChanged,
       style: TextStyle(
         color: ForjaShellColors.textPrimary,
@@ -831,6 +877,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             tvZone: ShellTvZone.chipStrip,
             tvItemIndex: index,
             focusNode: index == 0 ? _firstHelperFocusNode : null,
+            onUpEdge: index == 0 ? _focusSearchFieldBrowse : null,
             onRightEdge: _focusResultCard,
             onFocusChange: (focused) {
               if (focused) {
@@ -880,6 +927,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           tvZone: ShellTvZone.chipStrip,
           tvItemIndex: index,
           focusNode: index == 0 ? _firstHelperFocusNode : null,
+          onUpEdge: index == 0 ? _focusSearchFieldBrowse : null,
           onFocusChange: (focused) {
             if (focused) {
               _setHelperFocusedIndex(index);

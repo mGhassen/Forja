@@ -80,20 +80,32 @@ abstract final class ShellTvFocusCoordinator {
 
   static final Map<String, FocusNode? Function()> _tabDefaultFocus = {};
   static final Map<String, VoidCallback> _tabHeroReveal = {};
+  static final Map<String, VoidCallback> _tabEnterFocus = {};
 
   /// Per-tab default focus and hero scroll — survives multi-tab mount order.
   static void registerTabDefaults(
     String tabId, {
     FocusNode? Function()? defaultFocus,
     VoidCallback? heroReveal,
+    VoidCallback? enterFromNavFocus,
   }) {
     if (defaultFocus != null) _tabDefaultFocus[tabId] = defaultFocus;
     if (heroReveal != null) _tabHeroReveal[tabId] = heroReveal;
+    if (enterFromNavFocus != null) _tabEnterFocus[tabId] = enterFromNavFocus;
   }
 
   static void unregisterTabDefaults(String tabId) {
     _tabDefaultFocus.remove(tabId);
     _tabHeroReveal.remove(tabId);
+    _tabEnterFocus.remove(tabId);
+  }
+
+  /// Nav Enter on a tab — e.g. search field browse focus (not last page memory).
+  static bool focusTabEnterFromNav(String tabId) {
+    final enter = _tabEnterFocus[tabId];
+    if (enter == null) return false;
+    enter();
+    return true;
   }
 
   // --- Nav order ---

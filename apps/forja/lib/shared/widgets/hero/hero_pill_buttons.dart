@@ -6,20 +6,30 @@ import 'package:google_fonts/google_fonts.dart';
 
 const double _kHeroPillHeight = 40;
 const double _kHeroPillIconSize = 20;
-const Color _kHeroPillForeground = Color(0xFF111827);
+const Color _kHeroPillForegroundDark = Color(0xFF111827);
 const double _kHeroPillGap = 10;
 
-BoxDecoration _heroSolidDecoration({required bool hover}) {
+Color _heroPillHoverFill({required bool pressed}) =>
+    Colors.white.withValues(alpha: pressed ? 0.24 : 0.18);
+
+BoxDecoration _heroGlassDecoration() {
   return BoxDecoration(
-    color: hover
-        ? ForjaShellColors.brandGreen.withValues(alpha: 0.92)
-        : ForjaShellColors.brandGreen,
+    color: Colors.black.withValues(alpha: 0.42),
     borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
+    border: Border.all(
+      color: Colors.white.withValues(alpha: 0.24),
+    ),
   );
 }
 
-Color _heroSegmentOverlay({required bool pressed}) =>
-    _kHeroPillForeground.withValues(alpha: pressed ? 0.14 : 0.10);
+BoxDecoration _heroFilledDecoration({
+  required Color color,
+}) {
+  return BoxDecoration(
+    color: color,
+    borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
+  );
+}
 
 BorderRadius _heroPillSlotBorderRadius({
   required bool isFirst,
@@ -32,8 +42,65 @@ BorderRadius _heroPillSlotBorderRadius({
   return BorderRadius.zero;
 }
 
-/// Hero play CTA tone — all tones share the same solid green pill chrome.
+/// Hero CTA chrome — primary green, streaming white, secondary glass.
 enum HeroPillPlayTone { primary, secondary, streaming }
+
+class _HeroPillStyle {
+  const _HeroPillStyle({
+    required this.tone,
+    required this.foreground,
+    required this.compactIconColor,
+    required this.expandedFill,
+  });
+
+  final HeroPillPlayTone tone;
+  final Color foreground;
+  final Color compactIconColor;
+  final Color expandedFill;
+
+  static _HeroPillStyle forTone(HeroPillPlayTone tone) {
+    switch (tone) {
+      case HeroPillPlayTone.primary:
+        return const _HeroPillStyle(
+          tone: HeroPillPlayTone.primary,
+          foreground: _kHeroPillForegroundDark,
+          compactIconColor: Colors.white,
+          expandedFill: ForjaShellColors.brandGreen,
+        );
+      case HeroPillPlayTone.streaming:
+        return const _HeroPillStyle(
+          tone: HeroPillPlayTone.streaming,
+          foreground: _kHeroPillForegroundDark,
+          compactIconColor: Colors.white,
+          expandedFill: Colors.white,
+        );
+      case HeroPillPlayTone.secondary:
+        return const _HeroPillStyle(
+          tone: HeroPillPlayTone.secondary,
+          foreground: Colors.white,
+          compactIconColor: Colors.white,
+          expandedFill: Colors.transparent,
+        );
+    }
+  }
+}
+
+_HeroPillStyle _styleForTone(HeroPillPlayTone tone) =>
+    _HeroPillStyle.forTone(tone);
+
+BoxDecoration _decorationFor({
+  required _HeroPillStyle style,
+  required double morph,
+}) {
+  if (style.tone == HeroPillPlayTone.secondary) {
+    return _heroGlassDecoration();
+  }
+  final glass = _heroGlassDecoration();
+  final filled = _heroFilledDecoration(color: style.expandedFill);
+  if (morph <= 0) return glass;
+  if (morph >= 1) return filled;
+  return BoxDecoration.lerp(glass, filled, morph) ?? filled;
+}
 
 /// Primary hero CTA — pill with optional icon + label (Play, Watch Now, Resume).
 class HeroPillPlayButton extends StatelessWidget {
@@ -60,14 +127,14 @@ class HeroPillPlayButton extends StatelessWidget {
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
-  bool _tvCompactUnfocused(ShellInputPolicy policy, bool focused) {
-    if (!policy.useFocusableMoodChips || focused) return false;
-    return true;
-  }
+  HeroPillPlayTone get _tone =>
+      tone ?? (primary ? HeroPillPlayTone.primary : HeroPillPlayTone.secondary);
 
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
+    final resolvedTone = _tone;
+    final style = _styleForTone(resolvedTone);
     final leading = iconWidget ??
         (icon != null ? Icon(icon, size: _kHeroPillIconSize) : null);
     final useTvCompact = policy.useFocusableMoodChips;
@@ -83,12 +150,13 @@ class HeroPillPlayButton extends StatelessWidget {
         pressScale: 0.97,
         builder: (active, pressed) {
           return _HeroPillPlaySurface(
+            style: style,
             active: active,
-            compact: _tvCompactUnfocused(policy, active),
+            pressed: pressed,
+            compact: useTvCompact && !active,
             useTvCompact: useTvCompact,
             label: label,
             leading: leading,
-            decoration: _heroSolidDecoration(hover: active),
           );
         },
       ),
@@ -98,20 +166,22 @@ class HeroPillPlayButton extends StatelessWidget {
 
 class _HeroPillPlaySurface extends StatefulWidget {
   const _HeroPillPlaySurface({
+    required this.style,
     required this.active,
+    required this.pressed,
     required this.compact,
     required this.useTvCompact,
     required this.label,
     required this.leading,
-    required this.decoration,
   });
 
+  final _HeroPillStyle style;
   final bool active;
+  final bool pressed;
   final bool compact;
   final bool useTvCompact;
   final String label;
   final Widget? leading;
-  final BoxDecoration decoration;
 
   @override
   State<_HeroPillPlaySurface> createState() => _HeroPillPlaySurfaceState();
@@ -168,37 +238,84 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
     super.dispose();
   }
 
-  Widget _buildPillContent() {
+  double get _morph =>
+      widget.useTvCompact ? _expand.value : 1.0;
+
+  Color _iconColor(double morph) {
+    if (!widget.useTvCompact || morph >= 1) return widget.style.foreground;
+    return Color.lerp(widget.style.compactIconColor, widget.style.foreground, morph) ??
+        widget.style.foreground;
+  }
+
+  Widget _buildShell({
+    required double morph,
+    required double labelOpacity,
+    required Widget child,
+  }) {
+    return Container(
+      height: _kHeroPillHeight,
+      clipBehavior: Clip.antiAlias,
+      decoration: _decorationFor(style: widget.style, morph: morph),
+      foregroundDecoration: widget.active
+          ? BoxDecoration(
+              color: _heroPillHoverFill(pressed: widget.pressed),
+              borderRadius: BorderRadius.circular(_kHeroPillHeight / 2),
+            )
+          : null,
+      child: child,
+    );
+  }
+
+  Widget _buildPillContent({
+    required double morph,
+    required double labelOpacity,
+    required bool showLabel,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (widget.leading != null) ...[
-          SizedBox(
-            width: _kHeroPillIconSize,
-            height: _kHeroPillIconSize,
-            child: Center(
-              child: IconTheme(
-                data: const IconThemeData(
-                  size: _kHeroPillIconSize,
-                  color: _kHeroPillForeground,
+        SizedBox(
+          width: widget.useTvCompact ? _kHeroPillHeight : _kHeroPillIconSize,
+          height: _kHeroPillHeight,
+          child: Center(
+            child: widget.leading == null
+                ? null
+                : IconTheme(
+                    data: IconThemeData(
+                      size: _kHeroPillIconSize,
+                      color: _iconColor(morph),
+                    ),
+                    child: widget.leading!,
+                  ),
+          ),
+        ),
+        if (showLabel)
+          ClipRect(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              widthFactor: widget.useTvCompact ? morph : 1,
+              child: Opacity(
+                opacity: widget.useTvCompact ? labelOpacity : 1,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: widget.useTvCompact ? 0 : 8,
+                    right: 18,
+                  ),
+                  child: Text(
+                    widget.label,
+                    style: GoogleFonts.inter(
+                      color: widget.style.foreground,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                      height: 1.0,
+                    ),
+                  ),
                 ),
-                child: widget.leading!,
               ),
             ),
           ),
-          const SizedBox(width: 8),
-        ],
-        Text(
-          widget.label,
-          style: GoogleFonts.inter(
-            color: _kHeroPillForeground,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-            height: 1.0,
-          ),
-        ),
       ],
     );
   }
@@ -206,68 +323,30 @@ class _HeroPillPlaySurfaceState extends State<_HeroPillPlaySurface>
   @override
   Widget build(BuildContext context) {
     if (!widget.useTvCompact) {
-      return Container(
-        height: _kHeroPillHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        decoration: widget.decoration,
-        child: _buildPillContent(),
+      return _buildShell(
+        morph: 1,
+        labelOpacity: 1,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: _buildPillContent(
+            morph: 1,
+            labelOpacity: 1,
+            showLabel: true,
+          ),
+        ),
       );
     }
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        return Container(
-          height: _kHeroPillHeight,
-          clipBehavior: Clip.antiAlias,
-          decoration: widget.decoration,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: _kHeroPillHeight,
-                height: _kHeroPillHeight,
-                child: Center(
-                  child: widget.leading == null
-                      ? null
-                      : IconTheme(
-                          data: const IconThemeData(
-                            size: _kHeroPillIconSize,
-                            color: _kHeroPillForeground,
-                          ),
-                          child: widget.leading!,
-                        ),
-                ),
-              ),
-              ClipRect(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: _expand.value,
-                  child: Opacity(
-                    opacity: _labelOpacity.value,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 18),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (widget.leading != null) const SizedBox(width: 8),
-                          Text(
-                            widget.label,
-                            style: GoogleFonts.inter(
-                              color: _kHeroPillForeground,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
-                              height: 1.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+        return _buildShell(
+          morph: _morph,
+          labelOpacity: _labelOpacity.value,
+          child: _buildPillContent(
+            morph: _morph,
+            labelOpacity: _labelOpacity.value,
+            showLabel: true,
           ),
         );
       },
@@ -286,7 +365,7 @@ class HeroMagnetIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final iconTheme = IconTheme.of(context);
     final resolvedSize = size ?? iconTheme.size ?? _kHeroPillIconSize;
-    final resolvedColor = color ?? iconTheme.color ?? _kHeroPillForeground;
+    final resolvedColor = color ?? iconTheme.color ?? _kHeroPillForegroundDark;
     return SizedBox(
       width: resolvedSize,
       height: resolvedSize,
@@ -365,13 +444,17 @@ class HeroPillIconSlot {
     this.icon,
     this.onTap,
     this.tooltip,
+    this.label,
     this.child,
   });
 
   final IconData? icon;
   final VoidCallback? onTap;
   final String? tooltip;
+  final String? label;
   final Widget? child;
+
+  String get resolvedLabel => label ?? tooltip ?? '';
 }
 
 /// Horizontal hero CTA cluster — ordered left→right on TV, no escape to catalog.
@@ -396,7 +479,7 @@ class HeroPillActionRow extends StatelessWidget {
   }
 }
 
-/// Secondary hero actions as individual solid pills (info, add, etc.).
+/// Secondary hero actions — each slot uses the same expand + label animation.
 class HeroPillIconGroup extends StatelessWidget {
   const HeroPillIconGroup({
     super.key,
@@ -405,8 +488,11 @@ class HeroPillIconGroup extends StatelessWidget {
   });
 
   final List<HeroPillIconSlot> slots;
-  /// When set (TV), pins D-pad order for each slot starting at this index.
   final int? tvFocusOrderStart;
+
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    return shellTrapTvFocusHorizontalEdge(node, event, trapRight: true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -422,6 +508,7 @@ class HeroPillIconGroup extends StatelessWidget {
             focusOrder: tvFocusOrderStart != null
                 ? NumericFocusOrder((tvFocusOrderStart! + i).toDouble())
                 : null,
+            onKeyEvent: _onKeyEvent,
           ),
         ],
       ],
@@ -441,7 +528,7 @@ class HeroPillSegment<T> {
   final IconData icon;
 }
 
-/// Segmented hero pill (e.g. SUB | DUB) — solid green shell like [HeroPillPlayButton].
+/// Segmented hero pill (e.g. SUB | DUB) — glass shell, white hover on segment.
 class HeroPillSegmentedChoice<T> extends StatelessWidget {
   const HeroPillSegmentedChoice({
     super.key,
@@ -461,7 +548,7 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
     return Container(
       height: _kHeroPillHeight,
       clipBehavior: Clip.antiAlias,
-      decoration: _heroSolidDecoration(hover: false),
+      decoration: _heroGlassDecoration(),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -470,7 +557,7 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
               Container(
                 width: 1,
                 height: 18,
-                color: _kHeroPillForeground.withValues(alpha: 0.18),
+                color: Colors.white.withValues(alpha: 0.22),
               ),
             _HeroPillSegmentButton<T>(
               segment: segments[i],
@@ -504,8 +591,8 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foreground = selected
-        ? _kHeroPillForeground
-        : _kHeroPillForeground.withValues(alpha: 0.55);
+        ? Colors.white
+        : Colors.white.withValues(alpha: 0.55);
 
     return ForjaInteractive(
       onTap: onTap,
@@ -521,7 +608,7 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: active
-                ? _heroSegmentOverlay(pressed: pressed)
+                ? _heroPillHoverFill(pressed: pressed)
                 : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(
               isFirst: isFirst,
@@ -554,14 +641,12 @@ class _HeroPillIconSlotButton extends StatelessWidget {
   const _HeroPillIconSlotButton({
     required this.slot,
     this.focusOrder,
+    this.onKeyEvent,
   });
 
   final HeroPillIconSlot slot;
   final FocusOrder? focusOrder;
-
-  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
-    return shellTrapTvFocusHorizontalEdge(node, event, trapRight: true);
-  }
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   Widget _wrapOrder(Widget child) {
     final order = focusOrder;
@@ -571,54 +656,18 @@ class _HeroPillIconSlotButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = slot.child ??
-        Icon(
-          slot.icon,
-          size: _kHeroPillIconSize,
-          color: _kHeroPillForeground,
-        );
-
-    if (slot.child != null && slot.onTap == null) {
-      return _wrapOrder(
-        SizedBox(
-          width: _kHeroPillHeight,
-          height: _kHeroPillHeight,
-          child: Center(child: content),
-        ),
-      );
+    if (slot.child != null) {
+      return _wrapOrder(slot.child!);
     }
 
-    if (slot.onTap == null) {
-      return _wrapOrder(
-        SizedBox(
-          width: _kHeroPillHeight,
-          height: _kHeroPillHeight,
-          child: Center(child: content),
-        ),
-      );
-    }
-
-    final button = ForjaInteractive(
-      onTap: slot.onTap,
-      hoverScale: 1.03,
-      pressScale: 0.97,
-      onKeyEvent: _onKeyEvent,
-      builder: (hover, pressed) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOutCubic,
-          width: _kHeroPillHeight,
-          height: _kHeroPillHeight,
-          alignment: Alignment.center,
-          decoration: _heroSolidDecoration(hover: hover || pressed),
-          child: content,
-        );
-      },
+    return _wrapOrder(
+      HeroPillPlayButton(
+        label: slot.resolvedLabel,
+        icon: slot.icon,
+        tone: HeroPillPlayTone.secondary,
+        onTap: slot.onTap,
+        onKeyEvent: onKeyEvent,
+      ),
     );
-
-    if (slot.tooltip != null) {
-      return _wrapOrder(Tooltip(message: slot.tooltip!, child: button));
-    }
-    return _wrapOrder(button);
   }
 }

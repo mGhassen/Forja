@@ -213,12 +213,7 @@ class MediaDetailsTorrentActionRow extends StatelessWidget {
       HeroPillIconGroup(
         slots: [
           HeroPillIconSlot(
-            child: MyListButton.movie(
-              movie: movie,
-              iconSize: 20,
-              heroPillSlot: true,
-            ),
-            tooltip: 'Add to My List',
+            child: MyListHeroPillButton.movie(movie: movie),
           ),
           if (showPlay)
             HeroPillIconSlot(
