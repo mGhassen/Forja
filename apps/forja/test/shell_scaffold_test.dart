@@ -20,10 +20,11 @@ Widget _wrapShellScope(
   Widget child, {
   ShellProfile profile = ShellProfile.desktop,
   Size size = const Size(1200, 800),
+  EdgeInsets padding = EdgeInsets.zero,
 }) {
   return MaterialApp(
     home: MediaQuery(
-      data: MediaQueryData(size: size),
+      data: MediaQueryData(size: size, padding: padding),
       child: ShellScope(
         profile: profile,
         config: shellPlatformConfigFor(profile),
@@ -309,6 +310,31 @@ void main() {
 
     final bodyBox = tester.renderObject<RenderBox>(find.byType(ShellBody));
     expect(bodyBox.size.width, 1200 - ShellTokens.navRailWidth);
+  });
+
+  testWidgets('ShellScaffold TV profile applies overscan inset once', (tester) async {
+    const tvInset = ShellTokens.tvBodyHorizontalPadding;
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      _wrapShellScope(
+        desktopScaffold(),
+        profile: ShellProfile.tv,
+        size: const Size(1920, 1080),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final bodyBox = tester.renderObject<RenderBox>(find.byType(ShellBody));
+    expect(
+      bodyBox.size.width,
+      1920 - ShellTokens.navRailWidth - tvInset * 2,
+    );
+
+    final railBox =
+        tester.renderObject<RenderBox>(find.byType(ShellNavRail));
+    expect(railBox.localToGlobal(Offset.zero).dx, tvInset);
   });
 
   testWidgets('ShellScaffold hides rail when hideGlobalNav is true', (tester) async {

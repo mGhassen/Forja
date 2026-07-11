@@ -8,6 +8,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
@@ -63,6 +64,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   late final PageController _controller =
       PageController(initialPage: _loopStart);
   final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'hub-hero-play');
+  final FocusNode _tvSearchFocus = FocusNode(debugLabel: 'hub-hero-search');
   Timer? _timer;
   int _index = 0;
   bool _tvHeroInitialFocusDone = false;
@@ -76,6 +78,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   void initState() {
     super.initState();
     ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
+    ShellTvFocus.hubHeroSearch = _tvSearchFocus;
     _startTimer();
   }
 
@@ -93,8 +96,12 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     if (ShellTvFocus.homeHeroPlay == _tvHeroPlayFocus) {
       ShellTvFocus.homeHeroPlay = null;
     }
+    if (ShellTvFocus.hubHeroSearch == _tvSearchFocus) {
+      ShellTvFocus.hubHeroSearch = null;
+    }
     _controller.dispose();
     _tvHeroPlayFocus.dispose();
+    _tvSearchFocus.dispose();
     super.dispose();
   }
 
@@ -205,6 +212,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     final topBarBleed = MediaQuery.paddingOf(context).top;
     final imageHeight = _snapToDevicePixels(backdropHeight + topBarBleed);
     final textTop = topBarBleed + ShellTokens.shellHeaderTopPadding;
+    final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     return SizedBox(
       height: imageHeight,
@@ -223,13 +231,35 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             Positioned(
               top: textTop,
               right: shellHomeSectionHorizontalPadding(context),
-              child: ForjaPlainIcon(
-                icon: Icons.search_rounded,
-                color: Colors.white,
-                size: shellScaled(context, 30).clamp(20.0, 30.0),
-                hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
-                onTap: widget.onSearch,
-              ),
+              child: tvNav
+                  ? shellFocusableTap(
+                      context: context,
+                      onTap: widget.onSearch!,
+                      borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
+                      scaleOnFocus: ShellTokens.focusActiveScale,
+                      focusNode: _tvSearchFocus,
+                      tvTabId: widget.tvTabId,
+                      tvZone: ShellTvZone.topBar,
+                      onDownEdge: ShellTvFocus.focusHomeHeroPlay,
+                      child: SizedBox(
+                        height: shellScaled(context, 34).clamp(24.0, 34.0),
+                        width: shellScaled(context, 44).clamp(32.0, 44.0),
+                        child: Center(
+                          child: Icon(
+                            Icons.search_rounded,
+                            color: Colors.white,
+                            size: shellScaled(context, 30).clamp(20.0, 30.0),
+                          ),
+                        ),
+                      ),
+                    )
+                  : ForjaPlainIcon(
+                      icon: Icons.search_rounded,
+                      color: Colors.white,
+                      size: shellScaled(context, 30).clamp(20.0, 30.0),
+                      hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
+                      onTap: widget.onSearch,
+                    ),
             ),
           Positioned(
             left: shellHomeSectionHorizontalPadding(context),
@@ -639,6 +669,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       onTap: slide.onPlay,
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
       tvTabId: tvNav ? widget.tvTabId : null,
+      onUpEdge: tvNav ? ShellTvFocus.focusHubHeroSearch : null,
       onKeyEvent: tvNav
           ? (node, event) {
               if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -661,6 +692,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         HeroPillIconGroup(
           tvFocusOrderStart: tvNav ? 2 : null,
           tvTabId: tvNav ? widget.tvTabId : null,
+          onUpEdge: tvNav ? ShellTvFocus.focusHubHeroSearch : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,

@@ -291,6 +291,8 @@ class _HomeTopBarState extends State<HomeTopBar> {
       },
       child: SafeArea(
         bottom: false,
+        left: false,
+        right: false,
         child: SizedBox(
           height: ShellTokens.homeTopBarHeight,
           child: Padding(

@@ -28,7 +28,7 @@ Download builds from [GitHub Releases](https://github.com/mGhassen/Forja/release
 ## Platform notes
 
 - **Android:** Picture-in-picture, background music playback, immersive navigation
-- **Android TV:** Leanback launcher entry, nav-rail shell (`ShellHost` TV profile), D-pad focus on in-scope tabs, built-in player remote keys (play/pause, seek ±10s, Back). First-run **Play sources** default to **Webstreaming** only (green hero **Play**); enable Direct torrent or Stremio under **Settings → Playback** for the **Sources** panel. WebViews on TV disable Chromium GPU at process start (`ForjaApplication`) and use software compositing in Dart — trailer and live embeds may be slower than on phone/desktop.
+- **Android TV:** Leanback launcher entry, nav-rail shell (`ShellHost` TV profile), D-pad focus on in-scope tabs, built-in player remote keys (play/pause, seek ±10s, Back). First-run **Play sources** default to **Webstreaming** only (green hero **Play**); enable Direct torrent or Stremio under **Settings → Playback** for the **Sources** panel. **Stream play** uses Rust providers (WebStreamr, Vidsrc, 111477) — headless WebView sniffers are disabled on TV. Embedded WebViews (trailers, live) need software GPU on emulators — use [`scripts/atv-run.sh`](../../scripts/atv-run.sh).
 - **macOS:** Hidden title bar with draggable window chrome
 - **Windows / Linux:** Custom window caption on desktop
 
@@ -46,7 +46,13 @@ flutter emulators --launch <tv_avd_id>
 flutter run -d <tv_avd_id>
 ```
 
-Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md) (`I25-M01`–`M08`). WebView crash workaround: [issue 031](../../issues/031-[workaround]-android-tv-webview-gles-crash.md) (`I31-A01` smoke on TV AVD).
+Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md) (`I25-M01`–`M08`). WebView GLES workaround: [issue 031](../../issues/031-[workaround]-android-tv-webview-gles-crash.md). Prefer **`scripts/atv-run.sh`** on emulator (sets `--disable-gpu` for embedded WebViews):
+
+```bash
+./scripts/atv-run.sh emulator-5554
+```
+
+Stream play on TV uses WebStreamr/Vidsrc — configure at least one in Settings → Stream providers.
 
 ### Phone / generic emulator (layout only)
 

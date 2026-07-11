@@ -123,6 +123,12 @@ class StreamExtractor {
     String? iframeWrapperBaseUrl,
     bool Function()? isCancelled,
   }) async {
+    if (isAndroidTvHeadlessWebViewBlocked) {
+      debugPrint(
+        '[StreamExtractor] Headless WebView blocked on Android TV (use WebStreamr/Vidsrc)',
+      );
+      return null;
+    }
     // 0. Ensure previous instance is fully cleaned up before starting new one
     await _cleanup();
     _cancelled = false;

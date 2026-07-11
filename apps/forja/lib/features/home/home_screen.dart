@@ -11,6 +11,8 @@ import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
+import 'package:forja/shared/playback/tv_stream_fallback.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shell/app_router.dart';
@@ -2196,16 +2198,12 @@ class _HomeScreenState extends State<HomeScreen>
       label: 'Play',
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
       tvTabId: tvNav ? 'home' : null,
+      onUpEdge: tvNav ? ShellTvFocus.focusHomeMenu : null,
       onKeyEvent: policy.heroPlayAutoFocus
           ? (node, event) {
               if (event is! KeyDownEvent) return KeyEventResult.ignored;
               if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
                 if (ShellTvFocusCoordinator.focusActiveNavTab()) {
-                  return KeyEventResult.handled;
-                }
-              }
-              if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                if (ShellTvFocus.focusHomeSearch()) {
                   return KeyEventResult.handled;
                 }
               }
@@ -2224,6 +2222,7 @@ class _HomeScreenState extends State<HomeScreen>
         HeroPillIconGroup(
           tvFocusOrderStart: tvNav ? 2 : null,
           tvTabId: tvNav ? 'home' : null,
+          onUpEdge: tvNav ? ShellTvFocus.focusHomeMenu : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,
@@ -2611,40 +2610,86 @@ Future<void> resumePlaybackFromHistory(
         throw Exception('Provider $sourceId not available');
       }
 
-      debugPrint(
-        '[Resume] Re-extracting stream for $title (TMDB: $tmdbId, S:$season, E:$episode)',
-      );
-      final url = season != null && episode != null
-          ? provider['tv'](tmdbId, season, episode)
-          : provider['movie'](tmdbId);
+      if (PlatformInfo.isAndroidTv) {
+        debugPrint('[Resume] Android TV — Rust providers only (no WebView sniff)');
+        final movie = Movie(
+          id: tmdbId,
+          title: title,
+          posterPath: posterPath,
+          backdropPath: '',
+          overview: '',
+          releaseDate: '',
+          voteAverage: 0,
+          mediaType: season != null ? 'tv' : 'movie',
+          genres: [],
+          imdbId: item['imdbId']?.toString(),
+        );
+        final fallback = await TvStreamFallback.resolve(
+          movie: movie,
+          season: season ?? 1,
+          episode: episode ?? 1,
+        );
+        streamUrl = fallback?.streamUrl;
+        if (fallback != null) activeProvider = 'webstreamr';
+      } else {
+        debugPrint(
+          '[Resume] Re-extracting stream for $title (TMDB: $tmdbId, S:$season, E:$episode)',
+        );
+        final url = season != null && episode != null
+            ? provider['tv'](tmdbId, season, episode)
+            : provider['movie'](tmdbId);
 
-      final extractor = StreamExtractor();
-      final result =
-          await extractor.extract(url, timeout: const Duration(seconds: 20));
-      streamUrl = result?.url;
+        final extractor = StreamExtractor();
+        final result =
+            await extractor.extract(url, timeout: const Duration(seconds: 20));
+        streamUrl = result?.url;
+      }
     } else if (method == 'amri') {
       activeProvider = 'AMRI';
-      debugPrint(
-        '[Resume] Re-extracting AMRI for $title (TMDB: $tmdbId, S:$season, E:$episode)',
-      );
-      final amriExtractor = AmriExtractor(
-        onLog: (message) => debugPrint('[AMRI Resume] $message'),
-      );
+      if (PlatformInfo.isAndroidTv) {
+        debugPrint('[Resume] Android TV — AMRI WebView blocked, trying Rust providers');
+        final movie = Movie(
+          id: tmdbId,
+          title: title,
+          posterPath: posterPath,
+          backdropPath: '',
+          overview: '',
+          releaseDate: '',
+          voteAverage: 0,
+          mediaType: season != null ? 'tv' : 'movie',
+          genres: [],
+          imdbId: item['imdbId']?.toString(),
+        );
+        final fallback = await TvStreamFallback.resolve(
+          movie: movie,
+          season: season ?? 1,
+          episode: episode ?? 1,
+        );
+        streamUrl = fallback?.streamUrl;
+        if (fallback != null) activeProvider = 'webstreamr';
+      } else {
+        debugPrint(
+          '[Resume] Re-extracting AMRI for $title (TMDB: $tmdbId, S:$season, E:$episode)',
+        );
+        final amriExtractor = AmriExtractor(
+          onLog: (message) => debugPrint('[AMRI Resume] $message'),
+        );
 
-      final year = item['year']?.toString() ?? '';
+        final year = item['year']?.toString() ?? '';
 
-      final sourcesData = await amriExtractor.extractSources(
-        tmdbId.toString(),
-        title,
-        year,
-        season: season,
-        episode: episode,
-      );
+        final sourcesData = await amriExtractor.extractSources(
+          tmdbId.toString(),
+          title,
+          year,
+          season: season,
+          episode: episode,
+        );
 
-      if (sourcesData['sources'] != null &&
-          sourcesData['sources'].isNotEmpty) {
-        final sources = sourcesData['sources'] as List;
-        streamUrl = sources.first['url'] as String?;
+        if (sourcesData['sources'] != null &&
+            sourcesData['sources'].isNotEmpty) {
+          final sources = sourcesData['sources'] as List;
+          streamUrl = sources.first['url'] as String?;
+        }
       }
     } else if (method == 'torrent') {
       magnetLink = savedMagnetLink;

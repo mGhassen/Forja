@@ -52,6 +52,10 @@ class AmriExtractor {
     bool Function()? isCancelled,
     Duration timeout = const Duration(seconds: 30),
   }) async {
+    if (isAndroidTvHeadlessWebViewBlocked) {
+      onLog('Headless WebView blocked on Android TV');
+      return {'sources': []};
+    }
     _cancelled = false;
     bool cancelled() => _cancelled || (isCancelled?.call() ?? false);
     _sourcesCompleter = Completer<Map<String, dynamic>>();

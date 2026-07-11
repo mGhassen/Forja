@@ -62,6 +62,25 @@ abstract final class ShellTvFocus {
     node.requestFocus();
     return true;
   }
+
+  /// Hub hero search (anime, asian drama, …) — one active tab at a time.
+  static FocusNode? hubHeroSearch;
+
+  static bool focusHubHeroSearch() {
+    final node = hubHeroSearch;
+    if (node == null || !node.canRequestFocus) return false;
+    node.requestFocus();
+    return true;
+  }
+
+  /// Handle TV UP before directional focus can land on a stray ancestor.
+  static KeyEventResult onArrowUp(KeyEvent event, bool Function() onUp) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey != LogicalKeyboardKey.arrowUp) {
+      return KeyEventResult.ignored;
+    }
+    return onUp() ? KeyEventResult.handled : KeyEventResult.ignored;
+  }
 }
 
 /// Swallow horizontal D-pad at a row edge so focus stays in the hero / chip strip.

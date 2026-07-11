@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:forja/shared/webview/forja_webview_settings.dart';
+import 'package:rust/rust.dart';
 
 void main() {
   group('patchTvWebViewSettings', () {
@@ -22,6 +24,22 @@ void main() {
       expect(patched.hardwareAcceleration, isFalse);
       expect(patched.javaScriptEnabled, isTrue);
       expect(identical(patched, settings), isFalse);
+    });
+  });
+
+  group('isAndroidTvHeadlessWebViewBlocked', () {
+    tearDown(() {
+      SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    });
+
+    test('false on phone profile', () {
+      SettingsService.configurePlatformProfile(PlatformProfile.phone);
+      expect(isAndroidTvHeadlessWebViewBlocked, isFalse);
+    });
+
+    test('true on androidTv profile', () {
+      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+      expect(isAndroidTvHeadlessWebViewBlocked, isTrue);
     });
   });
 

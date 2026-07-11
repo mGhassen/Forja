@@ -9,7 +9,9 @@ import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
@@ -554,7 +556,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       return;
     }
 
-    final providers = _orderedWebstreamingProviders;
+    final providers = PlatformInfo.isAndroidTv
+        ? TvStreamFallback.prioritizeProviders(_orderedWebstreamingProviders)
+        : _orderedWebstreamingProviders;
     var found = false;
     var isFirst = true;
 

@@ -11,6 +11,24 @@ import 'package:forja/shared/design/src/shell_tokens.dart';
 bool isTvProfile(BuildContext context) =>
     ShellScope.profileOf(context) == ShellProfile.tv;
 
+/// Leanback overscan inset — applied once in [ShellScaffold]; child [SafeArea]
+/// must not add horizontal padding again (see shell body [MediaQuery.removePadding]).
+double shellTvSafeHorizontalInset(BuildContext context) {
+  if (!isTvProfile(context)) return 0;
+  return math.max(
+    MediaQuery.paddingOf(context).left,
+    ShellTokens.tvBodyHorizontalPadding,
+  );
+}
+
+double shellTvSafeHorizontalInsetRight(BuildContext context) {
+  if (!isTvProfile(context)) return 0;
+  return math.max(
+    MediaQuery.paddingOf(context).right,
+    ShellTokens.tvBodyHorizontalPadding,
+  );
+}
+
 /// Wide hub/search/mylist layout (nav-rail spacing, two-column search, dense grids).
 bool shellUsesWideLayout(BuildContext context) {
   final profile = ShellScope.profileOf(context);

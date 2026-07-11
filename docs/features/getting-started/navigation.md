@@ -28,6 +28,7 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 ## Android TV
 
 - Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
+- **Overscan:** 48px horizontal safe inset at the shell (nav rail + body share one margin; tab screens do not double-apply `SafeArea` left/right)
 - **Leanback density:** **115px** poster cards, 6px row gaps, tight section chrome — hero + first row peek like desktop, multiple rows visible when scrolling
 - **Nav rail:** UP/DOWN only move between nav items (trap at Home and Settings); LEFT is trapped; **RIGHT** returns to the **active** tab’s last focus (row, hero, or default) without switching tabs; **Enter/Select** switches to the focused nav tab and restores that tab’s focus; **Back** pops overlays and routes first, then on tab root focuses the **active** nav tab; **Back** again on nav shows **Press back again to exit** — a second **Back** within 2s exits the app
 - **Catalog rows:** LEFT/RIGHT move within the row only (no vertical scroll jump); DOWN/UP move between rows and restore each row’s own last-focused item (not the column from the row you left); last row DOWN stops (no escape to nav)

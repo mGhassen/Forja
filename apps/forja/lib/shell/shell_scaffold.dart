@@ -59,8 +59,91 @@ class _ShellScaffoldState extends State<ShellScaffold> {
     final metrics = ShellScope.metricsOf(context);
     final showRail = widget.useNavRail && !widget.hideGlobalNav;
     final compactNav = _compactNav(context);
-    final bodyInset =
+    final tvSafeLeft = shellTvSafeHorizontalInset(context);
+    final tvSafeRight = shellTvSafeHorizontalInsetRight(context);
+    final railWidth =
         showRail && !compactNav ? metrics.navRailWidth : 0.0;
+    final contentLeftInset = tvSafeLeft + railWidth;
+
+    Widget body = Stack(
+      children: [
+        Container(decoration: AppTheme.effectiveBackground),
+        Positioned.fill(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: contentLeftInset,
+              right: tvSafeRight,
+            ),
+            child: Column(
+              children: [
+                if (widget.shellHeader != null) widget.shellHeader!,
+                Expanded(
+                  child: Stack(
+                    children: [
+                      ShellBody(
+                        selectedIndex: widget.selectedIndex,
+                        visibleIds: widget.visibleIds,
+                        mountedTabIds: widget.mountedTabIds,
+                        tabFor: widget.tabFor,
+                      ),
+                      const Positioned.fill(
+                        child: ShellOverlayNavigator(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (widget.shellTopBar != null)
+          Positioned(
+            top: 0,
+            left: contentLeftInset,
+            right: tvSafeRight,
+            child: widget.shellTopBar!,
+          ),
+        if (compactNav && widget.shellTopBar == null)
+          Positioned(
+            top: 0,
+            left: tvSafeLeft,
+            child: SafeArea(
+              bottom: false,
+              left: false,
+              right: false,
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: ShellTokens.bodyHorizontalPadding,
+                  top: ShellTokens.shellHeaderTopPadding,
+                ),
+                child: ShellNavMenuButton(
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                ),
+              ),
+            ),
+          ),
+        if (showRail && !compactNav)
+          Positioned(
+            left: tvSafeLeft,
+            top: 0,
+            bottom: 0,
+            child: ShellNavRail(
+              visibleIds: widget.visibleIds,
+              selectedIndex: widget.selectedIndex,
+              onDestinationSelected: _onNavSelected,
+            ),
+          ),
+      ],
+    );
+
+    if (tvSafeLeft > 0 || tvSafeRight > 0) {
+      body = MediaQuery.removePadding(
+        context: context,
+        removeLeft: tvSafeLeft > 0,
+        removeRight: tvSafeRight > 0,
+        child: body,
+      );
+    }
 
     return Scaffold(
       key: _scaffoldKey,
@@ -75,72 +158,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
               ),
             )
           : null,
-      body: Stack(
-        children: [
-          Container(decoration: AppTheme.effectiveBackground),
-          Positioned.fill(
-            child: Padding(
-              padding: EdgeInsets.only(left: bodyInset),
-              child: Column(
-                children: [
-                  if (widget.shellHeader != null) widget.shellHeader!,
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        ShellBody(
-                          selectedIndex: widget.selectedIndex,
-                          visibleIds: widget.visibleIds,
-                          mountedTabIds: widget.mountedTabIds,
-                          tabFor: widget.tabFor,
-                        ),
-                        const Positioned.fill(
-                          child: ShellOverlayNavigator(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (widget.shellTopBar != null)
-            Positioned(
-              top: 0,
-              left: bodyInset,
-              right: 0,
-              child: widget.shellTopBar!,
-            ),
-          if (compactNav && widget.shellTopBar == null)
-            Positioned(
-              top: 0,
-              left: 0,
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    left: ShellTokens.bodyHorizontalPadding,
-                    top: ShellTokens.shellHeaderTopPadding,
-                  ),
-                  child: ShellNavMenuButton(
-                    onPressed: () =>
-                        _scaffoldKey.currentState?.openDrawer(),
-                  ),
-                ),
-              ),
-            ),
-          if (showRail && !compactNav)
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: ShellNavRail(
-                visibleIds: widget.visibleIds,
-                selectedIndex: widget.selectedIndex,
-                onDestinationSelected: _onNavSelected,
-              ),
-            ),
-        ],
-      ),
+      body: body,
       bottomNavigationBar: widget.useNavRail || widget.hideGlobalNav
           ? null
           : ShellBottomNav(

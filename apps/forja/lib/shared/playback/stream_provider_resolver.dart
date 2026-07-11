@@ -157,6 +157,12 @@ class StreamProviderResolver {
     if (provider == null || provider['movie'] == null || provider['tv'] == null) {
       return null;
     }
+    if (SettingsService.platformProfile == PlatformProfile.androidTv) {
+      debugPrint(
+        '[StreamProviderResolver] WebView sniffer skipped on Android TV for $key',
+      );
+      return null;
+    }
     final String url = isTv
         ? provider['tv'](movie.id.toString(), season, episode)
         : provider['movie'](movie.id.toString());

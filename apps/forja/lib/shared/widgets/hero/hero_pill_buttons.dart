@@ -116,6 +116,7 @@ class HeroPillPlayButton extends StatelessWidget {
     this.focusNode,
     this.onKeyEvent,
     this.tvTabId,
+    this.onUpEdge,
   });
 
   final String label;
@@ -128,6 +129,7 @@ class HeroPillPlayButton extends StatelessWidget {
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
   final String? tvTabId;
+  final VoidCallback? onUpEdge;
 
   HeroPillPlayTone get _tone =>
       tone ?? (primary ? HeroPillPlayTone.primary : HeroPillPlayTone.secondary);
@@ -143,6 +145,18 @@ class HeroPillPlayButton extends StatelessWidget {
     final tvMeta = tvTabId != null && useTvCompact
         ? ShellTvFocusMeta(tabId: tvTabId!, zone: ShellTvZone.hero)
         : null;
+    final effectiveOnKey = onUpEdge != null || onKeyEvent != null
+        ? (FocusNode node, KeyEvent event) {
+            if (onUpEdge != null) {
+              final up = ShellTvFocus.onArrowUp(event, () {
+                onUpEdge!();
+                return true;
+              });
+              if (up == KeyEventResult.handled) return up;
+            }
+            return onKeyEvent?.call(node, event) ?? KeyEventResult.ignored;
+          }
+        : null;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -150,7 +164,7 @@ class HeroPillPlayButton extends StatelessWidget {
         onTap: onTap,
         autoFocus: autoFocus,
         focusNode: focusNode,
-        onKeyEvent: onKeyEvent,
+        onKeyEvent: effectiveOnKey,
         tvMeta: tvMeta,
         hoverScale: 1.03,
         pressScale: 0.97,
@@ -492,11 +506,13 @@ class HeroPillIconGroup extends StatelessWidget {
     required this.slots,
     this.tvFocusOrderStart,
     this.tvTabId,
+    this.onUpEdge,
   });
 
   final List<HeroPillIconSlot> slots;
   final int? tvFocusOrderStart;
   final String? tvTabId;
+  final VoidCallback? onUpEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -527,6 +543,7 @@ class HeroPillIconGroup extends StatelessWidget {
               isLast: i == slots.length - 1,
               useTvCompact: useTvCompact,
               tvTabId: tvTabId,
+              onUpEdge: onUpEdge,
               focusOrder: tvFocusOrderStart != null
                   ? NumericFocusOrder((tvFocusOrderStart! + i).toDouble())
                   : null,
@@ -678,6 +695,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
     this.focusOrder,
     this.onKeyEvent,
     this.tvTabId,
+    this.onUpEdge,
   });
 
   final String label;
@@ -690,6 +708,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
   final FocusOrder? focusOrder;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
   final String? tvTabId;
+  final VoidCallback? onUpEdge;
 
   Widget _wrapOrder(Widget child) {
     final order = focusOrder;
@@ -702,11 +721,23 @@ class _HeroPillGroupedSlot extends StatelessWidget {
     final tvMeta = tvTabId != null && useTvCompact
         ? ShellTvFocusMeta(tabId: tvTabId!, zone: ShellTvZone.hero)
         : null;
+    final effectiveOnKey = onUpEdge != null || onKeyEvent != null
+        ? (FocusNode node, KeyEvent event) {
+            if (onUpEdge != null) {
+              final up = ShellTvFocus.onArrowUp(event, () {
+                onUpEdge!();
+                return true;
+              });
+              if (up == KeyEventResult.handled) return up;
+            }
+            return onKeyEvent?.call(node, event) ?? KeyEventResult.ignored;
+          }
+        : null;
 
     return _wrapOrder(
       ForjaInteractive(
         onTap: onTap,
-        onKeyEvent: onKeyEvent,
+        onKeyEvent: effectiveOnKey,
         tvMeta: tvMeta,
         hoverScale: 1,
         pressScale: 1,

@@ -183,6 +183,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
       width: metrics.navRailWidth,
       color: AppTheme.bgDark,
       child: SafeArea(
+        left: false,
         right: false,
         top: metrics.navRailSafeAreaVertical,
         bottom: metrics.navRailSafeAreaVertical,
