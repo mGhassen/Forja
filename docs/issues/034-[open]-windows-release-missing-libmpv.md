@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 3** fix · **0 / 1** acceptance |
+| **Progress** | **3 / 4** fix · **0 / 1** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -21,7 +21,8 @@
 |--:|----|-------------|--------|
 | 1 | I34-T01 | Add `media_kit_libs_windows_video`, `media_kit_libs_linux`, `media_kit_libs_ios_video` to app `dependencies` | ✅ |
 | 2 | I34-T02 | CI: `verify_installer_payload.sh` requires libmpv DLL/SO in release output | ✅ |
-| 3 | I34-T03 | Manual smoke: Windows installer launches past splash (not white screen) | ⬜ |
+| 3 | I34-T03 | Linux: `embed_rust_in_release_output.sh` copies build-host libmpv into bundle/lib (media_kit_libs_linux does not bundle) | ✅ |
+| 4 | I34-T04 | Manual smoke: Windows installer launches past splash (not white screen) | ⬜ |
 
 ---
 
@@ -47,9 +48,9 @@ Exception: Cannot find libmpv-2.dll ...
 
 **Symptom:** Native window appears (transparent → white) then process dies on uncaught exception before `runApp()`.
 
-**Fix shipped in repo:** platform lib packages added to `dependencies`; verify script fails release if libmpv is missing from the build output.
+**Fix shipped in repo:** platform lib packages added to `dependencies`; verify script fails release if libmpv is missing from the build output. On Linux, `media_kit_libs_linux` only registers the plugin — `embed_rust_in_release_output.sh` copies the build-host `libmpv.so.*` into `bundle/lib` before verify/AppImage.
 
-**Verify:** Rebuild Windows release, confirm `build/windows/x64/runner/Release/libmpv-2.dll` exists, install and launch.
+**Verify:** Rebuild Windows release, confirm `build/windows/x64/runner/Release/libmpv-2.dll` exists, install and launch. Linux CI: `embed_rust_in_release_output.sh linux` then `verify_installer_payload.sh linux`.
 
 ## Related
 

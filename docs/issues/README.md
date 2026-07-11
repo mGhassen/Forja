@@ -55,7 +55,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [031-[workaround]-…](031-[workaround]-android-tv-webview-gles-crash.md) | Android TV WebView GLES crash | P1 | High | workaround | 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [032-[draft]-…](032-[draft]-exoplayer-parity-gaps.md) | ExoPlayer vs media_kit parity gaps | P2 | Medium | draft | 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [033-[open]-…](033-[open]-vod-decoder-recovery.md) | VOD player decoder recovery | P2 | Medium | open | 4/5 | — |
-| [034-[open]-…](034-[open]-windows-release-missing-libmpv.md) | Windows release missing libmpv | P1 | High | open | 2/3 · A 0/1 | — |
+| [034-[open]-…](034-[open]-windows-release-missing-libmpv.md) | Windows release missing libmpv | P1 | High | open | 3/4 · A 0/1 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
