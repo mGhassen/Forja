@@ -1,6 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// TV app-root traversal — never use geometry for LEFT/RIGHT (rows trap in widgets).
+class _ShellTvDirectionalFocusAction extends DirectionalFocusAction {
+  _ShellTvDirectionalFocusAction();
+
+  @override
+  Object? invoke(DirectionalFocusIntent intent) {
+    if (intent.direction == TraversalDirection.left ||
+        intent.direction == TraversalDirection.right) {
+      return false;
+    }
+    super.invoke(intent);
+    return null;
+  }
+}
+
 /// Per-profile input and focus behavior.
 class ShellInputPolicy {
   const ShellInputPolicy({
@@ -72,7 +87,7 @@ class ShellInputPolicy {
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
-          DirectionalFocusIntent: DirectionalFocusAction(),
+          DirectionalFocusIntent: _ShellTvDirectionalFocusAction(),
         },
         child: FocusTraversalGroup(
           policy: ReadingOrderTraversalPolicy(),

@@ -5,7 +5,6 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Prevents nested horizontal rows from scrolling the parent vertical list.
 bool shellAbsorbHorizontalScroll(ScrollNotification notification) =>
@@ -123,6 +122,7 @@ Widget shellFocusableTap({
   int? tvItemIndex,
   ShellTvZone? tvZone,
   ShellTvEnsureVisibleMode ensureVisibleMode = ShellTvEnsureVisibleMode.row,
+  bool showFocusBorder = false,
 }) {
   final policy =
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
@@ -148,6 +148,7 @@ Widget shellFocusableTap({
       onTap: onTap,
       borderRadius: borderRadius,
       scaleOnFocus: scaleOnFocus,
+      showFocusBorder: showFocusBorder,
       onLeftEdge: resolvedLeftEdge,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,

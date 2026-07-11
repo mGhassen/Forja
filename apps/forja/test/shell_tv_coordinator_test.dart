@@ -231,6 +231,54 @@ void main() {
     expect(find.byType(FocusableControl), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('row-bound FocusableControl traps RIGHT at last item', (tester) async {
+    final last = FocusNode(debugLabel: 'last-card');
+    ShellTvFocus.currentNavTabId = 'home';
+    shellTvRegisterRow(
+      tabId: 'home',
+      rowId: 'featured',
+      sortOrder: 0,
+      itemCount: 2,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: 'home',
+      rowId: 'featured',
+      index: 0,
+      node: FocusNode(debugLabel: 'first-card'),
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: 'home',
+      rowId: 'featured',
+      index: 1,
+      node: last,
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        FocusableControl(
+          focusNode: last,
+          tvMeta: const ShellTvFocusMeta(
+            tabId: 'home',
+            zone: ShellTvZone.row,
+            rowId: 'featured',
+            itemIndex: 1,
+          ),
+          onTap: () {},
+          child: const SizedBox(width: 100, height: 40),
+        ),
+      ),
+    );
+    await tester.pump();
+    last.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+
+    expect(last.hasFocus, isTrue);
+    last.dispose();
+  });
+
   testWidgets('nav RIGHT restores page focus after nav visit', (tester) async {
     final homeNav = FocusNode(debugLabel: 'nav-home');
     final pageNode = FocusNode(debugLabel: 'page-item');

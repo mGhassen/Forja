@@ -129,7 +129,7 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
                 onTap: () => widget.onMovieTap(widget.movies[index]),
                 rank: widget.showRank ? index + 1 : null,
                 listIndex: index,
-                tvTabId: widget.tvTabId ?? ShellTvFocus.currentNavTabId,
+                tvTabId: widget.tvTabId ?? ShellTvFocus.currentNavTabId ?? 'home',
                 tvRowId: widget.tvRowId ?? widget.title,
               );
             },

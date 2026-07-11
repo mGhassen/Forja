@@ -49,6 +49,7 @@ class HomeMovieCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: radius,
+      showFocusBorder: true,
       listIndex: listIndex,
       onLeftEdge: onLeftEdge,
       onUpEdge: onUpEdge,

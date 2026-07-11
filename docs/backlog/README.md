@@ -12,7 +12,9 @@ One file **per release version**. Specs live in [RFCs](../rfc/README.md); each f
 | Minor | `0.1.0`, `1.0.0` | **One codename** per minor open |
 | Patch | `0.1.3`, `1.0.1`, `1.2.3` | **None** — ever |
 
-**Codename applies to the minor only** (`1.2.0` → codename **Menzah**; `1.2.1` / `1.2.3` patches inherit it, no new name).
+**Codename applies to the minor only** (`1.2.0` → **Dabaghin**; `1.2.3` inherits it). Patch backlog files (`1.0.1`, `1.0.2`) are ship checklists under **1.0.x** — still **Bab Souika**, no new codename.
+
+[`kReleaseCodename`](../../apps/forja/lib/shared/services/app_version.dart) tracks **app semver minor** (today **1.2 → Dabaghin**), not the patch backlog filename.
 
 Filename = `{semver}-[{status}].md`. Tag matches `**Status:**` in the body.
 
@@ -25,6 +27,8 @@ dropped  →  canceled/1.0.0-[canceled].md
 
 Every file body: **RFCs** · **Issues** · **Migration** · **Shipped** sections.
 
+Backlog file title: `# X.Y.Z — {Codename}` — codename from [runway](#codename-runway) for the app **minor** (patch files under 1.0.x → **Bab Souika**). No `**Major:**` / `**Arc:**` lines in backlog bodies.
+
 Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/rules/docs-rfc-issues.mdc#version--rfc--issue-three-layers).
 
 ## Major themes
@@ -32,83 +36,66 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | Major | Theme | Era |
 |-------|-------|-----|
 | **v0** | Tell & land | Engine migration + foundation |
-| **v1** | Souk & craft | Shell → details/player → TV → overlay/casting → v1 capstone |
-| **v2** | Diwan & mer | Sync, LAN, watch party, cross-device |
-| **v3** | Digital medina | Web client + WASM |
-| **v4** | Ksour & horizon | TBD — post-web expansion |
+| **v1** | Souk | Shell → details/player → TV → overlay/casting |
+| **v2** | Diwan | Sync, LAN, watch party, cross-device |
+| **v3** | Ink & stone | Web client + WASM |
+| **v4** | Ksour | Post-web expansion |
 
 ## Codename runway
 
-**Source of truth** for minor codenames. Format matches shipped backlog intros: `*Name* — tagline.`
+**Source of truth** for minor codenames. v1 = medina souk quarters; v2 = Diwan; v3–v4 = history. Patches (`X.Y.Z`, `Z > 0`) inherit the minor — no new name. Full runway below; [`kReleaseCodename`](../../apps/forja/lib/shared/services/app_version.dart) must match the **shipping minor**.
 
-**Voice** (read [Ichkeul](done/0.0.1-[done].md), [Halfaouine](done/0.7.0-[done].md)): **English taglines only.** Codenames = what Tunisians actually live — souk craft, home ritual, café habit, shared wall, louage seat — **not** cities, gates, beaches, ruins, or tour-loop landmarks. Halfaouine is the model: *behind the tour-loop medina.* Arc meaning stays buried. Patches inherit the minor.
+### v1 — Souk
 
-App constant: [`kReleaseCodename`](../../apps/forja/lib/shared/services/app_version.dart) — name only.
+| Minor | Codename | 
+|-------|----------|
+| **1.0** ✅ | **Bab Souika** | 
+| **1.1** 🔄 | **Mrabet** | 
+| **1.2** 🔄 | **Dabaghin** | 
+| **1.3** ⬜ | **Elblat** | 
+| **1.4** ⬜ | **Atarin** | 
+| **1.5** ⬜ | **Berka** | 
 
-### v1 — Souk & craft
+### v2 — Diwan
 
-| Minor | Codename | Tagline |
-|-------|----------|---------|
-| **1.0** ✅ | **Bab Souika** | Tunis medina gate and souk quarter; v1 opens with polished shell / Home hero. |
-| **1.1** 🔄 | **Mratab** | Hide on the drying frame; stiff when you walk past, soft by Thursday. |
-| **1.2** 🔄 | **Salon el-Khotla** | Wall bench faces the screen; nobody sits with their back to it. |
-| **1.3** ⬜ | **R'ha el-Blat** | Mortar grinding blends you never smell from the main aisle. |
-| **1.4** ⬜ | **Bej el-Qbab** | Two doors, one courtyard — each caravan swears theirs is faster. |
-| **1.5** ⬜ | **Glaya** | Bent dish on the roof; half the alley catches the same beam. |
-| **1.6** ⬜ | **Keskes** | Top basket empty after Friday couscous; stack before next week. |
-| **1.7** ⬜ | **Jeb el-Khotla** | Phone in the bench corner; shade on the packed tram. |
-| **1.8** ⬜ | **Qaleb** | Plaster mold still wet with the last palm print. |
-| **1.9** ⬜ | **Msarra** | Dye runoff in the gutter; rinse until the water runs clean. |
-| **1.10** ⬜ | **Ghlaka** | Metal shutter rolling down; last light on the lane. |
+| Minor | Codename | 
+|-------|----------|
+| **2.0** ⬜ | **Diwan** | 
+| **2.1** ⬜ | **Qoffa** | 
+| **2.2** ⬜ | **Chachia** | 
+| **2.3** ⬜ | **Herz** | 
+| **2.4** ⬜ | **Midha** |  
+| **2.5** ⬜ | **Mekhzan** |
 
-### v2 — Diwan & mer
+### v3 — Ink & stone
 
-| Minor | Codename | Tagline |
-|-------|----------|---------|
-| **2.0** ⬜ | **Diwan el-Bait** | Household ledger copied when someone marries out. |
-| **2.1** ⬜ | **Qafqafa** | Knock on the shared wall; neighbor knows which rhythm. |
-| **2.2** ⬜ | **Mnajra** | Same well rope for every door; bucket echo in the shaft. |
-| **2.3** ⬜ | **Naql** | Hand-copy of the chief's stamp on plain paper. |
-| **2.4** ⬜ | **Zira** | Neighbor who keeps your spare key and changes the channel. |
-| **2.5** ⬜ | **Louage** | Eight seats, one route; you don't pick the music. |
-| **2.6** ⬜ | **Mdakhla** | Houses share a wall and the same courtyard argument. |
-| **2.7** ⬜ | **Maalma** | She sets the track; the room claps on her beat. |
-| **2.8** ⬜ | **Hrza** | Tea tin locked before the road gets hot. |
-| **2.9** ⬜ | **Bil Ma** | Cash in the palm; no card, no name on the line. |
-| **2.10** ⬜ | **Korsi** | Plastic chairs ring one small café screen after dark. |
+| Minor | Codename | 
+|-------|----------|
+| **3.0** ⬜ | **Muqaddimah** | 
+| **3.1** ⬜ | **Capsa** | 
+| **3.2** ⬜ | **Kahina** | 
+| **3.3** ⬜ | **Uthina** | 
+| **3.4** ⬜ | **Tanit** | 
+| **3.5** ⬜ | **Magon** |
 
-### v3 — Digital medina
+### v4 — Ksour
 
-| Minor | Codename | Tagline |
-|-------|----------|---------|
-| **3.0** ⬜ | **El-Grill** | Shutter half down; regulars still buy through the bars. |
-| **3.1** ⬜ | **Mleha** | Salt in the sack; same crystals, no hoofprints. |
-| **3.2** ⬜ | **Rkhif** | Hard biscuit in the tin; good when the oven's cold. |
-| **3.3** ⬜ | **Rih el-Dar** | Draft under the door; nobody asked who let it in. |
-| **3.4** ⬜ | **Zapta** | Thumb worn smooth hopping channels before reading names. |
-| **3.5** ⬜ | **Meraya** | Numbers in the glass; the book stays shut. |
-| **3.6** ⬜ | **Tekna** | Pit-room ceiling taken off; sky where plaster was. |
-| **3.7** ⬜ | **Mekhzan** | Stash in the ceiling niche; not priced on the counter. |
-| **3.8** ⬜ | **Safha el-Akhira** | Last notebook page before the blank desert. |
-
-### v4 — Ksour & horizon
-
-| Minor | Codename | Tagline |
-|-------|----------|---------|
-| **4.0** ⬜ | **Hbila** | First blue tile on the wall; room not measured yet. |
-| **4.1** ⬜ | **Mlaha** | Crystals after the water left; shape still unnamed. |
-| **4.2** ⬜ | **Remel** | Dune spine where the wind changes its mind. |
-| **4.3** ⬜ | **Sawt el-Barr** | Whistle from the cliff; answer from the far side. |
-| **4.4** ⬜ | **Zit el-Arbi** | Cedar shade at the turnoff with no sign. |
-| **4.5** ⬜ | **Akher Tel** | Last hill before the map goes blank. |
+| Minor | Codename | 
+|-------|----------|
+| **4.0** ⬜ | **Chambi** | 
+| **4.1** ⬜ | **Sened** | 
+| **4.2** ⬜ | **Sbeitla** | 
+| **4.3** ⬜ | **Jugurtha** | 
+| **4.4** ⬜ | **Jerid** | 
+| **4.5** ⬜ | **Borma** |
 
 ## Active
 
-| File | Minor | Codename | Status |
-|------|-------|----------|--------|
-| [1.0.1-[open].md](1.0.1-[open].md) | 1.1 patch train | Mratab | open — details & player UX (10/19 shipped) |
-| [1.0.2-[draft].md](1.0.2-[draft].md) | 1.3 patch train (pre-rename) | R'ha el-Blat | draft — overlay, providers, casting (1/10) |
-| `feat/android-tv` | **1.2** minor | Salon el-Khotla | shipping — leanback + D-pad (no backlog file yet) |
+| File / source | App semver | Codename | Status |
+|---------------|------------|----------|--------|
+| [1.0.1-[open].md](1.0.1-[open].md) | 1.0.x patch checklist | Bab Souika | open — details & player UX (10/19 shipped) |
+| [1.0.2-[draft].md](1.0.2-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — overlay, providers, casting (1/10) |
+| `apps/forja` (`feat/android-tv`) | **1.2.x** | **Dabaghin** | shipping — leanback + D-pad |
 
 ## Done — v1
 

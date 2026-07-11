@@ -31,6 +31,8 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
 
 double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) =>
     shellHomeSectionTitleTop(context, compact: compactTop);
@@ -2194,10 +2196,13 @@ class _HomeScreenState extends State<HomeScreen>
     final metrics = ShellScope.metricsOf(context);
     final policy = ShellScope.inputPolicyOf(context);
     final tvNav = policy.useFocusableMoodChips;
+    const heroItemCount = 3;
     final play = HeroPillPlayButton(
       label: 'Play',
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
       tvTabId: tvNav ? 'home' : null,
+      tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
+      tvItemIndex: tvNav ? 0 : null,
       onUpEdge: tvNav ? ShellTvFocus.focusHomeMenu : null,
       onKeyEvent: policy.heroPlayAutoFocus
           ? (node, event) {
@@ -2222,6 +2227,8 @@ class _HomeScreenState extends State<HomeScreen>
         HeroPillIconGroup(
           tvFocusOrderStart: tvNav ? 2 : null,
           tvTabId: tvNav ? 'home' : null,
+          tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
+          tvItemIndexStart: tvNav ? 1 : null,
           onUpEdge: tvNav ? ShellTvFocus.focusHomeMenu : null,
           slots: [
             HeroPillIconSlot(
@@ -2234,14 +2241,20 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ],
     );
-    if (metrics.heroActionUseFittedBox) {
-      return FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: row,
-      );
-    }
-    return row;
+    final body = metrics.heroActionUseFittedBox
+        ? FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: row,
+          )
+        : row;
+    if (!tvNav) return body;
+    return DetailsHeroTvActionScope(
+      tabId: 'home',
+      itemCount: heroItemCount,
+      onFocusUp: ShellTvFocus.focusHomeMenu,
+      child: body,
+    );
   }
 }
 
@@ -2364,6 +2377,7 @@ class _MovieSectionState extends State<_MovieSection> {
                     onTap: () => widget.onMovieTap(movies[index]),
                     rank: widget.showRank ? index + 1 : null,
                     listIndex: index,
+                    tvTabId: 'home',
                     tvRowId: _rowId,
                   );
                 },
@@ -2438,6 +2452,7 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
               movie: widget.movies[index],
               onTap: () => widget.onMovieTap(widget.movies[index]),
               listIndex: index,
+              tvTabId: 'home',
               tvRowId: _rowId,
             ),
           ),
@@ -3083,10 +3098,12 @@ class _HistoryCardState extends State<_HistoryCard> {
       context: context,
       onTap: widget.isLoading ? null : widget.onTap,
       listIndex: widget.listIndex,
+      tvTabId: 'home',
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.listIndex,
       borderRadius: 14,
       scaleOnFocus: 1.0,
+      showFocusBorder: true,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedScale(
@@ -3452,7 +3469,9 @@ class _StremioCatalogCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: 14,
       scaleOnFocus: 1.05,
+      showFocusBorder: true,
       listIndex: listIndex,
+      tvTabId: 'home',
       tvRowId: tvRowId,
       tvItemIndex: listIndex,
       child: Container(
@@ -3810,6 +3829,7 @@ class _MoodSectionState extends State<_MoodSection> {
                   movie: movies[i],
                   onTap: () => onMovieTap(movies[i]),
                   listIndex: i,
+                  tvTabId: 'home',
                   tvRowId: 'mood-results',
                   onUpEdge: shellTvResultsUpToChips(
                     tabId: 'home',
@@ -3851,9 +3871,12 @@ class _BecauseYouWatchedSection extends StatefulWidget {
 
 class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
   final ScrollController _ctrl = ScrollController();
+  static const _rowId = 'because-watched';
+  static const _rowOrder = 14;
 
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _ctrl.dispose();
     super.dispose();
   }
@@ -3963,6 +3986,15 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
 
         if (!loading && movies.isEmpty) return const SizedBox.shrink();
 
+        if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+          shellTvRegisterRow(
+            tabId: 'home',
+            rowId: _rowId,
+            sortOrder: _rowOrder,
+            itemCount: movies.length.clamp(0, 25),
+          );
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -3972,7 +4004,8 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
             else
               SizedBox(
                 height: HomeMovieCard.cardHeight(context),
-                child: ListView.separated(
+                child: FocusTraversalGroup(
+                  child: ListView.separated(
                   clipBehavior: Clip.none,
                   controller: _ctrl,
                   scrollDirection: Axis.horizontal,
@@ -3987,7 +4020,10 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
                     movie: movies[i],
                     onTap: () => widget.onMovieTap(movies[i]),
                     listIndex: i,
+                    tvTabId: 'home',
+                    tvRowId: _rowId,
                   ),
+                ),
                 ),
               ),
           ],

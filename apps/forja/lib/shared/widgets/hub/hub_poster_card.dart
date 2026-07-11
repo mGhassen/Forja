@@ -51,6 +51,7 @@ class HubPosterCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: radius,
+      showFocusBorder: true,
       listIndex: listIndex,
       tvTabId: tvTabId,
       tvRowId: tvRowId,

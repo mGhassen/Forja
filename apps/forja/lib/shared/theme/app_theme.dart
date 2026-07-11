@@ -134,6 +134,7 @@ class FocusableControl extends StatefulWidget {
   final FocusNode? focusNode;
   final ShellTvFocusMeta? tvMeta;
   final ShellTvEnsureVisibleMode ensureVisibleMode;
+  final bool showFocusBorder;
 
   const FocusableControl({
     super.key,
@@ -142,6 +143,7 @@ class FocusableControl extends StatefulWidget {
     this.autoFocus = false,
     this.borderRadius = 12.0,
     this.scaleOnFocus = ShellTokens.focusActiveScale,
+    this.showFocusBorder = false,
     this.onLeftEdge,
     this.onUpEdge,
     this.onDownEdge,
@@ -328,11 +330,23 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
           onTap: widget.onTap,
           child: AnimatedBuilder(
             animation: _scale,
-            builder: (context, child) => Transform.scale(
-              scale: _scale.value,
-              alignment: Alignment.center,
-              child: child,
-            ),
+            builder: (context, child) {
+              Widget body = Transform.scale(
+                scale: _scale.value,
+                alignment: Alignment.center,
+                child: child,
+              );
+              if (widget.showFocusBorder && _isFocused) {
+                body = DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(widget.borderRadius),
+                    border: Border.all(color: Colors.white, width: 1),
+                  ),
+                  child: body,
+                );
+              }
+              return body;
+            },
             child: widget.child,
           ),
         ),

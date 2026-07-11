@@ -14,4 +14,4 @@ PRODUCT_BUNDLE_IDENTIFIER = com.forja.app
 PRODUCT_COPYRIGHT = Copyright © 2026 Forja. All rights reserved.
 
 // Release codename for the current minor arc (keep in sync with app_version.dart).
-PRODUCT_CODENAME = Bab Souika
+PRODUCT_CODENAME = Dabaghin

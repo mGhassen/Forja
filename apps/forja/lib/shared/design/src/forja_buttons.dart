@@ -180,8 +180,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
           event: event,
           tvFocus: policy.useFocusableMoodChips,
           tvMeta: widget.tvMeta,
-          trapHorizontal: widget.tvMeta?.rowId != null ||
-              widget.tvMeta?.zone == ShellTvZone.chipStrip,
+          trapHorizontal: policy.useFocusableMoodChips,
         );
         if (trap == KeyEventResult.handled) return trap;
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
