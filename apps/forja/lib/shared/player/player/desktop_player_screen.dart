@@ -32,6 +32,7 @@ import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/controls/seek_bar_with_preview.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
@@ -421,6 +422,8 @@ class DesktopPlayerScreen extends StatefulWidget {
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
   final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
+  final BuiltInPlayerEngine builtInEngine;
+  final PlayerSwitchHandler? onSwitchPlayer;
 
   const DesktopPlayerScreen({
     super.key,
@@ -453,6 +456,8 @@ class DesktopPlayerScreen extends StatefulWidget {
     this.onAllSourcesExhausted,
     this.onReloadStreams,
     this.sourcesListNotifier,
+    this.builtInEngine = BuiltInPlayerEngine.mediaKit,
+    this.onSwitchPlayer,
   });
 
   @override
@@ -3065,6 +3070,33 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _onMouseMove();
   }
 
+  Future<void> _persistProgressForSwitch() async {
+    if (widget.onSaveProgress == null) return;
+    final pos = _positionNotifier.value;
+    final dur = _durationNotifier.value;
+    if (pos.inMilliseconds <= 0 || dur.inMilliseconds <= 0) return;
+    await widget.onSaveProgress!(pos, dur);
+  }
+
+  Future<void> _showPlayerMenu(BuildContext anchorContext) async {
+    final handler = widget.onSwitchPlayer;
+    if (handler == null) return;
+    await _persistProgressForSwitch();
+    if (!mounted) return;
+    PlayerAppMenu.show(
+      context,
+      anchorContext: anchorContext,
+      usingBuiltIn: true,
+      builtInEngine: widget.builtInEngine,
+      onSelect: ({builtInEngine, externalPlayer}) => handler(
+        _positionNotifier.value,
+        builtInEngine: builtInEngine,
+        externalPlayer: externalPlayer,
+      ),
+    );
+    _onMouseMove();
+  }
+
   void _showSettingsMenu(BuildContext anchorContext) {
     PlayerPopupPanel.show(
       context: context,
@@ -3743,6 +3775,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             if (mounted) Navigator.of(context).pop(_positionNotifier.value);
           },
           trailing: PlayerTopBarActions(
+            showPlayer: widget.onSwitchPlayer != null,
+            onPlayer: widget.onSwitchPlayer != null
+                ? () => unawaited(_showPlayerMenu(context))
+                : null,
             showCast: CastingService.instance.isAirPlayAvailable ||
                 CastingService.instance.isChromecastAvailable,
             onCast: () {
@@ -4096,6 +4132,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                       ],
                     ),
                   ),
+                  if (widget.onSwitchPlayer != null)
+                    PlayerFlatIconButton(
+                      icon: Icons.smart_display_outlined,
+                      tooltip: 'Player',
+                      onPressedWithContext: _showPlayerMenu,
+                    ),
                   PlayerFlatIconButton(
                     icon: Icons.settings_outlined,
                     tooltip: 'Settings',

@@ -24,6 +24,7 @@ class MediaDetailsExtras {
     this.lastAirDate = '',
     this.networks = const [],
     this.creators = const [],
+    this.seasonPosters = const {},
   });
 
   final String tagline;
@@ -48,6 +49,8 @@ class MediaDetailsExtras {
   final String lastAirDate;
   final List<String> networks;
   final List<String> creators;
+  /// TMDB season_number → poster_path (season 0 excluded).
+  final Map<int, String> seasonPosters;
 }
 
 class RichMediaDetails {

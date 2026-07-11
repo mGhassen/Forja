@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 /// Horizontal scrollable strip with overlaid left/right arrow buttons.
@@ -73,7 +74,7 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 900;
+    final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
@@ -108,7 +109,7 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
                       itemBuilder: widget.itemBuilder,
                     ),
             ),
-            if (isDesktop) ...[
+            if (showArrows) ...[
               _ArrowButton(
                 visible: _hovering && _canLeft,
                 left: true,

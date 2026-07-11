@@ -5,9 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 
 class StreamExtractor {
-  HeadlessInAppWebView? _headlessWebView;
+  ForjaHeadlessInAppWebView? _headlessWebView;
   Completer<ExtractedMedia?>? _completer;
   Timer? _timeoutTimer;
   bool _cancelled = false;
@@ -122,6 +123,12 @@ class StreamExtractor {
     String? iframeWrapperBaseUrl,
     bool Function()? isCancelled,
   }) async {
+    if (isAndroidTvHeadlessWebViewBlocked) {
+      debugPrint(
+        '[StreamExtractor] Headless WebView blocked on Android TV (use WebStreamr/Vidsrc)',
+      );
+      return null;
+    }
     // 0. Ensure previous instance is fully cleaned up before starting new one
     await _cleanup();
     _cancelled = false;
@@ -166,7 +173,7 @@ class StreamExtractor {
     //     receives `document.referrer = iframeWrapperBaseUrl`, defeating
     //     embed providers that block direct loads (megaplay/vidwish).
     if (iframeWrapperBaseUrl != null) {
-      _headlessWebView = HeadlessInAppWebView(
+      _headlessWebView = ForjaHeadlessInAppWebView(
         initialData: InAppWebViewInitialData(
           data: _buildIframeWrapperHtml(url),
           baseUrl: WebUri(iframeWrapperBaseUrl),
@@ -182,7 +189,18 @@ class StreamExtractor {
             forMainFrameOnly: false,
           ),
         ]),
-        initialSettings: _wrapperSettings(),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: true,
+          domStorageEnabled: true,
+          userAgent: _userAgent,
+          mediaPlaybackRequiresUserGesture: false,
+          cacheEnabled: true,
+          clearCache: false,
+          allowsInlineMediaPlayback: true,
+          useOnLoadResource: true,
+          iframeAllow: 'autoplay; fullscreen; encrypted-media',
+          iframeAllowFullscreen: true,
+        ),
         onLoadResource: _onLoadResource(url),
         onLoadStop: _onLoadStop(),
         onConsoleMessage: _onConsoleMessage(url),
@@ -197,7 +215,7 @@ class StreamExtractor {
               }
             : null,
       );
-      _headlessWebView = HeadlessInAppWebView(
+      _headlessWebView = ForjaHeadlessInAppWebView(
         initialUrlRequest: initialReq,
         initialSize: const Size(1280, 720),
         initialUserScripts: UnmodifiableListView([
@@ -207,7 +225,18 @@ class StreamExtractor {
             forMainFrameOnly: false,
           ),
         ]),
-        initialSettings: _wrapperSettings(),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: true,
+          domStorageEnabled: true,
+          userAgent: _userAgent,
+          mediaPlaybackRequiresUserGesture: false,
+          cacheEnabled: true,
+          clearCache: false,
+          allowsInlineMediaPlayback: true,
+          useOnLoadResource: true,
+          iframeAllow: 'autoplay; fullscreen; encrypted-media',
+          iframeAllowFullscreen: true,
+        ),
         onLoadResource: _onLoadResource(url),
         onLoadStop: _onLoadStop(),
         onConsoleMessage: _onConsoleMessage(url),
@@ -227,19 +256,6 @@ class StreamExtractor {
   }
 
   // ── Wrapper helpers ──────────────────────────────────────────────────────
-
-  InAppWebViewSettings _wrapperSettings() => InAppWebViewSettings(
-        javaScriptEnabled: true,
-        domStorageEnabled: true,
-        userAgent: _userAgent,
-        mediaPlaybackRequiresUserGesture: false,
-        cacheEnabled: true,
-        clearCache: false,
-        allowsInlineMediaPlayback: true,
-        useOnLoadResource: true,
-        iframeAllow: 'autoplay; fullscreen; encrypted-media',
-        iframeAllowFullscreen: true,
-      );
 
   void Function(InAppWebViewController, LoadedResource) _onLoadResource(String fallbackReferer) =>
       (controller, resource) {

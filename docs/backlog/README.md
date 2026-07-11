@@ -10,7 +10,11 @@ One file **per release version**. Specs live in [RFCs](../rfc/README.md); each f
 |-------|---------|-----------|
 | Major era | v0, v1, v2 | **Theme** (Tunisia category) |
 | Minor | `0.1.0`, `1.0.0` | **One codename** per minor open |
-| Patch | `0.1.3`, `1.0.1` | **None** |
+| Patch | `0.1.3`, `1.0.1`, `1.2.3` | **None** — ever |
+
+**Codename applies to the minor only** (`1.2.0` → **Dabaghin**; `1.2.3` inherits it). Patch backlog files (`1.0.1`, `1.0.2`) are ship checklists under **1.0.x** — still **Bab Souika**, no new codename.
+
+[`kReleaseCodename`](../../apps/forja/lib/shared/services/app_version.dart) tracks **app semver minor** (today **1.2 → Dabaghin**), not the patch backlog filename.
 
 Filename = `{semver}-[{status}].md`. Tag matches `**Status:**` in the body.
 
@@ -23,6 +27,8 @@ dropped  →  canceled/1.0.0-[canceled].md
 
 Every file body: **RFCs** · **Issues** · **Migration** · **Shipped** sections.
 
+Backlog file title: `# X.Y.Z — {Codename}` — codename from [runway](#codename-runway) for the app **minor** (patch files under 1.0.x → **Bab Souika**). No `**Major:**` / `**Arc:**` lines in backlog bodies.
+
 Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/rules/docs-rfc-issues.mdc#version--rfc--issue-three-layers).
 
 ## Major themes
@@ -30,16 +36,66 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | Major | Theme | Era |
 |-------|-------|-----|
 | **v0** | Tell & land | Engine migration + foundation |
-| **v1** | Souk & métier | Details/player UX (1.0.1); overlay, casting, providers (1.0.2) |
-| **v2** | Diwan & mer | Sync, LAN, watch party |
-| **v3** | TBD | Web client |
+| **v1** | Souk | Shell → details/player → TV → overlay/casting |
+| **v2** | Diwan | Sync, LAN, watch party, cross-device |
+| **v3** | Ink & stone | Web client + WASM |
+| **v4** | Ksour | Post-web expansion |
+
+## Codename runway
+
+**Source of truth** for minor codenames. v1 = medina souk quarters; v2 = Diwan; v3–v4 = history. Patches (`X.Y.Z`, `Z > 0`) inherit the minor — no new name. Full runway below; [`kReleaseCodename`](../../apps/forja/lib/shared/services/app_version.dart) must match the **shipping minor**.
+
+### v1 — Souk
+
+| Minor | Codename | 
+|-------|----------|
+| **1.0** ✅ | **Bab Souika** | 
+| **1.1** 🔄 | **Mrabet** | 
+| **1.2** 🔄 | **Dabaghin** | 
+| **1.3** ⬜ | **Elblat** | 
+| **1.4** ⬜ | **Atarin** | 
+| **1.5** ⬜ | **Berka** | 
+
+### v2 — Diwan
+
+| Minor | Codename | 
+|-------|----------|
+| **2.0** ⬜ | **Diwan** | 
+| **2.1** ⬜ | **Qoffa** | 
+| **2.2** ⬜ | **Chachia** | 
+| **2.3** ⬜ | **Herz** | 
+| **2.4** ⬜ | **Midha** |  
+| **2.5** ⬜ | **Mekhzan** |
+
+### v3 — Ink & stone
+
+| Minor | Codename | 
+|-------|----------|
+| **3.0** ⬜ | **Muqaddimah** | 
+| **3.1** ⬜ | **Capsa** | 
+| **3.2** ⬜ | **Kahina** | 
+| **3.3** ⬜ | **Uthina** | 
+| **3.4** ⬜ | **Tanit** | 
+| **3.5** ⬜ | **Magon** |
+
+### v4 — Ksour
+
+| Minor | Codename | 
+|-------|----------|
+| **4.0** ⬜ | **Chambi** | 
+| **4.1** ⬜ | **Sened** | 
+| **4.2** ⬜ | **Sbeitla** | 
+| **4.3** ⬜ | **Jugurtha** | 
+| **4.4** ⬜ | **Jerid** | 
+| **4.5** ⬜ | **Borma** |
 
 ## Active
 
-| File | Codename | Status |
-|------|----------|--------|
-| [1.0.1-[open].md](1.0.1-[open].md) | — | open — details & player UX (5/12 shipped) |
-| [1.0.2-[draft].md](1.0.2-[draft].md) | — | draft — overlay, providers, casting, release CI (1/9) |
+| File / source | App semver | Codename | Status |
+|---------------|------------|----------|--------|
+| [1.0.1-[open].md](1.0.1-[open].md) | 1.0.x patch checklist | Bab Souika | open — details & player UX (10/19 shipped) |
+| [1.0.2-[draft].md](1.0.2-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — overlay, providers, casting (1/10) |
+| `apps/forja` (`feat/android-tv`) | **1.2.x** | **Dabaghin** | shipping — leanback + D-pad |
 
 ## Done — v1
 

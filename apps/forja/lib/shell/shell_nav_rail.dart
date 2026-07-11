@@ -2,11 +2,30 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_back_exit.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+
+double _navRailItemSpacingForHeight({
+  required int itemCount,
+  required double maxHeight,
+  required double preferredSpacing,
+  required double itemContentHeight,
+}) {
+  if (itemCount <= 0) return preferredSpacing;
+  final naturalHeight = itemCount * (itemContentHeight + preferredSpacing);
+  if (naturalHeight <= maxHeight) return preferredSpacing;
+  return math.max(
+    0,
+    (maxHeight - itemCount * itemContentHeight) / itemCount,
+  );
+}
 
 /// Opens the shell nav drawer when the rail is collapsed on narrow windows.
 class ShellNavMenuButton extends StatefulWidget {
@@ -20,30 +39,48 @@ class ShellNavMenuButton extends StatefulWidget {
 
 class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
   bool _hover = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          width: 34,
-          height: 34,
-          child: Center(
-            child: AnimatedScale(
-              scale: _hover ? ShellTokens.navRailIconHoverScale : 1.0,
-              duration: ShellTokens.navSelectionAnimation,
-              curve: Curves.easeOutCubic,
-              child: Icon(
-                Icons.menu_rounded,
-                color: _hover
-                    ? ForjaShellColors.iconHover
-                    : ForjaShellColors.iconMuted,
-                size: ShellTokens.navRailIconSize,
+    final policy = ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final active = (_hover && policy.scaleOnHover) ||
+        (_focused && policy.scaleOnFocus);
+    return Focus(
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.select) {
+          widget.onPressed();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onPressed,
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+            width: 34,
+            height: 34,
+            child: Center(
+              child: AnimatedScale(
+                scale: active
+                    ? ShellTokens.navRailIconHoverScale
+                    : ShellTokens.navRailIconIdleScale,
+                duration: ShellTokens.navSelectionAnimation,
+                curve: Curves.easeOutCubic,
+                child: Icon(
+                  Icons.menu_rounded,
+                  color: active
+                      ? ForjaShellColors.iconHover
+                      : ForjaShellColors.iconMuted,
+                  size: ShellTokens.navRailIconSize,
+                ),
               ),
             ),
           ),
@@ -53,83 +90,162 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
   }
 }
 
-class ShellNavRail extends StatelessWidget {
+class ShellNavRail extends StatefulWidget {
   const ShellNavRail({
     super.key,
     required this.visibleIds,
     required this.selectedIndex,
     required this.onDestinationSelected,
-    required this.isDesktop,
   });
 
   final List<String> visibleIds;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
-  final bool isDesktop;
+
+  @override
+  State<ShellNavRail> createState() => _ShellNavRailState();
+}
+
+class _ShellNavRailState extends State<ShellNavRail> {
+  bool _mouseInRail = false;
+  bool _focusInRail = false;
+
+  bool get _railEngaged => _mouseInRail || _focusInRail;
 
   List<String> get _navIds =>
-      visibleIds.where((id) => id != 'settings').toList();
+      widget.visibleIds.where((id) => id != 'settings').toList();
 
   int? _indexForId(String id) {
-    final idx = visibleIds.indexOf(id);
+    final idx = widget.visibleIds.indexOf(id);
     return idx >= 0 ? idx : null;
+  }
+
+  void _syncFocusInRail() {
+    final engaged = ShellTvFocus.anyNavFocused;
+    if (engaged != _focusInRail) {
+      setState(() => _focusInRail = engaged);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _syncNavOrder();
+  }
+
+  @override
+  void didUpdateWidget(covariant ShellNavRail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncNavOrder();
+  }
+
+  void _syncNavOrder() {
+    final order = [
+      ..._navIds,
+      if (_indexForId('settings') != null) 'settings',
+    ];
+    ShellTvFocusCoordinator.setNavOrder(order);
   }
 
   @override
   Widget build(BuildContext context) {
     final settingsIndex = _indexForId('settings');
+    final metrics = ShellScope.metricsOf(context);
 
-    return Container(
-      width: ShellTokens.navRailWidth,
+    Widget buildNavColumn(double itemSpacing) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var i = 0; i < _navIds.length; i++)
+            Builder(
+              builder: (context) {
+                final id = _navIds[i];
+                final index = _indexForId(id)!;
+                final dest = navDestinations[id]!;
+                final selected = index == widget.selectedIndex;
+                return _ShellNavRailItem(
+                  destination: dest,
+                  selected: selected,
+                  onTap: () => widget.onDestinationSelected(index),
+                  itemSpacing: itemSpacing,
+                  railEngaged: _railEngaged,
+                  onFocusChanged: _syncFocusInRail,
+                );
+              },
+            ),
+        ],
+      );
+    }
+
+    return FocusTraversalGroup(
+      policy: OrderedTraversalPolicy(),
+      child: Container(
+      width: metrics.navRailWidth,
       color: AppTheme.bgDark,
       child: SafeArea(
+        left: false,
         right: false,
+        top: metrics.navRailSafeAreaVertical,
+        bottom: metrics.navRailSafeAreaVertical,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: ShellTokens.shellHeaderTopPadding),
+            SizedBox(height: metrics.navRailTopPadding),
             const _RailLogo(),
-            const SizedBox(height: 20),
+            SizedBox(height: metrics.navRailLogoGap),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: math.max(
-                          0,
-                          constraints.maxHeight - 16,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: _navIds.map((id) {
-                          final index = _indexForId(id)!;
-                          final dest = navDestinations[id]!;
-                          final selected = index == selectedIndex;
-                          return _ShellNavRailItem(
-                            destination: dest,
-                            selected: selected,
-                            onTap: () => onDestinationSelected(index),
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _mouseInRail = true),
+                onExit: (_) => setState(() => _mouseInRail = false),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final contentHeight =
+                              shellNavRailItemContentHeight(context);
+                          final itemSpacing = _navRailItemSpacingForHeight(
+                            itemCount: _navIds.length,
+                            maxHeight: constraints.maxHeight,
+                            preferredSpacing: metrics.navRailItemSpacing,
+                            itemContentHeight: contentHeight,
                           );
-                        }).toList(),
+                          final navColumn = buildNavColumn(itemSpacing);
+
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: math.max(
+                                  0,
+                                  constraints.maxHeight - 16,
+                                ),
+                              ),
+                              child: navColumn,
+                            ),
+                          );
+                        },
                       ),
                     ),
-                  );
-                },
+                    if (settingsIndex != null)
+                      _ShellNavRailItem(
+                        destination: navDestinations['settings']!,
+                        selected: settingsIndex == widget.selectedIndex,
+                        onTap: () =>
+                            widget.onDestinationSelected(settingsIndex),
+                        itemSpacing: metrics.navRailItemSpacing,
+                        railEngaged: _railEngaged,
+                        onFocusChanged: _syncFocusInRail,
+                      ),
+                  ],
+                ),
               ),
             ),
-            if (settingsIndex != null) ...[
-              _ShellNavRailItem(
-                destination: navDestinations['settings']!,
-                selected: settingsIndex == selectedIndex,
-                onTap: () => onDestinationSelected(settingsIndex),
-              ),
-              const SizedBox(height: 16),
-            ],
+            if (settingsIndex != null)
+              SizedBox(height: metrics.navRailBottomPadding),
           ],
         ),
+      ),
       ),
     );
   }
@@ -228,6 +344,8 @@ class _TypewriterLabelState extends State<_TypewriterLabel> {
     return Text(
       widget.text.substring(0, end),
       textAlign: TextAlign.center,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: widget.style,
     );
   }
@@ -238,11 +356,17 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.destination,
     required this.selected,
     required this.onTap,
+    required this.itemSpacing,
+    required this.railEngaged,
+    required this.onFocusChanged,
   });
 
   final NavDestination destination;
   final bool selected;
   final VoidCallback onTap;
+  final double itemSpacing;
+  final bool railEngaged;
+  final VoidCallback onFocusChanged;
 
   @override
   State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
@@ -251,16 +375,29 @@ class _ShellNavRailItem extends StatefulWidget {
 class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   bool _hover = false;
   bool _pressed = false;
+  bool _focused = false;
   bool _typing = false;
   Timer? _revealTimer;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode(debugLabel: 'nav-${widget.destination.id}');
+    ShellTvFocus.registerNav(widget.destination.id, _focusNode);
+  }
 
   @override
   void dispose() {
+    ShellTvFocus.unregisterNav(widget.destination.id, _focusNode);
+    _focusNode.dispose();
     _revealTimer?.cancel();
     super.dispose();
   }
 
   void _onHoverEnter() {
+    final policy = ShellScope.inputPolicyOf(context);
+    if (!policy.scaleOnHover) return;
     setState(() {
       _hover = true;
       _typing = false;
@@ -273,6 +410,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   }
 
   void _onHoverExit() {
+    if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
     _revealTimer?.cancel();
     setState(() {
       _hover = false;
@@ -281,103 +419,189 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     });
   }
 
-  double get _scale {
-    if (_pressed) return 0.92;
-    if (_hover) return ShellTokens.navRailIconHoverScale;
-    return 1.0;
+  double _scaleFor(ShellInputPolicy policy) {
+    final big = ShellTokens.navRailIconHoverScale;
+    final small = ShellTokens.navRailIconIdleScale;
+    final itemActive = (policy.scaleOnHover && _hover) ||
+        (policy.scaleOnFocus && _focused);
+    if (itemActive) return _pressed ? big * 0.92 : big;
+    if (!widget.railEngaged) return widget.selected ? big : small;
+    return small;
   }
 
+  void _enterPageFromNav() {
+    ShellTvBackExit.reset();
+    widget.onTap();
+    final tabId = widget.destination.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!ShellTvFocusCoordinator.focusTabEnterFromNav(tabId)) {
+        ShellTvFocusCoordinator.restoreTabFocusAfterNav(tabId);
+      }
+    });
+  }
+
+  void _returnToActivePage() {
+    final tabId = ShellTvFocus.currentNavTabId;
+    if (tabId == null || tabId.isEmpty) return;
+    ShellTvFocusCoordinator.restoreTabFocusAfterNav(tabId);
+  }
+
+  bool _activeFor(ShellInputPolicy policy) =>
+      (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+
   /// Fixed footprint: icon + label slot + underline gap — never grows on reveal.
-  static double get _contentHeight =>
-      ShellTokens.navRailIconSize +
-      ShellTokens.navRailIconLabelGap +
-      ShellTokens.navRailLabelFontSize +
-      6 +
-      ShellTokens.shellNavUnderlineHeight;
+  double _contentHeight(BuildContext context) =>
+      shellNavRailItemContentHeight(context);
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = widget.selected
-        ? ForjaShellColors.iconActive
-        : _hover
-            ? ForjaShellColors.iconHover
-            : ForjaShellColors.iconMuted;
-    final labelColor = widget.selected
-        ? ForjaShellColors.textPrimary
-        : _hover
-            ? ForjaShellColors.textSecondary
-            : ForjaShellColors.iconMuted;
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = _activeFor(policy);
+    final selectedFocused = widget.selected && active;
+    final iconSize = shellNavRailIconSize(context);
+    final labelFontSize = shellNavRailLabelFontSize(context);
+    final contentHeight = _contentHeight(context);
+    final underlineWidth = shellScaled(context, 24).clamp(14.0, 24.0);
+    final iconColor = selectedFocused
+        ? Colors.white
+        : widget.selected
+            ? ForjaShellColors.iconActive
+            : active
+                ? ForjaShellColors.iconHover
+                : ForjaShellColors.iconMuted;
+    final labelColor = selectedFocused
+        ? Colors.white
+        : widget.selected
+            ? ForjaShellColors.textPrimary
+            : active
+                ? ForjaShellColors.textSecondary
+                : ForjaShellColors.iconMuted;
     final labelStyle = GoogleFonts.inter(
       color: labelColor,
-      fontSize: ShellTokens.navRailLabelFontSize,
+      fontSize: labelFontSize,
       fontWeight: FontWeight.w500,
       height: 1,
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: ShellTokens.navRailItemSpacing / 2,
+      padding: EdgeInsets.symmetric(
+        vertical: widget.itemSpacing / 2,
       ),
-      child: SizedBox(
-        width: ShellTokens.navRailWidth,
-        height: _contentHeight,
-        child: Center(
-          child: MouseRegion(
-            onEnter: (_) => _onHoverEnter(),
-            onExit: (_) => _onHoverExit(),
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTapDown: (_) => setState(() => _pressed = true),
-              onTapUp: (_) => setState(() => _pressed = false),
-              onTapCancel: () => setState(() => _pressed = false),
-              onTap: widget.onTap,
-              behavior: HitTestBehavior.opaque,
-              child: SizedBox(
+      child: Focus(
+        focusNode: _focusNode,
+        debugLabel: 'nav-${widget.destination.id}',
+        onFocusChange: (focused) {
+          setState(() => _focused = focused);
+          widget.onFocusChanged();
+        },
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (shellTvIsActivateKey(event)) {
+            _enterPageFromNav();
+            return KeyEventResult.handled;
+          }
+          if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+            final arrow = event.logicalKey;
+            if (arrow == LogicalKeyboardKey.arrowRight) {
+              _returnToActivePage();
+              return KeyEventResult.handled;
+            }
+            if (arrow == LogicalKeyboardKey.arrowUp ||
+                arrow == LogicalKeyboardKey.arrowDown ||
+                arrow == LogicalKeyboardKey.arrowLeft) {
+              if (ShellTvFocusCoordinator.handleNavKey(arrow)) {
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Builder(
+          builder: (context) {
+            return SizedBox(
                 width: ShellTokens.navRailWidth,
-                height: _contentHeight,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AnimatedScale(
-                      scale: _scale,
-                      duration: ShellTokens.navSelectionAnimation,
-                      curve: Curves.easeOutCubic,
-                      child: NavDestinationIcon(
-                        destination: widget.destination,
-                        selected: widget.selected,
-                        color: iconColor,
-                        size: ShellTokens.navRailIconSize,
-                      ),
-                    ),
-                    SizedBox(height: ShellTokens.navRailIconLabelGap),
-                    SizedBox(
-                      height: ShellTokens.navRailLabelFontSize,
-                      width: ShellTokens.navRailWidth,
-                      child: Center(
-                        child: _TypewriterLabel(
-                          text: widget.destination.label,
-                          active: _typing,
-                          style: labelStyle,
+                height: contentHeight,
+                child: Center(
+                  child: MouseRegion(
+                    onEnter: (_) => _onHoverEnter(),
+                    onExit: (_) => _onHoverExit(),
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTapDown: (_) => setState(() => _pressed = true),
+                      onTapUp: (_) => setState(() => _pressed = false),
+                      onTapCancel: () => setState(() => _pressed = false),
+                      onTap: _enterPageFromNav,
+                      behavior: HitTestBehavior.opaque,
+                      child: SizedBox(
+                        width: ShellTokens.navRailWidth,
+                        height: contentHeight,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              height: iconSize *
+                                  ShellTokens.navRailIconHoverScale +
+                                  ShellTokens.navRailIconUnderlineGap +
+                                  ShellTokens.shellNavUnderlineHeight,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: Center(
+                                      child: AnimatedScale(
+                                        scale: _scaleFor(policy),
+                                        duration:
+                                            ShellTokens.navSelectionAnimation,
+                                        curve: Curves.easeOutCubic,
+                                        child: NavDestinationIcon(
+                                          destination: widget.destination,
+                                          selected: widget.selected,
+                                          color: iconColor,
+                                          size: iconSize,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  AnimatedContainer(
+                                    duration:
+                                        ShellTokens.navSelectionAnimation,
+                                    curve: Curves.easeOutCubic,
+                                    height:
+                                        ShellTokens.shellNavUnderlineHeight,
+                                    width: widget.selected ? underlineWidth : 0,
+                                    decoration: BoxDecoration(
+                                      color: widget.selected
+                                          ? (selectedFocused
+                                              ? Colors.white
+                                              : ForjaShellColors.navUnderline)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: ShellTokens.navRailIconLabelGap),
+                            SizedBox(
+                              height: labelFontSize,
+                              width: ShellTokens.navRailWidth,
+                              child: Center(
+                                child: _TypewriterLabel(
+                                  text: widget.destination.label,
+                                  active: _typing,
+                                  style: labelStyle,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    AnimatedContainer(
-                      duration: ShellTokens.navSelectionAnimation,
-                      height: ShellTokens.shellNavUnderlineHeight,
-                      width: widget.selected ? 24 : 0,
-                      decoration: BoxDecoration(
-                        color: widget.selected
-                            ? ForjaShellColors.navUnderline
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

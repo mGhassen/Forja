@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 /// Layout constants for the app shell nav chrome.
 abstract final class ShellTokens {
@@ -20,8 +21,14 @@ abstract final class ShellTokens {
   /// Width reserved for the shell menu button when the rail is collapsed.
   static const double shellNavMenuButtonWidth = 56;
   static const double navRailIconSize = 30;
-  /// Immediate hover grow for rail icons (and compact ☰).
-  static const double navRailIconHoverScale = 1.15;
+  /// Resting rail icon scale (below [navRailIconSize]).
+  static const double navRailIconIdleScale = 0.82;
+  /// Immediate hover / focus grow for rail icons (and compact ☰).
+  static const double navRailIconHoverScale = 1.28;
+  /// Gap between icon and selection underline in the nav rail.
+  static const double navRailIconUnderlineGap = 2;
+  /// D-pad / TV focus scale.
+  static const double focusActiveScale = 1.08;
   static const double navRailIconRevealedScale = 0.78;
   static const double navRailIconSlideUp = 10;
   static const double navRailIconLabelGap = 3;
@@ -221,6 +228,18 @@ abstract final class ShellTokens {
 
   /// Vertical gap between Home content rows (not hero → first row).
   static const double homeRowSpacing = 24;
+  /// TV catalog spacing — aligned with desktop/detail rhythm (cards stay 90px).
+  static const double tvHomeRowSpacing = 20;
+  static const double tvHomeSectionHorizontalPadding = 0;
+  static const double tvHeroHeightFraction = 0.78;
+  static const double tvHeroNextRowPeekFraction = 0.06;
+  static const double tvHomeSectionTitleTopCompact = 16;
+  static const double tvHomeSectionTitleTop = 24;
+  static const double tvHomeSectionHeaderHeight = 26;
+  static const double tvHomeSectionBottomGap = 14;
+  static const double tvMovieCardRowGap = 12;
+  /// Floor for TV typography/chrome — cards scale down, text/spacing does not crush.
+  static const double tvLayoutScaleFloor = 0.75;
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
   static const double homeSectionTitleTop = 36;
@@ -267,11 +286,32 @@ abstract final class ShellTokens {
   @Deprecated('Use navRailWidth')
   static const double navRailExpandedWidth = navRailWidth;
 
-  /// Android TV / leanback: wide landscape with tablet-class shortest side.
+  static const double tvBodyHorizontalPadding = 0;
+
+  /// Set at boot by [PlatformChannel.initialize] when native leanback reports TV.
+  static bool nativeAndroidTvDetected = false;
+
+  /// Android TV / leanback: native leanback detection or 1080p+ landscape panel.
+  static bool get isAndroidTvDevice {
+    if (!Platform.isAndroid) return false;
+    if (nativeAndroidTvDetected) return true;
+    final physical = _androidTvPhysicalSize();
+    if (physical == null) return false;
+    return physical.shortestSide >= 1080 && physical.width > physical.height;
+  }
+
   static bool isTvLayout(BuildContext context) {
+    if (isAndroidTvDevice) return true;
     if (!Platform.isAndroid) return false;
     final size = MediaQuery.sizeOf(context);
     if (size.shortestSide < 600) return false;
     return size.longestSide >= 960 && size.width > size.height;
+  }
+
+  static Size? _androidTvPhysicalSize() {
+    if (!Platform.isAndroid) return null;
+    final views = SchedulerBinding.instance.platformDispatcher.views;
+    if (views.isEmpty) return null;
+    return views.first.physicalSize;
   }
 }

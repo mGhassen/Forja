@@ -1,0 +1,19 @@
+subprojects { sub ->
+    sub.afterEvaluate {
+        if (sub.plugins.hasPlugin("com.android.application") ||
+            sub.plugins.hasPlugin("com.android.library")) {
+            sub.android {
+                compileSdk 36
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+        sub.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = JavaVersion.VERSION_17.toString()
+            }
+        }
+    }
+}

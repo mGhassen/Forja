@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 class MediaDetailsCastSection extends StatefulWidget {
@@ -10,12 +12,20 @@ class MediaDetailsCastSection extends StatefulWidget {
     required this.cast,
     this.title = 'Cast',
     this.outdentHorizontal = 0,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvRowOrder = 0,
+    this.tvFocusUp,
   });
 
   final List<Map<String, String>> cast;
   final String title;
   /// Cancels parent horizontal padding so row insets match home catalog rows.
   final double outdentHorizontal;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int tvRowOrder;
+  final VoidCallback? tvFocusUp;
 
   static const double _avatarSize = 88;
   static const double _itemWidth = 112;
@@ -34,9 +44,14 @@ class MediaDetailsCastSection extends StatefulWidget {
 
 class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
   final ScrollController _scrollController = ScrollController();
+  String get _rowId => widget.tvRowId ?? 'cast';
 
   @override
   void dispose() {
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    if (tabId != null && widget.tvRowId != null) {
+      shellTvUnregisterRow(tabId: tabId, rowId: _rowId);
+    }
     _scrollController.dispose();
     super.dispose();
   }
@@ -44,6 +59,17 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
   @override
   Widget build(BuildContext context) {
     if (widget.cast.isEmpty) return const SizedBox.shrink();
+
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    if (tabId != null && widget.tvRowId != null) {
+      shellTvRegisterRow(
+        tabId: tabId,
+        rowId: _rowId,
+        sortOrder: widget.tvRowOrder,
+        itemCount: widget.cast.length,
+        onFocusUp: widget.tvFocusUp,
+      );
+    }
 
     final homePad = ShellTokens.homeSectionHorizontalPadding;
     final outdent = widget.outdentHorizontal;
@@ -63,7 +89,10 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
         ],
         SizedBox(
           height: MediaDetailsCastSection._rowHeight,
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: shellAbsorbHorizontalScroll,
+              child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -79,64 +108,74 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
               final profilePath = m['profilePath'] ?? '';
               final name = m['name'] ?? '';
               final character = m['character'] ?? '';
-              return SizedBox(
-                width: MediaDetailsCastSection._itemWidth,
-                child: Column(
-                  children: [
-                    ClipOval(
-                      child: profilePath.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: TmdbApi.getProfileUrl(profilePath),
-                              width: MediaDetailsCastSection._avatarSize,
-                              height: MediaDetailsCastSection._avatarSize,
-                              fit: BoxFit.cover,
-                            )
-                          : Container(
-                              width: MediaDetailsCastSection._avatarSize,
-                              height: MediaDetailsCastSection._avatarSize,
-                              color: Colors.white.withValues(alpha: 0.08),
-                              child: Icon(
-                                Icons.person,
-                                color: Colors.white.withValues(alpha: 0.24),
-                                size: 36,
+              return shellFocusableTap(
+                context: context,
+                borderRadius: MediaDetailsCastSection._avatarSize / 2,
+                listIndex: i,
+                tvTabId: tabId,
+                tvRowId: widget.tvRowId != null ? _rowId : null,
+                tvItemIndex: i,
+                child: SizedBox(
+                  width: MediaDetailsCastSection._itemWidth,
+                  child: Column(
+                    children: [
+                      ClipOval(
+                        child: profilePath.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: TmdbApi.getProfileUrl(profilePath),
+                                width: MediaDetailsCastSection._avatarSize,
+                                height: MediaDetailsCastSection._avatarSize,
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                width: MediaDetailsCastSection._avatarSize,
+                                height: MediaDetailsCastSection._avatarSize,
+                                color: Colors.white.withValues(alpha: 0.08),
+                                child: Icon(
+                                  Icons.person,
+                                  color: Colors.white.withValues(alpha: 0.24),
+                                  size: 36,
+                                ),
                               ),
-                            ),
-                    ),
-                    const SizedBox(
-                      height: MediaDetailsCastSection._avatarNameGap,
-                    ),
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
                       ),
-                    ),
-                    if (character.isNotEmpty) ...[
                       const SizedBox(
-                        height: MediaDetailsCastSection._nameCharacterGap,
+                        height: MediaDetailsCastSection._avatarNameGap,
                       ),
                       Text(
-                        character,
+                        name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
-                          fontSize: 12,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
                           height: 1.2,
                         ),
                       ),
+                      if (character.isNotEmpty) ...[
+                        const SizedBox(
+                          height: MediaDetailsCastSection._nameCharacterGap,
+                        ),
+                        Text(
+                          character,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 12,
+                            height: 1.2,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               );
             },
+          ),
+            ),
           ),
         ),
       ],

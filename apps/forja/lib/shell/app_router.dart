@@ -5,6 +5,7 @@ import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/trailer_player_screen.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 
 /// Central navigation for cross-feature routes (details, player).
@@ -17,20 +18,52 @@ class AppRouter {
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),
       transitionDuration: const Duration(milliseconds: 350),
       reverseTransitionDuration: const Duration(milliseconds: 300),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(1, 0),
-            end: Offset.zero,
-          ).animate(curved),
-          child: child,
-        );
+      transitionsBuilder: _slideTransition,
+    );
+  }
+
+  /// Shell overlay routes — blocks TV system-back from bypassing the coordinator.
+  static Route<T> slideShellRoute<T>(WidgetBuilder builder) {
+    return PageRouteBuilder<T>(
+      opaque: true,
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return _tvBackGuardPage(builder(context));
       },
+      transitionDuration: const Duration(milliseconds: 350),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionsBuilder: _slideTransition,
+    );
+  }
+
+  static Widget _tvBackGuardPage(Widget child) {
+    if (!ShellTvFocusCoordinator.tvBackPolicyEnabled) return child;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        ShellTvFocusCoordinator.handleShellBackKey();
+      },
+      child: child,
+    );
+  }
+
+  static Widget _slideTransition(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(1, 0),
+        end: Offset.zero,
+      ).animate(curved),
+      child: child,
     );
   }
 
@@ -67,7 +100,7 @@ class AppRouter {
   }) {
     return pushShellRoute<T>(
       context,
-      slideRoute(
+      slideShellRoute(
         (_) => DetailsScreen(
           movie: movie,
           stremioItem: stremioItem,
@@ -122,7 +155,7 @@ class AppRouter {
   static Future<T?> openSearch<T>(BuildContext context) {
     return pushShellRoute<T>(
       context,
-      slideRoute((_) => const SearchScreen(overlay: true)),
+      slideShellRoute((_) => const SearchScreen(overlay: true)),
     );
   }
 

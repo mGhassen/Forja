@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
 class StreamExtractorView extends StatefulWidget {
@@ -77,7 +78,7 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
       ),
       body: Stack(
         children: [
-          InAppWebView(
+          ForjaInAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(widget.url)),
             initialUserScripts: UnmodifiableListView([
               UserScript(
@@ -93,11 +94,10 @@ class _StreamExtractorViewState extends State<StreamExtractorView> {
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               useOnLoadResource: true,
-              // Real browser-like settings
               allowFileAccessFromFileURLs: true,
               allowUniversalAccessFromFileURLs: true,
               useShouldOverrideUrlLoading: true,
-              javaScriptCanOpenWindowsAutomatically: false, // Block popups
+              javaScriptCanOpenWindowsAutomatically: false,
               supportMultipleWindows: false,
               isFraudulentWebsiteWarningEnabled: false,
               safeBrowsingEnabled: false,

@@ -4,6 +4,7 @@ import 'dart:ui' show Size;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 
 /// Official Miruro domains (miruro no Kuon status page).
 class MiruroDomains {
@@ -34,7 +35,7 @@ class MiruroPipeSession {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
-  HeadlessInAppWebView? _web;
+  ForjaHeadlessInAppWebView? _web;
   InAppWebViewController? _controller;
   String? _sessionOrigin;
   Future<void>? _boot;
@@ -68,7 +69,7 @@ class MiruroPipeSession {
     _sessionOrigin = origin;
 
     final ready = Completer<void>();
-    _web = HeadlessInAppWebView(
+    _web = ForjaHeadlessInAppWebView(
       initialUrlRequest: URLRequest(url: WebUri('$origin/')),
       initialSize: const Size(1280, 720),
       initialSettings: InAppWebViewSettings(

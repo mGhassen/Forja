@@ -3,10 +3,11 @@ import 'dart:collection';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 
 class AmriExtractor {
   final void Function(String) onLog;
-  HeadlessInAppWebView? _headlessWebView;
+  ForjaHeadlessInAppWebView? _headlessWebView;
   Completer<Map<String, dynamic>>? _sourcesCompleter;
   bool _cancelled = false;
 
@@ -51,6 +52,10 @@ class AmriExtractor {
     bool Function()? isCancelled,
     Duration timeout = const Duration(seconds: 30),
   }) async {
+    if (isAndroidTvHeadlessWebViewBlocked) {
+      onLog('Headless WebView blocked on Android TV');
+      return {'sources': []};
+    }
     _cancelled = false;
     bool cancelled() => _cancelled || (isCancelled?.call() ?? false);
     _sourcesCompleter = Completer<Map<String, dynamic>>();
@@ -70,7 +75,7 @@ class AmriExtractor {
       
       final script = _buildInterceptScript(tmdbId);
       
-      _headlessWebView = HeadlessInAppWebView(
+      _headlessWebView = ForjaHeadlessInAppWebView(
         initialUrlRequest: URLRequest(url: WebUri(url)),
         initialUserScripts: UnmodifiableListView([
           UserScript(

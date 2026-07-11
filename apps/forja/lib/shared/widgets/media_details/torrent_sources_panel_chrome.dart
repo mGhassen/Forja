@@ -92,8 +92,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTv = ShellTokens.isTvLayout(context);
-    final gap = isTv ? 10.0 : 8.0;
+    const gap = 8.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +152,7 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
           enableBlur: filterEnableBlur,
         ),
         if (showCacheLine && cacheRefreshToken != null) ...[
-          SizedBox(height: isTv ? 6 : 4),
+          const SizedBox(height: 4),
           TorrentCacheStorageLine(refreshToken: cacheRefreshToken!),
         ],
       ],

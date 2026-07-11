@@ -92,16 +92,16 @@ Output artifact name per [RFC-015](015-[partial]-in-app-updates.md): `Forja-{ver
 
 [`.github/workflows/build.yml`](../../.github/workflows/build.yml) manual dispatch only (optional smoke builds, artifacts only).
 
-[`.github/workflows/release.yml`](../../.github/workflows/release.yml) manual dispatch — bump version (patch/minor/major), tag `v*`, publish installers:
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml) manual dispatch — bump version (patch/minor/major), tag `v*`, publish installers. Toggle platforms per run:
 
 | Job | Output |
 |-----|--------|
-| macOS | `.dmg` + `.zip` |
-| Windows | `Forja-Windows-Setup.exe` via [`installer/windows/setup.iss`](../../installer/windows/setup.iss) |
-| Linux | `.AppImage` |
-| Android | split APKs or universal APK |
+| macOS | `Forja-{version}-macos-arm64.dmg` |
+| Windows | `Forja-{version}-windows-setup.exe` via [`installer/windows/setup.iss`](../../installer/windows/setup.iss) |
+| Linux | `Forja-{version}-linux-x86_64.AppImage` |
+| Android TV | `Forja-{version}-android-tv-arm64.apk` + `Forja-{version}-android-tv-armeabi-v7a.apk` |
 
-Attach all to GitHub Release; [`AppUpdaterService`](../../packages/api/lib/services/app_updater_service.dart) matches asset filenames.
+Attach selected assets to GitHub Release; [`AppUpdaterService`](../../apps/forja/lib/shared/services/app_updater_service.dart) matches asset filenames (Android TV by ABI).
 
 ## 4. Platform entitlements and fixes
 

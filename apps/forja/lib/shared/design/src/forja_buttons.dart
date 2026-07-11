@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/src/shell_input_policy.dart';
+import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 typedef ForjaInteractiveBuilder = Widget Function(bool hover, bool pressed);
@@ -12,12 +17,22 @@ class ForjaInteractive extends StatefulWidget {
     this.onTap,
     this.hoverScale = 1.06,
     this.pressScale = 0.94,
+    this.scaleAlignment = Alignment.center,
+    this.autoFocus = false,
+    this.focusNode,
+    this.onKeyEvent,
+    this.tvMeta,
   });
 
   final ForjaInteractiveBuilder builder;
   final VoidCallback? onTap;
   final double hoverScale;
   final double pressScale;
+  final Alignment scaleAlignment;
+  final bool autoFocus;
+  final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
+  final ShellTvFocusMeta? tvMeta;
 
   @override
   State<ForjaInteractive> createState() => _ForjaInteractiveState();
@@ -26,23 +41,100 @@ class ForjaInteractive extends StatefulWidget {
 class _ForjaInteractiveState extends State<ForjaInteractive> {
   bool _hover = false;
   bool _pressed = false;
+  bool _focused = false;
+  FocusNode? _ownedNode;
 
-  double get _scale {
-    if (_pressed) return widget.pressScale;
-    if (_hover) return widget.hoverScale;
-    return 1.0;
+  FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
+
+  ShellInputPolicy _policy(BuildContext context) =>
+      ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.focusNode == null) {
+      _ownedNode = FocusNode(debugLabel: 'forja-interactive');
+    }
+    _registerTvItemNode();
   }
 
   @override
+  void didUpdateWidget(covariant ForjaInteractive oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      _unregisterTvItemNode(oldWidget.tvMeta);
+      if (widget.focusNode == null) {
+        _ownedNode ??= FocusNode(debugLabel: 'forja-interactive');
+      } else {
+        _ownedNode?.dispose();
+        _ownedNode = null;
+      }
+      _registerTvItemNode();
+    } else if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
+        oldWidget.tvMeta?.itemIndex != widget.tvMeta?.itemIndex) {
+      _unregisterTvItemNode(oldWidget.tvMeta);
+      _registerTvItemNode();
+    }
+  }
+
+  void _registerTvItemNode() {
+    final meta = widget.tvMeta;
+    if (meta == null) return;
+    if (meta.zone != ShellTvZone.row && meta.zone != ShellTvZone.chipStrip) {
+      return;
+    }
+    if (meta.rowId == null || meta.itemIndex == null) return;
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: meta.tabId,
+      rowId: meta.rowId!,
+      index: meta.itemIndex!,
+      node: _effectiveNode,
+    );
+  }
+
+  void _unregisterTvItemNode(ShellTvFocusMeta? meta) {
+    if (meta == null) return;
+    if (meta.zone != ShellTvZone.row && meta.zone != ShellTvZone.chipStrip) {
+      return;
+    }
+    if (meta.rowId == null || meta.itemIndex == null) return;
+    ShellTvFocusCoordinator.unregisterItemNode(
+      tabId: meta.tabId,
+      rowId: meta.rowId!,
+      index: meta.itemIndex!,
+      node: _effectiveNode,
+    );
+  }
+
+  @override
+  void dispose() {
+    _unregisterTvItemNode(widget.tvMeta);
+    _ownedNode?.dispose();
+    super.dispose();
+  }
+
+  double _scaleFor(ShellInputPolicy policy) {
+    if (_pressed) return widget.pressScale;
+    if (policy.scaleOnHover && _hover) return widget.hoverScale;
+    if (policy.scaleOnFocus && _focused) return widget.hoverScale;
+    return 1.0;
+  }
+
+  bool _activeFor(ShellInputPolicy policy) =>
+      (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+
+  @override
   Widget build(BuildContext context) {
+    final policy = _policy(context);
     final body = AnimatedScale(
-      scale: _scale,
+      scale: _scaleFor(policy),
+      alignment: widget.scaleAlignment,
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
-      child: widget.builder(_hover, _pressed),
+      child: widget.builder(_activeFor(policy), _pressed),
     );
 
-    return MouseRegion(
+    Widget interactive = MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() {
         _hover = false;
@@ -66,6 +158,40 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
               child: body,
             ),
     );
+
+    if (widget.onTap == null) return interactive;
+
+    return Focus(
+      focusNode: _effectiveNode,
+      debugLabel: _effectiveNode.debugLabel ?? 'forja-interactive',
+      autofocus: widget.autoFocus,
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        if (focused) {
+          widget.tvMeta?.notifyFocused(_effectiveNode);
+        }
+      },
+      onKeyEvent: (node, event) {
+        final custom = widget.onKeyEvent?.call(node, event);
+        if (custom == KeyEventResult.handled) return KeyEventResult.handled;
+        final arrow = shellTvHandleRowArrows(event: event, tvMeta: widget.tvMeta);
+        if (arrow == KeyEventResult.handled) return arrow;
+        final trap = shellTvTrapRowGeometry(
+          event: event,
+          tvFocus: policy.useFocusableMoodChips,
+          tvMeta: widget.tvMeta,
+          trapHorizontal: policy.useFocusableMoodChips,
+        );
+        if (trap == KeyEventResult.handled) return trap;
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (shellTvIsActivateKey(event)) {
+          widget.onTap!();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: interactive,
+    );
   }
 }
 
@@ -76,11 +202,15 @@ class ForjaGhostButton extends StatelessWidget {
     required this.label,
     this.onTap,
     this.icon,
+    this.autoFocus = false,
+    this.focusNode,
   });
 
   final String label;
   final VoidCallback? onTap;
   final IconData? icon;
+  final bool autoFocus;
+  final FocusNode? focusNode;
 
   Color get _color => ForjaShellColors.textPrimary;
 
@@ -88,6 +218,8 @@ class ForjaGhostButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ForjaInteractive(
       onTap: onTap,
+      autoFocus: autoFocus,
+      focusNode: focusNode,
       hoverScale: 1.04,
       pressScale: 0.96,
       builder: (hover, pressed) {
@@ -117,7 +249,7 @@ class ForjaGhostButton extends StatelessWidget {
   }
 }
 
-/// Bare icon action — soft circular fill on hover/press, no border.
+/// Bare icon action — soft circular fill on hover/press/focus, no border.
 class ForjaPlainIcon extends StatefulWidget {
   const ForjaPlainIcon({
     super.key,
@@ -130,6 +262,8 @@ class ForjaPlainIcon extends StatefulWidget {
     this.hoverScale = 1.08,
     this.pressScale = 0.94,
     this.child,
+    this.focusNode,
+    this.onKeyEvent,
   });
 
   final IconData icon;
@@ -141,6 +275,8 @@ class ForjaPlainIcon extends StatefulWidget {
   final double hoverScale;
   final double pressScale;
   final Widget? child;
+  final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   State<ForjaPlainIcon> createState() => _ForjaPlainIconState();
@@ -149,12 +285,25 @@ class ForjaPlainIcon extends StatefulWidget {
 class _ForjaPlainIconState extends State<ForjaPlainIcon> {
   bool _hover = false;
   bool _pressed = false;
+  bool _focused = false;
 
   double get _resolvedHitSize => widget.hitSize ?? widget.size + 12;
 
-  Color _resolveIconColor() {
-    return widget.color ??
-        (_hover ? ForjaShellColors.iconHover : ForjaShellColors.iconMuted);
+  ShellInputPolicy _policy(BuildContext context) =>
+      ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+
+  bool _activeFor(ShellInputPolicy policy) =>
+      (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+
+  Color _resolveIconColor(ShellInputPolicy policy) {
+    if (widget.color != null) {
+      return _activeFor(policy)
+          ? ForjaShellColors.iconHover
+          : widget.color!;
+    }
+    return _activeFor(policy)
+        ? ForjaShellColors.iconHover
+        : ForjaShellColors.iconMuted;
   }
 
   Color _resolveFillColor() {
@@ -162,14 +311,18 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
     return Colors.white.withValues(alpha: fillAlpha);
   }
 
+  double _scaleFor(ShellInputPolicy policy) {
+    if (_pressed) return widget.pressScale;
+    if (_activeFor(policy)) return widget.hoverScale;
+    return 1.0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final scale = _pressed
-        ? widget.pressScale
-        : (_hover ? widget.hoverScale : 1.0);
-    final showFill = _hover || _pressed;
+    final policy = _policy(context);
+    final showFill = _activeFor(policy) || _pressed;
 
-    final button = MouseRegion(
+    Widget button = MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() {
         _hover = false;
@@ -188,7 +341,7 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
         child: AnimatedScale(
-          scale: scale,
+          scale: _scaleFor(policy),
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           child: SizedBox(
@@ -204,7 +357,7 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
                     Icon(
                       widget.icon,
                       size: widget.size,
-                      color: _resolveIconColor(),
+                      color: _resolveIconColor(policy),
                     ),
               ),
             ),
@@ -212,6 +365,26 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
         ),
       ),
     );
+
+    if (widget.onTap != null) {
+      button = Focus(
+        focusNode: widget.focusNode,
+        debugLabel: widget.focusNode?.debugLabel ?? 'forja-plain-icon',
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onKeyEvent: (node, event) {
+          final custom = widget.onKeyEvent?.call(node, event);
+          if (custom == KeyEventResult.handled) return KeyEventResult.handled;
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey == LogicalKeyboardKey.enter ||
+              event.logicalKey == LogicalKeyboardKey.select) {
+            widget.onTap!();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: button,
+      );
+    }
 
     if (widget.tooltip != null) {
       return Tooltip(message: widget.tooltip!, child: button);

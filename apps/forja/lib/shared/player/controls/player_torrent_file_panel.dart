@@ -203,7 +203,6 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
 
   @override
   Widget build(BuildContext context) {
-    final isTv = ShellTokens.isTvLayout(context);
     final count = _files?.length;
 
     return Column(
@@ -237,7 +236,7 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
             ),
           ],
         ),
-        SizedBox(height: isTv ? 10 : 8),
+        const SizedBox(height: 8),
         Expanded(child: _buildBody()),
       ],
     );

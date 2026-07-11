@@ -34,6 +34,9 @@ scripts:
   rust:check-sync-ffi:
     run: ../../scripts/check_sync_ffi.sh
     description: Fail if RustLib.instance used outside allowlisted app/api files
+  rust:check-tv-shell:
+    run: ../../scripts/check_tv_shell_boundary.sh
+    description: Fail if ShellTokens TV APIs leak outside shell resolver
   analyze:
     run: flutter analyze
     exec:

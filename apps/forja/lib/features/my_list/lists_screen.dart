@@ -4,6 +4,8 @@ import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 class ListsScreen extends StatefulWidget {
   const ListsScreen({super.key});
@@ -195,23 +197,85 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final useTvTabs = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    const tabLabels = ['Trakt', 'MDBlist', 'Top Lists'];
+
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       appBar: AppBar(
         backgroundColor: AppTheme.bgDark,
         title: const Text('Lists', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
         iconTheme: const IconThemeData(color: Colors.white),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppTheme.primaryColor,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white54,
-          tabs: const [
-            Tab(text: 'Trakt'),
-            Tab(text: 'MDBlist'),
-            Tab(text: 'Top Lists'),
-          ],
-        ),
+        bottom: useTvTabs
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(48),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < tabLabels.length; i++)
+                            Expanded(
+                              child: AnimatedBuilder(
+                                animation: _tabController,
+                                builder: (context, _) {
+                                  final selected = _tabController.index == i;
+                                  return shellFocusableTap(
+                                    context: context,
+                                    onTap: () => _tabController.animateTo(i),
+                                    borderRadius: 0,
+                                    listIndex: i,
+                                    tvTabId: 'mylist',
+                                    tvZone: ShellTvZone.chipStrip,
+                                    child: SizedBox(
+                                      height: 46,
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            tabLabels[i],
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: selected
+                                                  ? Colors.white
+                                                  : Colors.white54,
+                                              fontWeight: selected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          Container(
+                                            height: 2,
+                                            color: selected
+                                                ? AppTheme.primaryColor
+                                                : Colors.transparent,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : TabBar(
+                controller: _tabController,
+                indicatorColor: AppTheme.primaryColor,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white54,
+                tabs: const [
+                  Tab(text: 'Trakt'),
+                  Tab(text: 'MDBlist'),
+                  Tab(text: 'Top Lists'),
+                ],
+              ),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -350,8 +414,13 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
+      borderRadius: 14,
+      navLeftAlways: true,
+      tvTabId: 'mylist',
+      tvZone: ShellTvZone.row,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -495,6 +564,7 @@ class _TraktListItemsScreenState extends State<_TraktListItemsScreen> {
               itemBuilder: (context, index) {
                 final movie = _movies[index];
                 return _movieListTile(
+                  context: context,
                   movie: movie,
                   onTap: () => AppRouter.openDetails(context, movie: movie),
                   onRemove: () => _removeItem(movie),
@@ -600,6 +670,7 @@ class _MdblistItemsScreenState extends State<_MdblistItemsScreen> {
               itemBuilder: (context, index) {
                 final movie = _movies[index];
                 return _movieListTile(
+                  context: context,
                   movie: movie,
                   onTap: () => AppRouter.openDetails(context, movie: movie),
                   onRemove: widget.isUserList ? () => _removeItem(movie) : null,
@@ -615,6 +686,7 @@ class _MdblistItemsScreenState extends State<_MdblistItemsScreen> {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Widget _movieListTile({
+  required BuildContext context,
   required Movie movie,
   required VoidCallback onTap,
   VoidCallback? onRemove,
@@ -623,8 +695,12 @@ Widget _movieListTile({
       ? TmdbApi.getImageUrl(movie.posterPath)
       : '';
 
-  return GestureDetector(
+  return shellFocusableTap(
+    context: context,
     onTap: onTap,
+    borderRadius: 14,
+    tvTabId: 'mylist',
+    tvZone: ShellTvZone.row,
     child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

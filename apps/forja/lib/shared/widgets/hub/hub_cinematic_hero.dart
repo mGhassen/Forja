@@ -3,8 +3,12 @@ import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
@@ -41,11 +45,13 @@ class HubCinematicHero extends StatefulWidget {
     required this.slides,
     this.firstRowHeight,
     this.onSearch,
+    this.tvTabId,
   });
 
   final List<HubHeroSlide> slides;
   final double? firstRowHeight;
   final VoidCallback? onSearch;
+  final String? tvTabId;
 
   @override
   State<HubCinematicHero> createState() => _HubCinematicHeroState();
@@ -57,15 +63,22 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
 
   late final PageController _controller =
       PageController(initialPage: _loopStart);
+  final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'hub-hero-play');
+  final FocusNode _tvSearchFocus = FocusNode(debugLabel: 'hub-hero-search');
   Timer? _timer;
   int _index = 0;
+  bool _tvHeroInitialFocusDone = false;
 
-  bool get _compact =>
-      MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
+  bool get _compact {
+    if (ShellScope.metricsOf(context).usesTvDensity) return false;
+    return MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
+  }
 
   @override
   void initState() {
     super.initState();
+    ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
+    ShellTvFocus.hubHeroSearch = _tvSearchFocus;
     _startTimer();
   }
 
@@ -80,7 +93,15 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   @override
   void dispose() {
     _timer?.cancel();
+    if (ShellTvFocus.homeHeroPlay == _tvHeroPlayFocus) {
+      ShellTvFocus.homeHeroPlay = null;
+    }
+    if (ShellTvFocus.hubHeroSearch == _tvSearchFocus) {
+      ShellTvFocus.hubHeroSearch = null;
+    }
     _controller.dispose();
+    _tvHeroPlayFocus.dispose();
+    _tvSearchFocus.dispose();
     super.dispose();
   }
 
@@ -157,14 +178,14 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         HubCatalogSection.sectionHeight(context, compactTop: true);
     final nextRowPeek =
         HubCatalogSection.sectionHeight(context) *
-            ShellTokens.heroNextRowPeekFraction;
-    final reservedBelow = ShellTokens.homeRowSpacing +
+            shellHeroNextRowPeekFraction(context);
+    final reservedBelow = shellHomeRowSpacing(context) +
         firstRowHeight +
         nextRowPeek;
-    final target = screenH * ShellTokens.heroHeightFractionDesktop;
+    final target = screenH * shellHeroHeightFraction(context);
     final maxHero = screenH - topBar - reservedBelow;
     return _snapToDevicePixels(
-      math.min(target, math.max(320.0, maxHero)),
+      math.min(target, math.max(shellHeroMinHeight(context), maxHero)),
     );
   }
 
@@ -175,11 +196,23 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       return homeCinematicHeroShimmer(context);
     }
 
+    final policy = ShellScope.inputPolicyOf(context);
+    if (policy.heroPlayAutoFocus && !_tvHeroInitialFocusDone) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _tvHeroInitialFocusDone) return;
+        if (_tvHeroPlayFocus.canRequestFocus) {
+          _tvHeroPlayFocus.requestFocus();
+          _tvHeroInitialFocusDone = true;
+        }
+      });
+    }
+
     final heroSlide = slides[_index];
     final backdropHeight = _heroBodyHeight();
     final topBarBleed = MediaQuery.paddingOf(context).top;
     final imageHeight = _snapToDevicePixels(backdropHeight + topBarBleed);
     final textTop = topBarBleed + ShellTokens.shellHeaderTopPadding;
+    final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     return SizedBox(
       height: imageHeight,
@@ -197,22 +230,59 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
           if (widget.onSearch != null)
             Positioned(
               top: textTop,
-              right: ShellTokens.bodyHorizontalPadding,
-              child: ForjaPlainIcon(
-                icon: Icons.search_rounded,
-                color: Colors.white,
-                size: 30,
-                hitSize: 44,
-                onTap: widget.onSearch,
-              ),
+              right: shellHomeSectionHorizontalPadding(context),
+              child: tvNav
+                  ? shellFocusableTap(
+                      context: context,
+                      onTap: widget.onSearch!,
+                      borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
+                      scaleOnFocus: ShellTokens.focusActiveScale,
+                      focusNode: _tvSearchFocus,
+                      tvTabId: widget.tvTabId,
+                      tvZone: ShellTvZone.topBar,
+                      onDownEdge: ShellTvFocus.focusHomeHeroPlay,
+                      child: SizedBox(
+                        height: shellScaled(context, 34).clamp(24.0, 34.0),
+                        width: shellScaled(context, 44).clamp(32.0, 44.0),
+                        child: Center(
+                          child: Icon(
+                            Icons.search_rounded,
+                            color: Colors.white,
+                            size: shellScaled(context, 30).clamp(20.0, 30.0),
+                          ),
+                        ),
+                      ),
+                    )
+                  : ForjaPlainIcon(
+                      icon: Icons.search_rounded,
+                      color: Colors.white,
+                      size: shellScaled(context, 30).clamp(20.0, 30.0),
+                      hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
+                      onTap: widget.onSearch,
+                    ),
             ),
           Positioned(
-            left: ShellTokens.bodyHorizontalPadding,
+            left: shellHomeSectionHorizontalPadding(context),
             top: textTop,
-            right: _compact ? 20 : 48,
-            bottom: 16,
+            right: _compact
+                ? shellScaled(context, 20).clamp(12.0, 20.0)
+                : shellScaled(context, 48).clamp(24.0, 48.0),
+            bottom: shellScaled(context, 16).clamp(8.0, 16.0),
             child: _compact
-                ? _buildCompactTextColumn(heroSlide)
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return ClipRect(
+                        child: Align(
+                          alignment: Alignment.bottomLeft,
+                          child: _buildCompactTextColumn(
+                            heroSlide,
+                            maxHeight: constraints.maxHeight,
+                            maxWidth: constraints.maxWidth,
+                          ),
+                        ),
+                      );
+                    },
+                  )
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       return ClipRect(
@@ -237,13 +307,16 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                   ),
           ),
           Positioned(
-            right: 20,
-            bottom: _compact ? 16 : null,
+            right: shellScaled(context, 20).clamp(10.0, 20.0),
+            bottom: _compact ? shellScaled(context, 16).clamp(8.0, 16.0) : null,
             top: _compact ? null : 0,
             height: _compact ? null : imageHeight,
             child: _compact
                 ? _buildStepIndicators(slides, axis: Axis.horizontal)
-                : Center(child: _buildStepIndicators(slides)),
+                : Align(
+                    alignment: Alignment.centerRight,
+                    child: _buildStepIndicators(slides),
+                  ),
           ),
         ],
       ),
@@ -380,16 +453,61 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     );
   }
 
-  Widget _buildCompactTextColumn(HubHeroSlide slide) {
+  Widget _buildCompactTextColumn(
+    HubHeroSlide slide, {
+    double? maxHeight,
+    double? maxWidth,
+  }) {
+    if (maxHeight != null && maxWidth != null) {
+      final actionGap = shellHeroActionGap(context);
+      final metaGap = shellHeroMetaGap(context);
+      const actionRowHeight = 40.0;
+      const metaRowHeight = 32.0;
+      final titleHeight = (maxHeight -
+              actionGap -
+              metaGap -
+              actionRowHeight -
+              metaRowHeight)
+          .clamp(40.0, ShellTokens.heroTitleSlotHeightCompact);
+
+      return SizedBox(
+        width: maxWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: titleHeight,
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: _buildTitle(slide, compact: true),
+              ),
+            ),
+            SizedBox(height: metaGap),
+            SizedBox(
+              height: metaRowHeight,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _buildMetaRow(slide),
+              ),
+            ),
+            SizedBox(height: actionGap),
+            _buildActionRow(slide),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildTitle(slide, compact: true),
-        const SizedBox(height: 10),
+        SizedBox(height: shellHeroMetaGap(context)),
         _buildMetaRow(slide),
-        const SizedBox(height: 12),
+        SizedBox(height: shellHeroActionGap(context)),
         _buildActionRow(slide),
       ],
     );
@@ -498,7 +616,8 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: Colors.white,
-          fontSize: compact ? 28 : 40,
+          fontSize: shellScaled(context, compact ? 28 : 40)
+              .clamp(compact ? 18.0 : 24.0, compact ? 28.0 : 40.0),
           fontWeight: FontWeight.w900,
           height: 1.05,
           letterSpacing: -0.5,
@@ -508,25 +627,37 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   }
 
   Widget _buildMetaRow(HubHeroSlide slide) {
+    final metaFont = shellScaled(context, 13).clamp(9.0, 13.0);
+    final genreFont = shellScaled(context, 12).clamp(8.0, 12.0);
+    final gap = shellScaled(context, 10).clamp(7.0, 10.0);
     final rating = slide.rating != null && slide.rating! > 0
         ? Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
+              vertical: shellScaled(context, 4).clamp(2.0, 4.0),
+            ),
             decoration: BoxDecoration(
               color: Colors.amber.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(
+                shellScaled(context, 20).clamp(10.0, 20.0),
+              ),
               border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                const SizedBox(width: 4),
+                Icon(
+                  Icons.star_rounded,
+                  size: shellScaled(context, 14).clamp(10.0, 14.0),
+                  color: Colors.amber,
+                ),
+                SizedBox(width: shellScaled(context, 4).clamp(2.0, 4.0)),
                 Text(
                   slide.rating!.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.amber,
-                    fontSize: 13,
+                    fontSize: metaFont,
                   ),
                 ),
               ],
@@ -536,39 +667,52 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
 
     return Row(
       children: [
-        if (rating != null) rating,
-        if (slide.year != null && slide.year!.isNotEmpty) ...[
-          if (rating != null) const SizedBox(width: 10),
-          Text(
-            slide.year!,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
+        Flexible(
+          fit: FlexFit.loose,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (rating != null) rating,
+              if (slide.year != null && slide.year!.isNotEmpty) ...[
+                if (rating != null) SizedBox(width: gap),
+                Text(
+                  slide.year!,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: metaFont,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              if (slide.badge != null && slide.badge!.isNotEmpty) ...[
+                SizedBox(width: gap),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
+                    vertical: shellScaled(context, 3).clamp(2.0, 3.0),
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                    borderRadius: BorderRadius.circular(
+                      shellScaled(context, 4).clamp(2.0, 4.0),
+                    ),
+                  ),
+                  child: Text(
+                    slide.badge!,
+                    style: TextStyle(
+                      fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white60,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
-        if (slide.badge != null && slide.badge!.isNotEmpty) ...[
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              slide.badge!,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.white60,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-        ],
+        ),
         if (slide.genres.isNotEmpty) ...[
-          const SizedBox(width: 10),
+          SizedBox(width: gap),
           Expanded(
             child: Text(
               slide.genres.take(3).join('  ·  '),
@@ -576,7 +720,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 12,
+                fontSize: genreFont,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -587,14 +731,37 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   }
 
   Widget _buildActionRow(HubHeroSlide slide) {
-    return Row(
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvNav = policy.useFocusableMoodChips;
+    final play = HeroPillPlayButton(
+      label: 'Play',
+      onTap: slide.onPlay,
+      focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+      tvTabId: tvNav ? widget.tvTabId : null,
+      onUpEdge: tvNav ? ShellTvFocus.focusHubHeroSearch : null,
+      onKeyEvent: tvNav
+          ? (node, event) {
+              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                if (ShellTvFocusCoordinator.focusActiveNavTab()) {
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            }
+          : null,
+    );
+    return HeroPillActionRow(
       children: [
-        HeroPillPlayButton(
-          label: 'Play',
-          onTap: slide.onPlay,
-        ),
+        if (tvNav)
+          FocusTraversalOrder(order: const NumericFocusOrder(1), child: play)
+        else
+          play,
         const SizedBox(width: 10),
         HeroPillIconGroup(
+          tvFocusOrderStart: tvNav ? 2 : null,
+          tvTabId: tvNav ? widget.tvTabId : null,
+          onUpEdge: tvNav ? ShellTvFocus.focusHubHeroSearch : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,

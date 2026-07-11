@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
@@ -839,7 +840,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          InAppWebView(
+          ForjaInAppWebView(
             key: ValueKey('trailer-player-${_trailer.key}'),
             initialData: InAppWebViewInitialData(
               data: _embedHtml(),

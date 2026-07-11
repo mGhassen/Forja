@@ -18,6 +18,10 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 class AsianDramaScreen extends StatefulWidget {
   const AsianDramaScreen({super.key});
@@ -38,12 +42,26 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   List<Map<String, dynamic>> _continueWatching = [];
 
+  int get _catalogRowBase => _continueWatching.isNotEmpty ? 1 : 0;
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'asian_drama',
+      defaultFocus: () => ShellTvFocus.homeHeroPlay,
+      heroReveal: () {
+        if (!_scroll.hasClients) return;
+        _scroll.animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      },
+    );
     WidgetsBinding.instance.addObserver(this);
     AppTheme.themeNotifier.addListener(_onTheme);
     KissKhService.watchHistoryRevision.addListener(_onHistoryChanged);
@@ -52,6 +70,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('asian_drama');
     WidgetsBinding.instance.removeObserver(this);
     AppTheme.themeNotifier.removeListener(_onTheme);
     KissKhService.watchHistoryRevision.removeListener(_onHistoryChanged);
@@ -133,7 +152,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   void _openSearch() {
     pushShellRoute(
       context,
-      AppRouter.slideRoute((_) => const AsianDramaSearchScreen()),
+      AppRouter.slideShellRoute((_) => const AsianDramaSearchScreen()),
     );
   }
 
@@ -197,7 +216,12 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     );
   }
 
-  HubPosterCard _dramaPosterCard(KdramaCard card, {int? rank}) {
+  HubPosterCard _dramaPosterCard(
+    KdramaCard card, {
+    int? rank,
+    int? listIndex,
+    String? tvRowId,
+  }) {
     final subtitle = [
       if (card.year != null) card.year!,
       if (card.cardMediaLabel != null) card.cardMediaLabel!,
@@ -208,6 +232,8 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       subtitle: subtitle.isEmpty ? null : subtitle,
       badge: card.label,
       rank: rank,
+      listIndex: listIndex,
+      tvRowId: tvRowId,
       onTap: () => _openDetails(card),
     );
   }
@@ -260,75 +286,120 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                   child: HubCinematicHero(
                                     slides: _heroSlides(_spotlight),
                                     onSearch: _openSearch,
+                                    tvTabId: 'asian_drama',
                                   ),
                                 ),
                                 if (_continueWatching.isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     _buildContinueWatching(),
                                     isFirstAfterHero: true,
                                   ),
                                 if ((_feed?.latest ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Latest Update',
                                       items: _feed!.latest,
                                       compactTop: _continueWatching.isEmpty,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'latest',
+                                      tvRowOrder: _catalogRowBase + 0,
+                                      tvFocusUp: () =>
+                                          ShellTvFocusCoordinator.focusHero(
+                                        tabId: 'asian_drama',
+                                      ),
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'latest',
+                                      ),
                                     ),
                                     isFirstAfterHero: _continueWatching.isEmpty,
                                   ),
                                 if ((_feed?.trending ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Trending',
                                       items: _feed!.trending,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'trending',
+                                      tvRowOrder: _catalogRowBase + 1,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'trending',
+                                      ),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.topRated ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Top Rated',
                                       items: _feed!.topRated,
                                       showRank: true,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'top-rated',
+                                      tvRowOrder: _catalogRowBase + 2,
                                       cardBuilder: (context, card, index) =>
                                           _dramaPosterCard(
                                         card,
                                         rank: index + 1,
+                                        listIndex: index,
+                                        tvRowId: 'top-rated',
                                       ),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.mostViewed ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Most Viewed',
                                       items: _feed!.mostViewed,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'most-viewed',
+                                      tvRowOrder: _catalogRowBase + 3,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'most-viewed',
+                                      ),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.anime ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Anime',
                                       items: _feed!.anime,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'anime',
+                                      tvRowOrder: _catalogRowBase + 4,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'anime',
+                                      ),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
                                 if ((_feed?.upcoming ?? const []).isNotEmpty)
-                                  hubRowSliver(
+                                  hubRowSliver(context,
                                     HubCatalogSection<KdramaCard>(
                                       title: 'Upcoming',
                                       items: _feed!.upcoming,
+                                      tvTabId: 'asian_drama',
+                                      tvRowId: 'upcoming',
+                                      tvRowOrder: _catalogRowBase + 5,
                                       cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(card),
+                                          _dramaPosterCard(
+                                        card,
+                                        listIndex: index,
+                                        tvRowId: 'upcoming',
+                                      ),
                                     ),
                                     isFirstAfterHero: false,
                                   ),
@@ -346,36 +417,10 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   // ─── Error ────────────────────────────────────────────────────
   Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline_rounded,
-                color: ForjaShellColors.sectionAccent, size: 56),
-            const SizedBox(height: 14),
-            Text(
-              'Failed to load:\n$_error',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ShellErrorRetryPanel(
+      message: 'Failed to load:\n$_error',
+      onRetry: _load,
+      statusIconSize: 56,
     );
   }
   // ─── Continue Watching ────────────────────────────────────────
@@ -398,7 +443,20 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
         ),
         SizedBox(
           height: _AsianDramaContinueWatchingCard.cardHeight(context),
-          child: ListView.separated(
+          child: Builder(
+            builder: (context) {
+              shellTvRegisterRow(
+                tabId: 'asian_drama',
+                rowId: 'continue-watching',
+                sortOrder: 0,
+                itemCount: _continueWatching.length,
+                onFocusUp: () => ShellTvFocusCoordinator.focusHero(
+                  tabId: 'asian_drama',
+                ),
+              );
+              return FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             clipBehavior: Clip.none,
@@ -409,10 +467,14 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
               final entry = _continueWatching[i];
               final card = _cardFromHistoryEntry(entry);
               return _AsianDramaContinueWatchingCard(
+                listIndex: i,
                 entry: entry,
                 onTap: () => _resumeWatch(entry),
                 onRemove: () => _removeFromHistory(entry),
                 onInfo: () => _openDetails(card),
+              );
+            },
+          ),
               );
             },
           ),
@@ -426,29 +488,21 @@ class _AsianDramaContinueWatchingCard extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onRemove;
   final VoidCallback onInfo;
+  final int listIndex;
 
   const _AsianDramaContinueWatchingCard({
     required this.entry,
     required this.onTap,
     required this.onRemove,
     required this.onInfo,
+    required this.listIndex,
   });
 
-  static double cardWidth(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardWidthDesktop
-        : ShellTokens.shellContinueWatchingCardWidthCompact;
-  }
+  static double cardWidth(BuildContext context) =>
+      shellContinueWatchingCardWidth(context);
 
-  static double cardHeight(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardHeightDesktop
-        : ShellTokens.shellContinueWatchingCardHeightCompact;
-  }
+  static double cardHeight(BuildContext context) =>
+      shellContinueWatchingCardHeight(context);
 
   @override
   State<_AsianDramaContinueWatchingCard> createState() =>
@@ -460,10 +514,16 @@ class _AsianDramaContinueWatchingCardState
   bool _hovered = false;
   bool _focused = false;
 
-  bool get _active => _hovered || _focused;
+  bool _activeFor(ShellInputPolicy policy) =>
+      ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: _hovered,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
     final cover = widget.entry['cover'] as String?;
     final title = widget.entry['title'] as String? ?? '';
     final epNum = (widget.entry['episodeNumber'] as num?)?.toDouble() ?? 1.0;
@@ -486,28 +546,22 @@ class _AsianDramaContinueWatchingCardState
     final cardWidth = _AsianDramaContinueWatchingCard.cardWidth(context);
     final cardHeight = _AsianDramaContinueWatchingCard.cardHeight(context);
 
-    return Focus(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      listIndex: widget.listIndex,
+      tvTabId: 'asian_drama',
+      tvRowId: 'continue-watching',
+      tvItemIndex: widget.listIndex,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
-          widget.onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedScale(
-            scale: _active ? 1.05 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: Container(
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedScale(
+        scale: _activeFor(policy) ? 1.05 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: Container(
               width: cardWidth,
               height: cardHeight,
               decoration: BoxDecoration(
@@ -663,7 +717,7 @@ class _AsianDramaContinueWatchingCardState
                     Positioned.fill(
                       child: IgnorePointer(
                         child: AnimatedOpacity(
-                          opacity: _active ? 1.0 : 0.0,
+                          opacity: _activeFor(policy) ? 1.0 : 0.0,
                           duration: const Duration(milliseconds: 200),
                           child: Center(
                             child: Container(
@@ -690,8 +744,6 @@ class _AsianDramaContinueWatchingCardState
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }

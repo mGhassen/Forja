@@ -314,3 +314,8 @@ No research-grade problems. This RFC adds LAN plumbing on top of existing engine
 - [ARCHITECTURE.md](../ARCHITECTURE.md)
 - [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 - [issue 003 — playback profiles](../issues/fixed/003-[fixed]-stremio-platform-playback-model.md)
+- [issue 026 — LAN stream Bearer token](../issues/026-[open]-lan-stream-playback-bearer-token.md) (blocks playback)
+- [issue 027 — LAN manual QA](../issues/027-[draft]-lan-server-client-manual-qa.md)
+- [issue 028 — desktop LAN client](../issues/028-[draft]-desktop-lan-client-not-implemented.md)
+- [issue 029 — LAN range seek](../issues/029-[draft]-lan-range-seek-unverified.md)
+- [issue 030 — LAN HDR passthrough](../issues/030-[draft]-lan-hdr-passthrough-unverified.md)

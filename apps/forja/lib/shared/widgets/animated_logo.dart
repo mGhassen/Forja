@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -261,62 +262,72 @@ class SplashOverlayContent extends StatelessWidget {
       fontWeight: FontWeight.bold,
     );
 
-    return Container(
-      decoration: AppTheme.backgroundDecoration,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final logoHeight = math.min(
-            _maxLogoHeight,
-            constraints.maxHeight * 0.38,
-          );
-          return Stack(
-            children: [
-              Center(
-                child: OverflowBox(
-                  maxWidth: constraints.maxWidth,
-                  maxHeight: constraints.maxHeight,
-                  alignment: Alignment.center,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    clipBehavior: Clip.none,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SplashLogoWithHalo(
-                          logoHeight: logoHeight,
-                        ),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Text(
-                            slogan,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 18,
-                              letterSpacing: 4,
-                              color: logoColors.base,
-                              fontFamily: 'Poppins',
+    return SelectionContainer.disabled(
+      child: SizedBox.expand(
+        child: ColoredBox(
+          color: AppTheme.bgDark,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final logoHeight = math.min(
+                _maxLogoHeight,
+                constraints.maxHeight * 0.38,
+              );
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  Center(
+                    child: OverflowBox(
+                      maxWidth: constraints.maxWidth,
+                      maxHeight: constraints.maxHeight,
+                      alignment: Alignment.center,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        clipBehavior: Clip.none,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SplashLogoWithHalo(
+                              logoHeight: logoHeight,
                             ),
-                          ),
+                            const SizedBox(height: 20),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
+                              child: Text(
+                                slogan,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  letterSpacing: 4,
+                                  color: logoColors.base,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            SplashLoadingDots(color: logoColors.base),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        SplashLoadingDots(color: logoColors.base),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: MediaQuery.paddingOf(context).bottom + 24,
-                child: Center(
-                  child: AppVersionLabel(style: versionStyle),
-                ),
-              ),
-            ],
-          );
-        },
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: MediaQuery.paddingOf(context).bottom + 24,
+                    child: Center(
+                      child: AppVersionLabel(
+                        style: versionStyle.copyWith(
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }

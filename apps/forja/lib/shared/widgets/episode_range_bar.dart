@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 const int kEpisodeRangeChunkSize = 50;
 
@@ -191,8 +193,16 @@ class _EpisodeRangeBarState extends State<EpisodeRangeBar> {
                 ),
               ),
             );
-            if (!selected) return chip;
-            return KeyedSubtree(key: _selectedKey, child: chip);
+            final wrapped = ShellScope.inputPolicyOf(context).useFocusableMoodChips
+                ? FocusableControl(
+                    onTap: () => widget.onSelected(range.index),
+                    borderRadius: radius,
+                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+                    child: chip,
+                  )
+                : chip;
+            if (!selected) return wrapped;
+            return KeyedSubtree(key: _selectedKey, child: wrapped);
           },
         ),
       ),

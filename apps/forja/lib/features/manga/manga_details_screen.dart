@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/features/manga/catalog/manga_service.dart';
 import 'manga_reader_screen.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 class MangaDetailsScreen extends StatefulWidget {
   final Manga manga;
@@ -17,6 +20,9 @@ class MangaDetailsScreen extends StatefulWidget {
 class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
   final MangaService _mangaService = MangaService();
   final TextEditingController _chapterSearchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'manga-details-play');
+
   bool _isLiked = false;
   bool _isLoadingChapters = true;
   List<MangaChapter> _chapters = [];
@@ -37,8 +43,12 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
   @override
   void dispose() {
     _chapterSearchController.dispose();
+    _scrollController.dispose();
+    _heroPlayFocus.dispose();
     super.dispose();
   }
+
+  bool get _tvNav => ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
   Future<void> _loadLikedStatus() async {
     final liked = await _mangaService.isLiked(widget.manga.id);
@@ -71,11 +81,25 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
     _loadLikedStatus();
   }
 
+  void _openChapter(int actualIndex) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MangaReaderScreen(
+          manga: _manga,
+          chapters: _chapters,
+          currentChapterIndex: actualIndex,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final body = Scaffold(
       backgroundColor: AppTheme.bgDark,
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           _buildAppBar(),
           SliverToBoxAdapter(
@@ -106,6 +130,14 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
           ),
         ],
       ),
+    );
+
+    if (!_tvNav) return body;
+
+    return MediaDetailsTvScope(
+      heroPlayFocus: _heroPlayFocus,
+      scrollController: _scrollController,
+      child: body,
     );
   }
 
@@ -169,7 +201,12 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
               const SizedBox(height: 16),
               _buildMetaItem(Icons.calendar_today, 'Year', _manga.year),
               _buildMetaItem(Icons.category, 'Type', _manga.type.toUpperCase()),
-              _buildMetaItem(Icons.info_outline, 'Status', _manga.status.toUpperCase(), color: AppTheme.primaryColor),
+              _buildMetaItem(
+                Icons.info_outline,
+                'Status',
+                _manga.status.toUpperCase(),
+                color: AppTheme.primaryColor,
+              ),
               _buildMetaItem(Icons.person, 'Author', _manga.author),
             ],
           ),
@@ -178,7 +215,12 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
     );
   }
 
-  Widget _buildMetaItem(IconData icon, String label, String value, {Color? color}) {
+  Widget _buildMetaItem(
+    IconData icon,
+    String label,
+    String value, {
+    Color? color,
+  }) {
     if (value.isEmpty || value == '0') return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -186,11 +228,18 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
         children: [
           Icon(icon, size: 14, color: Colors.white54),
           const SizedBox(width: 8),
-          Text('$label: ', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+          Text(
+            '$label: ',
+            style: const TextStyle(color: Colors.white54, fontSize: 13),
+          ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(color: color ?? Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: color ?? Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -231,24 +280,37 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
         ),
       );
     }
-    
+
     if (_chapters.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(32.0),
-          child: Text('No chapters available', style: TextStyle(color: Colors.white54)),
+          child: Text(
+            'No chapters available',
+            style: TextStyle(color: Colors.white54),
+          ),
         ),
       );
     }
-    
+
     final startIndex = _currentChapterPage * _chaptersPerPage;
     final endIndex = (startIndex + _chaptersPerPage).clamp(0, _chapters.length);
     final displayedChapters = _chapters.sublist(startIndex, endIndex);
     final totalPages = (_chapters.length / _chaptersPerPage).ceil();
-    
+    final tv = _tvNav;
+
+    if (tv) {
+      shellTvRegisterRow(
+        tabId: MediaDetailsTv.tabId,
+        rowId: 'chapters',
+        sortOrder: 0,
+        itemCount: displayedChapters.length,
+        orientation: ShellTvRowOrientation.vertical,
+      );
+    }
+
     return Column(
       children: [
-        // Chapter search/jump
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Row(
@@ -266,7 +328,10 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                   style: const TextStyle(color: Colors.white),
                 ),
@@ -278,7 +343,9 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text(
                   'Go',
@@ -292,22 +359,21 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
             ],
           ),
         ),
-        
-        // Chapters list
         ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
           itemCount: displayedChapters.length,
-          separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
+          separatorBuilder: (_, _) =>
+              Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
           itemBuilder: (context, index) {
             final actualIndex = startIndex + index;
             final chapter = displayedChapters[index];
-            final chapterTitle = chapter.name.isNotEmpty 
-                ? 'Chapter ${chapter.number} - ${chapter.name}' 
+            final chapterTitle = chapter.name.isNotEmpty
+                ? 'Chapter ${chapter.number} - ${chapter.name}'
                 : 'Chapter ${chapter.number}';
-            
-            return ListTile(
+
+            final tile = ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Container(
                 padding: const EdgeInsets.all(8),
@@ -315,11 +381,19 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
                   color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.menu_book, color: AppTheme.primaryColor, size: 20),
+                child: const Icon(
+                  Icons.menu_book,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
               ),
               title: Text(
                 chapterTitle,
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               subtitle: chapter.name.isNotEmpty
                   ? Text(
@@ -327,24 +401,27 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
                       style: const TextStyle(color: Colors.white54, fontSize: 12),
                     )
                   : null,
-              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 14),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MangaReaderScreen(
-                      manga: _manga,
-                      chapters: _chapters,
-                      currentChapterIndex: actualIndex,
-                    ),
-                  ),
-                );
-              },
+              trailing: const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white24,
+                size: 14,
+              ),
+              onTap: tv ? null : () => _openChapter(actualIndex),
+            );
+
+            if (!tv) return tile;
+
+            return shellFocusableTap(
+              context: context,
+              onTap: () => _openChapter(actualIndex),
+              borderRadius: 8,
+              tvTabId: MediaDetailsTv.tabId,
+              tvRowId: 'chapters',
+              tvItemIndex: index,
+              child: tile,
             );
           },
         ),
-        
-        // Pagination controls
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -384,28 +461,26 @@ class _MangaDetailsScreenState extends State<MangaDetailsScreen> {
   void _jumpToChapter() {
     final input = _chapterSearchController.text.trim();
     if (input.isEmpty) return;
-    
+
     final chapterNumber = double.tryParse(input);
     if (chapterNumber == null) {
       ForjaToast.warning('Please enter a valid chapter number');
       return;
     }
-    
-    // Find the chapter index
+
     final chapterIndex = _chapters.indexWhere((ch) => ch.number == chapterNumber);
-    
+
     if (chapterIndex == -1) {
       ForjaToast.error('Chapter $chapterNumber not found');
       return;
     }
-    
-    // Calculate which page this chapter is on
+
     final targetPage = chapterIndex ~/ _chaptersPerPage;
-    
+
     setState(() {
       _currentChapterPage = targetPage;
     });
-    
+
     _chapterSearchController.clear();
   }
 

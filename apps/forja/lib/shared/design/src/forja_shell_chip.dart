@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Flat shell chip fill + border — matches sources panel / home filter style.
@@ -32,6 +34,13 @@ class ForjaShellChip extends StatelessWidget {
     this.radius = 20,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     this.fontSize = 12.5,
+    this.listIndex,
+    this.tvTabId,
+    this.tvRowId,
+    this.onDownEdge,
+    this.onUpEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final String label;
@@ -42,48 +51,80 @@ class ForjaShellChip extends StatelessWidget {
   final double radius;
   final EdgeInsetsGeometry padding;
   final double fontSize;
+  final int? listIndex;
+  final String? tvTabId;
+  final String? tvRowId;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final fg = selected ? cinematic.textPrimary : cinematic.textSecondary;
-
     final borderRadius = BorderRadius.circular(radius);
+
+    final chip = Ink(
+      decoration: shellChipDecoration(selected: selected, radius: radius),
+      child: Padding(
+        padding: padding,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 14, color: fg),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                color: fg,
+                fontSize: fontSize,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: 4),
+              trailing!,
+            ],
+          ],
+        ),
+      ),
+    );
+
+    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return shellFocusableTap(
+        context: context,
+        onTap: onTap,
+        borderRadius: radius,
+        scaleOnFocus: 1.0,
+        listIndex: listIndex,
+        tvTabId: tvTabId,
+        tvRowId: tvRowId,
+        tvItemIndex: listIndex,
+        tvZone: ShellTvZone.chipStrip,
+        onDownEdge: onDownEdge,
+        onUpEdge: onUpEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: borderRadius,
+          clipBehavior: Clip.antiAlias,
+          child: chip,
+        ),
+      );
+    }
 
     return Material(
       color: Colors.transparent,
       borderRadius: borderRadius,
       clipBehavior: Clip.antiAlias,
-      child: Ink(
-        decoration: shellChipDecoration(selected: selected, radius: radius),
-        child: InkWell(
-          borderRadius: borderRadius,
-          onTap: onTap,
-          child: Padding(
-            padding: padding,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 14, color: fg),
-                  const SizedBox(width: 6),
-                ],
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    color: fg,
-                    fontSize: fontSize,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  ),
-                ),
-                if (trailing != null) ...[
-                  const SizedBox(width: 4),
-                  trailing!,
-                ],
-              ],
-            ),
-          ),
-        ),
+      child: InkWell(
+        borderRadius: borderRadius,
+        onTap: onTap,
+        child: chip,
       ),
     );
   }

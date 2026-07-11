@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 class HubCatalogSection<T> extends StatefulWidget {
   const HubCatalogSection({
@@ -12,6 +14,10 @@ class HubCatalogSection<T> extends StatefulWidget {
     this.items,
     this.compactTop = false,
     this.showRank = false,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvRowOrder = 0,
+    this.tvFocusUp,
   }) : assert(future != null || items != null);
 
   final String title;
@@ -19,6 +25,10 @@ class HubCatalogSection<T> extends StatefulWidget {
   final List<T>? items;
   final bool compactTop;
   final bool showRank;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int tvRowOrder;
+  final VoidCallback? tvFocusUp;
   final HubPosterCard Function(BuildContext context, T item, int index)
       cardBuilder;
 
@@ -26,12 +36,11 @@ class HubCatalogSection<T> extends StatefulWidget {
     BuildContext context, {
     bool compactTop = false,
   }) {
-    final top = compactTop
-        ? ShellTokens.homeSectionTitleTopCompactDesktop
-        : ShellTokens.homeSectionTitleTop;
-    const headerRow = 28.0;
-    const bottomGap = 16.0;
-    return top + headerRow + bottomGap + HubPosterCard.cardHeight(context);
+    return shellCatalogSectionHeight(
+      context,
+      compactTop: compactTop,
+      cardHeight: HubPosterCard.cardHeight(context),
+    );
   }
 
   @override
@@ -43,21 +52,38 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
 
   @override
   void dispose() {
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    if (tabId != null && widget.tvRowId != null) {
+      shellTvUnregisterRow(tabId: tabId, rowId: widget.tvRowId!);
+    }
     _scrollController.dispose();
     super.dispose();
   }
 
+  void _syncTvRow(int itemCount) {
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    final rowId = widget.tvRowId;
+    if (tabId == null || rowId == null || itemCount <= 0) return;
+    shellTvRegisterRow(
+      tabId: tabId,
+      rowId: rowId,
+      sortOrder: widget.tvRowOrder,
+      itemCount: itemCount,
+      onFocusUp: widget.tvFocusUp,
+    );
+  }
+
   double _sectionTitleTop(BuildContext context) {
-    if (!widget.compactTop) return ShellTokens.homeSectionTitleTop;
-    return homeUsesShellLayout(context)
-        ? ShellTokens.homeSectionTitleTopCompactDesktop
-        : ShellTokens.homeSectionTitleTopCompactMobile;
+    if (!widget.compactTop) return shellHomeSectionTitleTop(context);
+    return shellSectionTitleTopCompact(context);
   }
 
   Widget _buildRow(List<T> list) {
     if (list.isEmpty) return const SizedBox.shrink();
+    _syncTvRow(list.length);
 
     final sectionTop = _sectionTitleTop(context);
+    final horizontalPad = shellHomeSectionHorizontalPadding(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,21 +91,34 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
       children: [
         ShellSectionTitle(
           title: widget.title,
-          padding: EdgeInsets.fromLTRB(24, sectionTop, 24, 16),
+          padding: EdgeInsets.fromLTRB(
+            horizontalPad,
+            sectionTop,
+            horizontalPad,
+            shellHomeSectionBottomGap(context),
+          ),
         ),
         SizedBox(
           height: HubPosterCard.cardHeight(context),
-          child: ListView.separated(
-            clipBehavior: Clip.none,
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: list.length,
-            separatorBuilder: (_, _) =>
-                SizedBox(width: widget.showRank ? 6 : 14),
-            itemBuilder: (context, index) =>
-                widget.cardBuilder(context, list[index], index),
+          child: FocusTraversalGroup(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: shellAbsorbHorizontalScroll,
+              child: ListView.separated(
+              clipBehavior: Clip.none,
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.symmetric(horizontal: horizontalPad),
+              itemCount: list.length,
+              separatorBuilder: (_, _) => SizedBox(
+                width: widget.showRank
+                    ? shellScaled(context, 6).clamp(3.0, 6.0)
+                    : shellMovieCardRowGap(context),
+              ),
+              itemBuilder: (context, index) =>
+                  widget.cardBuilder(context, list[index], index),
+            ),
+            ),
           ),
         ),
       ],
@@ -121,6 +160,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
 }
 
 SliverToBoxAdapter hubRowSliver(
+  BuildContext context,
   Widget section, {
   required bool isFirstAfterHero,
 }) {
@@ -130,7 +170,7 @@ SliverToBoxAdapter hubRowSliver(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!isFirstAfterHero)
-          const SizedBox(height: ShellTokens.homeRowSpacing),
+          SizedBox(height: shellHomeRowSpacing(context)),
         RepaintBoundary(child: section),
       ],
     ),

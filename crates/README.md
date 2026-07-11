@@ -9,7 +9,7 @@ Workspace crates consumed by Flutter via `packages/rust` (FFI, transitional).
 ```bash
 ./scripts/build_rust.sh                    # desktop (torrent + proxy + parsers)
 ./scripts/build_rust_mobile.sh ios         # iOS arm64 full features
-./scripts/build_rust_mobile.sh android     # Android arm64-v8a full features
+./scripts/build_rust_mobile.sh android     # Android arm64-v8a + armeabi-v7a full features
 ./scripts/build_rust_mobile.sh all         # both mobile targets
 ```
 
@@ -26,7 +26,10 @@ Set one of:
 - `ANDROID_NDK_HOME` / `ANDROID_NDK_ROOT`
 - `sdk.dir` in `apps/forja/android/local.properties` (Gradle discovers `ndk/` under the SDK)
 
-Output: `apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so`
+Output:
+
+- `apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so`
+- `apps/forja/android/app/src/main/jniLibs/armeabi-v7a/libffi.so`
 
 Release APK bundles Rust automatically (`buildRust=true` → `preReleaseBuild`):
 

@@ -8,6 +8,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
+import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 
@@ -511,14 +512,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: showBack
-                      ? ForjaPlainIcon(
-                          icon: Icons.arrow_back_rounded,
+                      ? iptvBackButton(
+                          context,
                           onTap: () =>
                               setState(() => _step = _GuideStep.groups),
                           color: Colors.white,
                           size: 22,
-                          hoverScale: 1.15,
-                          tooltip: 'Back',
                         )
                       : const SizedBox(width: 40, height: 36),
                 ),
@@ -536,7 +535,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 ),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: ForjaCloseButton(
+                  child: iptvCloseButton(
+                    context,
                     color: Colors.white70,
                     onTap: widget.onClose,
                   ),
@@ -681,7 +681,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 if (_wide) _focusColumn = _FocusColumn.groups;
               });
             },
-            child: InkWell(
+            child: AnimatedScale(
+              scale: focused ? ShellTokens.focusActiveScale : 1.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.centerLeft,
+              child: InkWell(
             onTap: () {
               setState(() {
                 _focusedGroupIndex = i;
@@ -744,8 +749,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
               ),
             ),
           ),
-          ),
-        );
+        ),
+      ),
+    );
       },
     );
   }
@@ -846,7 +852,12 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
           widget.onProbe();
         },
         onExit: (_) => widget.onCancelProbe(),
-        child: Material(
+        child: AnimatedScale(
+          scale: focused ? ShellTokens.focusActiveScale : 1.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.centerLeft,
+          child: Material(
           elevation: 0,
           shadowColor: Colors.black.withValues(alpha: 0.4),
           color: active
@@ -921,6 +932,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
               ),
             ),
           ),
+        ),
         ),
       ),
     );

@@ -15,7 +15,7 @@ Tap **Anime** in the navigation bar.
 - Browse hero and mood-based rails
 - Continue watching in-progress series
 - Discover with filters
-- Search anime catalog
+- Search anime catalog — **desktop / TV:** same layout as the Search tab (large search field, trending title suggestions on the left, poster grid on the right; **Select** a suggestion to run that search); **mobile:** search bar + results grid
 - Open details with episodes
 - Toggle **SUB** / **DUB** before playback
 - Resume from continue watching; clear progress with the trash icon next to **Resume** on details

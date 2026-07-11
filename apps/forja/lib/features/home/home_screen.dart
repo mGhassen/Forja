@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'package:rust/rust.dart';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
@@ -12,6 +11,8 @@ import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/extractors/amri_extractor.dart';
+import 'package:forja/shared/playback/tv_stream_fallback.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shell/app_router.dart';
@@ -27,58 +28,59 @@ import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
 
-double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
-  if (!compactTop) return ShellTokens.homeSectionTitleTop;
-  return _usesShellHomeLayout(context)
-      ? ShellTokens.homeSectionTitleTopCompactDesktop
-      : ShellTokens.homeSectionTitleTopCompactMobile;
-}
+double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) =>
+    shellHomeSectionTitleTop(context, compact: compactTop);
 
 bool _usesShellHomeLayout(BuildContext context) {
-  if (!kIsWeb &&
-      (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-    return true;
-  }
-  return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+  return ShellScope.profileOf(context) != ShellProfile.mobile;
 }
 
 bool _isFullCinematicHero(BuildContext context) {
+  if (ShellScope.metricsOf(context).usesTvDensity) return true;
   return MediaQuery.sizeOf(context).width >= ShellTokens.heroDesktopMinBodyWidth;
 }
 
-double _heroTextTopInset(BuildContext context) {
-  return ShellTokens.heroTextColumnTopInsetDesktop;
-}
+double _heroTextTopInset(BuildContext context) =>
+    ShellTokens.heroTextColumnTopInsetDesktop;
 
 SliverToBoxAdapter _homeRowSliver(
   Widget section, {
   required bool isFirstAfterHero,
 }) {
   return SliverToBoxAdapter(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (!isFirstAfterHero)
-          const SizedBox(height: ShellTokens.homeRowSpacing),
-        RepaintBoundary(child: section),
-      ],
+    child: Builder(
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!isFirstAfterHero)
+            SizedBox(height: shellHomeRowSpacing(context)),
+          RepaintBoundary(child: section),
+        ],
+      ),
     ),
   );
 }
 
 Widget _heroTitleText(
+  BuildContext context,
   Movie movie,
   bool isLandscape, {
   bool desktop = false,
   bool compact = false,
 }) {
-  final fontSize = compact
+  final base = compact
       ? 22.0
       : desktop
           ? 32.0
           : (isLandscape ? 48.0 : 36.0);
+  final fontSize = shellScaled(context, base).clamp(14.0, base);
   return Text(
     movie.title,
     style: TextStyle(
@@ -114,13 +116,15 @@ class _HomeScreenState extends State<HomeScreen>
   final PageController _heroController =
       PageController(initialPage: _heroLoopStart);
   final ScrollController _homeScrollController = ScrollController();
-  
+  final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'hero-play');
+  bool _tvHeroInitialFocusDone = false;
   late Future<List<Movie>> _trendingFuture;
   late Future<List<Movie>> _popularFuture;
   late Future<List<Movie>> _featuredThisMonthFuture;
   late Future<List<Movie>> _nowPlayingFuture;
 
-  List<({String label, Future<List<Movie>> future})> _randomCategoryRows = [];
+  List<({String id, String label, Future<List<Movie>> future})>
+      _randomCategoryRows = [];
   int _homeFeedEpoch = 0;
 
   Timer? _heroTimer;
@@ -327,20 +331,27 @@ class _HomeScreenState extends State<HomeScreen>
     _randomCategoryRows = [
       for (final category in picked)
         (
+          id: category.id,
           label: category.label,
           future: _fetchCategoryRow(category),
         ),
     ];
   }
 
+  static const int _kGenreRowOrderBase = 21;
+
   List<Widget> _randomCategoryRowSlivers() => [
-        for (final row in _randomCategoryRows)
+        for (var i = 0; i < _randomCategoryRows.length; i++)
           _homeRowSliver(
             _MovieSection(
-              key: ValueKey('${row.label}-$_homeFeedEpoch'),
-              title: row.label,
-              future: row.future,
+              key: ValueKey(
+                '${_randomCategoryRows[i].id}-$_homeFeedEpoch',
+              ),
+              title: _randomCategoryRows[i].label,
+              future: _randomCategoryRows[i].future,
               onMovieTap: _openDetails,
+              tvRowId: 'genre-${_randomCategoryRows[i].id}',
+              tvRowOrder: _kGenreRowOrderBase + i,
             ),
             isFirstAfterHero: false,
           ),
@@ -649,9 +660,44 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  void _scrollHeroIntoView() {
+    if (!_homeScrollController.hasClients) return;
+    _homeScrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _revealedHeroPlayFocus() {
+    void focusPlay() {
+      if (!mounted) return;
+      ShellTvFocus.focusHomeHeroPlay();
+    }
+
+    _scrollHeroIntoView();
+    if (!_homeScrollController.hasClients) {
+      focusPlay();
+      return;
+    }
+    _homeScrollController
+        .animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(focusPlay);
+  }
+
   @override
   void initState() {
     super.initState();
+    ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'home',
+      defaultFocus: () => _tvHeroPlayFocus,
+      heroReveal: _scrollHeroIntoView,
+    );
     _homeScrollController.addListener(_syncHomeScrollOffset);
     _resetHomeCategoryFeeds(useBootCache: true);
 
@@ -713,21 +759,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Returns in-progress continue-watching items (2–90%), one per tmdbId.
   List<Map<String, dynamic>> _inProgressPool(List<Map<String, dynamic>> history) {
-    final byShow = <int, Map<String, dynamic>>{};
-    for (final item in history) {
-      final pos = (item['position'] as int?) ?? 0;
-      final dur = (item['duration'] as int?) ?? 0;
-      if (dur <= 0) continue;
-      final progress = pos / dur;
-      if (progress < 0.02 || progress >= 0.9) continue;
-      final tmdbId = item['tmdbId'] as int?;
-      if (tmdbId == null) continue;
-      final existing = byShow[tmdbId];
-      final ts = (item['updatedAt'] as int?) ?? 0;
-      final existingTs = (existing?['updatedAt'] as int?) ?? -1;
-      if (ts > existingTs) byShow[tmdbId] = item;
-    }
-    return byShow.values.toList();
+    return inProgressPoolByShow(history);
   }
 
   String _seedMediaType(Map<String, dynamic> seed) {
@@ -1124,8 +1156,12 @@ class _HomeScreenState extends State<HomeScreen>
     _homeScrollController.dispose();
     ShellBus.homeScrollOffset.value = 0;
     ShellBus.homeHeroHeight.value = 0;
+    if (ShellTvFocus.homeHeroPlay == _tvHeroPlayFocus) {
+      ShellTvFocus.homeHeroPlay = null;
+    }
     _heroTimer?.cancel();
     _heroController.dispose();
+    _tvHeroPlayFocus.dispose();
     _historySeedSub?.cancel();
     super.dispose();
   }
@@ -1344,6 +1380,9 @@ class _HomeScreenState extends State<HomeScreen>
                     future: _featuredThisMonthFuture,
                     onMovieTap: _openDetails,
                     compactTop: true,
+                    tvFocusUp: _revealedHeroPlayFocus,
+                    tvRowId: 'featured',
+                    tvRowOrder: 0,
                   ),
                   isFirstAfterHero: false,
                 ),
@@ -1355,13 +1394,19 @@ class _HomeScreenState extends State<HomeScreen>
                     future: _popularFuture,
                     onMovieTap: _openDetails,
                     showRank: true,
+                    tvRowId: 'popular',
+                    tvRowOrder: 1,
                   ),
                   isFirstAfterHero: false,
                 ),
 
               if (usesShellHome)
                 _homeRowSliver(
-                  const _ContinueWatchingSection(compactTop: false),
+                  _ContinueWatchingSection(
+                    compactTop: false,
+                    tvRowId: 'continue',
+                    tvRowOrder: 2,
+                  ),
                   isFirstAfterHero: false,
                 ),
 
@@ -1374,6 +1419,7 @@ class _HomeScreenState extends State<HomeScreen>
                   future: _moodFuture,
                   onMovieTap: _openDetails,
                   compactTop: false,
+                  tvRowOrder: 3,
                 ),
                 isFirstAfterHero: false,
               ),
@@ -1456,7 +1502,13 @@ class _HomeScreenState extends State<HomeScreen>
                 )
               else if (_traktRecommendations.isNotEmpty)
                 _homeRowSliver(
-                  _StaticMovieSection(title: 'Recommended for You', movies: _traktRecommendations, onMovieTap: _openDetails),
+                  _StaticMovieSection(
+                    title: 'Recommended for You',
+                    movies: _traktRecommendations,
+                    onMovieTap: _openDetails,
+                    tvRowId: 'trakt-recs',
+                    tvRowOrder: 11,
+                  ),
                   isFirstAfterHero: false,
                 ),
 
@@ -1470,7 +1522,13 @@ class _HomeScreenState extends State<HomeScreen>
                 )
               else if (_traktUpcomingShows.isNotEmpty)
                 _homeRowSliver(
-                  _StaticMovieSection(title: 'Upcoming Schedule', movies: _traktUpcomingShows, onMovieTap: _openDetails),
+                  _StaticMovieSection(
+                    title: 'Upcoming Schedule',
+                    movies: _traktUpcomingShows,
+                    onMovieTap: _openDetails,
+                    tvRowId: 'trakt-shows',
+                    tvRowOrder: 12,
+                  ),
                   isFirstAfterHero: false,
                 ),
 
@@ -1483,13 +1541,25 @@ class _HomeScreenState extends State<HomeScreen>
                 )
               else if (_traktUpcomingMovies.isNotEmpty)
                 _homeRowSliver(
-                  _StaticMovieSection(title: 'Upcoming Movies', movies: _traktUpcomingMovies, onMovieTap: _openDetails),
+                  _StaticMovieSection(
+                    title: 'Upcoming Movies',
+                    movies: _traktUpcomingMovies,
+                    onMovieTap: _openDetails,
+                    tvRowId: 'trakt-movies',
+                    tvRowOrder: 13,
+                  ),
                   isFirstAfterHero: false,
                 ),
 
               // New Releases
               _homeRowSliver(
-                _MovieSection(title: 'New Releases', future: _nowPlayingFuture, onMovieTap: _openDetails),
+                _MovieSection(
+                  title: 'New Releases',
+                  future: _nowPlayingFuture,
+                  onMovieTap: _openDetails,
+                  tvRowId: 'new-releases',
+                  tvRowOrder: 20,
+                ),
                 isFirstAfterHero: false,
               ),
 
@@ -1535,9 +1605,8 @@ class _HomeScreenState extends State<HomeScreen>
     return _desktopHeroHeight(context);
   }
 
-  double _desktopTopBarBleed(BuildContext context) {
-    return MediaQuery.paddingOf(context).top;
-  }
+  double _desktopTopBarBleed(BuildContext context) =>
+      MediaQuery.paddingOf(context).top;
 
   double _desktopHeroHeight(BuildContext context) {
     final screenH = MediaQuery.sizeOf(context).height;
@@ -1545,15 +1614,15 @@ class _HomeScreenState extends State<HomeScreen>
     final firstRowHeight =
         _MovieSection.sectionHeight(context, compactTop: true);
     final nextRowPeek = _MovieSection.sectionHeight(context) *
-        ShellTokens.heroNextRowPeekFraction;
-    final reservedBelow = ShellTokens.homeRowSpacing +
+        shellHeroNextRowPeekFraction(context);
+    final reservedBelow = shellHomeRowSpacing(context) +
         firstRowHeight +
         nextRowPeek;
-    final target = screenH * ShellTokens.heroHeightFractionDesktop;
+    final target = screenH * shellHeroHeightFraction(context);
     final maxHero = screenH - topBar - reservedBelow;
     return _snapToDevicePixels(
       context,
-      math.min(target, math.max(320.0, maxHero)),
+      math.min(target, math.max(shellHeroMinHeight(context), maxHero)),
     );
   }
 
@@ -1565,11 +1634,24 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildCinematicHeroBlock(List<Movie> movies, {required bool compact}) {
     final heroMovie = movies[_heroIndex];
+    final metrics = ShellScope.metricsOf(context);
+    final policy = ShellScope.inputPolicyOf(context);
+    if (policy.heroPlayAutoFocus && !_tvHeroInitialFocusDone) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _tvHeroInitialFocusDone) return;
+        if (_tvHeroPlayFocus.canRequestFocus) {
+          _tvHeroPlayFocus.requestFocus();
+          _tvHeroInitialFocusDone = true;
+        }
+      });
+    }
     final backdropHeight = _cinematicHeroHeight(context, compact: compact);
     final topBarBleed = _desktopTopBarBleed(context);
     final imageHeight =
         _snapToDevicePixels(context, backdropHeight + topBarBleed);
     final textTop = topBarBleed + _heroTextTopInset(context);
+    final compactRightInset =
+        compact ? metrics.heroCompactRightInset : 48.0;
 
     return SizedBox(
       height: imageHeight,
@@ -1588,12 +1670,28 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           Positioned(
-            left: ShellTokens.bodyHorizontalPadding,
+            left: shellHomeSectionHorizontalPadding(context),
             top: textTop,
-            right: compact ? 20 : 48,
-            bottom: 16,
+            right: compact
+                ? shellScaled(context, compactRightInset).clamp(12.0, compactRightInset)
+                : shellScaled(context, 48).clamp(24.0, 48.0),
+            bottom: shellScaled(context, 16).clamp(8.0, 16.0),
             child: compact
-                ? _buildCompactHeroTextColumn(heroMovie)
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return ClipRect(
+                        child: Align(
+                          alignment: Alignment.bottomLeft,
+                          child: _buildCompactHeroTextColumn(
+                            heroMovie,
+                            metrics: metrics,
+                            maxHeight: constraints.maxHeight,
+                            maxWidth: constraints.maxWidth,
+                          ),
+                        ),
+                      );
+                    },
+                  )
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       return ClipRect(
@@ -1618,13 +1716,14 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
           ),
           Positioned(
-            right: 20,
-            bottom: compact ? 16 : null,
+            right: shellScaled(context, 20).clamp(10.0, 20.0),
+            bottom: compact ? shellScaled(context, 16).clamp(8.0, 16.0) : null,
             top: compact ? null : 0,
             height: compact ? null : imageHeight,
             child: compact
                 ? _buildHeroStepIndicators(movies, axis: Axis.horizontal)
-                : Center(
+                : Align(
+                    alignment: Alignment.centerRight,
                     child: _buildHeroStepIndicators(movies),
                   ),
           ),
@@ -1633,7 +1732,58 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildCompactHeroTextColumn(Movie heroMovie) {
+  Widget _buildCompactHeroTextColumn(
+    Movie heroMovie, {
+    required ShellMetrics metrics,
+    double? maxHeight,
+    double? maxWidth,
+  }) {
+    if (maxHeight != null && maxWidth != null) {
+      final actionGap = shellHeroActionGap(context);
+      final metaGap = shellHeroMetaGap(context);
+      const actionRowHeight = 40.0;
+      const metaRowHeight = 32.0;
+      final titleHeight = (maxHeight -
+              actionGap -
+              metaGap -
+              actionRowHeight -
+              metaRowHeight)
+          .clamp(40.0, ShellTokens.heroTitleSlotHeightCompact);
+
+      return SizedBox(
+        width: maxWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: titleHeight,
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: _buildHeroTitleBlock(
+                  heroMovie,
+                  isLandscape: false,
+                  desktop: true,
+                  compact: true,
+                ),
+              ),
+            ),
+            SizedBox(height: metaGap),
+            SizedBox(
+              height: metaRowHeight,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _buildHeroMetaRow(heroMovie, singleLine: true),
+              ),
+            ),
+            SizedBox(height: actionGap),
+            _buildHeroActionRow(heroMovie),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.end,
@@ -1645,9 +1795,9 @@ class _HomeScreenState extends State<HomeScreen>
           desktop: true,
           compact: true,
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: shellHeroMetaGap(context)),
         _buildHeroMetaRow(heroMovie, singleLine: true),
-        const SizedBox(height: 12),
+        SizedBox(height: shellHeroActionGap(context)),
         _buildHeroActionRow(heroMovie),
       ],
     );
@@ -1745,7 +1895,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
     const titleGap = 20.0;
     const actionGap = 16.0;
-    const minTitleHeight = 72.0;
+    final minTitleHeight = ShellScope.metricsOf(context).heroMinTitleHeight;
 
     final baseWithoutOverview = titleGap +
         ShellTokens.heroMetaSlotHeightDesktop +
@@ -1903,15 +2053,18 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildHeroMediaTypeBadge(String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
+        vertical: shellScaled(context, 3).clamp(2.0, 3.0),
+      ),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(shellScaled(context, 4).clamp(2.0, 4.0)),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          fontSize: 10,
+        style: TextStyle(
+          fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
           fontWeight: FontWeight.bold,
           color: Colors.white60,
           letterSpacing: 0.8,
@@ -1921,24 +2074,34 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeroMetaRow(Movie heroMovie, {bool singleLine = false}) {
+    final metaFont = shellScaled(context, 13).clamp(9.0, 13.0);
+    final genreFont = shellScaled(context, 12).clamp(8.0, 12.0);
+    final gap = shellScaled(context, 10).clamp(7.0, 10.0);
     final rating = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
+        vertical: shellScaled(context, 4).clamp(2.0, 4.0),
+      ),
       decoration: BoxDecoration(
         color: Colors.amber.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(shellScaled(context, 20).clamp(10.0, 20.0)),
         border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-          const SizedBox(width: 4),
+          Icon(
+            Icons.star_rounded,
+            size: shellScaled(context, 14).clamp(10.0, 14.0),
+            color: Colors.amber,
+          ),
+          SizedBox(width: shellScaled(context, 4).clamp(2.0, 4.0)),
           Text(
             heroMovie.voteAverage.toStringAsFixed(1),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.amber,
-              fontSize: 13,
+              fontSize: metaFont,
             ),
           ),
         ],
@@ -1948,27 +2111,35 @@ class _HomeScreenState extends State<HomeScreen>
     if (singleLine) {
       return Row(
         children: [
-          rating,
-          if (heroMovie.releaseDate.isNotEmpty) ...[
-            const SizedBox(width: 10),
-            Text(
-              heroMovie.releaseDate.split('-').first,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.55),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+          Flexible(
+            fit: FlexFit.loose,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                rating,
+                if (heroMovie.releaseDate.isNotEmpty) ...[
+                  SizedBox(width: gap),
+                  Text(
+                    heroMovie.releaseDate.split('-').first,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: metaFont,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+                if (heroMovie.mediaType == 'tv') ...[
+                  SizedBox(width: gap),
+                  _buildHeroMediaTypeBadge('SERIES'),
+                ] else if (heroMovie.mediaType == 'movie') ...[
+                  SizedBox(width: gap),
+                  _buildHeroMediaTypeBadge('FILM'),
+                ],
+              ],
             ),
-          ],
-          if (heroMovie.mediaType == 'tv') ...[
-            const SizedBox(width: 10),
-            _buildHeroMediaTypeBadge('SERIES'),
-          ] else if (heroMovie.mediaType == 'movie') ...[
-            const SizedBox(width: 10),
-            _buildHeroMediaTypeBadge('FILM'),
-          ],
+          ),
           if (heroMovie.genres.isNotEmpty) ...[
-            const SizedBox(width: 10),
+            SizedBox(width: gap),
             Expanded(
               child: Text(
                 heroMovie.genres.take(3).join('  ·  '),
@@ -1976,7 +2147,7 @@ class _HomeScreenState extends State<HomeScreen>
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 12,
+                  fontSize: genreFont,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -2022,32 +2193,67 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeroActionRow(Movie heroMovie) {
-    return Row(
+    final metrics = ShellScope.metricsOf(context);
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvNav = policy.useFocusableMoodChips;
+    const heroItemCount = 3;
+    final play = HeroPillPlayButton(
+      label: 'Play',
+      focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+      tvTabId: tvNav ? 'home' : null,
+      tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
+      tvItemIndex: tvNav ? 0 : null,
+      onUpEdge: tvNav ? ShellTvFocus.focusHomeMenu : null,
+      onKeyEvent: policy.heroPlayAutoFocus
+          ? (node, event) {
+              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                if (ShellTvFocusCoordinator.focusActiveNavTab()) {
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            }
+          : null,
+      onTap: () => _watchNow(heroMovie),
+    );
+    final row = HeroPillActionRow(
       children: [
-        HeroPillPlayButton(
-          label: 'Play',
-          onTap: () => _watchNow(heroMovie),
-        ),
+        if (tvNav)
+          FocusTraversalOrder(order: const NumericFocusOrder(1), child: play)
+        else
+          play,
         const SizedBox(width: 10),
         HeroPillIconGroup(
+          tvFocusOrderStart: tvNav ? 2 : null,
+          tvTabId: tvNav ? 'home' : null,
+          tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
+          tvItemIndexStart: tvNav ? 1 : null,
+          onUpEdge: tvNav ? ShellTvFocus.focusHomeMenu : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,
               tooltip: 'Details',
               onTap: () => _openDetails(heroMovie),
             ),
-            HeroPillIconSlot(
-              child: MyListButton.movie(
-                movie: heroMovie,
-                iconColor: Colors.white,
-                iconColorActive: Colors.white,
-                iconSize: 20,
-              ),
-              tooltip: 'Add to My List',
-            ),
+            MyListHeroPillButton.movieSlot(context, movie: heroMovie),
           ],
         ),
       ],
+    );
+    final body = metrics.heroActionUseFittedBox
+        ? FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: row,
+          )
+        : row;
+    if (!tvNav) return body;
+    return DetailsHeroTvActionScope(
+      tabId: 'home',
+      itemCount: heroItemCount,
+      onFocusUp: ShellTvFocus.focusHomeMenu,
+      child: body,
     );
   }
 }
@@ -2058,6 +2264,9 @@ class _MovieSection extends StatefulWidget {
   final Function(Movie) onMovieTap;
   final bool compactTop;
   final bool showRank;
+  final VoidCallback? tvFocusUp;
+  final String? tvRowId;
+  final int tvRowOrder;
 
   const _MovieSection({
     super.key,
@@ -2066,18 +2275,20 @@ class _MovieSection extends StatefulWidget {
     required this.onMovieTap,
     this.compactTop = false,
     this.showRank = false,
+    this.tvFocusUp,
+    this.tvRowId,
+    this.tvRowOrder = 0,
   });
 
   static double sectionHeight(
     BuildContext context, {
     bool compactTop = false,
   }) {
-    final top = compactTop
-        ? ShellTokens.homeSectionTitleTopCompactDesktop
-        : ShellTokens.homeSectionTitleTop;
-    const headerRow = 28.0;
-    const bottomGap = 16.0;
-    return top + headerRow + bottomGap + HomeMovieCard.cardHeight(context);
+    return shellCatalogSectionHeight(
+      context,
+      compactTop: compactTop,
+      cardHeight: HomeMovieCard.cardHeight(context),
+    );
   }
 
   @override
@@ -2086,9 +2297,11 @@ class _MovieSection extends StatefulWidget {
 
 class _MovieSectionState extends State<_MovieSection> {
   final ScrollController _scrollController = ScrollController();
+  String get _rowId => widget.tvRowId ?? widget.title;
 
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _scrollController.dispose();
     super.dispose();
   }
@@ -2116,6 +2329,14 @@ class _MovieSectionState extends State<_MovieSection> {
           return const SizedBox.shrink();
         }
 
+        shellTvRegisterRow(
+          tabId: 'home',
+          rowId: _rowId,
+          sortOrder: widget.tvRowOrder,
+          itemCount: movies.length,
+          onFocusUp: widget.tvFocusUp,
+        );
+
         final sectionTop = _homeSectionTitleTop(
           context,
           compactTop: widget.compactTop,
@@ -2127,24 +2348,40 @@ class _MovieSectionState extends State<_MovieSection> {
           children: [
             ShellSectionTitle(
               title: widget.title,
-              padding: EdgeInsets.fromLTRB(24, sectionTop, 24, 16),
+              padding: shellHomeSectionTitlePadding(
+                context,
+                top: sectionTop,
+              ),
             ),
             SizedBox(
               height: HomeMovieCard.cardHeight(context),
-              child: ListView.separated(
+              child: FocusTraversalGroup(
+                child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
                 itemCount: movies.length,
                 separatorBuilder: (_, _) =>
-                    SizedBox(width: widget.showRank ? 6 : 14),
-                itemBuilder: (context, index) => HomeMovieCard(
-                  movie: movies[index],
-                  onTap: () => widget.onMovieTap(movies[index]),
-                  rank: widget.showRank ? index + 1 : null,
-                ),
+                    SizedBox(
+                      width: widget.showRank
+                          ? shellScaled(context, 6).clamp(3.0, 6.0)
+                          : shellMovieCardRowGap(context),
+                    ),
+                itemBuilder: (context, index) {
+                  return HomeMovieCard(
+                    movie: movies[index],
+                    onTap: () => widget.onMovieTap(movies[index]),
+                    rank: widget.showRank ? index + 1 : null,
+                    listIndex: index,
+                    tvTabId: 'home',
+                    tvRowId: _rowId,
+                  );
+                },
+              ),
               ),
             ),
           ],
@@ -2158,11 +2395,15 @@ class _StaticMovieSection extends StatefulWidget {
   final String title;
   final List<Movie> movies;
   final Function(Movie) onMovieTap;
+  final String? tvRowId;
+  final int tvRowOrder;
 
   const _StaticMovieSection({
     required this.title,
     required this.movies,
     required this.onMovieTap,
+    this.tvRowId,
+    this.tvRowOrder = 10,
   });
 
   @override
@@ -2171,9 +2412,11 @@ class _StaticMovieSection extends StatefulWidget {
 
 class _StaticMovieSectionState extends State<_StaticMovieSection> {
   final ScrollController _scrollController = ScrollController();
+  String get _rowId => widget.tvRowId ?? widget.title;
 
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _scrollController.dispose();
     super.dispose();
   }
@@ -2181,24 +2424,38 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
   @override
   Widget build(BuildContext context) {
     if (widget.movies.isEmpty) return const SizedBox.shrink();
+    shellTvRegisterRow(
+      tabId: 'home',
+      rowId: _rowId,
+      sortOrder: widget.tvRowOrder,
+      itemCount: widget.movies.length,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ShellSectionTitle(title: widget.title),
         SizedBox(
           height: HomeMovieCard.cardHeight(context),
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: widget.movies.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
             itemBuilder: (context, index) => HomeMovieCard(
               movie: widget.movies[index],
               onTap: () => widget.onMovieTap(widget.movies[index]),
+              listIndex: index,
+              tvTabId: 'home',
+              tvRowId: _rowId,
             ),
+          ),
           ),
         ),
       ],
@@ -2368,40 +2625,86 @@ Future<void> resumePlaybackFromHistory(
         throw Exception('Provider $sourceId not available');
       }
 
-      debugPrint(
-        '[Resume] Re-extracting stream for $title (TMDB: $tmdbId, S:$season, E:$episode)',
-      );
-      final url = season != null && episode != null
-          ? provider['tv'](tmdbId, season, episode)
-          : provider['movie'](tmdbId);
+      if (PlatformInfo.isAndroidTv) {
+        debugPrint('[Resume] Android TV — Rust providers only (no WebView sniff)');
+        final movie = Movie(
+          id: tmdbId,
+          title: title,
+          posterPath: posterPath,
+          backdropPath: '',
+          overview: '',
+          releaseDate: '',
+          voteAverage: 0,
+          mediaType: season != null ? 'tv' : 'movie',
+          genres: [],
+          imdbId: item['imdbId']?.toString(),
+        );
+        final fallback = await TvStreamFallback.resolve(
+          movie: movie,
+          season: season ?? 1,
+          episode: episode ?? 1,
+        );
+        streamUrl = fallback?.streamUrl;
+        if (fallback != null) activeProvider = 'webstreamr';
+      } else {
+        debugPrint(
+          '[Resume] Re-extracting stream for $title (TMDB: $tmdbId, S:$season, E:$episode)',
+        );
+        final url = season != null && episode != null
+            ? provider['tv'](tmdbId, season, episode)
+            : provider['movie'](tmdbId);
 
-      final extractor = StreamExtractor();
-      final result =
-          await extractor.extract(url, timeout: const Duration(seconds: 20));
-      streamUrl = result?.url;
+        final extractor = StreamExtractor();
+        final result =
+            await extractor.extract(url, timeout: const Duration(seconds: 20));
+        streamUrl = result?.url;
+      }
     } else if (method == 'amri') {
       activeProvider = 'AMRI';
-      debugPrint(
-        '[Resume] Re-extracting AMRI for $title (TMDB: $tmdbId, S:$season, E:$episode)',
-      );
-      final amriExtractor = AmriExtractor(
-        onLog: (message) => debugPrint('[AMRI Resume] $message'),
-      );
+      if (PlatformInfo.isAndroidTv) {
+        debugPrint('[Resume] Android TV — AMRI WebView blocked, trying Rust providers');
+        final movie = Movie(
+          id: tmdbId,
+          title: title,
+          posterPath: posterPath,
+          backdropPath: '',
+          overview: '',
+          releaseDate: '',
+          voteAverage: 0,
+          mediaType: season != null ? 'tv' : 'movie',
+          genres: [],
+          imdbId: item['imdbId']?.toString(),
+        );
+        final fallback = await TvStreamFallback.resolve(
+          movie: movie,
+          season: season ?? 1,
+          episode: episode ?? 1,
+        );
+        streamUrl = fallback?.streamUrl;
+        if (fallback != null) activeProvider = 'webstreamr';
+      } else {
+        debugPrint(
+          '[Resume] Re-extracting AMRI for $title (TMDB: $tmdbId, S:$season, E:$episode)',
+        );
+        final amriExtractor = AmriExtractor(
+          onLog: (message) => debugPrint('[AMRI Resume] $message'),
+        );
 
-      final year = item['year']?.toString() ?? '';
+        final year = item['year']?.toString() ?? '';
 
-      final sourcesData = await amriExtractor.extractSources(
-        tmdbId.toString(),
-        title,
-        year,
-        season: season,
-        episode: episode,
-      );
+        final sourcesData = await amriExtractor.extractSources(
+          tmdbId.toString(),
+          title,
+          year,
+          season: season,
+          episode: episode,
+        );
 
-      if (sourcesData['sources'] != null &&
-          sourcesData['sources'].isNotEmpty) {
-        final sources = sourcesData['sources'] as List;
-        streamUrl = sources.first['url'] as String?;
+        if (sourcesData['sources'] != null &&
+            sourcesData['sources'].isNotEmpty) {
+          final sources = sourcesData['sources'] as List;
+          streamUrl = sources.first['url'] as String?;
+        }
       }
     } else if (method == 'torrent') {
       magnetLink = savedMagnetLink;
@@ -2500,8 +2803,14 @@ Future<void> resumePlaybackFromHistory(
 
 class _ContinueWatchingSection extends StatefulWidget {
   final bool compactTop;
+  final String? tvRowId;
+  final int tvRowOrder;
 
-  const _ContinueWatchingSection({this.compactTop = false});
+  const _ContinueWatchingSection({
+    this.compactTop = false,
+    this.tvRowId,
+    this.tvRowOrder = 2,
+  });
 
   @override
   State<_ContinueWatchingSection> createState() => _ContinueWatchingSectionState();
@@ -2511,6 +2820,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
   final ScrollController _scrollController = ScrollController();
   String? _loadingItemId;
   final Map<int, String> _resolvedBackdrops = {};
+  String get _rowId => widget.tvRowId ?? 'continue-watching';
 
   @override
   void initState() {
@@ -2520,6 +2830,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
 
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _scrollController.dispose();
     super.dispose();
   }
@@ -2639,7 +2950,10 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
             compactTop: widget.compactTop,
           );
         }
-        if (snapshot.data!.isEmpty) return const SizedBox.shrink();
+        if (snapshot.data!.isEmpty) {
+          shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
+          return const SizedBox.shrink();
+        }
         final raw = snapshot.data!;
         if (_resolvedBackdrops.length < raw.length) {
           _resolveMissingBackdrops(raw);
@@ -2654,6 +2968,13 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
           if (seen.add(key)) history.add(item);
         }
 
+        shellTvRegisterRow(
+          tabId: 'home',
+          rowId: _rowId,
+          sortOrder: widget.tvRowOrder,
+          itemCount: history.length,
+        );
+
         final titleTop = _homeSectionTitleTop(
           context,
           compactTop: widget.compactTop,
@@ -2664,7 +2985,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
           children: [
             ShellSectionTitle(
               title: 'Continue Watching',
-              padding: EdgeInsets.fromLTRB(24, titleTop, 24, 16),
+              padding: shellHomeSectionTitlePadding(context, top: titleTop),
             ),
             SizedBox(
               height: _HistoryCard.cardHeight(context),
@@ -2673,13 +2994,18 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
                 itemCount: history.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
                 itemBuilder: (context, index) {
                   final historyItem = history[index];
                   final itemId = historyItem['uniqueId'] as String;
                   return _HistoryCard(
+                    listIndex: index,
+                    tvRowId: _rowId,
                     item: historyItem,
                     resolvedBackdropPath:
                         _resolvedBackdrops[historyItem['tmdbId'] as int?],
@@ -2705,6 +3031,8 @@ class _HistoryCard extends StatefulWidget {
   final VoidCallback onRemove;
   final VoidCallback onInfo;
   final bool isLoading;
+  final int listIndex;
+  final String? tvRowId;
 
   const _HistoryCard({
     required this.item,
@@ -2712,24 +3040,16 @@ class _HistoryCard extends StatefulWidget {
     required this.onTap,
     required this.onRemove,
     required this.onInfo,
+    required this.listIndex,
+    this.tvRowId,
     this.isLoading = false,
   });
 
-  static double cardWidth(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardWidthDesktop
-        : ShellTokens.shellContinueWatchingCardWidthCompact;
-  }
+  static double cardWidth(BuildContext context) =>
+      shellContinueWatchingCardWidth(context);
 
-  static double cardHeight(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardHeightDesktop
-        : ShellTokens.shellContinueWatchingCardHeightCompact;
-  }
+  static double cardHeight(BuildContext context) =>
+      shellContinueWatchingCardHeight(context);
 
   @override
   State<_HistoryCard> createState() => _HistoryCardState();
@@ -2739,7 +3059,11 @@ class _HistoryCardState extends State<_HistoryCard> {
   bool _hovered = false;
   bool _focused = false;
 
-  bool get _active => _hovered || _focused;
+  bool _active(BuildContext context) => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -2770,29 +3094,23 @@ class _HistoryCardState extends State<_HistoryCard> {
     final cardWidth = _HistoryCard.cardWidth(context);
     final cardHeight = _HistoryCard.cardHeight(context);
 
-    return Focus(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.isLoading ? null : widget.onTap,
+      listIndex: widget.listIndex,
+      tvTabId: 'home',
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.listIndex,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onKeyEvent: (node, event) {
-        if (!widget.isLoading &&
-            event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
-          widget.onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.isLoading ? null : widget.onTap,
-          child: AnimatedScale(
-            scale: _active ? 1.05 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: Container(
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedScale(
+        scale: _active(context) ? 1.05 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: Container(
               width: cardWidth,
               height: cardHeight,
               decoration: BoxDecoration(
@@ -2935,7 +3253,7 @@ class _HistoryCardState extends State<_HistoryCard> {
             Positioned.fill(
               child: IgnorePointer(
                 child: AnimatedOpacity(
-                  opacity: _active && !widget.isLoading ? 1.0 : 0.0,
+                  opacity: _active(context) && !widget.isLoading ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 200),
                   child: Center(
                     child: Container(
@@ -2975,8 +3293,6 @@ class _HistoryCardState extends State<_HistoryCard> {
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }
@@ -3022,8 +3338,14 @@ class _StremioCatalogSection extends StatefulWidget {
 class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
   final ScrollController _scrollController = ScrollController();
 
+  String get _rowId {
+    final cat = widget.catalog;
+    return 'stremio-${cat['addonBaseUrl']}-${cat['catalogId']}';
+  }
+
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _scrollController.dispose();
     super.dispose();
   }
@@ -3033,12 +3355,22 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
     final cat = widget.catalog;
     final addonName = cat['addonName'] as String;
     final catalogName = cat['catalogName'] as String;
+    final itemCount = widget.items.length.clamp(0, 20);
+    shellTvRegisterRow(
+      tabId: 'home',
+      rowId: _rowId,
+      sortOrder: 15,
+      itemCount: itemCount,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 36, 24, 14),
+          padding: shellHomeSectionTitlePadding(
+            context,
+            bottom: shellScaled(context, 14).clamp(4.0, 14.0),
+          ),
           child: Row(
             children: [
               Expanded(
@@ -3082,21 +3414,28 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
         ),
         SizedBox(
           height: HomeMovieCard.cardHeight(context),
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: widget.items.length.clamp(0, 20),
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
+            itemCount: itemCount,
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
             itemBuilder: (context, index) {
               final item = widget.items[index];
               return _StremioCatalogCard(
                 item: item,
+                listIndex: index,
+                tvRowId: _rowId,
                 onTap: () => widget.onItemTap(item),
               );
             },
+          ),
           ),
         ),
       ],
@@ -3106,9 +3445,16 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
 
 class _StremioCatalogCard extends StatelessWidget {
   final Map<String, dynamic> item;
+  final int? listIndex;
+  final String? tvRowId;
   final VoidCallback onTap;
 
-  const _StremioCatalogCard({required this.item, required this.onTap});
+  const _StremioCatalogCard({
+    required this.item,
+    required this.onTap,
+    this.listIndex,
+    this.tvRowId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -3118,10 +3464,16 @@ class _StremioCatalogCard extends StatelessWidget {
     final cardWidth = HomeMovieCard.cardWidth(context);
     final cardHeight = HomeMovieCard.cardHeight(context);
 
-    return FocusableControl(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
       borderRadius: 14,
       scaleOnFocus: 1.05,
+      showFocusBorder: true,
+      listIndex: listIndex,
+      tvTabId: 'home',
+      tvRowId: tvRowId,
+      tvItemIndex: listIndex,
       child: Container(
         width: cardWidth,
         height: cardHeight,
@@ -3191,7 +3543,10 @@ class _StremioCatalogCard extends StatelessWidget {
             // My List button
             Positioned(
               top: 8, left: 8,
-              child: MyListButton.stremio(stremioItem: item),
+              child: MyListButton.stremio(
+                stremioItem: item,
+                excludeFromTvTraversal: true,
+              ),
             ),
           ],
         ),
@@ -3219,6 +3574,7 @@ class _MoodSection extends StatefulWidget {
   final Future<List<Movie>>? future;
   final Function(Movie) onMovieTap;
   final bool compactTop;
+  final int tvRowOrder;
 
   const _MoodSection({
     required this.moods,
@@ -3227,6 +3583,7 @@ class _MoodSection extends StatefulWidget {
     required this.future,
     required this.onMovieTap,
     this.compactTop = false,
+    this.tvRowOrder = 3,
   });
 
   @override
@@ -3235,6 +3592,7 @@ class _MoodSection extends StatefulWidget {
 
 class _MoodSectionState extends State<_MoodSection> {
   final ScrollController _resultsCtrl = ScrollController();
+  List<Movie>? _cachedResults;
 
   @override
   void dispose() {
@@ -3258,28 +3616,130 @@ class _MoodSectionState extends State<_MoodSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(24, titleTop, 24, 12),
+          padding: shellHomeSectionTitlePadding(
+            context,
+            top: titleTop,
+            bottom: shellScaled(context, 12).clamp(4.0, 12.0),
+          ),
           child: const Text(
             "What's your mood?",
             style: ShellSectionTitle.titleStyle,
           ),
         ),
         // Chip strip
-        SizedBox(
+        Builder(
+          builder: (context) {
+            if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+              shellTvRegisterRow(
+                tabId: 'home',
+                rowId: 'mood-chips',
+                sortOrder: widget.tvRowOrder,
+                itemCount: moods.length,
+              );
+            }
+            return SizedBox(
           height: 40,
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: moods.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
               final m = moods[i];
               final isSelected = m.id == selectedId;
+              if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+                return ForjaShellChip(
+                  label: m.label,
+                  selected: isSelected,
+                  icon: m.icon,
+                  listIndex: i,
+                  tvTabId: 'home',
+                  tvRowId: 'mood-chips',
+                  onTap: () {
+                    if (m.id != selectedId) {
+                      onSelect(m.id);
+                    } else {
+                      ShellTvFocusCoordinator.focusFromChipStripDown(
+                        tabId: 'home',
+                        chipRowId: 'mood-chips',
+                        resultsRowId: 'mood-results',
+                      );
+                    }
+                  },
+                  onLeftEdge: shellTvChipLeftEdge(
+                    context,
+                    tabId: 'home',
+                    rowId: 'mood-chips',
+                    index: i,
+                  ),
+                  onRightEdge: shellTvChipRightEdge(
+                    tabId: 'home',
+                    rowId: 'mood-chips',
+                    index: i,
+                    itemCount: moods.length,
+                  ),
+                  onUpEdge: () {
+                    ShellTvFocusCoordinator.moveVerticalInTab(
+                      tabId: 'home',
+                      rowId: 'mood-chips',
+                      currentIndex: i,
+                      down: false,
+                    );
+                  },
+                  onDownEdge: shellTvChipDownToRow(
+                    tabId: 'home',
+                    chipRowId: 'mood-chips',
+                    resultsRowId: 'mood-results',
+                  ),
+                );
+              }
+
+              final chip = Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? ForjaShellColors.chipSelectedBg
+                      : Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isSelected
+                        ? ForjaShellColors.chipSelectedBorder
+                        : Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      m.icon,
+                      size: 14,
+                      color: isSelected
+                          ? ForjaShellColors.chipSelectedIcon
+                          : Colors.white.withValues(alpha: 0.7),
+                    ),
+                    SizedBox(width: shellScaled(context, 6).clamp(3.0, 6.0)),
+                    Text(
+                      m.label,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.75),
+                        fontSize: 12.5,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+
               return Material(
-                color: isSelected
-                    ? ForjaShellColors.chipSelectedBg
-                    : Colors.white.withValues(alpha: 0.05),
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(24),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(24),
@@ -3287,51 +3747,29 @@ class _MoodSectionState extends State<_MoodSection> {
                   splashColor: ForjaShellColors.inkSplash,
                   highlightColor: ForjaShellColors.inkSplash,
                   onTap: () => onSelect(m.id),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: isSelected
-                            ? ForjaShellColors.chipSelectedBorder
-                            : Colors.white.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          m.icon,
-                          size: 14,
-                          color: isSelected
-                              ? ForjaShellColors.chipSelectedIcon
-                              : Colors.white.withValues(alpha: 0.7),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          m.label,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.75),
-                            fontSize: 12.5,
-                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: chip,
                 ),
               );
             },
           ),
+          ),
+        );
+          },
         ),
         const SizedBox(height: 16),
         // Results row
         FutureBuilder<List<Movie>>(
           future: future,
           builder: (context, snap) {
-            final loading =
+            final waiting =
                 future == null || snap.connectionState == ConnectionState.waiting;
-            final movies = snap.data ?? const <Movie>[];
+            if (snap.hasData && snap.data!.isNotEmpty) {
+              _cachedResults = snap.data;
+            }
+            final movies = waiting && _cachedResults != null
+                ? _cachedResults!
+                : (snap.data ?? const <Movie>[]);
+            final loading = waiting && _cachedResults == null;
 
             if (loading) {
               return homeLoadingShimmer(
@@ -3342,9 +3780,12 @@ class _MoodSectionState extends State<_MoodSection> {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
                       itemCount: 5,
-                      separatorBuilder: (_, _) => const SizedBox(width: 14),
+                      separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
                       itemBuilder: (_, _) => homeCardSkeleton(context),
                     ),
                   ),
@@ -3363,20 +3804,39 @@ class _MoodSectionState extends State<_MoodSection> {
                 ),
               );
             }
+            final count = movies.length.clamp(0, 20);
+            shellTvRegisterRow(
+              tabId: 'home',
+              rowId: 'mood-results',
+              sortOrder: widget.tvRowOrder + 1,
+              itemCount: count,
+            );
             return SizedBox(
               height: HomeMovieCard.cardHeight(context),
-              child: ListView.separated(
+              child: FocusTraversalGroup(
+                child: ListView.separated(
                 clipBehavior: Clip.none,
                 controller: _resultsCtrl,
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                itemCount: movies.length.clamp(0, 20),
-                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
+                itemCount: count,
+                separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
                 itemBuilder: (context, i) => HomeMovieCard(
                   movie: movies[i],
                   onTap: () => onMovieTap(movies[i]),
+                  listIndex: i,
+                  tvTabId: 'home',
+                  tvRowId: 'mood-results',
+                  onUpEdge: shellTvResultsUpToChips(
+                    tabId: 'home',
+                    chipRowId: 'mood-chips',
+                  ),
                 ),
+              ),
               ),
             );
           },
@@ -3411,9 +3871,12 @@ class _BecauseYouWatchedSection extends StatefulWidget {
 
 class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
   final ScrollController _ctrl = ScrollController();
+  static const _rowId = 'because-watched';
+  static const _rowOrder = 14;
 
   @override
   void dispose() {
+    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
     _ctrl.dispose();
     super.dispose();
   }
@@ -3424,7 +3887,7 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
         : '';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 36, 24, 16),
+      padding: shellSectionTitlePadding(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -3500,9 +3963,12 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: 5,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
             itemBuilder: (_, _) => homeCardSkeleton(context),
           ),
         ),
@@ -3520,6 +3986,15 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
 
         if (!loading && movies.isEmpty) return const SizedBox.shrink();
 
+        if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+          shellTvRegisterRow(
+            tabId: 'home',
+            rowId: _rowId,
+            sortOrder: _rowOrder,
+            itemCount: movies.length.clamp(0, 25),
+          );
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -3529,18 +4004,26 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
             else
               SizedBox(
                 height: HomeMovieCard.cardHeight(context),
-                child: ListView.separated(
+                child: FocusTraversalGroup(
+                  child: ListView.separated(
                   clipBehavior: Clip.none,
                   controller: _ctrl,
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
                   itemCount: movies.length.clamp(0, 25),
-                  separatorBuilder: (_, _) => const SizedBox(width: 14),
+                  separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
                   itemBuilder: (context, i) => HomeMovieCard(
                     movie: movies[i],
                     onTap: () => widget.onMovieTap(movies[i]),
+                    listIndex: i,
+                    tvTabId: 'home',
+                    tvRowId: _rowId,
                   ),
+                ),
                 ),
               ),
           ],
@@ -3585,6 +4068,7 @@ class _HeroTitleSlot extends StatelessWidget {
             ? ShellTokens.heroTitleSlotHeightDesktop
             : logoMaxHeight + 14;
     final title = _heroTitleText(
+      context,
       movie,
       isLandscape,
       desktop: desktop,

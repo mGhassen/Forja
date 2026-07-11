@@ -32,9 +32,11 @@ jobs:
         run: |
           flutter pub get
           flutter test test/engine_smoke_test.dart
+      - name: TV shell boundary check
+        run: ./scripts/check_tv_shell_boundary.sh
 
   android-ffi:
-    name: Android arm64 FFI
+    name: Android FFI (arm64 + armeabi-v7a)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -50,6 +52,11 @@ jobs:
         with:
           name: libffi-android-arm64
           path: apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libffi-android-armeabi-v7a
+          path: apps/forja/android/app/src/main/jniLibs/armeabi-v7a/libffi.so
           if-no-files-found: error
 
   ios-ffi:

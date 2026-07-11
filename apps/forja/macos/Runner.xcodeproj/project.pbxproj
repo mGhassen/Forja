@@ -360,7 +360,7 @@
 			);
 			inputPaths = (
 				"${SRCROOT}/Runner/Frameworks/libffi.dylib",
-				"${SRCROOT}/../../crates/target/release/libffi.dylib",
+				"${SRCROOT}/../../../crates/target/release/libffi.dylib",
 			);
 			name = "Copy Rust Engine";
 			outputPaths = (

@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/hero/hero_facts_panel.dart';
@@ -40,6 +41,7 @@ class MediaDetailsHero extends StatefulWidget {
     this.lastAirDate,
     this.networks = const [],
     this.creators = const [],
+    this.bodyOverlap,
   });
 
   final Movie movie;
@@ -63,6 +65,7 @@ class MediaDetailsHero extends StatefulWidget {
   final String? lastAirDate;
   final List<String> networks;
   final List<String> creators;
+  final double? bodyOverlap;
 
   @override
   State<MediaDetailsHero> createState() => _MediaDetailsHeroState();
@@ -592,15 +595,6 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
 
   Color _shellBg(BuildContext context) => AppTheme.bgDark;
 
-  InAppWebViewSettings get _webViewSettings => InAppWebViewSettings(
-        mediaPlaybackRequiresUserGesture: false,
-        allowsInlineMediaPlayback: true,
-        transparentBackground: false,
-        disableVerticalScroll: true,
-        disableHorizontalScroll: true,
-        supportZoom: false,
-      );
-
   Widget _buildBackdropMedia(Color shellBg) {
     if (_backdropUrl.isEmpty) {
       return ColoredBox(color: shellBg);
@@ -623,6 +617,8 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
     final contentInset =
         ShellTokens.detailsContentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + ShellTokens.detailsHeroContentTopInset;
+    final bodyOverlap =
+        widget.bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
 
     return VisibilityDetector(
       key: ValueKey('media-hero-${widget.movie.id}'),
@@ -658,21 +654,19 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                     opacity: _showTrailer ? 0 : 1,
                     child: _CinematicHeroBottomGradient(
                       shellBg: shellBg,
-                      overlap: ShellTokens.detailsHeroBodyOverlap,
+                      overlap: bodyOverlap,
                     ),
                   ),
                 ),
               ),
-            if (_hasTrailerKey)
+            if (_hasTrailerKey && _showTrailer)
               Positioned.fill(
                 child: ClipRect(
                   child: IgnorePointer(
-                    child: Offstage(
-                      offstage: !_showTrailer,
-                      child: Stack(
+                    child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          InAppWebView(
+                          ForjaInAppWebView(
                             key: ValueKey(
                               'trailer-${widget.trailerYoutubeKey}',
                             ),
@@ -683,7 +677,14 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                               ),
                               baseUrl: WebUri(_kYoutubeEmbedOrigin),
                             ),
-                            initialSettings: _webViewSettings,
+                            initialSettings: InAppWebViewSettings(
+                              mediaPlaybackRequiresUserGesture: false,
+                              allowsInlineMediaPlayback: true,
+                              transparentBackground: false,
+                              disableVerticalScroll: true,
+                              disableHorizontalScroll: true,
+                              supportZoom: false,
+                            ),
                             onWebViewCreated: (controller) {
                               _webViewController = controller;
                               controller.addJavaScriptHandler(
@@ -717,7 +718,6 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                     ),
                   ),
                 ),
-              ),
             if (cinematicDesktop)
               Positioned.fill(
                 child: IgnorePointer(
@@ -733,7 +733,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: h * 0.55 + ShellTokens.detailsHeroBodyOverlap,
+                height: h * 0.55 + bodyOverlap,
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 600),
@@ -747,49 +747,56 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
               right: 0,
               top: heroContentTop,
               bottom: 72 + bottomInset,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: ShellTokens.bodyMaxWidthDesktop,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: contentInset),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        _HeroLayout(
-                          movie: widget.movie,
-                          logoUrl: _logoUrl,
-                          directorName: widget.directorName,
-                          budget: widget.budget,
-                          revenue: widget.revenue,
-                          languageCode: widget.languageCode,
-                          spokenLanguages: widget.spokenLanguages,
-                          productionCompanies: widget.productionCompanies,
-                          originCountries: widget.originCountries,
-                          status: widget.status,
-                          lastAirDate: widget.lastAirDate,
-                          networks: widget.networks,
-                          creators: widget.creators,
-                          certification: widget.certification,
-                          imdbRating: widget.imdbRating,
-                          actionRow: widget.actionRow,
-                          positionMs: _positionMs,
-                          durationMs: _durationMs,
-                        ),
-                        if (_showTrailer)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: _TrailerMuteButton(
-                              muted: _trailerMuted,
-                              onTap: _toggleTrailerMute,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: ShellTokens.bodyMaxWidthDesktop,
+                        maxHeight: constraints.maxHeight,
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: contentInset),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            _HeroLayout(
+                              movie: widget.movie,
+                              logoUrl: _logoUrl,
+                              directorName: widget.directorName,
+                              budget: widget.budget,
+                              revenue: widget.revenue,
+                              languageCode: widget.languageCode,
+                              spokenLanguages: widget.spokenLanguages,
+                              productionCompanies: widget.productionCompanies,
+                              originCountries: widget.originCountries,
+                              status: widget.status,
+                              lastAirDate: widget.lastAirDate,
+                              networks: widget.networks,
+                              creators: widget.creators,
+                              certification: widget.certification,
+                              imdbRating: widget.imdbRating,
+                              actionRow: widget.actionRow,
+                              positionMs: _positionMs,
+                              durationMs: _durationMs,
+                              maxHeight: constraints.maxHeight,
                             ),
-                          ),
-                      ],
+                            if (_showTrailer)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: _TrailerMuteButton(
+                                  muted: _trailerMuted,
+                                  onTap: _toggleTrailerMute,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -936,6 +943,7 @@ class _HeroLayout extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.maxHeight,
   });
 
   final Movie movie;
@@ -956,6 +964,7 @@ class _HeroLayout extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final double? maxHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -973,10 +982,15 @@ class _HeroLayout extends StatelessWidget {
       positionMs: positionMs,
       durationMs: durationMs,
       maxContentWidth: compact ? width : leftColumnWidth,
+      maxHeight: maxHeight,
     );
 
     if (compact) {
-      return mainColumn;
+      return SizedBox(
+        width: double.infinity,
+        height: maxHeight,
+        child: mainColumn,
+      );
     }
 
     final factsPanel = HeroFactsPanel(
@@ -995,22 +1009,35 @@ class _HeroLayout extends StatelessWidget {
       durationMs: durationMs,
     );
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Align(
-          alignment: Alignment.topLeft,
-          child: SizedBox(
-            width: leftColumnWidth,
-            child: mainColumn,
-          ),
-        ),
-        if (factsPanel.hasContent)
+    return SizedBox(
+      width: double.infinity,
+      height: maxHeight,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
           Align(
-            alignment: Alignment.bottomRight,
-            child: SizedBox(width: 300, child: factsPanel),
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: leftColumnWidth,
+              height: maxHeight,
+              child: mainColumn,
+            ),
           ),
-      ],
+          if (factsPanel.hasContent && maxHeight != null)
+            Align(
+              alignment: Alignment.bottomRight,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 300,
+                  maxHeight: maxHeight!,
+                ),
+                child: SingleChildScrollView(
+                  child: factsPanel,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -1026,7 +1053,22 @@ class _HeroMainColumn extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.maxHeight,
   });
+
+  static const _overviewStyle = TextStyle(
+    fontSize: 14,
+    height: 1.6,
+    color: Color(0xB8FFFFFF),
+  );
+  static const _titleBlockHeight = 96.0;
+  static const _genreBlockHeight = 20.0;
+  static const _metaBlockHeight = 24.0;
+  static const _metaBlockHeightWrapped = 48.0;
+  static const _directorBlockHeight = 20.0;
+  static const _overviewGap = 14.0;
+  static const _actionGap = 18.0;
+  static const _progressBlockHeight = 36.0;
 
   final Movie movie;
   final String? logoUrl;
@@ -1037,22 +1079,138 @@ class _HeroMainColumn extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final double? maxHeight;
+
+  static double get _overviewSlotHeight =>
+      _overviewStyle.fontSize! *
+          _overviewStyle.height! *
+          ShellTokens.heroOverviewMaxLinesDesktop +
+      ShellTokens.heroOverviewReadMoreGap +
+      _overviewStyle.fontSize! * _overviewStyle.height!;
+
+  bool get _metaWraps => maxContentWidth < 480;
+
+  double _metaHeight() =>
+      _metaWraps ? _metaBlockHeightWrapped : _metaBlockHeight;
+
+  double _usedHeight({
+    required bool showDirector,
+    required bool showGenres,
+    required bool showOverview,
+    required bool showProgress,
+    required double titleHeight,
+  }) {
+    var used = titleHeight;
+    if (showGenres) used += 10 + _genreBlockHeight;
+    used += 14 + _metaHeight();
+    if (showDirector) used += 10 + _directorBlockHeight;
+    if (showOverview) used += _overviewGap + _overviewSlotHeight;
+    if (actionRow != null) used += _actionGap + ShellTokens.shellButtonHeight;
+    if (showProgress) used += 14 + _progressBlockHeight;
+    return used;
+  }
 
   @override
   Widget build(BuildContext context) {
     final director = directorName?.trim();
+    final hasDirector = director != null && director.isNotEmpty;
+    final bounded = maxHeight != null && maxHeight!.isFinite && maxHeight! > 0;
+    final hasProgress = positionMs != null && durationMs != null;
 
-    return SizedBox(
-      width: maxContentWidth,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          HeroTitle(movie: movie, logoUrl: logoUrl),
-          if (movie.genres.isNotEmpty) ...[
+    var showDirector = hasDirector;
+    var showGenres = movie.genres.isNotEmpty;
+    var showOverview = movie.overview.isNotEmpty;
+    var showProgress = hasProgress;
+    var titleHeight = _titleBlockHeight;
+
+    if (bounded) {
+      if (_usedHeight(
+            showDirector: showDirector,
+            showGenres: showGenres,
+            showOverview: showOverview,
+            showProgress: showProgress,
+            titleHeight: titleHeight,
+          ) >
+          maxHeight!) {
+        showDirector = false;
+      }
+      if (_usedHeight(
+            showDirector: showDirector,
+            showGenres: showGenres,
+            showOverview: showOverview,
+            showProgress: showProgress,
+            titleHeight: titleHeight,
+          ) >
+          maxHeight!) {
+        showOverview = false;
+      }
+      if (_usedHeight(
+            showDirector: showDirector,
+            showGenres: showGenres,
+            showOverview: showOverview,
+            showProgress: showProgress,
+            titleHeight: titleHeight,
+          ) >
+          maxHeight!) {
+        showGenres = false;
+      }
+      if (_usedHeight(
+            showDirector: showDirector,
+            showGenres: showGenres,
+            showOverview: showOverview,
+            showProgress: showProgress,
+            titleHeight: titleHeight,
+          ) >
+          maxHeight!) {
+        showProgress = false;
+      }
+      if (_usedHeight(
+            showDirector: showDirector,
+            showGenres: showGenres,
+            showOverview: showOverview,
+            showProgress: showProgress,
+            titleHeight: titleHeight,
+          ) >
+          maxHeight!) {
+        titleHeight = (maxHeight! -
+                _usedHeight(
+                  showDirector: showDirector,
+                  showGenres: showGenres,
+                  showOverview: showOverview,
+                  showProgress: showProgress,
+                  titleHeight: 0,
+                ))
+            .clamp(48.0, _titleBlockHeight);
+      }
+    }
+
+    return ClipRect(
+      child: SizedBox(
+        width: maxContentWidth,
+        height: bounded ? maxHeight : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: titleHeight,
+              child: ClipRect(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: HeroTitle(
+                    movie: movie,
+                    logoUrl: logoUrl,
+                    slotHeight: bounded ? titleHeight : null,
+                  ),
+                ),
+              ),
+            ),
+          if (showGenres) ...[
             const SizedBox(height: 10),
             Text(
               movie.genres.take(4).join(' • '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -1067,10 +1225,12 @@ class _HeroMainColumn extends StatelessWidget {
             certification: certification,
             imdbRating: imdbRating,
           ),
-          if (director != null && director.isNotEmpty) ...[
+          if (showDirector) ...[
             const SizedBox(height: 10),
             Text(
               'Director: $director',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -1078,23 +1238,37 @@ class _HeroMainColumn extends StatelessWidget {
               ),
             ),
           ],
-          if (movie.overview.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            HeroOverviewText(
-              overview: movie.overview,
-              maxLines: 3,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.6,
-                color: Colors.white.withValues(alpha: 0.72),
+          if (showOverview) ...[
+            const SizedBox(height: _overviewGap),
+            SizedBox(
+              height: bounded
+                  ? (maxHeight! -
+                          _usedHeight(
+                            showDirector: showDirector,
+                            showGenres: showGenres,
+                            showOverview: false,
+                            showProgress: showProgress,
+                            titleHeight: titleHeight,
+                          ) -
+                          _overviewGap)
+                      .clamp(48.0, _overviewSlotHeight)
+                  : _overviewSlotHeight,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: HeroOverviewText(
+                  overview: movie.overview,
+                  maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+                  shrinkWrap: !bounded,
+                  style: _overviewStyle,
+                ),
               ),
             ),
           ],
           if (actionRow != null) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: _actionGap),
             actionRow!,
           ],
-          if (positionMs != null && durationMs != null) ...[
+          if (showProgress) ...[
             const SizedBox(height: 14),
             SizedBox(
               width: 280,
@@ -1105,6 +1279,7 @@ class _HeroMainColumn extends StatelessWidget {
             ),
           ],
         ],
+      ),
       ),
     );
   }

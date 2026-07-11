@@ -5,6 +5,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
@@ -255,6 +259,13 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     _load();
   }
 
+  @override
+  void dispose() {
+    ShellTvFocusCoordinator.clearTab('live_matches');
+    _tabController?.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; _sportFilter = 'all'; });
     if (_provider == _DataProvider.damiTv) {
@@ -346,12 +357,6 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       ? _damiTvStreams
       : _damiTvStreams.where((s) => s.categoryName == _sportFilter).toList();
 
-  @override
-  void dispose() {
-    _tabController?.dispose();
-    super.dispose();
-  }
-
   // ── build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -390,6 +395,32 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   }
 
   Widget _buildSportTabs() {
+    final policy = ShellScope.inputPolicyOf(context);
+    if (policy.useFocusableMoodChips && _tabController != null) {
+      final labels = [
+        'All',
+        ..._sports.map((s) => s.name),
+      ];
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            for (var i = 0; i < labels.length; i++)
+              Padding(
+                padding: EdgeInsets.only(right: i < labels.length - 1 ? 8 : 0),
+                child: ForjaShellChip(
+                  label: labels[i],
+                  selected: _tabController!.index == i,
+                  onTap: () => _tabController!.animateTo(i),
+                  listIndex: i,
+                  tvTabId: 'live_matches',
+                ),
+              ),
+          ],
+        ),
+      );
+    }
     final tabs = [
       const Tab(text: 'All'),
       ..._sports.map((s) => Tab(text: s.name)),
@@ -411,25 +442,11 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       return Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent));
     }
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
-            const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.white54)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-              ),
-            ),
-          ],
-        ),
+      return ShellErrorRetryPanel(
+        message: _error!,
+        onRetry: _load,
+        statusIcon: Icons.error_outline,
+        buttonIcon: Icons.refresh,
       );
     }
     if (_provider == _DataProvider.damiTv) return _buildDamiTvBody();
@@ -465,6 +482,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         itemCount: streams.length,
         itemBuilder: (context, i) => _DamiTvMatchCard(
           stream: streams[i],
+          gridIndex: i,
+          gridColumns: crossCount,
           onTap: () => _openDamiTvStream(streams[i]),
         ),
       );
@@ -520,6 +539,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
                 itemCount: channels.length,
                 itemBuilder: (context, i) => _CdnChannelCard(
                   channel: channels[i],
+                  gridIndex: i,
+                  gridColumns: crossCount,
                   onTap: () => _openCdnChannel(channels[i]),
                 ),
               );
@@ -577,6 +598,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
                 itemCount: sports.length,
                 itemBuilder: (context, i) => _CdnSportCard(
                   event: sports[i],
+                  gridIndex: i,
+                  gridColumns: crossCount,
                   onTap: () => _openCdnSportEvent(sports[i]),
                 ),
               );
@@ -677,7 +700,14 @@ class _TeamBadge extends StatelessWidget {
 class _CdnChannelCard extends StatefulWidget {
   final _CdnChannel channel;
   final VoidCallback onTap;
-  const _CdnChannelCard({required this.channel, required this.onTap});
+  final int? gridIndex;
+  final int? gridColumns;
+  const _CdnChannelCard({
+    required this.channel,
+    required this.onTap,
+    this.gridIndex,
+    this.gridColumns,
+  });
 
   @override
   State<_CdnChannelCard> createState() => _CdnChannelCardState();
@@ -685,28 +715,40 @@ class _CdnChannelCard extends StatefulWidget {
 
 class _CdnChannelCardState extends State<_CdnChannelCard> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final c = widget.channel;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 16,
+      gridIndex: widget.gridIndex,
+      gridColumns: widget.gridColumns,
+      tvTabId: 'live_matches',
+      tvZone: ShellTvZone.grid,
+      tvItemIndex: widget.gridIndex,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: _hovered ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
+            color: active ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: _hovered
+              color: active
                   ? ForjaShellColors.chipSelectedBorder
                   : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
             ),
-            boxShadow: _hovered
+            boxShadow: active
                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
                 : null,
           ),
@@ -759,7 +801,7 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
                         style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                if (_hovered)
+                if (active)
                   Positioned.fill(
                     child: Center(
                       child: Container(
@@ -775,7 +817,6 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -785,7 +826,14 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
 class _CdnSportCard extends StatefulWidget {
   final _CdnSportEvent event;
   final VoidCallback onTap;
-  const _CdnSportCard({required this.event, required this.onTap});
+  final int? gridIndex;
+  final int? gridColumns;
+  const _CdnSportCard({
+    required this.event,
+    required this.onTap,
+    this.gridIndex,
+    this.gridColumns,
+  });
 
   @override
   State<_CdnSportCard> createState() => _CdnSportCardState();
@@ -793,28 +841,40 @@ class _CdnSportCard extends StatefulWidget {
 
 class _CdnSportCardState extends State<_CdnSportCard> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final e = widget.event;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 16,
+      gridIndex: widget.gridIndex,
+      gridColumns: widget.gridColumns,
+      tvTabId: 'live_matches',
+      tvZone: ShellTvZone.grid,
+      tvItemIndex: widget.gridIndex,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: _hovered ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
+            color: active ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: _hovered
+              color: active
                   ? ForjaShellColors.chipSelectedBorder
                   : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
             ),
-            boxShadow: _hovered
+            boxShadow: active
                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
                 : null,
           ),
@@ -902,7 +962,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                         style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                if (_hovered)
+                if (active)
                   Positioned.fill(
                     child: Center(
                       child: Container(
@@ -918,7 +978,6 @@ class _CdnSportCardState extends State<_CdnSportCard> {
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -946,8 +1005,14 @@ class _CdnChannelSheet extends StatelessWidget {
           const SizedBox(height: 6),
           const Text('Choose a channel:', style: TextStyle(color: Colors.white54, fontSize: 13)),
           const SizedBox(height: 16),
-          ...event.channels.map((ch) => ListTile(
+          ...event.channels.map((ch) => shellFocusableTap(
+            context: context,
             onTap: () => onChannelSelected(ch),
+            borderRadius: 12,
+            navLeftAlways: true,
+            tvTabId: 'live_matches',
+            tvZone: ShellTvZone.row,
+            child: ListTile(
             leading: ch.image.isNotEmpty
                 ? CachedNetworkImage(imageUrl: ch.image, width: 32, height: 32, fit: BoxFit.contain,
                     errorWidget: (_, _, _) => Icon(Icons.tv_rounded, color: ForjaShellColors.sectionAccent))
@@ -958,7 +1023,7 @@ class _CdnChannelSheet extends StatelessWidget {
                 ? Text('${ch.viewers} viewers', style: const TextStyle(color: Colors.white38, fontSize: 11))
                 : null,
             trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-          )),
+          ))),
         ],
       ),
     );
@@ -1030,7 +1095,7 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
       ),
       body: Stack(
         children: [
-          InAppWebView(
+          ForjaInAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(widget.url)),
             initialSettings: InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,
@@ -1071,7 +1136,14 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
 class _DamiTvMatchCard extends StatefulWidget {
   final _DamiTvStream stream;
   final VoidCallback onTap;
-  const _DamiTvMatchCard({required this.stream, required this.onTap});
+  final int? gridIndex;
+  final int? gridColumns;
+  const _DamiTvMatchCard({
+    required this.stream,
+    required this.onTap,
+    this.gridIndex,
+    this.gridColumns,
+  });
 
   @override
   State<_DamiTvMatchCard> createState() => _DamiTvMatchCardState();
@@ -1079,31 +1151,43 @@ class _DamiTvMatchCard extends StatefulWidget {
 
 class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final s = widget.stream;
     final hasIframe = s.iframe.isNotEmpty;
     final hasTeams = s.homeTeam != null && s.awayTeam != null;
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 16,
+      gridIndex: widget.gridIndex,
+      gridColumns: widget.gridColumns,
+      tvTabId: 'live_matches',
+      tvZone: ShellTvZone.grid,
+      tvItemIndex: widget.gridIndex,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: _hovered ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
+            color: active ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
-              color: _hovered
+              color: active
                   ? ForjaShellColors.chipSelectedBorder
                   : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
             ),
-            boxShadow: _hovered
+            boxShadow: active
                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
                 : null,
           ),
@@ -1223,7 +1307,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                     ),
                   ),
                 // play overlay on hover
-                if (_hovered && hasIframe)
+                if (active && hasIframe)
                   Positioned.fill(
                     child: Center(
                       child: Container(
@@ -1239,7 +1323,6 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -1309,7 +1392,7 @@ class _DamiTvPlayerScreenState extends State<_DamiTvPlayerScreen> {
       ),
       body: Stack(
         children: [
-          InAppWebView(
+          ForjaInAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(embedUrl)),
             initialSettings: InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,

@@ -5,6 +5,8 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 class MyListScreen extends StatefulWidget {
   const MyListScreen({super.key});
@@ -43,6 +45,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('mylist');
     MyListService.changeNotifier.removeListener(_onListChanged);
     super.dispose();
   }
@@ -102,9 +105,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final isDesktop = screenWidth > ShellTokens.musicDesktopBreakpoint;
-    final crossAxisCount = isDesktop ? 6 : (screenWidth > 600 ? 4 : 3);
+    final crossAxisCount = shellGridCrossAxisCount(context);
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -162,9 +163,19 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
+                    if (index == 0 && _items.isNotEmpty) {
+                      shellTvRegisterRow(
+                        tabId: 'mylist',
+                        rowId: 'grid',
+                        sortOrder: 0,
+                        itemCount: _items.length,
+                      );
+                    }
                     final item = _items[index];
                     return _MyListCard(
                       item: item,
+                      gridIndex: index,
+                      gridColumns: crossAxisCount,
                       onTap: () => _openItem(item),
                       onRemove: () async {
                         await _myList.remove(item['uniqueId']);
@@ -219,8 +230,16 @@ class _MyListCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onTap;
   final VoidCallback onRemove;
+  final int? gridIndex;
+  final int? gridColumns;
 
-  const _MyListCard({required this.item, required this.onTap, required this.onRemove});
+  const _MyListCard({
+    required this.item,
+    required this.onTap,
+    required this.onRemove,
+    this.gridIndex,
+    this.gridColumns,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -235,9 +254,15 @@ class _MyListCard extends StatelessWidget {
         ? TmdbApi.getImageUrl(poster)
         : poster;
 
-    return FocusableControl(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
       borderRadius: 12,
+      gridIndex: gridIndex,
+      gridColumns: gridColumns,
+      tvTabId: 'mylist',
+      tvZone: ShellTvZone.grid,
+      tvItemIndex: gridIndex,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -330,9 +355,11 @@ class _MyListCard extends StatelessWidget {
             // Remove button — must be AFTER title so it renders on top
             Positioned(
               bottom: 4, right: 4,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
+              child: shellFocusableTap(
+                context: context,
                 onTap: onRemove,
+                borderRadius: 20,
+                scaleOnFocus: ShellTokens.focusActiveScale,
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(

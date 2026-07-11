@@ -3,12 +3,27 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'built_in_player_engine.dart';
 import 'kv.dart';
+import 'platform_defaults.dart';
+import 'platform_profile.dart';
 
 class SettingsService {
   static final SettingsService _instance = SettingsService._internal();
   factory SettingsService() => _instance;
   SettingsService._internal();
+
+  static PlatformProfile _platformProfile = PlatformProfile.phone;
+
+  static PlatformProfile get platformProfile => _platformProfile;
+
+  static void configurePlatformProfile(PlatformProfile profile) {
+    _platformProfile = profile;
+  }
+
+  PlatformDefaults get _defaults => PlatformDefaults.forProfile(_platformProfile);
+
+  static const String _platformDefaultsSeededKey = 'platform_defaults_seeded_v1';
 
   static final ValueNotifier<int> addonChangeNotifier = ValueNotifier<int>(0);
 
@@ -22,6 +37,7 @@ class SettingsService {
   static const String _debridServiceKey = 'debrid_service';
   static const String _stremioAddonsKey = 'stremio_addons';
   static const String _externalPlayerKey = 'external_player';
+  static const String _builtInPlayerEngineKey = 'built_in_player_engine';
   static const String _jackettBaseUrlKey = 'jackett_base_url';
   static const String _jackettApiKeyKey = 'jackett_api_key';
   static const String _prowlarrBaseUrlKey = 'prowlarr_base_url';
@@ -58,7 +74,7 @@ class SettingsService {
       kvSetBool(_avoidUnsupportedAudioKey, v);
 
   Future<bool> isIptvEpgEnabled() async =>
-      kvGetBool(_iptvEpgEnabledKey, fallback: true);
+      kvGetBool(_iptvEpgEnabledKey, fallback: _defaults.iptvEpgEnabled);
 
   Future<void> setIptvEpgEnabled(bool enabled) async {
     await kvSetBool(_iptvEpgEnabledKey, enabled);
@@ -66,7 +82,10 @@ class SettingsService {
   }
 
   Future<double> getSubSize({bool isDesktop = false}) async =>
-      kvGetDouble(_subSizeKey, fallback: isDesktop ? 44.0 : 24.0);
+      kvGetDouble(
+        _subSizeKey,
+        fallback: isDesktop ? 44.0 : _defaults.subSize,
+      );
 
   Future<void> setSubSize(double v) async => kvSetDouble(_subSizeKey, v);
 
@@ -86,7 +105,7 @@ class SettingsService {
   Future<void> setSubBold(bool v) async => kvSetBool(_subBoldKey, v);
 
   Future<double> getSubBottomPadding() async =>
-      kvGetDouble(_subBottomPaddingKey, fallback: 24.0);
+      kvGetDouble(_subBottomPaddingKey, fallback: _defaults.subBottomPadding);
 
   Future<void> setSubBottomPadding(double v) async =>
       kvSetDouble(_subBottomPaddingKey, v);
@@ -99,7 +118,10 @@ class SettingsService {
   /// Desktop player: show live torrent stats card over the seek bar.
   /// Default off.
   Future<bool> getShowTorrentStatsOverlay() async =>
-      kvGetBool(_showTorrentStatsOverlayKey, fallback: false);
+      kvGetBool(
+        _showTorrentStatsOverlayKey,
+        fallback: _defaults.showTorrentStatsOverlay,
+      );
 
   Future<void> setShowTorrentStatsOverlay(bool v) async =>
       kvSetBool(_showTorrentStatsOverlayKey, v);
@@ -129,19 +151,22 @@ class SettingsService {
       kvSetBool(_streamingModeKey, enabled);
 
   Future<bool> isPlaySourceTorrentEnabled() async =>
-      kvGetBool(_playSourceTorrentKey, fallback: true);
+      kvGetBool(_playSourceTorrentKey, fallback: _defaults.playSourceTorrent);
 
   Future<void> setPlaySourceTorrentEnabled(bool enabled) async =>
       kvSetBool(_playSourceTorrentKey, enabled);
 
   Future<bool> isPlaySourceStremioEnabled() async =>
-      kvGetBool(_playSourceStremioKey, fallback: true);
+      kvGetBool(_playSourceStremioKey, fallback: _defaults.playSourceStremio);
 
   Future<void> setPlaySourceStremioEnabled(bool enabled) async =>
       kvSetBool(_playSourceStremioKey, enabled);
 
   Future<bool> isPlaySourceWebstreamingEnabled() async =>
-      kvGetBool(_playSourceWebstreamingKey, fallback: true);
+      kvGetBool(
+        _playSourceWebstreamingKey,
+        fallback: _defaults.playSourceWebstreaming,
+      );
 
   Future<void> setPlaySourceWebstreamingEnabled(bool enabled) async =>
       kvSetBool(_playSourceWebstreamingKey, enabled);
@@ -264,6 +289,17 @@ class SettingsService {
   Future<void> setExternalPlayer(String player) async =>
       kvSetString(_externalPlayerKey, player);
 
+  Future<BuiltInPlayerEngine> getBuiltInPlayerEngine() async {
+    final raw = await kvGetString(_builtInPlayerEngineKey);
+    if (raw == null || raw.isEmpty) {
+      return BuiltInPlayerEngine.platformDefault();
+    }
+    return BuiltInPlayerEngine.fromStorage(raw);
+  }
+
+  Future<void> setBuiltInPlayerEngine(BuiltInPlayerEngine engine) async =>
+      kvSetString(_builtInPlayerEngineKey, engine.storageKey);
+
   Future<String?> getJackettBaseUrl() async =>
       kvGetString(_jackettBaseUrlKey);
 
@@ -331,7 +367,7 @@ class SettingsService {
       kvSetString(_torrentCacheTypeKey, type);
 
   Future<int> getTorrentRamCacheMb() async =>
-      kvGetInt(_torrentRamCacheMbKey, fallback: 200);
+      kvGetInt(_torrentRamCacheMbKey, fallback: _defaults.torrentRamCacheMb);
 
   Future<void> setTorrentRamCacheMb(int mb) async =>
       kvSetInt(_torrentRamCacheMbKey, mb);
@@ -350,10 +386,56 @@ class SettingsService {
   static const String _navbarKnownIdsKey = 'navbar_known_ids';
   static const String _navbarShell080Key = 'navbar_shell_080';
   static const String _navbarShell081Key = 'navbar_shell_081';
+  static const String _navbarShell084Key = 'navbar_shell_084';
+  static const String _navbarShell085Key = 'navbar_shell_085';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Default visible tabs (settings appended in MainScreen).
-  static const List<String> defaultVisibleNavIds = ['home', 'search', 'mylist'];
+  static const List<String> defaultTvVisibleNavIds =
+      PlatformDefaults.androidTvNavIds;
+
+  static const List<String> defaultVisibleNavIds = [
+    'home',
+    'search',
+    'asian_drama',
+    'anime',
+    'iptv',
+    'live_matches',
+    'mylist',
+  ];
+
+  static List<String> _migrateAndroidTvSearchFirstNav(List<String> ids) {
+    if (ids.length < 2 || ids[0] != 'home' || ids[1] != 'search') {
+      return ids;
+    }
+    final migrated = List<String>.from(ids);
+    migrated[0] = 'search';
+    migrated[1] = 'home';
+    return migrated;
+  }
+
+  static int _initialShellTabIndex(List<String> visibleIds) {
+    if (platformProfile == PlatformProfile.androidTv) {
+      final homeIdx = visibleIds.indexOf('home');
+      if (homeIdx >= 0) return homeIdx;
+    }
+    return 0;
+  }
+
+  static int initialShellTabIndex(List<String> visibleIds) =>
+      _initialShellTabIndex(visibleIds);
+
+  static bool _isLegacyDefaultNav(List<String> ids) {
+    if (ids.length == 2) {
+      return ids[0] == 'home' && ids[1] == 'search';
+    }
+    if (ids.length == 3) {
+      return ids[0] == 'home' &&
+          ids[1] == 'search' &&
+          ids[2] == 'mylist';
+    }
+    return false;
+  }
 
   static const List<String> allNavIds = [
     'home',
@@ -377,13 +459,53 @@ class SettingsService {
     'arabic',
   ];
 
+  Future<void> ensurePlatformDefaultsSeeded(PlatformProfile profile) async {
+    configurePlatformProfile(profile);
+    if (await kvHasKey(_platformDefaultsSeededKey)) return;
+
+    final hasExistingConfig = await kvHasKey(_navbarConfigKey) ||
+        await kvHasKey(_navbarShell080Key) ||
+        await kvHasKey(_navbarShell081Key);
+
+    if (!hasExistingConfig) {
+      final defaults = PlatformDefaults.forProfile(profile);
+      await kvSetStringList(
+        _navbarConfigKey,
+        List<String>.from(defaults.visibleNavIds),
+      );
+      await kvSetStringList(_navbarKnownIdsKey, List<String>.from(allNavIds));
+      await kvSetString(_externalPlayerKey, defaults.externalPlayer);
+      await kvSetDouble(_subSizeKey, defaults.subSize);
+      await kvSetDouble(_subBottomPaddingKey, defaults.subBottomPadding);
+      await kvSetBool(_iptvEpgEnabledKey, defaults.iptvEpgEnabled);
+      await kvSetBool(_playSourceTorrentKey, defaults.playSourceTorrent);
+      await kvSetBool(_playSourceStremioKey, defaults.playSourceStremio);
+      await kvSetBool(
+        _playSourceWebstreamingKey,
+        defaults.playSourceWebstreaming,
+      );
+      await kvSetInt(_torrentRamCacheMbKey, defaults.torrentRamCacheMb);
+      await kvSetBool(
+        _showTorrentStatsOverlayKey,
+        defaults.showTorrentStatsOverlay,
+      );
+      await kvSetString(_navbarShell080Key, '1');
+      await kvSetString(_navbarShell081Key, '1');
+      await kvSetString(_navbarShell084Key, '1');
+    }
+
+    await kvSetString(_platformDefaultsSeededKey, profile.name);
+  }
+
   Future<List<String>> getNavbarConfig() async {
-    if (!await kvHasKey(_navbarShell080Key)) {
+    final skipLegacyMigrations = await kvHasKey(_platformDefaultsSeededKey);
+
+    if (!skipLegacyMigrations && !await kvHasKey(_navbarShell080Key)) {
       await kvSetStringList(_navbarConfigKey, const ['home', 'search']);
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
       await kvSetString(_navbarShell080Key, '1');
     }
-    if (!await kvHasKey(_navbarShell081Key)) {
+    if (!skipLegacyMigrations && !await kvHasKey(_navbarShell081Key)) {
       final raw = await kvHasKey(_navbarConfigKey)
           ? await kvGetStringList(_navbarConfigKey, fallback: const [])
           : List<String>.from(defaultVisibleNavIds);
@@ -399,9 +521,30 @@ class SettingsService {
       await kvSetStringList(_navbarConfigKey, updated);
       await kvSetString(_navbarShell081Key, '1');
     }
+    if (!await kvHasKey(_navbarShell084Key)) {
+      final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+      if (_isLegacyDefaultNav(raw)) {
+        await kvSetStringList(
+          _navbarConfigKey,
+          List<String>.from(defaultVisibleNavIds),
+        );
+      }
+      await kvSetString(_navbarShell084Key, '1');
+    }
+    if (!await kvHasKey(_navbarShell085Key)) {
+      if (platformProfile == PlatformProfile.androidTv &&
+          await kvHasKey(_navbarConfigKey)) {
+        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+        final migrated = _migrateAndroidTvSearchFirstNav(raw);
+        if (raw.length >= 2 && raw[0] == 'home' && raw[1] == 'search') {
+          await kvSetStringList(_navbarConfigKey, migrated);
+        }
+      }
+      await kvSetString(_navbarShell085Key, '1');
+    }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
-      return List.from(defaultVisibleNavIds);
+      return List<String>.from(_defaults.visibleNavIds);
     }
     final raw =
         await kvGetStringList(_navbarConfigKey, fallback: const []);

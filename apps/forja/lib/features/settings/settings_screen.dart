@@ -23,6 +23,8 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// Settings tab — RFC-024 R24-A13: local prefs only; no ShellTabRefresh / API stale policy.
 class SettingsScreen extends StatefulWidget {
@@ -43,6 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
   String _externalPlayer = 'Built-in Player';
+  BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   String _sortPreference = 'Seeders (High to Low)';
   // Track auto-select
   String _preferredAudioLang = 'None';
@@ -145,6 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final playSourceWebstreaming =
         await _settings.isPlaySourceWebstreamingEnabled();
     final externalPlayer = await _settings.getExternalPlayer();
+    final builtInEngine = await _settings.getBuiltInPlayerEngine();
     final sort = await _settings.getSortPreference();
     final useDebrid = await _settings.useDebridForStreams();
     final service = await _settings.getDebridService();
@@ -229,6 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _externalPlayer = validNames.contains(externalPlayer)
             ? externalPlayer
             : 'Built-in Player';
+        _builtInEngine = builtInEngine;
         _sortPreference = sort;
         _installedAddons = addons;
         _useDebrid = useDebrid;
@@ -309,6 +314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('settings');
     NuvioService.changeNotifier.removeListener(_loadNuvioAddons);
     _addonController.dispose();
     _nuvioController.dispose();
@@ -451,7 +457,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildAnimeProviderOrder(),
                         _buildFocusableDropdown(
                           'Video Player',
-                          'Choose which player opens videos.',
+                          'Open in another app (VLC, MX Player, …). Built-in uses the engine below.',
                           _externalPlayer,
                           ExternalPlayerService.playerNames,
                           (val) async {
@@ -461,6 +467,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             }
                           },
                         ),
+                        if (Platform.isAndroid)
+                          _buildFocusableDropdown(
+                            'Built-in engine',
+                            'Decoder when Video Player is Built-in.',
+                            _builtInEngine.displayName,
+                            builtInPlayerEngineOptions
+                                .map((e) => e.displayName)
+                                .toList(),
+                            (val) async {
+                              if (val == null) return;
+                              final match = builtInPlayerEngineOptions
+                                  .where((e) => e.displayName == val)
+                                  .toList();
+                              if (match.isEmpty) return;
+                              await _settings.setBuiltInPlayerEngine(match.first);
+                              setState(() => _builtInEngine = match.first);
+                            },
+                          ),
                         _buildFocusableDropdown(
                           'Preferred Audio Language',
                           'When a video starts, automatically switch to a matching audio track. Pick "None" to leave the default.',
@@ -3040,39 +3064,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildFocusableToggle(String title, String subtitle, bool value, ValueChanged<bool> onChanged) {
-    return FocusableControl(
-      onTap: () => onChanged(!value),
-      scaleOnFocus: 1.0, // Disable scaling
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(fontSize: 13, color: Colors.white54)),
-                ],
-              ),
+    final content = Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: const TextStyle(fontSize: 13, color: Colors.white54)),
+              ],
             ),
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              activeTrackColor: AppTheme.current.primaryColor,
-            ),
-          ],
-        ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: AppTheme.current.primaryColor,
+          ),
+        ],
       ),
+    );
+    return shellFocusableTap(
+      context: context,
+      onTap: () => onChanged(!value),
+      scaleOnFocus: 1.0,
+      navLeftAlways: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      child: content,
     );
   }
 
   Widget _buildFocusableDropdown(String title, String subtitle, String value, List<String> options, ValueChanged<String?> onChanged) {
-    return FocusableControl(
-      onTap: () {},
-      scaleOnFocus: 1.0, // Disable scaling
-      child: Padding(
+    final content = Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
@@ -3112,7 +3138,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
-      ),
+    );
+    return shellFocusableTap(
+      context: context,
+      onTap: () {},
+      scaleOnFocus: 1.0,
+      navLeftAlways: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      child: content,
     );
   }
 }

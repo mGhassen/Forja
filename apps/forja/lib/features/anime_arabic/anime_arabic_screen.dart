@@ -34,6 +34,8 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
 
   Timer? _heroTimer;
   int _heroIndex = 0;
+  final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'anime-arabic-hero-play');
+  bool _tvHeroInitialFocusDone = false;
 
   HomeFeed? _feed;
   bool _loading = true;
@@ -65,6 +67,7 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
     _heroTimer?.cancel();
     _heroCtrl.dispose();
     _scroll.dispose();
+    _tvHeroPlayFocus.dispose();
     super.dispose();
   }
 
@@ -276,7 +279,23 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
                   : Stack(
                       children: [
                         _buildAmbientBackdrop(),
-                        RefreshIndicator(
+                        Builder(
+                          builder: (context) {
+                            final policy = ShellScope.inputPolicyOf(context);
+                            if (policy.heroPlayAutoFocus &&
+                                !_tvHeroInitialFocusDone &&
+                                _spotlight.isNotEmpty) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (!mounted || _tvHeroInitialFocusDone) {
+                                  return;
+                                }
+                                if (_tvHeroPlayFocus.canRequestFocus) {
+                                  _tvHeroPlayFocus.requestFocus();
+                                  _tvHeroInitialFocusDone = true;
+                                }
+                              });
+                            }
+                            return RefreshIndicator(
                           color: ForjaShellColors.sectionAccent,
                           backgroundColor: AppTheme.bgCard,
                           onRefresh: _load,
@@ -396,6 +415,8 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
                               ),
                             ],
                           ),
+                            );
+                          },
                         ),
                       ],
                     );
@@ -668,6 +689,10 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
                     label: 'مشاهدة',
                     icon: Icons.play_arrow_rounded,
                     onTap: () => _openDetails(a),
+                    focusNode: ShellScope.inputPolicyOf(context)
+                            .heroPlayAutoFocus
+                        ? _tvHeroPlayFocus
+                        : null,
                   ),
                   const SizedBox(width: 16),
                   ForjaPlainIcon(

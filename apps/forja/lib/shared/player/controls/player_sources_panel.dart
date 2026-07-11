@@ -761,7 +761,6 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
   @override
   Widget build(BuildContext context) {
-    final isTv = ShellTokens.isTvLayout(context);
     final torrents = _showsTorrents ? _filteredTorrents : <TorrentResult>[];
     final stremio = _showsStremio ? _visibleStremioStreams : <Map<String, dynamic>>[];
 
@@ -839,7 +838,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
               Object.hash(_openToken, _results.length, _searching),
           filterEnableBlur: false,
         ),
-        SizedBox(height: isTv ? 10 : 8),
+        const SizedBox(height: 8),
         Expanded(child: _buildList(torrents, stremio)),
       ],
     );

@@ -1,13 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/widgets/horizontal_scroller.dart';
-import 'package:forja/shared/widgets/hover_scale.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
+import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
+import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
@@ -19,7 +20,7 @@ import 'anime_player_screen.dart';
 Future<T?> openAnimeDetails<T>(BuildContext context, AnimeCard anime) {
   return pushShellRoute<T>(
     context,
-    AppRouter.slideRoute((_) => AnimeDetailsScreen(anime: anime)),
+    AppRouter.slideShellRoute((_) => AnimeDetailsScreen(anime: anime)),
   );
 }
 
@@ -33,6 +34,8 @@ class AnimeDetailsScreen extends StatefulWidget {
 
 class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   final AnimeService _service = AnimeService();
+  final ScrollController _detailsScrollController = ScrollController();
+  final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'anime-details-play');
 
   AnimeCard? _full;
   List<AnimeEpisode> _episodes = [];
@@ -47,6 +50,44 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _heroPlayFocus.dispose();
+    _detailsScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollDetailsHeroIntoView() {
+    if (!_detailsScrollController.hasClients) return;
+    _detailsScrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _revealedDetailsHeroPlayFocus() {
+    void focusPlay() {
+      if (!mounted) return;
+      if (_heroPlayFocus.canRequestFocus) {
+        _heroPlayFocus.requestFocus();
+      }
+    }
+
+    _scrollDetailsHeroIntoView();
+    if (!_detailsScrollController.hasClients) {
+      focusPlay();
+      return;
+    }
+    _detailsScrollController
+        .animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(focusPlay);
   }
 
   AnimeCard get _data => _full ?? widget.anime;
@@ -219,35 +260,9 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
   }
 
   Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline_rounded,
-                color: ForjaShellColors.sectionAccent, size: 48),
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _load,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-              ),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
+    return ShellErrorRetryPanel(
+      message: _error!,
+      onRetry: _load,
     );
   }
 
@@ -260,7 +275,12 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     final posMs = (_progress?['positionMs'] as num?)?.toInt();
     final durMs = (_progress?['durationMs'] as num?)?.toInt();
 
-    return SingleChildScrollView(
+    final heroFocusUp = _revealedDetailsHeroPlayFocus;
+    final showEpisodes = _episodes.isNotEmpty;
+    final relatedOrder = showEpisodes ? 1 : 0;
+
+    final scroll = SingleChildScrollView(
+      controller: _detailsScrollController,
       physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,47 +297,59 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             overview: a.cleanDescription,
             facts: _facts(a),
             height: heroHeight,
+            bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
             positionMs: posMs,
             durationMs: durMs,
-            actionRow: Row(
-              children: [
-                HubDetailsPlayRow(
-                  label: hasProgress && resumeEp != null
-                      ? 'Resume Ep $resumeEp'
-                      : 'Play Ep 1',
-                  enabled: _episodes.isNotEmpty,
-                  onPlay: () => _play(resumeEp ?? 1),
-                ),
-                if (hasProgress) ...[
+            actionRow: DetailsHeroTvActionScope(
+              tabId: MediaDetailsTv.tabId,
+              itemCount: hasProgress ? 2 : 1,
+              onFocusUp: heroFocusUp,
+              child: Row(
+                children: [
+                  HubDetailsPlayRow(
+                    label: hasProgress && resumeEp != null
+                        ? 'Resume Ep $resumeEp'
+                        : 'Play Ep 1',
+                    enabled: _episodes.isNotEmpty,
+                    onPlay: () => _play(resumeEp ?? 1),
+                    focusNode: _heroPlayFocus,
+                    tvTabId: MediaDetailsTv.tabId,
+                    tvItemIndex: 0,
+                  ),
+                  if (hasProgress) ...[
+                    const SizedBox(width: 10),
+                    HeroPillIconGroup(
+                      tvTabId: MediaDetailsTv.tabId,
+                      tvRowId: MediaDetailsTv.heroRowId,
+                      tvItemIndexStart: 1,
+                      slots: [
+                        HeroPillIconSlot(
+                          icon: Icons.delete_outline_rounded,
+                          tooltip: 'Clear progress',
+                          onTap: _clearProgress,
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(width: 10),
-                  HeroPillIconGroup(
-                    slots: [
-                      HeroPillIconSlot(
-                        icon: Icons.delete_outline_rounded,
-                        tooltip: 'Clear progress',
-                        onTap: _clearProgress,
+                  HeroPillSegmentedChoice<String>(
+                    selected: _category,
+                    onSelected: (cat) => setState(() => _category = cat),
+                    segments: const [
+                      HeroPillSegment(
+                        value: 'sub',
+                        label: 'SUB',
+                        icon: Icons.subtitles_rounded,
+                      ),
+                      HeroPillSegment(
+                        value: 'dub',
+                        label: 'DUB',
+                        icon: Icons.mic_rounded,
                       ),
                     ],
                   ),
                 ],
-                const SizedBox(width: 10),
-                HeroPillSegmentedChoice<String>(
-                  selected: _category,
-                  onSelected: (cat) => setState(() => _category = cat),
-                  segments: const [
-                    HeroPillSegment(
-                      value: 'sub',
-                      label: 'SUB',
-                      icon: Icons.subtitles_rounded,
-                    ),
-                    HeroPillSegment(
-                      value: 'dub',
-                      label: 'DUB',
-                      icon: Icons.mic_rounded,
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
           MediaDetailsBody(
@@ -325,47 +357,67 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
             topSpacing: ShellTokens.detailsBodyTopSpacingWithEpisodes,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (_episodes.isNotEmpty)
-                  TvSeasonEpisodePicker(
-                    tmdbId: a.id,
-                    seasonCount: 1,
-                    selectedSeason: 1,
-                    selectedEpisode: _selectedEpisode,
-                    isLoadingSeason: false,
-                    seasonData: null,
-                    watchedEpisodes: const {},
-                    fallbackPosterPath: a.coverUrl,
-                    customEpisodesBySeason: _episodeMaps(),
-                    episodeProgress: _episodeProgressMap(),
-                    onSeasonSelected: (_) {},
-                    onEpisodeSelected: (ep) {
-                      setState(() => _selectedEpisode = ep);
-                      final match = _episodes.where((e) => e.number == ep);
-                      if (match.isNotEmpty && match.first.aired) {
-                        _play(ep);
-                      }
-                    },
-                    onToggleWatched: (_, _) {},
+                if (showEpisodes)
+                  MediaDetailsBody.padContent(
+                    context,
+                    TvSeasonEpisodePicker(
+                      tmdbId: a.id,
+                      seasonCount: 1,
+                      selectedSeason: 1,
+                      selectedEpisode: _selectedEpisode,
+                      isLoadingSeason: false,
+                      seasonData: null,
+                      watchedEpisodes: const {},
+                      fallbackPosterPath: a.coverUrl,
+                      customEpisodesBySeason: _episodeMaps(),
+                      episodeProgress: _episodeProgressMap(),
+                      onSeasonSelected: (_) {},
+                      onEpisodeSelected: (ep) {
+                        setState(() => _selectedEpisode = ep);
+                        final match = _episodes.where((e) => e.number == ep);
+                        if (match.isNotEmpty && match.first.aired) {
+                          _play(ep);
+                        }
+                      },
+                      onToggleWatched: (_, _) {},
+                      tvTabId: MediaDetailsTv.tabId,
+                      tvSeasonRowId: 'seasons',
+                      tvEpisodeRowId: 'episodes',
+                      tvRowOrderBase: 0,
+                      tvFocusUp: heroFocusUp,
+                    ),
                   )
                 else
-                  Text(
-                    'No episodes available yet',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 14,
+                  MediaDetailsBody.padContent(
+                    context,
+                    Text(
+                      'No episodes available yet',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 if (_related.isNotEmpty) ...[
                   const SizedBox(height: ShellTokens.detailsSectionSpacing),
-                  _buildRelated(),
+                  _buildRelated(
+                    tvRowOrder: relatedOrder,
+                    tvFocusUp: showEpisodes ? null : heroFocusUp,
+                  ),
                 ],
               ],
             ),
           ),
         ],
       ),
+    );
+
+    return MediaDetailsTvScope(
+      heroPlayFocus: _heroPlayFocus,
+      scrollController: _detailsScrollController,
+      child: scroll,
     );
   }
 
@@ -376,60 +428,25 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>');
 
-  Widget _buildRelated() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('More Like This', style: ShellSectionTitle.titleStyle),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 220,
-          child: HorizontalScroller(
-            height: 220,
-            itemCount: _related.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (_, i) {
-              final r = _related[i];
-              return HoverScale(
-                radius: 12,
-                onTap: () => openAnimeDetails(context, r),
-                child: SizedBox(
-                  width: 130,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: r.coverUrl.isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl: r.coverUrl,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                )
-                              : ColoredBox(color: AppTheme.bgCard),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        r.displayTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+  Widget _buildRelated({
+    required int tvRowOrder,
+    VoidCallback? tvFocusUp,
+  }) {
+    return HubCatalogSection<AnimeCard>(
+      title: 'More Like This',
+      items: _related,
+      tvTabId: MediaDetailsTv.tabId,
+      tvRowId: 'related',
+      tvRowOrder: tvRowOrder,
+      tvFocusUp: tvFocusUp,
+      cardBuilder: (context, r, index) => HubPosterCard(
+        imageUrl: r.coverUrl,
+        title: r.displayTitle,
+        onTap: () => openAnimeDetails(context, r),
+        listIndex: index,
+        tvTabId: MediaDetailsTv.tabId,
+        tvRowId: 'related',
+      ),
     );
   }
 }

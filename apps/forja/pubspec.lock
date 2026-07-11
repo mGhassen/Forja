@@ -317,10 +317,10 @@ packages:
     dependency: "direct main"
     description:
       name: floating
-      sha256: d6e7046bfec4c1ab9e09ef9d88fee104b1eb41171d6e083099bf310535d26b79
+      sha256: e51ce1dbcab3ea83da0ad1b07f2091b99c0e8680184c780a000567f41234d454
       url: "https://pub.dev"
     source: hosted
-    version: "5.0.1"
+    version: "6.0.0"
   flutter:
     dependency: "direct main"
     description: flutter

@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tabs:** Home, Search, My List, and Settings. On desktop you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder additional tabs in Settings.
+Forja uses a tab-based shell. **Default tabs:** Home, Search, Asian Drama, Anime, IPTV, Live Matches, My List, and Settings. On desktop you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder additional tabs in Settings.
 
 ## How to open it
 
@@ -24,6 +24,20 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 - **Home menu (desktop):** Films / TV Shows / Categories overlaid on the hero; Categories opens a mood picker
 - **Left rail:** Forja logo (top), your configured tabs (center), Settings (bottom); muted grey icons with hover feedback
 - **Body:** flat `bgDark`; Home hero is full-bleed with pill **Play** plus a combined **info | add** pill for details and My List
+
+## Android TV
+
+- **Nav rail order:** Search, then Home, then your other tabs; the app **opens on Home** on cold start
+- Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
+- **Layout:** catalog rows fill the body edge-to-edge (no extra section gutters); only the fixed nav rail insets content on the left; device-reported overscan padding is applied once at the shell when present
+- **Leanback density:** **115px** poster cards, 6px row gaps, tight section chrome — hero + first row peek like desktop, multiple rows visible when scrolling
+- **Nav rail:** UP/DOWN only move between nav items (trap at Home and Settings); LEFT is trapped; **RIGHT** returns to the **active** tab’s last focus (row, hero, or default) without switching tabs; **Enter/Select** switches to the focused nav tab and restores that tab’s focus; **Back** travels up one shell level at a time: **player → detail → tab page → nav rail** (in-tab sub-routes such as IPTV portals pop before leaving the tab); on tab root, **Back** focuses the **active** nav tab; **Back** on the nav rail shows **Press back again to exit** — a second **Back** within 2s is the only way to leave the app
+- **Catalog rows:** LEFT/RIGHT move within the row only (no vertical scroll jump); DOWN/UP move between rows and restore each row’s own last-focused item (not the column from the row you left); last row DOWN stops (no escape to nav)
+- **Hero:** UP from the first row scrolls the hero fully visible and focuses Play; LEFT from Play focuses the **active** nav tab (not a geometric neighbor)
+- **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Matches** use the **same card sizes, spacing, and section layout as desktop**; D-pad focus and coordinator-registered rows/chips are unchanged
+- Search uses the **two-column desktop layout** on TV (trending suggestions, focused-result detail pane, fluid results grid); D-pad lands on suggestions first — not the search field
+- Phone layout is unchanged — TV behavior applies only on Android TV / leanback devices
+- **Dev:** `flutter run --dart-define=FORJA_ANDROID_TV=true` forces TV profile on any Android device (layout/defaults only — not leanback launcher proof). See [Platforms](platforms.md#android-tv-development).
 
 ## Available tabs
 

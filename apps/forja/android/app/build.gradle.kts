@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -13,7 +12,7 @@ val buildRust =
 if (buildRust) {
     tasks.register<Exec>("buildRustAndroid") {
         group = "rust"
-        description = "Cross-compile libffi.so (arm64-v8a) via scripts/build_rust_mobile.sh"
+        description = "Cross-compile libffi.so (arm64-v8a + armeabi-v7a) via scripts/build_rust_mobile.sh"
         workingDir = repoRoot
         commandLine("bash", "scripts/build_rust_mobile.sh", "android")
     }
@@ -33,10 +32,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
-
     defaultConfig {
         applicationId = "com.forja.app"
         minSdk = flutter.minSdkVersion
@@ -44,6 +39,12 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     buildTypes {
@@ -66,12 +67,34 @@ android {
             keyPassword = project.findProperty("FORJA_KEY_PASSWORD") as String? ?: ""
         }
     }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
 }
 
 flutter {
     source = "../.."
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    val media3Version = "1.5.1"
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-ui:$media3Version")
+    implementation("androidx.media3:media3-datasource:$media3Version")
 }

@@ -1,7 +1,5 @@
-import 'dart:io' show Platform;
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -17,13 +15,16 @@ Widget homeLoadingShimmer(Widget child) {
   );
 }
 
-Widget homeTitleBarSkeleton({double width = 140, double height = 18}) {
+Widget homeTitleBarSkeleton(BuildContext context, {double width = 140, double? height}) {
+  final h = height ?? shellScaled(context, 18).clamp(10.0, 18.0);
+  const minWidth = 60.0;
+  final maxWidth = math.max(minWidth, width);
   return Container(
-    height: height,
-    width: width,
+    height: h,
+    width: shellScaled(context, width).clamp(minWidth, maxWidth),
     decoration: BoxDecoration(
       color: AppTheme.bgCard,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(shellScaled(context, 6).clamp(3.0, 6.0)),
     ),
   );
 }
@@ -35,44 +36,24 @@ Widget homeCardSkeleton(BuildContext context, {double? width}) {
     height: HomeMovieCard.cardHeight(context),
     decoration: BoxDecoration(
       color: AppTheme.bgCard,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(shellCardBorderRadius(context)),
     ),
   );
 }
 
-bool homeUsesShellLayout(BuildContext context) {
-  if (!kIsWeb &&
-      (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-    return true;
-  }
-  return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-}
+bool homeUsesShellLayout(BuildContext context) => shellUsesWideLayout(context);
 
 double homeSectionTitleTop(
   BuildContext context, {
   bool compactTop = false,
-}) {
-  if (!compactTop) return ShellTokens.homeSectionTitleTop;
-  return homeUsesShellLayout(context)
-      ? ShellTokens.homeSectionTitleTopCompactDesktop
-      : ShellTokens.homeSectionTitleTopCompactMobile;
-}
+}) =>
+    shellHomeSectionTitleTop(context, compact: compactTop);
 
-double homeContinueWatchingCardWidth(BuildContext context) {
-  final isDesktop =
-      MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-  return isDesktop
-      ? ShellTokens.shellContinueWatchingCardWidthDesktop
-      : ShellTokens.shellContinueWatchingCardWidthCompact;
-}
+double homeContinueWatchingCardWidth(BuildContext context) =>
+    shellContinueWatchingCardWidth(context);
 
-double homeContinueWatchingCardHeight(BuildContext context) {
-  final isDesktop =
-      MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-  return isDesktop
-      ? ShellTokens.shellContinueWatchingCardHeightDesktop
-      : ShellTokens.shellContinueWatchingCardHeightCompact;
-}
+double homeContinueWatchingCardHeight(BuildContext context) =>
+    shellContinueWatchingCardHeight(context);
 
 Widget homeMovieRowSkeleton(
   BuildContext context, {
@@ -86,6 +67,7 @@ Widget homeMovieRowSkeleton(
       ? topPadding
       : homeSectionTitleTop(context, compactTop: compactTop);
   final cardHeight = HomeMovieCard.cardHeight(context);
+  final hPad = shellHomeSectionHorizontalPadding(context);
 
   return Padding(
     padding: EdgeInsets.only(top: top),
@@ -93,14 +75,19 @@ Widget homeMovieRowSkeleton(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+          padding: EdgeInsets.fromLTRB(
+            hPad,
+            0,
+            hPad,
+            shellHomeSectionBottomGap(context),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              homeTitleBarSkeleton(width: titleWidth),
+              homeTitleBarSkeleton(context, width: titleWidth),
               if (showSubtitle) ...[
-                const SizedBox(height: 6),
-                homeTitleBarSkeleton(width: 90, height: 12),
+                SizedBox(height: shellScaled(context, 6).clamp(3.0, 6.0)),
+                homeTitleBarSkeleton(context, width: 90, height: 12),
               ],
             ],
           ),
@@ -110,9 +97,10 @@ Widget homeMovieRowSkeleton(
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: hPad),
             itemCount: itemCount,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
             itemBuilder: (_, _) => homeCardSkeleton(context),
           ),
         ),
@@ -128,6 +116,7 @@ Widget homeContinueWatchingSkeleton(
   final top = homeSectionTitleTop(context, compactTop: compactTop);
   final cardHeight = homeContinueWatchingCardHeight(context);
   final cardWidth = homeContinueWatchingCardWidth(context);
+  final hPad = shellHomeSectionHorizontalPadding(context);
 
   return homeLoadingShimmer(
     Padding(
@@ -136,22 +125,29 @@ Widget homeContinueWatchingSkeleton(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-            child: homeTitleBarSkeleton(width: 160),
+            padding: EdgeInsets.fromLTRB(
+              hPad,
+              0,
+              hPad,
+              shellHomeSectionBottomGap(context),
+            ),
+            child: homeTitleBarSkeleton(context, width: 160),
           ),
           SizedBox(
             height: cardHeight,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: EdgeInsets.symmetric(horizontal: hPad),
               itemCount: 4,
-              separatorBuilder: (_, _) => const SizedBox(width: 14),
+              separatorBuilder: (_, _) =>
+                  SizedBox(width: shellMovieCardRowGap(context)),
               itemBuilder: (_, _) => Container(
                 width: cardWidth,
                 decoration: BoxDecoration(
                   color: AppTheme.bgCard,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius:
+                      BorderRadius.circular(shellCardBorderRadius(context)),
                 ),
               ),
             ),
@@ -168,9 +164,12 @@ Widget homeCatalogCardRowSkeleton(BuildContext context, {int itemCount = 5}) {
     child: ListView.separated(
       scrollDirection: Axis.horizontal,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(
+        horizontal: shellHomeSectionHorizontalPadding(context),
+      ),
       itemCount: itemCount,
-      separatorBuilder: (_, _) => const SizedBox(width: 14),
+      separatorBuilder: (_, _) =>
+          SizedBox(width: shellMovieCardRowGap(context)),
       itemBuilder: (_, _) => homeCardSkeleton(context),
     ),
   );
@@ -185,11 +184,11 @@ double homeCinematicHeroBodyHeight(
     final target = screenH * ShellTokens.heroHeightFractionCompact;
     return math.max(ShellTokens.heroMinHeightCompact, target);
   }
-  return MediaQuery.sizeOf(context).height * ShellTokens.heroHeightFractionDesktop;
+  return MediaQuery.sizeOf(context).height * shellHeroHeightFraction(context);
 }
 
 Widget homeCinematicHeroShimmer(BuildContext context) {
-  final compact =
+  final compact = !ShellScope.metricsOf(context).usesTvDensity &&
       MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
   final height = homeCinematicHeroBodyHeight(context, compact: compact) +
       MediaQuery.paddingOf(context).top;
@@ -222,6 +221,7 @@ const List<HomeHubLoadingRowSpec> kHomeHubAsianDramaLoadingRows = [
 ];
 
 SliverToBoxAdapter homeHubRowSliver(
+  BuildContext context,
   Widget section, {
   required bool isFirstAfterHero,
 }) {
@@ -231,7 +231,7 @@ SliverToBoxAdapter homeHubRowSliver(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!isFirstAfterHero)
-          const SizedBox(height: ShellTokens.homeRowSpacing),
+          SizedBox(height: shellHomeRowSpacing(context)),
         RepaintBoundary(child: section),
       ],
     ),
@@ -247,11 +247,13 @@ List<Widget> homeHubLoadingSlivers(
   return [
     SliverToBoxAdapter(child: heroShimmer),
     homeHubRowSliver(
+      context,
       homeContinueWatchingSkeleton(context),
       isFirstAfterHero: true,
     ),
     for (final spec in specs)
       homeHubRowSliver(
+        context,
         homeLoadingShimmer(
           homeMovieRowSkeleton(
             context,

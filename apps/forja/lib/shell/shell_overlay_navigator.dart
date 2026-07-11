@@ -12,15 +12,35 @@ class _ShellOverlayObserver extends NavigatorObserver {
 
   void _notify() => onStackChanged();
 
+  void _notifyAfterDismissed(Route<dynamic> route) {
+    if (route is! ModalRoute) {
+      _notify();
+      return;
+    }
+    final animation = route.animation;
+    if (animation == null || animation.status == AnimationStatus.dismissed) {
+      _notify();
+      return;
+    }
+    void listener(AnimationStatus status) {
+      if (status == AnimationStatus.dismissed) {
+        animation.removeStatusListener(listener);
+        _notify();
+      }
+    }
+    animation.addStatusListener(listener);
+  }
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => _notify();
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _notify();
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _notifyAfterDismissed(route);
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) =>
-      _notify();
+      _notifyAfterDismissed(route);
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
@@ -63,23 +83,27 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
   Widget build(BuildContext context) {
     return IgnorePointer(
       ignoring: !_overlayHasPage,
-      child: Navigator(
-        key: shellOverlayNavigatorKey,
-        observers: [_observer],
-        onGenerateInitialRoutes: (NavigatorState navigator, String initialRoute) {
-          return [
-            PageRouteBuilder<void>(
-              settings: const RouteSettings(name: '/'),
-              opaque: false,
-              barrierDismissible: false,
-              pageBuilder: (context, animation, secondaryAnimation) {
-                return const SizedBox.expand();
-              },
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          ];
-        },
+      child: ExcludeFocus(
+        excluding: !_overlayHasPage,
+        child: Navigator(
+          key: shellOverlayNavigatorKey,
+          observers: [_observer],
+          onGenerateInitialRoutes:
+              (NavigatorState navigator, String initialRoute) {
+            return [
+              PageRouteBuilder<void>(
+                settings: const RouteSettings(name: '/'),
+                opaque: false,
+                barrierDismissible: false,
+                pageBuilder: (context, animation, secondaryAnimation) {
+                  return const SizedBox.expand();
+                },
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
+            ];
+          },
+        ),
       ),
     );
   }

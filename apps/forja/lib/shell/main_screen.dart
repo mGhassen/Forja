@@ -14,10 +14,11 @@ import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -35,7 +36,15 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
-  int _selectedIndex = 0;
+  static List<String> _bootstrapVisibleNavIds() {
+    final base = SettingsService.platformProfile == PlatformProfile.androidTv
+        ? SettingsService.defaultTvVisibleNavIds
+        : SettingsService.defaultVisibleNavIds;
+    return [...base, 'settings'];
+  }
+
+  int _selectedIndex =
+      SettingsService.initialShellTabIndex(_bootstrapVisibleNavIds());
   Timer? _metricsDebounce;
   Timer? _metricsSafety;
 
@@ -70,7 +79,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final Map<String, Widget> _tabCache = {};
   final Set<String> _mountedTabIds = {'home'};
   final List<String> _tabLru = ['home'];
-  List<String> _visibleIds = [...SettingsService.defaultVisibleNavIds, 'settings'];
+  List<String> _visibleIds = _bootstrapVisibleNavIds();
+  bool _initialNavResolved = false;
 
   String? get _currentTabId =>
       _visibleIds.isEmpty || _selectedIndex >= _visibleIds.length
@@ -161,18 +171,25 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return _searchKey.currentState?.buildShellSearchBar();
   }
 
+  void _syncCurrentNavTab() {
+    ShellTvFocus.currentNavTabId = _currentTabId;
+  }
+
   void _selectTab(int index) {
     final id = _visibleIds[index];
     setState(() {
       _mountedTabIds.add(id);
       _selectedIndex = index;
     });
+    _syncCurrentNavTab();
     _touchTab(id);
     _enforceTabCap();
     _applyTabShellChrome(id);
     if (id == 'search') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        setState(() {});
+        _searchKey.currentState?.focusTvBrowseFieldIfEmpty();
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -208,6 +225,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
 
     _loadNavbarConfig();
+    _syncCurrentNavTab();
     _checkForUpdates();
   }
 
@@ -240,7 +258,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           ? _visibleIds[_selectedIndex]
           : null;
       _visibleIds = [...visible, 'settings'];
-      if (currentId != null) {
+      if (!_initialNavResolved) {
+        _initialNavResolved = true;
+        _selectedIndex = SettingsService.initialShellTabIndex(_visibleIds);
+      } else if (currentId != null) {
         final newIndex = _visibleIds.indexOf(currentId);
         if (newIndex >= 0) {
           _selectedIndex = newIndex;
@@ -253,6 +274,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _evictTabsNotInNavbar(_visibleIds);
       _enforceTabCap();
     });
+    _syncCurrentNavTab();
   }
 
   void _onNavbarConfigChanged() {
@@ -334,28 +356,29 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    final isLandscape = MediaQuery.orientationOf(context) == Orientation.landscape;
-    final useNavRail = isDesktop || isLandscape;
+    return ShellScopeBuilder(
+      builder: (context, profile) {
+        final config = shellPlatformConfigFor(profile);
+        final showHomeTopBar = _currentTabId == 'home' &&
+            config.showHomeTopBar &&
+            !ShellBus.shellOverlayHasPage.value;
 
-    return DesktopWindowChrome.wrapShell(
-      child: ShellScaffold(
-        useNavRail: useNavRail,
-        isDesktop: isDesktop,
-        visibleIds: _visibleIds,
-        selectedIndex: _selectedIndex,
-        mountedTabIds: _mountedTabIds,
-        onDestinationSelected: _selectTab,
-        tabFor: _tabFor,
-        shellHeader: _shellHeader(),
-        shellTopBar: _currentTabId == 'home' &&
-                useNavRail &&
-                isDesktop &&
-                !ShellBus.shellOverlayHasPage.value
-            ? const HomeTopBar()
-            : null,
-        hideGlobalNav: ShellBus.hideGlobalNav.value,
-      ),
+        final shell = ShellHost(
+          visibleIds: _visibleIds,
+          selectedIndex: _selectedIndex,
+          mountedTabIds: _mountedTabIds,
+          onDestinationSelected: _selectTab,
+          tabFor: _tabFor,
+          shellHeader: _shellHeader(),
+          shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
+          hideGlobalNav: ShellBus.hideGlobalNav.value,
+        );
+
+        if (DesktopWindowChrome.isDesktop) {
+          return DesktopWindowChrome.wrapShell(child: shell);
+        }
+        return shell;
+      },
     );
   }
 }

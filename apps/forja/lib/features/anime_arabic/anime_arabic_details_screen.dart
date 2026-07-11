@@ -6,11 +6,16 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
-import 'package:forja/shared/widgets/horizontal_scroller.dart';
-import 'package:forja/shared/widgets/hover_scale.dart';
-import 'anime_arabic_player_screen.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
+import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/media_details_body.dart';
+import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
+import 'anime_arabic_player_screen.dart';
 
 class AnimeArabicDetailsScreen extends StatefulWidget {
   final ArabicAnimeCard anime;
@@ -25,16 +30,14 @@ class AnimeArabicDetailsScreen extends StatefulWidget {
 class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
   final AnimeArabicService _service = AnimeArabicService();
   final ScrollController _scroll = ScrollController();
+  final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'anime-arabic-details-play');
 
   ArabicAnimeDetails? _details;
   Map<String, dynamic>? _progress;
   bool _loading = true;
   bool _synopsisExpanded = false;
   String? _error;
-
-  // Episode pager
-  int _episodeChunk = 0;
-  static const int _chunkSize = 50;
+  int _selectedEpisode = 1;
 
   @override
   void initState() {
@@ -46,8 +49,20 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
   @override
   void dispose() {
     _scroll.dispose();
+    _heroPlayFocus.dispose();
     AnimeArabicService.watchHistoryRevision.removeListener(_onHistoryChanged);
     super.dispose();
+  }
+
+  bool get _tvNav => ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+  void _revealedDetailsHeroPlayFocus() {
+    if (!_scroll.hasClients) return;
+    _scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _onHistoryChanged() {
@@ -101,25 +116,36 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
-        return Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: _error != null
-              ? _buildError()
-              : Stack(
-                  children: [
-                    _buildBackdrop(),
-                    if (_loading)
-                      Center(
-                        child: CircularProgressIndicator(
-                          color: ForjaShellColors.sectionAccent,
-                        ),
-                      )
-                    else
-                      _buildContent(),
-                  ],
-                ),
-        );
+        final scaffold = _buildScaffold();
+        return _tvNav
+            ? MediaDetailsTvScope(
+                heroPlayFocus: _heroPlayFocus,
+                scrollController: _scroll,
+                child: scaffold,
+              )
+            : scaffold;
       },
+    );
+  }
+
+  Widget _buildScaffold() {
+    return Scaffold(
+      backgroundColor: AppTheme.bgDark,
+      body: _error != null
+          ? _buildError()
+          : Stack(
+              children: [
+                _buildBackdrop(),
+                if (_loading)
+                  Center(
+                    child: CircularProgressIndicator(
+                      color: ForjaShellColors.sectionAccent,
+                    ),
+                  )
+                else
+                  _buildContent(),
+              ],
+            ),
     );
   }
 
@@ -197,6 +223,9 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     final heroH = isLandscape ? 200.0 : 280.0;
+    final heroFocusUp = _revealedDetailsHeroPlayFocus;
+    final showEpisodes = d.episodes.isNotEmpty;
+    final relatedOrder = showEpisodes ? 1 : 0;
 
     return CustomScrollView(
       controller: _scroll,
@@ -215,43 +244,81 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
         SliverToBoxAdapter(child: _buildTitleBlock(d)),
         SliverToBoxAdapter(child: _buildActionRow(d)),
         SliverToBoxAdapter(child: _buildSynopsis(d)),
-        if (d.genres.isNotEmpty)
-          SliverToBoxAdapter(child: _buildGenres(d)),
+        if (d.genres.isNotEmpty) SliverToBoxAdapter(child: _buildGenres(d)),
         SliverToBoxAdapter(child: _buildMetaGrid(d)),
-        if (d.episodes.isNotEmpty) ...[
-          SliverToBoxAdapter(child: _buildEpisodesHeader(d)),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isLandscape ? 6 : 3,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.5,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, i) {
-                  final start = _episodeChunk * _chunkSize;
-                  final ep = d.episodes[start + i];
-                  final isCurrent =
-                      _progress?['episodeNumber'] == ep.number;
-                  return _episodeTile(ep, isCurrent);
-                },
-                childCount: () {
-                  final start = _episodeChunk * _chunkSize;
-                  final remaining = d.episodes.length - start;
-                  return remaining < _chunkSize ? remaining : _chunkSize;
-                }(),
-              ),
+        SliverToBoxAdapter(
+          child: MediaDetailsBody(
+            backgroundColor: AppTheme.bgDark,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (showEpisodes)
+                  MediaDetailsBody.padContent(
+                    context,
+                    TvSeasonEpisodePicker(
+                      tmdbId: widget.anime.slug.hashCode,
+                      seasonCount: 1,
+                      selectedSeason: 1,
+                      selectedEpisode: _selectedEpisode,
+                      isLoadingSeason: false,
+                      seasonData: null,
+                      watchedEpisodes: const {},
+                      fallbackPosterPath: d.displayCover,
+                      customEpisodesBySeason: _episodeMaps(d),
+                      onSeasonSelected: (_) {},
+                      onEpisodeSelected: (ep) {
+                        setState(() => _selectedEpisode = ep);
+                        final match = d.episodes.where((e) => e.number == ep);
+                        if (match.isNotEmpty) _play(match.first);
+                      },
+                      onToggleWatched: (_, _) {},
+                      tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
+                      tvSeasonRowId: 'seasons',
+                      tvEpisodeRowId: 'episodes',
+                      tvRowOrderBase: 0,
+                      tvFocusUp: heroFocusUp,
+                    ),
+                  )
+                else
+                  MediaDetailsBody.padContent(
+                    context,
+                    Text(
+                      'لم يتم العثور على حلقات',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                if (d.related.isNotEmpty) ...[
+                  const SizedBox(height: ShellTokens.detailsSectionSpacing),
+                  _buildRelated(
+                    d,
+                    tvRowOrder: relatedOrder,
+                    tvFocusUp: showEpisodes ? null : heroFocusUp,
+                  ),
+                ],
+              ],
             ),
           ),
-        ] else
-          SliverToBoxAdapter(child: _buildEmptyEpisodes()),
-        if (d.related.isNotEmpty)
-          SliverToBoxAdapter(child: _buildRelated(d)),
+        ),
         const SliverToBoxAdapter(child: SizedBox(height: 80)),
       ],
     );
+  }
+
+  Map<int, List<Map<String, dynamic>>> _episodeMaps(ArabicAnimeDetails d) {
+    return {
+      1: d.episodes
+          .map(
+            (e) => {
+              'episode_number': e.number,
+              'name': e.title,
+              if (e.thumb != null && e.thumb!.isNotEmpty) 'still_path': e.thumb,
+            },
+          )
+          .toList(),
+    };
   }
 
   // ─── Title block ─────────────────────────────────────────────
@@ -416,67 +483,56 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
     }
 
     final canPlay = firstEp != null;
+    final heroFocusUp = _revealedDetailsHeroPlayFocus;
+
+    final row = Row(
+      children: [
+        HubDetailsPlayRow(
+          label: resumeEp != null
+              ? 'استئناف الحلقة ${resumeEp.number}'
+              : 'تشغيل الحلقة 1',
+          enabled: canPlay,
+          onPlay: canPlay ? () => _play(resumeEp ?? firstEp) : null,
+          focusNode: _heroPlayFocus,
+          tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
+          tvItemIndex: 0,
+        ),
+        if (hasProgress) ...[
+          const SizedBox(width: 12),
+          HeroPillIconGroup(
+            tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
+            tvRowId: _tvNav ? MediaDetailsTv.heroRowId : null,
+            tvItemIndexStart: 1,
+            slots: [
+              HeroPillIconSlot(
+                icon: Icons.history_toggle_off_rounded,
+                tooltip: 'Clear progress',
+                onTap: () async {
+                  await _service.removeFromHistory(a.slug);
+                  if (!mounted) return;
+                  setState(() => _progress = null);
+                  ForjaToast.success(
+                    'Cleared progress',
+                    duration: const Duration(seconds: 2),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(28),
-                onTap: canPlay
-                    ? () => _play(resumeEp ?? firstEp)
-                    : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.play_arrow_rounded,
-                          color: Colors.black, size: 24),
-                      const SizedBox(width: 6),
-                      Text(
-                        resumeEp != null
-                            ? 'استئناف الحلقة ${resumeEp.number}'
-                            : 'تشغيل الحلقة 1',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Material(
-            color: Colors.white.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(28),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(28),
-              onTap: () async {
-                await _service.removeFromHistory(a.slug);
-                if (!mounted) return;
-                setState(() => _progress = null);
-                ForjaToast.success('Cleared progress', duration: const Duration(seconds: 2));
-              },
-              child: const Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: 18, vertical: 14),
-                child: Icon(Icons.history_toggle_off_rounded,
-                    color: Colors.white, size: 20),
-              ),
-            ),
-          ),
-        ],
-      ),
+      child: _tvNav
+          ? DetailsHeroTvActionScope(
+              tabId: MediaDetailsTv.tabId,
+              itemCount: hasProgress ? 2 : 1,
+              onFocusUp: heroFocusUp,
+              child: row,
+            )
+          : row,
     );
   }
 
@@ -630,308 +686,31 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
     );
   }
 
-  // ─── Episodes ─────────────────────────────────────────────────
-  Widget _buildEpisodesHeader(ArabicAnimeDetails a) {
-    final totalChunks = (a.episodes.length / _chunkSize).ceil();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 12),
-      child: Row(
-        children: [
-          const Icon(Icons.playlist_play_rounded,
-              color: Colors.white, size: 22),
-          const SizedBox(width: 8),
-          Text(
-            'الحلقات (${a.episodes.length})',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const Spacer(),
-          if (totalChunks > 1)
-            Material(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              child: PopupMenuButton<int>(
-                offset: const Offset(0, 32),
-                color: AppTheme.bgCard,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1)),
-                ),
-                onSelected: (i) =>
-                    setState(() => _episodeChunk = i),
-                itemBuilder: (_) => List.generate(totalChunks, (i) {
-                  final start = i * _chunkSize + 1;
-                  final end = ((i + 1) * _chunkSize)
-                      .clamp(0, a.episodes.length);
-                  return PopupMenuItem<int>(
-                    value: i,
-                    child: Text(
-                      '$start - $end',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  );
-                }),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${_episodeChunk * _chunkSize + 1}'
-                        ' - ${((_episodeChunk + 1) * _chunkSize).clamp(0, a.episodes.length)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.arrow_drop_down,
-                          color: Colors.white, size: 18),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _episodeTile(ArabicEpisode ep, bool isCurrent) {
-    return HoverScale(
-      radius: 12,
-      scale: 1.03,
-      onTap: () => _play(ep),
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (ep.thumb != null && ep.thumb!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
-                  imageUrl: ep.thumb!,
-                  fit: BoxFit.cover,
-                  placeholder: (_, _) =>
-                      Container(color: AppTheme.bgCard),
-                  errorWidget: (_, _, _) =>
-                      Container(color: AppTheme.bgCard),
-                ),
-              ),
-            // Gradient
-            DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.7),
-                  ],
-                  stops: const [0.45, 1.0],
-                ),
-              ),
-            ),
-            // Play icon
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isCurrent
-                      ? ForjaShellColors.chipSelectedBg
-                      : Colors.black.withValues(alpha: 0.5),
-                  border: isCurrent
-                      ? Border.all(color: ForjaShellColors.chipSelectedBorder)
-                      : null,
-                ),
-                child: Icon(
-                  isCurrent
-                      ? Icons.play_arrow_rounded
-                      : Icons.play_arrow_outlined,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-            ),
-            // Episode number
-            Positioned(
-              left: 6,
-              top: 6,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: ForjaShellColors.sectionIconBg,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'EP ${ep.number}',
-                  style: TextStyle(
-                    color: ForjaShellColors.sectionAccent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-            if (isCurrent)
-              Positioned(
-                right: 6,
-                top: 6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'الحالية',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyEpisodes() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
-      child: Column(
-        children: [
-          Icon(Icons.error_outline_rounded,
-              color: ForjaShellColors.cinematic.textSecondary,
-              size: 36),
-          const SizedBox(height: 8),
-          Text(
-            'لم يتم العثور على حلقات',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Related ──────────────────────────────────────────────────
-  Widget _buildRelated(ArabicAnimeDetails a) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Icon(Icons.connect_without_contact_rounded,
-                    color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'أنميات مشابهة',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          HorizontalScroller(
-            height: 220,
-            itemCount: a.related.length,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemBuilder: (_, i) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: _relatedCard(a.related[i]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _relatedCard(ArabicAnimeCard c) {
-    return SizedBox(
-      width: 130,
-      child: HoverScale(
-        radius: 10,
+  Widget _buildRelated(
+    ArabicAnimeDetails a, {
+    required int tvRowOrder,
+    VoidCallback? tvFocusUp,
+  }) {
+    return HubCatalogSection<ArabicAnimeCard>(
+      title: 'أنميات مشابهة',
+      items: a.related,
+      tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
+      tvRowId: 'related',
+      tvRowOrder: tvRowOrder,
+      tvFocusUp: tvFocusUp,
+      cardBuilder: (context, card, index) => HubPosterCard(
+        imageUrl: card.cover ?? '',
+        title: card.title,
         onTap: () {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => AnimeArabicDetailsScreen(anime: c),
+              builder: (_) => AnimeArabicDetailsScreen(anime: card),
             ),
           );
         },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: c.cover != null && c.cover!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: c.cover!,
-                          fit: BoxFit.cover,
-                          placeholder: (_, _) =>
-                              Container(color: AppTheme.bgCard),
-                          errorWidget: (_, _, _) =>
-                              Container(color: AppTheme.bgCard),
-                        )
-                      : Container(color: AppTheme.bgCard),
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              c.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if (c.tag != null && c.tag!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  c.tag!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-          ],
-        ),
+        listIndex: index,
+        tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
+        tvRowId: 'related',
       ),
     );
   }

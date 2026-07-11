@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/extractors/arabic_service.dart';
-import 'arabic_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'arabic_player_screen.dart';
 
 class ArabicDetailsScreen extends StatefulWidget {
   final ArabicShow show;
@@ -15,6 +19,9 @@ class ArabicDetailsScreen extends StatefulWidget {
 
 class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
   final ArabicService _service = ArabicService();
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'arabic-details-play');
+
   ArabicShowDetail? _detail;
   bool _isLoading = true;
   bool _isLiked = false;
@@ -25,6 +32,22 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
     super.initState();
     _loadDetails();
     _loadLikedStatus();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _heroPlayFocus.dispose();
+    super.dispose();
+  }
+
+  void _revealedDetailsHeroPlayFocus() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   Future<void> _loadDetails() async {
@@ -67,11 +90,14 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
     );
   }
 
+  bool get _tvNav => ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final body = Scaffold(
       backgroundColor: AppTheme.bgDark,
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           _buildAppBar(),
           SliverToBoxAdapter(
@@ -87,7 +113,9 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
                     const SizedBox(height: 24),
                   ],
                   if (_isLoading)
-                    const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
+                    const Center(
+                      child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                    )
                   else if (_detail != null && _detail!.seasons.isNotEmpty) ...[
                     if (_detail!.seasons.length > 1) _buildSeasonTabs(),
                     const SizedBox(height: 16),
@@ -96,7 +124,10 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.only(top: 40),
-                        child: Text('لا توجد حلقات', style: TextStyle(color: Colors.white38, fontSize: 16)),
+                        child: Text(
+                          'لا توجد حلقات',
+                          style: TextStyle(color: Colors.white38, fontSize: 16),
+                        ),
                       ),
                     ),
                 ],
@@ -106,14 +137,21 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
         ],
       ),
     );
-  }
 
-  // ── SliverAppBar ────────────────────────────────────────────────────
+    if (!_tvNav) return body;
+
+    return MediaDetailsTvScope(
+      heroPlayFocus: _heroPlayFocus,
+      scrollController: _scrollController,
+      child: body,
+    );
+  }
 
   Widget _buildAppBar() {
     final poster = _detail?.poster ?? widget.show.poster;
     return SliverAppBar(
-      expandedHeight: MediaQuery.of(context).orientation == Orientation.landscape ? 200 : 300,
+      expandedHeight:
+          MediaQuery.of(context).orientation == Orientation.landscape ? 200 : 300,
       pinned: true,
       backgroundColor: AppTheme.bgDark,
       iconTheme: const IconThemeData(color: Colors.white),
@@ -156,14 +194,11 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
     );
   }
 
-  // ── Show info ───────────────────────────────────────────────────────
-
   Widget _buildShowInfo() {
     final title = _detail?.title ?? widget.show.title;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Poster thumbnail
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: SizedBox(
@@ -212,8 +247,6 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
     );
   }
 
-  // ── Description ─────────────────────────────────────────────────────
-
   Widget _buildDescription() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -238,51 +271,73 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
     );
   }
 
-  // ── Season tabs ─────────────────────────────────────────────────────
-
   Widget _buildSeasonTabs() {
+    final tv = _tvNav;
+    if (tv) {
+      shellTvRegisterRow(
+        tabId: MediaDetailsTv.tabId,
+        rowId: 'seasons',
+        sortOrder: 0,
+        itemCount: _detail!.seasons.length,
+        onFocusUp: _revealedDetailsHeroPlayFocus,
+      );
+    }
+
     return SizedBox(
       height: 44,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        reverse: true,
-        itemCount: _detail!.seasons.length,
-        itemBuilder: (context, index) {
-          final season = _detail!.seasons[index];
-          final isSelected = _selectedSeason == index;
-          return Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedSeason = index),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppTheme.primaryColor.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected ? AppTheme.primaryColor : Colors.white12,
-                  ),
-                ),
-                child: Text(
-                  'الموسم ${season.number}',
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    color: isSelected ? AppTheme.primaryColor : Colors.white54,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 14,
-                  ),
+      child: NotificationListener<ScrollNotification>(
+        onNotification: shellAbsorbHorizontalScroll,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          reverse: true,
+          itemCount: _detail!.seasons.length,
+          itemBuilder: (context, index) {
+            final season = _detail!.seasons[index];
+            final isSelected = _selectedSeason == index;
+            final chip = Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppTheme.primaryColor.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? AppTheme.primaryColor : Colors.white12,
                 ),
               ),
-            ),
-          );
-        },
+              child: Text(
+                'الموسم ${season.number}',
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  color: isSelected ? AppTheme.primaryColor : Colors.white54,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 14,
+                ),
+              ),
+            );
+
+            return Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: tv
+                  ? shellFocusableTap(
+                      context: context,
+                      onTap: () => setState(() => _selectedSeason = index),
+                      borderRadius: 12,
+                      tvTabId: MediaDetailsTv.tabId,
+                      tvRowId: 'seasons',
+                      tvItemIndex: index,
+                      child: chip,
+                    )
+                  : GestureDetector(
+                      onTap: () => setState(() => _selectedSeason = index),
+                      child: chip,
+                    ),
+            );
+          },
+        ),
       ),
     );
   }
-
-  // ── Episodes list ───────────────────────────────────────────────────
 
   Widget _buildEpisodesList() {
     if (_detail == null || _detail!.seasons.isEmpty) {
@@ -291,13 +346,29 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
 
     final season = _detail!.seasons[_selectedSeason];
     final episodes = season.episodes;
+    final hasSeasons = _detail!.seasons.length > 1;
+    final tv = _tvNav;
 
     if (episodes.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.only(top: 40),
-          child: Text('لا توجد حلقات في هذا الموسم', style: TextStyle(color: Colors.white38)),
+          child: Text(
+            'لا توجد حلقات في هذا الموسم',
+            style: TextStyle(color: Colors.white38),
+          ),
         ),
+      );
+    }
+
+    if (tv) {
+      shellTvRegisterRow(
+        tabId: MediaDetailsTv.tabId,
+        rowId: 'episodes',
+        sortOrder: hasSeasons ? 1 : 0,
+        itemCount: episodes.length,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: hasSeasons ? null : _revealedDetailsHeroPlayFocus,
       );
     }
 
@@ -320,6 +391,9 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
             return _EpisodeTile(
               episode: episode,
               onTap: () => _playEpisode(episode),
+              tvTabId: tv ? MediaDetailsTv.tabId : null,
+              tvRowId: tv ? 'episodes' : null,
+              tvItemIndex: tv ? index : null,
             );
           },
         ),
@@ -328,62 +402,81 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
   }
 }
 
-// ── Episode tile ──────────────────────────────────────────────────────
-
 class _EpisodeTile extends StatelessWidget {
+  const _EpisodeTile({
+    required this.episode,
+    required this.onTap,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvItemIndex,
+  });
+
   final ArabicEpisode episode;
   final VoidCallback onTap;
-
-  const _EpisodeTile({required this.episode, required this.onTap});
+  final String? tvTabId;
+  final String? tvRowId;
+  final int? tvItemIndex;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          children: [
-            // Play icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.play_arrow_rounded, color: AppTheme.primaryColor, size: 24),
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 12),
-            // Episode poster thumbnail
-            if (episode.poster.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 80,
-                  height: 50,
-                  child: CachedNetworkImage(
-                    imageUrl: episode.poster,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, _, _) => Container(color: Colors.white10),
-                  ),
+            child: const Icon(
+              Icons.play_arrow_rounded,
+              color: AppTheme.primaryColor,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          if (episode.poster.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 80,
+                height: 50,
+                child: CachedNetworkImage(
+                  imageUrl: episode.poster,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, _, _) => Container(color: Colors.white10),
                 ),
               ),
-            if (episode.poster.isNotEmpty) const SizedBox(width: 12),
-            // Episode title
-            Expanded(
-              child: Text(
-                episode.title,
-                textDirection: TextDirection.rtl,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-              ),
             ),
-            const Icon(Icons.chevron_left, color: Colors.white24, size: 20),
-          ],
-        ),
+          if (episode.poster.isNotEmpty) const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              episode.title,
+              textDirection: TextDirection.rtl,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ),
+          const Icon(Icons.chevron_left, color: Colors.white24, size: 20),
+        ],
       ),
+    );
+
+    if (tvTabId == null) {
+      return InkWell(onTap: onTap, child: content);
+    }
+
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 8,
+      tvTabId: tvTabId,
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
+      child: content,
     );
   }
 }

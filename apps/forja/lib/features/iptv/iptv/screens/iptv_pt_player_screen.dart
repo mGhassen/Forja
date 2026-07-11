@@ -19,7 +19,9 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_search_overl
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
+import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -128,6 +130,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   String? _statusBanner;
   bool _controlsVisible = true;
   Timer? _hideControlsTimer;
+  final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
 
   bool _guideVisible = false;
   bool _searchVisible = false;
@@ -1004,8 +1007,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   void _showSubtitleSettings() {
     showDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
+      builder: (ctx) => ShellScope.rehost(
+        context,
+        StatefulBuilder(
+          builder: (ctx, setDialog) => AlertDialog(
           backgroundColor: const Color(0xFF141414),
           title: const Text(
             'Subtitle delay',
@@ -1014,8 +1019,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           content: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              IconButton(
-                icon: Icon(Icons.remove, color: Colors.white70),
+              IptvIconAction(
+                tooltip: 'Decrease delay',
+                icon: Icons.remove,
+                color: Colors.white70,
                 onPressed: () {
                   setDialog(() {
                     _subtitleDelay =
@@ -1033,8 +1040,10 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                 '${_subtitleDelay.toStringAsFixed(1)}s',
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
-              IconButton(
-                icon: Icon(Icons.add, color: Colors.white70),
+              IptvIconAction(
+                tooltip: 'Increase delay',
+                icon: Icons.add,
+                color: Colors.white70,
                 onPressed: () {
                   setDialog(() {
                     _subtitleDelay =
@@ -1051,11 +1060,14 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             ],
           ),
           actions: [
-            TextButton(
+            IptvTextAction(
+              icon: Icons.check_rounded,
+              label: 'Done',
+              color: Colors.white70,
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Done'),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -1085,6 +1097,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
+    _playerTvKeyFocus.dispose();
     unawaited(_finalizeExit());
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -1107,6 +1120,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    return ShellScopeBuilder(
+      builder: (context, _) => _buildPlayer(context),
+    );
+  }
+
+  Widget _buildPlayer(BuildContext context) {
     if (!_playerReady) {
       return const Scaffold(
         backgroundColor: Colors.black,
@@ -1123,7 +1142,49 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         : null;
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
+      body: PlayerTvKeyScope(
+        enabled: iptvUseTvFocus(context) && !_guideVisible && !_searchVisible,
+        focusNode: _playerTvKeyFocus,
+        showControls: _controlsVisible,
+        onBack: () {
+          if (Navigator.canPop(context)) Navigator.pop(context);
+        },
+        onPlayPause: () {
+          if (_playing) {
+            _player.pause();
+          } else {
+            unawaited(_player.play());
+          }
+          _scheduleHideControls();
+        },
+        onShowControls: () {
+          setState(() => _controlsVisible = true);
+          _scheduleHideControls();
+        },
+        onSeekBack: () {
+          if (!_isVod) return;
+          var target = _position - const Duration(seconds: 10);
+          if (target < Duration.zero) target = Duration.zero;
+          unawaited(_player.seek(target));
+          _scheduleHideControls();
+        },
+        onSeekForward: () {
+          if (!_isVod) return;
+          var target = _position + const Duration(seconds: 10);
+          if (target > _duration) target = _duration;
+          unawaited(_player.seek(target));
+          _scheduleHideControls();
+        },
+        onVolumeUp: () {
+          _player.setVolume((_volume + 5).clamp(0, 100));
+          setState(() => _volume = (_volume + 5).clamp(0, 100));
+        },
+        onVolumeDown: () {
+          _player.setVolume((_volume - 5).clamp(0, 100));
+          setState(() => _volume = (_volume - 5).clamp(0, 100));
+        },
+        onToggleControls: _toggleControls,
+        child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _toggleControls,
         child: Stack(
@@ -1145,9 +1206,13 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             AnimatedOpacity(
               duration: const Duration(milliseconds: 220),
               opacity: _controlsVisible ? 1 : 0,
-              child: IgnorePointer(
+              child: ExcludeFocus(
+                excluding: iptvUseTvFocus(context) &&
+                    (!_controlsVisible || _guideVisible || _searchVisible),
+                child: IgnorePointer(
                 ignoring: !_controlsVisible || _guideVisible || _searchVisible,
                 child: _buildOverlay(compact),
+              ),
               ),
             ),
             if (_searchVisible && widget.channelGuide != null)
@@ -1190,6 +1255,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -1281,13 +1347,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       ),
       child: Row(
         children: [
-          ForjaPlainIcon(
-            icon: Icons.arrow_back_rounded,
+          iptvBackButton(
+            context,
             onTap: () => Navigator.of(context).maybePop(),
             color: Colors.white,
             size: 26,
-            hoverScale: 1.15,
-            tooltip: 'Back',
           ),
           if ((_logoUrl ?? '').isNotEmpty) ...[
             const SizedBox(width: 6),
@@ -1452,7 +1516,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           horizontal: compact ? 16 : 24, vertical: compact ? 12 : 18),
       child: Row(
         children: [
-          _RoundIcon(
+          IptvRoundIcon(
             icon: _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
             big: true,
             onTap: () async {
@@ -1474,7 +1538,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             },
           ),
           const SizedBox(width: 14),
-          _RoundIcon(
+          IptvRoundIcon(
             icon: Icons.replay_rounded,
             onTap: () async {
               _retryAttempt = 0;
@@ -1484,7 +1548,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           ),
           const SizedBox(width: 14),
           // Mute toggle
-          _RoundIcon(
+          IptvRoundIcon(
             icon: _muted || _volume == 0
                 ? Icons.volume_off_rounded
                 : (_volume < 40
@@ -1534,45 +1598,45 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           ),
           const SizedBox(width: 14),
           Builder(
-            builder: (btnCtx) => _RoundIcon(
+            builder: (btnCtx) => IptvRoundIcon(
               icon: Icons.subtitles_outlined,
               onTap: () => _showSubtitleMenu(btnCtx),
             ),
           ),
           const SizedBox(width: 14),
           Builder(
-            builder: (btnCtx) => _RoundIcon(
+            builder: (btnCtx) => IptvRoundIcon(
               icon: Icons.audiotrack_rounded,
               onTap: () => _showAudioMenu(btnCtx),
             ),
           ),
           const SizedBox(width: 14),
           Builder(
-            builder: (btnCtx) => _RoundIcon(
+            builder: (btnCtx) => IptvRoundIcon(
               icon: Icons.monitor_heart_outlined,
               onTap: () => _showStatsMenu(btnCtx),
             ),
           ),
           const Spacer(),
           if (widget.channelGuide != null) ...[
-            _RoundIcon(
+            IptvRoundIcon(
               icon: Icons.search_rounded,
               onTap: _toggleSearch,
             ),
             const SizedBox(width: 14),
-            _RoundIcon(
+            IptvRoundIcon(
               icon: Icons.grid_view_rounded,
               onTap: _toggleGuide,
             ),
             const SizedBox(width: 14),
           ],
           if (_sources.length > 1)
-            _RoundIcon(
+            IptvRoundIcon(
               icon: Icons.swap_horiz_rounded,
               onTap: _showSourcePicker,
             ),
           if (_sources.length > 1) const SizedBox(width: 14),
-          _RoundIcon(
+          IptvRoundIcon(
             icon: _isFullscreen
                 ? Icons.fullscreen_exit_rounded
                 : Icons.fullscreen_rounded,
@@ -1675,38 +1739,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 }
 
-class _RoundIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-  final bool big;
-  const _RoundIcon({
-    required this.icon,
-    required this.onTap,
-    this.onLongPress,
-    this.big = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final size = big ? 56.0 : 44.0;
-    return Material(
-      color: Colors.white.withValues(alpha: 0.12),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Icon(icon, color: Colors.white, size: big ? 32 : 22),
-        ),
-      ),
-    );
-  }
-}
-
 class _SourceChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -1714,9 +1746,11 @@ class _SourceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
+    return iptvTap(
+      context: context,
       onTap: onTap,
+      borderRadius: 20,
+      scaleOnFocus: 1.0,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(

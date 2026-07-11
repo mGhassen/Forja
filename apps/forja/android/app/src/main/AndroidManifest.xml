@@ -16,12 +16,11 @@
 
     <application
         android:label="Forja"
-        android:name="${applicationName}"
-        android:banner="@mipmap/ic_launcher"
+        android:name=".ForjaApplication"
+        android:banner="@drawable/ic_banner"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:extractNativeLibs="true"
         android:hardwareAccelerated="true">
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
@@ -35,7 +34,7 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode|screenLayout"
             android:hardwareAccelerated="true"
             android:supportsPictureInPicture="true"
-            android:resizeableActivity="true"
+            android:resizeableActivity="false"
             android:windowSoftInputMode="adjustResize">
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"

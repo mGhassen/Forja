@@ -17,6 +17,10 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 class AnimeScreen extends StatefulWidget {
   const AnimeScreen({super.key});
@@ -49,6 +53,10 @@ class _AnimeScreenState extends State<AnimeScreen>
   // Continue watching
   List<Map<String, dynamic>> _continueWatching = [];
 
+  int get _moodChipsOrder => _continueWatching.isNotEmpty ? 1 : 0;
+  int get _moodResultsOrder => _moodChipsOrder + 1;
+  int get _catalogRowBase => _moodResultsOrder + 1;
+
   // Mood / genre filter
   String _selectedMood = 'shonen';
   Future<List<AnimeCard>>? _moodFuture;
@@ -73,6 +81,18 @@ class _AnimeScreenState extends State<AnimeScreen>
   @override
   void initState() {
     super.initState();
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'anime',
+      defaultFocus: () => ShellTvFocus.homeHeroPlay,
+      heroReveal: () {
+        if (!_scroll.hasClients) return;
+        _scroll.animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      },
+    );
     WidgetsBinding.instance.addObserver(this);
     AppTheme.themeNotifier.addListener(_onTheme);
     AnimeService.watchHistoryRevision.addListener(_onHistoryChanged);
@@ -81,6 +101,7 @@ class _AnimeScreenState extends State<AnimeScreen>
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.clearTab('anime');
     WidgetsBinding.instance.removeObserver(this);
     AppTheme.themeNotifier.removeListener(_onTheme);
     AnimeService.watchHistoryRevision.removeListener(_onHistoryChanged);
@@ -226,7 +247,7 @@ class _AnimeScreenState extends State<AnimeScreen>
   void _openSearch() {
     pushShellRoute(
       context,
-      AppRouter.slideRoute((_) => const AnimeSearchScreen()),
+      AppRouter.slideShellRoute((_) => const AnimeSearchScreen()),
     );
   }
 
@@ -274,7 +295,12 @@ class _AnimeScreenState extends State<AnimeScreen>
         .toList();
   }
 
-  HubPosterCard _animePosterCard(AnimeCard anime, {int? rank}) {
+  HubPosterCard _animePosterCard(
+    AnimeCard anime, {
+    int? rank,
+    int? listIndex,
+    String? tvRowId,
+  }) {
     final subtitle = [
       if (anime.seasonYear != null) '${anime.seasonYear}',
       if (anime.episodes != null) '${anime.episodes} eps',
@@ -287,6 +313,8 @@ class _AnimeScreenState extends State<AnimeScreen>
       rating: (anime.averageScore ?? 0) > 0 ? (anime.averageScore! / 10) : null,
       badge: anime.format,
       rank: rank,
+      listIndex: listIndex,
+      tvRowId: tvRowId,
       onTap: () => _openDetails(anime),
     );
   }
@@ -327,17 +355,18 @@ class _AnimeScreenState extends State<AnimeScreen>
                                         snap.data!.take(5).toList(),
                                       ),
                                       onSearch: _openSearch,
+                                      tvTabId: 'anime',
                                     );
                                   },
                                 ),
                               ),
                               if (_continueWatching.isNotEmpty)
-                                hubRowSliver(
+                                hubRowSliver(context,
                                   _buildContinueWatching(),
                                   isFirstAfterHero: true,
                                 )
                               else
-                                hubRowSliver(
+                                hubRowSliver(context,
                                   FutureBuilder<List<Map<String, dynamic>>>(
                                     future: _historyFuture,
                                     builder: (context, snap) {
@@ -352,80 +381,137 @@ class _AnimeScreenState extends State<AnimeScreen>
                                   ),
                                   isFirstAfterHero: true,
                                 ),
-                              hubRowSliver(_buildMoodChips(), isFirstAfterHero: false),
-                              hubRowSliver(
+                              hubRowSliver(context,_buildMoodChips(), isFirstAfterHero: false),
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Trending Now',
                                   future: _trendingFuture,
-                                  cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
-                                ),
-                                isFirstAfterHero: false,
-                              ),
-                              hubRowSliver(
-                                HubCatalogSection<AnimeCard>(
-                                  title: 'Top Airing',
-                                  future: _topAiringFuture,
-                                  cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
-                                ),
-                                isFirstAfterHero: false,
-                              ),
-                              hubRowSliver(
-                                HubCatalogSection<AnimeCard>(
-                                  title: 'Top 10 Today',
-                                  future: _top10Future,
-                                  showRank: true,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'trending',
+                                  tvRowOrder: _catalogRowBase + 0,
+                                  tvFocusUp: () => ShellTvFocusCoordinator.focusHero(
+                                    tabId: 'anime',
+                                  ),
                                   cardBuilder: (context, anime, index) =>
                                       _animePosterCard(
                                     anime,
-                                    rank: index + 1,
+                                    listIndex: index,
+                                    tvRowId: 'trending',
                                   ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
+                                HubCatalogSection<AnimeCard>(
+                                  title: 'Top Airing',
+                                  future: _topAiringFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'top-airing',
+                                  tvRowOrder: _catalogRowBase + 1,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'top-airing',
+                                  ),
+                                ),
+                                isFirstAfterHero: false,
+                              ),
+                              hubRowSliver(context,
+                                HubCatalogSection<AnimeCard>(
+                                  title: 'Top 10 Today',
+                                  future: _top10Future,
+                                  showRank: true,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'top-10',
+                                  tvRowOrder: _catalogRowBase + 2,
+                                  cardBuilder: (context, anime, index) =>
+                                      _animePosterCard(
+                                    anime,
+                                    rank: index + 1,
+                                    listIndex: index,
+                                    tvRowId: 'top-10',
+                                  ),
+                                ),
+                                isFirstAfterHero: false,
+                              ),
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Most Popular',
                                   future: _mostPopularFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'most-popular',
+                                  tvRowOrder: _catalogRowBase + 3,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'most-popular',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Latest Episodes',
                                   future: _recentEpisodesFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'latest-eps',
+                                  tvRowOrder: _catalogRowBase + 4,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'latest-eps',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top Rated',
                                   future: _topRatedFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'top-rated',
+                                  tvRowOrder: _catalogRowBase + 5,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'top-rated',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Most Favorited',
                                   future: _mostFavoriteFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'most-favorited',
+                                  tvRowOrder: _catalogRowBase + 6,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'most-favorited',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              hubRowSliver(
+                              hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Recently Completed',
                                   future: _latestCompletedFuture,
+                                  tvTabId: 'anime',
+                                  tvRowId: 'recently-completed',
+                                  tvRowOrder: _catalogRowBase + 7,
                                   cardBuilder: (context, anime, index) =>
-                                      _animePosterCard(anime),
+                                      _animePosterCard(
+                                    anime,
+                                    listIndex: index,
+                                    tvRowId: 'recently-completed',
+                                  ),
                                 ),
                                 isFirstAfterHero: false,
                               ),
@@ -503,7 +589,19 @@ class _AnimeScreenState extends State<AnimeScreen>
         ),
         SizedBox(
           height: _AnimeContinueWatchingCard.cardHeight(context),
-          child: ListView.separated(
+          child: Builder(
+            builder: (context) {
+              shellTvRegisterRow(
+                tabId: 'anime',
+                rowId: 'continue-watching',
+                sortOrder: 0,
+                itemCount: _continueWatching.length,
+                onFocusUp: () =>
+                    ShellTvFocusCoordinator.focusHero(tabId: 'anime'),
+              );
+              return FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ListView.separated(
             controller: _cwScrollController,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
@@ -517,10 +615,14 @@ class _AnimeScreenState extends State<AnimeScreen>
                 (entry['anime'] as Map).cast<String, dynamic>(),
               );
               return _AnimeContinueWatchingCard(
+                listIndex: i,
                 entry: entry,
                 onTap: () => _resumeWatch(entry),
                 onRemove: () => _removeFromHistory(entry),
                 onInfo: () => _openDetails(anime),
+              );
+            },
+          ),
               );
             },
           ),
@@ -545,12 +647,25 @@ class _AnimeScreenState extends State<AnimeScreen>
         ),
         SizedBox(
           height: 40,
-          child: ListView.separated(
+          child: Builder(
+            builder: (context) {
+              shellTvRegisterRow(
+                tabId: 'anime',
+                rowId: 'mood-chips',
+                sortOrder: _moodChipsOrder,
+                itemCount: _moods.length,
+              );
+              return FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: _moods.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellScaled(context, 8).clamp(4.0, 8.0)),
             itemBuilder: (_, i) {
               final m = _moods[i];
               final selected = m.id == _selectedMood;
@@ -558,7 +673,40 @@ class _AnimeScreenState extends State<AnimeScreen>
                 label: m.label,
                 selected: selected,
                 icon: m.icon,
-                onTap: () => _selectMood(m.id),
+                listIndex: i,
+                tvTabId: 'anime',
+                tvRowId: 'mood-chips',
+                onTap: () {
+                  if (m.id != _selectedMood) {
+                    _selectMood(m.id);
+                  } else {
+                    ShellTvFocusCoordinator.focusFromChipStripDown(
+                      tabId: 'anime',
+                      chipRowId: 'mood-chips',
+                      resultsRowId: 'mood-results',
+                    );
+                  }
+                },
+                onLeftEdge: shellTvChipLeftEdge(
+                  context,
+                  tabId: 'anime',
+                  rowId: 'mood-chips',
+                  index: i,
+                ),
+                onRightEdge: shellTvChipRightEdge(
+                  tabId: 'anime',
+                  rowId: 'mood-chips',
+                  index: i,
+                  itemCount: _moods.length,
+                ),
+                onDownEdge: shellTvChipDownToRow(
+                  tabId: 'anime',
+                  chipRowId: 'mood-chips',
+                  resultsRowId: 'mood-results',
+                ),
+              );
+            },
+          ),
               );
             },
           ),
@@ -587,9 +735,12 @@ class _AnimeScreenState extends State<AnimeScreen>
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: shellHomeSectionHorizontalPadding(context),
+                  ),
                   itemCount: 5,
-                  separatorBuilder: (_, _) => const SizedBox(width: 14),
+                  separatorBuilder: (_, _) =>
+                      SizedBox(width: shellMovieCardRowGap(context)),
                   itemBuilder: (_, _) => homeCardSkeleton(context),
                 ),
               ),
@@ -600,14 +751,35 @@ class _AnimeScreenState extends State<AnimeScreen>
 
         return SizedBox(
           height: HubPosterCard.cardHeight(context),
-          child: ListView.separated(
+          child: Builder(
+            builder: (context) {
+              shellTvRegisterRow(
+                tabId: 'anime',
+                rowId: 'mood-results',
+                sortOrder: _moodResultsOrder,
+                itemCount: list.length,
+              );
+              return FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ListView.separated(
             clipBehavior: Clip.none,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: list.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (context, index) => _animePosterCard(list[index]),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
+            itemBuilder: (context, index) =>
+                _animePosterCard(
+              list[index],
+              listIndex: index,
+              tvRowId: 'mood-results',
+            ),
+          ),
+              );
+            },
           ),
         );
       },
@@ -615,36 +787,9 @@ class _AnimeScreenState extends State<AnimeScreen>
   }
 
   Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline_rounded,
-                color: ForjaShellColors.sectionAccent, size: 48),
-            const SizedBox(height: 16),
-            Text(
-              _error ?? 'Something went wrong',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ShellErrorRetryPanel(
+      message: _error ?? 'Something went wrong',
+      onRetry: _load,
     );
   }
 }
@@ -653,29 +798,21 @@ class _AnimeContinueWatchingCard extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onRemove;
   final VoidCallback onInfo;
+  final int listIndex;
 
   const _AnimeContinueWatchingCard({
     required this.entry,
     required this.onTap,
     required this.onRemove,
     required this.onInfo,
+    required this.listIndex,
   });
 
-  static double cardWidth(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardWidthDesktop
-        : ShellTokens.shellContinueWatchingCardWidthCompact;
-  }
+  static double cardWidth(BuildContext context) =>
+      shellContinueWatchingCardWidth(context);
 
-  static double cardHeight(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
-    return isDesktop
-        ? ShellTokens.shellContinueWatchingCardHeightDesktop
-        : ShellTokens.shellContinueWatchingCardHeightCompact;
-  }
+  static double cardHeight(BuildContext context) =>
+      shellContinueWatchingCardHeight(context);
 
   @override
   State<_AnimeContinueWatchingCard> createState() =>
@@ -686,10 +823,16 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
   bool _hovered = false;
   bool _focused = false;
 
-  bool get _active => _hovered || _focused;
+  bool _activeFor(ShellInputPolicy policy) =>
+      ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: _hovered,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
     final anime = AnimeCard.fromJson(
       (widget.entry['anime'] as Map).cast<String, dynamic>(),
     );
@@ -708,28 +851,22 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
     final cardWidth = _AnimeContinueWatchingCard.cardWidth(context);
     final cardHeight = _AnimeContinueWatchingCard.cardHeight(context);
 
-    return Focus(
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      listIndex: widget.listIndex,
+      tvTabId: 'anime',
+      tvRowId: 'continue-watching',
+      tvItemIndex: widget.listIndex,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
-          widget.onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedScale(
-            scale: _active ? 1.05 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: Container(
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedScale(
+        scale: _activeFor(policy) ? 1.05 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: Container(
               width: cardWidth,
               height: cardHeight,
               decoration: BoxDecoration(
@@ -885,7 +1022,7 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
                     Positioned.fill(
                       child: IgnorePointer(
                         child: AnimatedOpacity(
-                          opacity: _active ? 1.0 : 0.0,
+                          opacity: _activeFor(policy) ? 1.0 : 0.0,
                           duration: const Duration(milliseconds: 200),
                           child: Center(
                             child: Container(
@@ -912,8 +1049,6 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }

@@ -1,6 +1,10 @@
 export 'src/kv.dart';
+export 'src/platform_profile.dart';
+export 'src/platform_defaults.dart';
+export 'src/built_in_player_engine.dart';
 export 'src/settings_service.dart';
 export 'src/watch_history_service.dart';
+export 'src/watch_history_resume.dart';
 export 'src/engine.dart';
 export 'src/facade.dart';
 export 'src/engine_jobs.dart';

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
 
 class HomeMovieRow extends StatefulWidget {
@@ -15,6 +17,10 @@ class HomeMovieRow extends StatefulWidget {
     this.listPadding,
     this.titleGap,
     this.outdentHorizontal = 0,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvRowOrder = 0,
+    this.tvFocusUp,
   });
 
   final String title;
@@ -27,6 +33,10 @@ class HomeMovieRow extends StatefulWidget {
   final double? titleGap;
   /// Cancels parent horizontal padding so row insets match home (24px).
   final double outdentHorizontal;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int tvRowOrder;
+  final VoidCallback? tvFocusUp;
 
   static double rowHeight(BuildContext context) =>
       HomeMovieCard.cardHeight(context);
@@ -40,6 +50,11 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
 
   @override
   void dispose() {
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    final rowId = widget.tvRowId ?? widget.title;
+    if (tabId != null) {
+      shellTvUnregisterRow(tabId: tabId, rowId: rowId);
+    }
     _scrollController.dispose();
     super.dispose();
   }
@@ -47,8 +62,15 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
   @override
   Widget build(BuildContext context) {
     if (widget.movies.isEmpty) return const SizedBox.shrink();
+    shellTvRegisterRow(
+      tabId: widget.tvTabId ?? ShellTvFocus.currentNavTabId ?? 'home',
+      rowId: widget.tvRowId ?? widget.title,
+      sortOrder: widget.tvRowOrder,
+      itemCount: widget.movies.length,
+      onFocusUp: widget.tvFocusUp,
+    );
 
-    final homePad = ShellTokens.homeSectionHorizontalPadding;
+    final homePad = shellHomeSectionHorizontalPadding(context);
     final outdent = widget.outdentHorizontal;
     final useHomeInsets = outdent > 0;
 
@@ -68,24 +90,31 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
           ShellSectionTitle(
             title: widget.title,
             padding: widget.titlePadding ??
-                EdgeInsets.fromLTRB(homePad, 0, homePad, 16),
+                EdgeInsets.fromLTRB(
+                  homePad,
+                  0,
+                  homePad,
+                  shellHomeSectionBottomGap(context),
+                ),
           )
         else if (widget.embedded)
           ShellSectionTitle(
             title: widget.title,
             padding: widget.titlePadding ??
-                const EdgeInsets.only(bottom: 16),
+                EdgeInsets.only(bottom: shellHomeSectionBottomGap(context)),
           )
         else
           ShellSectionTitle(
             title: widget.title,
-            padding: widget.titlePadding ??
-                EdgeInsets.fromLTRB(homePad, 36, homePad, 16),
+            padding: widget.titlePadding ?? shellSectionTitlePadding(context),
           ),
         if (titleGap > 0) SizedBox(height: titleGap),
         SizedBox(
           height: HomeMovieCard.cardHeight(context),
-          child: ListView.separated(
+          child: FocusTraversalGroup(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: shellAbsorbHorizontalScroll,
+              child: ListView.separated(
             clipBehavior: Clip.none,
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -93,11 +122,18 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
             padding: listPadding,
             itemCount: widget.movies.length,
             separatorBuilder: (_, _) =>
-                SizedBox(width: widget.showRank ? 6 : 14),
-            itemBuilder: (context, index) => HomeMovieCard(
-              movie: widget.movies[index],
-              onTap: () => widget.onMovieTap(widget.movies[index]),
-              rank: widget.showRank ? index + 1 : null,
+                SizedBox(width: widget.showRank ? shellScaled(context, 6).clamp(3.0, 6.0) : shellMovieCardRowGap(context)),
+            itemBuilder: (context, index) {
+              return HomeMovieCard(
+                movie: widget.movies[index],
+                onTap: () => widget.onMovieTap(widget.movies[index]),
+                rank: widget.showRank ? index + 1 : null,
+                listIndex: index,
+                tvTabId: widget.tvTabId ?? ShellTvFocus.currentNavTabId ?? 'home',
+                tvRowId: widget.tvRowId ?? widget.title,
+              );
+            },
+          ),
             ),
           ),
         ),

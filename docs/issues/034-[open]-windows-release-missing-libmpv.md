@@ -1,4 +1,4 @@
-# 025 — Windows release missing libmpv-2.dll (white screen at launch)
+# 034 — Windows release missing libmpv-2.dll (white screen at launch)
 
 **Status:** open  
 **Priority:** P1  
@@ -19,9 +19,9 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I25-T01 | Add `media_kit_libs_windows_video`, `media_kit_libs_linux`, `media_kit_libs_ios_video` to app `dependencies` | ✅ |
-| 2 | I25-T02 | CI: `verify_installer_payload.sh` requires libmpv DLL/SO in release output | ✅ |
-| 3 | I25-T03 | Manual smoke: Windows installer launches past splash (not white screen) | ⬜ |
+| 1 | I34-T01 | Add `media_kit_libs_windows_video`, `media_kit_libs_linux`, `media_kit_libs_ios_video` to app `dependencies` | ✅ |
+| 2 | I34-T02 | CI: `verify_installer_payload.sh` requires libmpv DLL/SO in release output | ✅ |
+| 3 | I34-T03 | Manual smoke: Windows installer launches past splash (not white screen) | ⬜ |
 
 ---
 
@@ -29,7 +29,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I25-A01 | Installed Windows build contains `libmpv-2.dll` next to `forja.exe`; app reaches splash without `MediaKit.ensureInitialized` crash | ⬜ |
+| 1 | I34-A01 | Installed Windows build contains `libmpv-2.dll` next to `forja.exe`; app reaches splash without `MediaKit.ensureInitialized` crash | ⬜ |
 
 ---
 

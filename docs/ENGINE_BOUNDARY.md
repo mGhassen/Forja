@@ -52,7 +52,7 @@ Migration is sequenced in **two waves** (playback, then catalog) — scheduling 
 | **C3** | WebView embed sniff | `stream_extractor`, kisskh | **Host** |
 | **C4** | JS runtime (non-browser) | Nuvio `flutter_js` | **Host** |
 | **C5** | WASM host | Videasy extractor | **Host** |
-| **C6** | Video/audio decode | media_kit, audio_service | **Host** |
+| **C6** | Video/audio decode | media_kit (default); ExoPlayer/Media3 (Android built-in option) | **Host** |
 | **C7** | Local loopback HTTP | proxy, shelf, 111477 | **Engine** — `crates/*` |
 | **C8** | Crypto/transform | openssl_crypt, AES | **Engine** — `crates/*` |
 | **C9** | Persistence | prefs, history | **Engine** — `crates/storage`; secrets on host |

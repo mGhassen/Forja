@@ -1,34 +1,58 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
-/// Mouse back and Escape pop the top route (root navigator, then shell overlay).
+/// Mouse back, Escape, and Android system / remote Back — pop routes or shell TV back chain.
 class BackNavigationScope extends StatelessWidget {
   const BackNavigationScope({super.key, required this.child});
 
   final Widget child;
 
-  void _pop(BuildContext context) {
+  bool _popNavigatorOrOverlay(BuildContext context) {
     final rootNav = Navigator.maybeOf(context, rootNavigator: true);
     if (rootNav != null && rootNav.canPop()) {
       rootNav.maybePop();
+      return true;
+    }
+    if (shellOverlayCanPop()) {
+      maybePopShellOverlay();
+      return true;
+    }
+    return false;
+  }
+
+  void _onBack(BuildContext context) {
+    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+      ShellTvFocusCoordinator.handleShellBackKey();
       return;
     }
-    maybePopShellOverlay();
+    if (ShellTvFocusCoordinator.handleShellBackKey()) {
+      return;
+    }
+    if (_popNavigatorOrOverlay(context)) {
+      return;
+    }
+    if (Platform.isAndroid) {
+      SystemNavigator.pop();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Shortcuts(
+    Widget scope = Shortcuts(
       shortcuts: const {
-        SingleActivator(LogicalKeyboardKey.escape): _PopIntent(),
+        SingleActivator(LogicalKeyboardKey.escape): _BackIntent(),
+        SingleActivator(LogicalKeyboardKey.goBack): _BackIntent(),
       },
       child: Actions(
         actions: {
-          _PopIntent: CallbackAction<_PopIntent>(
+          _BackIntent: CallbackAction<_BackIntent>(
             onInvoke: (_) {
-              _pop(context);
+              _onBack(context);
               return null;
             },
           ),
@@ -36,15 +60,28 @@ class BackNavigationScope extends StatelessWidget {
         child: Listener(
           behavior: HitTestBehavior.translucent,
           onPointerDown: (event) {
-            if (event.buttons == kBackMouseButton) _pop(context);
+            if (event.buttons == kBackMouseButton) _onBack(context);
           },
           child: child,
         ),
       ),
     );
+
+    if (Platform.isAndroid) {
+      scope = PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          _onBack(context);
+        },
+        child: scope,
+      );
+    }
+
+    return scope;
   }
 }
 
-class _PopIntent extends Intent {
-  const _PopIntent();
+class _BackIntent extends Intent {
+  const _BackIntent();
 }

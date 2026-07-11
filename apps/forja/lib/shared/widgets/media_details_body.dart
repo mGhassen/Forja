@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
-/// Constrained, padded column below the full-bleed media details hero.
-/// Pulls up under the hero on a flat shell background (no backdrop blur).
+/// Constrained column below the full-bleed media details hero.
+/// Horizontal inset is **not** applied here — catalog rows are edge-to-edge like
+/// Home; wrap text-only blocks in [padContent].
 class MediaDetailsBody extends StatelessWidget {
   const MediaDetailsBody({
     super.key,
@@ -18,14 +19,26 @@ class MediaDetailsBody extends StatelessWidget {
   final double? bodyOverlap;
   final double? topSpacing;
 
+  /// Standard horizontal inset for synopsis blocks, episode headers, etc.
+  static EdgeInsets contentPadding(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final inset = ShellTokens.detailsContentHorizontalPadding(width);
+    return EdgeInsets.symmetric(horizontal: inset);
+  }
+
+  static Widget padContent(BuildContext context, Widget child) {
+    return Padding(
+      padding: contentPadding(context),
+      child: child,
+    );
+  }
+
   Color _shellBg(BuildContext context) {
     return backgroundColor ?? AppTheme.bgDark;
   }
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final inset = ShellTokens.detailsContentHorizontalPadding(width);
     final shellBg = _shellBg(context);
     final overlap = bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
     final top = topSpacing ?? ShellTokens.detailsBodyTopSpacing;
@@ -47,9 +60,9 @@ class MediaDetailsBody extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
-                    inset,
+                    0,
                     top,
-                    inset,
+                    0,
                     ShellTokens.detailsBodyBottomSpacing,
                   ),
                   child: child,

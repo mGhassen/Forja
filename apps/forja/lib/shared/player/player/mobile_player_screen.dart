@@ -24,12 +24,15 @@ import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/extractors/arabic_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
+import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'menus.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/player_tv_remote.dart';
+import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
@@ -43,6 +46,7 @@ import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
+import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shell/app_router.dart';
 
@@ -378,6 +382,9 @@ class MobilePlayerScreen extends StatefulWidget {
   final VoidCallback? onAllSourcesExhausted;
   final Future<List<StreamSource>?> Function()? onReloadStreams;
   final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
+  final bool tvRemoteEnabled;
+  final BuiltInPlayerEngine builtInEngine;
+  final PlayerSwitchHandler? onSwitchPlayer;
 
   const MobilePlayerScreen({
     super.key,
@@ -410,6 +417,9 @@ class MobilePlayerScreen extends StatefulWidget {
     this.onAllSourcesExhausted,
     this.onReloadStreams,
     this.sourcesListNotifier,
+    this.tvRemoteEnabled = false,
+    this.builtInEngine = BuiltInPlayerEngine.mediaKit,
+    this.onSwitchPlayer,
   });
 
   @override
@@ -429,6 +439,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
+  final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   Movie? _heroMovie;
   String? _episodeOverview;
   bool _isLocked = false;
@@ -449,6 +460,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   StreamSubscription<Tracks>? _tracksSub;
   StreamSubscription<bool>? _pipSub;
   bool _autoTracksAppliedForSource = false;
+  bool _androidMediaKitSafeMode = false;
+  bool _isAndroidTv = false;
 
   // ── PiP State ─────────────────────────────────────────────────────────────
   bool _isPipMode = false;
@@ -560,9 +573,15 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       _current111477FileUrl = widget.sources!.first.url;
     }
     widget.sourcesListNotifier?.addListener(_onLiveSourcesUpdated);
+    if (widget.tvRemoteEnabled) {
+      _hwDecMode = _HwDecMode.software;
+    }
 
     // ── Lifecycle Observer ───────────────────────────────────────────────
     WidgetsBinding.instance.addObserver(this);
+    if (widget.tvRemoteEnabled) {
+      HardwareKeyboard.instance.addHandler(_handleTvKeyEvent);
+    }
 
     _loadHeroMetadata();
 
@@ -593,6 +612,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // the widget tree is still building.
     WakelockPlus.enable();
 
+    // Android MediaKit fallback: software-friendly decode (user chose MediaKit
+    // over ExoPlayer in Settings).
+    if (Platform.isAndroid) {
+      _androidMediaKitSafeMode = true;
+      _hwDecMode = _HwDecMode.software;
+    }
+
     // ── Player ───────────────────────────────────────────────────────────
     _player = Player(
       configuration: const PlayerConfiguration(
@@ -611,10 +637,16 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // androidAttachSurfaceAfterVideoParameters: false fixes a blank-screen
     // race condition on some Android devices where the surface is attached
     // before mpv has negotiated video dimensions.
+    // ATV emulators often lack a working GLES stack — HW decode + GPU
+    // surface fails with EGL_BAD_ATTRIBUTE right after the first frame.
     _controller = VideoController(
       _player,
-      configuration: const VideoControllerConfiguration(
-        enableHardwareAcceleration: true,
+      configuration: VideoControllerConfiguration(
+        enableHardwareAcceleration:
+            !widget.tvRemoteEnabled && !_androidMediaKitSafeMode,
+        hwdec: (widget.tvRemoteEnabled || _androidMediaKitSafeMode)
+            ? 'no'
+            : null,
         androidAttachSurfaceAfterVideoParameters: false,
       ),
     );
@@ -638,20 +670,25 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      if (Platform.isAndroid) {
+        _isAndroidTv = await ExoPlayerBridge.isTelevision();
+      }
       await waitForRouteTransition(context);
       if (!mounted) return;
-      // Lock to landscape and wait for the rotation to physically
-      // complete before starting heavy media work.  Starting codec
-      // initialization while the surface is still rotating causes
-      // BLASTBufferQueue saturation and orientation ping-pong.
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-      ]);
-      // Let Android finish the rotation & surface resize.
-      // MediaTek/Transsion devices need a longer wait — the
-      // fbcNotifyBufferUX storm can last several seconds.
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (!mounted) return;
+      if (!widget.tvRemoteEnabled && !_isAndroidTv) {
+        // Lock to landscape and wait for the rotation to physically
+        // complete before starting heavy media work.  Starting codec
+        // initialization while the surface is still rotating causes
+        // BLASTBufferQueue saturation and orientation ping-pong.
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+        ]);
+        // Let Android finish the rotation & surface resize.
+        // MediaTek/Transsion devices need a longer wait — the
+        // fbcNotifyBufferUX storm can last several seconds.
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+      }
 
       _loadSubtitlePrefs();
       _initPlayback();
@@ -726,6 +763,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     _disposed = true;
+    if (widget.tvRemoteEnabled) {
+      HardwareKeyboard.instance.removeHandler(_handleTvKeyEvent);
+    }
+    _playerTvKeyFocus.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _indicatorHideTimer?.cancel();
@@ -1052,7 +1093,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        if (needsDuration && !await waitForSeekableDuration(_player)) {
+        if (needsDuration &&
+            !await waitForSeekableDuration(
+              _player,
+              timeout: widget.tvRemoteEnabled
+                  ? const Duration(seconds: 15)
+                  : const Duration(seconds: 5),
+            )) {
           debugPrint('[Player] Source $i opened without duration: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -1082,6 +1129,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _statusController.complete();
         _markSourceActive(i);
         widget.onPlaybackStarted?.call();
+        await _ensureTvPlaybackStarted();
         return true;
       } catch (e) {
         debugPrint('[Player] Source $i catch error: $e');
@@ -1097,6 +1145,16 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       }
     }
     return false;
+  }
+
+  Future<void> _ensureTvPlaybackStarted() async {
+    if (!widget.tvRemoteEnabled || _disposed) return;
+    if (_player.state.playing) return;
+    try {
+      await _player.play();
+    } catch (e) {
+      debugPrint('[Player] TV play() failed: $e');
+    }
   }
 
   Future<void> _initPlayback({int sourceStartIndex = 0}) async {
@@ -1156,6 +1214,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _detectHlsQualities(openUrl, widget.headers);
           _playbackConfirmed = true;
           widget.onPlaybackStarted?.call();
+          await _ensureTvPlaybackStarted();
           return;
         } catch (e) {
           retryCount++;
@@ -1684,11 +1743,15 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // ── Decoding ─────────────────────────────────────────────────────────
     // auto-safe on mobile: uses MediaCodec (Android) / VideoToolbox (iOS),
     // whitelisted to formats each platform reliably supports.
+    // TV: full software path — GLES/EGL is unreliable on leanback emulators.
     await safeSet('hwdec', _hwDecMode.mpvValue);
-
-    // Zero-copy direct rendering — decoder writes straight to GPU texture.
-    // Big win on mobile for battery + throughput on H.265/4K content.
-    await safeSet('vd-lavc-dr', 'yes');
+    final mediaKitSafeMode =
+        widget.tvRemoteEnabled || _androidMediaKitSafeMode;
+    await safeSet('vd-lavc-dr', mediaKitSafeMode ? 'no' : 'yes');
+    if (mediaKitSafeMode && Platform.isAndroid) {
+      // OpenSLES misconfigures on some ATV images (0 frames delivered).
+      await safeSet('ao', 'audiotrack');
+    }
 
     // Auto thread count (0 = let mpv decide). On mobile 4–8 cores typical.
     await safeSet('vd-lavc-threads', '0');
@@ -1834,6 +1897,52 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     setState(() => _showControls = !_showControls);
     if (_showControls) _startHideTimer();
   }
+
+  bool _handleTvKeyEvent(KeyEvent event) {
+    if (!widget.tvRemoteEnabled || _disposed || _hasError) return false;
+    if (_isLocked) return false;
+    if (_showControls && playerTvChromeHasFocus(_playerTvKeyFocus)) {
+      return false;
+    }
+
+    return _playerTvHandler().handle(event, showControls: _showControls);
+  }
+
+  PlayerTvRemoteKeyHandler _playerTvHandler() => PlayerTvRemoteKeyHandler(
+        onBack: () => unawaited(_exitPlayer()),
+        onPlayPause: () {
+          _player.playOrPause();
+          _startHideTimer();
+        },
+        onShowControls: () {
+          setState(() => _showControls = true);
+          _startHideTimer();
+        },
+        onSeekBack: () {
+          var newPos = _positionNotifier.value - const Duration(seconds: 10);
+          if (newPos < Duration.zero) newPos = Duration.zero;
+          _player.seek(newPos);
+          _startHideTimer();
+        },
+        onSeekForward: () {
+          final dur = _durationNotifier.value;
+          var newPos = _positionNotifier.value + const Duration(seconds: 10);
+          if (newPos > dur) newPos = dur;
+          _player.seek(newPos);
+          _startHideTimer();
+        },
+        onVolumeUp: () {
+          _player.setVolume(
+            (_volume.clamp(0, 150) + 5).clamp(0, 150).toDouble(),
+          );
+        },
+        onVolumeDown: () {
+          _player.setVolume(
+            (_volume.clamp(0, 150) - 5).clamp(0, 150).toDouble(),
+          );
+        },
+        onToggleControls: _toggleControls,
+      );
 
   void _toggleLock() {
     setState(() {
@@ -3152,6 +3261,33 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _startHideTimer();
   }
 
+  Future<void> _persistProgressForSwitch() async {
+    if (widget.onSaveProgress == null) return;
+    final pos = _positionNotifier.value;
+    final dur = _durationNotifier.value;
+    if (pos.inMilliseconds <= 0 || dur.inMilliseconds <= 0) return;
+    await widget.onSaveProgress!(pos, dur);
+  }
+
+  Future<void> _showPlayerMenu(BuildContext anchorContext) async {
+    final handler = widget.onSwitchPlayer;
+    if (handler == null) return;
+    await _persistProgressForSwitch();
+    if (!mounted) return;
+    PlayerAppMenu.show(
+      context,
+      anchorContext: anchorContext,
+      usingBuiltIn: true,
+      builtInEngine: widget.builtInEngine,
+      onSelect: ({builtInEngine, externalPlayer}) => handler(
+        _positionNotifier.value,
+        builtInEngine: builtInEngine,
+        externalPlayer: externalPlayer,
+      ),
+    );
+    _startHideTimer();
+  }
+
   void _showSettingsMenu(BuildContext anchorContext) {
     PlayerPopupPanel.show(
       context: context,
@@ -3592,7 +3728,44 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         if (didPop) return;
         _exitPlayer();
       },
-      child: Theme(
+      child: PlayerTvKeyScope(
+        enabled: widget.tvRemoteEnabled,
+        focusNode: _playerTvKeyFocus,
+        showControls: _showControls,
+        onBack: () => unawaited(_exitPlayer()),
+        onPlayPause: () {
+          _player.playOrPause();
+          _startHideTimer();
+        },
+        onShowControls: () {
+          setState(() => _showControls = true);
+          _startHideTimer();
+        },
+        onSeekBack: () {
+          var newPos = _positionNotifier.value - const Duration(seconds: 10);
+          if (newPos < Duration.zero) newPos = Duration.zero;
+          _player.seek(newPos);
+          _startHideTimer();
+        },
+        onSeekForward: () {
+          final dur = _durationNotifier.value;
+          var newPos = _positionNotifier.value + const Duration(seconds: 10);
+          if (newPos > dur) newPos = dur;
+          _player.seek(newPos);
+          _startHideTimer();
+        },
+        onVolumeUp: () {
+          _player.setVolume(
+            (_volume.clamp(0, 150) + 5).clamp(0, 150).toDouble(),
+          );
+        },
+        onVolumeDown: () {
+          _player.setVolume(
+            (_volume.clamp(0, 150) - 5).clamp(0, 150).toDouble(),
+          );
+        },
+        onToggleControls: _toggleControls,
+        child: Theme(
         data: ThemeData.dark(),
         child: Scaffold(
           backgroundColor: Colors.black,
@@ -3710,9 +3883,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
               AnimatedOpacity(
                 opacity: (_showControls && !_isLocked && !_isPipMode) ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
-                child: IgnorePointer(
+                child: ExcludeFocus(
+                  excluding: widget.tvRemoteEnabled &&
+                      !(_showControls && !_isLocked && !_isPipMode),
+                  child: IgnorePointer(
                   ignoring: !(_showControls && !_isLocked) || _isPipMode,
                   child: _buildControlsOverlay(),
+                ),
                 ),
               ),
 
@@ -3836,11 +4013,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                 controller: _statusController,
                 bufferingListenable: _isBufferingNotifier,
               ),
-              ],
-              ),
-              ),
-              ),
-              );
+            ],
+          ),
+        ),
+      ),
+    ),
+    );
   }
 
   Widget _buildControlsOverlay() {
@@ -3859,8 +4037,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       hasStatusMessage: _hasError,
       hasStatusActions: _hasError,
     );
+    final tvFocus = widget.tvRemoteEnabled;
 
-    return Stack(children: [
+    final overlay = Stack(children: [
       const Positioned(
           top: 0, left: 0, right: 0,
           child: PlayerOverlayGradient(isTop: true)),
@@ -3887,7 +4066,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                 )
               : null,
           onBack: _exitPlayer,
+          tvFocusable: tvFocus,
           trailing: PlayerTopBarActions(
+            showPlayer: widget.onSwitchPlayer != null,
+            onPlayer: widget.onSwitchPlayer != null
+                ? () => unawaited(_showPlayerMenu(context))
+                : null,
             showCast: CastingService.instance.isAirPlayAvailable ||
                 CastingService.instance.isChromecastAvailable,
             onCast: () {
@@ -3961,6 +4145,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       PlayerCenterActionButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.replay_10_rounded,
                         onPressed: () {
                           final pos = _positionNotifier.value -
@@ -3975,6 +4160,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                         valueListenable: _isPlayingNotifier,
                         builder: (context, playing, _) =>
                             PlayerCenterActionButton(
+                          tvFocusable: tvFocus,
                           icon: playing
                               ? Icons.pause_rounded
                               : Icons.play_arrow_rounded,
@@ -3988,6 +4174,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       ),
                       const SizedBox(width: 24),
                       PlayerCenterActionButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.forward_10_rounded,
                         onPressed: () {
                           final dur = _durationNotifier.value;
@@ -4041,6 +4228,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                     ValueListenableBuilder<bool>(
                       valueListenable: _isPlayingNotifier,
                       builder: (context, playing, _) => PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                         size: btnSize,
                         iconSize: iconSz,
@@ -4051,6 +4239,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       ),
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.replay_10_rounded,
                       size: btnSize,
                       iconSize: iconSz,
@@ -4061,6 +4250,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       },
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.forward_10_rounded,
                       size: btnSize,
                       iconSize: iconSz,
@@ -4072,6 +4262,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       },
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.volume_up_rounded,
                       size: btnSize,
                       iconSize: iconSz,
@@ -4097,6 +4288,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                   Row(children: [
                     if (hasTorrentSources)
                       PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.link_rounded,
                         size: btnSize,
                         iconSize: iconSz,
@@ -4105,6 +4297,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       ),
                     if (hasSources) ...[
                       PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.dns_outlined,
                         size: btnSize,
                         iconSize: iconSz,
@@ -4114,6 +4307,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                     ],
                     if (hasProviders) ...[
                       PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.cloud_outlined,
                         size: btnSize,
                         iconSize: iconSz,
@@ -4126,12 +4320,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                     ],
                     if (hasEpisodePicker)
                       PlayerFlatIconButton(
+                        tvFocusable: tvFocus,
                         icon: Icons.video_library_outlined,
                         size: btnSize,
                         iconSize: iconSz,
                         onPressedWithContext: _showEpisodesMenu,
                       ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.audiotrack_rounded,
                       size: btnSize,
                       iconSize: iconSz,
@@ -4139,25 +4335,37 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       onPressedWithContext: _showAudioMenu,
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.subtitles_outlined,
                       size: btnSize,
                       iconSize: iconSz,
                       onPressedWithContext: _showSubtitlesMenu,
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.hd_outlined,
                       size: btnSize,
                       iconSize: iconSz,
                       tooltip: 'Quality',
                       onPressedWithContext: _showQualityMenu,
                     ),
+                    if (widget.onSwitchPlayer != null)
+                      PlayerFlatIconButton(
+                        icon: Icons.smart_display_outlined,
+                        size: btnSize,
+                        iconSize: iconSz,
+                        tooltip: 'Player',
+                        onPressedWithContext: _showPlayerMenu,
+                      ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: Icons.settings_outlined,
                       size: btnSize,
                       iconSize: iconSz,
                       onPressedWithContext: _showSettingsMenu,
                     ),
                     PlayerFlatIconButton(
+                      tvFocusable: tvFocus,
                       icon: _isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
                       active: _isLocked,
                       size: btnSize,
@@ -4172,6 +4380,11 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         ),
       ),
     ]);
+    if (!tvFocus) return overlay;
+    return FocusScope(
+      debugLabel: 'player-chrome',
+      child: FocusTraversalGroup(child: overlay),
+    );
   }
 
 }
