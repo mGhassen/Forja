@@ -178,7 +178,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _applyTabShellChrome(id);
     if (id == 'search') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        setState(() {});
+        _searchKey.currentState?.focusTvBrowseFieldIfEmpty();
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {

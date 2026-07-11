@@ -105,6 +105,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       'search',
       defaultFocus: () => _focusNode,
       enterFromNavFocus: _focusSearchFieldBrowse,
+      restoreFocus: _restoreSearchTvFocusIfEmpty,
     );
     _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
@@ -208,10 +209,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       });
       if (_tvFocus(context) && _focusNode.hasFocus) {
         _focusSearchFieldBrowse();
-      } else if (_tvFocus(context) && _trendingHelperTitles.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _focusFirstHelper();
-        });
       }
       return;
     }
@@ -587,6 +584,32 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       setState(() => _searchFieldEditing = false);
     }
     _focusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      'search',
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _focusNode),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _query.trim().isNotEmpty) return;
+      if (ShellTvFocus.currentNavTabId != 'search') return;
+      if (!_focusNode.hasFocus) {
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
+  /// Called when the Search tab becomes selected (shell tab switch).
+  void focusTvBrowseFieldIfEmpty() {
+    if (!ShellTokens.isAndroidTvDevice) return;
+    if (_query.trim().isNotEmpty) return;
+    _focusSearchFieldBrowse();
+  }
+
+  /// TV: opening Search with no query — browse field, not first recommendation.
+  bool _restoreSearchTvFocusIfEmpty() {
+    if (!ShellTokens.isAndroidTvDevice) return false;
+    if (_query.trim().isNotEmpty) return false;
+    _focusSearchFieldBrowse();
+    return true;
   }
 
   void _beginSearchFieldEditing() {
@@ -605,9 +628,15 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   KeyEventResult _searchFieldKeyEvent(FocusNode node, KeyEvent event) {
     if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
-        _focusFirstHelper()) {
-      return KeyEventResult.handled;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      final rowId = _query.trim().isEmpty ? 'helpers' : 'helper-results';
+      final count = _helperItemCount();
+      if (count <= 0) return KeyEventResult.ignored;
+      final idx = (_helperFocusedIndex ?? 0).clamp(0, count - 1);
+      if (ShellTvFocusCoordinator.focusRowItem('search', rowId, idx)) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
     }
     if (shellTvIsActivateKey(event) && !_searchFieldEditing) {
       _beginSearchFieldEditing();

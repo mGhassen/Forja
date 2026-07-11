@@ -81,6 +81,7 @@ abstract final class ShellTvFocusCoordinator {
   static final Map<String, FocusNode? Function()> _tabDefaultFocus = {};
   static final Map<String, VoidCallback> _tabHeroReveal = {};
   static final Map<String, VoidCallback> _tabEnterFocus = {};
+  static final Map<String, bool Function()> _tabRestoreFocus = {};
 
   /// Per-tab default focus and hero scroll — survives multi-tab mount order.
   static void registerTabDefaults(
@@ -88,16 +89,19 @@ abstract final class ShellTvFocusCoordinator {
     FocusNode? Function()? defaultFocus,
     VoidCallback? heroReveal,
     VoidCallback? enterFromNavFocus,
+    bool Function()? restoreFocus,
   }) {
     if (defaultFocus != null) _tabDefaultFocus[tabId] = defaultFocus;
     if (heroReveal != null) _tabHeroReveal[tabId] = heroReveal;
     if (enterFromNavFocus != null) _tabEnterFocus[tabId] = enterFromNavFocus;
+    if (restoreFocus != null) _tabRestoreFocus[tabId] = restoreFocus;
   }
 
   static void unregisterTabDefaults(String tabId) {
     _tabDefaultFocus.remove(tabId);
     _tabHeroReveal.remove(tabId);
     _tabEnterFocus.remove(tabId);
+    _tabRestoreFocus.remove(tabId);
   }
 
   /// Nav Enter on a tab — e.g. search field browse focus (not last page memory).
@@ -279,6 +283,10 @@ abstract final class ShellTvFocusCoordinator {
 
   static bool restoreTabFocus(String tabId) {
     if (tabId.isEmpty) return false;
+    final custom = _tabRestoreFocus[tabId];
+    if (custom != null && custom()) {
+      return _pageHasFocus();
+    }
     final memory = _tabMemory[tabId];
     if (memory != null && memory.zone != ShellTvZone.nav) {
       if (_restoreFromMemory(tabId, memory) && _pageHasFocus()) {

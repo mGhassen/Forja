@@ -32,6 +32,10 @@ class _HomeTopBarState extends State<HomeTopBar> {
   bool _categoriesOpen = false;
   final FocusNode _menuFocus = FocusNode(debugLabel: 'home-menu');
   final FocusNode _searchFocus = FocusNode(debugLabel: 'home-search');
+  final FocusNode _categoriesTabFocus =
+      FocusNode(debugLabel: 'home-categories-tab');
+  final FocusNode _categoriesMenuFocus =
+      FocusNode(debugLabel: 'home-categories-menu');
 
   @override
   void initState() {
@@ -46,6 +50,8 @@ class _HomeTopBarState extends State<HomeTopBar> {
     if (ShellTvFocus.homeSearch == _searchFocus) ShellTvFocus.homeSearch = null;
     _menuFocus.dispose();
     _searchFocus.dispose();
+    _categoriesTabFocus.dispose();
+    _categoriesMenuFocus.dispose();
     super.dispose();
   }
 
@@ -71,34 +77,36 @@ class _HomeTopBarState extends State<HomeTopBar> {
       transitionDuration: Duration.zero,
       pageBuilder: (dialogContext, _, _) {
         final shellScope = ShellScope.of(context);
-        return ShellScope(
-          profile: shellScope.profile,
-          config: shellScope.config,
-          child: Stack(
-            children: [
-              Positioned(
-                left: offset.dx,
-                top: offset.dy + box.size.height + 4,
-                child: Material(
-                  color: ForjaShellColors.cinematic.menuSurface,
-                  elevation: 8,
-                  borderRadius: BorderRadius.circular(8),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: ForjaShellColors.cinematic.borderSubtle),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: IntrinsicWidth(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxHeight: ShellTokens.homeCategoriesMenuMaxHeight,
-                          ),
-                          child: SingleChildScrollView(
-                            padding: EdgeInsets.zero,
-                            physics: const ClampingScrollPhysics(),
+        final tvFocus = shellScope.inputPolicy.useFocusableMoodChips;
+        void dismissMenu() => Navigator.of(dialogContext).pop();
+
+        Widget menu = Stack(
+          children: [
+            Positioned(
+              left: offset.dx,
+              top: offset.dy + box.size.height + 4,
+              child: Material(
+                color: ForjaShellColors.cinematic.menuSurface,
+                elevation: 8,
+                borderRadius: BorderRadius.circular(8),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: ForjaShellColors.cinematic.borderSubtle),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: IntrinsicWidth(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: ShellTokens.homeCategoriesMenuMaxHeight,
+                        ),
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.zero,
+                          physics: const ClampingScrollPhysics(),
+                          child: FocusTraversalGroup(
+                            policy: OrderedTraversalPolicy(),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,15 +114,28 @@ class _HomeTopBarState extends State<HomeTopBar> {
                                 _FlatMenuRow(
                                   label: 'All',
                                   selected: selectedId == null,
+                                  listIndex: 0,
+                                  tvFocus: tvFocus,
+                                  focusNode: tvFocus
+                                      ? _categoriesMenuFocus
+                                      : null,
+                                  onUpEdge: tvFocus ? dismissMenu : null,
+                                  onLeftEdge: tvFocus ? dismissMenu : null,
                                   onTap: () => Navigator.of(dialogContext)
                                       .pop(_allGenresSentinel),
                                 ),
-                                for (final genre in homeGenreCategories)
+                                for (var i = 0;
+                                    i < homeGenreCategories.length;
+                                    i++)
                                   _FlatMenuRow(
-                                    label: genre.label,
-                                    selected: genre.id == selectedId,
-                                    onTap: () =>
-                                        Navigator.of(dialogContext).pop(genre.id),
+                                    label: homeGenreCategories[i].label,
+                                    selected: homeGenreCategories[i].id ==
+                                        selectedId,
+                                    listIndex: i + 1,
+                                    tvFocus: tvFocus,
+                                    onLeftEdge: tvFocus ? dismissMenu : null,
+                                    onTap: () => Navigator.of(dialogContext)
+                                        .pop(homeGenreCategories[i].id),
                                   ),
                               ],
                             ),
@@ -125,15 +146,59 @@ class _HomeTopBarState extends State<HomeTopBar> {
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
+        );
+
+        if (tvFocus) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_categoriesMenuFocus.canRequestFocus) {
+              _categoriesMenuFocus.requestFocus();
+            }
+          });
+          menu = PopScope(
+            canPop: true,
+            child: Shortcuts(
+              shortcuts: const <ShortcutActivator, Intent>{
+                SingleActivator(LogicalKeyboardKey.escape):
+                    _DismissCategoriesIntent(),
+                SingleActivator(LogicalKeyboardKey.goBack):
+                    _DismissCategoriesIntent(),
+              },
+              child: Actions(
+                actions: {
+                  _DismissCategoriesIntent:
+                      CallbackAction<_DismissCategoriesIntent>(
+                    onInvoke: (_) {
+                      dismissMenu();
+                      return null;
+                    },
+                  ),
+                },
+                child: menu,
+              ),
+            ),
+          );
+        }
+
+        return ShellScope(
+          profile: shellScope.profile,
+          config: shellScope.config,
+          child: menu,
         );
       },
     );
 
     if (!mounted) return;
     setState(() => _categoriesOpen = false);
-    if (picked == null) return;
+    if (picked == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _categoriesTabFocus.canRequestFocus) {
+          _categoriesTabFocus.requestFocus();
+        }
+      });
+      return;
+    }
 
     final next = picked == _allGenresSentinel ? null : picked;
     if (next != ShellBus.homeSelectedGenreId.value) {
@@ -291,6 +356,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           onTap: _openCategoriesMenu,
                           tvFocus: tvFocus,
                           listIndex: 2,
+                          focusNode: tvFocus ? _categoriesTabFocus : null,
                           onDownEdge: tvFocus
                               ? () => ShellTvFocus.focusHomeHeroPlay()
                               : null,
@@ -511,11 +577,21 @@ class _FlatMenuRow extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.listIndex,
+    this.tvFocus = false,
+    this.focusNode,
+    this.onUpEdge,
+    this.onLeftEdge,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final int? listIndex;
+  final bool tvFocus;
+  final FocusNode? focusNode;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -538,7 +614,18 @@ class _FlatMenuRow extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 4,
+      listIndex: listIndex,
+      focusNode: focusNode,
+      onUpEdge: onUpEdge,
+      onLeftEdge: onLeftEdge,
+      tvTabId: tvFocus ? 'home' : null,
+      tvZone: tvFocus ? ShellTvZone.topBar : null,
+      tvItemIndex: listIndex,
       child: row,
     );
   }
+}
+
+class _DismissCategoriesIntent extends Intent {
+  const _DismissCategoriesIntent();
 }
