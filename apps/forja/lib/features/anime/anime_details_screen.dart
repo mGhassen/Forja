@@ -322,6 +322,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
             overview: a.cleanDescription,
             facts: _facts(a),
             height: heroHeight,
+            bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
             positionMs: posMs,
             durationMs: durMs,
             actionRow: Row(

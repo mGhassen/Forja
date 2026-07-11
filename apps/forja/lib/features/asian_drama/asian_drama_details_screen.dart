@@ -317,6 +317,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
             overview: det.description.trim(),
             facts: _facts(det),
             height: heroHeight,
+            bodyOverlap: ShellTokens.detailsHeroBodyOverlapWithEpisodes,
             positionMs: posMs,
             durationMs: durMs,
             actionRow: Row(

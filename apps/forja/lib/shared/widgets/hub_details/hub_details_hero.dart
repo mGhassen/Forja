@@ -22,6 +22,7 @@ class HubDetailsHero extends StatelessWidget {
     this.height,
     this.positionMs,
     this.durationMs,
+    this.bodyOverlap,
   });
 
   final String backdropUrl;
@@ -36,6 +37,7 @@ class HubDetailsHero extends StatelessWidget {
   final double? height;
   final int? positionMs;
   final int? durationMs;
+  final double? bodyOverlap;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +49,8 @@ class HubDetailsHero extends StatelessWidget {
     final cinematicDesktop = viewportWidth >= 900;
     final contentInset = ShellTokens.detailsContentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + ShellTokens.detailsHeroContentTopInset;
+    final bodyOverlap =
+        this.bodyOverlap ?? ShellTokens.detailsHeroBodyOverlap;
 
     return SizedBox(
       height: h,
@@ -66,7 +70,7 @@ class HubDetailsHero extends StatelessWidget {
                 child: IgnorePointer(
                   child: _CinematicHeroBottomGradient(
                     shellBg: shellBg,
-                    overlap: ShellTokens.detailsHeroBodyOverlap,
+                    overlap: bodyOverlap,
                   ),
                 ),
               ),
@@ -79,7 +83,7 @@ class HubDetailsHero extends StatelessWidget {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: h * 0.55 + ShellTokens.detailsHeroBodyOverlap,
+                height: h * 0.55 + bodyOverlap,
                 child: IgnorePointer(child: _HeroBottomFade(shellBg: shellBg)),
               ),
             Positioned(
@@ -87,25 +91,34 @@ class HubDetailsHero extends StatelessWidget {
               right: 0,
               top: heroContentTop,
               bottom: 72 + bottomInset,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: ShellTokens.bodyMaxWidthDesktop),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: contentInset),
-                    child: _HubHeroLayout(
-                      title: title,
-                      subtitle: subtitle,
-                      genres: genres,
-                      metaParts: metaParts,
-                      rating: rating,
-                      overview: overview,
-                      facts: facts,
-                      actionRow: actionRow,
-                      positionMs: positionMs,
-                      durationMs: durationMs,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: ShellTokens.bodyMaxWidthDesktop,
+                        maxHeight: constraints.maxHeight,
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: contentInset),
+                        child: _HubHeroLayout(
+                          title: title,
+                          subtitle: subtitle,
+                          genres: genres,
+                          metaParts: metaParts,
+                          rating: rating,
+                          overview: overview,
+                          facts: facts,
+                          actionRow: actionRow,
+                          positionMs: positionMs,
+                          durationMs: durationMs,
+                          maxHeight: constraints.maxHeight,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -127,6 +140,7 @@ class _HubHeroLayout extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.maxHeight,
   });
 
   final String title;
@@ -139,6 +153,7 @@ class _HubHeroLayout extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final double? maxHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -156,24 +171,47 @@ class _HubHeroLayout extends StatelessWidget {
       positionMs: positionMs,
       durationMs: durationMs,
       maxContentWidth: compact ? width : leftColumnWidth,
+      maxHeight: maxHeight,
     );
 
-    if (compact) return mainColumn;
+    if (compact) {
+      return SizedBox(
+        width: double.infinity,
+        height: maxHeight,
+        child: mainColumn,
+      );
+    }
 
     final factsPanel = HubDetailsFactsPanel(entries: facts);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Align(
-          alignment: Alignment.topLeft,
-          child: SizedBox(width: leftColumnWidth, child: mainColumn),
-        ),
-        if (factsPanel.hasContent)
+    return SizedBox(
+      width: double.infinity,
+      height: maxHeight,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
           Align(
-            alignment: Alignment.bottomRight,
-            child: SizedBox(width: 300, child: factsPanel),
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: leftColumnWidth,
+              height: maxHeight,
+              child: mainColumn,
+            ),
           ),
-      ],
+          if (factsPanel.hasContent && maxHeight != null)
+            Align(
+              alignment: Alignment.bottomRight,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 300,
+                  maxHeight: maxHeight!,
+                ),
+                child: SingleChildScrollView(
+                  child: factsPanel,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -190,7 +228,21 @@ class _HubHeroMainColumn extends StatelessWidget {
     this.positionMs,
     this.durationMs,
     required this.maxContentWidth,
+    this.maxHeight,
   });
+
+  static const _overviewStyle = TextStyle(
+    fontSize: 14,
+    height: 1.6,
+    color: Color(0xB8FFFFFF),
+  );
+  static const _titleBlockHeight = 96.0;
+  static const _subtitleBlockHeight = 26.0;
+  static const _genreBlockHeight = 30.0;
+  static const _metaBlockHeight = 32.0;
+  static const _overviewGap = 14.0;
+  static const _actionGap = 18.0;
+  static const _progressBlockHeight = 36.0;
 
   final String title;
   final String? subtitle;
@@ -202,17 +254,83 @@ class _HubHeroMainColumn extends StatelessWidget {
   final int? positionMs;
   final int? durationMs;
   final double maxContentWidth;
+  final double? maxHeight;
+
+  static double get _overviewSlotHeight =>
+      _overviewStyle.fontSize! *
+          _overviewStyle.height! *
+          ShellTokens.heroOverviewMaxLinesDesktop +
+      ShellTokens.heroOverviewReadMoreGap +
+      _overviewStyle.fontSize! * _overviewStyle.height!;
+
+  bool get _hasSubtitle =>
+      subtitle != null && subtitle!.isNotEmpty && subtitle != title;
+
+  double _usedHeight({
+    required bool showSubtitle,
+    required bool showGenres,
+    required bool showOverview,
+  }) {
+    var used = _titleBlockHeight + 14 + _metaBlockHeight;
+    if (showSubtitle) used += 6 + _subtitleBlockHeight;
+    if (showGenres) used += 10 + _genreBlockHeight;
+    if (showOverview) used += _overviewGap + _overviewSlotHeight;
+    if (actionRow != null) used += _actionGap + ShellTokens.shellButtonHeight;
+    if (positionMs != null && durationMs != null && durationMs! > 0) {
+      used += 14 + _progressBlockHeight;
+    }
+    return used;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bounded = maxHeight != null && maxHeight!.isFinite && maxHeight! > 0;
+
+    var showSubtitle = _hasSubtitle;
+    var showGenres = genres.isNotEmpty;
+    var showOverview = overview.isNotEmpty;
+
+    if (bounded) {
+      if (_usedHeight(
+            showSubtitle: showSubtitle,
+            showGenres: showGenres,
+            showOverview: showOverview,
+          ) >
+          maxHeight!) {
+        showOverview = false;
+      }
+      if (_usedHeight(
+            showSubtitle: showSubtitle,
+            showGenres: showGenres,
+            showOverview: showOverview,
+          ) >
+          maxHeight!) {
+        showGenres = false;
+      }
+      if (_usedHeight(
+            showSubtitle: showSubtitle,
+            showGenres: showGenres,
+            showOverview: showOverview,
+          ) >
+          maxHeight!) {
+        showSubtitle = false;
+      }
+    }
+
     return SizedBox(
       width: maxContentWidth,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          HubHeroTitle(title: title),
-          if (subtitle != null && subtitle!.isNotEmpty && subtitle != title) ...[
+          SizedBox(
+            height: _titleBlockHeight,
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: HubHeroTitle(title: title),
+            ),
+          ),
+          if (showSubtitle) ...[
             const SizedBox(height: 6),
             Text(
               subtitle!,
@@ -225,10 +343,12 @@ class _HubHeroMainColumn extends StatelessWidget {
               ),
             ),
           ],
-          if (genres.isNotEmpty) ...[
+          if (showGenres) ...[
             const SizedBox(height: 10),
             Text(
               genres.take(4).join(' • '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -239,20 +359,32 @@ class _HubHeroMainColumn extends StatelessWidget {
           ],
           const SizedBox(height: 14),
           HubHeroMetaLine(parts: metaParts, rating: rating),
-          if (overview.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            HeroOverviewText(
-              overview: overview,
-              maxLines: 3,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.6,
-                color: Colors.white.withValues(alpha: 0.72),
+          if (showOverview) ...[
+            const SizedBox(height: _overviewGap),
+            SizedBox(
+              height: bounded
+                  ? (maxHeight! -
+                          _usedHeight(
+                            showSubtitle: showSubtitle,
+                            showGenres: showGenres,
+                            showOverview: false,
+                          ) -
+                          _overviewGap)
+                      .clamp(48.0, _overviewSlotHeight)
+                  : _overviewSlotHeight,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: HeroOverviewText(
+                  overview: overview,
+                  maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
+                  shrinkWrap: !bounded,
+                  style: _overviewStyle,
+                ),
               ),
             ),
           ],
           if (actionRow != null) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: _actionGap),
             actionRow!,
           ],
           if (positionMs != null && durationMs != null && durationMs! > 0) ...[

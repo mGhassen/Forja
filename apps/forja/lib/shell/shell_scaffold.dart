@@ -5,6 +5,8 @@ import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 class ShellScaffold extends StatefulWidget {
   const ShellScaffold({
@@ -56,6 +58,13 @@ class _ShellScaffoldState extends State<ShellScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    if (policy.useFocusableMoodChips &&
+        widget.visibleIds.isNotEmpty &&
+        widget.selectedIndex < widget.visibleIds.length) {
+      ShellTvFocus.currentNavTabId = widget.visibleIds[widget.selectedIndex];
+    }
+
     final metrics = ShellScope.metricsOf(context);
     final showRail = widget.useNavRail && !widget.hideGlobalNav;
     final compactNav = _compactNav(context);
@@ -145,7 +154,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
       );
     }
 
-    return Scaffold(
+    Widget shell = Scaffold(
       key: _scaffoldKey,
       drawer: compactNav
           ? Drawer(
@@ -167,5 +176,18 @@ class _ShellScaffoldState extends State<ShellScaffold> {
               onItemTapped: _onNavSelected,
             ),
     );
+
+    if (policy.useFocusableMoodChips) {
+      shell = PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          ShellTvFocusCoordinator.handleShellBackKey();
+        },
+        child: shell,
+      );
+    }
+
+    return shell;
   }
 }

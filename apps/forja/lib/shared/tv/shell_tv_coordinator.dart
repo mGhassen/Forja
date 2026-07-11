@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_back_exit.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -154,7 +155,20 @@ abstract final class ShellTvFocusCoordinator {
   /// Second Back on nav requests app exit. Returns true when consumed.
   static VoidCallback? onRequestExitApp;
 
+  static bool _backConsumedThisFrame = false;
+
+  /// Test-only — clears back debounce between widget tests.
+  static void resetBackDebounceForTest() {
+    _backConsumedThisFrame = false;
+  }
+
   static bool handleShellBackKey() {
+    if (_backConsumedThisFrame) return true;
+    _backConsumedThisFrame = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _backConsumedThisFrame = false;
+    });
+
     if (shellOverlayCanPop()) {
       ShellTvBackExit.reset();
       maybePopShellOverlay();
@@ -166,7 +180,13 @@ abstract final class ShellTvFocusCoordinator {
       return true;
     }
 
-    if (ShellTvFocus.currentNavTabId == null) return false;
+    if (ShellTvFocus.currentNavTabId == null) {
+      if (ShellTokens.isAndroidTvDevice) {
+        _focusActiveNavFromPage();
+        return true;
+      }
+      return false;
+    }
 
     if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
       ShellTvBackExit.onNavBack(onRequestExitApp ?? SystemNavigator.pop);

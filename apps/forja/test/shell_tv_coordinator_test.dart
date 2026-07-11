@@ -39,6 +39,7 @@ void main() {
   setUp(() {
     ShellTvFocusCoordinator.setNavOrder(['home', 'search', 'settings']);
     ShellTvFocus.currentNavTabId = 'home';
+    ShellTvFocusCoordinator.resetBackDebounceForTest();
     ShellTvBackExit.reset();
     ShellTvBackExit.showExitPrompt = null;
     ShellTvFocusCoordinator.onRequestExitApp = null;
@@ -342,17 +343,21 @@ void main() {
 
     await tester.pumpWidget(
       _wrapTv(
-        Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
+        Focus(
+          autofocus: true,
+          focusNode: homeNav,
+          child: const SizedBox(width: 40, height: 40),
+        ),
       ),
     );
     await tester.pump();
-    homeNav.requestFocus();
-    await tester.pump();
+    expect(homeNav.hasFocus, isTrue);
 
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     expect(exitRequested, isFalse);
     expect(promptCount, 1);
 
+    ShellTvFocusCoordinator.resetBackDebounceForTest();
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     expect(exitRequested, isTrue);
 
