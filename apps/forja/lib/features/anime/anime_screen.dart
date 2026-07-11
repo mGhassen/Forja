@@ -656,9 +656,12 @@ class _AnimeScreenState extends State<AnimeScreen>
                 child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: _moods.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellScaled(context, 8).clamp(4.0, 8.0)),
             itemBuilder: (_, i) {
               final m = _moods[i];
               final selected = m.id == _selectedMood;
@@ -705,9 +708,12 @@ class _AnimeScreenState extends State<AnimeScreen>
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: shellHomeSectionHorizontalPadding(context),
+                  ),
                   itemCount: 5,
-                  separatorBuilder: (_, _) => const SizedBox(width: 14),
+                  separatorBuilder: (_, _) =>
+                      SizedBox(width: shellMovieCardRowGap(context)),
                   itemBuilder: (_, _) => homeCardSkeleton(context),
                 ),
               ),
@@ -732,9 +738,12 @@ class _AnimeScreenState extends State<AnimeScreen>
             clipBehavior: Clip.none,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: list.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
             itemBuilder: (context, index) =>
                 _animePosterCard(
               list[index],

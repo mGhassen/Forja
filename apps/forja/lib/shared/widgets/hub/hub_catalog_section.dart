@@ -95,7 +95,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
             horizontalPad,
             sectionTop,
             horizontalPad,
-            16,
+            shellHomeSectionBottomGap(context),
           ),
         ),
         SizedBox(
@@ -108,8 +108,11 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: horizontalPad),
               itemCount: list.length,
-              separatorBuilder: (_, _) =>
-                  SizedBox(width: widget.showRank ? 6 : 14),
+              separatorBuilder: (_, _) => SizedBox(
+                width: widget.showRank
+                    ? shellScaled(context, 6).clamp(3.0, 6.0)
+                    : shellMovieCardRowGap(context),
+              ),
               itemBuilder: (context, index) =>
                   widget.cardBuilder(context, list[index], index),
             ),

@@ -40,11 +40,15 @@ class HubPosterCard extends StatelessWidget {
     final titleSize = shellHubCardTitleFontSize(context);
     final cardWidth = HubPosterCard.cardWidth(context);
     final cardHeight = HubPosterCard.cardHeight(context);
+    final radius = shellCardBorderRadius(context);
+    final inset = shellScaled(context, 10).clamp(4.0, 10.0);
+    final metaSize = shellScaled(context, 11).clamp(7.0, 11.0);
+    final compact = cardWidth < 95;
 
     final card = shellFocusableTap(
       context: context,
       onTap: onTap,
-      borderRadius: 14,
+      borderRadius: radius,
       listIndex: listIndex,
       tvRowId: tvRowId,
       tvItemIndex: listIndex,
@@ -52,17 +56,17 @@ class HubPosterCard extends StatelessWidget {
         width: cardWidth,
         height: cardHeight,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radius),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+              blurRadius: shellScaled(context, 16).clamp(4.0, 16.0),
+              offset: Offset(0, shellScaled(context, 8).clamp(2.0, 8.0)),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radius),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -81,8 +85,8 @@ class HubPosterCard extends StatelessWidget {
                             child: Text(
                               title,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 10,
+                              style: TextStyle(
+                                fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
                                 color: Colors.white24,
                               ),
                             ),
@@ -93,8 +97,8 @@ class HubPosterCard extends StatelessWidget {
                         child: Text(
                           title,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 10,
+                          style: TextStyle(
+                            fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
                             color: Colors.white24,
                           ),
                         ),
@@ -117,27 +121,31 @@ class HubPosterCard extends StatelessWidget {
               ),
               if (rating != null && rating! > 0)
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: inset,
+                  right: inset,
                   child: HomeMovieRatingBadge(voteAverage: rating!),
                 ),
               if (badge != null && badge!.isNotEmpty)
                 Positioned(
-                  top: 8,
-                  left: 8,
+                  top: inset,
+                  left: inset,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: shellScaled(context, 6).clamp(3.0, 6.0),
+                      vertical: shellScaled(context, 2).clamp(1.0, 2.0),
+                    ),
                     decoration: BoxDecoration(
                       color: ForjaShellColors.progressFill
                           .withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(
+                        shellScaled(context, 4).clamp(2.0, 4.0),
+                      ),
                     ),
                     child: Text(
                       badge!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 9,
+                        fontSize: shellScaled(context, 9).clamp(7.0, 9.0),
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.4,
                       ),
@@ -145,33 +153,33 @@ class HubPosterCard extends StatelessWidget {
                   ),
                 ),
               Positioned(
-                bottom: 10,
-                left: 10,
-                right: 10,
+                bottom: inset,
+                left: inset,
+                right: inset,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       title,
-                      maxLines: 2,
+                      maxLines: compact ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: titleSize,
-                        height: 1.2,
+                        height: 1.15,
                       ),
                     ),
-                    if (subtitle != null && subtitle!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                    if (!compact && subtitle != null && subtitle!.isNotEmpty) ...[
+                      SizedBox(height: shellScaled(context, 4).clamp(1.0, 4.0)),
                       Text(
                         subtitle!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: 11,
+                          fontSize: metaSize,
                         ),
                       ),
                     ],
@@ -186,6 +194,7 @@ class HubPosterCard extends StatelessWidget {
 
     if (rank == null) return card;
 
+    final rankSize = shellScaled(context, 120).clamp(48.0, 120.0);
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -193,14 +202,14 @@ class HubPosterCard extends StatelessWidget {
         Text(
           '$rank',
           style: TextStyle(
-            fontSize: 120,
+            fontSize: rankSize,
             fontWeight: FontWeight.w900,
             foreground: Paint()
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
+              ..strokeWidth = shellScaled(context, 2).clamp(1.0, 2.0)
               ..color = Colors.white.withValues(alpha: 0.1),
             height: 0.85,
-            letterSpacing: -8,
+            letterSpacing: shellScaled(context, -8).clamp(-4.0, -2.0),
           ),
         ),
         card,

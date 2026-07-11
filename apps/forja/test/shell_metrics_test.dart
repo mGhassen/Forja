@@ -17,7 +17,7 @@ void main() {
   test('mobile metrics row exists with compact card width', () {
     expect(ShellMetrics.mobile.homeMovieCardWidth, 165);
     expect(ShellMetrics.desktop.homeMovieCardWidth, 190);
-    expect(ShellMetrics.tv.homeMovieCardWidth, 58);
+    expect(ShellMetrics.tv.homeMovieCardWidth, 70);
   });
 
   test('input policies match profile expectations', () {

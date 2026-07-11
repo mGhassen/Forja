@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:forja/shared/design/src/shell_metrics.dart';
 import 'package:forja/shared/design/src/shell_profile.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
@@ -110,3 +111,69 @@ int shellGridCrossAxisCount(
 
 bool shellIptvUsesWideLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width >= 1100;
+
+/// TV density vs desktop card baseline (190px). Drives proportional chrome sizing.
+double shellLayoutScale(BuildContext context) {
+  if (!ShellScope.metricsOf(context).usesTvDensity) return 1.0;
+  return ShellScope.metricsOf(context).homeMovieCardWidth /
+      ShellMetrics.desktop.homeMovieCardWidth;
+}
+
+double shellScaled(BuildContext context, double value) =>
+    value * shellLayoutScale(context);
+
+double shellCardBorderRadius(BuildContext context) =>
+    shellScaled(context, 14).clamp(4.0, 14.0);
+
+EdgeInsets shellSectionTitlePadding(BuildContext context) {
+  final h = shellHomeSectionHorizontalPadding(context);
+  return EdgeInsets.fromLTRB(
+    h,
+    shellHomeSectionTitleTop(context),
+    h,
+    shellHomeSectionBottomGap(context),
+  );
+}
+
+EdgeInsets shellHomeSectionTitlePadding(
+  BuildContext context, {
+  double? top,
+  double? bottom,
+}) {
+  final h = shellHomeSectionHorizontalPadding(context);
+  return EdgeInsets.fromLTRB(
+    h,
+    top ?? shellHomeSectionTitleTop(context),
+    h,
+    bottom ?? shellHomeSectionBottomGap(context),
+  );
+}
+
+double shellNavRailIconSize(BuildContext context) =>
+    shellScaled(context, ShellTokens.navRailIconSize)
+        .clamp(16.0, ShellTokens.navRailIconSize);
+
+double shellNavRailLabelFontSize(BuildContext context) =>
+    shellScaled(context, ShellTokens.navRailLabelFontSize)
+        .clamp(9.0, ShellTokens.navRailLabelFontSize);
+
+double shellNavRailItemContentHeight(BuildContext context) {
+  final icon = shellNavRailIconSize(context);
+  return icon * ShellTokens.navRailIconHoverScale +
+      ShellTokens.navRailIconUnderlineGap +
+      ShellTokens.shellNavUnderlineHeight +
+      ShellTokens.navRailIconLabelGap +
+      shellNavRailLabelFontSize(context);
+}
+
+TextStyle shellSectionTitleTextStyle(BuildContext context) => TextStyle(
+      color: Colors.white,
+      fontSize: shellScaled(context, 20).clamp(11.0, 20.0),
+      fontWeight: FontWeight.w800,
+      letterSpacing: -0.3,
+    );
+
+TextStyle shellSectionSubtitleTextStyle(BuildContext context) => TextStyle(
+      color: Colors.white.withValues(alpha: 0.3),
+      fontSize: shellScaled(context, 11).clamp(8.0, 11.0),
+    );

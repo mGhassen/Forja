@@ -149,22 +149,25 @@ class _HomeTopBarState extends State<HomeTopBar> {
   }
 
   Widget _buildSearchAction({required bool tvFocus}) {
+    final searchH = shellScaled(context, 34).clamp(24.0, 34.0);
+    final searchW = shellScaled(context, 44).clamp(32.0, 44.0);
+    final iconSize = shellScaled(context, 30).clamp(20.0, 30.0);
     if (tvFocus) {
       return shellFocusableTap(
         context: context,
         onTap: _openSearch,
-        borderRadius: 22,
+        borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
         scaleOnFocus: ShellTokens.focusActiveScale,
         tvTabId: 'home',
         tvZone: ShellTvZone.topBar,
         focusNode: _searchFocus,
         onUpEdge: ShellTvFocus.focusHomeMenu,
         onDownEdge: () => ShellTvFocus.focusHomeHeroPlay(),
-        child: const SizedBox(
-          height: 34,
-          width: 44,
+        child: SizedBox(
+          height: searchH,
+          width: searchW,
           child: Center(
-            child: Icon(Icons.search_rounded, color: Colors.white, size: 30),
+            child: Icon(Icons.search_rounded, color: Colors.white, size: iconSize),
           ),
         ),
       );
@@ -173,8 +176,8 @@ class _HomeTopBarState extends State<HomeTopBar> {
     final icon = ForjaPlainIcon(
       icon: Icons.search_rounded,
       color: Colors.white,
-      size: 30,
-      hitSize: 44,
+      size: iconSize,
+      hitSize: searchW,
       hoverScale: ShellTokens.focusActiveScale,
       focusNode: tvFocus ? _searchFocus : null,
       onTap: _openSearch,
@@ -390,10 +393,12 @@ class _CategoryTabState extends State<_CategoryTab> {
     return Color.lerp(hoverWhite, white, (t - _hoverT) / (_selectedT - _hoverT))!;
   }
 
-  double _underlineWidth(double t) {
+  double _underlineWidth(double t, BuildContext context) {
+    final hoverW = shellScaled(context, 28).clamp(14.0, 28.0);
+    final selectedExtra = shellScaled(context, 4).clamp(2.0, 4.0);
     if (t <= 0) return 0;
-    if (t < _hoverT) return 28 * (t / _hoverT);
-    return 28 + 4 * ((t - _hoverT) / (_selectedT - _hoverT));
+    if (t < _hoverT) return hoverW * (t / _hoverT);
+    return hoverW + selectedExtra * ((t - _hoverT) / (_selectedT - _hoverT));
   }
 
   Widget _buildContent() {
@@ -404,14 +409,17 @@ class _CategoryTabState extends State<_CategoryTab> {
       builder: (context, t, _) {
         final textColor = _lerpTabColor(t);
         final fontWeight = FontWeight.lerp(FontWeight.w500, FontWeight.w700, t)!;
-        final underlineWidth = _underlineWidth(t);
+        final underlineWidth = _underlineWidth(t, context);
+        final tabHeight = shellScaled(context, 34).clamp(24.0, 34.0);
+        final tabFont = shellScaled(context, 17).clamp(12.0, 17.0);
+        final chevronSize = shellScaled(context, 18).clamp(12.0, 18.0);
 
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: 34,
+              height: tabHeight,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Row(
@@ -420,17 +428,17 @@ class _CategoryTabState extends State<_CategoryTab> {
                     Text(
                       widget.label,
                       style: GoogleFonts.inter(
-                        fontSize: 17,
+                        fontSize: tabFont,
                         fontWeight: fontWeight,
                         color: textColor,
                         letterSpacing: 0.1,
                       ),
                     ),
                     if (widget.showChevron) ...[
-                      const SizedBox(width: 4),
+                      SizedBox(width: shellScaled(context, 4).clamp(2.0, 4.0)),
                       Icon(
                         Icons.expand_more_rounded,
-                        size: 18,
+                        size: chevronSize,
                         color: textColor,
                       ),
                     ],
@@ -438,11 +446,15 @@ class _CategoryTabState extends State<_CategoryTab> {
                 ),
               ),
             ),
-            SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
+            SizedBox(
+              height: shellScaled(context, ShellTokens.shellCategoryUnderlineGap)
+                  .clamp(2.0, ShellTokens.shellCategoryUnderlineGap),
+            ),
             Align(
               alignment: Alignment.centerLeft,
               child: Container(
-                height: ShellTokens.shellNavUnderlineHeight,
+                height: shellScaled(context, ShellTokens.shellNavUnderlineHeight)
+                    .clamp(1.0, ShellTokens.shellNavUnderlineHeight),
                 width: underlineWidth,
                 decoration: BoxDecoration(
                   color: underlineWidth > 0

@@ -89,19 +89,23 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
           ShellSectionTitle(
             title: widget.title,
             padding: widget.titlePadding ??
-                EdgeInsets.fromLTRB(homePad, 0, homePad, 16),
+                EdgeInsets.fromLTRB(
+                  homePad,
+                  0,
+                  homePad,
+                  shellHomeSectionBottomGap(context),
+                ),
           )
         else if (widget.embedded)
           ShellSectionTitle(
             title: widget.title,
             padding: widget.titlePadding ??
-                const EdgeInsets.only(bottom: 16),
+                EdgeInsets.only(bottom: shellHomeSectionBottomGap(context)),
           )
         else
           ShellSectionTitle(
             title: widget.title,
-            padding: widget.titlePadding ??
-                EdgeInsets.fromLTRB(homePad, 36, homePad, 16),
+            padding: widget.titlePadding ?? shellSectionTitlePadding(context),
           ),
         if (titleGap > 0) SizedBox(height: titleGap),
         SizedBox(
@@ -115,7 +119,7 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
             padding: listPadding,
             itemCount: widget.movies.length,
             separatorBuilder: (_, _) =>
-                SizedBox(width: widget.showRank ? 6 : shellMovieCardRowGap(context)),
+                SizedBox(width: widget.showRank ? shellScaled(context, 6).clamp(3.0, 6.0) : shellMovieCardRowGap(context)),
             itemBuilder: (context, index) {
               return HomeMovieCard(
                 movie: widget.movies[index],

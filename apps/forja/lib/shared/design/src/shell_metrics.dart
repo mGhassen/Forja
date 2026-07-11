@@ -106,9 +106,9 @@ class ShellMetrics {
 
   /// Compact leanback density — small cards so multiple rows fit like desktop.
   static const tv = ShellMetrics(
-    homeMovieCardWidth: 58,
-    continueWatchingCardWidth: 100,
-    continueWatchingCardHeight: 100 * 9 / 16,
+    homeMovieCardWidth: 70,
+    continueWatchingCardWidth: 120,
+    continueWatchingCardHeight: 120 * 9 / 16,
     hubCardTitleFontSize: 9,
     heroCompactRightInset: 16,
     heroMinTitleHeight: 64,

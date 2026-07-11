@@ -10,25 +10,19 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-const double _kNavRailItemContentHeight =
-    ShellTokens.navRailIconSize * ShellTokens.navRailIconHoverScale +
-    ShellTokens.navRailIconUnderlineGap +
-    ShellTokens.shellNavUnderlineHeight +
-    ShellTokens.navRailIconLabelGap +
-    ShellTokens.navRailLabelFontSize;
 
 double _navRailItemSpacingForHeight({
   required int itemCount,
   required double maxHeight,
   required double preferredSpacing,
+  required double itemContentHeight,
 }) {
   if (itemCount <= 0) return preferredSpacing;
-  final naturalHeight =
-      itemCount * (_kNavRailItemContentHeight + preferredSpacing);
+  final naturalHeight = itemCount * (itemContentHeight + preferredSpacing);
   if (naturalHeight <= maxHeight) return preferredSpacing;
   return math.max(
     0,
-    (maxHeight - itemCount * _kNavRailItemContentHeight) / itemCount,
+    (maxHeight - itemCount * itemContentHeight) / itemCount,
   );
 }
 
@@ -206,10 +200,13 @@ class _ShellNavRailState extends State<ShellNavRail> {
                     Expanded(
                       child: LayoutBuilder(
                         builder: (context, constraints) {
+                          final contentHeight =
+                              shellNavRailItemContentHeight(context);
                           final itemSpacing = _navRailItemSpacingForHeight(
                             itemCount: _navIds.length,
                             maxHeight: constraints.maxHeight,
                             preferredSpacing: metrics.navRailItemSpacing,
+                            itemContentHeight: contentHeight,
                           );
                           final navColumn = buildNavColumn(itemSpacing);
 
@@ -257,12 +254,14 @@ class _RailLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final logoWidth = shellScaled(context, ShellTokens.navRailLogoWidth)
+        .clamp(28.0, ShellTokens.navRailLogoWidth);
     return SizedBox(
       width: ShellTokens.navRailWidth,
       child: Center(
         child: Image.asset(
           'assets/icon/logo-dark.png',
-          width: ShellTokens.navRailLogoWidth,
+          width: logoWidth,
           fit: BoxFit.contain,
         ),
       ),
@@ -448,13 +447,18 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
 
   /// Fixed footprint: icon + label slot + underline gap — never grows on reveal.
-  static double get _contentHeight => _kNavRailItemContentHeight;
+  double _contentHeight(BuildContext context) =>
+      shellNavRailItemContentHeight(context);
 
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
     final active = _activeFor(policy);
     final selectedFocused = widget.selected && active;
+    final iconSize = shellNavRailIconSize(context);
+    final labelFontSize = shellNavRailLabelFontSize(context);
+    final contentHeight = _contentHeight(context);
+    final underlineWidth = shellScaled(context, 24).clamp(14.0, 24.0);
     final iconColor = selectedFocused
         ? Colors.white
         : widget.selected
@@ -471,7 +475,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                 : ForjaShellColors.iconMuted;
     final labelStyle = GoogleFonts.inter(
       color: labelColor,
-      fontSize: ShellTokens.navRailLabelFontSize,
+      fontSize: labelFontSize,
       fontWeight: FontWeight.w500,
       height: 1,
     );
@@ -514,7 +518,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
           builder: (context) {
             return SizedBox(
                 width: ShellTokens.navRailWidth,
-                height: _contentHeight,
+                height: contentHeight,
                 child: Center(
                   child: MouseRegion(
                     onEnter: (_) => _onHoverEnter(),
@@ -528,12 +532,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                       behavior: HitTestBehavior.opaque,
                       child: SizedBox(
                         width: ShellTokens.navRailWidth,
-                        height: _contentHeight,
+                        height: contentHeight,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             SizedBox(
-                              height: ShellTokens.navRailIconSize *
+                              height: iconSize *
                                   ShellTokens.navRailIconHoverScale +
                                   ShellTokens.navRailIconUnderlineGap +
                                   ShellTokens.shellNavUnderlineHeight,
@@ -551,7 +555,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                           destination: widget.destination,
                                           selected: widget.selected,
                                           color: iconColor,
-                                          size: ShellTokens.navRailIconSize,
+                                          size: iconSize,
                                         ),
                                       ),
                                     ),
@@ -562,7 +566,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                     curve: Curves.easeOutCubic,
                                     height:
                                         ShellTokens.shellNavUnderlineHeight,
-                                    width: widget.selected ? 24 : 0,
+                                    width: widget.selected ? underlineWidth : 0,
                                     decoration: BoxDecoration(
                                       color: widget.selected
                                           ? (selectedFocused
@@ -577,7 +581,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                             ),
                             SizedBox(height: ShellTokens.navRailIconLabelGap),
                             SizedBox(
-                              height: ShellTokens.navRailLabelFontSize,
+                              height: labelFontSize,
                               width: ShellTokens.navRailWidth,
                               child: Center(
                                 child: _TypewriterLabel(

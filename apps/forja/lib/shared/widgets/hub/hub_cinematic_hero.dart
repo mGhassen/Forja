@@ -218,20 +218,22 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
           if (widget.onSearch != null)
             Positioned(
               top: textTop,
-              right: ShellTokens.bodyHorizontalPadding,
+              right: shellHomeSectionHorizontalPadding(context),
               child: ForjaPlainIcon(
                 icon: Icons.search_rounded,
                 color: Colors.white,
-                size: 30,
-                hitSize: 44,
+                size: shellScaled(context, 30).clamp(20.0, 30.0),
+                hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
                 onTap: widget.onSearch,
               ),
             ),
           Positioned(
-            left: ShellTokens.bodyHorizontalPadding,
+            left: shellHomeSectionHorizontalPadding(context),
             top: textTop,
-            right: _compact ? 20 : 48,
-            bottom: 16,
+            right: _compact
+                ? shellScaled(context, 20).clamp(12.0, 20.0)
+                : shellScaled(context, 48).clamp(24.0, 48.0),
+            bottom: shellScaled(context, 16).clamp(8.0, 16.0),
             child: _compact
                 ? _buildCompactTextColumn(heroSlide)
                 : LayoutBuilder(
@@ -258,8 +260,8 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                   ),
           ),
           Positioned(
-            right: 20,
-            bottom: _compact ? 16 : null,
+            right: shellScaled(context, 20).clamp(10.0, 20.0),
+            bottom: _compact ? shellScaled(context, 16).clamp(8.0, 16.0) : null,
             top: _compact ? null : 0,
             height: _compact ? null : imageHeight,
             child: _compact
@@ -408,9 +410,9 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildTitle(slide, compact: true),
-        const SizedBox(height: 10),
+        SizedBox(height: shellScaled(context, 10).clamp(4.0, 10.0)),
         _buildMetaRow(slide),
-        const SizedBox(height: 12),
+        SizedBox(height: shellScaled(context, 12).clamp(6.0, 12.0)),
         _buildActionRow(slide),
       ],
     );
@@ -519,7 +521,8 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: Colors.white,
-          fontSize: compact ? 28 : 40,
+          fontSize: shellScaled(context, compact ? 28 : 40)
+              .clamp(compact ? 18.0 : 24.0, compact ? 28.0 : 40.0),
           fontWeight: FontWeight.w900,
           height: 1.05,
           letterSpacing: -0.5,
@@ -529,25 +532,37 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   }
 
   Widget _buildMetaRow(HubHeroSlide slide) {
+    final metaFont = shellScaled(context, 13).clamp(9.0, 13.0);
+    final genreFont = shellScaled(context, 12).clamp(8.0, 12.0);
+    final gap = shellScaled(context, 10).clamp(4.0, 10.0);
     final rating = slide.rating != null && slide.rating! > 0
         ? Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
+              vertical: shellScaled(context, 4).clamp(2.0, 4.0),
+            ),
             decoration: BoxDecoration(
               color: Colors.amber.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(
+                shellScaled(context, 20).clamp(10.0, 20.0),
+              ),
               border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                const SizedBox(width: 4),
+                Icon(
+                  Icons.star_rounded,
+                  size: shellScaled(context, 14).clamp(10.0, 14.0),
+                  color: Colors.amber,
+                ),
+                SizedBox(width: shellScaled(context, 4).clamp(2.0, 4.0)),
                 Text(
                   slide.rating!.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.amber,
-                    fontSize: 13,
+                    fontSize: metaFont,
                   ),
                 ),
               ],
@@ -559,28 +574,33 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       children: [
         if (rating != null) rating,
         if (slide.year != null && slide.year!.isNotEmpty) ...[
-          if (rating != null) const SizedBox(width: 10),
+          if (rating != null) SizedBox(width: gap),
           Text(
             slide.year!,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.55),
-              fontSize: 13,
+              fontSize: metaFont,
               fontWeight: FontWeight.w500,
             ),
           ),
         ],
         if (slide.badge != null && slide.badge!.isNotEmpty) ...[
-          const SizedBox(width: 10),
+          SizedBox(width: gap),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
+              vertical: shellScaled(context, 3).clamp(2.0, 3.0),
+            ),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(
+                shellScaled(context, 4).clamp(2.0, 4.0),
+              ),
             ),
             child: Text(
               slide.badge!,
-              style: const TextStyle(
-                fontSize: 10,
+              style: TextStyle(
+                fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
                 fontWeight: FontWeight.bold,
                 color: Colors.white60,
                 letterSpacing: 0.8,
@@ -589,7 +609,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
           ),
         ],
         if (slide.genres.isNotEmpty) ...[
-          const SizedBox(width: 10),
+          SizedBox(width: gap),
           Expanded(
             child: Text(
               slide.genres.take(3).join('  ·  '),
@@ -597,7 +617,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 12,
+                fontSize: genreFont,
                 fontWeight: FontWeight.w500,
               ),
             ),

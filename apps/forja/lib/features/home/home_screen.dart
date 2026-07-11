@@ -30,12 +30,8 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
-double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) {
-  if (!compactTop) return ShellTokens.homeSectionTitleTop;
-  return _usesShellHomeLayout(context)
-      ? ShellTokens.homeSectionTitleTopCompactDesktop
-      : ShellTokens.homeSectionTitleTopCompactMobile;
-}
+double _homeSectionTitleTop(BuildContext context, {required bool compactTop}) =>
+    shellHomeSectionTitleTop(context, compact: compactTop);
 
 bool _usesShellHomeLayout(BuildContext context) {
   return ShellScope.profileOf(context) != ShellProfile.mobile;
@@ -68,16 +64,18 @@ SliverToBoxAdapter _homeRowSliver(
 }
 
 Widget _heroTitleText(
+  BuildContext context,
   Movie movie,
   bool isLandscape, {
   bool desktop = false,
   bool compact = false,
 }) {
-  final fontSize = compact
+  final base = compact
       ? 22.0
       : desktop
           ? 32.0
           : (isLandscape ? 48.0 : 36.0);
+  final fontSize = shellScaled(context, base).clamp(14.0, base);
   return Text(
     movie.title,
     style: TextStyle(
@@ -1667,10 +1665,12 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           Positioned(
-            left: ShellTokens.bodyHorizontalPadding,
+            left: shellHomeSectionHorizontalPadding(context),
             top: textTop,
-            right: compactRightInset,
-            bottom: 16,
+            right: compact
+                ? shellScaled(context, compactRightInset).clamp(12.0, compactRightInset)
+                : shellScaled(context, 48).clamp(24.0, 48.0),
+            bottom: shellScaled(context, 16).clamp(8.0, 16.0),
             child: compact
                 ? metrics.heroActionUseFittedBox
                     ? LayoutBuilder(
@@ -1718,8 +1718,8 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
           ),
           Positioned(
-            right: 20,
-            bottom: compact ? 16 : null,
+            right: shellScaled(context, 20).clamp(10.0, 20.0),
+            bottom: compact ? shellScaled(context, 16).clamp(8.0, 16.0) : null,
             top: compact ? null : 0,
             height: compact ? null : imageHeight,
             child: compact
@@ -1800,7 +1800,7 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         const SizedBox(height: 10),
         _buildHeroMetaRow(heroMovie, singleLine: true),
-        const SizedBox(height: 12),
+        SizedBox(height: shellScaled(context, 12).clamp(6.0, 12.0)),
         _buildHeroActionRow(heroMovie),
       ],
     );
@@ -2056,15 +2056,18 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildHeroMediaTypeBadge(String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
+        vertical: shellScaled(context, 3).clamp(2.0, 3.0),
+      ),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(shellScaled(context, 4).clamp(2.0, 4.0)),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          fontSize: 10,
+        style: TextStyle(
+          fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
           fontWeight: FontWeight.bold,
           color: Colors.white60,
           letterSpacing: 0.8,
@@ -2074,24 +2077,34 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeroMetaRow(Movie heroMovie, {bool singleLine = false}) {
+    final metaFont = shellScaled(context, 13).clamp(9.0, 13.0);
+    final genreFont = shellScaled(context, 12).clamp(8.0, 12.0);
+    final gap = shellScaled(context, 10).clamp(4.0, 10.0);
     final rating = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
+        vertical: shellScaled(context, 4).clamp(2.0, 4.0),
+      ),
       decoration: BoxDecoration(
         color: Colors.amber.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(shellScaled(context, 20).clamp(10.0, 20.0)),
         border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-          const SizedBox(width: 4),
+          Icon(
+            Icons.star_rounded,
+            size: shellScaled(context, 14).clamp(10.0, 14.0),
+            color: Colors.amber,
+          ),
+          SizedBox(width: shellScaled(context, 4).clamp(2.0, 4.0)),
           Text(
             heroMovie.voteAverage.toStringAsFixed(1),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.amber,
-              fontSize: 13,
+              fontSize: metaFont,
             ),
           ),
         ],
@@ -2103,25 +2116,25 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           rating,
           if (heroMovie.releaseDate.isNotEmpty) ...[
-            const SizedBox(width: 10),
+            SizedBox(width: gap),
             Text(
               heroMovie.releaseDate.split('-').first,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.55),
-                fontSize: 13,
+                fontSize: metaFont,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ],
           if (heroMovie.mediaType == 'tv') ...[
-            const SizedBox(width: 10),
+            SizedBox(width: gap),
             _buildHeroMediaTypeBadge('SERIES'),
           ] else if (heroMovie.mediaType == 'movie') ...[
-            const SizedBox(width: 10),
+            SizedBox(width: gap),
             _buildHeroMediaTypeBadge('FILM'),
           ],
           if (heroMovie.genres.isNotEmpty) ...[
-            const SizedBox(width: 10),
+            SizedBox(width: gap),
             Expanded(
               child: Text(
                 heroMovie.genres.take(3).join('  ·  '),
@@ -2129,7 +2142,7 @@ class _HomeScreenState extends State<HomeScreen>
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 12,
+                  fontSize: genreFont,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -2329,7 +2342,10 @@ class _MovieSectionState extends State<_MovieSection> {
           children: [
             ShellSectionTitle(
               title: widget.title,
-              padding: EdgeInsets.fromLTRB(24, sectionTop, 24, 16),
+              padding: shellHomeSectionTitlePadding(
+                context,
+                top: sectionTop,
+              ),
             ),
             SizedBox(
               height: HomeMovieCard.cardHeight(context),
@@ -2339,10 +2355,16 @@ class _MovieSectionState extends State<_MovieSection> {
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
                 itemCount: movies.length,
                 separatorBuilder: (_, _) =>
-                    SizedBox(width: widget.showRank ? 6 : 14),
+                    SizedBox(
+                      width: widget.showRank
+                          ? shellScaled(context, 6).clamp(3.0, 6.0)
+                          : shellMovieCardRowGap(context),
+                    ),
                 itemBuilder: (context, index) {
                   return HomeMovieCard(
                     movie: movies[index],
@@ -2413,9 +2435,12 @@ class _StaticMovieSectionState extends State<_StaticMovieSection> {
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: widget.movies.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
             itemBuilder: (context, index) => HomeMovieCard(
               movie: widget.movies[index],
               onTap: () => widget.onMovieTap(widget.movies[index]),
@@ -2906,7 +2931,7 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
           children: [
             ShellSectionTitle(
               title: 'Continue Watching',
-              padding: EdgeInsets.fromLTRB(24, titleTop, 24, 16),
+              padding: shellHomeSectionTitlePadding(context, top: titleTop),
             ),
             SizedBox(
               height: _HistoryCard.cardHeight(context),
@@ -2915,9 +2940,12 @@ class _ContinueWatchingSectionState extends State<_ContinueWatchingSection> {
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
                 itemCount: history.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
                 itemBuilder: (context, index) {
                   final historyItem = history[index];
                   final itemId = historyItem['uniqueId'] as String;
@@ -3283,7 +3311,10 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 36, 24, 14),
+          padding: shellHomeSectionTitlePadding(
+            context,
+            bottom: shellScaled(context, 14).clamp(4.0, 14.0),
+          ),
           child: Row(
             children: [
               Expanded(
@@ -3333,9 +3364,12 @@ class _StremioCatalogSectionState extends State<_StremioCatalogSection> {
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: itemCount,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
             itemBuilder: (context, index) {
               final item = widget.items[index];
               return _StremioCatalogCard(
@@ -3523,7 +3557,11 @@ class _MoodSectionState extends State<_MoodSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(24, titleTop, 24, 12),
+          padding: shellHomeSectionTitlePadding(
+            context,
+            top: titleTop,
+            bottom: shellScaled(context, 12).clamp(4.0, 12.0),
+          ),
           child: const Text(
             "What's your mood?",
             style: ShellSectionTitle.titleStyle,
@@ -3547,7 +3585,9 @@ class _MoodSectionState extends State<_MoodSection> {
             child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: moods.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
@@ -3593,7 +3633,7 @@ class _MoodSectionState extends State<_MoodSection> {
                           ? ForjaShellColors.chipSelectedIcon
                           : Colors.white.withValues(alpha: 0.7),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: shellScaled(context, 6).clamp(3.0, 6.0)),
                     Text(
                       m.label,
                       style: TextStyle(
@@ -3645,9 +3685,12 @@ class _MoodSectionState extends State<_MoodSection> {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
                       itemCount: 5,
-                      separatorBuilder: (_, _) => const SizedBox(width: 14),
+                      separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
                       itemBuilder: (_, _) => homeCardSkeleton(context),
                     ),
                   ),
@@ -3681,9 +3724,12 @@ class _MoodSectionState extends State<_MoodSection> {
                 controller: _resultsCtrl,
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
                 itemCount: count,
-                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
                 itemBuilder: (context, i) => HomeMovieCard(
                   movie: movies[i],
                   onTap: () => onMovieTap(movies[i]),
@@ -3738,7 +3784,7 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
         : '';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 36, 24, 16),
+      padding: shellSectionTitlePadding(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -3814,9 +3860,12 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
+            ),
             itemCount: 5,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
             itemBuilder: (_, _) => homeCardSkeleton(context),
           ),
         ),
@@ -3848,9 +3897,12 @@ class _BecauseYouWatchedSectionState extends State<_BecauseYouWatchedSection> {
                   controller: _ctrl,
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
                   itemCount: movies.length.clamp(0, 25),
-                  separatorBuilder: (_, _) => const SizedBox(width: 14),
+                  separatorBuilder: (_, _) =>
+                SizedBox(width: shellMovieCardRowGap(context)),
                   itemBuilder: (context, i) => HomeMovieCard(
                     movie: movies[i],
                     onTap: () => widget.onMovieTap(movies[i]),
@@ -3900,6 +3952,7 @@ class _HeroTitleSlot extends StatelessWidget {
             ? ShellTokens.heroTitleSlotHeightDesktop
             : logoMaxHeight + 14;
     final title = _heroTitleText(
+      context,
       movie,
       isLandscape,
       desktop: desktop,
