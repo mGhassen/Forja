@@ -490,10 +490,6 @@ class HeroPillIconGroup extends StatelessWidget {
   final List<HeroPillIconSlot> slots;
   final int? tvFocusOrderStart;
 
-  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
-    return shellTrapTvFocusHorizontalEdge(node, event, trapRight: true);
-  }
-
   @override
   Widget build(BuildContext context) {
     if (slots.isEmpty) return const SizedBox.shrink();
@@ -508,7 +504,10 @@ class HeroPillIconGroup extends StatelessWidget {
             focusOrder: tvFocusOrderStart != null
                 ? NumericFocusOrder((tvFocusOrderStart! + i).toDouble())
                 : null,
-            onKeyEvent: _onKeyEvent,
+            onKeyEvent: slots[i].child == null && i == slots.length - 1
+                ? (node, event) =>
+                    shellTrapTvFocusHorizontalEdge(node, event, trapRight: true)
+                : null,
           ),
         ],
       ],

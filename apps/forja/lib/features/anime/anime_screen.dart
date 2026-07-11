@@ -674,9 +674,32 @@ class _AnimeScreenState extends State<AnimeScreen>
                 listIndex: i,
                 tvTabId: 'anime',
                 tvRowId: 'mood-chips',
-                onTap: () => _selectMood(m.id),
+                onTap: () {
+                  if (m.id != _selectedMood) {
+                    _selectMood(m.id);
+                  } else {
+                    ShellTvFocusCoordinator.focusFromChipStripDown(
+                      tabId: 'anime',
+                      chipRowId: 'mood-chips',
+                      resultsRowId: 'mood-results',
+                    );
+                  }
+                },
+                onLeftEdge: shellTvChipLeftEdge(
+                  context,
+                  tabId: 'anime',
+                  rowId: 'mood-chips',
+                  index: i,
+                ),
+                onRightEdge: shellTvChipRightEdge(
+                  tabId: 'anime',
+                  rowId: 'mood-chips',
+                  index: i,
+                  itemCount: _moods.length,
+                ),
                 onDownEdge: shellTvChipDownToRow(
                   tabId: 'anime',
+                  chipRowId: 'mood-chips',
                   resultsRowId: 'mood-results',
                 ),
               );

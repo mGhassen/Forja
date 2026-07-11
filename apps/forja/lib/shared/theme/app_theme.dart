@@ -276,6 +276,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
           false) {
         return KeyEventResult.handled;
       }
+      if (widget.tvMeta?.zone == ShellTvZone.chipStrip) {
+        return KeyEventResult.handled;
+      }
       return KeyEventResult.ignored;
     }
     if (key == LogicalKeyboardKey.arrowUp) {
@@ -310,6 +313,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       if (FocusManager.instance.primaryFocus
               ?.focusInDirection(TraversalDirection.right) ??
           false) {
+        return KeyEventResult.handled;
+      }
+      if (widget.tvMeta?.zone == ShellTvZone.chipStrip) {
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;

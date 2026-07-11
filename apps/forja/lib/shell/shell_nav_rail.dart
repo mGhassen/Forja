@@ -430,7 +430,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final tabId = widget.destination.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!ShellTvFocusCoordinator.focusTabEnterFromNav(tabId)) {
-        ShellTvFocusCoordinator.restoreTabFocus(tabId);
+        ShellTvFocusCoordinator.restoreTabFocusAfterNav(tabId);
       }
     });
   }
@@ -438,9 +438,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   void _returnToActivePage() {
     final tabId = ShellTvFocus.currentNavTabId;
     if (tabId == null || tabId.isEmpty) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ShellTvFocusCoordinator.restoreTabFocus(tabId);
-    });
+    ShellTvFocusCoordinator.restoreTabFocusAfterNav(tabId);
   }
 
   bool _activeFor(ShellInputPolicy policy) =>

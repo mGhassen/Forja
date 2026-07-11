@@ -269,6 +269,7 @@ void main() {
       isTrue,
     );
     await tester.pump();
+    await tester.pump();
     expect(pageNode.hasFocus, isTrue);
     expect(homeNav.hasFocus, isFalse);
 

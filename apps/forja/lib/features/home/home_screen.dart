@@ -3528,6 +3528,7 @@ class _MoodSection extends StatefulWidget {
 
 class _MoodSectionState extends State<_MoodSection> {
   final ScrollController _resultsCtrl = ScrollController();
+  List<Movie>? _cachedResults;
 
   @override
   void dispose() {
@@ -3595,9 +3596,40 @@ class _MoodSectionState extends State<_MoodSection> {
                   listIndex: i,
                   tvTabId: 'home',
                   tvRowId: 'mood-chips',
-                  onTap: () => onSelect(m.id),
+                  onTap: () {
+                    if (m.id != selectedId) {
+                      onSelect(m.id);
+                    } else {
+                      ShellTvFocusCoordinator.focusFromChipStripDown(
+                        tabId: 'home',
+                        chipRowId: 'mood-chips',
+                        resultsRowId: 'mood-results',
+                      );
+                    }
+                  },
+                  onLeftEdge: shellTvChipLeftEdge(
+                    context,
+                    tabId: 'home',
+                    rowId: 'mood-chips',
+                    index: i,
+                  ),
+                  onRightEdge: shellTvChipRightEdge(
+                    tabId: 'home',
+                    rowId: 'mood-chips',
+                    index: i,
+                    itemCount: moods.length,
+                  ),
+                  onUpEdge: () {
+                    ShellTvFocusCoordinator.moveVerticalInTab(
+                      tabId: 'home',
+                      rowId: 'mood-chips',
+                      currentIndex: i,
+                      down: false,
+                    );
+                  },
                   onDownEdge: shellTvChipDownToRow(
                     tabId: 'home',
+                    chipRowId: 'mood-chips',
                     resultsRowId: 'mood-results',
                   ),
                 );
@@ -3665,9 +3697,15 @@ class _MoodSectionState extends State<_MoodSection> {
         FutureBuilder<List<Movie>>(
           future: future,
           builder: (context, snap) {
-            final loading =
+            final waiting =
                 future == null || snap.connectionState == ConnectionState.waiting;
-            final movies = snap.data ?? const <Movie>[];
+            if (snap.hasData && snap.data!.isNotEmpty) {
+              _cachedResults = snap.data;
+            }
+            final movies = waiting && _cachedResults != null
+                ? _cachedResults!
+                : (snap.data ?? const <Movie>[]);
+            final loading = waiting && _cachedResults == null;
 
             if (loading) {
               return homeLoadingShimmer(
@@ -3728,6 +3766,10 @@ class _MoodSectionState extends State<_MoodSection> {
                   onTap: () => onMovieTap(movies[i]),
                   listIndex: i,
                   tvRowId: 'mood-results',
+                  onUpEdge: shellTvResultsUpToChips(
+                    tabId: 'home',
+                    chipRowId: 'mood-chips',
+                  ),
                 ),
               ),
               ),

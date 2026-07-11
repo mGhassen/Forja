@@ -210,11 +210,62 @@ abstract final class ShellTvFocusCoordinator {
       LogicalKeyboardKey.arrowDown => focusNextNavItem(),
       LogicalKeyboardKey.arrowUp => focusPrevNavItem(),
       LogicalKeyboardKey.arrowLeft => true, // trap
-      LogicalKeyboardKey.arrowRight => restoreTabFocus(
+      LogicalKeyboardKey.arrowRight => _restorePageFromNav(
           ShellTvFocus.currentNavTabId ?? '',
         ),
       _ => false,
     };
+  }
+
+  /// Nav RIGHT — return to the active tab page without switching tabs.
+  static bool _restorePageFromNav(String tabId) {
+    restoreTabFocusAfterNav(tabId);
+    return true;
+  }
+
+  /// Release nav and restore page focus after the rail handles RIGHT.
+  static void restoreTabFocusAfterNav(String tabId) {
+    if (tabId.isEmpty) return;
+    _releaseNavFocus();
+    void attempt() {
+      if (!restoreTabFocus(tabId)) {
+        _restoreDefault(tabId);
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      attempt();
+      if (!_pageHasFocus()) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _releaseNavFocus();
+          attempt();
+        });
+      }
+    });
+  }
+
+  static void _releaseNavFocus() {
+    if (!ShellTvFocus.anyNavFocused && !ShellTvFocus.primaryFocusIsNav) {
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  static bool _pageHasFocus() {
+    if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
+      return false;
+    }
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null) return false;
+    final ctx = primary.context;
+    return ctx != null && ctx.mounted;
+  }
+
+  static void _revealHeroForTab(String tabId) {
+    _tabHeroReveal[tabId]?.call();
+    if (!_tabHeroReveal.containsKey(tabId)) {
+      heroReveal?.call();
+    }
   }
 
   // --- Tab memory ---
@@ -230,14 +281,22 @@ abstract final class ShellTvFocusCoordinator {
     if (tabId.isEmpty) return false;
     final memory = _tabMemory[tabId];
     if (memory != null && memory.zone != ShellTvZone.nav) {
-      if (memory.node != null &&
-          memory.node!.canRequestFocus &&
-          _request(memory.node!)) {
+      if (_restoreFromMemory(tabId, memory) && _pageHasFocus()) {
         return true;
       }
-      return _restoreFromMemory(tabId, memory);
+      if (_tryRestoreLiveNode(memory) && _pageHasFocus()) {
+        return true;
+      }
     }
     return _restoreDefault(tabId);
+  }
+
+  static bool _tryRestoreLiveNode(ShellTvFocusMemory memory) {
+    final node = memory.node;
+    if (node == null || !node.canRequestFocus) return false;
+    final ctx = node.context;
+    if (ctx == null || !ctx.mounted) return false;
+    return _request(node);
   }
 
   static bool _restoreFromMemory(String tabId, ShellTvFocusMemory memory) {
@@ -268,19 +327,19 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   static bool _restoreDefault(String tabId) {
+    _revealHeroForTab(tabId);
     final node =
         _tabDefaultFocus[tabId]?.call() ?? defaultFocusForTab?.call(tabId);
     if (node != null && node.canRequestFocus) {
       return _request(node);
     }
-    return focusHero(revealFull: true, tabId: tabId);
+    return focusHero(revealFull: false, tabId: tabId);
   }
 
   static bool focusHero({bool revealFull = true, String? tabId}) {
     final tid = tabId ?? ShellTvFocus.currentNavTabId ?? '';
     if (revealFull) {
-      _tabHeroReveal[tid]?.call();
-      if (!_tabHeroReveal.containsKey(tid)) heroReveal?.call();
+      _revealHeroForTab(tid);
     }
     return ShellTvFocus.focusHomeHeroPlay();
   }
@@ -400,6 +459,51 @@ abstract final class ShellTvFocusCoordinator {
     return focusRowItem(tabId, next.rowId, target);
   }
 
+  /// Focus results row from chip strip — restores results history, not chip index.
+  static bool focusFromChipStripDown({
+    required String tabId,
+    required String chipRowId,
+    required String resultsRowId,
+  }) {
+    final results = _rowHandle(tabId, resultsRowId);
+    if (results != null && results.itemCount > 0) {
+      final idx = results.lastFocusedIndex.clamp(0, results.itemCount - 1);
+      if (focusRowItem(tabId, resultsRowId, idx)) return true;
+    }
+    final chip = _rowHandle(tabId, chipRowId);
+    if (chip == null) return false;
+    return moveVerticalInTab(
+      tabId: tabId,
+      rowId: chipRowId,
+      currentIndex: chip.lastFocusedIndex,
+      down: true,
+    );
+  }
+
+  /// Focus chip strip from results row — restores chip history, not card index.
+  static bool focusFromResultsRowUp({
+    required String tabId,
+    required String chipRowId,
+  }) {
+    final chip = _rowHandle(tabId, chipRowId);
+    if (chip == null || chip.itemCount <= 0) return false;
+    final idx = chip.lastFocusedIndex.clamp(0, chip.itemCount - 1);
+    return focusRowItem(tabId, chipRowId, idx);
+  }
+
+  static bool focusAdjacentInRow({
+    required String tabId,
+    required String rowId,
+    required int currentIndex,
+    required bool right,
+  }) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null || handle.itemCount <= 0) return false;
+    final next = right ? currentIndex + 1 : currentIndex - 1;
+    if (next < 0 || next >= handle.itemCount) return false;
+    return focusRowItem(tabId, rowId, next);
+  }
+
   static void onRowItemFocused({
     required String tabId,
     required String rowId,
@@ -449,6 +553,7 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   static bool _request(FocusNode node) {
+    if (!node.canRequestFocus) return false;
     node.requestFocus();
     return true;
   }

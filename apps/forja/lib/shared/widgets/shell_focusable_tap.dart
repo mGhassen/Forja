@@ -204,14 +204,68 @@ void shellTvUpdateRowCount({
   ShellTvFocusCoordinator.updateRowItemCount(tabId, rowId, itemCount);
 }
 
-/// D-pad down from a chip strip → mood results, or the next row if empty.
+/// D-pad down from a chip strip → results row (its last index), or next row.
 VoidCallback shellTvChipDownToRow({
   required String tabId,
+  required String chipRowId,
   required String resultsRowId,
 }) {
-  return () => ShellTvFocusCoordinator.focusRowItemOrNextBelow(
-        tabId,
-        resultsRowId,
-        0,
-      );
+  return () {
+    ShellTvFocusCoordinator.focusFromChipStripDown(
+      tabId: tabId,
+      chipRowId: chipRowId,
+      resultsRowId: resultsRowId,
+    );
+  };
+}
+
+/// D-pad up from a results row → chip strip (its last index).
+VoidCallback shellTvResultsUpToChips({
+  required String tabId,
+  required String chipRowId,
+}) {
+  return () {
+    ShellTvFocusCoordinator.focusFromResultsRowUp(
+      tabId: tabId,
+      chipRowId: chipRowId,
+    );
+  };
+}
+
+/// D-pad right between chips — explicit index step; trap at last chip.
+VoidCallback? shellTvChipRightEdge({
+  required String tabId,
+  required String rowId,
+  required int index,
+  required int itemCount,
+}) {
+  if (index >= itemCount - 1) return () {};
+  return () {
+    ShellTvFocusCoordinator.focusAdjacentInRow(
+      tabId: tabId,
+      rowId: rowId,
+      currentIndex: index,
+      right: true,
+    );
+  };
+}
+
+/// D-pad left between chips — explicit index step; index 0 uses nav left.
+VoidCallback? shellTvChipLeftEdge(
+  BuildContext context, {
+  required String tabId,
+  required String rowId,
+  required int index,
+}) {
+  if (index <= 0) {
+    return shellTvNavLeftEdge(context, listIndex: 0);
+  }
+  return () {
+    ShellTvFocusCoordinator.focusAdjacentInRow(
+      tabId: tabId,
+      rowId: rowId,
+      currentIndex: index,
+      right: false,
+    );
+  };
 }
