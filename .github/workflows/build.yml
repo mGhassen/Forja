@@ -51,6 +51,8 @@ jobs:
           flutter build windows --release
       - shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
+      - shell: bash
+        run: ./scripts/verify_installer_payload.sh windows
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Windows
@@ -75,6 +77,7 @@ jobs:
           flutter pub get
           flutter build linux --release
       - run: ./scripts/embed_rust_in_release_output.sh linux
+      - run: ./scripts/verify_installer_payload.sh linux
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Linux

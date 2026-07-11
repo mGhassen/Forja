@@ -26,11 +26,23 @@ case "$PLATFORM" in
     RELEASE="$APP/build/windows/x64/runner/Release"
     require_file "$RELEASE/forja.exe"
     require_file "$RELEASE/ffi.dll"
+    if compgen -G "$RELEASE/libmpv"*.dll > /dev/null; then
+      echo "ok: $RELEASE/libmpv*.dll"
+    else
+      echo "error: missing libmpv DLL in $RELEASE (media_kit_libs_windows_video not bundled)" >&2
+      exit 1
+    fi
     ;;
   linux)
     BUNDLE="$APP/build/linux/x64/release/bundle"
     require_file "$BUNDLE/forja"
     require_file "$BUNDLE/lib/libffi.so"
+    if compgen -G "$BUNDLE/lib/libmpv"*.so* > /dev/null; then
+      echo "ok: $BUNDLE/lib/libmpv*.so*"
+    else
+      echo "error: missing libmpv in $BUNDLE/lib (media_kit_libs_linux not bundled)" >&2
+      exit 1
+    fi
     ;;
   *)
     echo "unknown platform: $PLATFORM" >&2
