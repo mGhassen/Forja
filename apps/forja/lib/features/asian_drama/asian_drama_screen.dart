@@ -152,7 +152,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   void _openSearch() {
     pushShellRoute(
       context,
-      AppRouter.slideRoute((_) => const AsianDramaSearchScreen()),
+      AppRouter.slideShellRoute((_) => const AsianDramaSearchScreen()),
     );
   }
 

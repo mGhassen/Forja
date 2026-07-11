@@ -1080,13 +1080,17 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                 const Icon(Icons.movie, size: 18, color: Colors.amber),
                 const SizedBox(width: 8),
               ],
-              Text(
-                section.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
+              Expanded(
+                child: Text(
+                  section.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

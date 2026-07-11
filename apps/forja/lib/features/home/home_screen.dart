@@ -1677,28 +1677,21 @@ class _HomeScreenState extends State<HomeScreen>
                 : shellScaled(context, 48).clamp(24.0, 48.0),
             bottom: shellScaled(context, 16).clamp(8.0, 16.0),
             child: compact
-                ? metrics.heroActionUseFittedBox
-                    ? LayoutBuilder(
-                        builder: (context, constraints) {
-                          return ClipRect(
-                            child: Align(
-                              alignment: Alignment.bottomLeft,
-                              child: _buildCompactHeroTextColumn(
-                                heroMovie,
-                                metrics: metrics,
-                                maxHeight: constraints.maxHeight,
-                                maxWidth: constraints.maxWidth,
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    : _buildCompactHeroTextColumn(
-                        heroMovie,
-                        metrics: metrics,
-                        maxHeight: null,
-                        maxWidth: null,
-                      )
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return ClipRect(
+                        child: Align(
+                          alignment: Alignment.bottomLeft,
+                          child: _buildCompactHeroTextColumn(
+                            heroMovie,
+                            metrics: metrics,
+                            maxHeight: constraints.maxHeight,
+                            maxWidth: constraints.maxWidth,
+                          ),
+                        ),
+                      );
+                    },
+                  )
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       return ClipRect(
@@ -1729,7 +1722,8 @@ class _HomeScreenState extends State<HomeScreen>
             height: compact ? null : imageHeight,
             child: compact
                 ? _buildHeroStepIndicators(movies, axis: Axis.horizontal)
-                : Center(
+                : Align(
+                    alignment: Alignment.centerRight,
                     child: _buildHeroStepIndicators(movies),
                   ),
           ),
@@ -1744,9 +1738,7 @@ class _HomeScreenState extends State<HomeScreen>
     double? maxHeight,
     double? maxWidth,
   }) {
-    if (metrics.heroActionUseFittedBox &&
-        maxHeight != null &&
-        maxWidth != null) {
+    if (maxHeight != null && maxWidth != null) {
       final actionGap = shellHeroActionGap(context);
       final metaGap = shellHeroMetaGap(context);
       const actionRowHeight = 40.0;
@@ -2119,25 +2111,33 @@ class _HomeScreenState extends State<HomeScreen>
     if (singleLine) {
       return Row(
         children: [
-          rating,
-          if (heroMovie.releaseDate.isNotEmpty) ...[
-            SizedBox(width: gap),
-            Text(
-              heroMovie.releaseDate.split('-').first,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.55),
-                fontSize: metaFont,
-                fontWeight: FontWeight.w500,
-              ),
+          Flexible(
+            fit: FlexFit.loose,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                rating,
+                if (heroMovie.releaseDate.isNotEmpty) ...[
+                  SizedBox(width: gap),
+                  Text(
+                    heroMovie.releaseDate.split('-').first,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: metaFont,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+                if (heroMovie.mediaType == 'tv') ...[
+                  SizedBox(width: gap),
+                  _buildHeroMediaTypeBadge('SERIES'),
+                ] else if (heroMovie.mediaType == 'movie') ...[
+                  SizedBox(width: gap),
+                  _buildHeroMediaTypeBadge('FILM'),
+                ],
+              ],
             ),
-          ],
-          if (heroMovie.mediaType == 'tv') ...[
-            SizedBox(width: gap),
-            _buildHeroMediaTypeBadge('SERIES'),
-          ] else if (heroMovie.mediaType == 'movie') ...[
-            SizedBox(width: gap),
-            _buildHeroMediaTypeBadge('FILM'),
-          ],
+          ),
           if (heroMovie.genres.isNotEmpty) ...[
             SizedBox(width: gap),
             Expanded(

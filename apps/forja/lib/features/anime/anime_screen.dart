@@ -247,7 +247,7 @@ class _AnimeScreenState extends State<AnimeScreen>
   void _openSearch() {
     pushShellRoute(
       context,
-      AppRouter.slideRoute((_) => const AnimeSearchScreen()),
+      AppRouter.slideShellRoute((_) => const AnimeSearchScreen()),
     );
   }
 

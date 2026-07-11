@@ -62,15 +62,15 @@ void main() {
     expect(find.byType(FocusableControl), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('HomeMovieCard uses InkWell on mobile profile', (tester) async {
+  testWidgets('HomeMovieCard uses FocusableControl on mobile for focus border',
+      (tester) async {
     await tester.pumpWidget(
       _wrapProfile(
         profile: ShellProfile.mobile,
         child: HomeMovieCard(movie: _testMovie(), onTap: () {}),
       ),
     );
-    expect(find.byType(FocusableControl), findsNothing);
-    expect(find.byType(InkWell), findsWidgets);
+    expect(find.byType(FocusableControl), findsOneWidget);
   });
 
   testWidgets('ForjaShellChip is focusable on tv profile', (tester) async {

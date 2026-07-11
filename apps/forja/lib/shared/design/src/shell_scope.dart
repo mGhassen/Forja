@@ -3,6 +3,7 @@ import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_metrics.dart';
 import 'package:forja/shared/design/src/shell_platform.dart';
 import 'package:forja/shared/design/src/shell_profile.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 class ShellScope extends InheritedWidget {
   const ShellScope({
@@ -51,18 +52,32 @@ class ShellScope extends InheritedWidget {
 }
 
 /// Builds [ShellScope] from [resolveShellProfile].
-class ShellScopeBuilder extends StatelessWidget {
+class ShellScopeBuilder extends StatefulWidget {
   const ShellScopeBuilder({super.key, required this.builder});
 
   final Widget Function(BuildContext context, ShellProfile profile) builder;
 
   @override
+  State<ShellScopeBuilder> createState() => _ShellScopeBuilderState();
+}
+
+class _ShellScopeBuilderState extends State<ShellScopeBuilder> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final profile = resolveShellProfile(context);
+    ShellTvFocusCoordinator.tvBackPolicyEnabled =
+        shellPlatformConfigFor(profile).inputPolicy.useFocusableMoodChips;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final profile = resolveShellProfile(context);
+    final config = shellPlatformConfigFor(profile);
     return ShellScope(
       profile: profile,
-      config: shellPlatformConfigFor(profile),
-      child: Builder(builder: (context) => builder(context, profile)),
+      config: config,
+      child: Builder(builder: (context) => widget.builder(context, profile)),
     );
   }
 }

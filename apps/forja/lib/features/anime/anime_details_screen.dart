@@ -20,7 +20,7 @@ import 'anime_player_screen.dart';
 Future<T?> openAnimeDetails<T>(BuildContext context, AnimeCard anime) {
   return pushShellRoute<T>(
     context,
-    AppRouter.slideRoute((_) => AnimeDetailsScreen(anime: anime)),
+    AppRouter.slideShellRoute((_) => AnimeDetailsScreen(anime: anime)),
   );
 }
 

@@ -269,7 +269,20 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                 : shellScaled(context, 48).clamp(24.0, 48.0),
             bottom: shellScaled(context, 16).clamp(8.0, 16.0),
             child: _compact
-                ? _buildCompactTextColumn(heroSlide)
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return ClipRect(
+                        child: Align(
+                          alignment: Alignment.bottomLeft,
+                          child: _buildCompactTextColumn(
+                            heroSlide,
+                            maxHeight: constraints.maxHeight,
+                            maxWidth: constraints.maxWidth,
+                          ),
+                        ),
+                      );
+                    },
+                  )
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       return ClipRect(
@@ -300,7 +313,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             height: _compact ? null : imageHeight,
             child: _compact
                 ? _buildStepIndicators(slides, axis: Axis.horizontal)
-                : Center(child: _buildStepIndicators(slides)),
+                : Align(
+                    alignment: Alignment.centerRight,
+                    child: _buildStepIndicators(slides),
+                  ),
           ),
         ],
       ),
@@ -437,7 +453,52 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     );
   }
 
-  Widget _buildCompactTextColumn(HubHeroSlide slide) {
+  Widget _buildCompactTextColumn(
+    HubHeroSlide slide, {
+    double? maxHeight,
+    double? maxWidth,
+  }) {
+    if (maxHeight != null && maxWidth != null) {
+      final actionGap = shellHeroActionGap(context);
+      final metaGap = shellHeroMetaGap(context);
+      const actionRowHeight = 40.0;
+      const metaRowHeight = 32.0;
+      final titleHeight = (maxHeight -
+              actionGap -
+              metaGap -
+              actionRowHeight -
+              metaRowHeight)
+          .clamp(40.0, ShellTokens.heroTitleSlotHeightCompact);
+
+      return SizedBox(
+        width: maxWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: titleHeight,
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: _buildTitle(slide, compact: true),
+              ),
+            ),
+            SizedBox(height: metaGap),
+            SizedBox(
+              height: metaRowHeight,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _buildMetaRow(slide),
+              ),
+            ),
+            SizedBox(height: actionGap),
+            _buildActionRow(slide),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.end,
@@ -606,42 +667,50 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
 
     return Row(
       children: [
-        if (rating != null) rating,
-        if (slide.year != null && slide.year!.isNotEmpty) ...[
-          if (rating != null) SizedBox(width: gap),
-          Text(
-            slide.year!,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
-              fontSize: metaFont,
-              fontWeight: FontWeight.w500,
-            ),
+        Flexible(
+          fit: FlexFit.loose,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (rating != null) rating,
+              if (slide.year != null && slide.year!.isNotEmpty) ...[
+                if (rating != null) SizedBox(width: gap),
+                Text(
+                  slide.year!,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: metaFont,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              if (slide.badge != null && slide.badge!.isNotEmpty) ...[
+                SizedBox(width: gap),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
+                    vertical: shellScaled(context, 3).clamp(2.0, 3.0),
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                    borderRadius: BorderRadius.circular(
+                      shellScaled(context, 4).clamp(2.0, 4.0),
+                    ),
+                  ),
+                  child: Text(
+                    slide.badge!,
+                    style: TextStyle(
+                      fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white60,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
-        if (slide.badge != null && slide.badge!.isNotEmpty) ...[
-          SizedBox(width: gap),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
-              vertical: shellScaled(context, 3).clamp(2.0, 3.0),
-            ),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-              borderRadius: BorderRadius.circular(
-                shellScaled(context, 4).clamp(2.0, 4.0),
-              ),
-            ),
-            child: Text(
-              slide.badge!,
-              style: TextStyle(
-                fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
-                fontWeight: FontWeight.bold,
-                color: Colors.white60,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-        ],
+        ),
         if (slide.genres.isNotEmpty) ...[
           SizedBox(width: gap),
           Expanded(

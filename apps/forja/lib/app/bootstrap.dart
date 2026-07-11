@@ -31,6 +31,7 @@ import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_back_handler.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_remote_debug.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
@@ -69,6 +70,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // TV profile must be set before any WebView warm-up (native workaround in
   // ForjaApplication.onCreate; Dart patch uses PlatformInfo).
   await PlatformChannel.initialize();
+  ShellTvFocusCoordinator.tvBackPolicyEnabled =
+      PlatformInfo.isAndroidTv || PlatformChannel.forceAndroidTv;
 
   // Configure InAppWebView (Android only — not supported on iOS)
   if (Platform.isAndroid) {

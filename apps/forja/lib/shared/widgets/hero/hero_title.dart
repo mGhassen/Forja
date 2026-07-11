@@ -77,7 +77,7 @@ class _DetailsHeroTitle extends StatelessWidget {
       letterSpacing: -1.2,
     );
     return Stack(
-      clipBehavior: Clip.none,
+      clipBehavior: Clip.hardEdge,
       children: [
         Transform.translate(
           offset: const Offset(-1.5, 0),

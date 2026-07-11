@@ -331,21 +331,32 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
           child: AnimatedBuilder(
             animation: _scale,
             builder: (context, child) {
-              Widget body = Transform.scale(
-                scale: _scale.value,
-                alignment: Alignment.center,
-                child: child,
-              );
+              Widget content = child!;
               if (widget.showFocusBorder && _isFocused) {
-                body = DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(widget.borderRadius),
-                    border: Border.all(color: Colors.white, width: 1),
-                  ),
-                  child: body,
+                content = Stack(
+                  clipBehavior: Clip.none,
+                  fit: StackFit.passthrough,
+                  children: [
+                    content,
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius:
+                                BorderRadius.circular(widget.borderRadius),
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               }
-              return body;
+              return Transform.scale(
+                scale: _scale.value,
+                alignment: Alignment.center,
+                child: content,
+              );
             },
             child: widget.child,
           ),

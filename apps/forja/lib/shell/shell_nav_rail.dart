@@ -344,6 +344,8 @@ class _TypewriterLabelState extends State<_TypewriterLabel> {
     return Text(
       widget.text.substring(0, end),
       textAlign: TextAlign.center,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: widget.style,
     );
   }

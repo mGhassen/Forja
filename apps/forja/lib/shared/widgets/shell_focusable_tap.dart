@@ -143,11 +143,11 @@ Widget shellFocusableTap({
     tvZone: tvZone,
   );
 
-  if (policy.useFocusableMoodChips) {
+  if (policy.useFocusableMoodChips || showFocusBorder) {
     return FocusableControl(
       onTap: onTap,
       borderRadius: borderRadius,
-      scaleOnFocus: scaleOnFocus,
+      scaleOnFocus: policy.useFocusableMoodChips ? scaleOnFocus : 1.0,
       showFocusBorder: showFocusBorder,
       onLeftEdge: resolvedLeftEdge,
       onUpEdge: onUpEdge,

@@ -228,6 +228,10 @@ abstract final class ShellTvFocusCoordinator {
     }
 
     if (ShellTvFocus.currentNavTabId == null) {
+      if (tvBackPolicyEnabled) {
+        _focusActiveNavFromPage();
+        return true;
+      }
       return false;
     }
 

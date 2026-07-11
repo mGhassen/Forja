@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// Android TV / leanback remote Back key — pop routes or focus active nav tab.
@@ -25,6 +24,10 @@ abstract final class ShellTvBackHandler {
     if (key != LogicalKeyboardKey.goBack &&
         key != LogicalKeyboardKey.escape) {
       return false;
+    }
+    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+      ShellTvFocusCoordinator.handleShellBackKey();
+      return true;
     }
     return ShellTvFocusCoordinator.handleShellBackKey();
   }

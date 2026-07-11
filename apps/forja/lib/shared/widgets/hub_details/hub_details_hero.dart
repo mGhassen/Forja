@@ -273,10 +273,11 @@ class _HubHeroMainColumn extends StatelessWidget {
     required bool showOverview,
     required bool showProgress,
     required bool singleLineMeta,
+    required double titleHeight,
   }) {
     final metaHeight =
         singleLineMeta ? _metaBlockHeight : _metaBlockHeightWrapped;
-    var used = _titleBlockHeight + 14 + metaHeight;
+    var used = titleHeight + 14 + metaHeight;
     if (showSubtitle) used += 6 + _subtitleBlockHeight;
     if (showGenres) used += 10 + _genreBlockHeight;
     if (showOverview) used += _overviewGap + _overviewSlotHeight;
@@ -294,6 +295,7 @@ class _HubHeroMainColumn extends StatelessWidget {
     var showOverview = overview.isNotEmpty;
     var showProgress =
         positionMs != null && durationMs != null && durationMs! > 0;
+    var titleHeight = _titleBlockHeight;
 
     if (bounded) {
       if (_usedHeight(
@@ -302,6 +304,7 @@ class _HubHeroMainColumn extends StatelessWidget {
             showOverview: showOverview,
             showProgress: showProgress,
             singleLineMeta: true,
+            titleHeight: titleHeight,
           ) >
           maxHeight!) {
         showOverview = false;
@@ -312,6 +315,7 @@ class _HubHeroMainColumn extends StatelessWidget {
             showOverview: showOverview,
             showProgress: showProgress,
             singleLineMeta: true,
+            titleHeight: titleHeight,
           ) >
           maxHeight!) {
         showGenres = false;
@@ -322,6 +326,7 @@ class _HubHeroMainColumn extends StatelessWidget {
             showOverview: showOverview,
             showProgress: showProgress,
             singleLineMeta: true,
+            titleHeight: titleHeight,
           ) >
           maxHeight!) {
         showSubtitle = false;
@@ -332,9 +337,30 @@ class _HubHeroMainColumn extends StatelessWidget {
             showOverview: showOverview,
             showProgress: showProgress,
             singleLineMeta: true,
+            titleHeight: titleHeight,
           ) >
           maxHeight!) {
         showProgress = false;
+      }
+      if (_usedHeight(
+            showSubtitle: showSubtitle,
+            showGenres: showGenres,
+            showOverview: showOverview,
+            showProgress: showProgress,
+            singleLineMeta: true,
+            titleHeight: titleHeight,
+          ) >
+          maxHeight!) {
+        titleHeight = (maxHeight! -
+                _usedHeight(
+                  showSubtitle: showSubtitle,
+                  showGenres: showGenres,
+                  showOverview: showOverview,
+                  showProgress: showProgress,
+                  singleLineMeta: true,
+                  titleHeight: 0,
+                ))
+            .clamp(48.0, _titleBlockHeight);
       }
     }
 
@@ -347,7 +373,7 @@ class _HubHeroMainColumn extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            height: _titleBlockHeight,
+            height: titleHeight,
             child: Align(
               alignment: Alignment.bottomLeft,
               child: HubHeroTitle(title: title),
@@ -397,6 +423,7 @@ class _HubHeroMainColumn extends StatelessWidget {
                             showOverview: false,
                             showProgress: showProgress,
                             singleLineMeta: bounded,
+                            titleHeight: titleHeight,
                           ) -
                           _overviewGap)
                       .clamp(48.0, _overviewSlotHeight)
@@ -448,7 +475,7 @@ class HubHeroTitle extends StatelessWidget {
       letterSpacing: -1.2,
     );
     return Stack(
-      clipBehavior: Clip.none,
+      clipBehavior: Clip.hardEdge,
       children: [
         Transform.translate(
           offset: const Offset(-1.5, 0),

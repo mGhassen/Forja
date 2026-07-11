@@ -209,7 +209,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
   void _openSearch() {
     pushShellRoute(
       context,
-      AppRouter.slideRoute((_) => const SearchScreen(overlay: true)),
+      AppRouter.slideShellRoute((_) => const SearchScreen(overlay: true)),
     );
   }
 
