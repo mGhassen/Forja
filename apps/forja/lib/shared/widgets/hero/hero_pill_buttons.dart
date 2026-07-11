@@ -168,6 +168,7 @@ class HeroPillPlayButton extends StatelessWidget {
         tvMeta: tvMeta,
         hoverScale: 1.03,
         pressScale: 0.97,
+        scaleAlignment: Alignment.centerLeft,
         builder: (active, pressed) {
           return _HeroPillPlaySurface(
             style: style,

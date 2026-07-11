@@ -16,6 +16,7 @@ class ForjaInteractive extends StatefulWidget {
     this.onTap,
     this.hoverScale = 1.06,
     this.pressScale = 0.94,
+    this.scaleAlignment = Alignment.center,
     this.autoFocus = false,
     this.focusNode,
     this.onKeyEvent,
@@ -26,6 +27,7 @@ class ForjaInteractive extends StatefulWidget {
   final VoidCallback? onTap;
   final double hoverScale;
   final double pressScale;
+  final Alignment scaleAlignment;
   final bool autoFocus;
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
@@ -88,6 +90,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     final policy = _policy(context);
     final body = AnimatedScale(
       scale: _scaleFor(policy),
+      alignment: widget.scaleAlignment,
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       child: widget.builder(_activeFor(policy), _pressed),

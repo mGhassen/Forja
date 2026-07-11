@@ -565,6 +565,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       _current111477FileUrl = widget.sources!.first.url;
     }
     widget.sourcesListNotifier?.addListener(_onLiveSourcesUpdated);
+    if (widget.tvRemoteEnabled) {
+      _hwDecMode = _HwDecMode.software;
+    }
 
     // ── Lifecycle Observer ───────────────────────────────────────────────
     WidgetsBinding.instance.addObserver(this);
@@ -619,10 +622,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // androidAttachSurfaceAfterVideoParameters: false fixes a blank-screen
     // race condition on some Android devices where the surface is attached
     // before mpv has negotiated video dimensions.
+    // ATV emulators often lack a working GLES stack — HW decode + GPU
+    // surface fails with EGL_BAD_ATTRIBUTE right after the first frame.
     _controller = VideoController(
       _player,
-      configuration: const VideoControllerConfiguration(
-        enableHardwareAcceleration: true,
+      configuration: VideoControllerConfiguration(
+        enableHardwareAcceleration: !widget.tvRemoteEnabled,
+        hwdec: widget.tvRemoteEnabled ? 'no' : null,
         androidAttachSurfaceAfterVideoParameters: false,
       ),
     );
@@ -648,18 +654,20 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       if (!mounted) return;
       await waitForRouteTransition(context);
       if (!mounted) return;
-      // Lock to landscape and wait for the rotation to physically
-      // complete before starting heavy media work.  Starting codec
-      // initialization while the surface is still rotating causes
-      // BLASTBufferQueue saturation and orientation ping-pong.
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-      ]);
-      // Let Android finish the rotation & surface resize.
-      // MediaTek/Transsion devices need a longer wait — the
-      // fbcNotifyBufferUX storm can last several seconds.
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (!mounted) return;
+      if (!widget.tvRemoteEnabled) {
+        // Lock to landscape and wait for the rotation to physically
+        // complete before starting heavy media work.  Starting codec
+        // initialization while the surface is still rotating causes
+        // BLASTBufferQueue saturation and orientation ping-pong.
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+        ]);
+        // Let Android finish the rotation & surface resize.
+        // MediaTek/Transsion devices need a longer wait — the
+        // fbcNotifyBufferUX storm can last several seconds.
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+      }
 
       _loadSubtitlePrefs();
       _initPlayback();
@@ -1064,7 +1072,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        if (needsDuration && !await waitForSeekableDuration(_player)) {
+        if (needsDuration &&
+            !await waitForSeekableDuration(
+              _player,
+              timeout: widget.tvRemoteEnabled
+                  ? const Duration(seconds: 15)
+                  : const Duration(seconds: 5),
+            )) {
           debugPrint('[Player] Source $i opened without duration: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -1094,6 +1108,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _statusController.complete();
         _markSourceActive(i);
         widget.onPlaybackStarted?.call();
+        await _ensureTvPlaybackStarted();
         return true;
       } catch (e) {
         debugPrint('[Player] Source $i catch error: $e');
@@ -1109,6 +1124,16 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       }
     }
     return false;
+  }
+
+  Future<void> _ensureTvPlaybackStarted() async {
+    if (!widget.tvRemoteEnabled || _disposed) return;
+    if (_player.state.playing) return;
+    try {
+      await _player.play();
+    } catch (e) {
+      debugPrint('[Player] TV play() failed: $e');
+    }
   }
 
   Future<void> _initPlayback({int sourceStartIndex = 0}) async {
@@ -1168,6 +1193,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _detectHlsQualities(openUrl, widget.headers);
           _playbackConfirmed = true;
           widget.onPlaybackStarted?.call();
+          await _ensureTvPlaybackStarted();
           return;
         } catch (e) {
           retryCount++;
@@ -1696,11 +1722,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // ── Decoding ─────────────────────────────────────────────────────────
     // auto-safe on mobile: uses MediaCodec (Android) / VideoToolbox (iOS),
     // whitelisted to formats each platform reliably supports.
+    // TV: full software path — GLES/EGL is unreliable on leanback emulators.
     await safeSet('hwdec', _hwDecMode.mpvValue);
+    await safeSet('vd-lavc-dr', widget.tvRemoteEnabled ? 'no' : 'yes');
 
-    // Zero-copy direct rendering — decoder writes straight to GPU texture.
-    // Big win on mobile for battery + throughput on H.265/4K content.
-    await safeSet('vd-lavc-dr', 'yes');
+    if (widget.tvRemoteEnabled && Platform.isAndroid) {
+      // OpenSLES misconfigures on some ATV images (0 frames delivered).
+      await safeSet('ao', 'audiotrack');
+    }
 
     // Auto thread count (0 = let mpv decide). On mobile 4–8 cores typical.
     await safeSet('vd-lavc-threads', '0');
