@@ -9,7 +9,6 @@ import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 
 /// Colored Live / Movies / Series shelf — same hues as the old section tiles.
@@ -203,14 +202,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
-        final compactNav =
-            MediaQuery.sizeOf(context).width <
-            ShellTokens.shellNavCompactMaxWidth;
-        final leadingInset = compactNav
-            ? (DesktopWindowChrome.leadingInset(context) +
-                  ShellTokens.shellNavMenuButtonWidth)
-            : ShellTokens.bodyHorizontalPadding;
-        final leftPadding = leadingInset.clamp(
+        final leftPadding = ShellTokens.compactChromeLeadingInset(context).clamp(
           ShellTokens.bodyHorizontalPadding,
           constraints.maxWidth * 0.28,
         );

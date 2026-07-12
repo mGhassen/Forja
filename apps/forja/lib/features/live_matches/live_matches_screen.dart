@@ -486,7 +486,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+      padding: EdgeInsets.fromLTRB(
+        ShellTokens.compactChromeLeadingInset(context),
+        16,
+        24,
+        12,
+      ),
       child: Row(
         children: [
           Icon(Icons.sports_soccer_rounded, color: ForjaShellColors.sectionAccent, size: 28),
@@ -515,7 +520,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       ];
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.fromLTRB(
+          ShellTokens.compactChromeLeadingInset(context),
+          8,
+          ShellTokens.bodyHorizontalPadding,
+          8,
+        ),
         child: Row(
           children: [
             for (var i = 0; i < labels.length; i++)
@@ -537,15 +547,20 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       const Tab(text: 'All'),
       ..._sports.map((s) => Tab(text: s.name)),
     ];
-    return TabBar(
-      controller: _tabController,
-      isScrollable: true,
-      indicatorColor: ForjaShellColors.cinematic.navUnderline,
-      labelColor: ForjaShellColors.cinematic.textPrimary,
-      unselectedLabelColor: ForjaShellColors.cinematic.textSecondary,
-      tabAlignment: TabAlignment.start,
-      dividerColor: ForjaShellColors.cinematic.borderSubtle,
-      tabs: tabs,
+    return Padding(
+      padding: EdgeInsets.only(
+        left: ShellTokens.compactChromeLeadingInset(context),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        indicatorColor: ForjaShellColors.cinematic.navUnderline,
+        labelColor: ForjaShellColors.cinematic.textPrimary,
+        unselectedLabelColor: ForjaShellColors.cinematic.textSecondary,
+        tabAlignment: TabAlignment.start,
+        dividerColor: ForjaShellColors.cinematic.borderSubtle,
+        tabs: tabs,
+      ),
     );
   }
 

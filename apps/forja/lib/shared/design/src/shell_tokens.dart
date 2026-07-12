@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -20,6 +21,25 @@ abstract final class ShellTokens {
 
   /// Width reserved for the shell menu button when the rail is collapsed.
   static const double shellNavMenuButtonWidth = 56;
+
+  /// Horizontal space for the macOS traffic-light cluster (hidden title bar).
+  static const double macTrafficLightLeadingInset = 78;
+
+  /// Shell nav rail collapses to ☰ + drawer below this width.
+  static bool usesCompactNavDrawer(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < shellNavCompactMaxWidth;
+
+  /// Left edge for compact ☰ — clears macOS traffic lights.
+  static double compactMenuLeadingInset(BuildContext context) {
+    final mac = Platform.isMacOS ? macTrafficLightLeadingInset : 0.0;
+    return math.max(bodyHorizontalPadding, mac);
+  }
+
+  /// Left inset for tab chrome that follows compact ☰ (menu lane + button).
+  static double compactChromeLeadingInset(BuildContext context) {
+    if (!usesCompactNavDrawer(context)) return bodyHorizontalPadding;
+    return compactMenuLeadingInset(context) + shellNavMenuButtonWidth;
+  }
   static const double navRailIconSize = 30;
   /// Resting rail icon scale (below [navRailIconSize]).
   static const double navRailIconIdleScale = 0.82;
@@ -199,10 +219,11 @@ abstract final class ShellTokens {
   }
 
   /// Back chevron on details overlays — clears compact ☰ when the rail collapses.
-  static double detailsBackButtonLeftInset(double viewportWidth) {
+  static double detailsBackButtonLeftInset(BuildContext context) {
+    final viewportWidth = MediaQuery.sizeOf(context).width;
     final base = detailsContentLeftInset(viewportWidth);
-    if (viewportWidth >= shellNavCompactMaxWidth) return base;
-    final menuLane = bodyHorizontalPadding + shellNavMenuButtonWidth;
+    if (!usesCompactNavDrawer(context)) return base;
+    final menuLane = compactChromeLeadingInset(context);
     return base > menuLane ? base : menuLane;
   }
 

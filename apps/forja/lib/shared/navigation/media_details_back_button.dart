@@ -21,9 +21,7 @@ class MediaDetailsBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned(
       top: topInset(context),
-      left: ShellTokens.detailsBackButtonLeftInset(
-        MediaQuery.sizeOf(context).width,
-      ),
+      left: ShellTokens.detailsBackButtonLeftInset(context),
       child: ForjaPlainIcon(
         icon: Icons.chevron_left_rounded,
         size: 28,

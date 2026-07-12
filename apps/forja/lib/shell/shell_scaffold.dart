@@ -122,8 +122,8 @@ class _ShellScaffoldState extends State<ShellScaffold> {
               left: false,
               right: false,
               child: Padding(
-                padding: const EdgeInsets.only(
-                  left: ShellTokens.bodyHorizontalPadding,
+                padding: EdgeInsets.only(
+                  left: ShellTokens.compactMenuLeadingInset(context),
                   top: ShellTokens.shellHeaderTopPadding,
                 ),
                 child: ShellNavMenuButton(

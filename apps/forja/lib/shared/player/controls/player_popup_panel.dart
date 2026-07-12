@@ -81,6 +81,7 @@ class PlayerPopupPanel {
     double anchorGap = 8,
     EdgeInsets screenPadding = const EdgeInsets.all(8),
     VoidCallback? onBack,
+    bool centered = false,
   }) {
     dismiss();
 
@@ -176,6 +177,13 @@ class PlayerPopupPanel {
                   width: width,
                   child: panel,
                 );
+        } else if (centered) {
+          panelLayer = Center(
+            child: Padding(
+              padding: screenPadding,
+              child: panel,
+            ),
+          );
         } else {
           panelLayer = Align(
             alignment: alignment,
@@ -193,7 +201,11 @@ class PlayerPopupPanel {
               child: GestureDetector(
                 onTap: close,
                 behavior: HitTestBehavior.opaque,
-                child: const SizedBox.shrink(),
+                child: ColoredBox(
+                  color: centered
+                      ? Colors.black.withValues(alpha: 0.62)
+                      : Colors.transparent,
+                ),
               ),
             ),
             panelLayer,

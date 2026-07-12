@@ -774,7 +774,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         ),
         Padding(
           padding: EdgeInsets.fromLTRB(
-            ShellTokens.searchPageInset,
+            ShellTokens.usesCompactNavDrawer(context)
+                ? ShellTokens.compactChromeLeadingInset(context)
+                : ShellTokens.searchPageInset,
             _searchPageTopInset(context),
             ShellTokens.searchPageInset,
             ShellTokens.searchPageInset,

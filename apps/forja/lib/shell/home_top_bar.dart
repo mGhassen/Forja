@@ -297,8 +297,10 @@ class _HomeTopBarState extends State<HomeTopBar> {
           height: ShellTokens.homeTopBarHeight,
           child: Padding(
             padding: EdgeInsets.fromLTRB(
-              ShellTokens.bodyHorizontalPadding +
-                  (compactNav ? 0 : ShellTokens.homeTopBarMenuLeadingInset),
+              compactNav
+                  ? ShellTokens.compactMenuLeadingInset(context)
+                  : ShellTokens.bodyHorizontalPadding +
+                      ShellTokens.homeTopBarMenuLeadingInset,
               ShellTokens.shellHeaderTopPadding,
               ShellTokens.bodyHorizontalPadding,
               0,
