@@ -3047,6 +3047,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       is111477: _currentProvider == 'service111477',
       sourceStatuses: _buildSourceStatuses(),
       playbackConfirmed: _playbackConfirmed,
+      mediaPlaying: _isPlayingNotifier.value,
     );
   }
 
@@ -3156,6 +3157,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       _statusController,
       _sourceMenuRevision,
       _isReloadingStreams,
+      _isPlayingNotifier,
       _providerLoadFailures,
       ProviderScoreMemory.revision,
     ];
@@ -3211,8 +3213,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       onSelectProvider: _switchProvider,
       onSelectSource: _switchToStreamSource,
       onCheckSource: _checkStreamSource,
-      onPause: () {
-        _player.pause();
+      onTogglePlayPause: () {
+        _player.playOrPause();
         _onMouseMove();
       },
       anchorContext: anchorContext,

@@ -3437,6 +3437,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       is111477: _currentProvider == 'service111477',
       sourceStatuses: _buildSourceStatuses(),
       playbackConfirmed: _playbackConfirmed,
+      mediaPlaying: _isPlayingNotifier.value,
     );
   }
 
@@ -3546,6 +3547,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       _statusController,
       _sourceMenuRevision,
       _isReloadingStreams,
+      _isPlayingNotifier,
       _providerLoadFailures,
       ProviderScoreMemory.revision,
     ];
@@ -3602,8 +3604,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       onSelectProvider: _switchProvider,
       onSelectSource: _switchToStreamSource,
       onCheckSource: _checkStreamSource,
-      onPause: () {
-        _player.pause();
+      onTogglePlayPause: () {
+        _player.playOrPause();
         _startHideTimer();
       },
       anchorContext: anchorContext,

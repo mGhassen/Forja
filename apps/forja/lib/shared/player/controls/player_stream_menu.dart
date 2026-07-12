@@ -25,6 +25,7 @@ class PlayerStreamMenuState {
     required this.is111477,
     this.sourceStatuses = const [],
     this.playbackConfirmed = false,
+    this.mediaPlaying = false,
   });
 
   final String? currentProviderId;
@@ -35,6 +36,7 @@ class PlayerStreamMenuState {
   final bool is111477;
   final List<PlayerSourceStatus> sourceStatuses;
   final bool playbackConfirmed;
+  final bool mediaPlaying;
 }
 
 /// Unified server + source picker — right-side panel with grouped providers.
@@ -104,7 +106,7 @@ class PlayerStreamMenu {
     required Future<bool> Function(StreamSource source, int index,
             [String? providerId])
         onCheckSource,
-    VoidCallback? onPause,
+    VoidCallback? onTogglePlayPause,
     bool providersEnabled = true,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
@@ -155,7 +157,7 @@ class PlayerStreamMenu {
           onSelectProvider: onSelectProvider,
           onSelectSource: onSelectSource,
           onCheckSource: onCheckSource,
-          onPause: onPause,
+          onTogglePlayPause: onTogglePlayPause,
           providersEnabled: providersEnabled,
           refreshListenable: refreshListenable,
           onReload: onReload,
@@ -189,7 +191,7 @@ class PlayerStreamMenu {
     bool useIndexedStatuses = false,
     String? providerId,
     String? serverLabel,
-    VoidCallback? onPause,
+    VoidCallback? onTogglePlayPause,
   }) {
     final statuses = state.sourceStatuses;
     final ordered = _orderedSourceEntries(
@@ -226,6 +228,7 @@ class PlayerStreamMenu {
                 meta: entry.value.type.toUpperCase(),
                 selected: isCurrent,
                 isPlaying: isPlaying,
+                mediaPlaying: isPlaying && state.mediaPlaying,
                 status: status,
                 onCheck: () async {
                   onUrlStatus(url, PlayerSourceStatus.checking);
@@ -245,7 +248,8 @@ class PlayerStreamMenu {
                   dismiss();
                   await onSelectSource(entry.value, entry.key);
                 },
-                onPause: isPlaying ? onPause : null,
+                onTogglePlayPause:
+                    isPlaying ? onTogglePlayPause : null,
               );
             },
           ),
@@ -891,7 +895,7 @@ class _StreamMenuOverlay extends StatefulWidget {
     required this.onSelectSource,
     required this.onCheckSource,
     required this.onClose,
-    this.onPause,
+    this.onTogglePlayPause,
     this.providers,
     this.providerSourcesCache,
     this.providerLoadFailures,
@@ -920,7 +924,7 @@ class _StreamMenuOverlay extends StatefulWidget {
   final Future<void> Function(StreamSource source, int index) onSelectSource;
   final Future<bool> Function(StreamSource source, int index, [String? providerId])
       onCheckSource;
-  final VoidCallback? onPause;
+  final VoidCallback? onTogglePlayPause;
   final bool providersEnabled;
   final Listenable? refreshListenable;
   final Future<void> Function()? onReload;
@@ -1231,7 +1235,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                 }
                 await widget.onSelectSource(source, index);
               },
-              onPause: widget.onPause,
+              onTogglePlayPause: widget.onTogglePlayPause,
             ),
           ),
       ],
@@ -1458,17 +1462,19 @@ class _FlatMenuRow extends StatefulWidget {
     this.status,
     this.onCheck,
     this.onPlay,
-    this.onPause,
+    this.onTogglePlayPause,
+    this.mediaPlaying = false,
   });
 
   final String label;
   final String? meta;
   final bool selected;
   final bool isPlaying;
+  final bool mediaPlaying;
   final PlayerSourceStatus? status;
   final VoidCallback? onCheck;
   final VoidCallback? onPlay;
-  final VoidCallback? onPause;
+  final VoidCallback? onTogglePlayPause;
 
   @override
   State<_FlatMenuRow> createState() => _FlatMenuRowState();
@@ -1482,7 +1488,8 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     final failed = widget.status == PlayerSourceStatus.failed;
     final canPlay = widget.onPlay != null && !widget.isPlaying && !failed;
     final showPlayArrow = canPlay && _hovered;
-    final showPause = widget.onPause != null && widget.isPlaying;
+    final showTransport =
+        widget.onTogglePlayPause != null && widget.isPlaying;
     final activeColor = playerSourceStatusColor(PlayerSourceStatus.active);
 
     return MouseRegion(
@@ -1550,15 +1557,17 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
                 SizedBox(
                   width: 28,
                   height: 28,
-                  child: showPause
+                  child: showTransport
                       ? Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: widget.onPause,
+                            onTap: widget.onTogglePlayPause,
                             borderRadius: BorderRadius.circular(4),
                             hoverColor: Colors.white.withValues(alpha: 0.08),
                             child: Icon(
-                              Icons.pause_rounded,
+                              widget.mediaPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
                               size: 22,
                               color: activeColor,
                             ),
