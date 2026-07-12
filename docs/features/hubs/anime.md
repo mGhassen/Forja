@@ -19,6 +19,7 @@ Tap **Anime** in the navigation bar.
 - Open details with episodes
 - Toggle **SUB** / **DUB** before playback
 - Resume from continue watching; clear progress with the trash icon next to **Resume** on details
+- Hover a continue watching card (desktop) to scale it and show a brand-green play button
 - Play in the anime player — launches once ~4 sources work (Settings order), then keeps finding more in the background so the in-player source menu fills while you watch
 - Track watch history per series (sub/dub preference)
 

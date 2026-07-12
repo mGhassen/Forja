@@ -49,6 +49,25 @@ void main() {
   );
 
   group('PlaybackEngine resolver selection', () {
+    test('kisskh skips failed-url blocklist during ranking', () async {
+      PlaybackSelection.recordFailedUrl('https://cdn.example/stream.m3u8');
+      addTearDown(PlaybackSelection.clearFailedUrls);
+
+      final resolver = _RecordingResolver();
+      final hit = await PlaybackEngine.resolveStreamingRace(
+        providers: {
+          'kisskh': {'dramaId': 1},
+        },
+        movie: movie,
+        season: 1,
+        episode: 1,
+        resolver: resolver,
+        maxInFlight: 1,
+      );
+      expect(hit, isNotNull);
+      expect(hit!.streamUrl, 'https://cdn.example/stream.m3u8');
+    });
+
     test('single kisskh provider uses custom resolver at high maxInFlight', () async {
       final resolver = _RecordingResolver();
       final hit = await PlaybackEngine.resolveStreamingRace(

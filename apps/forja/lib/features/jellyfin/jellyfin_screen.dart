@@ -4,8 +4,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/features/jellyfin/catalog/jellyfin_service.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'jellyfin_details_screen.dart';
 
 // ─── Jellyfin Palette ────────────────────────────────────────────────────────
@@ -27,6 +29,190 @@ class _HoverCard extends StatelessWidget {
       onTap: onTap!,
       scale: 1.04,
       child: child,
+    );
+  }
+}
+
+class _JellyfinLandscapeCard extends StatefulWidget {
+  const _JellyfinLandscapeCard({
+    required this.item,
+    required this.onTap,
+    required this.imageUrl,
+    required this.emptyThumb,
+    required this.listIndex,
+    this.showProgress = false,
+    this.showEpisodeInfo = false,
+  });
+
+  final JellyfinItem item;
+  final VoidCallback onTap;
+  final String? imageUrl;
+  final Widget emptyThumb;
+  final int listIndex;
+  final bool showProgress;
+  final bool showEpisodeInfo;
+
+  @override
+  State<_JellyfinLandscapeCard> createState() => _JellyfinLandscapeCardState();
+}
+
+class _JellyfinLandscapeCardState extends State<_JellyfinLandscapeCard> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool _active(BuildContext context) => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    final active = _active(context);
+
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      listIndex: widget.listIndex,
+      borderRadius: 14,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: AnimatedScale(
+        scale: active ? 1.04 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: SizedBox(
+          width: 260,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: _jfSurface,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (widget.imageUrl != null)
+                        CachedNetworkImage(
+                          imageUrl: widget.imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (c, u) => Shimmer.fromColors(
+                            baseColor: _jfSurface,
+                            highlightColor: _jfSurfaceLight,
+                            child: Container(color: _jfSurface),
+                          ),
+                          errorWidget: (c, u, e) => widget.emptyThumb,
+                        )
+                      else
+                        widget.emptyThumb,
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        height: 60,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.8),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      ShellCardPlayOverlay(active: active),
+                      if (item.isPlayed)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: _jfBlue,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _jfBlue.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      if (widget.showProgress && item.playbackProgress > 0)
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(14),
+                              bottomRight: Radius.circular(14),
+                            ),
+                            child: LinearProgressIndicator(
+                              value: item.playbackProgress,
+                              minHeight: 3,
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.1),
+                              valueColor:
+                                  const AlwaysStoppedAnimation(_jfBlue),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.showEpisodeInfo && item.seriesName != null
+                    ? item.seriesName!
+                    : item.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (widget.showEpisodeInfo && item.type == 'Episode')
+                Text(
+                  'S${item.parentIndexNumber ?? '?'}E${item.indexNumber ?? '?'} · ${item.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 11,
+                  ),
+                )
+              else if (item.productionYear != null)
+                Text(
+                  '${item.productionYear}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.35),
+                    fontSize: 11,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1027,8 +1213,26 @@ class _JellyfinScreenState extends State<JellyfinScreen>
             itemCount: items.length,
             itemBuilder: (_, i) => Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: _buildLandscapeCard(items[i],
-                  showProgress: showProgress, showEpisodeInfo: showEpisodeInfo),
+              child: _JellyfinLandscapeCard(
+                item: items[i],
+                listIndex: i,
+                showProgress: showProgress,
+                showEpisodeInfo: showEpisodeInfo,
+                onTap: () {
+                  final item = items[i];
+                  if (item.type == 'Episode' && item.seriesId != null) {
+                    _openDetails(JellyfinItem(
+                      id: item.seriesId!,
+                      name: item.seriesName ?? item.name,
+                      type: 'Series',
+                    ));
+                  } else {
+                    _openDetails(item);
+                  }
+                },
+                imageUrl: _landscapeImageUrl(items[i]),
+                emptyThumb: _emptyThumb(items[i]),
+              ),
             ),
           ),
         ),
@@ -1036,135 +1240,25 @@ class _JellyfinScreenState extends State<JellyfinScreen>
     );
   }
 
-  Widget _buildLandscapeCard(JellyfinItem item,
-      {bool showProgress = false, bool showEpisodeInfo = false}) {
-    // Use backdrop or primary image
-    final imageUrl = item.backdropImageTags.isNotEmpty
-        ? _jf.getBackdropUrl(item.id, tag: item.backdropImageTags.first, maxWidth: 600)
-        : (item.imageTags.containsKey('Primary')
-            ? _jf.getPosterUrl(item.id, tag: item.imageTags['Primary'], maxWidth: 500)
-            : (item.seriesId != null
-                ? _jf.getPosterUrl(item.seriesId!, maxWidth: 500)
-                : null));
-
-    return _HoverCard(
-      onTap: () {
-        if (item.type == 'Episode' && item.seriesId != null) {
-          _openDetails(JellyfinItem(id: item.seriesId!, name: item.seriesName ?? item.name, type: 'Series'));
-        } else {
-          _openDetails(item);
-        }
-      },
-      child: SizedBox(
-        width: 260,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Thumbnail (16:9)
-            Expanded(
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: _jfSurface,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (imageUrl != null)
-                      CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (c, u) => Shimmer.fromColors(
-                          baseColor: _jfSurface, highlightColor: _jfSurfaceLight,
-                          child: Container(color: _jfSurface)),
-                        errorWidget: (c, u, e) => _emptyThumb(item),
-                      )
-                    else
-                      _emptyThumb(item),
-
-                    // Bottom gradient
-                    Positioned(
-                      bottom: 0, left: 0, right: 0, height: 60,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black.withValues(alpha: 0.8)],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Play overlay
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                        ),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
-                      ),
-                    ),
-
-                    // Played badge
-                    if (item.isPlayed)
-                      Positioned(
-                        top: 8, right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: _jfBlue,
-                            shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(color: _jfBlue.withValues(alpha: 0.4), blurRadius: 8)],
-                          ),
-                          child: const Icon(Icons.check_rounded, size: 10, color: Colors.white),
-                        ),
-                      ),
-
-                    // Progress
-                    if (showProgress && item.playbackProgress > 0)
-                      Positioned(
-                        bottom: 0, left: 0, right: 0,
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(14),
-                            bottomRight: Radius.circular(14)),
-                          child: LinearProgressIndicator(
-                            value: item.playbackProgress,
-                            minHeight: 3,
-                            backgroundColor: Colors.white.withValues(alpha: 0.1),
-                            valueColor: const AlwaysStoppedAnimation(_jfBlue),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Title
-            Text(
-              showEpisodeInfo && item.seriesName != null ? item.seriesName! : item.name,
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-            if (showEpisodeInfo && item.type == 'Episode')
-              Text(
-                'S${item.parentIndexNumber ?? '?'}E${item.indexNumber ?? '?'} · ${item.name}',
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
-              )
-            else if (item.productionYear != null)
-              Text('${item.productionYear}',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 11)),
-          ],
-        ),
-      ),
-    );
+  String? _landscapeImageUrl(JellyfinItem item) {
+    if (item.backdropImageTags.isNotEmpty) {
+      return _jf.getBackdropUrl(
+        item.id,
+        tag: item.backdropImageTags.first,
+        maxWidth: 600,
+      );
+    }
+    if (item.imageTags.containsKey('Primary')) {
+      return _jf.getPosterUrl(
+        item.id,
+        tag: item.imageTags['Primary'],
+        maxWidth: 500,
+      );
+    }
+    if (item.seriesId != null) {
+      return _jf.getPosterUrl(item.seriesId!, maxWidth: 500);
+    }
+    return null;
   }
 
   Widget _emptyThumb(JellyfinItem item) {

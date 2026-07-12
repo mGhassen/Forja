@@ -522,16 +522,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     await _persistWebstreamingCache(providerId: providerId, sources: reordered);
   }
 
-  Future<bool> _anyWebstreamingSourcePlayable(
-    List<StreamSource> sources,
-  ) async {
-    if (sources.isEmpty) return false;
-    // Don't probe the whole list — open uses the first source and falls back
-    // inside the player. A single HEAD/GET is enough for cache freshness.
-    final first = sources.first;
-    return probeStreamSourceUrl(first.url, first.headers);
-  }
-
   Future<void> _startWebstreamingOnlyPlayback() async {
     final startPosition = _startPositionForAutoPlay(fromRoute: false);
     if (_webstreamingStreams.isNotEmpty) {
@@ -559,26 +549,20 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       return;
     }
 
-    final cached = await WebstreamingStreamCache.readDisk(
-      _webstreamingCacheKey(),
-    );
+    final cached = await WebstreamingStreamCache.readDisk(_webstreamingCacheKey());
     if (cached != null && cached.sources.isNotEmpty) {
-      if (await _anyWebstreamingSourcePlayable(cached.sources)) {
-        if (!mounted) return;
-        setState(() => _applyWebstreamingCacheHit(cached));
-        WebstreamingStreamCache.writeSession(_webstreamingCacheKey(), cached);
-        debugPrint(
-          '[DetailsScreen] webstreaming cache hit '
-          '${cached.providerId} (${cached.sources.length})',
-        );
-        await _playWebstreamingStream(
-          cached.sources.first,
-          startPosition: startPosition,
-        );
-        return;
-      }
-      debugPrint('[DetailsScreen] webstreaming cache stale — rechecking');
-      await WebstreamingStreamCache.drop(_webstreamingCacheKey());
+      if (!mounted) return;
+      setState(() => _applyWebstreamingCacheHit(cached));
+      WebstreamingStreamCache.writeSession(_webstreamingCacheKey(), cached);
+      debugPrint(
+        '[DetailsScreen] webstreaming disk cache hit '
+        '${cached.providerId} (${cached.sources.length})',
+      );
+      await _playWebstreamingStream(
+        cached.sources.first,
+        startPosition: startPosition,
+      );
+      return;
     }
 
     if (_isWebstreamingOnlyExtracting) return;
@@ -691,6 +675,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         settingsOrder: _webstreamingProviderOrder,
         resolver: _streamProviderResolver,
         isCancelled: () => _webstreamingOnlyExtractionCancelled,
+        maxInFlight: 1,
         onHitsUpdated: syncResolvedHits,
         onProgress: (providerId, status) {
           if (!mounted) return;
@@ -769,9 +754,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 startPosition: startPosition ?? widget.startPosition,
                 sources: sources,
                 externalSubtitles: result.subtitles,
-                sourcesListNotifier: sourcesListNotifier,
                 providerSourcesCache: providerSourcesCache,
-                providerProbesNotifier: probeNotifier,
+                pinSource: true,
                 onSourcePinned: (sourceUrl, sourceTitle) =>
                     _rememberWebstreamingSelection(
                       sourceUrl,
@@ -1567,12 +1551,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         ? '${_movie.title} - S$_selectedSeason E$_selectedEpisode'
         : _movie.title;
     final providerId = _webstreamingActiveProviderId ?? 'videasy';
+    final resolvedSources = _webstreamingStreams.isNotEmpty
+        ? _webstreamingStreams
+        : <StreamSource>[source];
     final providerSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
-      {
-        providerId: _webstreamingStreams.isNotEmpty
-            ? _webstreamingStreams
-            : <StreamSource>[source],
-      },
+      {providerId: resolvedSources},
+    );
+    await _persistWebstreamingCache(
+      providerId: providerId,
+      sources: resolvedSources,
     );
     if (mounted && _sourcesPanelOpen) setState(() => _sourcesPanelOpen = false);
     try {
@@ -1587,8 +1574,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         selectedSeason: isTv ? _selectedSeason : null,
         selectedEpisode: isTv ? _selectedEpisode : null,
         startPosition: startPosition ?? widget.startPosition,
-        sources: _webstreamingStreams,
+        sources: resolvedSources,
         providerSourcesCache: providerSourcesCache,
+        pinSource: true,
         onSourcePinned: (sourceUrl, sourceTitle) =>
             _rememberWebstreamingSelection(
               sourceUrl,

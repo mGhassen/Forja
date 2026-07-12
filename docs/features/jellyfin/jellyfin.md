@@ -15,6 +15,7 @@ Tap **Jellyfin** in the navigation bar.
 - Add server URL and sign in with username/password
 - Browse libraries with hero carousel and rails
 - Resume in-progress items
+- Hover Continue Watching or Next Up cards (desktop) to scale them and show a brand-green play button
 - See Next Up and Latest additions
 - Search your library
 - Open movie/series details with seasons and episodes

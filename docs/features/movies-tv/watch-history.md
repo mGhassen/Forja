@@ -15,6 +15,7 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 
 - Resume from the saved timestamp
 - See progress on continue watching cards
+- Hover a continue watching card (desktop) to scale it and show a brand-green play button
 - Dismiss entries from continue watching
 - Mark episodes watched from details screens (clears or updates progress)
 

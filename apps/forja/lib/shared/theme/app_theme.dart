@@ -132,6 +132,7 @@ class FocusableControl extends StatefulWidget {
   final VoidCallback? onDownEdge;
   final VoidCallback? onRightEdge;
   final ValueChanged<bool>? onFocusChange;
+  final ValueChanged<bool>? onHoverChange;
   final FocusNode? focusNode;
   final ShellTvFocusMeta? tvMeta;
   final ShellTvEnsureVisibleMode ensureVisibleMode;
@@ -150,6 +151,7 @@ class FocusableControl extends StatefulWidget {
     this.onDownEdge,
     this.onRightEdge,
     this.onFocusChange,
+    this.onHoverChange,
     this.focusNode,
     this.tvMeta,
     this.ensureVisibleMode = ShellTvEnsureVisibleMode.row,
@@ -340,11 +342,13 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       },
       child: MouseRegion(
         onEnter: (_) {
+          widget.onHoverChange?.call(true);
           if (!policy.scaleOnHover) return;
           setState(() => _isHovered = true);
           _updateState(true);
         },
         onExit: (_) {
+          widget.onHoverChange?.call(false);
           if (!policy.scaleOnHover) return;
           setState(() => _isHovered = false);
           _updateState(_isFocused);

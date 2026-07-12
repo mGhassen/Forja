@@ -218,11 +218,19 @@ abstract final class PlaybackEngine {
                 headers: result.headers,
               ),
             ];
-      final ranked = await PlaybackSelection.rankLegacySources(
-        sources: legacy,
-        providerId: key,
-        providerRank: providerRank,
-      );
+      // KissKH streams are validated by the WebView extractor; skip Rust
+      // ranking so a prior playback failure blocklist cannot drop the only URL.
+      final ranked = key == 'kisskh'
+          ? normalizeLegacyStreamSources(
+              sources: legacy,
+              providerId: key,
+              providerRank: providerRank,
+            )
+          : await PlaybackSelection.rankLegacySources(
+              sources: legacy,
+              providerId: key,
+              providerRank: providerRank,
+            );
       if (ranked.isEmpty) {
         onProgress?.call(key, 'failed');
         return null;

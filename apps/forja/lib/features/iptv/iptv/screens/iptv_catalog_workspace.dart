@@ -1037,6 +1037,75 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   }
 }
 
+class _PortalExpiryTone {
+  const _PortalExpiryTone({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+}
+
+const _expiryMonthIndex = <String, int>{
+  'jan': 1,
+  'feb': 2,
+  'mar': 3,
+  'apr': 4,
+  'may': 5,
+  'jun': 6,
+  'jul': 7,
+  'aug': 8,
+  'sep': 9,
+  'oct': 10,
+  'nov': 11,
+  'dec': 12,
+};
+
+DateTime? _parsePortalExpiryDate(String expiry) {
+  final s = expiry.trim();
+  if (s.isEmpty || s.toLowerCase() == 'unknown') return null;
+
+  final ts = int.tryParse(s);
+  if (ts != null) {
+    return DateTime.fromMillisecondsSinceEpoch(ts * 1000);
+  }
+
+  final parts = s.split(RegExp(r'\s+'));
+  if (parts.length != 3) return null;
+  final day = int.tryParse(parts[0]);
+  final month = _expiryMonthIndex[parts[1].toLowerCase()];
+  final year = int.tryParse(parts[2]);
+  if (day == null || month == null || year == null) return null;
+  return DateTime(year, month, day);
+}
+
+_PortalExpiryTone _portalExpiryTone(String expiry) {
+  final label = expiry.trim().isEmpty ? 'Unknown' : expiry.trim();
+  final end = _parsePortalExpiryDate(label);
+  if (end == null) {
+    return _PortalExpiryTone(
+      color: Colors.white38,
+      label: label == 'Unknown' ? 'Ends: Unknown' : 'Ends: $label',
+    );
+  }
+
+  final today = DateTime.now();
+  final midnightToday = DateTime(today.year, today.month, today.day);
+  final days = end.difference(midnightToday).inDays;
+
+  final Color color;
+  if (days < 0) {
+    color = const Color(0xFFEF4444);
+  } else if (days <= 7) {
+    color = const Color(0xFFF59E0B);
+  } else if (days <= 30) {
+    color = const Color(0xFFEAB308);
+  } else {
+    color = const Color(0xFF22C55E);
+  }
+
+  final prefix = days < 0 ? 'Expired' : 'Ends';
+  return _PortalExpiryTone(color: color, label: '$prefix $label');
+}
+
 class _PortalFormDialog extends StatefulWidget {
   const _PortalFormDialog({required this.ctrl, this.existing});
 
@@ -1352,11 +1421,15 @@ class _PortalHoverTile extends StatefulWidget {
 class _PortalHoverTileState extends State<_PortalHoverTile> {
   static const _actionW = 108.0;
   static const _statusSlot = 18.0;
+  static const _rowH = 48.0;
+  static const _rowHExpanded = 66.0;
 
   bool _lineHover = false;
   bool _focused = false;
 
   bool get _reveal => _focused || _lineHover;
+
+  double get _rowHeight => _reveal ? _rowHExpanded : _rowH;
 
   void _clearHover() {
     setState(() => _lineHover = false);
@@ -1503,9 +1576,13 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                         )
                       : null,
                 ),
-                child: SizedBox(
-                  height: 48,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  height: _rowHeight,
+                  alignment: Alignment.topCenter,
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
                         child: iptvTap(
@@ -1527,27 +1604,44 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                             }
                           },
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            padding: EdgeInsets.fromLTRB(
+                              10,
+                              _reveal ? 6 : 0,
+                              10,
+                              _reveal ? 4 : 0,
+                            ),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                isActive
-                                    ? _activePortalStatusGlyph(
-                                        _activePortalStatus(
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    top: _reveal ? 2 : 0,
+                                  ),
+                                  child: isActive
+                                      ? _activePortalStatusGlyph(
+                                          _activePortalStatus(
+                                            checking: checking,
+                                            health: health,
+                                          ),
+                                        )
+                                      : _idlePortalHealthDot(
                                           checking: checking,
                                           health: health,
                                         ),
-                                      )
-                                    : _idlePortalHealthDot(
-                                        checking: checking,
-                                        health: health,
-                                      ),
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisAlignment: _reveal
+                                        ? MainAxisAlignment.start
+                                        : MainAxisAlignment.center,
                                     children: [
+                                      if (_reveal) ...[
+                                        _expiryLine(v.expiry),
+                                        const SizedBox(height: 3),
+                                      ],
                                       Row(
                                         children: [
                                           if (showNewChrome) ...[
@@ -1593,20 +1687,26 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                     ],
                                   ),
                                 ),
-                                iptvTap(
-                                  context: context,
-                                  onTap: () => ctrl.toggleFavoritePortal(v.key),
-                                  borderRadius: 16,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(4),
-                                    child: Icon(
-                                      isFav
-                                          ? Icons.star_rounded
-                                          : Icons.star_outline_rounded,
-                                      size: 16,
-                                      color: isFav
-                                          ? const Color(0xFFFBBF24)
-                                          : Colors.white30,
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    top: _reveal ? 2 : 0,
+                                  ),
+                                  child: iptvTap(
+                                    context: context,
+                                    onTap: () =>
+                                        ctrl.toggleFavoritePortal(v.key),
+                                    borderRadius: 16,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Icon(
+                                        isFav
+                                            ? Icons.star_rounded
+                                            : Icons.star_outline_rounded,
+                                        size: 16,
+                                        color: isFav
+                                            ? const Color(0xFFFBBF24)
+                                            : Colors.white30,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1616,10 +1716,10 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                         ),
                       ),
                       AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
+                        duration: const Duration(milliseconds: 180),
                         curve: Curves.easeOutCubic,
                         width: _reveal ? _actionW : 0,
-                        height: 48,
+                        height: _rowHeight,
                         child: ClipRect(
                           child: OverflowBox(
                             minWidth: _actionW,
@@ -1627,7 +1727,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                             alignment: Alignment.centerRight,
                             child: SizedBox(
                               width: _actionW,
-                              height: 48,
+                              height: _rowHeight,
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
@@ -1661,6 +1761,33 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
               ),
             );
       },
+    );
+  }
+
+  Widget _expiryLine(String expiry) {
+    final tone = _portalExpiryTone(expiry);
+    return Row(
+      children: [
+        Icon(
+          Icons.event_rounded,
+          size: 12,
+          color: tone.color,
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            tone.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(
+              color: tone.color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

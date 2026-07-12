@@ -20,8 +20,8 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - **Search** live, movie, and series catalogs (search icon → slide-in bar on wide layouts, dialog on compact layouts; filters groups and channels as you type; close clears search)
 - Watch VOD movies and series with seasons/episodes
 - View EPG (program guide) when the portal provides it — disable in **Settings → Playback → IPTV programme guide (EPG)** to skip loading guide data
-- Favorite portals in the Portals panel (star icon) — pinned to the top; newly scraped or added portals sit just below favorites with a **NEW** badge until you hover or focus the row
-- Portal row actions (**copy / edit / delete**): hover the right ~10% of the row, or keep hovering 3s — also on TV focus
+- Favorite portals in the Portals panel (star icon) — pinned to the top; below them, the most recently scraped or added portals appear first (with a **NEW** badge on session-fresh rows until you hover or focus them — styling only, position stays put)
+- Portal row actions (**copy / edit / delete**): hover the right ~10% of the row, or keep hovering 3s — also on TV focus; hover expands the row downward and shows the subscription **end date** on the first line (green · yellow · amber · red by time left)
 - Play in the IPTV player screen
 - Change live channels from the in-player channel guide (groups + channel list overlay)
 - Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header

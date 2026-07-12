@@ -13,6 +13,8 @@ import 'package:palette_generator/palette_generator.dart';
 import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'anime_arabic_details_screen.dart';
 import 'anime_arabic_player_screen.dart';
 import 'anime_arabic_search_screen.dart';
@@ -751,156 +753,16 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
               final entry = _continueWatching[i];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _continueCard(entry),
+                child: _AnimeArabicContinueWatchingCard(
+                  entry: entry,
+                  listIndex: i,
+                  onTap: () => _resumeWatch(entry),
+                  onRemove: () => _removeFromHistory(entry),
+                ),
               );
             },
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _continueCard(Map<String, dynamic> entry) {
-    final cover = entry['cover'] as String?;
-    final title = entry['title'] as String? ?? '';
-    final epNum = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
-    final totalEps = (entry['totalEpisodes'] as num?)?.toInt() ?? 0;
-    final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
-    final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
-    final progress = (durMs > 0) ? (posMs / durMs).clamp(0.0, 1.0) : 0.0;
-
-    return SizedBox(
-      width: 270,
-      child: HoverScale(
-        onTap: () => _resumeWatch(entry),
-        onLongPress: () async {
-          await _removeFromHistory(entry);
-        },
-        radius: 12,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (cover != null && cover.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: cover,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) =>
-                            Container(color: AppTheme.bgCard),
-                        errorWidget: (_, _, _) =>
-                            Container(color: AppTheme.bgCard),
-                      )
-                    else
-                      Container(color: AppTheme.bgCard),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.85),
-                          ],
-                          stops: const [0.5, 1.0],
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.play_arrow_rounded,
-                            color: Colors.white, size: 28),
-                      ),
-                    ),
-                    Positioned(
-                      left: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: ForjaShellColors.sectionIconBg,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
-                        ),
-                        child: Text(
-                          'EP $epNum'
-                          '${totalEps > 0 ? ' / $totalEps' : ''}',
-                          style: TextStyle(
-                            color: ForjaShellColors.sectionAccent,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () => _removeFromHistory(entry),
-                          child: Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                width: 1,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (progress > 0)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 3,
-                          backgroundColor:
-                              Colors.white.withValues(alpha: 0.2),
-                          valueColor: AlwaysStoppedAnimation(
-                              ForjaShellColors.progressFill),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1263,6 +1125,183 @@ class _PosterCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimeArabicContinueWatchingCard extends StatefulWidget {
+  const _AnimeArabicContinueWatchingCard({
+    required this.entry,
+    required this.onTap,
+    required this.onRemove,
+    required this.listIndex,
+  });
+
+  final Map<String, dynamic> entry;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+  final int listIndex;
+
+  @override
+  State<_AnimeArabicContinueWatchingCard> createState() =>
+      _AnimeArabicContinueWatchingCardState();
+}
+
+class _AnimeArabicContinueWatchingCardState
+    extends State<_AnimeArabicContinueWatchingCard> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool _active(BuildContext context) => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final cover = widget.entry['cover'] as String?;
+    final title = widget.entry['title'] as String? ?? '';
+    final epNum = (widget.entry['episodeNumber'] as num?)?.toInt() ?? 1;
+    final totalEps = (widget.entry['totalEpisodes'] as num?)?.toInt() ?? 0;
+    final posMs = (widget.entry['positionMs'] as num?)?.toInt() ?? 0;
+    final durMs = (widget.entry['durationMs'] as num?)?.toInt() ?? 0;
+    final progress = (durMs > 0) ? (posMs / durMs).clamp(0.0, 1.0) : 0.0;
+
+    return SizedBox(
+      width: 270,
+      child: shellFocusableTap(
+        context: context,
+        onTap: widget.onTap,
+        listIndex: widget.listIndex,
+        borderRadius: 12,
+        scaleOnFocus: 1.0,
+        showFocusBorder: true,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: (hovered) => setState(() => _hovered = hovered),
+        child: AnimatedScale(
+          scale: _active(context) ? 1.05 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (cover != null && cover.isNotEmpty)
+                        CachedNetworkImage(
+                          imageUrl: cover,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) =>
+                              Container(color: AppTheme.bgCard),
+                          errorWidget: (_, _, _) =>
+                              Container(color: AppTheme.bgCard),
+                        )
+                      else
+                        Container(color: AppTheme.bgCard),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.85),
+                            ],
+                            stops: const [0.5, 1.0],
+                          ),
+                        ),
+                      ),
+                      ShellCardPlayOverlay(active: _active(context)),
+                      Positioned(
+                        left: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: ForjaShellColors.sectionIconBg,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: ForjaShellColors.cinematic.borderSubtle,
+                            ),
+                          ),
+                          child: Text(
+                            'EP $epNum${totalEps > 0 ? ' / $totalEps' : ''}',
+                            style: TextStyle(
+                              color: ForjaShellColors.sectionAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: widget.onRemove,
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.close_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (progress > 0)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 3,
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.2),
+                            valueColor: AlwaysStoppedAnimation(
+                              ForjaShellColors.progressFill,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

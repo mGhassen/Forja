@@ -164,6 +164,7 @@ Widget shellFocusableTap({
       onDownEdge: onDownEdge,
       onRightEdge: onRightEdge,
       onFocusChange: onFocusChange,
+      onHoverChange: onHoverChange,
       focusNode: focusNode,
       tvMeta: tvMeta,
       ensureVisibleMode: ensureVisibleMode,

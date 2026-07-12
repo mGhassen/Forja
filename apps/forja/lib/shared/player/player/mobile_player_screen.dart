@@ -3610,6 +3610,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     if (mounted) setState(() => _selectedExternalSubUrl = null);
   }
 
+  bool get _hasResolvedWebStream =>
+      widget.magnetLink == null &&
+      widget.stremioId == null &&
+      widget.activeProvider != null &&
+      widget.activeProvider!.isNotEmpty &&
+      widget.sources != null &&
+      widget.sources!.isNotEmpty;
+
   Future<void> _loadPlayerAutoSettings() async {
     final settings = SettingsService();
     final autoServer = await settings.getPlayerAutoServer();
@@ -3617,9 +3625,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     final autoAudio = await settings.getPlayerAutoAudio();
     final autoSubtitle = await settings.getPlayerAutoSubtitle();
     if (!mounted) return;
+    final lockResolved = _hasResolvedWebStream || widget.pinSource;
     setState(() {
-      _providerPinned = !autoServer;
-      if (!widget.pinSource) _sourcePinned = !autoSource;
+      _providerPinned = lockResolved || !autoServer;
+      if (lockResolved) {
+        _sourcePinned = true;
+      } else {
+        _sourcePinned = !autoSource;
+      }
       _audioPinned = !autoAudio;
       _subtitlePinned = !autoSubtitle;
     });

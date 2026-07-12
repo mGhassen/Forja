@@ -56,17 +56,19 @@ class IptvController extends ChangeNotifier {
   /// Favorite portal keys — pinned to the top of the list.
   final Set<String> _favoritePortals = {};
 
-  /// Session-new portals (scrape / add / import) — below favorites until seen.
+  /// Session-new portals (scrape / add / import) — visual badge only.
   final List<String> _newPortalKeys = [];
+
+  /// Non-favorite display order: most recently added/scraped first.
+  final List<String> _portalRecencyKeys = [];
 
   bool isFavoritePortal(String key) => _favoritePortals.contains(key);
 
   bool isNewPortal(String key) => _newPortalKeys.contains(key);
 
-  /// Dismisses the "new" highlight (e.g. first hover/focus on the row).
+  /// Dismisses the "new" highlight only — does not reorder the list.
   void markPortalSeen(String key) {
     if (_newPortalKeys.remove(key)) {
-      verified = _sortPortals(verified);
       notifyListeners();
     }
   }
@@ -74,6 +76,26 @@ class IptvController extends ChangeNotifier {
   void _markPortalNew(String key) {
     _newPortalKeys.remove(key);
     _newPortalKeys.insert(0, key);
+  }
+
+  void _touchPortalRecency(String key) {
+    _portalRecencyKeys.remove(key);
+    _portalRecencyKeys.insert(0, key);
+  }
+
+  void _registerPortalAdded(String key) {
+    _markPortalNew(key);
+    _touchPortalRecency(key);
+  }
+
+  void _seedRecencyFrom(List<VerifiedPortal> list) {
+    _portalRecencyKeys.clear();
+    for (final v in list) {
+      if (_favoritePortals.contains(v.key)) continue;
+      if (!_portalRecencyKeys.contains(v.key)) {
+        _portalRecencyKeys.add(v.key);
+      }
+    }
   }
 
   // Manual edit
@@ -271,6 +293,7 @@ class IptvController extends ChangeNotifier {
     _favoritePortals
       ..clear()
       ..addAll(await IptvStore.loadFavorites());
+    _seedRecencyFrom(stored);
     verified = _sortPortals(stored);
     _verifiedKeys
       ..clear()
@@ -364,7 +387,7 @@ class IptvController extends ChangeNotifier {
     for (final v in list) {
       if (_favoritePortals.contains(v.key)) addUnique(v);
     }
-    for (final key in _newPortalKeys) {
+    for (final key in _portalRecencyKeys) {
       if (_favoritePortals.contains(key)) continue;
       final v = byKey[key];
       if (v != null) addUnique(v);
@@ -538,7 +561,7 @@ class IptvController extends ChangeNotifier {
           onAlive: (v) {
             if (_verifiedKeys.add(v.credKey)) {
               newAlive.add(v);
-              _markPortalNew(v.key);
+              _registerPortalAdded(v.key);
               verified = _sortPortals([...verified, v]);
               notifyListeners();
             }
@@ -646,6 +669,7 @@ class IptvController extends ChangeNotifier {
     for (final k in selected) {
       _invalidatePortalCatalogCache(k);
       _newPortalKeys.remove(k);
+      _portalRecencyKeys.remove(k);
     }
     final keep = verified.where((v) => !selected.contains(v.key)).toList();
     verified = keep;
@@ -773,7 +797,7 @@ class IptvController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    _markPortalNew(v.key);
+    _registerPortalAdded(v.key);
     verified = _sortPortals([v, ...verified]);
     _verifiedKeys.add(v.credKey);
     await IptvStore.save(verified);
@@ -932,7 +956,7 @@ class IptvController extends ChangeNotifier {
 
     if (newAlive.isNotEmpty) {
       for (final v in newAlive) {
-        _markPortalNew(v.key);
+        _registerPortalAdded(v.key);
       }
       verified = _sortPortals([...newAlive, ...verified]);
       await IptvStore.save(verified);
@@ -1544,7 +1568,7 @@ class IptvController extends ChangeNotifier {
           },
           onAlive: (v) async {
             if (_verifiedKeys.add(v.credKey)) {
-              _markPortalNew(v.key);
+              _registerPortalAdded(v.key);
               verified = _sortPortals([...verified, v]);
               await IptvStore.save(verified);
               if (!attempted.contains(v.key) &&

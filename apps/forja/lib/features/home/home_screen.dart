@@ -28,6 +28,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 
@@ -3103,30 +3104,9 @@ class _HistoryCardState extends State<_HistoryCard> {
               ),
             ),
             
-            Positioned.fill(
-              child: IgnorePointer(
-                child: AnimatedOpacity(
-                  opacity: _active(context) && !widget.isLoading ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            ShellCardPlayOverlay(
+              active: _active(context),
+              visible: _active(context) && !widget.isLoading,
             ),
 
             if (widget.isLoading)

@@ -184,7 +184,6 @@ class DomainStreamProviderResolver extends StreamProviderResolver {
         episodeId: (ctx['episodeId'] as num).toInt(),
         episodeNumber: (ctx['episodeNumber'] as num).toDouble(),
         isCancelled: () => cancelled(),
-        onProgress: (_, _) {},
       );
       if (cancelled() || stream == null) return null;
       final sources = stream.toSources(label: 'kisskh');

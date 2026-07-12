@@ -18,6 +18,7 @@ Tap **Asian Drama** in the navigation bar.
 - Play with subtitle support where available
 - While a stream resolves, the loading screen shows the drama artwork (same style as Movies & TV playback)
 - Resume from continue watching; clear progress with the trash icon next to **Resume** on details
+- Hover a continue watching card (desktop) to scale it and show a brand-green play button
 
 ## Tips
 
