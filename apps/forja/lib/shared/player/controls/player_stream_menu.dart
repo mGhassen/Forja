@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
+import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
@@ -17,6 +18,7 @@ class PlayerStreamMenuState {
     required this.current111477FileUrl,
     required this.is111477,
     this.sourceStatuses = const [],
+    this.playbackConfirmed = false,
   });
 
   final String? currentProviderId;
@@ -25,6 +27,7 @@ class PlayerStreamMenuState {
   final String? current111477FileUrl;
   final bool is111477;
   final List<PlayerSourceStatus> sourceStatuses;
+  final bool playbackConfirmed;
 }
 
 /// Unified server + source picker — one panel, grouped by server.
@@ -71,10 +74,12 @@ class PlayerStreamMenu {
     Map<String, dynamic>? providers,
     ValueListenable<Map<String, List<StreamSource>>>? providerSourcesCache,
     ValueListenable<List<StreamProviderProbe>>? providerProbesNotifier,
+    PlayerStatusController? statusController,
     required PlayerStreamMenuState Function() readState,
     required Future<List<StreamSource>?> Function(String providerId)
-        onSelectProvider,
-    required Future<void> Function(StreamSource source, int index) onSelectSource,
+    onSelectProvider,
+    required Future<void> Function(StreamSource source, int index)
+    onSelectSource,
     bool providersEnabled = true,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
@@ -84,11 +89,13 @@ class PlayerStreamMenu {
   }) async {
     final initial = readState();
     final hasProviders = providers != null && providers.isNotEmpty;
-    final hasSources =
-        initial.sources != null && initial.sources!.isNotEmpty;
+    final hasSources = initial.sources != null && initial.sources!.isNotEmpty;
 
     if (!hasProviders && !hasSources) {
-      ForjaToast.warning('No streams available', duration: const Duration(seconds: 1));
+      ForjaToast.warning(
+        'No streams available',
+        duration: const Duration(seconds: 1),
+      );
       return;
     }
 
@@ -106,16 +113,20 @@ class PlayerStreamMenu {
         );
       }
 
+      final orderedProviders =
+          _orderedProviderEntries(providers, state.currentProviderId);
+
       return ListView(
         padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
         shrinkWrap: true,
         children: [
-          for (final entry in providers.entries) ...[
+          for (final entry in orderedProviders) ...[
             _buildServerSection(
               providerId: entry.key,
               provider: entry.value,
               state: state,
               probes: probes,
+              statusController: statusController,
               cachedSources: cache[entry.key],
               providersEnabled: providersEnabled,
               onSelectProvider: onSelectProvider,
@@ -151,11 +162,13 @@ class PlayerStreamMenu {
     required dynamic provider,
     required PlayerStreamMenuState state,
     required List<StreamProviderProbe> probes,
+    PlayerStatusController? statusController,
     required List<StreamSource>? cachedSources,
     required bool providersEnabled,
     required Future<List<StreamSource>?> Function(String providerId)
-        onSelectProvider,
-    required Future<void> Function(StreamSource source, int index) onSelectSource,
+    onSelectProvider,
+    required Future<void> Function(StreamSource source, int index)
+    onSelectSource,
   }) {
     final isCurrent = providerId == state.currentProviderId;
     final sectionSources = isCurrent
@@ -165,6 +178,13 @@ class PlayerStreamMenu {
       providerId,
       probes,
       isCurrent: isCurrent,
+      statusController: statusController,
+      playbackConfirmed: state.playbackConfirmed,
+    );
+    final subtitle = _providerSubtitle(
+      status: status,
+      sourceCount: sectionSources.length,
+      providersEnabled: providersEnabled,
     );
     final flags = StreamProviderDisplay.countryFlags(
       providerId,
@@ -190,8 +210,10 @@ class PlayerStreamMenu {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-              onTap: sectionSources.isEmpty && providersEnabled
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(10),
+              ),
+              onTap: providersEnabled
                   ? () async {
                       PlayerPopupPanel.dismiss();
                       await onSelectProvider(providerId);
@@ -216,24 +238,20 @@ class PlayerStreamMenu {
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.95),
                               fontSize: 13,
-                              fontWeight:
-                                  isCurrent ? FontWeight.w700 : FontWeight.w600,
+                              fontWeight: isCurrent
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
                             ),
                           ),
-                          if (sectionSources.isEmpty && !isCurrent)
+                          if (subtitle != null)
                             Text(
-                              providersEnabled ? 'Tap to load' : 'Unavailable',
+                              subtitle,
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.45),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            )
-                          else if (sectionSources.isNotEmpty)
-                            Text(
-                              '${sectionSources.length} source${sectionSources.length == 1 ? '' : 's'}',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.42),
+                                color: status == PlayerSourceStatus.checking
+                                    ? playerSourceStatusColor(status!)
+                                    : status == PlayerSourceStatus.failed
+                                    ? playerSourceStatusColor(status!)
+                                    : Colors.white.withValues(alpha: 0.45),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -245,13 +263,15 @@ class PlayerStreamMenu {
                       const SizedBox(width: 6),
                       _StatusDot(status: status),
                     ],
-                    if (isCurrent)
+                    if (isCurrent && state.playbackConfirmed)
                       Padding(
                         padding: const EdgeInsets.only(left: 6),
                         child: Text(
                           'Active',
                           style: TextStyle(
-                            color: const Color(0xFF22C55E).withValues(alpha: 0.9),
+                            color: const Color(
+                              0xFF22C55E,
+                            ).withValues(alpha: 0.9),
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.3,
@@ -264,10 +284,7 @@ class PlayerStreamMenu {
             ),
           ),
           if (sectionSources.isNotEmpty) ...[
-            Divider(
-              height: 1,
-              color: Colors.white.withValues(alpha: 0.08),
-            ),
+            Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
               child: _sourcesList(
@@ -279,7 +296,9 @@ class PlayerStreamMenu {
                   if (!isCurrent) {
                     final loaded = await onSelectProvider(providerId);
                     final pool = loaded ?? sectionSources;
-                    final targetIndex = pool.indexWhere((s) => s.url == source.url);
+                    final targetIndex = pool.indexWhere(
+                      (s) => s.url == source.url,
+                    );
                     if (targetIndex >= 0) {
                       await onSelectSource(pool[targetIndex], targetIndex);
                       return;
@@ -299,14 +318,16 @@ class PlayerStreamMenu {
   static Widget _sourcesList({
     required List<StreamSource> sources,
     required PlayerStreamMenuState state,
-    required Future<void> Function(StreamSource source, int index) onSelectSource,
+    required Future<void> Function(StreamSource source, int index)
+    onSelectSource,
     bool compact = false,
     bool useIndexedStatuses = false,
   }) {
     final statuses = state.sourceStatuses;
+    final ordered = _orderedSourceEntries(sources, state);
     return Column(
       children: [
-        for (final entry in sources.asMap().entries)
+        for (final entry in ordered)
           _StreamSourceTile(
             source: entry.value,
             index: entry.key,
@@ -321,6 +342,43 @@ class PlayerStreamMenu {
     );
   }
 
+  static List<MapEntry<String, dynamic>> _orderedProviderEntries(
+    Map<String, dynamic> providers,
+    String? currentProviderId,
+  ) {
+    final entries = providers.entries.toList();
+    if (currentProviderId == null ||
+        !providers.containsKey(currentProviderId)) {
+      return entries;
+    }
+    entries.sort((a, b) {
+      if (a.key == currentProviderId) return -1;
+      if (b.key == currentProviderId) return 1;
+      return 0;
+    });
+    return entries;
+  }
+
+  static List<MapEntry<int, StreamSource>> _orderedSourceEntries(
+    List<StreamSource> sources,
+    PlayerStreamMenuState state,
+  ) {
+    final entries = sources.asMap().entries.toList();
+    entries.sort((a, b) {
+      final aCurrent = _isCurrentSource(a.value, state);
+      final bCurrent = _isCurrentSource(b.value, state);
+      if (aCurrent != bCurrent) return aCurrent ? -1 : 1;
+      return a.key.compareTo(b.key);
+    });
+    return entries;
+  }
+
+  static bool _isCurrentSource(StreamSource source, PlayerStreamMenuState state) {
+    return state.is111477
+        ? source.url == state.current111477FileUrl
+        : source.url == state.currentUrl;
+  }
+
   static List<String>? _contentLanguage(dynamic provider) {
     if (provider is! Map) return null;
     final raw = provider['contentLanguage'];
@@ -332,8 +390,17 @@ class PlayerStreamMenu {
     String providerId,
     List<StreamProviderProbe> probes, {
     required bool isCurrent,
+    PlayerStatusController? statusController,
+    bool playbackConfirmed = false,
   }) {
-    if (isCurrent) return PlayerSourceStatus.active;
+    if (isCurrent && playbackConfirmed) return PlayerSourceStatus.active;
+
+    final fromController = _providerStatusFromController(
+      providerId,
+      statusController,
+    );
+    if (fromController != null) return fromController;
+
     for (final probe in probes) {
       if (probe.id != providerId) continue;
       return switch (probe.status) {
@@ -344,6 +411,46 @@ class PlayerStreamMenu {
       };
     }
     return null;
+  }
+
+  static PlayerSourceStatus? _providerStatusFromController(
+    String providerId,
+    PlayerStatusController? statusController,
+  ) {
+    if (statusController == null) return null;
+    for (final entry in statusController.entries) {
+      if (entry.id != 'provider-$providerId') continue;
+      return switch (entry.kind) {
+        StatusRouletteKind.loading => PlayerSourceStatus.checking,
+        StatusRouletteKind.success => PlayerSourceStatus.ready,
+        StatusRouletteKind.failed => PlayerSourceStatus.failed,
+        StatusRouletteKind.info => null,
+      };
+    }
+    return null;
+  }
+
+  static String? _providerSubtitle({
+    required PlayerSourceStatus? status,
+    required int sourceCount,
+    required bool providersEnabled,
+  }) {
+    if (sourceCount > 0 &&
+        status != PlayerSourceStatus.checking &&
+        status != PlayerSourceStatus.failed) {
+      return '$sourceCount source${sourceCount == 1 ? '' : 's'}';
+    }
+    return switch (status) {
+      PlayerSourceStatus.checking => 'Checking…',
+      PlayerSourceStatus.failed => 'Unavailable',
+      PlayerSourceStatus.ready =>
+        providersEnabled ? 'Tap to load' : 'Unavailable',
+      PlayerSourceStatus.active =>
+        sourceCount > 0
+            ? '$sourceCount source${sourceCount == 1 ? '' : 's'}'
+            : null,
+      null => providersEnabled ? 'Tap to load' : 'Unavailable',
+    };
   }
 }
 
@@ -360,10 +467,7 @@ class _ServerFlagBadge extends StatelessWidget {
         color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        flags,
-        style: const TextStyle(fontSize: 13),
-      ),
+      child: Text(flags, style: const TextStyle(fontSize: 13)),
     );
   }
 }
@@ -422,8 +526,8 @@ class _StreamSourceTile extends StatelessWidget {
         color: active
             ? const Color(0xFF22C55E).withValues(alpha: 0.1)
             : failed
-                ? const Color(0xFFEF4444).withValues(alpha: 0.07)
-                : Colors.transparent,
+            ? const Color(0xFFEF4444).withValues(alpha: 0.07)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
@@ -444,8 +548,10 @@ class _StreamSourceTile extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: playerSourceBadgeColor(source.type),
                     borderRadius: BorderRadius.circular(5),
@@ -474,10 +580,12 @@ class _StreamSourceTile extends StatelessWidget {
                               ? Colors.white.withValues(alpha: 0.45)
                               : Colors.white.withValues(alpha: 0.92),
                           fontSize: compact ? 13 : 14,
-                          fontWeight:
-                              isCurrent ? FontWeight.w600 : FontWeight.w500,
-                          decoration:
-                              failed ? TextDecoration.lineThrough : null,
+                          fontWeight: isCurrent
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          decoration: failed
+                              ? TextDecoration.lineThrough
+                              : null,
                           decorationColor: Colors.white38,
                         ),
                       ),

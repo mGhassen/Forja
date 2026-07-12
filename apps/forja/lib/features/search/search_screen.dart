@@ -1219,7 +1219,7 @@ class SearchScreenState extends State<SearchScreen>
   }
 }
 
-class _SearchFilmCard extends StatelessWidget {
+class _SearchFilmCard extends StatefulWidget {
   const _SearchFilmCard({
     required this.result,
     required this.selected,
@@ -1239,6 +1239,13 @@ class _SearchFilmCard extends StatelessWidget {
   final int? gridColumns;
 
   @override
+  State<_SearchFilmCard> createState() => _SearchFilmCardState();
+}
+
+class _SearchFilmCardState extends State<_SearchFilmCard> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final titleSize = shellHubCardTitleFontSize(context);
     final tvActivateOpens = ShellScope.inputPolicyOf(
@@ -1247,30 +1254,33 @@ class _SearchFilmCard extends StatelessWidget {
 
     return shellFocusableTap(
       context: context,
-      onTap: tvActivateOpens ? onOpen : onTap,
+      onTap: tvActivateOpens ? widget.onOpen : widget.onTap,
       borderRadius: 14,
       showFocusBorder: true,
-      gridIndex: gridIndex,
-      gridColumns: gridColumns,
+      gridIndex: widget.gridIndex,
+      gridColumns: widget.gridColumns,
       tvTabId: 'search',
       tvRowId: 'results',
       tvZone: ShellTvZone.grid,
-      tvItemIndex: gridIndex,
-      onFocusChange: onFocusChange,
+      tvItemIndex: widget.gridIndex,
+      onFocusChange: widget.onFocusChange,
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: GestureDetector(
-        onDoubleTap: onOpen,
+        onDoubleTap: widget.onOpen,
         child: SizedBox.expand(
           child: AnimatedContainer(
             duration: ShellTokens.navSelectionAnimation,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: selected
+              border: widget.selected
                   ? Border.all(color: Colors.white, width: 2)
                   : null,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: selected ? 0.65 : 0.5),
-                  blurRadius: selected ? 20 : 16,
+                  color: Colors.black.withValues(
+                    alpha: widget.selected ? 0.65 : 0.5,
+                  ),
+                  blurRadius: widget.selected ? 20 : 16,
                   offset: const Offset(0, 8),
                 ),
               ],
@@ -1282,16 +1292,16 @@ class _SearchFilmCard extends StatelessWidget {
                 children: [
                   ColoredBox(
                     color: AppTheme.bgDark,
-                    child: result.posterUrl.isNotEmpty
+                    child: widget.result.posterUrl.isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: result.posterUrl,
+                            imageUrl: widget.result.posterUrl,
                             fit: BoxFit.cover,
                             filterQuality: FilterQuality.medium,
                             placeholder: (_, _) =>
                                 ColoredBox(color: AppTheme.bgDark),
                             errorWidget: (_, _, _) => Center(
                               child: Text(
-                                result.title,
+                                widget.result.title,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 10,
@@ -1302,7 +1312,7 @@ class _SearchFilmCard extends StatelessWidget {
                           )
                         : Center(
                             child: Text(
-                              result.title,
+                              widget.result.title,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 10,
@@ -1326,7 +1336,7 @@ class _SearchFilmCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (selected)
+                  if (_hovered)
                     Positioned.fill(
                       child: ColoredBox(
                         color: Colors.black.withValues(alpha: 0.35),
@@ -1340,7 +1350,7 @@ class _SearchFilmCard extends StatelessWidget {
                               hoverColor: ForjaShellColors.inkHover,
                               splashColor: ForjaShellColors.inkSplash,
                               highlightColor: ForjaShellColors.inkSplash,
-                              onTap: onOpen,
+                              onTap: widget.onOpen,
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
@@ -1361,7 +1371,7 @@ class _SearchFilmCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (result.rating != null)
+                  if (widget.result.rating != null)
                     Positioned(
                       top: 8,
                       right: 8,
@@ -1387,7 +1397,7 @@ class _SearchFilmCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 3),
                             Text(
-                              result.rating!.toStringAsFixed(1),
+                              widget.result.rating!.toStringAsFixed(1),
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -1407,7 +1417,7 @@ class _SearchFilmCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          result.title,
+                          widget.result.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1417,10 +1427,11 @@ class _SearchFilmCard extends StatelessWidget {
                             height: 1.2,
                           ),
                         ),
-                        if (result.year != null && result.year!.isNotEmpty) ...[
+                        if (widget.result.year != null &&
+                            widget.result.year!.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
-                            result.year!,
+                            widget.result.year!,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.5),
                               fontSize: 11,

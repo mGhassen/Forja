@@ -13,7 +13,7 @@ Tap **Search** in the navigation bar.
 ## What you can do
 
 - Type a title, keyword, or person name
-- **Desktop / TV:** type in the search field on the left; matching titles appear as a text list below the field; film cards appear on the right (TV uses a poster grid instead of the detail preview)
+- **Desktop / TV:** type in the search field on the left; matching titles appear as a text list below the field; film cards appear on the right (TV uses a poster grid instead of the detail preview). On desktop, hover a film card to reveal the info button; click it or double-click the card to open details
 - **TV (empty query):** focus starts on trending title suggestions below the field; **Up** moves to the search field; **Down** from the field moves to suggestions; **Select** on a suggestion runs that search
 - **Mobile / narrow:** use the search bar at the top; results appear in horizontal rows by source
 - Browse TMDB movie and TV results

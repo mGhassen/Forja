@@ -993,6 +993,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       if (PlayableSourceBridge.isArabicEmbed(_playableSources, i, source)) {
         debugPrint('[Player] Extracting arabic embed: ${source.title}');
         final result = await ArabicService.extractStreamUrl(source.url);
+        if (_fallbackAborted(runGen)) return false;
         if (result == null) {
           debugPrint('[Player] Arabic extract failed for ${source.title}');
           _statusController.upsert(
@@ -1046,6 +1047,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         await resetPlayerForOpen(_player);
         await applyMediaHttpHeaders(_player, srcHeaders);
         await _player.open(Media(openUrl, httpHeaders: srcHeaders));
+        if (_fallbackAborted(runGen)) return false;
         _player.setVolume(_volumeNotifier.value);
         final opened = await waitForMediaOpen(
           _player,
@@ -1054,6 +1056,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               ? const Duration(seconds: 45)
               : const Duration(seconds: 12),
         );
+        if (_fallbackAborted(runGen)) return false;
         if (!opened) {
           debugPrint('[Player] Source $i failed to open: $openUrl');
           await _player.stop();
@@ -1068,8 +1071,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           continue;
         }
         final needsDuration = sourceExpectsDuration(openUrl, type: source.type);
-        if (sourceRequiresVideoDecode(openUrl, type: source.type) &&
-            !await waitForVideoDecode(_player)) {
+        final decoded =
+            !sourceRequiresVideoDecode(openUrl, type: source.type) ||
+            await waitForVideoDecode(_player);
+        if (_fallbackAborted(runGen)) return false;
+        if (!decoded) {
           debugPrint('[Player] Source $i opened without video: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -1082,7 +1088,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        if (needsDuration && !await waitForSeekableDuration(_player)) {
+        final hasDuration =
+            !needsDuration || await waitForSeekableDuration(_player);
+        if (_fallbackAborted(runGen)) return false;
+        if (!hasDuration) {
           debugPrint('[Player] Source $i opened without duration: $openUrl');
           await _player.stop();
           _statusController.upsert(
@@ -1103,6 +1112,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         );
         if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
           await _player.seek(seekAfterOpen);
+          if (_fallbackAborted(runGen)) return false;
         }
         _detectHlsQualities(openUrl, source.headers ?? widget.headers);
         setState(() {
@@ -1114,6 +1124,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         widget.onPlaybackStarted?.call();
         return true;
       } catch (e) {
+        if (_fallbackAborted(runGen)) return false;
         debugPrint('[Player] Source $i catch error: $e');
         await _player.stop();
         _statusController.upsert(
@@ -1134,6 +1145,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     if (_isInitPlaybackRunning)
       return; // Prevent re-entrant calls during async extraction
     _isInitPlaybackRunning = true;
+    final initGen = _fallbackGen;
     _playbackConfirmed = false;
 
     try {
@@ -1147,9 +1159,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         _subscribeToStreams();
         final played = await _trySourcesFromIndex(
           sourceStartIndex,
+          chainGen: initGen,
           seekAfterOpen: widget.startPosition,
         );
         if (played) return;
+        if (_fallbackAborted(initGen)) return;
 
         // Cached / pinned URL could not open — unlock failover for this session
         // but keep disk/session cache so details Play can retry the same server.
@@ -1176,6 +1190,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             await resetPlayerForOpen(_player);
             await applyMediaHttpHeaders(_player, widget.headers);
             await _player.open(Media(openUrl, httpHeaders: widget.headers));
+            if (_fallbackAborted(initGen)) return;
             _player.setVolume(_volumeNotifier.value);
             final opened = await waitForMediaOpen(
               _player,
@@ -1184,6 +1199,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   ? const Duration(seconds: 45)
                   : const Duration(seconds: 12),
             );
+            if (_fallbackAborted(initGen)) return;
             if (!opened) {
               throw Exception('Failed to open media');
             }
@@ -1197,6 +1213,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               '[Player] Primary open failed ($retryCount/$maxRetries): $e',
             );
             if (retryCount >= maxRetries) {
+              if (_fallbackAborted(initGen)) return;
               if (mounted) {
                 setState(() {
                   _hasError = true;
@@ -1367,6 +1384,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           seekAfterOpen: currentPos,
         );
         if (played) return true;
+        if (_fallbackAborted(gen)) return false;
 
         _statusController.upsert(
           'provider-$newProvider',
@@ -1377,8 +1395,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         return false;
       }
     } catch (e) {
+      if (_fallbackAborted(gen)) return false;
       debugPrint('[Player] Silent fallback to $newProvider failed: $e');
     }
+    if (_fallbackAborted(gen)) return false;
     _statusController.upsert(
       'provider-$newProvider',
       providerLabel,
@@ -2553,6 +2573,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       final isCurrent = _currentProvider == 'service111477'
           ? source.url == _current111477FileUrl
           : source.url == _currentUrl;
+      if (isCurrent && !_playbackConfirmed && _isInitPlaybackRunning) {
+        return PlayerSourceStatus.checking;
+      }
       if (isCurrent && _playbackConfirmed) return PlayerSourceStatus.active;
       if (_failedSourceIndices.contains(i)) return PlayerSourceStatus.failed;
       return PlayerSourceStatus.ready;
@@ -2567,6 +2590,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       current111477FileUrl: _current111477FileUrl,
       is111477: _currentProvider == 'service111477',
       sourceStatuses: _buildSourceStatuses(),
+      playbackConfirmed: _playbackConfirmed,
     );
   }
 
@@ -2620,6 +2644,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       providers: widget.providers,
       providerSourcesCache: widget.providerSourcesCache,
       providerProbesNotifier: widget.providerProbesNotifier,
+      statusController: _statusController,
       readState: _streamMenuState,
       onSelectProvider: _switchProvider,
       onSelectSource: _switchToStreamSource,
@@ -2698,9 +2723,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     final isCurrent = _currentProvider == 'service111477'
         ? source.url == _current111477FileUrl
         : source.url == _currentUrl;
-    if (isCurrent && _sourcePinned) return;
+    if (isCurrent && _sourcePinned && _playbackConfirmed) return;
 
-    if (isCurrent && !_sourcePinned) {
+    if (isCurrent && !_sourcePinned && _playbackConfirmed) {
       await SettingsService().setPlayerAutoSource(false);
       setState(() => _sourcePinned = true);
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
@@ -2710,6 +2735,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _sourcePinned = true;
     unawaited(SettingsService().setPlayerAutoSource(false));
     final switchGen = ++_fallbackGen;
+    WebStreamrService().cancelPending();
+    VidsrcExtractor.cancelPending();
+    NuvioService.instance.cancelPending();
+    _statusController.clear();
+    _playbackConfirmed = false;
     _markSourceChecking(index);
 
     final currentPos = _positionNotifier.value;
@@ -3661,6 +3691,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     WebStreamrService().cancelPending();
     VidsrcExtractor.cancelPending();
     NuvioService.instance.cancelPending();
+    _statusController.clear();
+    _playbackConfirmed = false;
 
     final currentPos = _positionNotifier.value;
     final provider = widget.providers![newProvider];

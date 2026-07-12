@@ -840,6 +840,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 sources: sources,
                 externalSubtitles: result.subtitles,
                 providerSourcesCache: providerSourcesCache,
+                providerProbesNotifier: probeNotifier,
                 pinSource: true,
                 onSourcePinned: (sourceUrl, sourceTitle) =>
                     _rememberWebstreamingSelection(
