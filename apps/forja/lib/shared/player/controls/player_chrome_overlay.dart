@@ -83,7 +83,7 @@ class PlayerFlatIconButton extends StatelessWidget {
   }
 }
 
-/// Unified stream source control — one pill showing the active server/source.
+/// Unified stream source control — flat, matches other player icon buttons.
 class PlayerStreamPickerButton extends StatelessWidget {
   const PlayerStreamPickerButton({
     super.key,
@@ -91,7 +91,7 @@ class PlayerStreamPickerButton extends StatelessWidget {
     required this.onPressedWithContext,
     this.enabled = true,
     this.size = 40,
-    this.iconSize = 18,
+    this.iconSize = 20,
     this.tvFocusable = false,
     this.focusNode,
   });
@@ -110,35 +110,42 @@ class PlayerStreamPickerButton extends StatelessWidget {
         ? () => onPressedWithContext!(context)
         : null;
     final child = Material(
-      color: Colors.white.withValues(alpha: enabled ? 0.1 : 0.05),
-      borderRadius: BorderRadius.circular(20),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        customBorder: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        borderRadius: BorderRadius.circular(8),
         child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: size, maxWidth: 168),
+          constraints: BoxConstraints(minHeight: size, maxWidth: 148),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 12, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.swap_horiz_rounded,
-                  color: Colors.white.withValues(alpha: enabled ? 1 : 0.45),
+                  Icons.layers_outlined,
+                  color: Colors.white.withValues(alpha: enabled ? 0.92 : 0.4),
                   size: iconSize,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 Flexible(
                   child: Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: enabled ? 0.95 : 0.45),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: enabled ? 0.88 : 0.4),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
+                ),
+                Icon(
+                  Icons.expand_more_rounded,
+                  size: 16,
+                  color: Colors.white.withValues(alpha: enabled ? 0.45 : 0.25),
                 ),
               ],
             ),
@@ -150,11 +157,11 @@ class PlayerStreamPickerButton extends StatelessWidget {
         ? FocusableControl(
             focusNode: focusNode,
             onTap: onTap,
-            borderRadius: 20,
+            borderRadius: 8,
             child: child,
           )
         : child;
-    return Tooltip(message: 'Stream source', child: button);
+    return Tooltip(message: 'Source — $label', child: button);
   }
 }
 

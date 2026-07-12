@@ -108,13 +108,42 @@ class _PlayerScreenState extends State<PlayerScreen> {
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   Duration? _resumePosition;
 
+  /// Live playback session — updated when the user switches server/source in-player
+  /// or hands off to an external app. Survives external ↔ built-in toggles.
+  late String _sessionStreamUrl;
+  String? _sessionActiveProvider;
+  List<StreamSource>? _sessionSources;
+  Map<String, String>? _sessionHeaders;
+
   Duration get _effectiveStartPosition =>
       _resumePosition ?? widget.startPosition ?? Duration.zero;
 
   @override
   void initState() {
     super.initState();
+    _sessionStreamUrl = widget.streamUrl;
+    _sessionActiveProvider = widget.activeProvider;
+    _sessionSources = widget.sources;
+    _sessionHeaders = widget.headers;
     _checkPlayerSettings();
+  }
+
+  void _applyPlaybackSession({
+    String? streamUrl,
+    Map<String, String>? headers,
+    String? activeProvider,
+    List<StreamSource>? sources,
+  }) {
+    if (streamUrl != null && streamUrl.isNotEmpty) {
+      _sessionStreamUrl = streamUrl;
+    }
+    if (headers != null) _sessionHeaders = headers;
+    if (activeProvider != null && activeProvider.isNotEmpty) {
+      _sessionActiveProvider = activeProvider;
+    }
+    if (sources != null && sources.isNotEmpty) {
+      _sessionSources = sources;
+    }
   }
 
   Future<void> _checkPlayerSettings() async {
@@ -142,9 +171,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (_externalPlayerName.isEmpty) return false;
 
     final success = await ExternalPlayerService.launch(
-      url: _externalStreamUrl ?? widget.streamUrl,
+      url: _externalStreamUrl ?? _sessionStreamUrl,
       title: widget.title,
-      headers: _externalHeaders ?? widget.headers,
+      headers: _externalHeaders ?? _sessionHeaders,
       context: context,
       playerName: _externalPlayerName,
     );
@@ -167,12 +196,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Future<void> _persistHandoffProgress(
     Duration position, {
     String? streamUrl,
+    String? activeProvider,
   }) async {
     final movie = widget.movie;
     if (movie == null || position.inMilliseconds < 5000) return;
-    final url = streamUrl ?? _externalStreamUrl ?? widget.streamUrl;
+    final url = streamUrl ?? _externalStreamUrl ?? _sessionStreamUrl;
     if (url.isEmpty) return;
-    final provider = widget.activeProvider;
+    final provider = activeProvider ?? _sessionActiveProvider;
     await WatchHistoryService().saveProgress(
       tmdbId: movie.id,
       imdbId: movie.imdbId,
@@ -196,10 +226,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
     String? externalPlayer,
     String? streamUrl,
     Map<String, String>? headers,
+    String? activeProvider,
+    List<StreamSource>? sources,
   }) async {
     if (resumePosition > Duration.zero) {
       _resumePosition = resumePosition;
     }
+    _applyPlaybackSession(
+      streamUrl: streamUrl,
+      headers: headers,
+      activeProvider: activeProvider,
+      sources: sources,
+    );
 
     if (externalPlayer != null) {
       if (!mounted) return;
@@ -207,8 +245,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _useExternalPlayer = true;
         _externalPlayerName = externalPlayer;
         _externalLaunched = false;
-        _externalStreamUrl = streamUrl;
-        _externalHeaders = headers;
+        _externalStreamUrl = streamUrl ?? _sessionStreamUrl;
+        _externalHeaders = headers ?? _sessionHeaders;
       });
       site111477_proxy.retainForExternalHandoff = true;
       final launched = await _launchExternal();
@@ -216,6 +254,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         await _persistHandoffProgress(
           resumePosition,
           streamUrl: streamUrl ?? _externalStreamUrl,
+          activeProvider: activeProvider ?? _sessionActiveProvider,
         );
       }
       return;
@@ -287,8 +326,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
           Duration.zero,
           builtInEngine: builtInEngine,
           externalPlayer: externalPlayer,
-          streamUrl: _externalStreamUrl,
-          headers: _externalHeaders,
+          streamUrl: _externalStreamUrl ?? _sessionStreamUrl,
+          headers: _externalHeaders ?? _sessionHeaders,
+          activeProvider: _sessionActiveProvider,
+          sources: _sessionSources,
         ),
       );
     }
@@ -391,18 +432,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
         );
       }
       return MobilePlayerScreen(
-        key: ValueKey('mk_${_builtInEngine.name}'),
-        mediaPath: widget.streamUrl,
+        key: ValueKey(
+          'mk_${_builtInEngine.name}_${_sessionActiveProvider}_${_sessionStreamUrl.hashCode}',
+        ),
+        mediaPath: _sessionStreamUrl,
         title: widget.title,
         audioUrl: widget.audioUrl,
-        headers: widget.headers,
+        headers: _sessionHeaders,
         movie: widget.movie,
         selectedSeason: widget.selectedSeason,
         selectedEpisode: widget.selectedEpisode,
         magnetLink: widget.magnetLink,
-        activeProvider: widget.activeProvider,
+        activeProvider: _sessionActiveProvider,
         startPosition: _effectiveStartPosition,
-        sources: widget.sources,
+        sources: _sessionSources,
         fileIndex: widget.fileIndex,
         externalSubtitles: widget.externalSubtitles,
         stremioId: widget.stremioId,
@@ -428,18 +471,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
       );
     } else {
       return DesktopPlayerScreen(
-        key: ValueKey('desktop_${_builtInEngine.name}'),
-        mediaPath: widget.streamUrl,
+        key: ValueKey(
+          'desktop_${_builtInEngine.name}_${_sessionActiveProvider}_${_sessionStreamUrl.hashCode}',
+        ),
+        mediaPath: _sessionStreamUrl,
         title: widget.title,
         audioUrl: widget.audioUrl,
-        headers: widget.headers,
+        headers: _sessionHeaders,
         movie: widget.movie,
         selectedSeason: widget.selectedSeason,
         selectedEpisode: widget.selectedEpisode,
         magnetLink: widget.magnetLink,
-        activeProvider: widget.activeProvider,
+        activeProvider: _sessionActiveProvider,
         startPosition: _effectiveStartPosition,
-        sources: widget.sources,
+        sources: _sessionSources,
         fileIndex: widget.fileIndex,
         externalSubtitles: widget.externalSubtitles,
         stremioId: widget.stremioId,

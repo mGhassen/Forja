@@ -13,6 +13,8 @@ typedef PlayerSwitchHandler = Future<void> Function(
   String? externalPlayer,
   String? streamUrl,
   Map<String, String>? headers,
+  String? activeProvider,
+  List<StreamSource>? sources,
 });
 
 typedef PlayerMenuSelectHandler = Future<void> Function({

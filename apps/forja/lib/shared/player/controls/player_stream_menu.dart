@@ -30,10 +30,10 @@ class PlayerStreamMenuState {
   final bool playbackConfirmed;
 }
 
-/// Unified server + source picker — one panel, grouped by server.
+/// Unified server + source picker — flat grouped list, no cards.
 class PlayerStreamMenu {
-  static const _panelWidth = 360.0;
-  static const _panelMaxHeight = 440.0;
+  static const _panelWidth = 320.0;
+  static const _panelMaxHeight = 420.0;
 
   static Widget? reloadTrailing({
     required Future<void> Function()? onReload,
@@ -77,9 +77,9 @@ class PlayerStreamMenu {
     PlayerStatusController? statusController,
     required PlayerStreamMenuState Function() readState,
     required Future<List<StreamSource>?> Function(String providerId)
-    onSelectProvider,
+        onSelectProvider,
     required Future<void> Function(StreamSource source, int index)
-    onSelectSource,
+        onSelectSource,
     bool providersEnabled = true,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
@@ -117,22 +117,29 @@ class PlayerStreamMenu {
           _orderedProviderEntries(providers, state.currentProviderId);
 
       return ListView(
-        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+        padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
         shrinkWrap: true,
         children: [
-          for (final entry in orderedProviders) ...[
-            _buildServerSection(
-              providerId: entry.key,
-              provider: entry.value,
+          for (var i = 0; i < orderedProviders.length; i++) ...[
+            if (i > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Divider(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+            _buildServerGroup(
+              providerId: orderedProviders[i].key,
+              provider: orderedProviders[i].value,
               state: state,
               probes: probes,
               statusController: statusController,
-              cachedSources: cache[entry.key],
+              cachedSources: cache[orderedProviders[i].key],
               providersEnabled: providersEnabled,
               onSelectProvider: onSelectProvider,
               onSelectSource: onSelectSource,
             ),
-            const SizedBox(height: 6),
           ],
         ],
       );
@@ -140,8 +147,8 @@ class PlayerStreamMenu {
 
     await PlayerPopupPanel.show(
       context: context,
-      title: 'Stream source',
-      leadingIcon: Icons.swap_horiz_rounded,
+      title: 'Source',
+      leadingIcon: Icons.layers_outlined,
       alignment: Alignment.bottomLeft,
       margin: margin,
       anchorContext: anchorContext,
@@ -157,7 +164,7 @@ class PlayerStreamMenu {
     );
   }
 
-  static Widget _buildServerSection({
+  static Widget _buildServerGroup({
     required String providerId,
     required dynamic provider,
     required PlayerStreamMenuState state,
@@ -166,9 +173,9 @@ class PlayerStreamMenu {
     required List<StreamSource>? cachedSources,
     required bool providersEnabled,
     required Future<List<StreamSource>?> Function(String providerId)
-    onSelectProvider,
+        onSelectProvider,
     required Future<void> Function(StreamSource source, int index)
-    onSelectSource,
+        onSelectSource,
   }) {
     final isCurrent = providerId == state.currentProviderId;
     final sectionSources = isCurrent
@@ -181,137 +188,61 @@ class PlayerStreamMenu {
       statusController: statusController,
       playbackConfirmed: state.playbackConfirmed,
     );
-    final subtitle = _providerSubtitle(
-      status: status,
-      sourceCount: sectionSources.length,
-      providersEnabled: providersEnabled,
-    );
     final flags = StreamProviderDisplay.countryFlags(
       providerId,
       contentLanguage: _contentLanguage(provider),
     );
     final label = PlayerProviderMenu.snackbarLabel(providerId, provider);
+    final subtitle = _providerSubtitle(
+      status: status,
+      sourceCount: sectionSources.length,
+      providersEnabled: providersEnabled,
+      isCurrent: isCurrent,
+      playbackConfirmed: state.playbackConfirmed,
+    );
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: isCurrent
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isCurrent
-              ? const Color(0xFF22C55E).withValues(alpha: 0.28)
-              : ForjaShellColors.cinematic.borderSubtle,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          label: flags.isEmpty ? label : '$flags  $label',
+          subtitle: subtitle,
+          status: status,
+          isCurrent: isCurrent && state.playbackConfirmed,
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(10),
-              ),
-              onTap: providersEnabled
-                  ? () async {
-                      PlayerPopupPanel.dismiss();
-                      await onSelectProvider(providerId);
-                    }
-                  : null,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-                child: Row(
-                  children: [
-                    if (flags.isNotEmpty) ...[
-                      _ServerFlagBadge(flags: flags),
-                      const SizedBox(width: 8),
-                    ],
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            label,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.95),
-                              fontSize: 13,
-                              fontWeight: isCurrent
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
-                            ),
-                          ),
-                          if (subtitle != null)
-                            Text(
-                              subtitle,
-                              style: TextStyle(
-                                color: status == PlayerSourceStatus.checking
-                                    ? playerSourceStatusColor(status!)
-                                    : status == PlayerSourceStatus.failed
-                                    ? playerSourceStatusColor(status!)
-                                    : Colors.white.withValues(alpha: 0.45),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    if (status != null) ...[
-                      const SizedBox(width: 6),
-                      _StatusDot(status: status),
-                    ],
-                    if (isCurrent && state.playbackConfirmed)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Text(
-                          'Active',
-                          style: TextStyle(
-                            color: const Color(
-                              0xFF22C55E,
-                            ).withValues(alpha: 0.9),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          if (sectionSources.isNotEmpty) ...[
-            Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
-              child: _sourcesList(
-                sources: sectionSources,
-                state: state,
-                useIndexedStatuses: isCurrent,
-                onSelectSource: (source, index) async {
-                  PlayerPopupPanel.dismiss();
-                  if (!isCurrent) {
-                    final loaded = await onSelectProvider(providerId);
-                    final pool = loaded ?? sectionSources;
-                    final targetIndex = pool.indexWhere(
-                      (s) => s.url == source.url,
-                    );
-                    if (targetIndex >= 0) {
-                      await onSelectSource(pool[targetIndex], targetIndex);
-                      return;
-                    }
+        if (sectionSources.isEmpty)
+          _FlatMenuRow(
+            label: providersEnabled ? 'Load streams' : 'Unavailable',
+            selected: false,
+            status: status ?? PlayerSourceStatus.ready,
+            onTap: providersEnabled
+                ? () async {
+                    PlayerPopupPanel.dismiss();
+                    await onSelectProvider(providerId);
                   }
-                  await onSelectSource(source, index);
-                },
-                compact: true,
-              ),
-            ),
-          ],
-        ],
-      ),
+                : null,
+          )
+        else
+          _sourcesList(
+            sources: sectionSources,
+            state: state,
+            useIndexedStatuses: isCurrent,
+            onSelectSource: (source, index) async {
+              PlayerPopupPanel.dismiss();
+              if (!isCurrent) {
+                final loaded = await onSelectProvider(providerId);
+                final pool = loaded ?? sectionSources;
+                final targetIndex =
+                    pool.indexWhere((s) => s.url == source.url);
+                if (targetIndex >= 0) {
+                  await onSelectSource(pool[targetIndex], targetIndex);
+                  return;
+                }
+              }
+              await onSelectSource(source, index);
+            },
+          ),
+      ],
     );
   }
 
@@ -319,8 +250,7 @@ class PlayerStreamMenu {
     required List<StreamSource> sources,
     required PlayerStreamMenuState state,
     required Future<void> Function(StreamSource source, int index)
-    onSelectSource,
-    bool compact = false,
+        onSelectSource,
     bool useIndexedStatuses = false,
   }) {
     final statuses = state.sourceStatuses;
@@ -328,14 +258,13 @@ class PlayerStreamMenu {
     return Column(
       children: [
         for (final entry in ordered)
-          _StreamSourceTile(
-            source: entry.value,
-            index: entry.key,
-            state: state,
+          _FlatMenuRow(
+            label: entry.value.title,
+            meta: entry.value.type.toUpperCase(),
+            selected: _isCurrentSource(entry.value, state),
             status: useIndexedStatuses && entry.key < statuses.length
                 ? statuses[entry.key]
                 : PlayerSourceStatus.ready,
-            compact: compact,
             onTap: () => onSelectSource(entry.value, entry.key),
           ),
       ],
@@ -373,7 +302,10 @@ class PlayerStreamMenu {
     return entries;
   }
 
-  static bool _isCurrentSource(StreamSource source, PlayerStreamMenuState state) {
+  static bool _isCurrentSource(
+    StreamSource source,
+    PlayerStreamMenuState state,
+  ) {
     return state.is111477
         ? source.url == state.current111477FileUrl
         : source.url == state.currentUrl;
@@ -434,191 +366,196 @@ class PlayerStreamMenu {
     required PlayerSourceStatus? status,
     required int sourceCount,
     required bool providersEnabled,
+    required bool isCurrent,
+    required bool playbackConfirmed,
   }) {
+    if (isCurrent && playbackConfirmed) return 'Playing now';
     if (sourceCount > 0 &&
         status != PlayerSourceStatus.checking &&
         status != PlayerSourceStatus.failed) {
-      return '$sourceCount source${sourceCount == 1 ? '' : 's'}';
+      return '$sourceCount stream${sourceCount == 1 ? '' : 's'}';
     }
     return switch (status) {
       PlayerSourceStatus.checking => 'Checking…',
       PlayerSourceStatus.failed => 'Unavailable',
       PlayerSourceStatus.ready =>
-        providersEnabled ? 'Tap to load' : 'Unavailable',
-      PlayerSourceStatus.active =>
-        sourceCount > 0
-            ? '$sourceCount source${sourceCount == 1 ? '' : 's'}'
-            : null,
-      null => providersEnabled ? 'Tap to load' : 'Unavailable',
+        providersEnabled ? 'Not loaded' : 'Unavailable',
+      PlayerSourceStatus.active => 'Playing now',
+      null => providersEnabled ? 'Not loaded' : 'Unavailable',
     };
   }
 }
 
-class _ServerFlagBadge extends StatelessWidget {
-  const _ServerFlagBadge({required this.flags});
-
-  final String flags;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(flags, style: const TextStyle(fontSize: 13)),
-    );
-  }
-}
-
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.status});
-
-  final PlayerSourceStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = playerSourceStatusColor(status);
-    if (status == PlayerSourceStatus.checking) {
-      return SizedBox(
-        width: 14,
-        height: 14,
-        child: CircularProgressIndicator(strokeWidth: 2, color: color),
-      );
-    }
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-}
-
-class _StreamSourceTile extends StatelessWidget {
-  const _StreamSourceTile({
-    required this.source,
-    required this.index,
-    required this.state,
-    required this.status,
-    required this.onTap,
-    this.compact = false,
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.label,
+    this.subtitle,
+    this.status,
+    this.isCurrent = false,
   });
 
-  final StreamSource source;
-  final int index;
-  final PlayerStreamMenuState state;
-  final PlayerSourceStatus status;
-  final VoidCallback onTap;
-  final bool compact;
+  final String label;
+  final String? subtitle;
+  final PlayerSourceStatus? status;
+  final bool isCurrent;
 
   @override
   Widget build(BuildContext context) {
-    final isCurrent = state.is111477
-        ? source.url == state.current111477FileUrl
-        : source.url == state.currentUrl;
-    final failed = status == PlayerSourceStatus.failed;
-    final active = isCurrent || status == PlayerSourceStatus.active;
-
     return Padding(
-      padding: EdgeInsets.only(bottom: compact ? 4 : 6),
-      child: Material(
-        color: active
-            ? const Color(0xFF22C55E).withValues(alpha: 0.1)
-            : failed
-            ? const Color(0xFFEF4444).withValues(alpha: 0.07)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: active
-                  ? Border.all(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.35),
-                    )
-                  : null,
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 10 : 12,
-              vertical: compact ? 8 : 10,
-            ),
-            child: Row(
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: playerSourceBadgeColor(source.type),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Text(
-                    source.type.toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.35,
-                    ),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isCurrent
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.88),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        source.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: failed
-                              ? Colors.white.withValues(alpha: 0.45)
-                              : Colors.white.withValues(alpha: 0.92),
-                          fontSize: compact ? 13 : 14,
-                          fontWeight: isCurrent
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                          decoration: failed
-                              ? TextDecoration.lineThrough
-                              : null,
-                          decorationColor: Colors.white38,
-                        ),
+                if (subtitle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      subtitle!,
+                      style: TextStyle(
+                        color: _subtitleColor(status),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
                       ),
-                      if (status != PlayerSourceStatus.ready)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            switch (status) {
-                              PlayerSourceStatus.active => 'Playing',
-                              PlayerSourceStatus.failed => 'Unavailable',
-                              PlayerSourceStatus.checking => 'Checking…',
-                              PlayerSourceStatus.ready => '',
-                            },
-                            style: TextStyle(
-                              color: playerSourceStatusColor(status),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (isCurrent)
-                  const Icon(Icons.check_rounded, color: Colors.white, size: 18)
-                else if (status == PlayerSourceStatus.failed)
-                  Icon(
-                    Icons.cancel_rounded,
-                    color: playerSourceStatusColor(status),
-                    size: 18,
+                    ),
                   ),
               ],
             ),
+          ),
+          if (status == PlayerSourceStatus.checking)
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: playerSourceStatusColor(status!),
+              ),
+            )
+          else if (isCurrent)
+            Icon(
+              Icons.play_arrow_rounded,
+              size: 18,
+              color: playerSourceStatusColor(PlayerSourceStatus.active),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Color _subtitleColor(PlayerSourceStatus? status) {
+    if (status == PlayerSourceStatus.checking ||
+        status == PlayerSourceStatus.failed) {
+      return playerSourceStatusColor(status!);
+    }
+    return Colors.white.withValues(alpha: 0.42);
+  }
+}
+
+class _FlatMenuRow extends StatelessWidget {
+  const _FlatMenuRow({
+    required this.label,
+    this.meta,
+    this.selected = false,
+    this.status = PlayerSourceStatus.ready,
+    this.onTap,
+  });
+
+  final String label;
+  final String? meta;
+  final bool selected;
+  final PlayerSourceStatus status;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = status == PlayerSourceStatus.failed;
+    final disabled = onTap == null;
+
+    return Material(
+      color: selected
+          ? Colors.white.withValues(alpha: 0.1)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        hoverColor: ForjaShellColors.inkHover,
+        splashColor: ForjaShellColors.inkSplash,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+          child: Row(
+            children: [
+              if (meta != null) ...[
+                SizedBox(
+                  width: 34,
+                  child: Text(
+                    meta!,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.38),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+              ] else
+                const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: failed
+                        ? Colors.white.withValues(alpha: 0.38)
+                        : selected
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.82),
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    decoration: failed ? TextDecoration.lineThrough : null,
+                    decorationColor: Colors.white38,
+                  ),
+                ),
+              ),
+              if (selected)
+                const Icon(Icons.check_rounded, color: Colors.white, size: 17)
+              else if (status == PlayerSourceStatus.checking)
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: playerSourceStatusColor(status),
+                  ),
+                )
+              else if (status == PlayerSourceStatus.failed)
+                Icon(
+                  Icons.close_rounded,
+                  size: 16,
+                  color: playerSourceStatusColor(status),
+                )
+              else if (disabled)
+                Icon(
+                  Icons.block_rounded,
+                  size: 15,
+                  color: Colors.white.withValues(alpha: 0.24),
+                ),
+            ],
           ),
         ),
       ),

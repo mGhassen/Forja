@@ -10,6 +10,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
+import 'package:forja/shared/widgets/tv_search_browse_overlay.dart';
 
 class HubSearchResult {
   const HubSearchResult({
@@ -75,6 +76,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
   int? _helperFocusedIndex;
   int _gridFocusedIndex = 0;
   int? _pendingGridFocusIndex;
+  bool _searchFieldEditing = false;
 
   static const _helpersRowId = 'search-helpers';
   static const _helperResultsRowId = 'search-helper-results';
@@ -83,10 +85,14 @@ class _HubSearchPageState extends State<HubSearchPage> {
   @override
   void initState() {
     super.initState();
+    _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
     _loadRecommendations();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_isWideLayout(context) && !_tvFocus(context)) {
+      if (!mounted) return;
+      if (_tvFocus(context)) {
+        _focusSearchFieldBrowse();
+      } else if (!_isWideLayout(context)) {
         _focusNode.requestFocus();
       }
     });
@@ -105,14 +111,43 @@ class _HubSearchPageState extends State<HubSearchPage> {
       );
       if (_query.isEmpty && _tvFocus(context)) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _focusFirstHelper();
+          if (mounted) _focusSearchFieldBrowse();
         });
       }
     } catch (_) {}
   }
 
+  void _onSearchFieldFocusChange() {
+    if (mounted) setState(() {});
+    if (!_focusNode.hasFocus && _searchFieldEditing && mounted) {
+      setState(() => _searchFieldEditing = false);
+    }
+  }
+
+  void _focusSearchFieldBrowse() {
+    if (!_focusNode.canRequestFocus) return;
+    if (_searchFieldEditing) {
+      setState(() => _searchFieldEditing = false);
+    }
+    _focusNode.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _query.trim().isNotEmpty) return;
+      if (!_focusNode.hasFocus) {
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
+  void _beginSearchFieldEditing() {
+    setState(() => _searchFieldEditing = true);
+    if (!_focusNode.hasFocus) {
+      _focusNode.requestFocus();
+    }
+  }
+
   @override
   void dispose() {
+    _focusNode.removeListener(_onSearchFieldFocusChange);
     shellTvUnregisterRow(tabId: widget.tvTabId, rowId: _helpersRowId);
     shellTvUnregisterRow(tabId: widget.tvTabId, rowId: _helperResultsRowId);
     shellTvUnregisterRow(tabId: widget.tvTabId, rowId: _resultsRowId);
@@ -142,10 +177,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
         _isSearching = false;
         _pendingGridFocusIndex = null;
       });
-      if (_tvFocus(context) && _recommendationTitles.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _focusFirstHelper();
-        });
+      if (_tvFocus(context) && _focusNode.hasFocus) {
+        _focusSearchFieldBrowse();
       }
       return;
     }
@@ -286,6 +319,10 @@ class _HubSearchPageState extends State<HubSearchPage> {
         _focusFirstHelper()) {
       return KeyEventResult.handled;
     }
+    if (shellTvIsActivateKey(event) && !_searchFieldEditing) {
+      _beginSearchFieldEditing();
+      return KeyEventResult.handled;
+    }
     return KeyEventResult.ignored;
   }
 
@@ -422,40 +459,61 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   Widget _buildSearchField(BuildContext context) {
     final tvFocus = _tvFocus(context);
-    return TextField(
-      controller: _controller,
-      focusNode: _focusNode,
-      autofocus: !tvFocus,
-      canRequestFocus: !tvFocus,
-      onChanged: _onSearchChanged,
-      style: TextStyle(
-        color: ForjaShellColors.textPrimary,
-        fontSize: 32,
-        fontWeight: FontWeight.w600,
-        height: 1.15,
-      ),
-      cursorColor: ForjaShellColors.textPrimary,
-      decoration: InputDecoration(
-        hintText: widget.hintText,
-        hintStyle: TextStyle(
-          color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
-          fontSize: 32,
-          fontWeight: FontWeight.w600,
+    final browseOnly = tvFocus && !_searchFieldEditing;
+    final hintStyle = TextStyle(
+      color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
+      fontSize: 32,
+      fontWeight: FontWeight.w600,
+      height: 1.15,
+    );
+    final showBrowsePlaceholder =
+        browseOnly && _focusNode.hasFocus && _query.isEmpty;
+
+    return Stack(
+      alignment: Alignment.centerLeft,
+      children: [
+        TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          autofocus: !tvFocus,
+          readOnly: browseOnly,
+          showCursor: !browseOnly || _query.isNotEmpty,
+          enableInteractiveSelection: !browseOnly,
+          onChanged: _onSearchChanged,
+          style: TextStyle(
+            color: ForjaShellColors.textPrimary,
+            fontSize: 32,
+            fontWeight: FontWeight.w600,
+            height: 1.15,
+          ),
+          cursorColor: ForjaShellColors.textPrimary,
+          cursorHeight: 36,
+          decoration: InputDecoration(
+            hintText: showBrowsePlaceholder ? null : widget.hintText,
+            hintStyle: hintStyle,
+            border: InputBorder.none,
+            isDense: true,
+            contentPadding: EdgeInsets.zero,
+            suffixIcon: _query.isNotEmpty
+                ? ForjaCloseButton.compact(
+                    tooltip: null,
+                    color: ForjaShellColors.textSecondary,
+                    onTap: () {
+                      _controller.clear();
+                      _onSearchChanged('');
+                    },
+                  )
+                : null,
+          ),
         ),
-        border: InputBorder.none,
-        isDense: true,
-        contentPadding: EdgeInsets.zero,
-        suffixIcon: _query.isNotEmpty
-            ? ForjaCloseButton.compact(
-                tooltip: null,
-                color: ForjaShellColors.textSecondary,
-                onTap: () {
-                  _controller.clear();
-                  _onSearchChanged('');
-                },
-              )
-            : null,
-      ),
+        if (showBrowsePlaceholder)
+          TvSearchBrowsePlaceholder(
+            active: true,
+            placeholder: widget.hintText,
+            hintStyle: hintStyle,
+            caretHeight: 36,
+          ),
+      ],
     );
   }
 
@@ -741,7 +799,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
   }
 }
 
-class _HubSearchFilmCard extends StatelessWidget {
+class _HubSearchFilmCard extends StatefulWidget {
   const _HubSearchFilmCard({
     required this.result,
     required this.selected,
@@ -767,6 +825,13 @@ class _HubSearchFilmCard extends StatelessWidget {
   final int? gridColumns;
 
   @override
+  State<_HubSearchFilmCard> createState() => _HubSearchFilmCardState();
+}
+
+class _HubSearchFilmCardState extends State<_HubSearchFilmCard> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final titleSize = shellHubCardTitleFontSize(context);
     final tvActivateOpens =
@@ -774,31 +839,34 @@ class _HubSearchFilmCard extends StatelessWidget {
 
     return shellFocusableTap(
       context: context,
-      onTap: tvActivateOpens ? onOpen : onTap,
+      onTap: tvActivateOpens ? widget.onOpen : widget.onTap,
       borderRadius: 14,
       showFocusBorder: true,
-      onLeftEdge: onLeftEdge,
-      gridIndex: gridIndex,
-      gridColumns: gridColumns,
-      tvTabId: tvTabId,
-      tvRowId: resultsRowId,
+      onLeftEdge: widget.onLeftEdge,
+      gridIndex: widget.gridIndex,
+      gridColumns: widget.gridColumns,
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.resultsRowId,
       tvZone: ShellTvZone.grid,
-      tvItemIndex: gridIndex,
-      onFocusChange: onFocusChange,
+      tvItemIndex: widget.gridIndex,
+      onFocusChange: widget.onFocusChange,
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: GestureDetector(
-        onDoubleTap: onOpen,
+        onDoubleTap: widget.onOpen,
         child: SizedBox.expand(
           child: AnimatedContainer(
             duration: ShellTokens.navSelectionAnimation,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: selected
+              border: widget.selected
                   ? Border.all(color: Colors.white, width: 2)
                   : null,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: selected ? 0.65 : 0.5),
-                  blurRadius: selected ? 20 : 16,
+                  color: Colors.black.withValues(
+                    alpha: widget.selected ? 0.65 : 0.5,
+                  ),
+                  blurRadius: widget.selected ? 20 : 16,
                   offset: const Offset(0, 8),
                 ),
               ],
@@ -810,16 +878,16 @@ class _HubSearchFilmCard extends StatelessWidget {
                 children: [
                   ColoredBox(
                     color: AppTheme.bgDark,
-                    child: result.posterUrl.isNotEmpty
+                    child: widget.result.posterUrl.isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: result.posterUrl,
+                            imageUrl: widget.result.posterUrl,
                             fit: BoxFit.cover,
                             filterQuality: FilterQuality.medium,
                             placeholder: (_, _) =>
                                 ColoredBox(color: AppTheme.bgDark),
                             errorWidget: (_, _, _) => Center(
                               child: Text(
-                                result.title,
+                                widget.result.title,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 10,
@@ -830,7 +898,7 @@ class _HubSearchFilmCard extends StatelessWidget {
                           )
                         : Center(
                             child: Text(
-                              result.title,
+                              widget.result.title,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 10,
@@ -854,7 +922,42 @@ class _HubSearchFilmCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (result.rating != null)
+                  if (_hovered)
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        child: Center(
+                          child: Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              hoverColor: ForjaShellColors.inkHover,
+                              splashColor: ForjaShellColors.inkSplash,
+                              highlightColor: ForjaShellColors.inkSplash,
+                              onTap: widget.onOpen,
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.info_outline_rounded,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (widget.result.rating != null)
                     Positioned(
                       top: 8,
                       right: 8,
@@ -880,7 +983,7 @@ class _HubSearchFilmCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 3),
                             Text(
-                              result.rating!.toStringAsFixed(1),
+                              widget.result.rating!.toStringAsFixed(1),
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -900,7 +1003,7 @@ class _HubSearchFilmCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          result.title,
+                          widget.result.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -910,11 +1013,11 @@ class _HubSearchFilmCard extends StatelessWidget {
                             height: 1.2,
                           ),
                         ),
-                        if (result.subtitle != null &&
-                            result.subtitle!.isNotEmpty) ...[
+                        if (widget.result.subtitle != null &&
+                            widget.result.subtitle!.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
-                            result.subtitle!,
+                            widget.result.subtitle!,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.5),
                               fontSize: 11,

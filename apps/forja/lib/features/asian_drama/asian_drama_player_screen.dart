@@ -95,6 +95,10 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   String _statusLine = '';
   bool _failedAll = false;
   bool _cancelled = false;
+  KdramaCard? _resolvedDrama;
+  KdramaEpisode? _resolvedEpisode;
+  List<KdramaEpisode> _resolvedEpisodes = const [];
+  String _resolvedOverview = '';
 
   @override
   void initState() {
@@ -117,13 +121,71 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     _messageNotifier.value = phase;
   }
 
+  KdramaEpisode? _episodeByNumber(List<KdramaEpisode> episodes, double number) {
+    for (final e in episodes) {
+      if (e.number == number) return e;
+    }
+    return null;
+  }
+
+  Future<bool> _resolveEpisodeContext() async {
+    var drama = widget.drama;
+    var episodes = widget.allEpisodes;
+    var episode = widget.episode;
+
+    final needsDetails = episodes.isEmpty ||
+        episode.id <= 0 ||
+        drama.title.trim().isEmpty;
+
+    if (needsDetails) {
+      if (!mounted) return false;
+      setState(() => _setPhase('Loading drama…'));
+      final det = await _service.getDetails(drama.id);
+      episodes = det.episodes;
+      drama = det.toCard();
+      _resolvedOverview = det.description;
+    }
+
+    if (episode.id > 0) {
+      try {
+        episode = episodes.firstWhere((e) => e.id == episode.id);
+      } catch (_) {
+        final byNumber = _episodeByNumber(episodes, episode.number);
+        if (byNumber != null) episode = byNumber;
+      }
+    } else {
+      episode = _episodeByNumber(episodes, episode.number) ??
+          (episodes.isNotEmpty ? episodes.first : episode);
+    }
+
+    if (episode.id <= 0) return false;
+
+    _resolvedDrama = drama;
+    _resolvedEpisode = episode;
+    _resolvedEpisodes = episodes;
+    return true;
+  }
+
   Future<void> _bootstrap() async {
     try {
+      if (!await _resolveEpisodeContext()) {
+        if (!mounted) return;
+        setState(() {
+          _failedAll = true;
+          _setPhase('Episode not found');
+          _statusLine = 'Could not resolve this episode on kisskh.';
+        });
+        return;
+      }
+
+      final drama = _resolvedDrama!;
+      final episode = _resolvedEpisode!;
+
       final stream = await _extractor.resolve(
-        dramaId: widget.drama.id,
-        dramaTitle: widget.drama.title,
-        episodeId: widget.episode.id,
-        episodeNumber: widget.episode.number,
+        dramaId: drama.id,
+        dramaTitle: drama.title,
+        episodeId: episode.id,
+        episodeNumber: episode.number,
         isCancelled: () => _cancelled,
         onProgress: (phase, detail) {
           if (!mounted) return;
@@ -161,33 +223,33 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     final sources = stream.toSources(label: 'kisskh');
     final subs = stream.subtitles;
 
-    var drama = widget.drama;
-    var episodes = widget.allEpisodes;
-    var overview = '';
+    final drama = _resolvedDrama ?? widget.drama;
+    final episode = _resolvedEpisode ?? widget.episode;
+    var episodes = _resolvedEpisodes;
+    var overview = _resolvedOverview;
     if (episodes.isEmpty) {
       try {
-        final det = await _service.getDetails(widget.drama.id);
+        final det = await _service.getDetails(drama.id);
         episodes = det.episodes;
         overview = det.description;
-        drama = det.toCard();
       } catch (_) {}
     }
 
     await _service.recordWatch(
-      drama: widget.drama,
-      episodeNumber: widget.episode.number,
+      drama: drama,
+      episodeNumber: episode.number,
+      episodeId: episode.id,
       totalEpisodes: episodes.isNotEmpty
           ? episodes.length
-          : widget.episode.number.toInt(),
+          : episode.number.toInt(),
     );
 
-    final title =
-        '${widget.drama.title} • EP ${widget.episode.displayNumber}';
+    final title = '${drama.title} • EP ${episode.displayNumber}';
 
     KdramaEpisode? nextFromList;
     if (episodes.isNotEmpty) {
       for (final e in episodes) {
-        if (e.number == widget.episode.number + 1) {
+        if (e.number == episode.number + 1) {
           nextFromList = e;
           break;
         }
@@ -205,10 +267,10 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       var list = episodes;
       if (ep == null) {
         try {
-          final det = await _service.getDetails(widget.drama.id);
+          final det = await _service.getDetails(drama.id);
           list = det.episodes;
           for (final e in det.episodes) {
-            if (e.number == widget.episode.number + 1) {
+            if (e.number == episode.number + 1) {
               ep = e;
               break;
             }
@@ -219,7 +281,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       await navigator.pushReplacement(
         AppRouter.fadeRoute(
           (_) => AsianDramaPlayerScreen(
-            drama: widget.drama,
+            drama: drama,
             episode: ep!,
             allEpisodes: list,
           ),
@@ -239,8 +301,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       startPosition: widget.startPosition,
       externalSubtitles: subs.isNotEmpty ? subs : null,
       hubEpisodes: hubEpisodes,
-      hubEpisodeNumber: widget.episode.number,
-      episodeOverview: 'Episode ${widget.episode.displayNumber}',
+      hubEpisodeNumber: episode.number,
+      episodeOverview: 'Episode ${episode.displayNumber}',
       onHubEpisodeSelected: (ep) async {
         KdramaEpisode? target;
         for (final e in episodes) {
@@ -253,7 +315,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         await navigator.pushReplacement(
           AppRouter.fadeRoute(
             (_) => AsianDramaPlayerScreen(
-              drama: widget.drama,
+              drama: drama,
               episode: target!,
               allEpisodes: episodes,
             ),
@@ -262,11 +324,12 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       },
       onSaveProgress: (pos, dur) async {
         await _service.recordWatch(
-          drama: widget.drama,
-          episodeNumber: widget.episode.number,
+          drama: drama,
+          episodeNumber: episode.number,
+          episodeId: episode.id,
           totalEpisodes: episodes.isNotEmpty
               ? episodes.length
-              : widget.episode.number.toInt(),
+              : episode.number.toInt(),
           position: pos,
           duration: dur,
         );

@@ -22,7 +22,7 @@ While already handed off: **Change player** on the handoff screen.
 
 ## Tips
 
-- On macOS, **IINA** is launched via `iina-cli` with a temporary **mpv config file** (`--mpv-include`) that sets Referer, User-Agent, Origin, and network options — mpv applies those headers on every HLS segment/key request (no Forja localhost proxy on desktop)
+- On macOS, **IINA** is launched via `iina-cli` with `--mpv-referrer` / `--mpv-user-agent` (same pattern as VLC) plus mpv network options — headers apply on every HLS segment/key request (no Forja localhost proxy on desktop)
 - **Android** may still use Forja's local hls-proxy when the player cannot accept headers
 - **111477 CDN** direct file links use Forja's seek cache proxy (signed redirects)
 - External players receive the same mpv network settings as the built-in player (`tls-verify`, HLS cache, timeouts)

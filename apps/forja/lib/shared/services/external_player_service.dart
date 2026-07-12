@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/android_player_launcher.dart';
 import 'package:forja/shared/design/design.dart';
@@ -382,84 +381,32 @@ class ExternalPlayerService {
         uri.path.contains('/comic-proxy');
   }
 
-  /// iina-cli cannot reliably parse long Referer/User-Agent CLI flags (commas,
-  /// `&`, spaces). Write an mpv include config — same properties the built-in
-  /// player sets via [applyMediaHttpHeaders].
-  static Future<File> _writeMpvIncludeConfig(Map<String, String>? headers) async {
-    final buf = StringBuffer();
-    for (final line in _mpvStreamConfigLines()) {
-      buf.writeln(line);
-    }
-
-    if (headers != null) {
-      final referer = headers['Referer'] ?? headers['referer'];
-      if (referer != null) {
-        _mpvConfigLine(buf, 'referrer', referer);
-        _mpvConfigHeaderField(buf, 'Referer', referer);
-      }
-      final ua = headers['User-Agent'] ?? headers['user-agent'];
-      if (ua != null) {
-        _mpvConfigLine(buf, 'user-agent', ua);
-        _mpvConfigHeaderField(buf, 'User-Agent', ua);
-      }
-      final origin = headers['Origin'] ?? headers['origin'];
-      if (origin != null) {
-        _mpvConfigHeaderField(buf, 'Origin', origin);
-      }
-      for (final entry in headers.entries) {
-        final key = entry.key.toLowerCase();
-        if (key == 'referer' || key == 'user-agent' || key == 'origin') {
-          continue;
-        }
-        _mpvConfigHeaderField(buf, entry.key, entry.value);
-      }
-    }
-
-    final dir = await getTemporaryDirectory();
-    final file = File(
-      '${dir.path}${Platform.pathSeparator}'
-      'forja_external_${DateTime.now().microsecondsSinceEpoch}.conf',
-    );
-    await file.writeAsString(buf.toString());
-    return file;
+  /// IINA mpv flags — mirror [_vlcHeaderArgs] (proven on vixsrc HLS). Avoid
+  /// `--mpv-include` from the app sandbox: IINA cannot read files under
+  /// `Library/Containers/com.forja.app/`.
+  static List<String> _iinaHeaderArgs(Map<String, String>? headers) {
+    if (headers == null || headers.isEmpty) return [];
+    final args = <String>[];
+    final referer = headers['Referer'] ?? headers['referer'];
+    if (referer != null) args.add('--mpv-referrer=$referer');
+    final ua = headers['User-Agent'] ?? headers['user-agent'];
+    if (ua != null) args.add('--mpv-user-agent=$ua');
+    final origin = headers['Origin'] ?? headers['origin'];
+    if (origin != null) args.add('--mpv-http-header-fields=Origin: $origin');
+    return args;
   }
 
-  static void _mpvConfigLine(StringBuffer buf, String key, String value) {
-    buf.writeln('$key="${_mpvConfigEscape(value)}"');
-  }
-
-  static void _mpvConfigHeaderField(
-    StringBuffer buf,
-    String name,
-    String value,
-  ) {
-    buf.writeln('http-header-fields="${_mpvConfigEscape('$name: $value')}"');
-  }
-
-  static String _mpvConfigEscape(String value) =>
-      value.replaceAll('\\', r'\\').replaceAll('"', r'\"');
-
-  static List<String> _mpvStreamConfigLines() => [
-        'network-timeout=30',
-        'tls-verify=no',
-        'hls-bitrate=no',
-        'cache=yes',
-        'demuxer-readahead-secs=120',
-        'ytdl=no',
-      ];
-
-  static Future<List<String>> _desktopLaunchArgs({
+  static List<String> _desktopLaunchArgs({
     required ExternalPlayer player,
     required String url,
     required String title,
     Map<String, String>? headers,
-  }) async {
+  }) {
     if (Platform.isMacOS && player.displayName == 'IINA') {
-      final config = await _writeMpvIncludeConfig(headers);
-      debugPrint('[ExternalPlayer] IINA mpv include → ${config.path}');
       return [
-        '--mpv-include=${config.path}',
         if (title.isNotEmpty) '--mpv-force-media-title=$title',
+        ..._mpvStreamArgs(prefix: '--mpv-'),
+        ..._iinaHeaderArgs(headers),
         url,
       ];
     }
@@ -576,7 +523,7 @@ class ExternalPlayerService {
       return false;
     }
 
-    final playerArgs = await _desktopLaunchArgs(
+    final playerArgs = _desktopLaunchArgs(
       player: player,
       url: url,
       title: title,

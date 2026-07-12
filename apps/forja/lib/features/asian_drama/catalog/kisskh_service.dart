@@ -322,6 +322,7 @@ class KissKhService {
     required KdramaCard drama,
     required double episodeNumber,
     required int totalEpisodes,
+    int? episodeId,
     Duration? position,
     Duration? duration,
   }) async {
@@ -341,6 +342,7 @@ class KissKhService {
         'title': drama.title,
         'cover': drama.cover,
         'episodeNumber': episodeNumber,
+        if (episodeId != null && episodeId > 0) 'episodeId': episodeId,
         'totalEpisodes': totalEpisodes,
         'positionMs': position?.inMilliseconds ?? 0,
         'durationMs': duration?.inMilliseconds ?? 0,

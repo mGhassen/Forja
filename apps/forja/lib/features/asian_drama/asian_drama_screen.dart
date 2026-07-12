@@ -159,8 +159,10 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   Future<void> _resumeWatch(Map<String, dynamic> entry) async {
     try {
-      final id = (entry['id'] as num).toInt();
+      final id = (entry['id'] as num?)?.toInt();
+      if (id == null) return;
       final epNum = (entry['episodeNumber'] as num?)?.toDouble() ?? 1.0;
+      final epId = (entry['episodeId'] as num?)?.toInt() ?? 0;
       final title = entry['title'] as String? ?? '';
       final cover = entry['cover'] as String? ?? '';
       final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
@@ -174,23 +176,12 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
       }
 
-      final card = KdramaCard(id: id, title: title, cover: cover);
-      final details = await _service.getDetails(id);
-      if (!mounted) return;
-      KdramaEpisode? ep;
-      try {
-        ep = details.episodes.firstWhere((e) => e.number == epNum);
-      } catch (_) {}
-      ep ??= details.episodes.isNotEmpty ? details.episodes.first : null;
-      if (ep == null) {
-        openAsianDramaDetails(context, card);
-        return;
-      }
+      // Open the resolver immediately — episode/drama lookup runs inside the
+      // player loading screen (same pattern as Anime continue watching).
       openAsianDramaPlayer(
         context,
-        drama: card,
-        episode: ep!,
-        allEpisodes: details.episodes,
+        drama: KdramaCard(id: id, title: title, cover: cover),
+        episode: KdramaEpisode(id: epId, number: epNum),
         startPosition: startPosition,
       ).then((_) => _refreshHistory());
     } catch (e) {

@@ -56,8 +56,12 @@ class PlayerPopupPanel {
     BuildContext anchorContext,
     BuildContext overlayContext,
   ) {
-    final anchorBox = anchorContext.findRenderObject() as RenderBox?;
-    if (anchorBox == null || !anchorBox.hasSize) return null;
+    if (!anchorContext.mounted) return null;
+
+    final renderObject = anchorContext.findRenderObject();
+    if (renderObject is! RenderBox) return null;
+    final anchorBox = renderObject;
+    if (!anchorBox.hasSize) return null;
 
     final overlayBox =
         Overlay.of(overlayContext).context.findRenderObject() as RenderBox?;
@@ -94,6 +98,13 @@ class PlayerPopupPanel {
 
     _entry = OverlayEntry(
       builder: (overlayContext) {
+        if (anchorContext != null && !anchorContext.mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (isShowing) dismiss();
+          });
+          return const SizedBox.shrink();
+        }
+
         final overlaySize = MediaQuery.sizeOf(overlayContext);
         final rawAnchorRect = anchorContext != null
             ? _anchorRectInOverlay(anchorContext, overlayContext)

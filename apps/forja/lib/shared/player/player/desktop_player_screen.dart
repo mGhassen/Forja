@@ -871,12 +871,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       } else if (widget.activeProvider == 'amri') {
         method = 'amri';
         sourceId = widget.mediaPath;
-      } else if (widget.activeProvider != null) {
-        method = 'stream';
-        sourceId = widget.activeProvider!;
       } else {
-        method = 'amri';
-        sourceId = widget.mediaPath;
+        final liveProvider = _currentProvider ?? widget.activeProvider;
+        if (liveProvider != null && liveProvider.isNotEmpty) {
+          method = 'stream';
+          sourceId = liveProvider;
+        } else {
+          method = 'amri';
+          sourceId = widget.mediaPath;
+        }
       }
       final resolvedStreamUrl = _currentUrl ?? widget.mediaPath;
       WatchHistoryService().saveProgress(
@@ -3420,6 +3423,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             externalPlayer: externalPlayer,
             streamUrl: target.url,
             headers: target.headers,
+            activeProvider: _currentProvider,
+            sources: _currentSources,
           );
         }
         return handler(_positionNotifier.value, builtInEngine: builtInEngine);
