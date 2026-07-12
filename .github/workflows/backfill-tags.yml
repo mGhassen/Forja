@@ -10,10 +10,11 @@ on:
         type: boolean
         default: false
 
+# GITHUB_TOKEN cannot push tags pointing at commits that changed
+# .github/workflows/* — use a PAT with the `workflow` scope as
+# BACKFILL_GITHUB_TOKEN, or run ./scripts/backfill_version_tags.sh locally.
 permissions:
   contents: write
-  # Required when tagging commits that modified .github/workflows/*
-  workflows: write
 
 jobs:
   backfill:
@@ -23,7 +24,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Prefer PAT so tags on workflow-touching commits can be pushed.
+          token: ${{ secrets.BACKFILL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Configure git
         run: |

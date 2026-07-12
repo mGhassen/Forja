@@ -17,6 +17,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
@@ -31,7 +32,7 @@ class AnimeScreen extends StatefulWidget {
 }
 
 class _AnimeScreenState extends State<AnimeScreen>
-    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver, ShellTabRefresh<AnimeScreen> {
   final AnimeService _service = AnimeService();
   final ScrollController _cwScrollController = ScrollController();
   final ScrollController _scroll = ScrollController();
@@ -158,6 +159,13 @@ class _AnimeScreenState extends State<AnimeScreen>
     }
   }
 
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {
+    if (_error != null || !_catalogResolved || force) {
+      await _load();
+    }
+  }
+
   Future<void> _load() async {
     final spotlightFuture = _safeSection(_service.getSpotlight(), 'spotlight');
     final trendingFuture = _safeSection(_service.getTrending(), 'trending');
@@ -217,6 +225,7 @@ class _AnimeScreenState extends State<AnimeScreen>
       _error = hasCatalog ? null : 'Failed to load anime — check your connection';
       _moodFuture = _loadMood(_selectedMood);
     });
+    if (hasCatalog) markShellTabFresh();
   }
 
   Future<List<AnimeCard>> _loadMood(String id) async {
@@ -242,7 +251,10 @@ class _AnimeScreenState extends State<AnimeScreen>
   }
 
   void _openDetails(AnimeCard a) {
-    openAnimeDetails(context, a).then((_) => _refreshHistory());
+    openAnimeDetails(context, a).then((_) {
+      _refreshHistory();
+      unawaited(refreshIfStale(force: _error != null));
+    });
   }
 
   void _openSearch() {

@@ -17,6 +17,36 @@ void main() {
     expect(decoded['data'], isNotNull);
   });
 
+  test('engine cancel must not break anilist catalog queries', () async {
+    const q =
+        'query { Page(page: 1, perPage: 1) { media(sort: TRENDING_DESC, type: ANIME) { id } } }';
+    final fut = Future(() => RustLib.instance.anilistQueryJson(q));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    RustLib.instance.engineCancelPending();
+    final raw = await fut;
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    expect(
+      decoded['data'],
+      isNotNull,
+      reason: 'catalog fetch should ignore playback cancel: $decoded',
+    );
+  });
+
+  test('engine cancel must not break worker-pool anilist queries', () async {
+    const q =
+        'query { Page(page: 1, perPage: 1) { media(sort: TRENDING_DESC, type: ANIME) { id } } }';
+    final fut = runAnilistQueryJson(q);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    RustLib.instance.engineCancelPending();
+    final raw = await fut;
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    expect(
+      decoded['data'],
+      isNotNull,
+      reason: 'worker catalog fetch should ignore playback cancel: $decoded',
+    );
+  });
+
   test('mangaFetchHtml rejects invalid url', () {
     final raw = RustLib.instance.mangaFetchHtml('not-a-url');
     final decoded = jsonDecode(raw) as Map<String, dynamic>;

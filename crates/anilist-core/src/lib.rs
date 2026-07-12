@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use stremio_core::fetch_post_with_headers;
+use stremio_core::fetch_post_with_headers_unchecked;
 
 const GQL_URL: &str = "https://graphql.anilist.co";
 
@@ -18,7 +18,7 @@ pub fn query_json(query: &str, variables_json: &str) -> String {
     headers.insert("Accept".into(), "application/json".into());
     headers.insert("Content-Type".into(), "application/json".into());
 
-    match fetch_post_with_headers(GQL_URL, 15, &headers, &body) {
+    match fetch_post_with_headers_unchecked(GQL_URL, 15, &headers, &body) {
         Ok(resp) if resp.status == 200 => resp.body,
         Ok(resp) => serde_json::json!({
             "error": format!("AniList HTTP {}", resp.status),

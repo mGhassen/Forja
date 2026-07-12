@@ -1082,7 +1082,7 @@ _PortalExpiryTone _portalExpiryTone(String expiry) {
   final end = _parsePortalExpiryDate(label);
   if (end == null) {
     return _PortalExpiryTone(
-      color: Colors.white38,
+      color: const Color(0xFF9CA3AF),
       label: label == 'Unknown' ? 'Ends: Unknown' : 'Ends: $label',
     );
   }
@@ -1772,7 +1772,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
             style: GoogleFonts.poppins(
               color: tone.color,
               fontSize: 11,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w600,
               height: 1.1,
             ),
           ),

@@ -250,7 +250,6 @@ fn jellyfin_request_json(request_json: String) -> String {
 }
 
 fn anilist_query_json(query: String, variables_json: String) -> String {
-    utils::engine_cancel::enter_job();
     anilist_core::query_json(&query, &variables_json)
 }
 
