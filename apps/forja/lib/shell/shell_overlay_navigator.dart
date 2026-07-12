@@ -67,15 +67,25 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
 
   void _syncOverlayStack() {
     if (!mounted) return;
+    // Lift [ExcludeFocus] in the same frame as push/pop so overlay pages can
+    // receive focus on first entry (hub search, details, etc.).
+    final hasPage = shellOverlayNavigatorKey.currentState?.canPop() ?? false;
+    if (hasPage != ShellBus.shellOverlayHasPage.value) {
+      ShellBus.shellOverlayHasPage.value = hasPage;
+      ShellBus.notifyShellChromeChanged();
+    }
+    if (hasPage != _overlayHasPage) {
+      setState(() => _overlayHasPage = hasPage);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final hasPage = shellOverlayNavigatorKey.currentState?.canPop() ?? false;
-      if (hasPage != ShellBus.shellOverlayHasPage.value) {
-        ShellBus.shellOverlayHasPage.value = hasPage;
+      final settled = shellOverlayNavigatorKey.currentState?.canPop() ?? false;
+      if (settled != ShellBus.shellOverlayHasPage.value) {
+        ShellBus.shellOverlayHasPage.value = settled;
         ShellBus.notifyShellChromeChanged();
       }
-      if (hasPage == _overlayHasPage) return;
-      setState(() => _overlayHasPage = hasPage);
+      if (settled == _overlayHasPage) return;
+      setState(() => _overlayHasPage = settled);
     });
   }
 

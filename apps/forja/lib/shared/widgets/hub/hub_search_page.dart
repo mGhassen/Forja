@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -77,6 +78,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
   int _gridFocusedIndex = 0;
   int? _pendingGridFocusIndex;
   bool _searchFieldEditing = false;
+  ModalRoute<void>? _route;
+  AnimationStatusListener? _routeAnimationListener;
 
   static const _helpersRowId = 'search-helpers';
   static const _helperResultsRowId = 'search-helper-results';
@@ -87,14 +90,61 @@ class _HubSearchPageState extends State<HubSearchPage> {
     super.initState();
     _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
+    ShellBus.shellOverlayHasPage.addListener(_onShellOverlayChanged);
     _loadRecommendations();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (_tvFocus(context)) {
-        _focusSearchFieldBrowse();
-      } else if (!_isWideLayout(context)) {
+    _ensureSearchFieldFocused();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route == _route) return;
+    _detachRouteAnimationListener();
+    _route = route;
+    final animation = route?.animation;
+    if (animation == null) return;
+    _routeAnimationListener = (status) {
+      if (status == AnimationStatus.completed && mounted) {
+        _ensureSearchFieldFocused();
+      }
+    };
+    animation.addStatusListener(_routeAnimationListener!);
+    if (animation.isCompleted) {
+      _ensureSearchFieldFocused();
+    }
+  }
+
+  void _detachRouteAnimationListener() {
+    final listener = _routeAnimationListener;
+    final animation = _route?.animation;
+    if (listener != null && animation != null) {
+      animation.removeStatusListener(listener);
+    }
+    _routeAnimationListener = null;
+  }
+
+  void _onShellOverlayChanged() {
+    if (ShellBus.shellOverlayHasPage.value) {
+      _ensureSearchFieldFocused();
+    }
+  }
+
+  void _ensureSearchFieldFocused({int attempt = 0}) {
+    if (!mounted) return;
+    if (!_tvFocus(context)) {
+      if (!_isWideLayout(context)) {
         _focusNode.requestFocus();
       }
+      return;
+    }
+    if (_query.trim().isNotEmpty) return;
+
+    _focusSearchFieldBrowse();
+
+    if (_focusNode.hasFocus || attempt >= 12) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureSearchFieldFocused(attempt: attempt + 1);
     });
   }
 
@@ -110,9 +160,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
         itemCount: titles.length,
       );
       if (_query.isEmpty && _tvFocus(context)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _focusSearchFieldBrowse();
-        });
+        _ensureSearchFieldFocused();
       }
     } catch (_) {}
   }
@@ -147,6 +195,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   @override
   void dispose() {
+    ShellBus.shellOverlayHasPage.removeListener(_onShellOverlayChanged);
+    _detachRouteAnimationListener();
     _focusNode.removeListener(_onSearchFieldFocusChange);
     shellTvUnregisterRow(tabId: widget.tvTabId, rowId: _helpersRowId);
     shellTvUnregisterRow(tabId: widget.tvTabId, rowId: _helperResultsRowId);
@@ -475,7 +525,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
         TextField(
           controller: _controller,
           focusNode: _focusNode,
-          autofocus: !tvFocus,
+          autofocus: true,
           readOnly: browseOnly,
           showCursor: !browseOnly || _query.isNotEmpty,
           enableInteractiveSelection: !browseOnly,
