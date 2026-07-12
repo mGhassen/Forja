@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
+import 'package:forja/features/iptv/iptv/data/iptv_portal_share.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
@@ -1120,7 +1121,10 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   late final TextEditingController _urlCtrl;
   late final TextEditingController _userCtrl;
   late final TextEditingController _passCtrl;
+  late final TextEditingController _shareCodeCtrl;
   bool _obscurePassword = true;
+  bool _importingShareCode = false;
+  String? _shareCodeError;
 
   bool get _editing => widget.existing != null;
 
@@ -1131,6 +1135,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _urlCtrl = TextEditingController(text: e?.portal.url ?? '');
     _userCtrl = TextEditingController(text: e?.portal.username ?? '');
     _passCtrl = TextEditingController(text: e?.portal.password ?? '');
+    _shareCodeCtrl = TextEditingController();
   }
 
   @override
@@ -1138,7 +1143,49 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _urlCtrl.dispose();
     _userCtrl.dispose();
     _passCtrl.dispose();
+    _shareCodeCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _importShareCode() async {
+    final raw = _shareCodeCtrl.text;
+    if (!IptvPortalShare.isValidCode(raw)) {
+      setState(() {
+        _shareCodeError = 'Enter an 8-character share code';
+      });
+      return;
+    }
+
+    setState(() {
+      _importingShareCode = true;
+      _shareCodeError = null;
+    });
+
+    try {
+      final portal = await IptvPortalShare.resolveShare(raw);
+      if (!mounted) return;
+      if (portal == null) {
+        setState(() {
+          _importingShareCode = false;
+          _shareCodeError = 'Share code not found or invalid';
+        });
+        return;
+      }
+      _urlCtrl.text = portal.url;
+      _userCtrl.text = portal.username;
+      _passCtrl.text = portal.password;
+      setState(() => _importingShareCode = false);
+      ForjaToast.success(
+        'Portal details loaded from share code',
+        duration: const Duration(seconds: 2),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _importingShareCode = false;
+        _shareCodeError = 'Could not load share code';
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -1203,6 +1250,37 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                     ],
                   ),
                   const SizedBox(height: 22),
+                  if (!_editing) ...[
+                    _shareCodeSection(),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Divider(
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            'OR',
+                            style: GoogleFonts.poppins(
+                              color: IptvShellStyle.textSecondary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Divider(
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                  ],
                   _portalField(
                     _urlCtrl,
                     'URL',
@@ -1340,6 +1418,94 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     );
   }
 
+  Widget _shareCodeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'SHARE CODE',
+          style: GoogleFonts.poppins(
+            color: IptvShellStyle.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _shareCodeCtrl,
+                maxLength: IptvPortalShare.shareCodeLength,
+                textCapitalization: TextCapitalization.characters,
+                enabled: !_importingShareCode,
+                onChanged: (_) {
+                  if (_shareCodeError != null) {
+                    setState(() => _shareCodeError = null);
+                  }
+                },
+                onSubmitted: (_) => _importShareCode(),
+                style: GoogleFonts.poppins(
+                  color: IptvShellStyle.textPrimary,
+                  fontSize: 14,
+                  letterSpacing: 1.2,
+                ),
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: '8-character code',
+                  hintStyle: GoogleFonts.poppins(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    fontSize: 14,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.05),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            _portalDialogAction(
+              icon: _importingShareCode
+                  ? Icons.hourglass_top_rounded
+                  : Icons.download_rounded,
+              label: _importingShareCode ? 'Loading…' : 'Import',
+              color: IptvShellStyle.textPrimary,
+              fontWeight: FontWeight.w600,
+              onTap: _importingShareCode ? null : _importShareCode,
+            ),
+          ],
+        ),
+        if (_shareCodeError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _shareCodeError!,
+            style: GoogleFonts.poppins(
+              color: IptvShellStyle.liveBadge,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _portalField(
     TextEditingController c,
     String label, {
@@ -1425,6 +1591,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
 
   bool _lineHover = false;
   bool _focused = false;
+  bool _sharing = false;
+  bool _showShareCode = false;
+  String? _shareCode;
 
   bool get _reveal => _focused || _lineHover;
 
@@ -1434,18 +1603,46 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     setState(() => _lineHover = false);
   }
 
-  void _copy() {
-    final p = widget.portal.portal;
-    final cleanUrl = p.url
-        .replaceFirst('http://', '')
-        .replaceFirst('https://', '');
-    Clipboard.setData(
-      ClipboardData(text: '$cleanUrl:${p.username}:${p.password}'),
-    );
-    ForjaToast.success(
-      'Portal details copied to clipboard',
-      duration: const Duration(seconds: 2),
-    );
+  Future<void> _copy() async {
+    if (_sharing) return;
+
+    if (_shareCode != null) {
+      setState(() => _showShareCode = true);
+      await Clipboard.setData(ClipboardData(text: _shareCode!));
+      ForjaToast.success(
+        'Share code copied',
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
+    setState(() => _sharing = true);
+    try {
+      final code = await IptvPortalShare.createShare(widget.portal.portal);
+      if (!mounted) return;
+      _shareCode = code;
+      setState(() {
+        _sharing = false;
+        _showShareCode = true;
+      });
+      await Clipboard.setData(ClipboardData(text: code));
+      ForjaToast.success(
+        'Share code copied',
+        duration: const Duration(seconds: 2),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _sharing = false);
+      ForjaToast.error('Could not create share code');
+    }
+  }
+
+  void _onRowTap() {
+    if (_showShareCode) {
+      setState(() => _showShareCode = false);
+      return;
+    }
+    widget.ctrl.selectPortal(widget.portal);
   }
 
   PlayerSourceStatus _activePortalStatus({
@@ -1538,7 +1735,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       builder: (context, _) {
         final isFav = ctrl.isFavoritePortal(v.key);
         final isNew = ctrl.isNewPortal(v.key);
-        final showNewChrome = isNew && !_reveal;
+        final showNewChrome = isNew && !_reveal && !_showShareCode;
         final health = ctrl.portalHealthFor(v.key);
         final checking = ctrl.isPortalHealthChecking(v.key);
         final title = v.name.trim().isEmpty
@@ -1563,7 +1760,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                         ).withValues(alpha: 0.07)
                       : showNewChrome
                       ? IptvShellStyle.accent.withValues(alpha: 0.1)
-                      : (_lineHover || _focused)
+                      : (_lineHover || _focused || _showShareCode)
                       ? Colors.white.withValues(alpha: 0.04)
                       : Colors.transparent,
                   border: showNewChrome
@@ -1586,7 +1783,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                       Expanded(
                         child: iptvTap(
                           context: context,
-                          onTap: () => ctrl.selectPortal(v),
+                          onTap: _onRowTap,
                           borderRadius: 0,
                           listIndex: widget.listIndex,
                           tvRowId: 'portals',
@@ -1626,7 +1823,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: Column(
+                                  child: _showShareCode || _sharing
+                                      ? _shareCodeLine()
+                                      : Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1722,10 +1921,12 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   _railAction(
-                                    tooltip: 'Copy',
-                                    icon: Icons.copy_rounded,
+                                    tooltip: 'Copy share code',
+                                    icon: _sharing
+                                        ? Icons.hourglass_top_rounded
+                                        : Icons.copy_rounded,
                                     color: Colors.white60,
-                                    onTap: _copy,
+                                    onTap: _sharing ? null : _copy,
                                   ),
                                   _railAction(
                                     tooltip: 'Edit',
@@ -1751,6 +1952,60 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
               ),
             );
       },
+    );
+  }
+
+  Widget _shareCodeLine() {
+    if (_sharing) {
+      return Row(
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: IptvShellStyle.accent,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Creating share code…',
+            style: GoogleFonts.poppins(
+              color: Colors.white54,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'SHARE CODE · TAP ROW TO HIDE',
+          style: GoogleFonts.poppins(
+            color: IptvShellStyle.textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _shareCode ?? '—',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.jetBrainsMono(
+            color: IptvShellStyle.accent,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 2,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1808,7 +2063,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     required String tooltip,
     required IconData icon,
     required Color color,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
   }) {
     return Tooltip(
       message: tooltip,

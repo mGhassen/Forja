@@ -247,6 +247,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   Future<void> _loadNavbarConfig() async {
     var visible = await SettingsService().getNavbarConfig();
+    final defaultTab = await SettingsService().getDefaultNavTab();
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
       visible = visible
           .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
@@ -260,7 +261,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _visibleIds = [...visible, 'settings'];
       if (!_initialNavResolved) {
         _initialNavResolved = true;
-        _selectedIndex = SettingsService.initialShellTabIndex(_visibleIds);
+        _selectedIndex = SettingsService.initialShellTabIndex(
+          _visibleIds,
+          defaultTabId: defaultTab,
+        );
+        if (_selectedIndex < _visibleIds.length) {
+          final tabId = _visibleIds[_selectedIndex];
+          _mountedTabIds.add(tabId);
+          _touchTab(tabId);
+        }
       } else if (currentId != null) {
         final newIndex = _visibleIds.indexOf(currentId);
         if (newIndex >= 0) {

@@ -21,7 +21,8 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Watch VOD movies and series with seasons/episodes
 - View EPG (program guide) when the portal provides it — disable in **Settings → Playback → IPTV programme guide (EPG)** to skip loading guide data
 - Favorite portals in the Portals panel (star icon) — pinned to the top; below them, the most recently scraped or added portals appear first (with a **NEW** badge on session-fresh rows until you hover or focus them — styling only, position stays put)
-- Portal rows always show the subscription **end date** on the first line (green · yellow · amber · red by time left); hover/focus reveals row actions (**copy / edit / delete**) without moving the status icon or star off-center
+- Portal rows always show the subscription **end date** on the first line (green · yellow · amber · red by time left); hover/focus reveals row actions (**copy share code / edit / delete**) without moving the status icon or star off-center
+- **Copy share code** transforms the row into the 8-character code (copied automatically); click the row again to restore portal details. Normal row click still selects the portal when the code is not shown
 - Play in the IPTV player screen
 - Change live channels from the in-player channel guide (groups + channel list overlay)
 - Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header
@@ -33,7 +34,8 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 1. Get portal URL, username, and password from your IPTV provider
 2. Open **Portals** → **Add** (or **Scrape** to discover providers from Reddit IPTV posts)
-3. Tap a portal in the list to load its catalog
+3. To import from a share code: in **Add Portal**, enter the 8-character **Share code** and tap **Import** — URL, username, and password fill in automatically
+4. Tap a portal in the list to load its catalog
 
 ## Tips
 

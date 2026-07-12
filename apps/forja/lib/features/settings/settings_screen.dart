@@ -122,6 +122,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Navbar config
   List<String> _navbarVisible = [];
   List<String> _navbarOrder = [];
+  String _defaultNavTab = 'home';
 
   // Stream provider order (webstreaming extractors)
   List<String> _streamProviderOrder = [];
@@ -202,6 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Load navbar config
     var navVisible = await _settings.getNavbarConfig();
+    final defaultNavTab = await _settings.getDefaultNavTab();
     // Full order: visible items first, then hidden items
     final allIds = SettingsService.allNavIds;
     final hidden = allIds.where((id) => !navVisible.contains(id)).toList();
@@ -259,6 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _torrentConnectionsLimit = connLimit;
         _navbarVisible = navVisible;
         _navbarOrder = navOrder;
+        _defaultNavTab = defaultNavTab;
         _streamProviderOrder = streamOrder;
         _animeProviderOrder = animeOrder;
         _preferredAudioLang = kTrackLanguageDisplayNames.contains(preferredAudio)
@@ -801,8 +804,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Center(
                       child: AppVersionLabel(
                         style: const TextStyle(
-                          color: Colors.white24,
-                          fontSize: 12,
+                          color: Colors.white54,
+                          fontSize: 13,
                           letterSpacing: 2,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1117,6 +1120,105 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _saveNavbarConfig() {
     final visible = _navbarOrder.where((id) => _navbarVisible.contains(id)).toList();
     _settings.setNavbarConfig(visible);
+    final startupOptions = [
+      ...visible,
+      'settings',
+    ];
+    if (!startupOptions.contains(_defaultNavTab)) {
+      setState(() => _defaultNavTab = 'home');
+      _settings.setDefaultNavTab('home');
+    }
+  }
+
+  List<String> _startupTabOptions() {
+    final visible = _navbarOrder
+        .where((id) => _navbarVisible.contains(id))
+        .toList();
+    return [...visible, 'settings'];
+  }
+
+  String _startupTabLabel(String id) {
+    if (id == 'settings') return 'Settings';
+    return navDestinations[id]?.label ?? id;
+  }
+
+  Widget _buildDefaultNavTabPicker() {
+    final options = _startupTabOptions();
+    final effectiveDefault =
+        options.contains(_defaultNavTab) ? _defaultNavTab : 'home';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Default menu',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tab opened when the app starts',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButton<String>(
+              value: effectiveDefault,
+              dropdownColor: Color.lerp(
+                AppTheme.current.bgDark,
+                AppTheme.current.primaryColor,
+                0.08,
+              ),
+              underline: const SizedBox.shrink(),
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppTheme.current.primaryColor,
+              ),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              items: options
+                  .map(
+                    (id) => DropdownMenuItem(
+                      value: id,
+                      child: Text(_startupTabLabel(id)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (id) {
+                if (id == null) return;
+                setState(() => _defaultNavTab = id);
+                _settings.setDefaultNavTab(id);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildNavbarConfig() {
@@ -1130,6 +1232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
           ),
         ),
+        _buildDefaultNavTabPicker(),
         ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

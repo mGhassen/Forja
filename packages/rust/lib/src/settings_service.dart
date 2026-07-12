@@ -437,6 +437,7 @@ class SettingsService {
       kvSetString(_themePresetKey, preset);
 
   static const String _navbarConfigKey = 'navbar_config';
+  static const String _defaultNavTabKey = 'navbar_default_tab';
   static const String _navbarKnownIdsKey = 'navbar_known_ids';
   static const String _navbarShell080Key = 'navbar_shell_080';
   static const String _navbarShell081Key = 'navbar_shell_081';
@@ -470,14 +471,25 @@ class SettingsService {
     return migrated;
   }
 
-  static int _initialShellTabIndex(List<String> visibleIds) {
+  static int initialShellTabIndex(
+    List<String> visibleIds, {
+    String? defaultTabId,
+  }) {
+    final preferred = defaultTabId ?? 'home';
+    final preferredIdx = visibleIds.indexOf(preferred);
+    if (preferredIdx >= 0) return preferredIdx;
     final homeIdx = visibleIds.indexOf('home');
     if (homeIdx >= 0) return homeIdx;
     return 0;
   }
 
-  static int initialShellTabIndex(List<String> visibleIds) =>
-      _initialShellTabIndex(visibleIds);
+  Future<String> getDefaultNavTab() async =>
+      await kvGetString(_defaultNavTabKey) ?? 'home';
+
+  Future<void> setDefaultNavTab(String tabId) async {
+    await kvSetString(_defaultNavTabKey, tabId);
+    navbarChangeNotifier.value++;
+  }
 
   static bool _isLegacyDefaultNav(List<String> ids) {
     if (ids.length == 2) {
@@ -698,6 +710,10 @@ class SettingsService {
         await kvGetInt(_torrentConnectionsLimitKey, fallback: 200);
     prefsMap[_navbarConfigKey] =
         await kvGetStringList(_navbarConfigKey, fallback: const []);
+    final defaultTab = await kvGetString(_defaultNavTabKey);
+    if (defaultTab != null) {
+      prefsMap[_defaultNavTabKey] = defaultTab;
+    }
     prefsMap[_prowlarrTagIdsKey] =
         await kvGetStringList(_prowlarrTagIdsKey, fallback: const []);
     final stremio = await getStremioAddons();
@@ -775,6 +791,12 @@ class SettingsService {
       await kvSetStringList(
         _navbarConfigKey,
         (prefsMap[_navbarConfigKey] as List).cast<String>(),
+      );
+    }
+    if (prefsMap.containsKey(_defaultNavTabKey)) {
+      await kvSetString(
+        _defaultNavTabKey,
+        prefsMap[_defaultNavTabKey] as String,
       );
     }
     if (prefsMap.containsKey(_prowlarrTagIdsKey)) {

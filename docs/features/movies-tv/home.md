@@ -4,7 +4,7 @@
 
 ## What it is
 
-Home is the default tab when you open Forja. It pulls metadata from TMDB and shows a hero carousel, mood/genre chips, and scrollable rows: trending, popular, top rated, now playing, and more. If you're logged into Trakt, you also get recommendations and TV/movie calendars. Stremio addon catalogs can appear as rails when addons are installed.
+Home is the default tab when you first install Forja. It pulls metadata from TMDB and shows a hero carousel, mood/genre chips, and scrollable rows: trending, popular, top rated, now playing, and more. If you're logged into Trakt, you also get recommendations and TV/movie calendars. Stremio addon catalogs can appear as rails when addons are installed. You can change the startup tab in **Settings → Navigation Bar → Default menu**.
 
 ## How to open it
 

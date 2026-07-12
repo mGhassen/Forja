@@ -18,6 +18,7 @@ import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
+import 'package:forja/features/iptv/iptv/data/iptv_portal_share.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/m3u/m3u_playlists_screen.dart';
@@ -825,21 +826,19 @@ class _PortalCard extends StatelessWidget {
                 ),
                 if (!editMode) ...[
                   IptvIconAction(
-                    tooltip: 'Copy portal details',
-                    onPressed: () {
-                      final p = v.portal;
-                      final cleanUrl = p.url
-                          .replaceFirst('http://', '')
-                          .replaceFirst('https://', '');
-                      Clipboard.setData(
-                        ClipboardData(
-                          text: '$cleanUrl:${p.username}:${p.password}',
-                        ),
-                      );
-                      ForjaToast.success(
-                        'Portal details copied to clipboard',
-                        duration: const Duration(seconds: 2),
-                      );
+                    tooltip: 'Copy share code',
+                    onPressed: () async {
+                      try {
+                        final code =
+                            await IptvPortalShare.createShare(v.portal);
+                        await Clipboard.setData(ClipboardData(text: code));
+                        ForjaToast.success(
+                          'Share code copied: $code',
+                          duration: const Duration(seconds: 3),
+                        );
+                      } catch (_) {
+                        ForjaToast.error('Could not create share code');
+                      }
                     },
                     icon: Icons.copy_rounded,
                     color: Colors.white54,

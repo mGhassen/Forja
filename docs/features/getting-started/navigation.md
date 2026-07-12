@@ -16,7 +16,7 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 - On desktop, the left rail is a **fixed-width** column; the body is inset so content is not hidden under icons
 - On **Home (desktop)**, a **Search** icon then **Films / TV Shows / Categories** menu overlays the hero and slides away as you scroll
 - **Search (desktop)** uses a full-page layout with a left search column — no separate shell search bar
-- Open **Settings → Navigation Bar** to toggle tabs on/off and drag to reorder
+- Open **Settings → Navigation Bar** to toggle tabs on/off, drag to reorder, and choose which tab opens on app start
 - Jump to Search or other tabs from deep links inside the app (e.g. from a Stremio addon result)
 
 ## Desktop shell layout
@@ -27,7 +27,7 @@ The tab bar is always visible after the app finishes loading. **Settings** is al
 
 ## Android TV
 
-- **Nav rail order:** Home, then Search, then your other tabs; the app **opens on Home** on cold start
+- **Nav rail order:** Home, then Search, then your other tabs; the app **opens on your chosen default tab** (Home unless you change it in Settings)
 - Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
 - **Layout:** catalog rows fill the body edge-to-edge (no extra section gutters); only the fixed nav rail insets content on the left; device-reported overscan padding is applied once at the shell when present
 - **Leanback density:** **115px** poster cards, 6px row gaps, tight section chrome — hero + first row peek like desktop, multiple rows visible when scrolling

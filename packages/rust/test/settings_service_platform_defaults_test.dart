@@ -130,4 +130,20 @@ void main() {
 
     expect(nav.take(2), ['home', 'search']);
   });
+
+  test('default nav tab persists and resolves startup index', () async {
+    final service = SettingsService();
+    await service.setDefaultNavTab('iptv');
+    expect(await service.getDefaultNavTab(), 'iptv');
+
+    final visible = ['home', 'search', 'iptv', 'settings'];
+    expect(
+      SettingsService.initialShellTabIndex(visible, defaultTabId: 'iptv'),
+      2,
+    );
+    expect(
+      SettingsService.initialShellTabIndex(visible, defaultTabId: 'missing'),
+      0,
+    );
+  });
 }
