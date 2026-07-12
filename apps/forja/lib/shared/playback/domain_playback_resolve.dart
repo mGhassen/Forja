@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_extractor.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
@@ -123,6 +124,7 @@ class DomainStreamProviderResolver extends StreamProviderResolver {
     AnimeEmbed embed,
     bool Function() cancelled,
   ) async {
+    if (cancelled()) return null;
     try {
       final candidates = await _animeService.extractDirectCandidates(embed);
       if (cancelled() || candidates.isEmpty) return null;
@@ -203,5 +205,12 @@ class DomainStreamProviderResolver extends StreamProviderResolver {
   void cancelPending() {
     super.cancelPending();
     unawaited(_kissKhExtractor.cancel());
+    MiruroPipeSession.instance.cancelPending();
+  }
+
+  /// Abort movie + anime in-flight host work (player exit / episode leave).
+  static void cancelAllPending() {
+    StreamProviderResolver.cancelAllPending();
+    MiruroPipeSession.instance.cancelPending();
   }
 }

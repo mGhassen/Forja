@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/playback/anime_playback_bridge.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -457,14 +458,20 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
   @override
   void dispose() {
-    // Don't kill a background fill still feeding the open player.
+    // Keep background fill alive only while the player route is still open.
     if (!_playerLaunched) {
-      _cancelled = true;
+      _haltBackgroundResolve();
     }
     _messageNotifier.dispose();
     _fadeOutNotifier.dispose();
     _probeNotifier.dispose();
     super.dispose();
+  }
+
+  void _haltBackgroundResolve() {
+    _cancelled = true;
+    _resolverStopped = true;
+    DomainStreamProviderResolver.cancelAllPending();
   }
 
   void _setPhase(String phase) {
@@ -800,7 +807,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final titleToSourceKey = <String, String>{};
 
     void syncLiveHits(List<({AnimeEmbed embed, ExtractedMedia media})> all) {
-      if (all.isEmpty) return;
+      if (_cancelled || _resolverStopped || all.isEmpty) return;
       for (final h in all) {
         urlToSourceKey[h.media.url] = h.embed.sourceKey;
         final t = h.media.sources?.first.title ?? h.embed.displayName;
@@ -1079,6 +1086,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     );
     await Future<void>.delayed(loadingOverlayFadeOutDuration);
     await playerFuture;
+    // Player closed — stop any leftover background embed probing immediately.
+    _haltBackgroundResolve();
     final shouldRecheck = !playbackStarted && _launchedFromSavedOrCache;
     sourcesListNotifier?.dispose();
     if (ownsProviderCache) {
@@ -1101,7 +1110,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     if (shouldRecheck && mounted) {
       await _handleStaleSavedStreams();
     }
-    _cancelled = true;
   }
 
   Widget _buildFailure(AppThemePreset theme) {

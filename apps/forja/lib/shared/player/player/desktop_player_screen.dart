@@ -23,6 +23,7 @@ import 'playable_source_bridge.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
@@ -751,17 +752,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   void dispose() {
     widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.removeListener(_onLiveSourcesUpdated);
+    _cancelPendingStreamWork();
     _providerLoadFailures.dispose();
     if (widget.providerSourcesCache == null) {
       _ownedProviderSourcesCache.dispose();
     }
     _saveWatchHistory();
-
-    _fallbackGen++;
-    WebStreamrService().cancelPending();
-    VidsrcExtractor.cancelPending();
-    VideasyExtractor.cancelPending();
-    NuvioService.instance.cancelPending();
 
     _disposed = true;
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
@@ -2615,6 +2611,20 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   ValueNotifier<Map<String, List<StreamSource>>> get _liveProviderSourcesCache =>
       widget.providerSourcesCache ?? _ownedProviderSourcesCache;
 
+  void _cancelPendingStreamWork() {
+    _fallbackGen++;
+    for (final id in _providerLoadGens.keys.toList()) {
+      _providerLoadGens[id] = (_providerLoadGens[id] ?? 0) + 1;
+    }
+    PlayerStreamMenu.dismiss();
+    PlayerPopupPanel.dismiss();
+    PlayerEpisodePanel.dismiss();
+    PlayerHubEpisodePanel.dismiss();
+    PlayerSourcesPanel.dismiss();
+    PlayerTorrentFilePanel.dismiss();
+    DomainStreamProviderResolver.cancelAllPending();
+  }
+
   void _markProviderLoadFailed(String providerId) {
     if (_providerLoadFailures.value.contains(providerId)) return;
     _providerLoadFailures.value = {
@@ -3748,9 +3758,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         providerId: providerId,
         season: widget.selectedSeason ?? 1,
         episode: widget.selectedEpisode ?? 1,
-        isCancelled: () => (_providerLoadGens[providerId] ?? 0) != gen,
+        isCancelled: () =>
+            _disposed || (_providerLoadGens[providerId] ?? 0) != gen,
       );
-      if ((_providerLoadGens[providerId] ?? 0) != gen) return null;
+      if (_disposed || (_providerLoadGens[providerId] ?? 0) != gen) {
+        return null;
+      }
       if (hit != null && hit.streamSources.isNotEmpty) {
         final sources = dedupeStreamSources(hit.streamSources);
         _liveProviderSourcesCache.value = {
@@ -3987,6 +4000,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       await windowManager.setFullScreen(false);
       if (mounted) setState(() => _isFullscreen = false);
     }
+    _cancelPendingStreamWork();
     _saveWatchHistory();
     if (mounted) Navigator.of(context).pop(_positionNotifier.value);
   }
@@ -4293,6 +4307,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                 await windowManager.setFullScreen(false);
                 setState(() => _isFullscreen = false);
               }
+              _cancelPendingStreamWork();
               _saveWatchHistory();
               if (mounted) Navigator.of(context).pop(_positionNotifier.value);
             },

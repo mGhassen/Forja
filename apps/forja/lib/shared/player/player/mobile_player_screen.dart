@@ -19,6 +19,7 @@ import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
@@ -803,17 +804,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   void dispose() {
     widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.removeListener(_onLiveSourcesUpdated);
+    _cancelPendingStreamWork();
     _providerLoadFailures.dispose();
     if (widget.providerSourcesCache == null) {
       _ownedProviderSourcesCache.dispose();
     }
     _saveWatchHistory();
-
-    _fallbackGen++;
-    WebStreamrService().cancelPending();
-    VidsrcExtractor.cancelPending();
-    VideasyExtractor.cancelPending();
-    NuvioService.instance.cancelPending();
 
     // Restore screen brightness to system default (mobile only)
     if (Platform.isAndroid || Platform.isIOS) {
@@ -884,6 +880,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   /// Rotate back to portrait & restore system UI BEFORE popping,
   /// so the details page never sees stale landscape dimensions.
   Future<void> _exitPlayer() async {
+    _cancelPendingStreamWork();
     _saveWatchHistory();
     // Unlock orientation so the rest of the app follows system settings.
     await SystemChrome.setPreferredOrientations([]);
@@ -3007,6 +3004,20 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   ValueNotifier<Map<String, List<StreamSource>>> get _liveProviderSourcesCache =>
       widget.providerSourcesCache ?? _ownedProviderSourcesCache;
 
+  void _cancelPendingStreamWork() {
+    _fallbackGen++;
+    for (final id in _providerLoadGens.keys.toList()) {
+      _providerLoadGens[id] = (_providerLoadGens[id] ?? 0) + 1;
+    }
+    PlayerStreamMenu.dismiss();
+    PlayerPopupPanel.dismiss();
+    PlayerEpisodePanel.dismiss();
+    PlayerHubEpisodePanel.dismiss();
+    PlayerSourcesPanel.dismiss();
+    PlayerTorrentFilePanel.dismiss();
+    DomainStreamProviderResolver.cancelAllPending();
+  }
+
   void _markProviderLoadFailed(String providerId) {
     if (_providerLoadFailures.value.contains(providerId)) return;
     _providerLoadFailures.value = {
@@ -3967,9 +3978,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         providerId: providerId,
         season: widget.selectedSeason ?? 1,
         episode: widget.selectedEpisode ?? 1,
-        isCancelled: () => (_providerLoadGens[providerId] ?? 0) != gen,
+        isCancelled: () =>
+            _disposed || (_providerLoadGens[providerId] ?? 0) != gen,
       );
-      if ((_providerLoadGens[providerId] ?? 0) != gen) return null;
+      if (_disposed || (_providerLoadGens[providerId] ?? 0) != gen) {
+        return null;
+      }
       if (hit != null && hit.streamSources.isNotEmpty) {
         final sources = dedupeStreamSources(hit.streamSources);
         _liveProviderSourcesCache.value = {
