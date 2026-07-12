@@ -34,7 +34,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 1. Get portal URL, username, and password from your IPTV provider
 2. Open **Portals** → **Add** (or **Scrape** to discover providers from Reddit IPTV posts)
-3. To import from a share code: in **Add Portal**, enter the 8-character **Share code** and tap **Import** — URL, username, and password fill in automatically
+3. To import from a share code: in **Add Portal**, paste or type the 8-character code into the tall **XXXX-XXXX** squares — the portal is added automatically when the code resolves. Tap the small **↓** tab on the bottom edge of the dialog to expand manual entry
 4. Tap a portal in the list to load its catalog
 
 ## Tips

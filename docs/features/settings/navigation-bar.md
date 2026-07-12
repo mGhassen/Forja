@@ -14,7 +14,7 @@ Customize which sections appear in the bottom nav (mobile) or side rail (desktop
 
 - Toggle visibility for each tab (Home, IPTV, Music, etc.)
 - Drag to reorder visible tabs
-- Choose **Default menu** — the tab that opens when you launch the app (visible tabs plus Settings)
+- Select the star beside a visible tab to make it the menu that opens when you launch the app
 - Restore a cleaner bar by hiding unused hubs
 
 ## Tips

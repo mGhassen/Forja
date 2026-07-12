@@ -41,7 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final DebridApi _debrid = DebridApi();
   final JackettService _jackett = JackettService();
   final ProwlarrService _prowlarr = ProwlarrService();
-  
+
   bool _playSourceTorrent = true;
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
@@ -54,7 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _maxPlaybackHeightLabel = 'Auto';
   List<Map<String, dynamic>> _installedAddons = [];
   bool _isInstalling = false;
-  
+
   bool _useDebrid = false;
   String _debridService = 'None';
   final TextEditingController _addonController = TextEditingController();
@@ -65,26 +65,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _alldebridController = TextEditingController();
   final TextEditingController _premiumizeController = TextEditingController();
   final TextEditingController _debridlinkController = TextEditingController();
-  
+
   // Jackett
   final TextEditingController _jackettUrlController = TextEditingController();
-  final TextEditingController _jackettApiKeyController = TextEditingController();
+  final TextEditingController _jackettApiKeyController =
+      TextEditingController();
   bool _isTestingJackett = false;
   String? _jackettTestResult;
-  
+
   // Prowlarr
   final TextEditingController _prowlarrUrlController = TextEditingController();
-  final TextEditingController _prowlarrApiKeyController = TextEditingController();
+  final TextEditingController _prowlarrApiKeyController =
+      TextEditingController();
   bool _isTestingProwlarr = false;
   String? _prowlarrTestResult;
   List<ProwlarrTag> _prowlarrAvailableTags = [];
   Set<int> _prowlarrSelectedTagIds = {};
   bool _prowlarrTagsLoaded = false;
-  
+
   bool _isRDLoggedIn = false;
   final TextEditingController _rdController = TextEditingController();
   bool _isVerifyingRD = false;
-  
+
   // Trakt
   final TraktService _trakt = TraktService();
   bool _isTraktLoggedIn = false;
@@ -107,7 +109,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // MDBlist
   final MdblistService _mdblist = MdblistService();
   bool _isMdblistConfigured = false;
-  final TextEditingController _mdblistApiKeyController = TextEditingController();
+  final TextEditingController _mdblistApiKeyController =
+      TextEditingController();
   String? _mdblistUsername;
 
   bool _isCheckingUpdate = false;
@@ -147,8 +150,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final playSourceTorrent = await _settings.isPlaySourceTorrentEnabled();
     final playSourceStremio = await _settings.isPlaySourceStremioEnabled();
-    final playSourceWebstreaming =
-        await _settings.isPlaySourceWebstreamingEnabled();
+    final playSourceWebstreaming = await _settings
+        .isPlaySourceWebstreamingEnabled();
     final builtInEngine = await _settings.getBuiltInPlayerEngine();
     final sort = await _settings.getSortPreference();
     final useDebrid = await _settings.useDebridForStreams();
@@ -159,14 +162,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final premiumizeKey = await _debrid.getPremiumizeKey();
     final debridlinkKey = await _debrid.getDebridLinkKey();
     final rdToken = await _debrid.getRDAccessToken();
-    
+
     // Load Trakt status
     final traktLoggedIn = await _trakt.isLoggedIn();
     String? traktUser;
     Map<String, dynamic>? traktStats;
     if (traktLoggedIn) {
       final profile = await _trakt.getUserProfile();
-      traktUser = profile?['user']?['username']?.toString() ?? profile?['username']?.toString();
+      traktUser =
+          profile?['user']?['username']?.toString() ??
+          profile?['username']?.toString();
       traktStats = await _trakt.getUserStats();
     }
 
@@ -190,7 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Load Jackett settings
     final jackettUrl = await _settings.getJackettBaseUrl();
     final jackettKey = await _settings.getJackettApiKey();
-    
+
     // Load Prowlarr settings
     final prowlarrUrl = await _settings.getProwlarrBaseUrl();
     final prowlarrKey = await _settings.getProwlarrApiKey();
@@ -212,7 +217,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       navOrder = navOrder
           .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
           .toList();
-      navVisible.removeWhere((id) => PlatformPlayback.torrentNavIds.contains(id));
+      navVisible.removeWhere(
+        (id) => PlatformPlayback.torrentNavIds.contains(id),
+      );
     }
 
     // Load stream provider order
@@ -249,10 +256,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isMdblistConfigured = mdblistConfigured;
         _mdblistUsername = mdblistUser;
         _mdblistApiKeyController.text = mdblistKey ?? '';
-        
+
         _jackettUrlController.text = jackettUrl ?? '';
         _jackettApiKeyController.text = jackettKey ?? '';
-        
+
         _prowlarrUrlController.text = prowlarrUrl ?? '';
         _prowlarrApiKeyController.text = prowlarrKey ?? '';
         _prowlarrSelectedTagIds = prowlarrTagIds.toSet();
@@ -261,19 +268,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _torrentConnectionsLimit = connLimit;
         _navbarVisible = navVisible;
         _navbarOrder = navOrder;
-        _defaultNavTab = defaultNavTab;
+        final startupOptions = <String>[];
+        final seenStartup = <String>{};
+        for (final id in navOrder) {
+          if (navVisible.contains(id) && seenStartup.add(id)) {
+            startupOptions.add(id);
+          }
+        }
+        if (seenStartup.add('settings')) {
+          startupOptions.add('settings');
+        }
+        _defaultNavTab = startupOptions.contains(defaultNavTab)
+            ? defaultNavTab
+            : (startupOptions.isNotEmpty ? startupOptions.first : 'settings');
+        if (_defaultNavTab != defaultNavTab) {
+          _settings.setDefaultNavTab(_defaultNavTab);
+        }
         _streamProviderOrder = streamOrder;
         _animeProviderOrder = animeOrder;
-        _preferredAudioLang = kTrackLanguageDisplayNames.contains(preferredAudio)
+        _preferredAudioLang =
+            kTrackLanguageDisplayNames.contains(preferredAudio)
             ? preferredAudio
             : 'None';
         _avoidUnsupportedAudio = avoidUnsupported;
         _iptvEpgEnabled = iptvEpgEnabled;
-        _maxPlaybackHeightLabel =
-            SettingsService.maxPlaybackHeightLabel(maxPlaybackHeight);
+        _maxPlaybackHeightLabel = SettingsService.maxPlaybackHeightLabel(
+          maxPlaybackHeight,
+        );
       });
     }
-    if ((prowlarrUrl?.isNotEmpty ?? false) && (prowlarrKey?.isNotEmpty ?? false)) {
+    if ((prowlarrUrl?.isNotEmpty ?? false) &&
+        (prowlarrKey?.isNotEmpty ?? false)) {
       _tryLoadProwlarrTags();
     }
   }
@@ -393,429 +418,544 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               const ShellTabHeader(title: 'Settings'),
 
-                    // ── Backup & Restore ──
-                    _buildExpandableSection(
-                      id: 'backup',
-                      icon: Icons.backup_rounded,
-                      title: 'Backup & Restore',
-                      children: [_buildBackupRestore()],
-                    ),
+              // ── Backup & Restore ──
+              _buildExpandableSection(
+                id: 'backup',
+                icon: Icons.backup_rounded,
+                title: 'Backup & Restore',
+                children: [_buildBackupRestore()],
+              ),
 
-                    // ── Playback ──
-                    _buildExpandableSection(
-                      id: 'playback',
-                      icon: Icons.play_circle_outline_rounded,
-                      title: 'Playback',
+              // ── Playback ──
+              _buildExpandableSection(
+                id: 'playback',
+                icon: Icons.play_circle_outline_rounded,
+                title: 'Playback',
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'PLAY SOURCES',
+                      style: TextStyle(
+                        color: AppTheme.current.primaryColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  _buildFocusableToggle(
+                    'Direct torrent',
+                    'Search Forja indexers and Nuvio scrapers in Sources.',
+                    _playSourceTorrent,
+                    (val) async {
+                      await _settings.setPlaySourceTorrentEnabled(val);
+                      setState(() => _playSourceTorrent = val);
+                    },
+                  ),
+                  _buildFocusableToggle(
+                    'Stremio',
+                    'Play from installed Stremio addon streams.',
+                    _playSourceStremio,
+                    (val) async {
+                      await _settings.setPlaySourceStremioEnabled(val);
+                      setState(() => _playSourceStremio = val);
+                    },
+                  ),
+                  _buildFocusableToggle(
+                    'Webstreaming',
+                    'Play from web stream extractors (Videasy, WebStreamr, …).',
+                    _playSourceWebstreaming,
+                    (val) async {
+                      await _settings.setPlaySourceWebstreamingEnabled(val);
+                      setState(() => _playSourceWebstreaming = val);
+                    },
+                  ),
+                  _buildProviderScoringSection(),
+                  if (Platform.isAndroid)
+                    _buildFocusableDropdown(
+                      'Built-in engine',
+                      'Decoder when Video Player is Built-in.',
+                      _builtInEngine.displayName,
+                      builtInPlayerEngineOptions
+                          .map((e) => e.displayName)
+                          .toList(),
+                      (val) async {
+                        if (val == null) return;
+                        final match = builtInPlayerEngineOptions
+                            .where((e) => e.displayName == val)
+                            .toList();
+                        if (match.isEmpty) return;
+                        await _settings.setBuiltInPlayerEngine(match.first);
+                        setState(() => _builtInEngine = match.first);
+                      },
+                    ),
+                  _buildFocusableDropdown(
+                    'Preferred Audio Language',
+                    'When a video starts, automatically switch to a matching audio track. Pick "None" to leave the default.',
+                    _preferredAudioLang,
+                    kTrackLanguageDisplayNames,
+                    (val) async {
+                      if (val != null) {
+                        await _settings.setPreferredAudioLanguage(val);
+                        setState(() => _preferredAudioLang = val);
+                      }
+                    },
+                  ),
+                  _buildFocusableToggle(
+                    'Avoid unsupported audio (Atmos / TrueHD / 7.1)',
+                    'Switch to AC-3 / E-AC-3 / AAC when the original track\'s codec or channel layout isn\'t supported.',
+                    _avoidUnsupportedAudio,
+                    (val) async {
+                      await _settings.setAvoidUnsupportedAudio(val);
+                      setState(() => _avoidUnsupportedAudio = val);
+                    },
+                  ),
+                  _buildFocusableToggle(
+                    'IPTV programme guide (EPG)',
+                    'Load and show NOW / NEXT programme info in the IPTV player and channel browser.',
+                    _iptvEpgEnabled,
+                    (val) async {
+                      await _settings.setIptvEpgEnabled(val);
+                      setState(() => _iptvEpgEnabled = val);
+                    },
+                  ),
+                  _buildFocusableDropdown(
+                    'Max stream quality',
+                    'Cap automatic stream selection. Auto uses the best your device supports.',
+                    _maxPlaybackHeightLabel,
+                    SettingsService.maxPlaybackHeightOptions.keys.toList(),
+                    (val) async {
+                      if (val == null) return;
+                      final height =
+                          SettingsService.maxPlaybackHeightOptions[val] ?? 0;
+                      await _settings.setMaxPlaybackHeight(height);
+                      setState(() => _maxPlaybackHeightLabel = val);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'CACHE',
+                      style: TextStyle(
+                        color: AppTheme.current.primaryColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  _buildResetPlaybackCacheTile(),
+                ],
+              ),
+
+              // ── Search & Torrents ──
+              _buildExpandableSection(
+                id: 'search',
+                icon: Icons.search_rounded,
+                title: PlatformPlayback.capabilities.builtinTorrentSearch
+                    ? 'Search & Torrents'
+                    : 'Stream Extractors',
+                children: [
+                  if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
+                    _buildFocusableDropdown(
+                      'Default Sort Order',
+                      'How torrent results are sorted automatically.',
+                      _sortPreference,
+                      [
+                        'Seeders (High to Low)',
+                        'Seeders (Low to High)',
+                        'Quality (High to Low)',
+                        'Quality (Low to High)',
+                        'Size (High to Low)',
+                        'Size (Low to High)',
+                      ],
+                      (val) {
+                        if (val != null) {
+                          _settings.setSortPreference(val);
+                          setState(() => _sortPreference = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        'TORRENT ENGINE',
+                        style: TextStyle(
+                          color: AppTheme.current.primaryColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    _buildFocusableDropdown(
+                      'Cache Type',
+                      'Where torrent data is cached during streaming.',
+                      _torrentCacheType == 'ram' ? 'RAM' : 'Disk',
+                      ['RAM', 'Disk'],
+                      (val) async {
+                        if (val != null) {
+                          final type = val == 'RAM' ? 'ram' : 'disk';
+                          await _settings.setTorrentCacheType(type);
+                          setState(() => _torrentCacheType = type);
+                        }
+                      },
+                    ),
+                    if (_torrentCacheType == 'ram')
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 4,
+                              top: 8,
+                              bottom: 4,
+                            ),
+                            child: Text(
+                              'RAM Cache Size: $_torrentRamCacheMb MB',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          Slider(
+                            value: _torrentRamCacheMb.toDouble(),
+                            min: 50,
+                            max: 2048,
+                            divisions: 39,
+                            activeColor: Colors.deepPurpleAccent,
+                            inactiveColor: Colors.white12,
+                            label: '$_torrentRamCacheMb MB',
+                            onChanged: (val) => setState(
+                              () => _torrentRamCacheMb = val.round(),
+                            ),
+                            onChangeEnd: (val) async => await _settings
+                                .setTorrentRamCacheMb(val.round()),
+                          ),
+                        ],
+                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.only(
+                            left: 4,
+                            top: 8,
+                            bottom: 0,
+                          ),
                           child: Text(
-                            'PLAY SOURCES',
-                            style: TextStyle(
-                              color: AppTheme.current.primaryColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
+                            'Connections per torrent: $_torrentConnectionsLimit',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        _buildFocusableToggle(
-                          'Direct torrent',
-                          'Search Forja indexers and Nuvio scrapers in Sources.',
-                          _playSourceTorrent,
-                          (val) async {
-                            await _settings.setPlaySourceTorrentEnabled(val);
-                            setState(() => _playSourceTorrent = val);
-                          },
-                        ),
-                        _buildFocusableToggle(
-                          'Stremio',
-                          'Play from installed Stremio addon streams.',
-                          _playSourceStremio,
-                          (val) async {
-                            await _settings.setPlaySourceStremioEnabled(val);
-                            setState(() => _playSourceStremio = val);
-                          },
-                        ),
-                        _buildFocusableToggle(
-                          'Webstreaming',
-                          'Play from web stream extractors (Videasy, WebStreamr, …).',
-                          _playSourceWebstreaming,
-                          (val) async {
-                            await _settings
-                                .setPlaySourceWebstreamingEnabled(val);
-                            setState(() => _playSourceWebstreaming = val);
-                          },
-                        ),
-                        _buildProviderScoringSection(),
-                        if (Platform.isAndroid)
-                          _buildFocusableDropdown(
-                            'Built-in engine',
-                            'Decoder when Video Player is Built-in.',
-                            _builtInEngine.displayName,
-                            builtInPlayerEngineOptions
-                                .map((e) => e.displayName)
-                                .toList(),
-                            (val) async {
-                              if (val == null) return;
-                              final match = builtInPlayerEngineOptions
-                                  .where((e) => e.displayName == val)
-                                  .toList();
-                              if (match.isEmpty) return;
-                              await _settings.setBuiltInPlayerEngine(match.first);
-                              setState(() => _builtInEngine = match.first);
-                            },
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4, bottom: 4),
+                          child: Text(
+                            'Lower (5–25) often streams better on high-seed swarms.',
+                            style: TextStyle(
+                              color: Colors.white38,
+                              fontSize: 11,
+                            ),
                           ),
-                        _buildFocusableDropdown(
-                          'Preferred Audio Language',
-                          'When a video starts, automatically switch to a matching audio track. Pick "None" to leave the default.',
-                          _preferredAudioLang,
-                          kTrackLanguageDisplayNames,
-                          (val) async {
-                            if (val != null) {
-                              await _settings.setPreferredAudioLanguage(val);
-                              setState(() => _preferredAudioLang = val);
-                            }
-                          },
                         ),
-                        _buildFocusableToggle(
-                          'Avoid unsupported audio (Atmos / TrueHD / 7.1)',
-                          'Switch to AC-3 / E-AC-3 / AAC when the original track\'s codec or channel layout isn\'t supported.',
-                          _avoidUnsupportedAudio,
-                          (val) async {
-                            await _settings.setAvoidUnsupportedAudio(val);
-                            setState(() => _avoidUnsupportedAudio = val);
-                          },
-                        ),
-                        _buildFocusableToggle(
-                          'IPTV programme guide (EPG)',
-                          'Load and show NOW / NEXT programme info in the IPTV player and channel browser.',
-                          _iptvEpgEnabled,
-                          (val) async {
-                            await _settings.setIptvEpgEnabled(val);
-                            setState(() => _iptvEpgEnabled = val);
-                          },
-                        ),
-                        _buildFocusableDropdown(
-                          'Max stream quality',
-                          'Cap automatic stream selection. Auto uses the best your device supports.',
-                          _maxPlaybackHeightLabel,
-                          SettingsService.maxPlaybackHeightOptions.keys.toList(),
-                          (val) async {
-                            if (val == null) return;
-                            final height =
-                                SettingsService.maxPlaybackHeightOptions[val] ??
-                                    0;
-                            await _settings.setMaxPlaybackHeight(height);
-                            setState(
-                              () => _maxPlaybackHeightLabel = val,
+                        Slider(
+                          value: _torrentConnectionsLimit.toDouble().clamp(
+                            5,
+                            200,
+                          ),
+                          min: 5,
+                          max: 200,
+                          divisions: 39,
+                          activeColor: Colors.deepPurpleAccent,
+                          inactiveColor: Colors.white12,
+                          label: '$_torrentConnectionsLimit',
+                          onChanged: (val) => setState(
+                            () => _torrentConnectionsLimit = val.round(),
+                          ),
+                          onChangeEnd: (val) async {
+                            await TorrentStreamService().applyConnectionsLimit(
+                              val.round(),
                             );
                           },
                         ),
-                        const SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            'CACHE',
-                            style: TextStyle(
-                              color: AppTheme.current.primaryColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        _buildResetPlaybackCacheTile(),
                       ],
                     ),
-
-                    // ── Search & Torrents ──
-                    _buildExpandableSection(
-                      id: 'search',
-                      icon: Icons.search_rounded,
-                      title: PlatformPlayback.capabilities.builtinTorrentSearch
-                          ? 'Search & Torrents'
-                          : 'Stream Extractors',
-                      children: [
-                        if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
-                        _buildFocusableDropdown(
-                          'Default Sort Order',
-                          'How torrent results are sorted automatically.',
-                          _sortPreference,
-                          [
-                            'Seeders (High to Low)', 'Seeders (Low to High)',
-                            'Quality (High to Low)', 'Quality (Low to High)',
-                            'Size (High to Low)', 'Size (Low to High)',
-                          ],
-                          (val) {
-                            if (val != null) {
-                              _settings.setSortPreference(val);
-                              setState(() => _sortPreference = val);
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('TORRENT ENGINE', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 4),
-                        _buildFocusableDropdown(
-                          'Cache Type',
-                          'Where torrent data is cached during streaming.',
-                          _torrentCacheType == 'ram' ? 'RAM' : 'Disk',
-                          ['RAM', 'Disk'],
-                          (val) async {
-                            if (val != null) {
-                              final type = val == 'RAM' ? 'ram' : 'disk';
-                              await _settings.setTorrentCacheType(type);
-                              setState(() => _torrentCacheType = type);
-                            }
-                          },
-                        ),
-                        if (_torrentCacheType == 'ram')
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(left: 4, top: 8, bottom: 4),
-                                child: Text('RAM Cache Size: $_torrentRamCacheMb MB', style: const TextStyle(color: Colors.white70, fontSize: 14)),
-                              ),
-                              Slider(
-                                value: _torrentRamCacheMb.toDouble(),
-                                min: 50, max: 2048, divisions: 39,
-                                activeColor: Colors.deepPurpleAccent,
-                                inactiveColor: Colors.white12,
-                                label: '$_torrentRamCacheMb MB',
-                                onChanged: (val) => setState(() => _torrentRamCacheMb = val.round()),
-                                onChangeEnd: (val) async => await _settings.setTorrentRamCacheMb(val.round()),
-                              ),
-                            ],
-                          ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4, top: 8, bottom: 0),
-                              child: Text(
-                                'Connections per torrent: $_torrentConnectionsLimit',
-                                style: const TextStyle(color: Colors.white70, fontSize: 14),
-                              ),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.only(left: 4, bottom: 4),
-                              child: Text(
-                                'Lower (5–25) often streams better on high-seed swarms.',
-                                style: TextStyle(color: Colors.white38, fontSize: 11),
-                              ),
-                            ),
-                            Slider(
-                              value: _torrentConnectionsLimit.toDouble().clamp(5, 200),
-                              min: 5, max: 200, divisions: 39,
-                              activeColor: Colors.deepPurpleAccent,
-                              inactiveColor: Colors.white12,
-                              label: '$_torrentConnectionsLimit',
-                              onChanged: (val) => setState(
-                                  () => _torrentConnectionsLimit = val.round()),
-                              onChangeEnd: (val) async {
-                                await TorrentStreamService()
-                                    .applyConnectionsLimit(val.round());
-                              },
-                            ),
-                          ],
-                        ),
-                        ],
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('WEBSTREAMR (LOCAL)', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.language),
-                            title: const Text('WebStreamr Settings'),
-                            subtitle: const Text('Country toggles, MFP, FlareSolverr, TMDB token'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const WebStreamrSettingsScreen(),
-                            )),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // ── Providers & Addons ──
-                    _buildExpandableSection(
-                      id: 'providers',
-                      icon: Icons.extension_rounded,
-                      title: 'Providers & Addons',
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('STREMIO ADDONS', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildAddonInput(),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('NUVIO ADDONS', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildNuvioAddonSection(),
-                        if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('JACKETT', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildJackettConfig(),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('PROWLARR', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildProwlarrConfig(),
-                        ],
-                      ],
-                    ),
-
-                    // ── Debrid ──
-                    _buildExpandableSection(
-                      id: 'debrid',
-                      icon: Icons.cloud_download_rounded,
-                      title: 'Debrid',
-                      children: [
-                        _buildFocusableToggle(
-                          'Use Debrid for Streams',
-                          'Resolve torrents using your debrid account.',
-                          _useDebrid,
-                          (val) async {
-                            await _settings.setUseDebridForStreams(val);
-                            setState(() => _useDebrid = val);
-                          },
-                        ),
-                        _buildFocusableDropdown(
-                          'Debrid Service',
-                          'Select your preferred provider.',
-                          _debridService,
-                          ['None', 'Real-Debrid', 'TorBox', 'AllDebrid', 'Premiumize', 'Debrid-Link'],
-                          (val) async {
-                            if (val != null) {
-                              await _settings.setDebridService(val);
-                              setState(() => _debridService = val);
-                            }
-                          },
-                        ),
-                        if (_debridService == 'Real-Debrid') _buildRDLogin(),
-                        if (_debridService == 'TorBox') _buildTorBoxConfig(),
-                        if (_debridService == 'AllDebrid') _buildAllDebridConfig(),
-                        if (_debridService == 'Premiumize') _buildPremiumizeConfig(),
-                        if (_debridService == 'Debrid-Link') _buildDebridLinkConfig(),
-                      ],
-                    ),
-
-                    // ── Accounts & Sync ──
-                    _buildExpandableSection(
-                      id: 'accounts',
-                      icon: Icons.sync_rounded,
-                      title: 'Accounts & Sync',
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('TRAKT', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildTraktSection(),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('SIMKL', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildSimklSection(),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text('MDBLIST', style: TextStyle(color: AppTheme.current.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildMdblistSection(),
-                      ],
-                    ),
-
-                    // ── Lists ──
-                    _buildExpandableSection(
-                      id: 'lists',
-                      icon: Icons.list_alt_rounded,
-                      title: 'Lists',
-                      children: [_buildListsSection()],
-                    ),
-
-                    // ── Navigation Bar ──
-                    _buildExpandableSection(
-                      id: 'navbar',
-                      icon: Icons.tab_rounded,
-                      title: 'Navigation Bar',
-                      children: [_buildNavbarConfig()],
-                    ),
-
-                    // ── Developer (Rust engine status) ──
-                    _buildExpandableSection(
-                      id: 'developer',
-                      icon: Icons.developer_mode_rounded,
-                      title: 'Developer',
-                      children: [
-                        _buildRustEngineSection(),
-                        if (kDebugMode && (Platform.isMacOS ||
-                            Platform.isWindows ||
-                            Platform.isLinux))
-                            Card(
-                              child: ListTile(
-                                leading: const Icon(Icons.play_circle_outline),
-                                title: const Text('Preview Splash Screen'),
-                                subtitle: const Text(
-                                  'Show the boot splash overlay without restarting',
-                                ),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => const SplashPreviewScreen(),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-
-                    // ── App Updates ──
-                    _buildExpandableSection(
-                      id: 'updates',
-                      icon: Icons.system_update_rounded,
-                      title: 'App Updates',
-                      children: [_buildUpdateChecker()],
-                    ),
-
-                    const SizedBox(height: 40),
-                    Center(
-                      child: AppVersionLabel(
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 13,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 100),
                   ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'WEBSTREAMR (LOCAL)',
+                      style: TextStyle(
+                        color: AppTheme.current.primaryColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.language),
+                      title: const Text('WebStreamr Settings'),
+                      subtitle: const Text(
+                        'Country toggles, MFP, FlareSolverr, TMDB token',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const WebStreamrSettingsScreen(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // ── Providers & Addons ──
+              _buildExpandableSection(
+                id: 'providers',
+                icon: Icons.extension_rounded,
+                title: 'Providers & Addons',
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'STREMIO ADDONS',
+                      style: TextStyle(
+                        color: AppTheme.current.primaryColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildAddonInput(),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'NUVIO ADDONS',
+                      style: TextStyle(
+                        color: AppTheme.current.primaryColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildNuvioAddonSection(),
+                  if (PlatformPlayback.capabilities.builtinTorrentSearch) ...[
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        'JACKETT',
+                        style: TextStyle(
+                          color: AppTheme.current.primaryColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildJackettConfig(),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        'PROWLARR',
+                        style: TextStyle(
+                          color: AppTheme.current.primaryColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildProwlarrConfig(),
+                  ],
+                ],
+              ),
+
+              // ── Debrid ──
+              _buildExpandableSection(
+                id: 'debrid',
+                icon: Icons.cloud_download_rounded,
+                title: 'Debrid',
+                children: [
+                  _buildFocusableToggle(
+                    'Use Debrid for Streams',
+                    'Resolve torrents using your debrid account.',
+                    _useDebrid,
+                    (val) async {
+                      await _settings.setUseDebridForStreams(val);
+                      setState(() => _useDebrid = val);
+                    },
+                  ),
+                  _buildFocusableDropdown(
+                    'Debrid Service',
+                    'Select your preferred provider.',
+                    _debridService,
+                    [
+                      'None',
+                      'Real-Debrid',
+                      'TorBox',
+                      'AllDebrid',
+                      'Premiumize',
+                      'Debrid-Link',
+                    ],
+                    (val) async {
+                      if (val != null) {
+                        await _settings.setDebridService(val);
+                        setState(() => _debridService = val);
+                      }
+                    },
+                  ),
+                  if (_debridService == 'Real-Debrid') _buildRDLogin(),
+                  if (_debridService == 'TorBox') _buildTorBoxConfig(),
+                  if (_debridService == 'AllDebrid') _buildAllDebridConfig(),
+                  if (_debridService == 'Premiumize') _buildPremiumizeConfig(),
+                  if (_debridService == 'Debrid-Link') _buildDebridLinkConfig(),
+                ],
+              ),
+
+              // ── Accounts & Sync ──
+              _buildExpandableSection(
+                id: 'accounts',
+                icon: Icons.sync_rounded,
+                title: 'Accounts & Sync',
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'TRAKT',
+                      style: TextStyle(
+                        color: AppTheme.current.primaryColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildTraktSection(),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'SIMKL',
+                      style: TextStyle(
+                        color: AppTheme.current.primaryColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSimklSection(),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'MDBLIST',
+                      style: TextStyle(
+                        color: AppTheme.current.primaryColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildMdblistSection(),
+                ],
+              ),
+
+              // ── Lists ──
+              _buildExpandableSection(
+                id: 'lists',
+                icon: Icons.list_alt_rounded,
+                title: 'Lists',
+                children: [_buildListsSection()],
+              ),
+
+              // ── Navigation Bar ──
+              _buildExpandableSection(
+                id: 'navbar',
+                icon: Icons.tab_rounded,
+                title: 'Navigation Bar',
+                children: [_buildNavbarConfig()],
+              ),
+
+              // ── Developer (Rust engine status) ──
+              _buildExpandableSection(
+                id: 'developer',
+                icon: Icons.developer_mode_rounded,
+                title: 'Developer',
+                children: [
+                  _buildRustEngineSection(),
+                  if (kDebugMode &&
+                      (Platform.isMacOS ||
+                          Platform.isWindows ||
+                          Platform.isLinux))
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.play_circle_outline),
+                        title: const Text('Preview Splash Screen'),
+                        subtitle: const Text(
+                          'Show the boot splash overlay without restarting',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const SplashPreviewScreen(),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              // ── App Updates ──
+              _buildExpandableSection(
+                id: 'updates',
+                icon: Icons.system_update_rounded,
+                title: 'App Updates',
+                children: [_buildUpdateChecker()],
+              ),
+
+              const SizedBox(height: 40),
+              Center(
+                child: AppVersionLabel(
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 13,
+                    letterSpacing: 2,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 100),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -832,8 +972,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final platformNote = loaded
         ? ''
         : Platform.isAndroid || Platform.isIOS
-            ? ' — run ./scripts/build_rust_mobile.sh and rebuild'
-            : ' — run ./scripts/build_rust.sh';
+        ? ' — run ./scripts/build_rust_mobile.sh and rebuild'
+        : ' — run ./scripts/build_rust.sh';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -868,12 +1008,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     final isExpanded = _expandedSections.contains(id);
     return Padding(
-      padding: const EdgeInsets.only(bottom: ShellTokens.settingsSectionBottomSpacing),
+      padding: const EdgeInsets.only(
+        bottom: ShellTokens.settingsSectionBottomSpacing,
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: isExpanded ? 0.04 : 0.02),
-          borderRadius: BorderRadius.circular(ShellTokens.settingsSectionRadius),
+          borderRadius: BorderRadius.circular(
+            ShellTokens.settingsSectionRadius,
+          ),
           border: Border.all(
             color: isExpanded
                 ? AppTheme.current.primaryColor.withValues(alpha: 0.2)
@@ -884,7 +1028,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             // Header (always visible, tappable)
             InkWell(
-              borderRadius: BorderRadius.circular(ShellTokens.settingsSectionRadius),
+              borderRadius: BorderRadius.circular(
+                ShellTokens.settingsSectionRadius,
+              ),
               onTap: () {
                 setState(() {
                   if (isExpanded) {
@@ -895,10 +1041,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 });
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Row(
                   children: [
-                    Icon(icon, size: 20, color: isExpanded ? AppTheme.current.primaryColor : Colors.white54),
+                    Icon(
+                      icon,
+                      size: 20,
+                      color: isExpanded
+                          ? AppTheme.current.primaryColor
+                          : Colors.white54,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -915,7 +1070,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        color: isExpanded ? AppTheme.current.primaryColor : Colors.white30,
+                        color: isExpanded
+                            ? AppTheme.current.primaryColor
+                            : Colors.white30,
                         size: 22,
                       ),
                     ),
@@ -933,7 +1090,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               secondChild: const SizedBox.shrink(),
-              crossFadeState: isExpanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+              crossFadeState: isExpanded
+                  ? CrossFadeState.showFirst
+                  : CrossFadeState.showSecond,
               duration: const Duration(milliseconds: 200),
               sizeCurve: Curves.easeInOut,
             ),
@@ -956,7 +1115,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final data = await _settings.exportAllSettings();
       final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
 
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
+      final timestamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .split('.')
+          .first;
       final fileName = 'forja_settings_$timestamp.json';
 
       // Write to a temp file first, then let the user pick where to save
@@ -1021,7 +1184,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E2C),
-        title: const Text('Import Settings', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Import Settings',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'This will overwrite all your current settings, including addons, API keys, and preferences. Continue?',
           style: TextStyle(color: Colors.white70),
@@ -1033,7 +1199,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Import', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Import',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -1070,7 +1239,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Text(
             'Export or import all your settings, addons, API keys, and preferences as a JSON file.',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 13,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -1079,14 +1251,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _isExporting ? null : _exportSettings,
                   icon: _isExporting
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.upload_rounded, size: 20),
                   label: const Text('Export'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurpleAccent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -1095,14 +1276,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _isImporting ? null : _importSettings,
                   icon: _isImporting
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.download_rounded, size: 20),
                   label: const Text('Import'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.1),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -1118,105 +1308,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   void _saveNavbarConfig() {
-    final visible = _navbarOrder.where((id) => _navbarVisible.contains(id)).toList();
+    final visible = _navbarOrder
+        .where((id) => _navbarVisible.contains(id))
+        .toList();
     _settings.setNavbarConfig(visible);
-    final startupOptions = [
-      ...visible,
-      'settings',
-    ];
+    final startupOptions = _startupTabOptions();
     if (!startupOptions.contains(_defaultNavTab)) {
-      setState(() => _defaultNavTab = 'home');
-      _settings.setDefaultNavTab('home');
+      final resolved = _resolveDefaultNavTab(startupOptions);
+      setState(() => _defaultNavTab = resolved);
+      _settings.setDefaultNavTab(resolved);
     }
   }
 
   List<String> _startupTabOptions() {
-    final visible = _navbarOrder
-        .where((id) => _navbarVisible.contains(id))
-        .toList();
-    return [...visible, 'settings'];
+    final seen = <String>{};
+    final options = <String>[];
+    for (final id in _navbarOrder) {
+      if (_navbarVisible.contains(id) && seen.add(id)) {
+        options.add(id);
+      }
+    }
+    if (seen.add('settings')) {
+      options.add('settings');
+    }
+    return options;
   }
 
-  String _startupTabLabel(String id) {
-    if (id == 'settings') return 'Settings';
-    return navDestinations[id]?.label ?? id;
+  String _resolveDefaultNavTab(List<String> options, {String? preferred}) {
+    final candidate = preferred ?? _defaultNavTab;
+    if (options.contains(candidate)) return candidate;
+    return options.isNotEmpty ? options.first : 'settings';
   }
 
-  Widget _buildDefaultNavTabPicker() {
-    final options = _startupTabOptions();
-    final effectiveDefault =
-        options.contains(_defaultNavTab) ? _defaultNavTab : 'home';
+  void _setDefaultNavTab(String id) {
+    setState(() => _defaultNavTab = id);
+    _settings.setDefaultNavTab(id);
+  }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Default menu',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tab opened when the app starts',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: DropdownButton<String>(
-              value: effectiveDefault,
-              dropdownColor: Color.lerp(
-                AppTheme.current.bgDark,
-                AppTheme.current.primaryColor,
-                0.08,
-              ),
-              underline: const SizedBox.shrink(),
-              icon: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: AppTheme.current.primaryColor,
-              ),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-              items: options
-                  .map(
-                    (id) => DropdownMenuItem(
-                      value: id,
-                      child: Text(_startupTabLabel(id)),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (id) {
-                if (id == null) return;
-                setState(() => _defaultNavTab = id);
-                _settings.setDefaultNavTab(id);
-              },
-            ),
-          ),
-        ],
+  Widget _defaultNavStar(String id, {required bool enabled}) {
+    final isDefault = _defaultNavTab == id;
+    return IconButton(
+      tooltip: isDefault ? 'Default menu' : 'Set as default menu',
+      onPressed: enabled ? () => _setDefaultNavTab(id) : null,
+      icon: Icon(
+        isDefault ? Icons.star_rounded : Icons.star_border_rounded,
+        color: isDefault
+            ? AppTheme.primaryColor
+            : enabled
+            ? Colors.white38
+            : Colors.white12,
+        size: 21,
       ),
     );
   }
@@ -1229,20 +1370,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             'Show, hide, and reorder navigation tabs. Drag to reorder. Settings is always visible.',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.4),
+              fontSize: 13,
+            ),
           ),
         ),
-        _buildDefaultNavTabPicker(),
         ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           buildDefaultDragHandles: false,
           itemCount: _navbarOrder.length,
           proxyDecorator: (child, index, animation) {
-            return Material(
-              color: Colors.transparent,
-              child: child,
-            );
+            return Material(color: Colors.transparent, child: child);
           },
           onReorderItem: (oldIndex, newIndex) {
             setState(() {
@@ -1283,6 +1423,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    _defaultNavStar(id, enabled: isVisible),
                     Switch(
                       value: isVisible,
                       activeTrackColor: AppTheme.primaryColor,
@@ -1301,7 +1442,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       index: index,
                       child: const Padding(
                         padding: EdgeInsets.only(left: 4),
-                        child: Icon(Icons.drag_handle, color: Colors.white24, size: 20),
+                        child: Icon(
+                          Icons.drag_handle,
+                          color: Colors.white24,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
@@ -1316,20 +1461,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
           decoration: BoxDecoration(
             color: AppTheme.primaryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: AppTheme.primaryColor.withValues(alpha: 0.3),
+            ),
           ),
           child: ListTile(
-            leading: const Icon(Icons.settings, color: AppTheme.primaryColor, size: 22),
+            leading: const Icon(
+              Icons.settings,
+              color: AppTheme.primaryColor,
+              size: 22,
+            ),
             title: const Text(
               'Settings',
-              style: TextStyle(color: AppTheme.primaryColor, fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.lock_outline, color: Colors.white.withValues(alpha: 0.2), size: 16),
+                _defaultNavStar('settings', enabled: true),
+                Icon(
+                  Icons.lock_outline,
+                  color: Colors.white.withValues(alpha: 0.2),
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
-                Text('Always visible', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
+                Text(
+                  'Always visible',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1344,7 +1510,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Install Stremio Addon', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Install Stremio Addon',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1359,7 +1528,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
               ),
@@ -1369,38 +1541,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: _isInstalling 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Install', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: _isInstalling
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Install',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
               ),
             ],
           ),
           if (_installedAddons.isNotEmpty) ...[
             const SizedBox(height: 24),
-            const Text('INSTALLED ADDONS', style: TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-            const SizedBox(height: 12),
-            ..._installedAddons.map((addon) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.03),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
+            const Text(
+              'INSTALLED ADDONS',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
               ),
-              child: ListTile(
-                leading: addon['icon'].toString().isNotEmpty 
-                  ? ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.network(addon['icon'], width: 32, height: 32, errorBuilder: (c,e,s) => const Icon(Icons.extension)))
-                  : const Icon(Icons.extension, color: AppTheme.primaryColor),
-                title: Text(addon['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: Text(addon['baseUrl'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white38)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                  onPressed: () => _removeAddon(addon['baseUrl']),
+            ),
+            const SizedBox(height: 12),
+            ..._installedAddons.map(
+              (addon) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: ListTile(
+                  leading: addon['icon'].toString().isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.network(
+                            addon['icon'],
+                            width: 32,
+                            height: 32,
+                            errorBuilder: (c, e, s) =>
+                                const Icon(Icons.extension),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.extension,
+                          color: AppTheme.primaryColor,
+                        ),
+                  title: Text(
+                    addon['name'],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: Text(
+                    addon['baseUrl'],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, color: Colors.white38),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.redAccent,
+                    ),
+                    onPressed: () => _removeAddon(addon['baseUrl']),
+                  ),
                 ),
               ),
-            )),
+            ),
           ],
         ],
       ),
@@ -1436,7 +1659,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
               ),
@@ -1446,12 +1672,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: _nuvioInstalling
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Install', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Install',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
               ),
             ],
           ),
@@ -1459,58 +1700,100 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 24),
             const Text(
               'INSTALLED NUVIO ADDONS',
-              style: TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
             ),
             const SizedBox(height: 12),
-            ..._nuvioAddons.map((addon) => Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.03),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Theme(
-                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-                      leading: const Icon(Icons.code_rounded, color: AppTheme.primaryColor),
-                      title: Text(addon.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      subtitle: Text(
-                        '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
-                        style: const TextStyle(fontSize: 11, color: Colors.white38),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                        onPressed: () => _removeNuvioAddon(addon.manifestUrl),
-                        tooltip: 'Remove addon',
-                      ),
-                      children: addon.scrapers.map((s) {
-                        return SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                          dense: true,
-                          activeThumbColor: AppTheme.primaryColor,
-                          value: s.enabled,
-                          onChanged: (val) async {
-                            await NuvioService.instance.setScraperEnabled(
-                              manifestUrl: addon.manifestUrl,
-                              scraperId: s.id,
-                              enabled: val,
-                            );
-                          },
-                          title: Text(s.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                          subtitle: Text(
-                            [
-                              if (s.description != null && s.description!.isNotEmpty) s.description!,
-                              if (s.supportedTypes.isNotEmpty) s.supportedTypes.join(', '),
-                            ].join(' \u00b7 '),
-                            style: const TextStyle(fontSize: 11, color: Colors.white54),
-                          ),
-                        );
-                      }).toList(),
+            ..._nuvioAddons.map(
+              (addon) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Theme(
+                  data: Theme.of(
+                    context,
+                  ).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
                     ),
+                    childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                    leading: const Icon(
+                      Icons.code_rounded,
+                      color: AppTheme.primaryColor,
+                    ),
+                    title: Text(
+                      addon.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white38,
+                      ),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.redAccent,
+                        size: 20,
+                      ),
+                      onPressed: () => _removeNuvioAddon(addon.manifestUrl),
+                      tooltip: 'Remove addon',
+                    ),
+                    children: addon.scrapers.map((s) {
+                      return SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        dense: true,
+                        activeThumbColor: AppTheme.primaryColor,
+                        value: s.enabled,
+                        onChanged: (val) async {
+                          await NuvioService.instance.setScraperEnabled(
+                            manifestUrl: addon.manifestUrl,
+                            scraperId: s.id,
+                            enabled: val,
+                          );
+                        },
+                        title: Text(
+                          s.name,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          [
+                            if (s.description != null &&
+                                s.description!.isNotEmpty)
+                              s.description!,
+                            if (s.supportedTypes.isNotEmpty)
+                              s.supportedTypes.join(', '),
+                          ].join(' \u00b7 '),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                )),
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -1525,7 +1808,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final addon = await NuvioService.instance.install(url);
       if (!mounted) return;
       _nuvioController.clear();
-      ForjaToast.success('Installed ${addon.name} (${addon.scrapers.length} scrapers)');
+      ForjaToast.success(
+        'Installed ${addon.name} (${addon.scrapers.length} scrapers)',
+      );
       await _loadNuvioAddons();
     } catch (e) {
       if (!mounted) return;
@@ -1557,11 +1842,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
                 foregroundColor: Colors.redAccent,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             )
           else ...[
-            const Text('API Key', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'API Key',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -1573,7 +1863,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       hintText: 'Enter Real-Debrid API Key',
                       filled: true,
                       fillColor: Colors.white.withValues(alpha: 0.05),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
@@ -1583,15 +1876,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: _isVerifyingRD
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-                      : const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                      : const Text(
+                          'Save',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                 ),
               ],
             ),
@@ -1605,7 +1906,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
               child: const Text(
                 'Get your API key at real-debrid.com/apitoken',
-                style: TextStyle(color: AppTheme.primaryColor, fontSize: 12, decoration: TextDecoration.underline),
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontSize: 12,
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
           ],
@@ -1620,7 +1925,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('API Key', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'API Key',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1632,7 +1940,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     hintText: 'Enter TorBox API Key',
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
@@ -1647,9 +1958,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Save',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -1664,7 +1980,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('API Key', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'API Key',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1676,7 +1995,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     hintText: 'Enter AllDebrid API Key',
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
@@ -1691,9 +2013,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Save',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -1707,7 +2034,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
             child: const Text(
               'Get your API key at alldebrid.com/apikeys',
-              style: TextStyle(color: AppTheme.primaryColor, fontSize: 12, decoration: TextDecoration.underline),
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontSize: 12,
+                decoration: TextDecoration.underline,
+              ),
             ),
           ),
         ],
@@ -1721,7 +2052,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('API Key', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'API Key',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1733,7 +2067,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     hintText: 'Enter Premiumize API Key',
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
@@ -1748,9 +2085,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Save',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -1764,7 +2106,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
             child: const Text(
               'Get your API key at premiumize.me/account',
-              style: TextStyle(color: AppTheme.primaryColor, fontSize: 12, decoration: TextDecoration.underline),
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontSize: 12,
+                decoration: TextDecoration.underline,
+              ),
             ),
           ),
         ],
@@ -1778,7 +2124,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('API Key', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'API Key',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1790,7 +2139,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     hintText: 'Enter Debrid-Link API Key',
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
@@ -1805,9 +2157,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Save',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -1821,7 +2178,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
             child: const Text(
               'Get your API key at debrid-link.com/webapp/apikey',
-              style: TextStyle(color: AppTheme.primaryColor, fontSize: 12, decoration: TextDecoration.underline),
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontSize: 12,
+                decoration: TextDecoration.underline,
+              ),
             ),
           ),
         ],
@@ -1835,7 +2196,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Base URL', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Base URL',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _jackettUrlController,
@@ -1843,13 +2207,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               hintText: 'http://localhost:9117',
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
             onChanged: (_) => setState(() => _jackettTestResult = null),
           ),
           const SizedBox(height: 16),
-          const Text('API Key', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'API Key',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _jackettApiKeyController,
@@ -1858,8 +2231,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               hintText: 'Enter Jackett API Key',
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
             onChanged: (_) => setState(() => _jackettTestResult = null),
           ),
@@ -1873,11 +2252,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     backgroundColor: Colors.white.withValues(alpha: 0.1),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: _isTestingJackett
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Test Connection', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Test Connection',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1888,9 +2279,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
@@ -1913,7 +2309,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(
                 _jackettTestResult!,
                 style: TextStyle(
-                  color: _jackettTestResult!.startsWith('✅') ? Colors.green : Colors.red,
+                  color: _jackettTestResult!.startsWith('✅')
+                      ? Colors.green
+                      : Colors.red,
                   fontSize: 13,
                 ),
               ),
@@ -1930,7 +2328,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Base URL', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Base URL',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _prowlarrUrlController,
@@ -1938,8 +2339,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               hintText: 'http://localhost:9696',
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
             onChanged: (_) => setState(() {
               _prowlarrTestResult = null;
@@ -1948,7 +2355,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }),
           ),
           const SizedBox(height: 16),
-          const Text('API Key', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'API Key',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _prowlarrApiKeyController,
@@ -1957,8 +2367,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               hintText: 'Enter Prowlarr API Key',
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
             onChanged: (_) => setState(() {
               _prowlarrTestResult = null;
@@ -1967,22 +2383,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }),
           ),
           const SizedBox(height: 20),
-          const Text('Filter by Tag', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Filter by Tag',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 4),
           if (!_prowlarrTagsLoaded) ...[
             Text(
               'Use the Test Connection button to load available tags.',
-              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.4)),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withValues(alpha: 0.4),
+              ),
             ),
           ] else if (_prowlarrAvailableTags.isEmpty) ...[
             Text(
               'No tags found in Prowlarr. Add tags to your indexers to use this filter.',
-              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.4)),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withValues(alpha: 0.4),
+              ),
             ),
           ] else ...[
             Text(
               'Limit searches to indexers with the selected tags. Leave all unselected to search all indexers.',
-              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.6)),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withValues(alpha: 0.6),
+              ),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -2007,14 +2435,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   backgroundColor: Colors.white.withValues(alpha: 0.05),
                   labelStyle: TextStyle(
                     color: isSelected ? AppTheme.primaryColor : Colors.white70,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                   side: BorderSide(
                     color: isSelected
                         ? AppTheme.primaryColor
                         : Colors.white.withValues(alpha: 0.2),
                   ),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 );
               }).toList(),
             ),
@@ -2023,7 +2455,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
                   'All indexers will be searched.',
-                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.4)),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
                 ),
               ),
           ],
@@ -2032,16 +2467,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _isTestingProwlarr ? null : _testProwlarrConnection,
+                  onPressed: _isTestingProwlarr
+                      ? null
+                      : _testProwlarrConnection,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.1),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: _isTestingProwlarr
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Test Connection', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Test Connection',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -2052,9 +2501,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
@@ -2077,7 +2531,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(
                 _prowlarrTestResult!,
                 style: TextStyle(
-                  color: _prowlarrTestResult!.startsWith('✅') ? Colors.green : Colors.red,
+                  color: _prowlarrTestResult!.startsWith('✅')
+                      ? Colors.green
+                      : Colors.red,
                   fontSize: 13,
                 ),
               ),
@@ -2093,7 +2549,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final apiKey = _jackettApiKeyController.text.trim();
 
     if (url.isEmpty || apiKey.isEmpty) {
-      setState(() => _jackettTestResult = '❌ Please enter both Base URL and API Key');
+      setState(
+        () => _jackettTestResult = '❌ Please enter both Base URL and API Key',
+      );
       return;
     }
 
@@ -2137,7 +2595,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final apiKey = _prowlarrApiKeyController.text.trim();
 
     if (url.isEmpty || apiKey.isEmpty) {
-      setState(() => _prowlarrTestResult = '❌ Please enter both Base URL and API Key');
+      setState(
+        () => _prowlarrTestResult = '❌ Please enter both Base URL and API Key',
+      );
       return;
     }
 
@@ -2235,13 +2695,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     _traktPollTimer?.cancel();
-    _traktPollTimer = Timer.periodic(Duration(seconds: interval), (timer) async {
+    _traktPollTimer = Timer.periodic(Duration(seconds: interval), (
+      timer,
+    ) async {
       final result = await _trakt.pollForToken(deviceCode);
       if (result == 'success') {
         timer.cancel();
         // Fetch username
         final profile = await _trakt.getUserProfile();
-        final username = profile?['user']?['username']?.toString() ?? profile?['username']?.toString();
+        final username =
+            profile?['user']?['username']?.toString() ??
+            profile?['username']?.toString();
         if (mounted) {
           setState(() {
             _traktUserCode = null;
@@ -2249,7 +2713,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _isTraktLoggedIn = true;
             _traktUsername = username;
           });
-          ForjaToast.success('Logged in to Trakt${username != null ? " as $username" : ""}!');
+          ForjaToast.success(
+            'Logged in to Trakt${username != null ? " as $username" : ""}!',
+          );
         }
         // Auto-sync after login
         _syncTrakt();
@@ -2260,7 +2726,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _traktUserCode = null;
             _traktVerifyUrl = null;
           });
-          ForjaToast.error(result == 'denied' ? 'Trakt login denied' : 'Code expired, try again');
+          ForjaToast.error(
+            result == 'denied'
+                ? 'Trakt login denied'
+                : 'Code expired, try again',
+          );
         }
       }
       // 'pending' → keep polling
@@ -2334,9 +2804,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Icon(icon, color: AppTheme.primaryColor, size: 20),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white54, fontSize: 11),
+          ),
         ],
       );
     }
@@ -2390,13 +2870,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Text(
                           'Connected${_traktUsername != null ? " as $_traktUsername" : ""}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
-                        const Text('Trakt.tv', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                        const Text(
+                          'Trakt.tv',
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.sync, color: AppTheme.primaryColor, size: 18),
+                  const Icon(
+                    Icons.sync,
+                    color: AppTheme.primaryColor,
+                    size: 18,
+                  ),
                 ],
               ),
             ),
@@ -2415,8 +2905,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: _isTraktSyncing ? null : _syncTrakt,
                 icon: _isTraktSyncing
                     ? const SizedBox(
-                        width: 18, height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.sync),
                 label: Text(_isTraktSyncing ? 'Syncing...' : 'Sync Now'),
@@ -2424,7 +2918,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -2439,7 +2935,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
                 foregroundColor: Colors.redAccent,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ] else if (_traktUserCode != null) ...[
@@ -2496,7 +2994,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 backgroundColor: Colors.white10,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -2519,7 +3019,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     final userCode = data['user_code'] as String;
-    final verifyUrl = data['verification_url']?.toString() ?? 'https://simkl.com/pin/$userCode';
+    final verifyUrl =
+        data['verification_url']?.toString() ??
+        'https://simkl.com/pin/$userCode';
     final interval = (data['interval'] as int?) ?? 5;
     final expiresIn = (data['expires_in'] as int?) ?? 900;
 
@@ -2540,7 +3042,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     _simklPollTimer?.cancel();
-    _simklPollTimer = Timer.periodic(Duration(seconds: interval), (timer) async {
+    _simklPollTimer = Timer.periodic(Duration(seconds: interval), (
+      timer,
+    ) async {
       final token = await _simkl.pollForToken(userCode);
       if (token != null) {
         timer.cancel();
@@ -2553,7 +3057,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _isSimklLoggedIn = true;
             _simklUsername = username;
           });
-          ForjaToast.success('Logged in to Simkl${username != null ? " as $username" : ""}!');
+          ForjaToast.success(
+            'Logged in to Simkl${username != null ? " as $username" : ""}!',
+          );
         }
         _syncSimkl();
       }
@@ -2640,13 +3146,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Text(
                           'Connected${_simklUsername != null ? " as $_simklUsername" : ""}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
-                        const Text('Simkl', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                        const Text(
+                          'Simkl',
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.sync, color: AppTheme.primaryColor, size: 18),
+                  const Icon(
+                    Icons.sync,
+                    color: AppTheme.primaryColor,
+                    size: 18,
+                  ),
                 ],
               ),
             ),
@@ -2657,8 +3173,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: _isSimklSyncing ? null : _syncSimkl,
                 icon: _isSimklSyncing
                     ? const SizedBox(
-                        width: 18, height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.sync),
                 label: Text(_isSimklSyncing ? 'Syncing...' : 'Sync Now'),
@@ -2666,7 +3186,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -2679,7 +3201,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
                 foregroundColor: Colors.redAccent,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ] else if (_simklUserCode != null) ...[
@@ -2734,7 +3258,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 backgroundColor: Colors.white10,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -2766,7 +3292,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _isMdblistConfigured = true;
           _mdblistUsername = info['name']?.toString();
         });
-        ForjaToast.success('MDBlist connected${_mdblistUsername != null ? " as $_mdblistUsername" : ""}!');
+        ForjaToast.success(
+          'MDBlist connected${_mdblistUsername != null ? " as $_mdblistUsername" : ""}!',
+        );
       }
     } else {
       await _mdblist.logout();
@@ -2822,9 +3350,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Text(
                           'Connected${_mdblistUsername != null ? " as $_mdblistUsername" : ""}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
-                        const Text('MDBlist', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                        const Text(
+                          'MDBlist',
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
                       ],
                     ),
                   ),
@@ -2840,7 +3374,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
                 foregroundColor: Colors.redAccent,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ] else ...[
@@ -2870,7 +3406,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -2893,16 +3431,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => const ListsScreen(),
-              )),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ListsScreen()),
+              ),
               icon: const Icon(Icons.list_alt_rounded),
               label: const Text('Manage Lists'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
@@ -2957,16 +3498,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-  
+
   Future<void> _checkForUpdates() async {
     setState(() => _isCheckingUpdate = true);
-    
+
     try {
       final updateInfo = await _updater.checkForUpdates();
-      
+
       if (mounted) {
         setState(() => _isCheckingUpdate = false);
-        
+
         if (updateInfo != null) {
           showDialog(
             context: context,
@@ -3028,8 +3569,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               await _settings.setStreamProviderOrder(next);
             },
             onReset: () async {
-              final defaults =
-                  List<String>.from(SettingsService.defaultStreamProviderOrder);
+              final defaults = List<String>.from(
+                SettingsService.defaultStreamProviderOrder,
+              );
               await _settings.setStreamProviderOrder(defaults);
               setState(() => _streamProviderOrder = defaults);
             },
@@ -3038,7 +3580,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ProviderPriorityTable(
             domain: SourceDomain.series,
             title: 'Series',
-            subtitle: 'Same baseline list as films; series domain scores differ.',
+            subtitle:
+                'Same baseline list as films; series domain scores differ.',
             catalog: streamCatalog,
             order: streamOrder,
             onOrderChanged: (next) async {
@@ -3046,8 +3589,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               await _settings.setStreamProviderOrder(next);
             },
             onReset: () async {
-              final defaults =
-                  List<String>.from(SettingsService.defaultStreamProviderOrder);
+              final defaults = List<String>.from(
+                SettingsService.defaultStreamProviderOrder,
+              );
               await _settings.setStreamProviderOrder(defaults);
               setState(() => _streamProviderOrder = defaults);
             },
@@ -3064,8 +3608,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               await _settings.setAnimeProviderOrder(next);
             },
             onReset: () async {
-              final defaults =
-                  List<String>.from(SettingsService.defaultAnimeProviderOrder);
+              final defaults = List<String>.from(
+                SettingsService.defaultAnimeProviderOrder,
+              );
               await _settings.setAnimeProviderOrder(defaults);
               setState(() => _animeProviderOrder = defaults);
             },
@@ -3074,7 +3619,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ProviderPriorityTable(
             domain: SourceDomain.asianDrama,
             title: 'Asian Drama',
-            subtitle: 'Single KissKH source today — same pipeline as other types.',
+            subtitle:
+                'Single KissKH source today — same pipeline as other types.',
             catalog: const {'kisskh': 'KissKH'},
             order: const ['kisskh'],
             onOrderChanged: (_) {},
@@ -3158,7 +3704,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Widget _buildFocusableToggle(String title, String subtitle, bool value, ValueChanged<bool> onChanged) {
+  Widget _buildFocusableToggle(
+    String title,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
     final content = Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -3167,9 +3718,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(subtitle, style: const TextStyle(fontSize: 13, color: Colors.white54)),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 13, color: Colors.white54),
+                ),
               ],
             ),
           ),
@@ -3192,47 +3752,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildFocusableDropdown(String title, String subtitle, String value, List<String> options, ValueChanged<String?> onChanged) {
+  Widget _buildFocusableDropdown(
+    String title,
+    String subtitle,
+    String value,
+    List<String> options,
+    ValueChanged<String?> onChanged,
+  ) {
     final content = Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(fontSize: 13, color: Colors.white54)),
-                ],
-              ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 13, color: Colors.white54),
+                ),
+              ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: DropdownButton<String>(
-                value: value,
-                dropdownColor: Color.lerp(AppTheme.current.bgDark, AppTheme.current.primaryColor, 0.08),
-                underline: const SizedBox.shrink(),
-                icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.current.primaryColor),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                selectedItemBuilder: (BuildContext context) {
-                  return options.map<Widget>((String item) {
-                    return Container(
-                      alignment: Alignment.centerLeft,
-                      child: Text(item, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    );
-                  }).toList();
-                },
-                items: options.map((o) => DropdownMenuItem(value: o, child: Text(o, style: const TextStyle(color: Colors.white)))).toList(),
-                onChanged: onChanged,
-              ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
-        ),
+            child: DropdownButton<String>(
+              value: value,
+              dropdownColor: Color.lerp(
+                AppTheme.current.bgDark,
+                AppTheme.current.primaryColor,
+                0.08,
+              ),
+              underline: const SizedBox.shrink(),
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppTheme.current.primaryColor,
+              ),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              selectedItemBuilder: (BuildContext context) {
+                return options.map<Widget>((String item) {
+                  return Container(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                }).toList();
+              },
+              items: options
+                  .map(
+                    (o) => DropdownMenuItem(
+                      value: o,
+                      child: Text(
+                        o,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ],
+      ),
     );
     return shellFocusableTap(
       context: context,

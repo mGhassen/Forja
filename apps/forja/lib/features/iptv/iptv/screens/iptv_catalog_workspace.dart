@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -1030,6 +1032,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     widget.ctrl.addError = null;
     return showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => ShellScope.rehost(
         context,
         _PortalFormDialog(ctrl: widget.ctrl, existing: existing),
@@ -1118,13 +1121,22 @@ class _PortalFormDialog extends StatefulWidget {
 }
 
 class _PortalFormDialogState extends State<_PortalFormDialog> {
+  static const _codeLen = IptvPortalShare.shareCodeLength;
+  static const _codeBoxWidth = 38.0;
+  static const _codeBoxHeight = 76.0;
+
   late final TextEditingController _urlCtrl;
   late final TextEditingController _userCtrl;
   late final TextEditingController _passCtrl;
-  late final TextEditingController _shareCodeCtrl;
+  late final TextEditingController _pasteCtrl;
+  late final FocusNode _pasteFocus;
+  late final FocusNode _urlFocus;
   bool _obscurePassword = true;
   bool _importingShareCode = false;
+  bool _showManualForm = false;
   String? _shareCodeError;
+  String? _lastImportedCode;
+  Timer? _manualSubmitDebounce;
 
   bool get _editing => widget.existing != null;
 
@@ -1135,26 +1147,95 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _urlCtrl = TextEditingController(text: e?.portal.url ?? '');
     _userCtrl = TextEditingController(text: e?.portal.username ?? '');
     _passCtrl = TextEditingController(text: e?.portal.password ?? '');
-    _shareCodeCtrl = TextEditingController();
+    _pasteCtrl = TextEditingController();
+    _pasteFocus = FocusNode(debugLabel: 'iptv-share-paste');
+    _urlFocus = FocusNode(debugLabel: 'iptv-portal-url');
+    if (_editing) _showManualForm = true;
+    _pasteFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _pasteCtrl.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _urlCtrl.addListener(_scheduleManualSubmit);
+    _userCtrl.addListener(_scheduleManualSubmit);
+    _passCtrl.addListener(_scheduleManualSubmit);
+    if (!_editing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _pasteFocus.requestFocus();
+      });
+    }
   }
 
   @override
   void dispose() {
+    _manualSubmitDebounce?.cancel();
     _urlCtrl.dispose();
     _userCtrl.dispose();
     _passCtrl.dispose();
-    _shareCodeCtrl.dispose();
+    _pasteCtrl.dispose();
+    _pasteFocus.dispose();
+    _urlFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _importShareCode() async {
-    final raw = _shareCodeCtrl.text;
-    if (!IptvPortalShare.isValidCode(raw)) {
-      setState(() {
-        _shareCodeError = 'Enter an 8-character share code';
-      });
+  String _joinedShareCode() => IptvPortalShare.normalizeCode(_pasteCtrl.text);
+
+  int get _activeCodeIndex {
+    final sel = _pasteCtrl.selection.baseOffset;
+    if (sel >= 0 && sel < _codeLen) return sel;
+    return _pasteCtrl.text.length.clamp(0, _codeLen - 1);
+  }
+
+  void _onSharePasteChanged(String value) {
+    if (_shareCodeError != null) {
+      setState(() => _shareCodeError = null);
+    }
+    _lastImportedCode = null;
+
+    final cleaned = value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (cleaned != value) {
+      _pasteCtrl.value = TextEditingValue(
+        text: cleaned,
+        selection: TextSelection.collapsed(offset: cleaned.length),
+      );
+      setState(() {});
+      _tryAutoImportShareCode();
       return;
     }
+    setState(() {});
+    _tryAutoImportShareCode();
+  }
+
+  void _toggleManualForm() {
+    if (_importingShareCode) return;
+    final opening = !_showManualForm;
+    setState(() => _showManualForm = !_showManualForm);
+    if (opening) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _urlFocus.requestFocus();
+      });
+    } else {
+      _pasteFocus.requestFocus();
+    }
+  }
+
+  void _focusShareCodeCell(int index) {
+    _pasteFocus.requestFocus();
+    final offset = index.clamp(0, _pasteCtrl.text.length);
+    _pasteCtrl.selection = TextSelection.collapsed(offset: offset);
+    setState(() {});
+  }
+
+  Future<void> _tryAutoImportShareCode() async {
+    final code = _joinedShareCode();
+    if (code.length != _codeLen || _importingShareCode) return;
+    if (code == _lastImportedCode) return;
+    await _importShareCode(code);
+  }
+
+  Future<void> _importShareCode(String code) async {
+    if (!IptvPortalShare.isValidCode(code)) return;
 
     setState(() {
       _importingShareCode = true;
@@ -1162,7 +1243,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     });
 
     try {
-      final portal = await IptvPortalShare.resolveShare(raw);
+      final portal = await IptvPortalShare.resolveShare(code);
       if (!mounted) return;
       if (portal == null) {
         setState(() {
@@ -1174,18 +1255,31 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       _urlCtrl.text = portal.url;
       _userCtrl.text = portal.username;
       _passCtrl.text = portal.password;
+      _lastImportedCode = code;
       setState(() => _importingShareCode = false);
-      ForjaToast.success(
-        'Portal details loaded from share code',
-        duration: const Duration(seconds: 2),
-      );
-    } catch (e) {
+      await _submit();
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _importingShareCode = false;
         _shareCodeError = 'Could not load share code';
       });
     }
+  }
+
+  void _scheduleManualSubmit() {
+    _manualSubmitDebounce?.cancel();
+    if (!_showManualForm && !_editing) return;
+    _manualSubmitDebounce = Timer(const Duration(milliseconds: 650), () {
+      if (!mounted) return;
+      if (widget.ctrl.isAdding) return;
+      if (_urlCtrl.text.trim().isEmpty ||
+          _userCtrl.text.trim().isEmpty ||
+          _passCtrl.text.trim().isEmpty) {
+        return;
+      }
+      _submit();
+    });
   }
 
   Future<void> _submit() async {
@@ -1221,118 +1315,136 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       animation: ctrl,
       builder: (_, _) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
-          child: DecoratedBox(
-            decoration: IptvShellStyle.dialogSurface(),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 16, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _editing ? 'Edit Portal' : 'Add Portal',
-                          style: IptvShellStyle.overlayTitle,
-                        ),
-                      ),
-                      ForjaPlainIcon(
-                        icon: Icons.close_rounded,
-                        tooltip: 'Close',
-                        color: IptvShellStyle.iconMuted,
-                        size: 22,
-                        onTap: ctrl.isAdding ? null : _cancel,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  if (!_editing) ...[
-                    _shareCodeSection(),
-                    const SizedBox(height: 18),
-                    Row(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 13),
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                DecoratedBox(
+                  decoration: IptvShellStyle.dialogSurface(),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      20,
+                      16,
+                      _editing || _showManualForm ? 24 : 32,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: Divider(
-                            color: Colors.white.withValues(alpha: 0.08),
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _editing ? 'Edit Portal' : 'Add Portal',
+                                style: IptvShellStyle.overlayTitle,
+                              ),
+                            ),
+                            ForjaPlainIcon(
+                              icon: Icons.close_rounded,
+                              tooltip: 'Close',
+                              color: IptvShellStyle.iconMuted,
+                              size: 22,
+                              onTap: ctrl.isAdding ? null : _cancel,
+                            ),
+                          ],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Text(
-                            'OR',
+                        const SizedBox(height: 22),
+                        if (!_editing) _shareCodeSection(),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment.topCenter,
+                          clipBehavior: Clip.hardEdge,
+                          child: _editing || _showManualForm
+                              ? Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (!_editing) const SizedBox(height: 20),
+                                    _portalField(
+                                      _urlCtrl,
+                                      'URL',
+                                      hint: 'http://portal.example.com:8080',
+                                      focusNode: _urlFocus,
+                                    ),
+                                    const SizedBox(height: 18),
+                                    _portalField(
+                                      _userCtrl,
+                                      'Username',
+                                      hint: 'username',
+                                    ),
+                                    const SizedBox(height: 18),
+                                    _portalField(
+                                      _passCtrl,
+                                      'Password',
+                                      hint: 'password',
+                                      obscure: _obscurePassword,
+                                      suffix: ForjaPlainIcon(
+                                        icon: _obscurePassword
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                        tooltip: _obscurePassword
+                                            ? 'Show password'
+                                            : 'Hide password',
+                                        color: IptvShellStyle.iconMuted,
+                                        size: 20,
+                                        onTap: () => setState(
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : const SizedBox(width: double.infinity),
+                        ),
+                        if (ctrl.addError != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            ctrl.addError!,
                             style: GoogleFonts.poppins(
-                              color: IptvShellStyle.textSecondary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.8,
+                              color: IptvShellStyle.liveBadge,
+                              fontSize: 12,
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: Divider(
-                            color: Colors.white.withValues(alpha: 0.08),
+                        ],
+                        if (ctrl.isAdding) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: IptvShellStyle.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _editing ? 'Saving…' : 'Adding portal…',
+                                style: GoogleFonts.poppins(
+                                  color: IptvShellStyle.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 18),
-                  ],
-                  _portalField(
-                    _urlCtrl,
-                    'URL',
-                    hint: 'http://portal.example.com:8080',
                   ),
-                  const SizedBox(height: 18),
-                  _portalField(_userCtrl, 'Username', hint: 'username'),
-                  const SizedBox(height: 18),
-                  _portalField(
-                    _passCtrl,
-                    'Password',
-                    hint: 'password',
-                    obscure: _obscurePassword,
-                    suffix: ForjaPlainIcon(
-                      icon: _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      tooltip: _obscurePassword
-                          ? 'Show password'
-                          : 'Hide password',
-                      color: IptvShellStyle.iconMuted,
-                      size: 20,
-                      onTap: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                  if (ctrl.addError != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      ctrl.addError!,
-                      style: GoogleFonts.poppins(
-                        color: IptvShellStyle.liveBadge,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      _portalDialogAction(
-                        icon: Icons.close_rounded,
-                        label: 'Cancel',
-                        color: IptvShellStyle.textSecondary,
-                        onTap: ctrl.isAdding ? null : _cancel,
-                      ),
-                      const SizedBox(width: 12),
-                      _portalSaveAction(ctrl),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+                if (!_editing)
+                  Positioned(bottom: -13, child: _manualFormToggle()),
+              ],
             ),
           ),
         ),
@@ -1340,81 +1452,41 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     );
   }
 
-  Widget _portalDialogAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    VoidCallback? onTap,
-    FontWeight fontWeight = FontWeight.w500,
-  }) {
-    return ForjaInteractive(
-      onTap: onTap,
-      hoverScale: 1.02,
-      pressScale: 0.98,
-      builder: (hover, pressed) {
-        final fg = (hover || pressed) ? ForjaShellColors.iconHover : color;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: fg),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  color: fg,
-                  fontSize: 14,
-                  fontWeight: fontWeight,
+  Widget _manualFormToggle() {
+    const size = 26.0;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _importingShareCode ? null : _toggleManualForm,
+        borderRadius: BorderRadius.circular(7),
+        child: Tooltip(
+          message: _showManualForm ? 'Hide manual entry' : 'Enter URL manually',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: IptvShellStyle.surface,
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: IptvShellStyle.border),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
-              ),
-            ],
+              ],
+            ),
+            child: Icon(
+              _showManualForm
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              color: IptvShellStyle.textSecondary,
+              size: 16,
+            ),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _portalSaveAction(IptvController ctrl) {
-    final label = ctrl.isAdding
-        ? (_editing ? 'Saving…' : 'Adding…')
-        : (_editing ? 'Save' : 'Add');
-    final icon = _editing ? Icons.check_rounded : Icons.add_rounded;
-
-    if (ctrl.isAdding) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: IptvShellStyle.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                color: IptvShellStyle.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
         ),
-      );
-    }
-
-    return _portalDialogAction(
-      icon: icon,
-      label: label,
-      color: IptvShellStyle.textPrimary,
-      fontWeight: FontWeight.w600,
-      onTap: _submit,
+      ),
     );
   }
 
@@ -1431,71 +1503,93 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             letterSpacing: 0.8,
           ),
         ),
-        const SizedBox(height: 6),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _shareCodeCtrl,
-                maxLength: IptvPortalShare.shareCodeLength,
-                textCapitalization: TextCapitalization.characters,
-                enabled: !_importingShareCode,
-                onChanged: (_) {
-                  if (_shareCodeError != null) {
-                    setState(() => _shareCodeError = null);
-                  }
-                },
-                onSubmitted: (_) => _importShareCode(),
-                style: GoogleFonts.poppins(
-                  color: IptvShellStyle.textPrimary,
-                  fontSize: 14,
-                  letterSpacing: 1.2,
-                ),
-                decoration: InputDecoration(
-                  counterText: '',
-                  hintText: '8-character code',
-                  hintStyle: GoogleFonts.poppins(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    fontSize: 14,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.08),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: _codeBoxHeight,
+          child: Stack(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var i = 0; i < 4; i++) ...[
+                    if (i > 0) const SizedBox(width: 6),
+                    _shareCodeCell(i),
+                  ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      '-',
+                      style: GoogleFonts.jetBrainsMono(
+                        color: Colors.white.withValues(alpha: 0.35),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
+                  for (var i = 4; i < 8; i++) ...[
+                    if (i > 4) const SizedBox(width: 6),
+                    _shareCodeCell(i),
+                  ],
+                ],
+              ),
+              Positioned.fill(
+                child: TextField(
+                  controller: _pasteCtrl,
+                  focusNode: _pasteFocus,
+                  enabled: !_importingShareCode,
+                  maxLength: _codeLen,
+                  textAlign: TextAlign.center,
+                  textCapitalization: TextCapitalization.characters,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.visiblePassword,
+                  showCursor: false,
+                  style: const TextStyle(
+                    color: Colors.transparent,
+                    fontSize: 1,
+                    height: 1,
                   ),
+                  cursorColor: Colors.transparent,
+                  decoration: const InputDecoration(
+                    counterText: '',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                  ],
+                  onChanged: _onSharePasteChanged,
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            _portalDialogAction(
-              icon: _importingShareCode
-                  ? Icons.hourglass_top_rounded
-                  : Icons.download_rounded,
-              label: _importingShareCode ? 'Loading…' : 'Import',
-              color: IptvShellStyle.textPrimary,
-              fontWeight: FontWeight.w600,
-              onTap: _importingShareCode ? null : _importShareCode,
-            ),
-          ],
+            ],
+          ),
         ),
+        if (_importingShareCode) ...[
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: IptvShellStyle.accent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Adding portal…',
+                style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
         if (_shareCodeError != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             _shareCodeError!,
+            textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               color: IptvShellStyle.liveBadge,
               fontSize: 12,
@@ -1506,12 +1600,46 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     );
   }
 
+  Widget _shareCodeCell(int index) {
+    final text = index < _pasteCtrl.text.length ? _pasteCtrl.text[index] : '';
+    final active = _pasteFocus.hasFocus && index == _activeCodeIndex;
+    return GestureDetector(
+      onTap: () => _focusShareCodeCell(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        width: _codeBoxWidth,
+        height: _codeBoxHeight,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: active ? 0.08 : 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: active
+                ? IptvShellStyle.accent.withValues(alpha: 0.9)
+                : Colors.white.withValues(alpha: 0.12),
+            width: active ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          text,
+          style: GoogleFonts.jetBrainsMono(
+            color: IptvShellStyle.textPrimary,
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _portalField(
     TextEditingController c,
     String label, {
     String? hint,
     bool obscure = false,
     Widget? suffix,
+    FocusNode? focusNode,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1528,6 +1656,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         const SizedBox(height: 6),
         TextField(
           controller: c,
+          focusNode: focusNode,
           obscureText: obscure,
           style: GoogleFonts.poppins(
             color: IptvShellStyle.textPrimary,
@@ -1658,31 +1787,25 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     final color = playerSourceStatusColor(status);
     final Widget glyph = switch (status) {
       PlayerSourceStatus.active => Icon(
-          Icons.play_circle_filled_rounded,
-          color: color,
-          size: _statusSlot,
-        ),
+        Icons.play_circle_filled_rounded,
+        color: color,
+        size: _statusSlot,
+      ),
       PlayerSourceStatus.failed => Icon(
-          Icons.cancel_rounded,
-          color: color,
-          size: _statusSlot,
-        ),
+        Icons.cancel_rounded,
+        color: color,
+        size: _statusSlot,
+      ),
       PlayerSourceStatus.checking => SizedBox(
-          width: 14,
-          height: 14,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: color,
-          ),
-        ),
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2, color: color),
+      ),
       PlayerSourceStatus.ready => Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
     };
     return SizedBox(
       width: _statusSlot,
@@ -1691,10 +1814,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     );
   }
 
-  Widget _idlePortalHealthDot({
-    required bool checking,
-    required bool? health,
-  }) {
+  Widget _idlePortalHealthDot({required bool checking, required bool? health}) {
     return SizedBox(
       width: _statusSlot,
       height: _statusSlot,
@@ -1753,204 +1873,201 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
             ctrl.cancelPortalHealthCheck(v.key);
           },
           child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? playerSourceStatusColor(
-                          PlayerSourceStatus.active,
-                        ).withValues(alpha: 0.07)
-                      : showNewChrome
-                      ? IptvShellStyle.accent.withValues(alpha: 0.1)
-                      : (_lineHover || _focused || _showShareCode)
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.transparent,
-                  border: showNewChrome
-                      ? Border(
-                          left: BorderSide(
-                            color: IptvShellStyle.accent,
-                            width: 3,
-                          ),
-                        )
-                      : null,
-                ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  height: _rowHeight,
-                  alignment: Alignment.topCenter,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: iptvTap(
-                          context: context,
-                          onTap: _onRowTap,
-                          borderRadius: 0,
-                          listIndex: widget.listIndex,
-                          tvRowId: 'portals',
-                          tvItemIndex: widget.listIndex,
-                          onFocusChange: (focused) {
-                            setState(() => _focused = focused);
-                            if (focused) {
-                              if (ctrl.isNewPortal(v.key)) {
-                                ctrl.markPortalSeen(v.key);
-                              }
-                              ctrl.schedulePortalHealthCheck(v);
-                            } else {
-                              ctrl.cancelPortalHealthCheck(v.key);
-                            }
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? playerSourceStatusColor(
+                      PlayerSourceStatus.active,
+                    ).withValues(alpha: 0.07)
+                  : showNewChrome
+                  ? IptvShellStyle.accent.withValues(alpha: 0.1)
+                  : (_lineHover || _focused || _showShareCode)
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.transparent,
+              border: showNewChrome
+                  ? Border(
+                      left: BorderSide(color: IptvShellStyle.accent, width: 3),
+                    )
+                  : null,
+            ),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              height: _rowHeight,
+              alignment: Alignment.topCenter,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: iptvTap(
+                      context: context,
+                      onTap: _onRowTap,
+                      borderRadius: 0,
+                      listIndex: widget.listIndex,
+                      tvRowId: 'portals',
+                      tvItemIndex: widget.listIndex,
+                      onFocusChange: (focused) {
+                        setState(() => _focused = focused);
+                        if (focused) {
+                          if (ctrl.isNewPortal(v.key)) {
+                            ctrl.markPortalSeen(v.key);
+                          }
+                          ctrl.schedulePortalHealthCheck(v);
+                        } else {
+                          ctrl.cancelPortalHealthCheck(v.key);
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Align(
+                              alignment: Alignment.center,
+                              child: isActive
+                                  ? _activePortalStatusGlyph(
+                                      _activePortalStatus(
+                                        checking: checking,
+                                        health: health,
+                                      ),
+                                    )
+                                  : _idlePortalHealthDot(
+                                      checking: checking,
+                                      health: health,
+                                    ),
                             ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Align(
-                                  alignment: Alignment.center,
-                                  child: isActive
-                                      ? _activePortalStatusGlyph(
-                                          _activePortalStatus(
-                                            checking: checking,
-                                            health: health,
-                                          ),
-                                        )
-                                      : _idlePortalHealthDot(
-                                          checking: checking,
-                                          health: health,
-                                        ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _showShareCode || _sharing
-                                      ? _shareCodeLine()
-                                      : Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _expiryLine(v.expiry),
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        children: [
-                                          if (showNewChrome) ...[
-                                            _newPortalBadge(),
-                                            const SizedBox(width: 6),
-                                          ],
-                                          Expanded(
-                                            child: Text(
-                                              title,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: GoogleFonts.poppins(
-                                                color: isActive
-                                                    ? Colors.white
-                                                    : showNewChrome
-                                                    ? IptvShellStyle.accent
-                                                    : Colors.white.withValues(
-                                                        alpha: 0.88,
-                                                      ),
-                                                fontSize: 13,
-                                                fontWeight: isActive ||
-                                                        showNewChrome
-                                                    ? FontWeight.w600
-                                                    : FontWeight.w500,
-                                                height: 1.1,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _showShareCode || _sharing
+                                  ? _shareCodeLine()
+                                  : Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _expiryLine(v.expiry),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            if (showNewChrome) ...[
+                                              _newPortalBadge(),
+                                              const SizedBox(width: 6),
+                                            ],
+                                            Expanded(
+                                              child: Text(
+                                                title,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: GoogleFonts.poppins(
+                                                  color: isActive
+                                                      ? Colors.white
+                                                      : showNewChrome
+                                                      ? IptvShellStyle.accent
+                                                      : Colors.white.withValues(
+                                                          alpha: 0.88,
+                                                        ),
+                                                  fontSize: 13,
+                                                  fontWeight:
+                                                      isActive || showNewChrome
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w500,
+                                                  height: 1.1,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                      Text(
-                                        v.portal.url,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.poppins(
-                                          color: showNewChrome
-                                              ? Colors.white54
-                                              : Colors.white38,
-                                          fontSize: 11,
-                                          height: 1.1,
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Align(
-                                  alignment: Alignment.center,
-                                  child: iptvTap(
-                                    context: context,
-                                    onTap: () =>
-                                        ctrl.toggleFavoritePortal(v.key),
-                                    borderRadius: 16,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4),
-                                      child: Icon(
-                                        isFav
-                                            ? Icons.star_rounded
-                                            : Icons.star_outline_rounded,
-                                        size: 16,
-                                        color: isFav
-                                            ? const Color(0xFFFBBF24)
-                                            : Colors.white30,
-                                      ),
+                                        Text(
+                                          v.portal.url,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.poppins(
+                                            color: showNewChrome
+                                                ? Colors.white54
+                                                : Colors.white38,
+                                            fontSize: 11,
+                                            height: 1.1,
+                                          ),
+                                        ),
+                                      ],
                                     ),
+                            ),
+                            Align(
+                              alignment: Alignment.center,
+                              child: iptvTap(
+                                context: context,
+                                onTap: () => ctrl.toggleFavoritePortal(v.key),
+                                borderRadius: 16,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: Icon(
+                                    isFav
+                                        ? Icons.star_rounded
+                                        : Icons.star_outline_rounded,
+                                    size: 16,
+                                    color: isFav
+                                        ? const Color(0xFFFBBF24)
+                                        : Colors.white30,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOutCubic,
-                        width: _reveal ? _actionW : 0,
-                        height: _rowHeight,
-                        child: ClipRect(
-                          child: OverflowBox(
-                            minWidth: _actionW,
-                            maxWidth: _actionW,
-                            alignment: Alignment.centerRight,
-                            child: SizedBox(
-                              width: _actionW,
-                              height: _rowHeight,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  _railAction(
-                                    tooltip: 'Copy share code',
-                                    icon: _sharing
-                                        ? Icons.hourglass_top_rounded
-                                        : Icons.copy_rounded,
-                                    color: Colors.white60,
-                                    onTap: _sharing ? null : _copy,
-                                  ),
-                                  _railAction(
-                                    tooltip: 'Edit',
-                                    icon: Icons.edit_rounded,
-                                    color: Colors.white60,
-                                    onTap: widget.onEdit,
-                                  ),
-                                  _railAction(
-                                    tooltip: 'Delete',
-                                    icon: Icons.delete_rounded,
-                                    color: const Color(0xFFEF4444),
-                                    onTap: () => ctrl.deletePortal(v.key),
-                                  ),
-                                ],
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    width: _reveal ? _actionW : 0,
+                    height: _rowHeight,
+                    child: ClipRect(
+                      child: OverflowBox(
+                        minWidth: _actionW,
+                        maxWidth: _actionW,
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: _actionW,
+                          height: _rowHeight,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              _railAction(
+                                tooltip: 'Copy share code',
+                                icon: _sharing
+                                    ? Icons.hourglass_top_rounded
+                                    : Icons.copy_rounded,
+                                color: Colors.white60,
+                                onTap: _sharing ? null : _copy,
+                              ),
+                              _railAction(
+                                tooltip: 'Edit',
+                                icon: Icons.edit_rounded,
+                                color: Colors.white60,
+                                onTap: widget.onEdit,
+                              ),
+                              _railAction(
+                                tooltip: 'Delete',
+                                icon: Icons.delete_rounded,
+                                color: const Color(0xFFEF4444),
+                                onTap: () => ctrl.deletePortal(v.key),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            );
+            ),
+          ),
+        );
       },
     );
   }
@@ -1970,10 +2087,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
           const SizedBox(width: 10),
           Text(
             'Creating share code…',
-            style: GoogleFonts.poppins(
-              color: Colors.white54,
-              fontSize: 12,
-            ),
+            style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12),
           ),
         ],
       );
@@ -2013,11 +2127,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     final tone = _portalExpiryTone(expiry);
     return Row(
       children: [
-        Icon(
-          Icons.event_rounded,
-          size: 12,
-          color: tone.color,
-        ),
+        Icon(Icons.event_rounded, size: 12, color: tone.color),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
@@ -2042,9 +2152,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       decoration: BoxDecoration(
         color: IptvShellStyle.accent.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: IptvShellStyle.accent.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: IptvShellStyle.accent.withValues(alpha: 0.5)),
       ),
       child: Text(
         'NEW',
