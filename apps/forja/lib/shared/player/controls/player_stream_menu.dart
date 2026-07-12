@@ -292,9 +292,11 @@ class PlayerStreamMenu {
         loadingProviders: loadingProviders,
         failedProviders: failedProviders,
       );
-      final sectionSources = isCurrent
-          ? (state.sources ?? const <StreamSource>[])
-          : (cache[providerId] ?? const <StreamSource>[]);
+      final sectionSources = sourcesForProvider(
+        providerId: providerId,
+        state: state,
+        cache: cache,
+      );
 
       if (sectionSources.isNotEmpty ||
           status == PlayerSourceStatus.ready ||
@@ -321,6 +323,19 @@ class PlayerStreamMenu {
       return aSub.compareTo(bSub);
     });
     return entries;
+  }
+
+  /// Live list for the active server; cache fallback when reopening a session.
+  static List<StreamSource> sourcesForProvider({
+    required String providerId,
+    required PlayerStreamMenuState state,
+    required Map<String, List<StreamSource>> cache,
+  }) {
+    final isCurrent = providerId == state.currentProviderId;
+    if (!isCurrent) return cache[providerId] ?? const <StreamSource>[];
+    final live = state.sources;
+    if (live != null && live.isNotEmpty) return live;
+    return cache[providerId] ?? const <StreamSource>[];
   }
 
   static String _engineScoringId(String providerId, dynamic provider) {
@@ -1018,10 +1033,11 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     required PlayerStreamMenuState state,
     required Map<String, List<StreamSource>> cache,
   }) {
-    final isCurrent = providerId == state.currentProviderId;
-    return isCurrent
-        ? (state.sources ?? const <StreamSource>[])
-        : (cache[providerId] ?? const <StreamSource>[]);
+    return PlayerStreamMenu.sourcesForProvider(
+      providerId: providerId,
+      state: state,
+      cache: cache,
+    );
   }
 
   Future<void> _tapServer({
@@ -1422,7 +1438,7 @@ class _ServerStreamBranch extends StatelessWidget {
   }
 }
 
-class _FlatMenuRow extends StatelessWidget {
+class _FlatMenuRow extends StatefulWidget {
   const _FlatMenuRow({
     required this.label,
     this.meta,
@@ -1442,95 +1458,101 @@ class _FlatMenuRow extends StatelessWidget {
   final VoidCallback? onPlay;
 
   @override
-  Widget build(BuildContext context) {
-    final failed = status == PlayerSourceStatus.failed;
-    final showPlayArrow = isPlaying && onPlay != null;
+  State<_FlatMenuRow> createState() => _FlatMenuRowState();
+}
 
-    return Material(
-      color: selected && !isPlaying
-          ? Colors.white.withValues(alpha: 0.1)
-          : Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          if (onPlay != null) {
-            onPlay!();
-          } else {
-            onCheck?.call();
-          }
-        },
-        hoverColor: ForjaShellColors.inkHover,
-        splashColor: ForjaShellColors.inkSplash,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 9),
-          child: Row(
-            children: [
-              SizedBox(
-                width: PlayerStreamMenu._statusSlot,
-                child: Center(
-                  child: PlayerStreamMenu._streamStatusGlyph(
-                    status: status,
-                    isPlaying: isPlaying,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (meta != null) ...[
+class _FlatMenuRowState extends State<_FlatMenuRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = widget.status == PlayerSourceStatus.failed;
+    final canPlay = widget.onPlay != null && !widget.isPlaying && !failed;
+    final showPlayArrow = canPlay && _hovered;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Material(
+        color: widget.selected && !widget.isPlaying
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.transparent,
+        child: InkWell(
+          onTap: widget.onCheck,
+          hoverColor: ForjaShellColors.inkHover,
+          splashColor: ForjaShellColors.inkSplash,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 9),
+            child: Row(
+              children: [
                 SizedBox(
-                  width: 34,
-                  child: Text(
-                    meta!,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.38),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.4,
+                  width: PlayerStreamMenu._statusSlot,
+                  child: Center(
+                    child: PlayerStreamMenu._streamStatusGlyph(
+                      status: widget.status,
+                      isPlaying: widget.isPlaying,
                     ),
                   ),
                 ),
-              ] else
                 const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: failed
-                        ? Colors.white.withValues(alpha: 0.38)
-                        : isPlaying
-                            ? Colors.white
-                            : selected
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.82),
-                    fontSize: 13,
-                    fontWeight: isPlaying || selected
-                        ? FontWeight.w600
-                        : FontWeight.w500,
-                    decoration: failed ? TextDecoration.lineThrough : null,
-                    decorationColor: Colors.white38,
+                if (widget.meta != null) ...[
+                  SizedBox(
+                    width: 34,
+                    child: Text(
+                      widget.meta!,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.38),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                ] else
+                  const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: failed
+                          ? Colors.white.withValues(alpha: 0.38)
+                          : widget.isPlaying
+                              ? Colors.white
+                              : widget.selected
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.82),
+                      fontSize: 13,
+                      fontWeight: widget.isPlaying || widget.selected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      decoration: failed ? TextDecoration.lineThrough : null,
+                      decorationColor: Colors.white38,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: showPlayArrow
-                    ? Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: onPlay,
-                          borderRadius: BorderRadius.circular(4),
-                          hoverColor: Colors.white.withValues(alpha: 0.08),
-                          child: Icon(
-                            Icons.play_arrow_rounded,
-                            size: 22,
-                            color: Colors.white.withValues(alpha: 0.72),
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: showPlayArrow
+                      ? Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: widget.onPlay,
+                            borderRadius: BorderRadius.circular(4),
+                            hoverColor: Colors.white.withValues(alpha: 0.08),
+                            child: Icon(
+                              Icons.play_arrow_rounded,
+                              size: 22,
+                              color: Colors.white.withValues(alpha: 0.72),
+                            ),
                           ),
-                        ),
-                      )
-                    : null,
-              ),
-            ],
+                        )
+                      : null,
+                ),
+              ],
+            ),
           ),
         ),
       ),

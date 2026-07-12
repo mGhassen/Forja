@@ -67,6 +67,24 @@ void main() {
       );
     });
 
+    test('rejects placeholder relative URLs', () {
+      expect(
+        WebstreamingStreamCache.isValidHit(
+          WebstreamingCacheHit(
+            providerId: 'videasy',
+            sources: [
+              StreamSource(
+                url: '/demo-video.mp4',
+                title: 'placeholder',
+                type: 'mp4',
+              ),
+            ],
+          ),
+        ),
+        isFalse,
+      );
+    });
+
     test('accepts direct hls URLs', () {
       expect(
         WebstreamingStreamCache.isValidHit(

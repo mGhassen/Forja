@@ -63,7 +63,10 @@ class WebstreamingStreamCache {
     if (hit.providerId.trim().isEmpty) return false;
     if (hit.sources.isEmpty) return false;
     return hit.sources.every(
-      (s) => s.url.trim().isNotEmpty && !isTorrentStreamUrl(s.url),
+      (s) =>
+          s.url.trim().isNotEmpty &&
+          !isTorrentStreamUrl(s.url) &&
+          !isUnplayableCachedStreamUrl(s.url),
     );
   }
 

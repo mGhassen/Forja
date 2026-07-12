@@ -103,21 +103,30 @@ Future<bool> _resumeWebStreamProvider(
       '[Resume] webstreaming cache hit $cacheKey '
       '($activeProvider, ${cached.sources.length})',
     );
-    await AppRouter.openPlayer(
-      context,
-      streamUrl: cached.sources.first.url,
-      title: _displayTitle(movie, season: season, episode: episode),
-      headers: cached.sources.first.headers,
-      movie: movie,
-      providers: StreamProviders.providers,
-      activeProvider: activeProvider,
-      selectedSeason: movie.mediaType == 'tv' ? season : null,
-      selectedEpisode: movie.mediaType == 'tv' ? episode : null,
-      startPosition: startPosition,
-      sources: cached.sources,
-      pinSource: true,
-      fadeTransition: true,
-    );
+    final providerSourcesCache =
+        ValueNotifier<Map<String, List<StreamSource>>>({
+      activeProvider: cached.sources,
+    });
+    try {
+      await AppRouter.openPlayer(
+        context,
+        streamUrl: cached.sources.first.url,
+        title: _displayTitle(movie, season: season, episode: episode),
+        headers: cached.sources.first.headers,
+        movie: movie,
+        providers: StreamProviders.providers,
+        activeProvider: activeProvider,
+        selectedSeason: movie.mediaType == 'tv' ? season : null,
+        selectedEpisode: movie.mediaType == 'tv' ? episode : null,
+        startPosition: startPosition,
+        sources: cached.sources,
+        providerSourcesCache: providerSourcesCache,
+        pinSource: true,
+        fadeTransition: true,
+      );
+    } finally {
+      providerSourcesCache.dispose();
+    }
     return true;
   }
 

@@ -642,12 +642,25 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         _currentSources != null &&
         _currentSources!.isNotEmpty) {
       final pid = _currentProvider!;
-      final cache = _liveProviderSourcesCache.value;
-      if (cache[pid]?.isEmpty ?? true) {
-        _liveProviderSourcesCache.value = {...cache, pid: _currentSources!};
+      final valid = _currentSources!
+          .where((s) => !isUnplayableCachedStreamUrl(s.url))
+          .toList();
+      if (valid.isNotEmpty) {
+        final cache = _liveProviderSourcesCache.value;
+        if (cache[pid]?.isEmpty ?? true) {
+          _liveProviderSourcesCache.value = {...cache, pid: valid};
+        }
+        if (valid.length != _currentSources!.length) {
+          _currentSources = valid;
+        }
       }
     }
-    unawaited(_playableSourcesReady = _initPlayableSources());
+    unawaited(
+      _playableSourcesReady = Future.wait([
+        _initPlayableSources(),
+        _hydrateSessionCacheFromDisk(),
+      ]),
+    );
     _currentUrl = widget.mediaPath;
     _activeMagnet = widget.magnetLink;
     if (_currentProvider == 'service111477' &&
@@ -753,6 +766,147 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       _syncCurrentSourceIndexFromPlayUrl();
     });
     _notifySourceMenuChanged();
+  }
+
+  /// Session/disk cache when live [_currentSources] is empty (reopen same episode).
+  Future<void> _hydrateSessionCacheFromDisk() async {
+    if (widget.providerSourcesCache != null) return;
+    final movie = widget.movie;
+    if (movie == null) return;
+    if (widget.magnetLink != null || widget.activeProvider == 'stremio_direct') {
+      return;
+    }
+
+    final key = WebstreamingStreamCache.cacheKeyFromProgress(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    final hit = await WebstreamingStreamCache.read(key);
+    if (_disposed || !mounted || hit == null || hit.sources.isEmpty) return;
+
+    final providerId = hit.providerId.isNotEmpty
+        ? hit.providerId
+        : (_currentProvider ?? widget.activeProvider);
+    if (providerId == null || providerId.isEmpty) return;
+
+    final sources = dedupeStreamSources(hit.sources);
+    final cache = Map<String, List<StreamSource>>.from(
+      _ownedProviderSourcesCache.value,
+    );
+    if (cache[providerId]?.isEmpty ?? true) {
+      cache[providerId] = sources;
+      _ownedProviderSourcesCache.value = cache;
+    }
+
+    final needsSources =
+        _currentSources == null || _currentSources!.isEmpty;
+    final needsProvider =
+        _currentProvider == null || _currentProvider!.isEmpty;
+    if (!needsSources && !needsProvider) return;
+
+    if (!mounted) return;
+    setState(() {
+      if (needsProvider) _currentProvider = providerId;
+      if (needsSources) {
+        _currentSources = sources;
+        _syncCurrentSourceIndexFromPlayUrl();
+      }
+    });
+    _notifySourceMenuChanged();
+  }
+
+  List<StreamSource>? get _effectiveCurrentSources {
+    if (_currentSources != null && _currentSources!.isNotEmpty) {
+      return _currentSources;
+    }
+    final pid = _currentProvider ?? widget.activeProvider;
+    if (pid == null || pid.isEmpty) return _currentSources;
+    final cached = _liveProviderSourcesCache.value[pid];
+    if (cached != null && cached.isNotEmpty) return cached;
+    return _currentSources;
+  }
+
+  /// Align panel rows + session cache with the URL mpv is actually playing.
+  void _refreshPanelPlayingStream() {
+    if (!_playbackConfirmed) return;
+    final pid = _currentProvider ?? widget.activeProvider;
+    final playUrl = _currentUrl;
+    if (pid == null || pid.isEmpty || playUrl == null || playUrl.isEmpty) {
+      return;
+    }
+
+    final catalogUrl = _currentPlayingCatalogUrl;
+    var sources = List<StreamSource>.from(
+      _currentSources != null && _currentSources!.isNotEmpty
+          ? _currentSources!
+          : (_liveProviderSourcesCache.value[pid] ?? const <StreamSource>[]),
+    );
+    sources.removeWhere((s) => isUnplayableCachedStreamUrl(s.url));
+
+    final matchIdx = sources.indexWhere(
+      (s) =>
+          s.url == playUrl ||
+          (catalogUrl != null &&
+              catalogUrl.isNotEmpty &&
+              s.url == catalogUrl),
+    );
+
+    late final StreamSource playingRow;
+    if (matchIdx >= 0) {
+      playingRow = sources.removeAt(matchIdx);
+    } else {
+      final label = widget.providers != null
+          ? PlayerProviderMenu.snackbarLabel(pid, widget.providers![pid])
+          : pid;
+      final identity =
+          (catalogUrl != null && catalogUrl.isNotEmpty) ? catalogUrl : playUrl;
+      final lower = playUrl.toLowerCase();
+      playingRow = StreamSource(
+        url: identity,
+        title: label,
+        type: lower.contains('.m3u8')
+            ? 'hls'
+            : lower.contains('.mpd')
+                ? 'dash'
+                : 'mp4',
+        headers: widget.headers,
+      );
+    }
+
+    final deduped = dedupeStreamSources([playingRow, ...sources]);
+    setState(() {
+      _currentSources = deduped;
+      _currentPlayingCatalogUrl = playingRow.url;
+      _currentFallbackSourceIndex = 0;
+    });
+    _cacheProviderSources(pid, deduped);
+    unawaited(_persistWebstreamingCacheForCurrent());
+    _markSourceActive(0);
+    _notifySourceMenuChanged();
+  }
+
+  Future<void> _persistWebstreamingCacheForCurrent() async {
+    final movie = widget.movie;
+    if (movie == null || widget.magnetLink != null) return;
+    final pid = _currentProvider ?? widget.activeProvider;
+    final sources = _effectiveCurrentSources
+        ?.where((s) => !isUnplayableCachedStreamUrl(s.url))
+        .toList();
+    if (pid == null || pid.isEmpty || sources == null || sources.isEmpty) {
+      return;
+    }
+    final key = WebstreamingStreamCache.cacheKeyFromProgress(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    await WebstreamingStreamCache.write(
+      key,
+      WebstreamingCacheHit(providerId: pid, sources: sources),
+    );
   }
 
   void _syncCurrentSourceIndexFromPlayUrl() {
@@ -1362,7 +1516,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       episode: widget.selectedEpisode,
     );
     await WebstreamingStreamCache.drop(key);
+    final pid = _currentProvider ?? widget.activeProvider;
+    if (pid != null && pid.isNotEmpty) {
+      final next = Map<String, List<StreamSource>>.from(
+        _liveProviderSourcesCache.value,
+      )..remove(pid);
+      _liveProviderSourcesCache.value = next;
+    }
     debugPrint('[Player] dropped stale webstreaming cache $key');
+    _notifySourceMenuChanged();
   }
 
   Future<void> _autoFallbackToNextProvider() async {
@@ -2835,7 +2997,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   List<PlayerSourceStatus> _buildSourceStatuses() {
-    final sources = _currentSources ?? const [];
+    final sources = _effectiveCurrentSources ?? const [];
     return List.generate(sources.length, (i) {
       if (_checkingSourceIndices.contains(i)) {
         return PlayerSourceStatus.checking;
@@ -2857,7 +3019,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   PlayerStreamMenuState _streamMenuState() {
     return PlayerStreamMenuState(
       currentProviderId: _resolveStreamMenuProviderId(),
-      sources: _currentSources,
+      sources: _effectiveCurrentSources,
       currentUrl: _currentUrl,
       currentPlayingCatalogUrl: _currentPlayingCatalogUrl,
       current111477FileUrl: _current111477FileUrl,
@@ -2951,12 +3113,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   void _syncPanelAfterPlaybackConfirmed() {
+    _refreshPanelPlayingStream();
     final pid = _currentProvider;
     if (pid == null) return;
-    final sources = _currentSources;
-    if (sources != null && sources.isNotEmpty) {
-      _cacheProviderSources(pid, sources);
-    }
     _markProviderLoadSucceeded(pid);
     _syncProbeStatus(pid, StreamProviderProbeStatus.success);
     _finalizeProbeStatusesAfterPlayback();
@@ -3011,12 +3170,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         widget.providers!.isNotEmpty &&
         widget.magnetLink == null &&
         widget.activeProvider != 'stremio_direct';
-    final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
+    final hasSources =
+        _effectiveCurrentSources != null && _effectiveCurrentSources!.isNotEmpty;
     return hasProviders || hasSources;
   }
 
   void _showStreamMenu([BuildContext? anchorContext]) {
     if (!_hasStreamPicker) return;
+    _refreshPanelPlayingStream();
     PlayerStreamMenu.show(
       context,
       providers: widget.providers,
@@ -3211,6 +3372,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   Future<void> _switchToStreamSource(StreamSource source, int index) async {
+    if (_currentSources == null || _currentSources!.isEmpty) {
+      final effective = _effectiveCurrentSources;
+      if (effective != null && effective.isNotEmpty) {
+        setState(() => _currentSources = List<StreamSource>.from(effective));
+      }
+    }
+
     final isCurrent = _currentProvider == 'service111477'
         ? source.url == _current111477FileUrl
         : source.url == _currentUrl ||
