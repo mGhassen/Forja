@@ -13,22 +13,20 @@ Core playback preferences: which backends **Play** tries on the media details sc
 ## What you can do
 
 - Enable **Play sources**: direct torrent, Stremio, and webstreaming (all on by default on phone and desktop; **Android TV** fresh install enables **Webstreaming** only — turn on torrent or Stremio in this screen if you want **Sources**)
-- Select **External player** (built-in or VLC, mpv, etc.)
 - On **Android**, choose **Built-in engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — in Settings or from the **Player** button in the playback controls
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
 - Toggle **IPTV programme guide (EPG)** — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
-- Reorder **Provider order** for webstreaming extractors (drag list)
+- Reorder **Source scoring** tables for Films, Series, Anime, and Asian Drama (drag baseline rank; see domain score, ±2 adjustment cap, and effective pre-check order)
 - Set **Max stream quality** to cap automatic selection (Auto, 4K, 1080p, 720p, …)
-- Reorder **Anime provider order** for anime stream sources (Megaplay, Vidwish, Miruro pipes, AllAnime, AnimeRealms, adult fallbacks)
 
 ## Tips
 
 - Play source toggles: green **Play** (play icon) uses webstreaming; white link **Play** / **Sources** use torrent + Stremio (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel merges torrent and Stremio into one list with an **All / Torrents / Stremio** filter.
-- Provider order is a score bias for web link quality — see [Stream providers](../sources/stream-providers.md)
+- **Source scoring** tables: drag sets your **baseline** order per type. **Domain score** may move a provider at most **±2** positions before checking. **Effective** shows the pre-check order the engine uses. Stream quality (codec, resolution, latency) is scored **after** resolve — not shown in settings.
 - **Max stream quality** caps what the playback engine picks automatically (device probe still applies under Auto)
-- Anime provider order sets try priority. The player launches after ~4 working sources, then keeps probing in the background so more options appear in the source menu while you watch.
-- External player bypasses built-in subtitle UI
+- Anime uses the same resolve + Rust scoring pipeline as movies; saved source pin still wins when set
+- External player is chosen per stream from the in-player **Player** menu — playback always starts in the built-in player
 - **Built-in engine** (Android only) applies when Video Player is **Built-in** — desktop/iOS always use MediaKit
 
 ## Related

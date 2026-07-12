@@ -126,6 +126,10 @@ fn playback_normalize_legacy_json(payload_json: String) -> String {
     stream_core::normalize_legacy_json(&payload_json)
 }
 
+fn playback_order_providers_json(payload_json: String) -> String {
+    stream_core::order_providers_json(&payload_json)
+}
+
 fn parse_m3u_json(content: String) -> String {
     match m3u::parse(&content) {
         Ok(channels) => serde_json::to_string(&channels).unwrap_or_else(|_| "[]".into()),

@@ -472,9 +472,9 @@ class IptvAliveChecker {
 
 /// Which backend the catalog scraper should pull from.
 ///
-/// Prefer calling [IptvScraper.scrapeCatalogPage] without [source] — both
-/// backends are chained in one pass (Reddit → XML2). Kept for callers that
-/// still pass an explicit backend.
+/// Prefer calling [IptvScraper.scrapeCatalogPage] without [source] — Reddit
+/// catalog when [_xml2ScrapeEnabled] is false; otherwise Reddit → XML2 chain.
+/// Kept for callers that still pass an explicit backend.
 enum CatalogSource { best, works }
 
 /// Parsed Reddit catalog pagination cursor.
@@ -510,6 +510,10 @@ RedditCatalogCursor parseRedditCatalogCursor(String? after) {
 }
 
 class IptvScraper {
+  /// GitHub XML2 dump scraping (`CatalogSource.works`). Off for now — Reddit
+  /// only until adult-host filtering / source quality is addressed.
+  static const _xml2ScrapeEnabled = false;
+
   static const catalogSubCount = 4;
   // Reddit killed unauthenticated `.json` access in mid-2026 and all CORS
   // proxies are dead. We now use OAuth2 "installed_client" grants with
@@ -652,13 +656,25 @@ class IptvScraper {
   ///   `'reddit:<sub>:<tok>'` → Reddit pagination
   ///   `'xml2:N'`             → XML2 dump at index N
   ///
-  /// By default both backends are chained: when Reddit is exhausted the
-  /// next page is `xml2:0`. Pass [source] only to lock to one backend.
+  /// Default: Reddit catalog only ([_xml2ScrapeEnabled] off). When XML2 is
+  /// re-enabled, exhausted Reddit hands off to `xml2:0`. Pass [source] to lock
+  /// to one backend.
   static Future<ScrapePage> scrapeCatalogPage({
     int maxResults = 50,
     String? after,
     CatalogSource? source,
   }) async {
+    if (!_xml2ScrapeEnabled) {
+      if (source == CatalogSource.works ||
+          (after != null && after.startsWith('xml2:'))) {
+        debugPrint('[Catalog] XML2 scrape disabled — ignoring works/xml2 cursor');
+        return const ScrapePage(portals: [], nextAfter: null);
+      }
+      if (source == CatalogSource.best || source == null) {
+        return _scrapeRedditCatalog(maxResults: maxResults, after: after);
+      }
+    }
+
     if (source == CatalogSource.works ||
         (after != null && after.startsWith('xml2:'))) {
       final files = await _getXml2Files();
@@ -681,6 +697,10 @@ class IptvScraper {
       after: after,
     );
     if (reddit.hasMore) return reddit;
+
+    if (!_xml2ScrapeEnabled) {
+      return ScrapePage(portals: reddit.portals, nextAfter: null);
+    }
 
     final files = await _getXml2Files();
     if (files.isEmpty) {

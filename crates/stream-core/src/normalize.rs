@@ -118,6 +118,10 @@ pub fn from_legacy(
         embed_kind,
         audio_url: None,
         score: None,
+        baseline_rank: None,
+        effective_rank: None,
+        quality_score: None,
+        provider_bonus: None,
     }
 }
 

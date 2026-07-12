@@ -141,6 +141,11 @@ class RustLib {
         return _readString(_native.ffi_playback_normalize_legacy_json(ptr));
       });
 
+  String playbackOrderProvidersJson(String payloadJson) => using((arena) {
+        final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_playback_order_providers_json(ptr));
+      });
+
   String parseM3uJson(String content) => using((arena) {
         final ptr = content.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_parse_m3u_json(ptr));
@@ -722,6 +727,11 @@ final class _FfiNative {
               'ffi_playback_normalize_legacy_json',
             )
             .asFunction(),
+        ffi_playback_order_providers_json = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_playback_order_providers_json',
+            )
+            .asFunction(),
         ffi_parse_m3u_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_parse_m3u_json',
@@ -1115,6 +1125,8 @@ final class _FfiNative {
       ffi_playback_rank_sources_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_playback_normalize_legacy_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_playback_order_providers_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_parse_m3u_json;
   final ffi.Pointer<ffi.Char> Function(

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
+import 'package:forja/shared/playback/anime_playback_bridge.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -161,62 +162,6 @@ String _animeStreamSourceTitle(AnimeEmbed embed, AnimeStreamResult direct) {
   return embed.displayName;
 }
 
-Future<List<_AnimeResolvedHit>> _quietResolveEmbed(
-  AnimeService service,
-  AnimeEmbed embed,
-) async {
-  try {
-    final candidates = await service.extractDirectCandidates(embed);
-    final out = <_AnimeResolvedHit>[];
-    final maxMirrors = embed.server == 'miruro' ? 2 : candidates.length;
-    var mirrors = 0;
-    for (final direct in candidates) {
-      if (mirrors >= maxMirrors) break;
-      if (direct.url.isEmpty) continue;
-      final headers = <String, String>{
-        'Referer': direct.referer,
-        'Origin': direct.origin,
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      };
-      final title = _animeStreamSourceTitle(embed, direct);
-      final subs = direct.tracks
-          .map((t) => <String, dynamic>{
-                'url': t.url,
-                'display': t.label,
-                'language': _langCodeFromLabel(t.label),
-                'referer': direct.referer,
-                'origin': direct.origin,
-              })
-          .toList();
-      final isHls = direct.url.contains('.m3u8');
-      out.add((
-        embed: embed,
-        media: ExtractedMedia(
-          url: direct.url,
-          headers: headers,
-          provider: embed.server,
-          sources: [
-            StreamSource(
-              url: direct.url,
-              title: title,
-              type: isHls ? 'hls' : 'video',
-              headers: headers,
-            ),
-          ],
-          externalSubtitles: subs.isNotEmpty ? subs : null,
-        ),
-      ));
-      mirrors++;
-    }
-    return out;
-  } catch (e) {
-    debugPrint('[AnimePlayer] reload ${embed.displayName} failed: $e');
-    return const [];
-  }
-}
-
 List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) {
   final sources = <StreamSource>[];
   for (final h in hits) {
@@ -242,27 +187,24 @@ Future<List<StreamSource>?> reloadAnimeEpisodeStreams({
   required List<AnimeEmbed> allEmbeds,
   required String category,
   List<String> providerOrder = const [],
-}) async {
-  final pair = allEmbeds.where((e) => e.category == category).toList();
-  if (pair.isEmpty) return null;
-
-  final order = providerOrder.isEmpty
-      ? await SettingsService().getAnimeProviderOrder()
-      : providerOrder;
-  final sorted = _sortEmbedsByProviderOrder(pair, order);
-
-  final batches = await Future.wait(
-    sorted.map((embed) => _quietResolveEmbed(service, embed)),
-  );
-  final hits = batches.expand((batch) => batch).toList();
-  if (hits.isEmpty) return null;
-  final ranked = _rankHitsByOrder(hits, order, null, null);
-  final legacy = _hitsToStreamSources(ranked);
-  return PlaybackSelection.rankAndDedupe(
-    sources: legacy,
-    providerId: 'anime',
-  );
-}
+  Movie? hubMovie,
+}) =>
+    AnimePlaybackBridge.reloadStreams(
+      service: service,
+      allEmbeds: allEmbeds,
+      category: category,
+      hubMovie: hubMovie ??
+          Movie(
+            id: 0,
+            title: 'Anime',
+            posterPath: '',
+            backdropPath: '',
+            voteAverage: 0,
+            releaseDate: '',
+            mediaType: 'anime',
+          ),
+      providerOrder: providerOrder,
+    );
 
 List<AnimeEmbed> _sortEmbedsByProviderOrder(
   List<AnimeEmbed> embeds,
@@ -747,21 +689,20 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _setPhase('Using saved source…');
         _setStatusLine('Trying pinned source');
         _launchedFromSavedOrCache = true;
-          final prefHits = await _raceEmbeds(
-          preferredEmbeds,
-          hardTimeout: const Duration(seconds: 10),
-          launchAfterUniqueServers: 1,
+          final prefHits = await AnimePlaybackBridge.raceEmbeds(
+          embeds: preferredEmbeds,
+          hubMovie: _hubMovieFromAnime(widget.anime),
+          settingsOrder: _providerOrder,
+          animeService: _service,
+          preferredProvider: _preferredSourceKey!,
+          isCancelled: () => _cancelled || _resolverStopped,
+          maxInFlight: 1,
         );
         if (!mounted || _cancelled || _resolverStopped) return;
         if (prefHits.isNotEmpty) {
-          final ranked = _rankHits(
-            prefHits,
-            _preferredSourceKey,
-            _preferredSourceTitle,
-          );
-          _activeEmbed = ranked.first.embed;
+          _activeEmbed = prefHits.first.embed;
           await _launchPlayer(
-            ranked,
+            prefHits,
             usedSavedSource: true,
           );
           return;
@@ -784,30 +725,33 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     void syncLiveHits(List<({AnimeEmbed embed, ExtractedMedia media})> all) {
       if (all.isEmpty) return;
-      final ranked =
-          _rankHits(all, _preferredSourceKey, _preferredSourceTitle);
-      for (final h in ranked) {
+      for (final h in all) {
         urlToSourceKey[h.media.url] = h.embed.sourceKey;
         final t = h.media.sources?.first.title ?? h.embed.displayName;
         titleToSourceKey[t] = h.embed.sourceKey;
       }
-      sourcesListNotifier.value = _hitsToStreamSources(ranked);
+      sourcesListNotifier.value = _hitsToStreamSources(all);
       _AnimeStreamSessionCache.write(
         widget.anime.id,
         widget.episodeNumber,
         _category,
-        ranked,
+        all,
       );
       unawaited(_service.cacheResolvedStreamsJson(
         animeId: widget.anime.id,
         episode: widget.episodeNumber,
         category: _category,
-        hits: _hitsToJson(ranked),
+        hits: _hitsToJson(all),
       ));
     }
 
-    final hits = await _raceEmbeds(
-      pair,
+    final hits = await AnimePlaybackBridge.raceEmbeds(
+      embeds: pair,
+      hubMovie: _hubMovieFromAnime(widget.anime),
+      settingsOrder: _providerOrder,
+      animeService: _service,
+      isCancelled: () => _cancelled || _resolverStopped,
+      maxInFlight: 1,
       onHitsUpdated: syncLiveHits,
     );
     if (!mounted || _cancelled) {
@@ -815,12 +759,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       return;
     }
     if (hits.isNotEmpty) {
-      final ranked =
-          _rankHits(hits, _preferredSourceKey, _preferredSourceTitle);
-      _activeEmbed = ranked.first.embed;
-      syncLiveHits(ranked);
+      _activeEmbed = hits.first.embed;
+      syncLiveHits(hits);
       await _launchPlayer(
-        ranked,
+        hits,
         sourcesListNotifier: sourcesListNotifier,
         urlToSourceKey: urlToSourceKey,
         titleToSourceKey: titleToSourceKey,
@@ -841,211 +783,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     setState(() => _statusLine = '');
   }
 
-  /// Try embeds in Settings order (one at a time). Launch on first success;
-  /// other embeds resolve only when the user picks them later.
-  Future<List<({AnimeEmbed embed, ExtractedMedia media})>> _raceEmbeds(
-    List<AnimeEmbed> embeds, {
-    Duration fastGrace = const Duration(milliseconds: 800),
-    Duration hardTimeout = const Duration(seconds: 14),
-    Duration absoluteTimeout = const Duration(seconds: 75),
-    int maxInFlight = 1,
-    int launchAfterUniqueServers = 1,
-    bool fillBackgroundHits = false,
-    void Function(List<({AnimeEmbed embed, ExtractedMedia media})> hits)?
-        onHitsUpdated,
-  }) async {
-    _initProbes(embeds.isEmpty ? embeds : embeds.take(1).toList());
-
-    final completer =
-        Completer<List<({AnimeEmbed embed, ExtractedMedia media})>>();
-    final successes = <({AnimeEmbed embed, ExtractedMedia media})>[];
-    var settled = 0;
-    var inFlight = 0;
-    var nextIndex = 0;
-    var stopLaunching = false;
-    final total = embeds.length;
-    Timer? graceTimer;
-    late final Timer hardTimer;
-    late final Timer absoluteTimer;
-    late void Function() pump;
-
-    int uniqueServers() =>
-        successes.map((h) => h.embed.sourceKey).toSet().length;
-
-    void publishHits() {
-      onHitsUpdated?.call(List.of(successes));
-    }
-
-    void completeIfOpen() {
-      if (completer.isCompleted) return;
-      hardTimer.cancel();
-      absoluteTimer.cancel();
-      graceTimer?.cancel();
-      publishHits();
-      completer.complete(List.of(successes));
-    }
-
-    void finishIfReady() {
-      if (!stopLaunching && settled < total) return;
-      if (inFlight > 0) return;
-      hardTimer.cancel();
-      absoluteTimer.cancel();
-      graceTimer?.cancel();
-      publishHits();
-      if (!completer.isCompleted) {
-        completer.complete(List.of(successes));
-      }
-    }
-
-    void scheduleGrace() {
-      graceTimer?.cancel();
-      graceTimer = Timer(fastGrace, completeIfOpen);
-    }
-
-    void onBatch(
-      AnimeEmbed embed,
-      List<({AnimeEmbed embed, ExtractedMedia media})> batch,
-    ) {
-      settled++;
-      inFlight--;
-      _setProbeStatus(
-        embed,
-        batch.isNotEmpty
-            ? StreamProviderProbeStatus.success
-            : StreamProviderProbeStatus.failed,
-      );
-      if (_cancelled) {
-        stopLaunching = true;
-        finishIfReady();
-        pump();
-        return;
-      }
-      if (batch.isNotEmpty) {
-        successes.addAll(batch);
-        publishHits();
-        if (!completer.isCompleted) {
-          if (uniqueServers() >= launchAfterUniqueServers) {
-            completeIfOpen();
-            if (!fillBackgroundHits) {
-              stopLaunching = true;
-              nextIndex = total;
-            }
-          } else if (successes.isNotEmpty) {
-            scheduleGrace();
-          }
-        }
-      }
-      finishIfReady();
-      pump();
-    }
-
-    pump = () {
-      while (!_cancelled &&
-          !stopLaunching &&
-          inFlight < maxInFlight &&
-          nextIndex < embeds.length) {
-        final embed = embeds[nextIndex++];
-        inFlight++;
-        if (!_probeNotifier.value.any((p) => p.id == embed.sourceKey)) {
-          _probeNotifier.value = [
-            ..._probeNotifier.value,
-            StreamProviderProbe(
-              id: embed.sourceKey,
-              label: embed.displayName,
-              status: StreamProviderProbeStatus.trying,
-              isPreferred: _probeNotifier.value.isEmpty,
-            ),
-          ];
-        }
-        _resolveEmbed(embed).then((batch) {
-          onBatch(embed, batch);
-        }).catchError((_) {
-          onBatch(embed, const []);
-        });
-      }
-      if ((nextIndex >= embeds.length || stopLaunching) && inFlight == 0) {
-        finishIfReady();
-      }
-    };
-
-    hardTimer = Timer(hardTimeout, () {
-      if (successes.isNotEmpty) completeIfOpen();
-    });
-    absoluteTimer = Timer(absoluteTimeout, completeIfOpen);
-
-    pump();
-
-    final hits = await completer.future;
-    return hits;
-  }
-
-  String _streamSourceTitle(AnimeEmbed embed, AnimeStreamResult direct) {
-    final tag = direct.streamLabel?.trim();
-    if (tag != null && tag.isNotEmpty) {
-      return '${embed.displayName} · $tag';
-    }
-    return embed.displayName;
-  }
-
-  Future<List<({AnimeEmbed embed, ExtractedMedia media})>> _resolveEmbed(
-    AnimeEmbed embed,
-  ) async {
-    if (_resolverStopped) return const [];
-    try {
-      final candidates = await _service.extractDirectCandidates(embed);
-      if (_resolverStopped) return const [];
-      final out = <({AnimeEmbed embed, ExtractedMedia media})>[];
-      final maxMirrors = embed.server == 'miruro' ? 2 : candidates.length;
-      var mirrors = 0;
-      for (final direct in candidates) {
-        if (mirrors >= maxMirrors) break;
-        if (direct.url.isEmpty) continue;
-        final headers = <String, String>{
-          'Referer': direct.referer,
-          'Origin': direct.origin,
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-              '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        };
-        final title = _streamSourceTitle(embed, direct);
-        final subs = direct.tracks
-            .map((t) => <String, dynamic>{
-                  'url': t.url,
-                  'display': t.label,
-                  'language': _langCodeFromLabel(t.label),
-                  'referer': direct.referer,
-                  'origin': direct.origin,
-                })
-            .toList();
-        final isHls = direct.url.contains('.m3u8');
-        out.add((
-          embed: embed,
-          media: ExtractedMedia(
-            url: direct.url,
-            headers: headers,
-            provider: embed.server,
-            sources: [
-              StreamSource(
-                url: direct.url,
-                title: title,
-                type: isHls ? 'hls' : 'video',
-                headers: headers,
-              ),
-            ],
-            externalSubtitles: subs.isNotEmpty ? subs : null,
-          ),
-        ));
-        mirrors++;
-      }
-      return out;
-    } catch (e) {
-      debugPrint('[AnimePlayer] ${embed.displayName} failed: $e');
-      return const [];
-    }
-  }
-
-  /// Prefer Settings → Anime provider order — not whichever HTTP call finished
-  /// first during the parallel race. Saved source still wins when present.
+  /// Prefer Settings → Anime provider order — saved source still wins when present.
   List<({AnimeEmbed embed, ExtractedMedia media})> _rankHits(
     List<({AnimeEmbed embed, ExtractedMedia media})> hits,
     String? preferredKey,
@@ -1110,9 +848,18 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
                 h.embed.sourceKey,
         };
 
-    final sources = sourcesListNotifier?.value.isNotEmpty == true
+    final rawSources = sourcesListNotifier?.value.isNotEmpty == true
         ? sourcesListNotifier!.value
         : _hitsToStreamSources(hits);
+    final sources = await PlaybackSelection.rankAndDedupe(
+      sources: rawSources,
+      providerId: hits.first.embed.sourceKey,
+      providerRank: SourceEngine.orderProviders(
+        domain: SourceDomain.anime,
+        candidateIds: [hits.first.embed.sourceKey],
+        settingsOrder: _providerOrder,
+      ).rows.first.effectiveRank,
+    );
 
     final seenSubs = <String>{};
     final allSubs = <Map<String, dynamic>>[];

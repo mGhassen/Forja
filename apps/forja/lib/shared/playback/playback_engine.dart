@@ -24,6 +24,7 @@ abstract final class PlaybackEngine {
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
     int maxInFlight = 1,
     bool fillBackgroundHits = false,
+    Map<String, int>? effectiveRanks,
   }) async {
     final cancelled = isCancelled ?? (() => false);
     final keys = providers.keys.toList();
@@ -87,7 +88,7 @@ abstract final class PlaybackEngine {
           inFlight < maxInFlight &&
           nextIndex < total) {
         final key = keys[nextIndex];
-        final rank = nextIndex;
+        final rank = effectiveRanks?[key] ?? nextIndex;
         nextIndex++;
         inFlight++;
         onProgress?.call(key, 'trying');

@@ -230,10 +230,12 @@ class _HomeTopBarState extends State<HomeTopBar> {
         onTap: _openSearch,
         borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
         scaleOnFocus: ShellTokens.focusActiveScale,
+        listIndex: 0,
         tvTabId: 'home',
+        tvRowId: 'top-bar',
         tvZone: ShellTvZone.topBar,
+        tvItemIndex: 0,
         focusNode: _searchFocus,
-        onUpEdge: ShellTvFocus.focusHomeMenu,
         onDownEdge: () => ShellTvFocus.focusHomeHeroPlay(),
         child: SizedBox(
           height: searchH,
@@ -263,12 +265,17 @@ class _HomeTopBarState extends State<HomeTopBar> {
     return SizedBox(height: 34, child: Center(child: icon));
   }
 
-  Widget _wrapMenuRow(Widget menu, {required bool tvFocus}) {
+  Widget _wrapMenuRow(
+    Widget menu, {
+    required bool tvFocus,
+    required double tabGap,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: menu),
         _buildSearchAction(tvFocus: tvFocus),
+        SizedBox(width: tabGap),
+        Expanded(child: menu),
       ],
     );
   }
@@ -337,7 +344,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                         tabId: 'home',
                         rowId: 'top-bar',
                         sortOrder: -2,
-                        itemCount: 3,
+                        itemCount: 4,
                       );
                     }
 
@@ -352,10 +359,10 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             onTap: () =>
                                 _toggleMediaFilter(ShellHomeCategory.films),
                             tvFocus: tvFocus,
-                            listIndex: 0,
+                            listIndex: 1,
                             focusNode: tvFocus ? _menuFocus : null,
                             onDownEdge: tvFocus
-                                ? ShellTvFocus.focusHomeSearch
+                                ? () => ShellTvFocus.focusHomeHeroPlay()
                                 : null,
                           ),
                           SizedBox(width: tabGap),
@@ -365,7 +372,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             onTap: () =>
                                 _toggleMediaFilter(ShellHomeCategory.tvShows),
                             tvFocus: tvFocus,
-                            listIndex: 1,
+                            listIndex: 2,
                             onDownEdge: tvFocus
                                 ? () => ShellTvFocus.focusHomeHeroPlay()
                                 : null,
@@ -378,7 +385,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             showChevron: true,
                             onTap: _openCategoriesMenu,
                             tvFocus: tvFocus,
-                            listIndex: 2,
+                            listIndex: 3,
                             focusNode: tvFocus ? _categoriesTabFocus : null,
                             onDownEdge: tvFocus
                                 ? () => ShellTvFocus.focusHomeHeroPlay()
@@ -396,6 +403,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           child: tabs,
                         ),
                         tvFocus: tvFocus,
+                        tabGap: tabGap,
                       );
                     }
 
@@ -421,6 +429,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                         ),
                       ),
                       tvFocus: tvFocus,
+                      tabGap: tabGap,
                     );
                   },
                 );

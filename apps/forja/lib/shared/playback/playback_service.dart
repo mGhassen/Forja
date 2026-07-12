@@ -1,3 +1,4 @@
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:rust/rust.dart';
@@ -6,7 +7,7 @@ import 'package:rust/rust.dart';
 ///
 /// Preferred:
 /// - [SourceEngine.auto] → domain profiles + race
-/// - concrete id → strict single provider (manual mode)
+/// - concrete id → strict single-provider resolve (manual mode)
 abstract final class PlaybackService {
   static Future<PlaybackResolveHit?> resolveWebstreaming({
     required Movie movie,
@@ -22,27 +23,53 @@ abstract final class PlaybackService {
     int? maxInFlight,
   }) async {
     final domain = SourceDomain.fromMediaType(movie.mediaType);
-    final ordered = SourceEngine.orderProvidersMap<dynamic>(
+    return DomainPlaybackResolve.resolve(
       domain: domain,
       providers: providers,
-      preferred: preferredProvider,
-      settingsOrder: settingsOrder,
-    );
-    if (ordered.isEmpty) return null;
-
-    return PlaybackEngine.resolveStreamingRace(
-      providers: ordered,
       movie: movie,
       season: season,
       episode: episode,
+      preferredProvider: preferredProvider,
+      settingsOrder: settingsOrder,
       resolver: resolver,
       isCancelled: isCancelled,
       onProgress: onProgress,
       onHitsUpdated: onHitsUpdated,
-      maxInFlight: maxInFlight ?? PlaybackEngine.playStartMaxInFlight,
+      maxInFlight: maxInFlight,
       fillBackgroundHits: false,
     );
   }
+
+  static Future<PlaybackResolveHit?> resolveDomain({
+    required SourceDomain domain,
+    required Map<String, dynamic> providers,
+    required Movie movie,
+    int season = 1,
+    int episode = 1,
+    String preferredProvider = SourceEngine.auto,
+    List<String> settingsOrder = const [],
+    StreamProviderResolver? resolver,
+    bool Function()? isCancelled,
+    void Function(String providerId, String status)? onProgress,
+    void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
+    int? maxInFlight,
+    bool fillBackgroundHits = false,
+  }) =>
+      DomainPlaybackResolve.resolve(
+        domain: domain,
+        providers: providers,
+        movie: movie,
+        season: season,
+        episode: episode,
+        preferredProvider: preferredProvider,
+        settingsOrder: settingsOrder,
+        resolver: resolver,
+        isCancelled: isCancelled,
+        onProgress: onProgress,
+        onHitsUpdated: onHitsUpdated,
+        maxInFlight: maxInFlight,
+        fillBackgroundHits: fillBackgroundHits,
+      );
 
   /// Anime / drama: reorder candidate keys for a domain.
   static List<String> orderDomainKeys({

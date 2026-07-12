@@ -10,7 +10,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
-import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
@@ -22,6 +21,7 @@ import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
+import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -44,7 +44,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _playSourceTorrent = true;
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
-  String _externalPlayer = 'Built-in Player';
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   String _sortPreference = 'Seeders (High to Low)';
   // Track auto-select
@@ -148,7 +147,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final playSourceStremio = await _settings.isPlaySourceStremioEnabled();
     final playSourceWebstreaming =
         await _settings.isPlaySourceWebstreamingEnabled();
-    final externalPlayer = await _settings.getExternalPlayer();
     final builtInEngine = await _settings.getBuiltInPlayerEngine();
     final sort = await _settings.getSortPreference();
     final useDebrid = await _settings.useDebridForStreams();
@@ -230,11 +228,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _playSourceTorrent = playSourceTorrent;
         _playSourceStremio = playSourceStremio;
         _playSourceWebstreaming = playSourceWebstreaming;
-        // Ensure saved value is in the current platform's player list
-        final validNames = ExternalPlayerService.playerNames;
-        _externalPlayer = validNames.contains(externalPlayer)
-            ? externalPlayer
-            : 'Built-in Player';
         _builtInEngine = builtInEngine;
         _sortPreference = sort;
         _installedAddons = addons;
@@ -457,20 +450,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             setState(() => _playSourceWebstreaming = val);
                           },
                         ),
-                        _buildStreamProviderOrder(),
-                        _buildAnimeProviderOrder(),
-                        _buildFocusableDropdown(
-                          'Video Player',
-                          'Open in another app (VLC, MX Player, …). Built-in uses the engine below.',
-                          _externalPlayer,
-                          ExternalPlayerService.playerNames,
-                          (val) async {
-                            if (val != null) {
-                              await _settings.setExternalPlayer(val);
-                              setState(() => _externalPlayer = val);
-                            }
-                          },
-                        ),
+                        _buildProviderScoringSection(),
                         if (Platform.isAndroid)
                           _buildFocusableDropdown(
                             'Built-in engine',
@@ -2892,109 +2872,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Widget _buildStreamProviderOrder() {
-    final providers = <String, dynamic>{
-      ...StreamProviders.providers,
-      ..._nuvioProviderEntries,
+  Widget _buildProviderScoringSection() {
+    final streamCatalog = <String, String>{
+      for (final entry in {
+        ...StreamProviders.providers,
+        ..._nuvioProviderEntries,
+      }.entries)
+        entry.key: (entry.value['name'] as String?) ?? entry.key,
     };
-    final order = <String>[
-      ..._streamProviderOrder.where(providers.containsKey),
+    final streamOrder = <String>[
+      ..._streamProviderOrder.where(streamCatalog.containsKey),
+      ...streamCatalog.keys.where((k) => !_streamProviderOrder.contains(k)),
     ];
-    for (final k in providers.keys) {
-      if (!order.contains(k)) order.add(k);
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Provider Order',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          const Text(
-            'Order in which webstreaming tries each extractor. The first one '
-            'that works wins; the rest become in-player fallbacks.',
-            style: TextStyle(fontSize: 13, color: Colors.white54),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ReorderableListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              buildDefaultDragHandles: false,
-              itemCount: order.length,
-              onReorderItem: (oldIndex, newIndex) async {
-                final item = order.removeAt(oldIndex);
-                order.insert(newIndex, item);
-                setState(() => _streamProviderOrder = List<String>.from(order));
-                await _settings.setStreamProviderOrder(order);
-              },
-              itemBuilder: (context, i) {
-                final key = order[i];
-                final name = (providers[key]?['name'] as String?) ?? key;
-                return ListTile(
-                  key: ValueKey(key),
-                  leading: Container(
-                    width: 28,
-                    height: 28,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppTheme.current.primaryColor.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${i + 1}',
-                      style: TextStyle(
-                        color: AppTheme.current.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  title: Text(name,
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w600)),
-                  subtitle: Text(key,
-                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                  trailing: ReorderableDragStartListener(
-                    index: i,
-                    child: const Icon(Icons.drag_handle_rounded, color: Colors.white54),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () async {
-                final defaults = List<String>.from(
-                    SettingsService.defaultStreamProviderOrder);
-                await _settings.setStreamProviderOrder(defaults);
-                setState(() => _streamProviderOrder = defaults);
-              },
-              icon: const Icon(Icons.restore_rounded, size: 16),
-              label: const Text('Reset to default'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppTheme.current.primaryColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnimeProviderOrder() {
-    final catalog = AnimeStreamProviders.catalog;
-    final order = SettingsService.mergeProviderOrder(
+    final animeCatalog = AnimeStreamProviders.catalog;
+    final animeOrder = SettingsService.mergeProviderOrder(
       _animeProviderOrder,
-      catalog.keys,
+      animeCatalog.keys,
     );
 
     return Padding(
@@ -3002,81 +2895,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Anime Provider Order',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Source scoring',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 4),
           const Text(
-            'Order in which the anime player prefers each source. Sources are '
-            'probed in parallel; the highest-ranked working one plays first.',
+            'Drag to set baseline order. Domain scores may adjust each provider '
+            'by up to ±2 positions before checking. Stream quality is scored '
+            'after resolve.',
             style: TextStyle(fontSize: 13, color: Colors.white54),
           ),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ReorderableListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              buildDefaultDragHandles: false,
-              itemCount: order.length,
-              onReorderItem: (oldIndex, newIndex) async {
-                final item = order.removeAt(oldIndex);
-                order.insert(newIndex, item);
-                setState(() => _animeProviderOrder = List<String>.from(order));
-                await _settings.setAnimeProviderOrder(order);
-              },
-              itemBuilder: (context, i) {
-                final key = order[i];
-                final name = catalog[key] ?? key;
-                return ListTile(
-                  key: ValueKey(key),
-                  leading: Container(
-                    width: 28,
-                    height: 28,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppTheme.current.primaryColor.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${i + 1}',
-                      style: TextStyle(
-                        color: AppTheme.current.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  title: Text(name,
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w600)),
-                  subtitle: Text(key,
-                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                  trailing: ReorderableDragStartListener(
-                    index: i,
-                    child: const Icon(Icons.drag_handle_rounded, color: Colors.white54),
-                  ),
-                );
-              },
-            ),
+          const SizedBox(height: 16),
+          ProviderPriorityTable(
+            domain: SourceDomain.movies,
+            title: 'Films',
+            subtitle: 'Webstreaming providers for movies.',
+            catalog: streamCatalog,
+            order: streamOrder,
+            onOrderChanged: (next) async {
+              setState(() => _streamProviderOrder = next);
+              await _settings.setStreamProviderOrder(next);
+            },
+            onReset: () async {
+              final defaults =
+                  List<String>.from(SettingsService.defaultStreamProviderOrder);
+              await _settings.setStreamProviderOrder(defaults);
+              setState(() => _streamProviderOrder = defaults);
+            },
           ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () async {
-                final defaults = List<String>.from(
-                    SettingsService.defaultAnimeProviderOrder);
-                await _settings.setAnimeProviderOrder(defaults);
-                setState(() => _animeProviderOrder = defaults);
-              },
-              icon: const Icon(Icons.restore_rounded, size: 16),
-              label: const Text('Reset to default'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppTheme.current.primaryColor,
-              ),
-            ),
+          const SizedBox(height: 20),
+          ProviderPriorityTable(
+            domain: SourceDomain.series,
+            title: 'Series',
+            subtitle: 'Same baseline list as films; series domain scores differ.',
+            catalog: streamCatalog,
+            order: streamOrder,
+            onOrderChanged: (next) async {
+              setState(() => _streamProviderOrder = next);
+              await _settings.setStreamProviderOrder(next);
+            },
+            onReset: () async {
+              final defaults =
+                  List<String>.from(SettingsService.defaultStreamProviderOrder);
+              await _settings.setStreamProviderOrder(defaults);
+              setState(() => _streamProviderOrder = defaults);
+            },
+          ),
+          const SizedBox(height: 20),
+          ProviderPriorityTable(
+            domain: SourceDomain.anime,
+            title: 'Anime',
+            subtitle: 'Anime player source baseline and effective order.',
+            catalog: animeCatalog,
+            order: animeOrder,
+            onOrderChanged: (next) async {
+              setState(() => _animeProviderOrder = next);
+              await _settings.setAnimeProviderOrder(next);
+            },
+            onReset: () async {
+              final defaults =
+                  List<String>.from(SettingsService.defaultAnimeProviderOrder);
+              await _settings.setAnimeProviderOrder(defaults);
+              setState(() => _animeProviderOrder = defaults);
+            },
+          ),
+          const SizedBox(height: 20),
+          ProviderPriorityTable(
+            domain: SourceDomain.asianDrama,
+            title: 'Asian Drama',
+            subtitle: 'Single KissKH source today — same pipeline as other types.',
+            catalog: const {'kisskh': 'KissKH'},
+            order: const ['kisskh'],
+            onOrderChanged: (_) {},
+            onReset: () {},
           ),
         ],
       ),

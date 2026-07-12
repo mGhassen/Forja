@@ -7,17 +7,18 @@ import 'package:rust/rust.dart';
 abstract final class TvStreamFallback {
   static const _rustKeys = ['webstreamr', 'vidsrc', 'service111477'];
 
-  /// Puts Rust/no-WebView providers first on Android TV.
-  static Map<String, dynamic> prioritizeProviders(Map<String, dynamic> providers) {
+  /// Reorders providers using the shared Source Engine effective-order contract.
+  static Map<String, dynamic> prioritizeProviders(
+    Map<String, dynamic> providers, {
+    SourceDomain domain = SourceDomain.movies,
+    List<String> settingsOrder = const [],
+  }) {
     if (!PlatformInfo.isAndroidTv) return providers;
-    final ordered = <String, dynamic>{};
-    for (final key in _rustKeys) {
-      if (providers.containsKey(key)) ordered[key] = providers[key];
-    }
-    for (final entry in providers.entries) {
-      ordered.putIfAbsent(entry.key, () => entry.value);
-    }
-    return ordered;
+    return SourceEngine.orderProvidersMap(
+      domain: domain,
+      providers: providers,
+      settingsOrder: settingsOrder,
+    );
   }
 
   static Future<StreamProviderResolveResult?> resolve({
@@ -25,13 +26,21 @@ abstract final class TvStreamFallback {
     required int season,
     required int episode,
     Map<String, dynamic>? providers,
+    List<String> settingsOrder = const [],
     bool Function()? isCancelled,
   }) async {
     if (!PlatformInfo.isAndroidTv) return null;
 
     final resolver = StreamProviderResolver();
     final catalog = providers ?? StreamProviders.providers;
-    for (final key in _rustKeys) {
+    final domain = SourceDomain.fromMediaType(movie.mediaType);
+    final ordered = SourceEngine.orderProviderIds(
+      domain: domain,
+      candidateIds: catalog.keys,
+      settingsOrder: settingsOrder,
+    );
+    final keys = ordered.where(_rustKeys.contains).toList(growable: false);
+    for (final key in keys) {
       if (isCancelled?.call() ?? false) return null;
       try {
         final result = await resolver.resolve(

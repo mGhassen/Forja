@@ -1,19 +1,24 @@
 # External players
 
-> Hand off playback to VLC, mpv, MX Player, or another app you prefer.
+> Hand off the current stream to VLC, mpv, IINA, MX Player, or another app.
 
 ## What it is
 
-Instead of the built-in media_kit player, you can send stream URLs to external players installed on your device. Options vary by platform (e.g. IINA, VLC, and mpv on macOS; MX Player on Android).
+Playback always starts in Forja’s built-in player. During a stream you can send the resolved URL to an external player installed on your device. That choice applies to the **current stream only** — the next title opens in the built-in player again.
+
+Options vary by platform (e.g. IINA, VLC, and mpv on macOS; MX Player on Android).
 
 ## How to open it
 
-**Settings → Playback → External player** — choose Built-in or a listed external player.
+While watching (built-in player): **Player** control in the playback bar → pick an external app.
+
+While already handed off: **Change player** on the handoff screen.
 
 ## What you can do
 
-- Select default player for new playback sessions
-- Launch streams in the external app with the resolved URL
+- Switch the current stream to an external app (one-time per playback session)
+- Re-launch or change external app from the handoff screen
+- Return to the built-in player with **Watch in Forja instead**
 
 ## Tips
 

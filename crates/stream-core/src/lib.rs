@@ -1,10 +1,15 @@
 mod normalize;
 mod playable;
 mod select;
+mod source_order;
 
 pub use normalize::from_legacy;
 pub use playable::*;
 pub use select::{normalize_legacy_json, rank_sources, rank_sources_json};
+pub use source_order::{
+    order_providers, order_providers_json, next_provider_ids, OrderProvidersRequest,
+    OrderProvidersResponse, ProviderOrderRow, SourceDomain, MAX_PROVIDER_DISPLACEMENT,
+};
 
 use serde::{Deserialize, Serialize};
 

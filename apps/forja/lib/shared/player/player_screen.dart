@@ -114,35 +114,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<void> _checkPlayerSettings() async {
-    final playerName = await SettingsService().getExternalPlayer();
     final engine = await SettingsService().getBuiltInPlayerEngine();
-    final isExternal = playerName != 'Built-in Player';
 
     if (!mounted) return;
 
-    if (isExternal) {
-      setState(() {
-        _useExternalPlayer = true;
-        _externalPlayerName = playerName;
-        _builtInEngine = engine;
-        _checkingPlayer = false;
-      });
-      _launchExternal();
-    } else {
-      setState(() {
-        _useExternalPlayer = false;
-        _builtInEngine = engine;
-        _checkingPlayer = false;
-      });
-    }
+    setState(() {
+      _useExternalPlayer = false;
+      _builtInEngine = engine;
+      _checkingPlayer = false;
+    });
   }
 
   Future<void> _launchExternal() async {
+    if (_externalPlayerName.isEmpty) return;
+
     final success = await ExternalPlayerService.launch(
       url: widget.streamUrl,
       title: widget.title,
       headers: widget.headers,
       context: context,
+      playerName: _externalPlayerName,
     );
 
     if (!mounted) return;
@@ -169,11 +160,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
 
     if (externalPlayer != null) {
-      await SettingsService().setExternalPlayer(externalPlayer);
       if (!mounted) return;
       setState(() {
         _useExternalPlayer = true;
         _externalPlayerName = externalPlayer;
+        _externalLaunched = false;
       });
       await _launchExternal();
       return;
@@ -181,7 +172,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     if (builtInEngine == null) return;
 
-    await SettingsService().setExternalPlayer('Built-in Player');
     await SettingsService().setBuiltInPlayerEngine(builtInEngine);
     if (!mounted) return;
     setState(() {

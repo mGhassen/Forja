@@ -8,6 +8,7 @@ export 'provider_profiles.dart';
 export 'provider_registry.dart';
 export 'source_domain.dart';
 export 'source_engine.dart';
+export 'source_order_engine.dart';
 export 'stream_provider_display.dart';
 export 'site111477_proxy.dart';
 export 'stream_providers.dart';

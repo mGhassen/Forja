@@ -32,7 +32,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 ## Setup
 
 1. Get portal URL, username, and password from your IPTV provider
-2. Open **Portals** → **Add** (or **Scrape** to discover providers)
+2. Open **Portals** → **Add** (or **Scrape** to discover providers from Reddit IPTV posts)
 3. Tap a portal in the list to load its catalog
 
 ## Tips
@@ -43,6 +43,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Press **Back** / **Escape** to close the Portals panel before leaving the tab
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
+- **Scrape** walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now)
 - Portal quality varies — timeouts usually mean provider or network issues
 - Series VOD uses the same player as live with seek support when the stream allows
 

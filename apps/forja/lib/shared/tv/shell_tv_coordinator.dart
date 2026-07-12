@@ -423,7 +423,7 @@ abstract final class ShellTvFocusCoordinator {
         }
         return _restoreDefault(tabId);
       case ShellTvZone.topBar:
-        return ShellTvFocus.focusHomeMenu() || ShellTvFocus.focusHomeSearch();
+        return ShellTvFocus.focusHomeSearch() || ShellTvFocus.focusHomeMenu();
       case ShellTvZone.chipStrip:
       case ShellTvZone.settings:
         if (memory.node != null && memory.node!.canRequestFocus) {

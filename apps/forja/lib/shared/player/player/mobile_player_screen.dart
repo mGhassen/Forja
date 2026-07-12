@@ -1284,7 +1284,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
 
     final chainGen = _fallbackGen;
-    final providerKeys = PlayerSourceResolve.failoverChain(
+    final providerKeys = await PlayerSourceResolve.failoverChainForMovieAsync(
       movie: widget.movie,
       providers: widget.providers!,
       currentProviderId: _currentProvider,
@@ -1343,7 +1343,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
             site111477_proxy.is111477ProxyRunning) {
           await site111477_proxy.stop111477Proxy();
         }
-        final hit = await PlayerSourceResolve.resolvePinned(
+        final hit = await PlayerSourceResolve.resolvePinnedForMovie(
           movie: movie,
           providers: providers,
           providerId: newProvider,
@@ -2745,7 +2745,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       WebStreamrService().cancelPending();
       VidsrcExtractor.cancelPending();
       NuvioService.instance.cancelPending();
-      final hit = await PlayerSourceResolve.resolveAuto(
+      final hit = await PlayerSourceResolve.resolveAutoForMovie(
         movie: movie,
         providers: providers,
         season: widget.selectedSeason ?? 1,
@@ -3568,7 +3568,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
             site111477_proxy.is111477ProxyRunning) {
           await site111477_proxy.stop111477Proxy();
         }
-        final hit = await PlayerSourceResolve.resolvePinned(
+        final hit = await PlayerSourceResolve.resolvePinnedForMovie(
           movie: widget.movie!,
           providers: widget.providers!,
           providerId: newProvider,

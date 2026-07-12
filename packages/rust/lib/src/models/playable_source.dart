@@ -21,6 +21,10 @@ class PlayableSource {
   final String? embedKind;
   final String? audioUrl;
   final double? score;
+  final int? baselineRank;
+  final int? effectiveRank;
+  final double? qualityScore;
+  final double? providerBonus;
 
   const PlayableSource({
     required this.url,
@@ -37,6 +41,10 @@ class PlayableSource {
     this.embedKind,
     this.audioUrl,
     this.score,
+    this.baselineRank,
+    this.effectiveRank,
+    this.qualityScore,
+    this.providerBonus,
   });
 
   bool get isArabicEmbed => embedKind == 'arabic_embed';
@@ -83,6 +91,10 @@ class PlayableSource {
       embedKind: json['embed_kind']?.toString(),
       audioUrl: json['audio_url']?.toString(),
       score: (json['score'] as num?)?.toDouble(),
+      baselineRank: (json['baseline_rank'] as num?)?.toInt(),
+      effectiveRank: (json['effective_rank'] as num?)?.toInt(),
+      qualityScore: (json['quality_score'] as num?)?.toDouble(),
+      providerBonus: (json['provider_bonus'] as num?)?.toDouble(),
     );
   }
 
@@ -102,6 +114,10 @@ class PlayableSource {
         if (embedKind != null) 'embed_kind': embedKind,
         if (audioUrl != null) 'audio_url': audioUrl,
         if (score != null) 'score': score,
+        if (baselineRank != null) 'baseline_rank': baselineRank,
+        if (effectiveRank != null) 'effective_rank': effectiveRank,
+        if (qualityScore != null) 'quality_score': qualityScore,
+        if (providerBonus != null) 'provider_bonus': providerBonus,
       };
 
   StreamSource toStreamSource() => StreamSource(

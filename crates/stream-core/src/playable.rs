@@ -110,6 +110,14 @@ pub struct PlayableSource {
     pub audio_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub score: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline_rank: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effective_rank: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quality_score: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_bonus: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]

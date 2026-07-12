@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **16 / 16** acceptance (slices 1–3) |
-| **Current slice** | All slices shipped — manual TV QA tracked in Issue 033 |
+| **Progress** | **4 / 4** components · **16 / 16** acceptance (slices 1–3) · **0 / 5** acceptance (slice 4) |
+| **Current slice** | Unified quality scoring — explicit provider vs stream components |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -65,6 +65,18 @@
 | 18 | R30-A18 | Episode switch uses `PlaybackEngine` | ✅ |
 | 19 | R30-A19 | Player strips provider-specific branches (proxy/embed via flags) | ✅ |
 | 20 | R30-A20 | Feature doc + backlog rows updated | ✅ |
+
+---
+
+## Acceptance (slice 4 — unified quality scoring)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 21 | R30-A21 | `score_source` exposes `quality_score` and `provider_bonus` separately | ⬜ |
+| 22 | R30-A22 | Cross-provider sort: effective provider rank, then quality within tier | ⬜ |
+| 23 | R30-A23 | Anime, drama, and movies use identical Rust ranker on main play path | ⬜ |
+| 24 | R30-A24 | `PlayableSource` retains baseline/effective rank through cache + player | ⬜ |
+| 25 | R30-A25 | Rust + Dart tests cover score breakdown and bounded provider movement | ⬜ |
 
 ---
 

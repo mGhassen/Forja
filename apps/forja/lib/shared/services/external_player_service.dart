@@ -248,15 +248,16 @@ class ExternalPlayerService {
   //  LAUNCH EXTERNAL PLAYER
   // ═════════════════════════════════════════════════════════════════════════
 
-  /// Launch the selected external player with the given URL.
+  /// Launch an external player with the given URL.
   /// Returns true if launch was successful, false if player not found.
   static Future<bool> launch({
     required String url,
     required String title,
     Map<String, String>? headers,
     BuildContext? context,
+    String? playerName,
   }) async {
-    final selectedName = await SettingsService().getExternalPlayer();
+    final selectedName = playerName ?? await SettingsService().getExternalPlayer();
     if (selectedName == 'Built-in Player') return false;
 
     final players = availablePlayers;

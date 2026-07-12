@@ -1,6 +1,4 @@
-// Asian Drama (kisskh.co) per-episode resolver. Single extraction path
-// (no multi-server fan-out) that runs `KissKhExtractor` against a hidden
-// WebView, then hands the resulting URL + subtitles to `PlayerScreen`.
+// Asian Drama (kisskh.co) per-episode resolver via shared DomainPlaybackResolve.
 
 import 'dart:async';
 
@@ -9,6 +7,8 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/features/asian_drama/catalog/kisskh_extractor.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/playback/domain_playback_resolve.dart';
+import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -120,34 +120,41 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
 
   Future<void> _bootstrap() async {
     try {
-      final stream = await _extractor.resolve(
-        dramaId: widget.drama.id,
-        dramaTitle: widget.drama.title,
-        episodeId: widget.episode.id,
-        episodeNumber: widget.episode.number,
+      final providers = <String, dynamic>{
+        'kisskh': {
+          'dramaId': widget.drama.id,
+          'dramaTitle': widget.drama.title,
+          'episodeId': widget.episode.id,
+          'episodeNumber': widget.episode.number,
+        },
+      };
+      final hit = await DomainPlaybackResolve.resolve(
+        domain: SourceDomain.asianDrama,
+        providers: providers,
+        movie: _hubMovieFromDrama(widget.drama),
+        preferredProvider: 'kisskh',
+        settingsOrder: const ['kisskh'],
+        kissKhExtractor: _extractor,
         isCancelled: () => _cancelled,
-        onProgress: (phase, detail) {
+        onProgress: (providerId, status) {
           if (!mounted) return;
           setState(() {
-            if (phase == 'init') _setPhase('Opening kisskh…');
-            if (phase == 'loaded') _setPhase('Waiting for stream key…');
-            if (phase == 'embed') _setPhase('Extracting stream…');
-            if (phase == 'subs') _setPhase(detail);
-            if (phase == 'done') _setPhase('Stream ready');
-            if (phase == 'error') _statusLine = detail;
+            if (status == 'trying') _setPhase('Opening kisskh…');
+            if (status == 'success') _setPhase('Stream ready');
+            if (status == 'failed') _statusLine = 'KissKH resolve failed';
           });
         },
       );
 
       if (!mounted) return;
-      if (stream == null) {
+      if (hit == null) {
         setState(() {
           _failedAll = true;
           _setPhase('No stream available');
         });
         return;
       }
-      await _launchPlayer(stream);
+      await _launchPlayer(hit);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -158,12 +165,9 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     }
   }
 
-  Future<void> _launchPlayer(KissKhStream stream) async {
-    final sources = await PlaybackSelection.rankAndDedupe(
-      sources: stream.toSources(label: 'kisskh'),
-      providerId: 'kisskh',
-    );
-    final subs = stream.subtitles;
+  Future<void> _launchPlayer(PlaybackResolveHit hit) async {
+    final sources = hit.streamSources;
+    final subs = hit.subtitles ?? const [];
 
     var drama = widget.drama;
     var episodes = widget.allEpisodes;

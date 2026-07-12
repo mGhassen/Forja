@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **8 / 8** acceptance (slice 1) · **4 / 4** acceptance (slice 2) |
-| **Current slice** | Player Auto failover + pinned resolve via Source Engine |
+| **Progress** | **3 / 3** components · **8 / 8** acceptance (slice 1) · **4 / 4** acceptance (slice 2) · **0 / 8** acceptance (slice 3) |
+| **Current slice** | Settings-baseline ordering + unified resolve across movies, anime, Asian drama |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -48,6 +48,21 @@
 | 10 | R31-A10 | Auto failover walks `SourceEngine.nextProviderIds` | ✅ |
 | 11 | R31-A11 | Manual pin resolves via `PlaybackService` (strict) | ✅ |
 | 12 | R31-A12 | Selecting Auto re-races domain providers | ✅ |
+
+---
+
+## Acceptance (slice 3 — unified scoring + resolve)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 13 | R31-A13 | Settings order is provider baseline; domain score adjusts at most ±2 ranks | ⬜ |
+| 14 | R31-A14 | Anime main play path uses shared `PlaybackEngine` + Rust URL scoring | ⬜ |
+| 15 | R31-A15 | Asian Drama uses shared pipeline (single `kisskh` provider, no bypass) | ⬜ |
+| 16 | R31-A16 | Player Auto/failover passes settings order for all domains | ⬜ |
+| 17 | R31-A17 | Settings scoring table shows per-type domain scores + effective preview | ⬜ |
+| 18 | R31-A18 | Android TV fallback aligns with effective-order contract | ⬜ |
+| 19 | R31-A19 | Single-source domain test: one resolver, empty failover chain | ⬜ |
+| 20 | R31-A20 | Feature docs describe shared scoring table + unified pipeline | ⬜ |
 
 ---
 
