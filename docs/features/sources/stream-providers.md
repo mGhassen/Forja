@@ -19,7 +19,7 @@ Built-in **webstreaming** movie/series providers include Videasy, VidLink, VixSr
 - **Auto** — Source Engine races providers (up to six at once) and opens the first working hit. Other servers resolve when you pick them in the player menu.
 - **Manual** — pick a server; Forja stays on it (strict — no silent cross-provider fallback)
 - Source links are **not** pre-checked on open — tap a stream to probe it (status on the left). Use the hover **play** arrow to switch. The current stream keeps playing until a play succeeds
-- The **score badge** starts at each provider’s domain tier (e.g. VixSrc **75**) and **updates live** while the panel is open — **down** when server/stream checks fail, **up** when they succeed (persisted across sessions). While that server is **Playing now**, the badge stays at least the base tier
+- The **score badge** uses a **settings base of 0** per server **for this film, TV episode, or anime episode**. Server and stream outcomes **add**: server **±2**, stream **±2** (both ok → **+4**), all streams down **−2**. Asian drama is not scored. A **+/− prefix** shows the last change.
 - Reorder providers in Settings (baseline per domain; effective order preview in table)
 - On decoder failure, try the next compatible source, then software decode once
 

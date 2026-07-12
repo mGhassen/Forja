@@ -25,6 +25,7 @@ import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/playback/playback_cache_service.dart';
 
 /// Settings tab — RFC-024 R24-A13: local prefs only; no ShellTabRefresh / API stale policy.
 class SettingsScreen extends StatefulWidget {
@@ -116,6 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _torrentCacheType = 'ram';
   int _torrentRamCacheMb = 200;
   int _torrentConnectionsLimit = 25;
+  bool _isClearingPlaybackCache = false;
 
   // Navbar config
   List<String> _navbarVisible = [];
@@ -508,6 +510,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             );
                           },
                         ),
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            'CACHE',
+                            style: TextStyle(
+                              color: AppTheme.current.primaryColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        _buildResetPlaybackCacheTile(),
                       ],
                     ),
 
@@ -2963,6 +2980,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildResetPlaybackCacheTile() {
+    return shellFocusableTap(
+      context: context,
+      onTap: _isClearingPlaybackCache ? null : _resetPlaybackCache,
+      scaleOnFocus: 1.0,
+      navLeftAlways: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      child: Card(
+        child: ListTile(
+          leading: const Icon(Icons.cached_rounded, color: Colors.orangeAccent),
+          title: const Text('Reset playback cache'),
+          subtitle: const Text(
+            'Clears saved webstreaming extracts and torrent stream data. Watch history is kept.',
+          ),
+          trailing: _isClearingPlaybackCache
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.delete_outline, color: Colors.redAccent),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _resetPlaybackCache() async {
+    if (_isClearingPlaybackCache) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2C),
+        title: const Text(
+          'Reset playback cache',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Clears saved webstreaming stream URLs and torrent download cache on this device. '
+          'Your watch history and settings are not affected.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Reset',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _isClearingPlaybackCache = true);
+    try {
+      await PlaybackCacheService.clearAll();
+      if (mounted) {
+        ForjaToast.success('Playback cache cleared');
+      }
+    } catch (e) {
+      if (mounted) {
+        ForjaToast.error('Failed to clear cache: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _isClearingPlaybackCache = false);
+    }
   }
 
   Widget _buildFocusableToggle(String title, String subtitle, bool value, ValueChanged<bool> onChanged) {

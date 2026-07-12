@@ -233,6 +233,9 @@ class ExternalPlayerService {
       macAppPath: '/Applications/IINA.app',
       macCliBinary: 'iina-cli',
       macBinary: 'iina',
+      // Sandboxed Forja cannot exec iina-cli directly — the child inherits the
+      // sandbox and cannot IPC to IINA.app. Launch via `/usr/bin/open` instead.
+      macPreferOpenLauncher: true,
     ),
     ExternalPlayer(
       displayName: 'VLC',
@@ -479,10 +482,15 @@ class ExternalPlayerService {
     required String url,
     required String title,
     Map<String, String>? headers,
+    bool viaOpenLauncher = false,
   }) {
     if (Platform.isMacOS && player.displayName == 'IINA') {
       return [
+        // Direct iina-cli only: Process.start inherits stdin and iina-cli may
+        // treat that as a pipe feed. Not used with `open -a` (IINA rejects it).
+        if (!viaOpenLauncher) '--no-stdin',
         if (title.isNotEmpty) '--mpv-force-media-title=$title',
+        ..._mpvStreamArgs(prefix: '--mpv-'),
         ..._iinaHeaderArgs(headers),
         url,
       ];
@@ -600,16 +608,20 @@ class ExternalPlayerService {
       return false;
     }
 
+    final viaOpen =
+        Platform.isMacOS && executable == 'open' && player.macAppPath != null;
+
     final playerArgs = _desktopLaunchArgs(
       player: player,
       url: url,
       title: title,
       headers: headers,
+      viaOpenLauncher: viaOpen,
     );
 
     // macOS: `open` only accepts its own flags; player args need `--args`.
     final List<String> args;
-    if (Platform.isMacOS && executable == 'open' && player.macAppPath != null) {
+    if (viaOpen) {
       args = ['-a', player.macAppPath!, '--args', ...playerArgs];
     } else {
       args = playerArgs;
@@ -666,17 +678,22 @@ class ExternalPlayerService {
     }
 
     if (Platform.isMacOS) {
-      // Prefer app-bundled CLI (e.g. IINA's iina-cli) — `open -a` does not
-      // reliably pass stream URLs to the GUI executable.
+      if (player.macAppPath != null &&
+          await Directory(player.macAppPath!).exists()) {
+        if (player.macPreferOpenLauncher) {
+          return 'open'; // Caller prepends [-a, appPath, --args]
+        }
+      }
+      // Non-sandboxed hosts: app-bundled CLI (e.g. iina-cli) forwards args reliably.
       if (player.macAppPath != null && player.macCliBinary != null) {
         final cliPath =
             '${player.macAppPath}/Contents/MacOS/${player.macCliBinary}';
         if (await File(cliPath).exists()) return cliPath;
       }
-      // Fallback: open the .app bundle (no URL args).
+      // Fallback: open the .app bundle.
       if (player.macAppPath != null &&
           await Directory(player.macAppPath!).exists()) {
-        return 'open'; // Caller must prepend [-a, appPath] to args
+        return 'open'; // Caller must prepend [-a, appPath, --args] to args
       }
       // Check PATH binary
       if (player.macBinary != null) {
@@ -750,6 +767,9 @@ class ExternalPlayer {
   final String? macAppPath;
   final String? macCliBinary;
   final String? macBinary;
+  /// When true, launch with `/usr/bin/open -a <app> --args …` (required for
+  /// sandboxed hosts — direct CLI exec inherits the sandbox and breaks IINA IPC).
+  final bool macPreferOpenLauncher;
 
   // Desktop args builder
   final List<String> Function(
@@ -769,6 +789,7 @@ class ExternalPlayer {
     this.macAppPath,
     this.macCliBinary,
     this.macBinary,
+    this.macPreferOpenLauncher = false,
     this.desktopArgs,
   });
 }

@@ -86,7 +86,7 @@ Future<bool> _resumeWebStreamProvider(
 }) async {
   final season = item['season'] as int? ?? 1;
   final episode = item['episode'] as int? ?? 1;
-  final cacheKey = WebstreamingStreamCache.cacheKey(
+  final cacheKey = WebstreamingStreamCache.cacheKeyFromProgress(
     tmdbId: movie.id,
     mediaType: movie.mediaType,
     season: season,
@@ -94,9 +94,7 @@ Future<bool> _resumeWebStreamProvider(
   );
 
   final cached = await WebstreamingStreamCache.read(cacheKey);
-  if (cached != null &&
-      cached.sources.isNotEmpty &&
-      !isTorrentStreamUrl(cached.sources.first.url)) {
+  if (cached != null && cached.sources.isNotEmpty) {
     if (!context.mounted) return false;
     final activeProvider = cached.providerId.isNotEmpty
         ? cached.providerId
@@ -129,6 +127,19 @@ Future<bool> _resumeWebStreamProvider(
       !isTorrentStreamUrl(savedStreamUrl)) {
     if (!context.mounted) return false;
     debugPrint('[Resume] watch-history streamUrl hit $cacheKey');
+    await WebstreamingStreamCache.write(
+      cacheKey,
+      WebstreamingCacheHit(
+        providerId: providerId.isNotEmpty ? providerId : 'stream',
+        sources: [
+          StreamSource(
+            url: savedStreamUrl,
+            title: providerId.isNotEmpty ? providerId : 'stream',
+            type: savedStreamUrl.contains('.m3u8') ? 'hls' : 'video',
+          ),
+        ],
+      ),
+    );
     await AppRouter.openPlayer(
       context,
       streamUrl: savedStreamUrl,

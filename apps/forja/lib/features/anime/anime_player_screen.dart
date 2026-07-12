@@ -10,7 +10,9 @@ import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/playback/anime_playback_bridge.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
+import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -551,6 +553,19 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         }
       }
       _probeNotifier.value = probes;
+      for (final panelKey in targets) {
+        unawaited(
+          ProviderScoreProbeSync.onProbeStatusChanged(
+            scope: ProviderScoreProbeSync.scopeFromPlayer(
+              movie: _hubMovieFromAnime(widget.anime),
+              providers: _animeProviderMap(_allEmbeds),
+              hubEpisodeNumber: widget.episodeNumber,
+            ),
+            providerId: panelKey,
+            status: nextStatus,
+          ),
+        );
+      }
       final current = _probeNotifier.value;
       final total = current.length;
       final checked = current

@@ -109,6 +109,10 @@ class PlayerStreamMenu {
     Future<void> Function()? onReload,
     ValueListenable<bool>? isReloading,
     Movie? movie,
+    int? selectedSeason,
+    int? selectedEpisode,
+    num? hubEpisodeNumber,
+    String? activeProvider,
   }) async {
     final initial = readState();
     final hasProviders = providers != null && providers.isNotEmpty;
@@ -152,6 +156,10 @@ class PlayerStreamMenu {
           onReload: onReload,
           isReloading: isReloading,
           movie: movie,
+          selectedSeason: selectedSeason,
+          selectedEpisode: selectedEpisode,
+          hubEpisodeNumber: hubEpisodeNumber,
+          activeProvider: activeProvider,
           onClose: close,
         ),
       ),
@@ -246,6 +254,7 @@ class PlayerStreamMenu {
     required Set<String> failedProviders,
     PlayerStatusController? statusController,
     Map<String, ProviderOrderRow> scoreRows = const {},
+    ProviderScoreScope? scoreScope,
   }) {
     final entries = providers.entries.toList();
 
@@ -261,13 +270,8 @@ class PlayerStreamMenu {
     }
 
     int sortScore(String providerId) {
-      final isCurrent =
-          providerId == state.currentProviderId && state.playbackConfirmed;
-      return _liveScore(
-        scoreRows[providerId],
-        providerId,
-        isPlaying: isCurrent,
-      );
+      if (scoreScope == null) return 0;
+      return ProviderScoreMemory.scoreFor(scoreScope, providerId);
     }
 
     int tier(String providerId) {
@@ -349,6 +353,51 @@ class PlayerStreamMenu {
     return SourceDomain.fromMediaType(movie?.mediaType);
   }
 
+  /// Per-title scope for reliability scores (film / episode / anime). Asian drama → null.
+  static ProviderScoreScope? scoreScope({
+    Movie? movie,
+    Map<String, dynamic>? providers,
+    int? selectedSeason,
+    int? selectedEpisode,
+    num? hubEpisodeNumber,
+    String? activeProvider,
+  }) {
+    if (movie == null) return null;
+    final prov = providers ?? const <String, dynamic>{};
+
+    final active = (activeProvider ?? '').trim().toLowerCase();
+    if (active == 'kisskh') return null;
+    if (prov.isNotEmpty &&
+        prov.keys.every((k) => k.trim().toLowerCase() == 'kisskh')) {
+      return null;
+    }
+
+    final domain = _resolveProviderDomain(movie, prov);
+    if (domain == SourceDomain.asianDrama) return null;
+
+    if (domain == SourceDomain.anime ||
+        hubEpisodeNumber != null ||
+        prov.values.any((v) => v is AnimeEmbed)) {
+      final anilistId = movie.id < 0 ? -movie.id : movie.id;
+      final ep = (hubEpisodeNumber ?? selectedEpisode ?? 1).toInt();
+      return ProviderScoreScope.anime(anilistId: anilistId, episode: ep);
+    }
+
+    if (movie.mediaType == 'tv') {
+      return ProviderScoreScope.tv(
+        tmdbId: movie.id,
+        season: selectedSeason ?? 1,
+        episode: selectedEpisode ?? 1,
+      );
+    }
+
+    if (movie.mediaType == 'movie') {
+      return ProviderScoreScope.movie(tmdbId: movie.id);
+    }
+
+    return null;
+  }
+
   static List<String> _settingsOrderForDomain(
     SourceDomain domain,
     Iterable<String> candidateIds,
@@ -391,55 +440,16 @@ class PlayerStreamMenu {
     };
   }
 
-  /// Live reliability score for badge + sort (updates via [revision]).
-  static int _liveScore(
-    ProviderOrderRow? row,
-    String providerId, {
-    bool isPlaying = false,
-  }) {
-    if (row == null || !row.supported || row.domainScore <= 0) return 0;
-    return ProviderScoreMemory.effectiveScore(
-      row.domainScore,
-      providerId,
-      isPlaying: isPlaying,
-    );
-  }
-
-  static Widget _scoreBadge(
-    ProviderOrderRow? row, {
-    required String providerId,
-    bool isPlaying = false,
-  }) {
-    if (row == null || !row.supported || row.domainScore <= 0) {
-      return const SizedBox(width: _scoreColWidth, height: _badgeHeight);
-    }
-    final base = row.domainScore;
-    final score = ProviderScoreMemory.effectiveScore(
-      base,
-      providerId,
-      isPlaying: isPlaying,
-    );
-    final color = score > base
+  static Widget _scoreDeltaLabel(int delta) {
+    if (delta == 0) return const SizedBox.shrink();
+    final color = delta > 0
         ? playerSourceStatusColor(PlayerSourceStatus.active)
-        : score >= 90
-            ? playerSourceStatusColor(PlayerSourceStatus.active)
-            : score >= 75
-                ? Colors.white.withValues(alpha: 0.82)
-                : score < base
-                    ? Colors.white.withValues(alpha: 0.42)
-                    : Colors.white.withValues(alpha: 0.52);
-    return Container(
-      width: _scoreColWidth,
-      height: _badgeHeight,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
+        : playerSourceStatusColor(PlayerSourceStatus.failed)
+            .withValues(alpha: 0.85);
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
       child: Text(
-        '$score',
-        textAlign: TextAlign.center,
+        delta > 0 ? '+$delta' : '$delta',
         style: TextStyle(
           color: color,
           fontSize: 10,
@@ -447,6 +457,49 @@ class PlayerStreamMenu {
           height: 1.0,
         ),
       ),
+    );
+  }
+
+  static Widget _scoreBadge({
+    required ProviderScoreScope? scoreScope,
+    required String providerId,
+  }) {
+    if (scoreScope == null) {
+      return const SizedBox(width: _scoreColWidth, height: _badgeHeight);
+    }
+    final score = ProviderScoreMemory.scoreFor(scoreScope, providerId);
+    final lastDelta = ProviderScoreMemory.lastDeltaFor(scoreScope, providerId);
+    final color = score >= 8
+        ? playerSourceStatusColor(PlayerSourceStatus.active)
+        : score >= 4
+            ? Colors.white.withValues(alpha: 0.82)
+            : Colors.white.withValues(alpha: 0.52);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (lastDelta != null) _scoreDeltaLabel(lastDelta),
+        Container(
+          width: _scoreColWidth,
+          height: _badgeHeight,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          ),
+          child: Text(
+            '$score',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              height: 1.0,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -480,9 +533,8 @@ class PlayerStreamMenu {
 
   static Widget _serverTrailingBadges({
     required String? categoryBadge,
-    required ProviderOrderRow? scoreRow,
+    required ProviderScoreScope? scoreScope,
     required String providerId,
-    bool isPlaying = false,
     bool hideCategoryBadge = false,
   }) {
     return Row(
@@ -496,11 +548,7 @@ class PlayerStreamMenu {
             const SizedBox(width: _categoryColWidth, height: _badgeHeight),
           const SizedBox(width: 6),
         ],
-        _scoreBadge(
-          scoreRow,
-          providerId: providerId,
-          isPlaying: isPlaying,
-        ),
+        _scoreBadge(scoreScope: scoreScope, providerId: providerId),
       ],
     );
   }
@@ -824,6 +872,10 @@ class _StreamMenuOverlay extends StatefulWidget {
     this.onReload,
     this.isReloading,
     this.movie,
+    this.selectedSeason,
+    this.selectedEpisode,
+    this.hubEpisodeNumber,
+    this.activeProvider,
   });
 
   final Map<String, dynamic>? providers;
@@ -842,6 +894,10 @@ class _StreamMenuOverlay extends StatefulWidget {
   final Future<void> Function()? onReload;
   final ValueListenable<bool>? isReloading;
   final Movie? movie;
+  final int? selectedSeason;
+  final int? selectedEpisode;
+  final num? hubEpisodeNumber;
+  final String? activeProvider;
   final VoidCallback onClose;
 
   @override
@@ -921,6 +977,14 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       widget.movie,
       widget.providers,
     );
+    final scoreScope = PlayerStreamMenu.scoreScope(
+      movie: widget.movie,
+      providers: widget.providers,
+      selectedSeason: widget.selectedSeason,
+      selectedEpisode: widget.selectedEpisode,
+      hubEpisodeNumber: widget.hubEpisodeNumber,
+      activeProvider: widget.activeProvider,
+    );
     return PlayerStreamMenu._orderedProviderEntries(
       widget.providers!,
       state: state,
@@ -930,6 +994,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       failedProviders: _failedProviders,
       statusController: widget.statusController,
       scoreRows: scoreRows,
+      scoreScope: scoreScope,
     );
   }
 
@@ -1011,9 +1076,13 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     final canLoad = widget.providersEnabled &&
         !isLoaded &&
         status != PlayerSourceStatus.checking;
-    final scoreById = PlayerStreamMenu._providerScoreRows(
-      widget.movie,
-      widget.providers,
+    final scoreScope = PlayerStreamMenu.scoreScope(
+      movie: widget.movie,
+      providers: widget.providers,
+      selectedSeason: widget.selectedSeason,
+      selectedEpisode: widget.selectedEpisode,
+      hubEpisodeNumber: widget.hubEpisodeNumber,
+      activeProvider: widget.activeProvider,
     );
 
     final group = Column(
@@ -1087,9 +1156,8 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                   ),
                   PlayerStreamMenu._serverTrailingBadges(
                     categoryBadge: presentation.categoryBadge,
-                    scoreRow: scoreById[providerId],
+                    scoreScope: scoreScope,
                     providerId: providerId,
-                    isPlaying: isPlaying,
                     hideCategoryBadge: hideCategoryBadge,
                   ),
                 ],

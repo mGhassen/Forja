@@ -26,6 +26,7 @@ import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
+import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
@@ -574,6 +575,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   /// (the menu compares against this rather than the localhost proxy URL).
   String? _current111477FileUrl;
   int _currentFallbackSourceIndex = 0;
+  /// Catalog stream URL selected when playback last confirmed.
+  String? _currentPlayingCatalogUrl;
   bool _providerPinned = false;
   bool _sourcePinned = false;
   bool _audioPinned = false;
@@ -581,6 +584,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   final PlayerStatusController _statusController = PlayerStatusController();
   final Set<int> _failedSourceIndices = {};
   final Set<int> _checkingSourceIndices = {};
+  final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
   bool _isInitPlaybackRunning = false;
@@ -633,6 +637,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _currentSources = widget.sources == null
         ? null
         : dedupeStreamSources(widget.sources!);
+    if (_currentProvider != null &&
+        _currentSources != null &&
+        _currentSources!.isNotEmpty) {
+      final pid = _currentProvider!;
+      final cache = _liveProviderSourcesCache.value;
+      if (cache[pid]?.isEmpty ?? true) {
+        _liveProviderSourcesCache.value = {...cache, pid: _currentSources!};
+      }
+    }
     unawaited(_initPlayableSources());
     _currentUrl = widget.mediaPath;
     _activeMagnet = widget.magnetLink;
@@ -643,6 +656,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
     widget.sourcesListNotifier?.addListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.addListener(_onLiveSourcesUpdated);
+    widget.providerProbesNotifier?.addListener(_onProbeScoringChanged);
 
     windowManager.addListener(this);
     WidgetsBinding.instance.addObserver(this);
@@ -701,6 +715,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       _loadSubtitlePrefs();
       _loadTorrentStatsPref();
       _initPlayback();
+      _onProbeScoringChanged();
       _startHideTimer();
       _fetchSubtitles();
       if (widget.movie != null && widget.hubEpisodes == null) {
@@ -732,7 +747,71 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     setState(() {
       _playableSources = ranked;
       _currentSources = playableSourcesToStreamSources(ranked);
+      _syncCurrentSourceIndexFromPlayUrl();
     });
+    _notifySourceMenuChanged();
+  }
+
+  void _syncCurrentSourceIndexFromPlayUrl() {
+    final sources = _currentSources;
+    if (sources == null || sources.isEmpty) return;
+    final catalogUrl = _currentPlayingCatalogUrl;
+    if (catalogUrl != null && catalogUrl.isNotEmpty) {
+      final catalogIdx = sources.indexWhere((s) => s.url == catalogUrl);
+      if (catalogIdx >= 0) {
+        _currentFallbackSourceIndex = catalogIdx;
+        return;
+      }
+    }
+    final playUrl = _currentUrl;
+    if (playUrl == null || playUrl.isEmpty) return;
+    if (_currentProvider == 'service111477') {
+      final fileUrl = _current111477FileUrl;
+      if (fileUrl == null || fileUrl.isEmpty) return;
+      final idx = sources.indexWhere((s) => s.url == fileUrl);
+      if (idx >= 0) _currentFallbackSourceIndex = idx;
+      return;
+    }
+    final idx = sources.indexWhere((s) => s.url == playUrl);
+    if (idx >= 0) {
+      _currentFallbackSourceIndex = idx;
+      return;
+    }
+    if (_currentFallbackSourceIndex < sources.length) return;
+    _currentFallbackSourceIndex = 0;
+  }
+
+  String? _resolveStreamMenuProviderId() {
+    var pid = _currentProvider ?? widget.activeProvider;
+    if (pid != null && pid.isNotEmpty) return pid;
+    if (!_playbackConfirmed) return pid;
+    final playUrl = _currentUrl;
+    if (playUrl == null || playUrl.isEmpty) return pid;
+    final providers = widget.providers;
+    if (providers == null || providers.isEmpty) return pid;
+
+    final cache = _liveProviderSourcesCache.value;
+    for (final key in providers.keys) {
+      final cached = cache[key];
+      if (cached == null) continue;
+      if (cached.any(
+        (source) =>
+            source.url == playUrl ||
+            source.url == _currentPlayingCatalogUrl,
+      )) {
+        return key;
+      }
+    }
+    final live = _currentSources;
+    if (live != null &&
+        live.any(
+          (source) =>
+              source.url == playUrl ||
+              source.url == _currentPlayingCatalogUrl,
+        )) {
+      return _currentProvider ?? widget.activeProvider;
+    }
+    return pid;
   }
 
   Future<void> _fetchIntroDbTimestamps() async {
@@ -752,6 +831,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   void dispose() {
     widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.removeListener(_onLiveSourcesUpdated);
+    widget.providerProbesNotifier?.removeListener(_onProbeScoringChanged);
     _cancelPendingStreamWork();
     _providerLoadFailures.dispose();
     if (widget.providerSourcesCache == null) {
@@ -1131,12 +1211,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         _detectHlsQualities(openUrl, source.headers ?? widget.headers);
         setState(() {
           _currentUrl = openUrl;
+          _currentPlayingCatalogUrl = source.url;
+          _playbackConfirmed = true;
         });
-        _playbackConfirmed = true;
         _statusController.complete();
         _markSourceActive(i);
+        _syncPanelAfterPlaybackConfirmed();
         unawaited(
-          ProviderScoreMemory.recordSuccess(_currentProvider ?? ''),
+          _recordStreamPlaySuccess(_currentProvider ?? ''),
         );
         widget.onPlaybackStarted?.call();
         return true;
@@ -1182,6 +1264,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         if (played) return;
         if (_fallbackAborted(initGen)) return;
 
+        if (_currentProvider != null &&
+            (_currentSources?.isNotEmpty ?? false)) {
+          _cacheProviderSources(_currentProvider!, _currentSources!);
+          _markProviderLoadFailed(_currentProvider!);
+        }
+
         // Cached / pinned URL could not open — unlock failover for this session
         // but keep disk/session cache so details Play can retry the same server.
         if (_providerPinned || _sourcePinned) {
@@ -1222,6 +1310,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             }
             _detectHlsQualities(openUrl, widget.headers);
             _playbackConfirmed = true;
+            _syncPanelAfterPlaybackConfirmed();
             widget.onPlaybackStarted?.call();
             return;
           } catch (e) {
@@ -1255,11 +1344,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   Future<void> _invalidateWebstreamingCacheForCurrent() async {
     final movie = widget.movie;
     if (movie == null) return;
-    final key = WebstreamingStreamCache.cacheKey(
+    final key = WebstreamingStreamCache.cacheKeyFromProgress(
       tmdbId: movie.id,
       mediaType: movie.mediaType,
-      season: widget.selectedSeason ?? 0,
-      episode: widget.selectedEpisode ?? 0,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
     );
     await WebstreamingStreamCache.drop(key);
     debugPrint('[Player] dropped stale webstreaming cache $key');
@@ -1294,6 +1383,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
     if (mounted && !_fallbackAborted(chainGen)) {
       notifyNoServerAvailable(_statusController);
+      _finalizeProbeStatusesAfterPlayback();
       setState(() {
         _hasError = true;
         _showControls = true;
@@ -1332,6 +1422,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       providerLabel,
       kind: StatusRouletteKind.loading,
     );
+    _syncProbeStatus(newProvider, StreamProviderProbeStatus.trying);
     try {
       String? streamUrl;
       Map<String, String>? headers;
@@ -1383,10 +1474,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           kind: StatusRouletteKind.success,
         );
 
+        _cacheProviderSources(newProvider, resolvedSources);
+        _scoreServerUp(newProvider);
+
         setState(() {
           _currentProvider = newProvider;
           _currentSources = resolvedSources;
           _currentFallbackSourceIndex = 0;
+          _failedSourceIndices.clear();
+          _checkingSourceIndices.clear();
           _hasError = false;
           _errorMessage = '';
           if (newProvider == 'service111477' && resolvedSources.isNotEmpty) {
@@ -1403,6 +1499,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         if (played) return true;
         if (_fallbackAborted(gen)) return false;
 
+        _markProviderLoadFailed(newProvider);
         _statusController.upsert(
           'provider-$newProvider',
           providerLabel,
@@ -1416,6 +1513,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       debugPrint('[Player] Silent fallback to $newProvider failed: $e');
     }
     if (_fallbackAborted(gen)) return false;
+    _markProviderLoadFailed(newProvider);
     _statusController.upsert(
       'provider-$newProvider',
       providerLabel,
@@ -2488,16 +2586,95 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _sourceMenuRevision.value++;
   }
 
+  ProviderScoreScope? get _scoreScope => PlayerStreamMenu.scoreScope(
+        movie: widget.movie,
+        providers: widget.providers,
+        selectedSeason: widget.selectedSeason,
+        selectedEpisode: widget.selectedEpisode,
+        hubEpisodeNumber: widget.hubEpisodeNumber,
+        activeProvider: widget.activeProvider,
+      );
+
+  List<String> _streamUrlsForProvider(String providerId) {
+    if (providerId.isEmpty) return const [];
+    final cached = _liveProviderSourcesCache.value[providerId];
+    if (cached != null && cached.isNotEmpty) {
+      return [for (final s in cached) s.url];
+    }
+    if (providerId == _currentProvider) {
+      final sources = _currentSources;
+      if (sources != null && sources.isNotEmpty) {
+        return [for (final s in sources) s.url];
+      }
+    }
+    return const [];
+  }
+
+  Future<void> _recordStreamCheckSuccess(String providerId) async {
+    final scope = _scoreScope;
+    if (scope == null || providerId.isEmpty) return;
+    await ProviderScoreMemory.recordStreamUp(scope, providerId);
+    _notifySourceMenuChanged();
+  }
+
+  Future<void> _recordStreamCheckFailure(String providerId) async {
+    final scope = _scoreScope;
+    if (scope == null || providerId.isEmpty) return;
+    await ProviderScoreMemory.recordStreamFail(scope, providerId);
+    await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
+      scope: scope,
+      providerId: providerId,
+      streamUrls: _streamUrlsForProvider(providerId),
+      isStreamFailed: (url) =>
+          _urlCheckStatuses[url] == PlayerSourceStatus.failed,
+    );
+    _notifySourceMenuChanged();
+  }
+
+  Future<void> _recordStreamPlaySuccess(String providerId) async {
+    final scope = _scoreScope;
+    if (scope == null || providerId.isEmpty) return;
+    await ProviderScoreMemory.recordStreamUp(scope, providerId);
+    _notifySourceMenuChanged();
+  }
+
+  Future<void> _recordStreamPlayFailure(String providerId) async {
+    final scope = _scoreScope;
+    if (scope == null || providerId.isEmpty) return;
+    await ProviderScoreMemory.recordStreamFail(scope, providerId);
+    await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
+      scope: scope,
+      providerId: providerId,
+      streamUrls: _streamUrlsForProvider(providerId),
+      isStreamFailed: (url) =>
+          _urlCheckStatuses[url] == PlayerSourceStatus.failed,
+    );
+    _notifySourceMenuChanged();
+  }
+
+  void _setUrlCheckStatus(String url, PlayerSourceStatus status) {
+    _urlCheckStatuses[url] = status;
+    _notifySourceMenuChanged();
+  }
+
+  void _syncUrlCheckFromIndex(int index, PlayerSourceStatus status) {
+    final sources = _currentSources;
+    if (sources == null || index < 0 || index >= sources.length) return;
+    _setUrlCheckStatus(sources[index].url, status);
+  }
+
   void _markSourceChecking(int index) {
     _checkingSourceIndices
       ..clear()
       ..add(index);
+    _syncUrlCheckFromIndex(index, PlayerSourceStatus.checking);
     _notifySourceMenuChanged();
   }
 
   void _markSourceFailed(int index) {
     _failedSourceIndices.add(index);
     _checkingSourceIndices.remove(index);
+    _syncUrlCheckFromIndex(index, PlayerSourceStatus.failed);
     _hideTimer?.cancel();
     if (mounted && !_showControls) {
       setState(() => _showControls = true);
@@ -2508,6 +2685,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   void _markSourceActive(int index) {
     _failedSourceIndices.remove(index);
     _checkingSourceIndices.remove(index);
+    _syncUrlCheckFromIndex(index, PlayerSourceStatus.active);
     _notifySourceMenuChanged();
   }
 
@@ -2517,7 +2695,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     final source = sources[index];
     return _currentProvider == 'service111477'
         ? source.url == _current111477FileUrl
-        : source.url == _currentUrl;
+        : source.url == _currentUrl ||
+            source.url == _currentPlayingCatalogUrl;
   }
 
   Future<void> _reloadStreamMenu() async {
@@ -2532,6 +2711,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             _currentSources = fresh;
             _failedSourceIndices.clear();
             _checkingSourceIndices.clear();
+            _urlCheckStatuses.clear();
           });
           _notifySourceMenuChanged();
         }
@@ -2544,6 +2724,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   void _onLiveSourcesUpdated() {
     unawaited(_rankLiveSources());
+  }
+
+  void _onProbeScoringChanged() {
+    final notifier = widget.providerProbesNotifier;
+    if (notifier == null) return;
+    unawaited(
+      ProviderScoreProbeSync.syncProbeList(
+        scope: _scoreScope,
+        probes: notifier.value,
+      ).then((_) {
+        if (mounted) _notifySourceMenuChanged();
+      }),
+    );
   }
 
   Future<void> _rankLiveSources() async {
@@ -2565,6 +2758,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       return;
     }
     setState(() => _currentSources = merged);
+    _syncCurrentSourceIndexFromPlayUrl();
     _notifySourceMenuChanged();
     if (!_playbackConfirmed &&
         !_isInitPlaybackRunning &&
@@ -2589,7 +2783,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       final source = sources[i];
       final isCurrent = _currentProvider == 'service111477'
           ? source.url == _current111477FileUrl
-          : source.url == _currentUrl;
+          : source.url == _currentUrl ||
+              source.url == _currentPlayingCatalogUrl;
       if (isCurrent && !_playbackConfirmed && _isInitPlaybackRunning) {
         return PlayerSourceStatus.checking;
       }
@@ -2601,7 +2796,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   PlayerStreamMenuState _streamMenuState() {
     return PlayerStreamMenuState(
-      currentProviderId: _currentProvider,
+      currentProviderId: _resolveStreamMenuProviderId(),
       sources: _currentSources,
       currentUrl: _currentUrl,
       current111477FileUrl: _current111477FileUrl,
@@ -2634,19 +2829,73 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       ..._providerLoadFailures.value,
       providerId,
     };
-    unawaited(ProviderScoreMemory.recordServerFailure(providerId));
+    _syncProbeStatus(providerId, StreamProviderProbeStatus.failed);
+    unawaited(ProviderScoreMemory.recordServerFailure(_scoreScope, providerId));
+    ProviderScoreProbeSync.markScoredServerFail(_scoreScope, providerId);
     _notifySourceMenuChanged();
   }
 
   void _markProviderLoadSucceeded(String providerId) {
-    if (!_providerLoadFailures.value.contains(providerId)) {
-      unawaited(ProviderScoreMemory.recordSuccess(providerId));
-      _notifySourceMenuChanged();
-      return;
+    if (_providerLoadFailures.value.contains(providerId)) {
+      final next = {..._providerLoadFailures.value}..remove(providerId);
+      _providerLoadFailures.value = next;
     }
-    final next = {..._providerLoadFailures.value}..remove(providerId);
-    _providerLoadFailures.value = next;
-    unawaited(ProviderScoreMemory.recordSuccess(providerId));
+    _notifySourceMenuChanged();
+  }
+
+  void _scoreServerUp(String providerId) {
+    if (providerId.isEmpty) return;
+    unawaited(ProviderScoreMemory.recordServerUp(_scoreScope, providerId));
+    ProviderScoreProbeSync.markScoredServerUp(_scoreScope, providerId);
+    _notifySourceMenuChanged();
+  }
+
+  void _cacheProviderSources(String providerId, List<StreamSource> sources) {
+    if (providerId.isEmpty || sources.isEmpty) return;
+    _liveProviderSourcesCache.value = {
+      ..._liveProviderSourcesCache.value,
+      providerId: dedupeStreamSources(sources),
+    };
+  }
+
+  void _syncProbeStatus(String providerId, StreamProviderProbeStatus status) {
+    final notifier = widget.providerProbesNotifier;
+    if (notifier == null || notifier.value.isEmpty) return;
+    final existing = notifier.value;
+    final updated = existing
+        .map((p) => p.id == providerId ? p.copyWith(status: status) : p)
+        .toList();
+    if (updated != existing) notifier.value = updated;
+  }
+
+  void _finalizeProbeStatusesAfterPlayback() {
+    final notifier = widget.providerProbesNotifier;
+    if (notifier == null || notifier.value.isEmpty) return;
+    final current = _currentProvider;
+    final failed = _providerLoadFailures.value;
+    notifier.value = [
+      for (final p in notifier.value)
+        if (_playbackConfirmed && current != null && p.id == current)
+          p.copyWith(status: StreamProviderProbeStatus.success)
+        else if (failed.contains(p.id))
+          p.copyWith(status: StreamProviderProbeStatus.failed)
+        else if (p.status == StreamProviderProbeStatus.trying)
+          p.copyWith(status: StreamProviderProbeStatus.failed)
+        else
+          p,
+    ];
+  }
+
+  void _syncPanelAfterPlaybackConfirmed() {
+    final pid = _currentProvider;
+    if (pid == null) return;
+    final sources = _currentSources;
+    if (sources != null && sources.isNotEmpty) {
+      _cacheProviderSources(pid, sources);
+    }
+    _markProviderLoadSucceeded(pid);
+    _syncProbeStatus(pid, StreamProviderProbeStatus.success);
+    _finalizeProbeStatusesAfterPlayback();
     _notifySourceMenuChanged();
   }
 
@@ -2713,6 +2962,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       onReload: _reloadStreamMenu,
       isReloading: _isReloadingStreams,
       movie: widget.movie,
+      selectedSeason: widget.selectedSeason,
+      selectedEpisode: widget.selectedEpisode,
+      hubEpisodeNumber: widget.hubEpisodeNumber,
+      activeProvider: widget.activeProvider,
     );
     _onMouseMove();
   }
@@ -2748,11 +3001,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       );
       if (_fallbackAborted(gen)) return;
       if (hit != null) {
+        _scoreServerUp(hit.providerId);
         setState(() {
           _currentProvider = hit.providerId;
           _currentSources = hit.streamSources;
           _currentUrl = hit.streamUrl;
           _currentFallbackSourceIndex = 0;
+          _failedSourceIndices.clear();
+          _checkingSourceIndices.clear();
           _hasError = false;
           _errorMessage = '';
           if (hit.providerId == 'service111477' &&
@@ -2832,42 +3088,60 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     final pid = providerId ?? _currentProvider ?? '';
     final affectsCurrent =
         providerId == null || providerId == _currentProvider;
+    _setUrlCheckStatus(source.url, PlayerSourceStatus.checking);
     if (affectsCurrent) {
       if (_isCurrentSourceIndex(index) && _playbackConfirmed) {
         _markSourceActive(index);
-        unawaited(ProviderScoreMemory.recordSuccess(pid));
+        unawaited(_recordStreamCheckSuccess(pid));
         return true;
       }
       _markSourceChecking(index);
     }
 
-    final validated = await _resolveValidatedStream(
-      source,
-      providerId: providerId,
-    );
-    if (!mounted) return false;
+    try {
+      final validated = await _resolveValidatedStream(
+        source,
+        providerId: providerId,
+      );
+      if (!mounted) return false;
 
-    if (validated != null) {
+      if (validated != null) {
+        _setUrlCheckStatus(source.url, PlayerSourceStatus.ready);
+        if (affectsCurrent) {
+          _failedSourceIndices.remove(index);
+          _checkingSourceIndices.remove(index);
+          _notifySourceMenuChanged();
+        }
+        unawaited(_recordStreamCheckSuccess(pid));
+        return true;
+      }
+
+      _setUrlCheckStatus(source.url, PlayerSourceStatus.failed);
       if (affectsCurrent) {
-        _failedSourceIndices.remove(index);
-        _checkingSourceIndices.remove(index);
+        _markSourceFailed(index);
+      } else {
         _notifySourceMenuChanged();
       }
-      unawaited(ProviderScoreMemory.recordSuccess(pid));
-      return true;
+      unawaited(_recordStreamCheckFailure(pid));
+      return false;
+    } catch (_) {
+      if (!mounted) return false;
+      _setUrlCheckStatus(source.url, PlayerSourceStatus.failed);
+      if (affectsCurrent) {
+        _markSourceFailed(index);
+      } else {
+        _notifySourceMenuChanged();
+      }
+      unawaited(_recordStreamCheckFailure(pid));
+      return false;
     }
-
-    if (affectsCurrent) {
-      _markSourceFailed(index);
-    }
-    unawaited(ProviderScoreMemory.recordStreamFailure(pid));
-    return false;
   }
 
   Future<void> _switchToStreamSource(StreamSource source, int index) async {
     final isCurrent = _currentProvider == 'service111477'
         ? source.url == _current111477FileUrl
-        : source.url == _currentUrl;
+        : source.url == _currentUrl ||
+            source.url == _currentPlayingCatalogUrl;
     if (isCurrent && _sourcePinned && _playbackConfirmed) return;
 
     if (isCurrent && !_sourcePinned && _playbackConfirmed) {
@@ -2902,7 +3176,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         );
         _markSourceFailed(index);
         unawaited(
-          ProviderScoreMemory.recordStreamFailure(_currentProvider ?? ''),
+          _recordStreamPlayFailure(_currentProvider ?? ''),
         );
         return;
       }
@@ -2969,7 +3243,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       _playbackConfirmed = true;
       _statusController.complete();
       _markSourceActive(index);
-      unawaited(ProviderScoreMemory.recordSuccess(_currentProvider ?? ''));
+      unawaited(_recordStreamPlaySuccess(_currentProvider ?? ''));
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
     } catch (_) {
       if (!mounted || _fallbackAborted(switchGen)) return;
@@ -2981,7 +3255,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       );
       _markSourceFailed(index);
       unawaited(
-        ProviderScoreMemory.recordStreamFailure(_currentProvider ?? ''),
+        _recordStreamPlayFailure(_currentProvider ?? ''),
       );
     }
   }
@@ -3824,6 +4098,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           providerId: sources,
         };
         _markProviderLoadSucceeded(providerId);
+        _scoreServerUp(providerId);
         _sourceMenuRevision.value++;
         return sources;
       }
@@ -3870,7 +4145,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       List<StreamSource>? sources;
 
       final cached = _liveProviderSourcesCache.value[newProvider];
-      if (cached != null && cached.isNotEmpty) {
+      final usedCache = cached != null && cached.isNotEmpty;
+      if (usedCache) {
         streamUrl = cached.first.url;
         headers = cached.first.headers;
         sources = cached;
@@ -3918,6 +4194,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               : dedupeStreamSources(sources);
           _currentUrl = streamUrl;
           _currentFallbackSourceIndex = 0; // Reset index on manual switch
+          _failedSourceIndices.clear();
+          _checkingSourceIndices.clear();
           _hasError = false;
           _errorMessage = '';
           if (newProvider == 'service111477' &&
@@ -3935,6 +4213,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             newProvider: selectedSources,
           };
           _markProviderLoadSucceeded(newProvider);
+          if (!usedCache) _scoreServerUp(newProvider);
           unawaited(
             widget.onSourcePinned?.call(
               selectedSources.first.url,

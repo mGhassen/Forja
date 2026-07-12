@@ -12,6 +12,7 @@ import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';
+import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:forja/shared/platform/platform_info.dart';
@@ -336,39 +337,67 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
   }
 
+  bool _isDirectStreamingSavedMethod(String? method) {
+    return method == 'stream' || method == 'amri' || method == 'stremio_direct';
+  }
+
+  Future<void> _resumeEpisodeWebStream(String providerId) async {
+    final progress = _lastProgress;
+    if (progress == null || !mounted) return;
+    final startPosition = _startPositionForAutoPlay(fromRoute: false);
+    var ok = await resumeSavedWebStreamProvider(
+      context: context,
+      movie: _movie,
+      progress: progress,
+      startPosition: startPosition,
+    );
+    if (ok || !mounted) return;
+    if (await _tryResumeWebStreamFromWatchHistory(startPosition)) return;
+    if (mounted) await _startWebstreamingOnlyPlayback();
+  }
+
   Future<bool> _tryDirectEpisodeResumeFromHistory(
     Map<String, dynamic> progress,
   ) async {
     final method = progress['method'] as String?;
-    final startPosition = Duration(
-      milliseconds: progress['position'] as int? ?? 0,
-    );
+    final startPosition = resumeStartPositionFromProgress(progress);
 
     switch (method) {
       case 'stream':
-        final sourceId = progress['sourceId'] as String? ?? '';
-        if (!isWebStreamProviderId(sourceId)) return false;
-        if (_playSourceWebstreaming && !_hasPanelPlaySources) {
-          await _startWebstreamingOnlyPlayback();
+        if (!_playSourceWebstreaming) return false;
+        if (_webstreamingStreams.isNotEmpty) {
+          await _playWebstreamingStream(
+            _webstreamingStreams.first,
+            startPosition: startPosition,
+          );
           return mounted;
         }
-        if (_playSourceWebstreaming) {
-          return resumeSavedWebStreamProvider(
+        final sourceId = progress['sourceId'] as String? ?? '';
+        if (isWebStreamProviderId(sourceId)) {
+          final ok = await resumeSavedWebStreamProvider(
             context: context,
             movie: _movie,
             progress: progress,
             startPosition: startPosition,
           );
+          if (ok) return true;
         }
-        return false;
+        if (await _tryResumeWebStreamFromWatchHistory(startPosition)) {
+          return true;
+        }
+        await _startWebstreamingOnlyPlayback();
+        return mounted;
       case 'amri':
         if (!_playSourceWebstreaming) return false;
-        return resumeSavedAmriStream(
+        final ok = await resumeSavedAmriStream(
           context: context,
           movie: _movie,
           progress: progress,
           startPosition: startPosition,
         );
+        if (ok) return true;
+        await _startWebstreamingOnlyPlayback();
+        return mounted;
       case 'stremio_direct':
         if (!_playSourceStremio) return false;
         return resumeSavedStremioDirectStream(
@@ -378,22 +407,21 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           startPosition: startPosition,
         );
       case 'torrent':
-        if (!_playSourceTorrent) return false;
-        return resumeSavedTorrentStream(
-          context: context,
-          movie: _movie,
-          progress: progress,
-          startPosition: startPosition,
-        );
+        // Torrent resumes open the sources panel — see [_openTorrentPanelForEpisode].
+        return false;
       default:
         return false;
     }
   }
 
-  void _beginEpisodePanelAutoPlay() {
+  void _openTorrentPanelForEpisode({bool preselectHistory = false}) {
     setState(() {
       _sourcesPanelOpen = true;
-      _episodePlayPending = true;
+      _episodePlayPending = false;
+      if (preselectHistory) {
+        _applyPanelFilterForSavedMethod('torrent');
+      }
+      if (_panelShowTorrent) _selectedSourceId = 'forja';
     });
     _refreshSourcesForEpisode();
   }
@@ -409,31 +437,46 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (!mounted) return;
 
     final progress = _lastProgress;
-    final resumable = hasResumableEpisodeProgress(progress);
-    final stale = isStaleResume(progress);
+    final savedPlayback = hasSavedEpisodePlayback(progress);
+    final stale = savedPlayback && isStaleResume(progress);
+    final savedMethod = progress?['method'] as String?;
 
     if (stale) {
-      if (_hasPanelPlaySources) {
+      if (savedMethod == 'torrent' && _hasPanelPlaySources) {
         setState(() {
           _sourcesPanelOpen = true;
           _episodePlayPending = false;
-          _applyPanelFilterForSavedMethod(progress?['method'] as String?);
+          _applyPanelFilterForSavedMethod(savedMethod);
         });
         _refreshSourcesForEpisode();
       }
       return;
     }
 
-    if (resumable && progress != null && !stale) {
-      final launched = await _tryDirectEpisodeResumeFromHistory(progress);
-      if (!mounted) return;
-      if (launched) return;
+    if (savedPlayback && progress != null) {
+      if (savedMethod == 'torrent' &&
+          _playSourceTorrent &&
+          _hasPanelPlaySources) {
+        _openTorrentPanelForEpisode(preselectHistory: true);
+        return;
+      }
+
+      if (_isDirectStreamingSavedMethod(savedMethod)) {
+        await _hydrateWebstreamingFromCache();
+        if (!mounted) return;
+        await _tryDirectEpisodeResumeFromHistory(progress);
+        return;
+      }
+    }
+
+    // Never played — webstreaming auto-play only; never auto-launch torrent.
+    if (_playSourceWebstreaming) {
+      unawaited(_startWebstreamingOnlyPlayback());
+      return;
     }
 
     if (_hasPanelPlaySources) {
-      _beginEpisodePanelAutoPlay();
-    } else if (_playSourceWebstreaming) {
-      unawaited(_startWebstreamingOnlyPlayback());
+      _openTorrentPanelForEpisode();
     }
   }
 
@@ -565,11 +608,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     await _startWebstreamingOnlyPlayback();
   }
 
-  String _webstreamingCacheKey() => WebstreamingStreamCache.cacheKey(
+  String _webstreamingCacheKey() => WebstreamingStreamCache.cacheKeyFromProgress(
     tmdbId: _movie.id,
     mediaType: _movie.mediaType,
-    season: _movie.mediaType == 'tv' ? _selectedSeason : 0,
-    episode: _movie.mediaType == 'tv' ? _selectedEpisode : 0,
+    season: _movie.mediaType == 'tv' ? _selectedSeason : null,
+    episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
   );
 
   void _applyWebstreamingCacheHit(WebstreamingCacheHit hit) {
@@ -649,30 +692,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       return;
     }
 
-    final sessionCached = WebstreamingStreamCache.readSession(
-      _webstreamingCacheKey(),
-    );
-    if (sessionCached != null && sessionCached.sources.isNotEmpty) {
-      if (!mounted) return;
-      setState(() => _applyWebstreamingCacheHit(sessionCached));
-      debugPrint(
-        '[DetailsScreen] webstreaming session cache hit '
-        '${sessionCached.providerId} (${sessionCached.sources.length})',
-      );
-      await _playWebstreamingStream(
-        sessionCached.sources.first,
-        startPosition: startPosition,
-      );
-      return;
-    }
-
-    final cached = await WebstreamingStreamCache.readDisk(_webstreamingCacheKey());
+    final cached = await WebstreamingStreamCache.read(_webstreamingCacheKey());
     if (cached != null && cached.sources.isNotEmpty) {
       if (!mounted) return;
       setState(() => _applyWebstreamingCacheHit(cached));
-      WebstreamingStreamCache.writeSession(_webstreamingCacheKey(), cached);
       debugPrint(
-        '[DetailsScreen] webstreaming disk cache hit '
+        '[DetailsScreen] webstreaming cache hit '
         '${cached.providerId} (${cached.sources.length})',
       );
       await _playWebstreamingStream(
@@ -694,13 +719,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final progress = _lastProgress;
     if (progress == null || progress['method'] != 'stream') return false;
     final savedUrl = progress['streamUrl'] as String?;
-    final sourceId = progress['sourceId'] as String? ?? '';
+    final rawSourceId = progress['sourceId'] as String? ?? '';
     if (savedUrl == null ||
         savedUrl.trim().isEmpty ||
-        isTorrentStreamUrl(savedUrl) ||
-        !isWebStreamProviderId(sourceId)) {
+        isTorrentStreamUrl(savedUrl)) {
       return false;
     }
+    final sourceId = isWebStreamProviderId(rawSourceId)
+        ? rawSourceId
+        : (_webstreamingActiveProviderId ?? 'stream');
     final source = StreamSource(
       url: savedUrl,
       title: _webstreamingProviderLabel(sourceId),
@@ -724,34 +751,49 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     return true;
   }
 
-  Future<void> _resumeContinueWatchingWebStream(String providerId) async {
+  Future<void> _resumeContinueWatchingWebStream(
+    String providerId, {
+    required bool fromRoute,
+  }) async {
     final progress = _lastProgress;
     if (progress == null) {
-      _failAutoPlayFromRoute();
+      if (fromRoute) {
+        _failAutoPlayFromRoute();
+      }
       return;
     }
     final ok = await resumeSavedWebStreamProvider(
       context: context,
       movie: _movie,
       progress: progress,
-      startPosition: _startPositionForAutoPlay(fromRoute: true),
+      startPosition: _startPositionForAutoPlay(fromRoute: fromRoute),
     );
-    if (!ok && mounted) _failAutoPlayFromRoute();
+    if (ok || !mounted) return;
+    if (fromRoute) {
+      _failAutoPlayFromRoute();
+      return;
+    }
+    await _resumeEpisodeWebStream(providerId);
   }
 
-  Future<void> _resumeContinueWatchingAmri() async {
+  Future<void> _resumeContinueWatchingAmri({required bool fromRoute}) async {
     final progress = _lastProgress;
     if (progress == null) {
-      _failAutoPlayFromRoute();
+      if (fromRoute) _failAutoPlayFromRoute();
       return;
     }
     final ok = await resumeSavedAmriStream(
       context: context,
       movie: _movie,
       progress: progress,
-      startPosition: _startPositionForAutoPlay(fromRoute: true),
+      startPosition: _startPositionForAutoPlay(fromRoute: fromRoute),
     );
-    if (!ok && mounted) _failAutoPlayFromRoute();
+    if (ok || !mounted) return;
+    if (fromRoute) {
+      _failAutoPlayFromRoute();
+      return;
+    }
+    if (_playSourceWebstreaming) await _startWebstreamingOnlyPlayback();
   }
 
   Future<void> _runWebstreamingOnlyExtraction({Duration? startPosition}) async {
@@ -874,6 +916,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 isPreferred: existing.isEmpty,
               ),
             ];
+            unawaited(
+              ProviderScoreProbeSync.onProbeStatusChanged(
+                scope: ProviderScoreProbeSync.scopeFromPlayer(
+                  movie: _movie,
+                  providers: providers,
+                  selectedSeason: _selectedSeason,
+                  selectedEpisode: _selectedEpisode,
+                ),
+                providerId: providerId,
+                status: nextStatus,
+              ),
+            );
             return;
           }
           probeNotifier.value = existing
@@ -883,6 +937,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                     : probe,
               )
               .toList();
+          unawaited(
+            ProviderScoreProbeSync.onProbeStatusChanged(
+              scope: ProviderScoreProbeSync.scopeFromPlayer(
+                movie: _movie,
+                providers: providers,
+                selectedSeason: _selectedSeason,
+                selectedEpisode: _selectedEpisode,
+              ),
+              providerId: providerId,
+              status: nextStatus,
+            ),
+          );
         },
       );
 
@@ -1418,6 +1484,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     return magnet.toLowerCase();
   }
 
+  TorrentResult? _historyMatchedTorrent() {
+    final progress = _lastProgress;
+    if (progress?['method'] != 'torrent') return null;
+    final sourceId = progress!['sourceId'];
+    if (sourceId == null) return null;
+    final historyHash = _getHash(sourceId);
+    for (final result in _allTorrentResults) {
+      if (_getHash(result.magnet) == historyHash) return result;
+    }
+    return null;
+  }
+
   Future<void> _sortResults() async {
     if (_allTorrentResults.isEmpty) {
       _maybeAutoPlay();
@@ -1443,8 +1521,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (fromRoute) return widget.startPosition;
     final progress = _lastProgress;
     if (progress == null) return null;
-    final pos = progress['position'] as int? ?? 0;
-    return pos > 0 ? Duration(milliseconds: pos) : null;
+    final pos = resumeStartPositionFromProgress(progress);
+    return pos > Duration.zero ? pos : null;
   }
 
   void _failEpisodePlayPending() {
@@ -1492,8 +1570,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final progress = _lastProgress;
     final isContinueWatchingResume =
         fromRoute && widget.startPosition != null && progress != null;
-    final savedMethod =
-        isContinueWatchingResume ? progress['method'] as String? : null;
+    final episodeSavedPlayback =
+        fromEpisode && hasSavedEpisodePlayback(progress);
+    final savedMethod = isContinueWatchingResume || episodeSavedPlayback
+        ? (progress?['method'] as String?)
+        : null;
 
     // Home hero Play → webstreaming. Continue Watching keeps the saved method.
     if (fromRoute && _playSourceWebstreaming && !isContinueWatchingResume) {
@@ -1502,29 +1583,88 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       return;
     }
 
-    if (isContinueWatchingResume && savedMethod == 'stream') {
-      final sourceId = progress['sourceId'] as String? ?? '';
-      if (isWebStreamProviderId(sourceId)) {
+    if (savedMethod == 'stream') {
+      final sourceId = progress?['sourceId'] as String? ?? '';
+      if (_playSourceWebstreaming) {
         if (_isWebstreamingOnlyExtracting) return;
         _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
-        unawaited(_resumeContinueWatchingWebStream(sourceId));
+        unawaited(
+          _resumeContinueWatchingWebStream(sourceId, fromRoute: fromRoute),
+        );
         return;
       }
     }
 
-    if (isContinueWatchingResume && savedMethod == 'amri') {
+    if (savedMethod == 'amri' && _playSourceWebstreaming) {
       _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
-      unawaited(_resumeContinueWatchingAmri());
+      unawaited(_resumeContinueWatchingAmri(fromRoute: fromRoute));
+      return;
+    }
+
+    if (savedMethod == 'stremio_direct' && _playSourceStremio) {
+      if (_isStremioFetching || _isNuvioFetching) return;
+      unawaited(() async {
+        if (progress == null || !mounted) return;
+        final ok = await resumeSavedStremioDirectStream(
+          context: context,
+          movie: _movie,
+          progress: progress,
+          startPosition: resumeStartPositionFromProgress(progress),
+        );
+        if (!mounted) return;
+        if (ok) {
+          _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+          return;
+        }
+        if (fromEpisode) {
+          setState(() => _episodePlayPending = false);
+          _openSourcesPanel();
+        } else {
+          _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: false);
+          _failAutoPlayFromRoute();
+        }
+      }());
       return;
     }
 
     final startPosition = _startPositionForAutoPlay(fromRoute: fromRoute);
 
+    // Episode picks never auto-launch torrent/stremio from search results.
+    if (fromEpisode) {
+      _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: true);
+      return;
+    }
+
+    // Route auto-play must never fall through to torrent when saved method is
+    // direct streaming.
+    if (hasSavedEpisodePlayback(progress) &&
+        _isDirectStreamingSavedMethod(savedMethod)) {
+      return;
+    }
+
     if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
       if (_isSearching) return;
       if (_allTorrentResults.isNotEmpty) {
         _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
-        _playTorrent(_allTorrentResults.first, startPosition: startPosition);
+        final toPlay = savedMethod == 'torrent'
+            ? (_historyMatchedTorrent() ?? _allTorrentResults.first)
+            : _allTorrentResults.first;
+        _playTorrent(toPlay, startPosition: startPosition);
+        return;
+      }
+      if (savedMethod == 'torrent' &&
+          progress != null &&
+          (progress['magnetLink'] as String?)?.isNotEmpty == true) {
+        _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+        unawaited(() async {
+          final ok = await resumeSavedTorrentStream(
+            context: context,
+            movie: _movie,
+            progress: progress,
+            startPosition: resumeStartPositionFromProgress(progress),
+          );
+          if (!ok && mounted) _openSourcesPanel();
+        }());
         return;
       }
     }
@@ -3965,26 +4105,26 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   Widget _torrentTileFor(TorrentResult r) {
     double prog = 0;
-    var resumable = false;
+    var preselected = false;
     if (_lastProgress != null && _lastProgress!['method'] == 'torrent') {
       if (_getHash(r.magnet) == _getHash(_lastProgress!['sourceId'])) {
-        final pos = _lastProgress!['position'] as int;
-        final dur = _lastProgress!['duration'] as int;
+        preselected = true;
+        final pos = (_lastProgress!['position'] as int?) ?? 0;
+        final dur = (_lastProgress!['duration'] as int?) ?? 0;
         if (dur > 0) {
           prog = (pos / dur).clamp(0.0, 1.0);
-          resumable = true;
         }
       }
     }
     return TorrentSourceTile(
       result: r,
       progress: prog,
-      isResumable: resumable,
+      isResumable: preselected,
       highlightStart: widget.startPosition != null,
       onPlay: () => _playTorrent(
         r,
-        startPosition: resumable
-            ? Duration(milliseconds: _lastProgress!['position'] as int)
+        startPosition: preselected
+            ? resumeStartPositionFromProgress(_lastProgress!)
             : widget.startPosition,
       ),
     );

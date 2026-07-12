@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,16 +30,54 @@ class WebstreamingStreamCache {
   static final _session =
       <String, ({DateTime at, WebstreamingCacheHit hit})>{};
 
+  /// Stable cache key — TV always uses 1-based season/episode.
   static String cacheKey({
     required int tmdbId,
     required String mediaType,
     int season = 0,
     int episode = 0,
   }) {
-    final isTv = mediaType == 'tv';
-    return isTv
-        ? '$mediaType:$tmdbId:S$season:E$episode'
-        : '$mediaType:$tmdbId';
+    final type = mediaType == 'series' ? 'tv' : mediaType;
+    final isTv = type == 'tv';
+    if (!isTv) return '$type:$tmdbId';
+    final s = season < 1 ? 1 : season;
+    final e = episode < 1 ? 1 : episode;
+    return '$type:$tmdbId:S$s:E$e';
+  }
+
+  /// Build a key from watch-history / player fields (null-safe for TV).
+  static String cacheKeyFromProgress({
+    required int tmdbId,
+    required String mediaType,
+    int? season,
+    int? episode,
+  }) =>
+      cacheKey(
+        tmdbId: tmdbId,
+        mediaType: mediaType,
+        season: season ?? 1,
+        episode: episode ?? 1,
+      );
+
+  static bool isValidHit(WebstreamingCacheHit hit) {
+    if (hit.providerId.trim().isEmpty) return false;
+    if (hit.sources.isEmpty) return false;
+    return hit.sources.every(
+      (s) => s.url.trim().isNotEmpty && !isTorrentStreamUrl(s.url),
+    );
+  }
+
+  static WebstreamingCacheHit? _validated(WebstreamingCacheHit? hit) {
+    if (hit == null) return null;
+    if (isValidHit(hit)) return hit;
+    if (kDebugMode) {
+      final first = hit.sources.isNotEmpty ? hit.sources.first.url : '';
+      debugPrint(
+        '[WebstreamingCache] rejected invalid hit '
+        'provider=${hit.providerId} url=$first',
+      );
+    }
+    return null;
   }
 
   static WebstreamingCacheHit? readSession(String key) {
@@ -48,12 +87,18 @@ class WebstreamingStreamCache {
       _session.remove(key);
       return null;
     }
-    return entry.hit;
+    final hit = _validated(entry.hit);
+    if (hit == null) {
+      _session.remove(key);
+      return null;
+    }
+    return hit;
   }
 
   static void writeSession(String key, WebstreamingCacheHit hit) {
-    if (hit.sources.isEmpty) return;
-    _session[key] = (at: DateTime.now(), hit: hit);
+    final validated = _validated(hit);
+    if (validated == null) return;
+    _session[key] = (at: DateTime.now(), hit: validated);
     while (_session.length > _sessionMaxEntries) {
       String? oldestKey;
       DateTime? oldestAt;
@@ -77,30 +122,38 @@ class WebstreamingStreamCache {
       final providerId = e['providerId'] as String? ?? '';
       final rawSources = e['sources'] as List?;
       if (providerId.isEmpty || rawSources == null || rawSources.isEmpty) {
+        await _purgeDiskKey(key);
         return null;
       }
       final sources = rawSources
           .map((s) => StreamSource.fromJson((s as Map).cast<String, dynamic>()))
           .where((s) => s.url.isNotEmpty)
           .toList();
-      if (sources.isEmpty) return null;
-      if (kDebugMode) {
-        debugPrint('[WebstreamingCache] disk hit $key (${sources.length})');
+      final hit = _validated(
+        WebstreamingCacheHit(providerId: providerId, sources: sources),
+      );
+      if (hit == null) {
+        await _purgeDiskKey(key);
+        return null;
       }
-      return WebstreamingCacheHit(providerId: providerId, sources: sources);
+      if (kDebugMode) {
+        debugPrint('[WebstreamingCache] disk hit $key (${hit.sources.length})');
+      }
+      return hit;
     }
     return null;
   }
 
   static Future<void> writeDisk(String key, WebstreamingCacheHit hit) async {
-    if (hit.sources.isEmpty) return;
+    final validated = _validated(hit);
+    if (validated == null) return;
     var list = await _loadDisk();
     list.removeWhere((e) => e['k'] == key);
     list.insert(0, {
       'k': key,
       't': DateTime.now().millisecondsSinceEpoch,
-      'providerId': hit.providerId,
-      'sources': hit.sources.map((s) => s.toJson()).toList(),
+      'providerId': validated.providerId,
+      'sources': validated.sources.map((s) => s.toJson()).toList(),
     });
     if (list.length > _diskMaxEntries) {
       list = list.sublist(0, _diskMaxEntries);
@@ -109,6 +162,10 @@ class WebstreamingStreamCache {
   }
 
   static Future<void> dropDisk(String key) async {
+    await _purgeDiskKey(key);
+  }
+
+  static Future<void> _purgeDiskKey(String key) async {
     final list = await _loadDisk();
     if (!list.any((e) => e['k'] == key)) return;
     list.removeWhere((e) => e['k'] == key);
@@ -118,6 +175,16 @@ class WebstreamingStreamCache {
   static Future<void> drop(String key) async {
     dropSession(key);
     await dropDisk(key);
+  }
+
+  /// Clears in-memory session entries and all persisted webstreaming cache.
+  static Future<void> clearAll() async {
+    _session.clear();
+    final p = await SharedPreferences.getInstance();
+    await p.remove(_diskKey);
+    if (kDebugMode) {
+      debugPrint('[WebstreamingCache] cleared all entries');
+    }
   }
 
   /// Memory first, then disk. Promotes disk hits into the session store.
@@ -135,8 +202,10 @@ class WebstreamingStreamCache {
   }
 
   static Future<void> write(String key, WebstreamingCacheHit hit) async {
-    writeSession(key, hit);
-    await writeDisk(key, hit);
+    final validated = _validated(hit);
+    if (validated == null) return;
+    writeSession(key, validated);
+    await writeDisk(key, validated);
   }
 
   static Future<List<Map<String, dynamic>>> _loadDisk() async {

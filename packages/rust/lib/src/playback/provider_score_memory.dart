@@ -3,32 +3,36 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../kv.dart';
-import 'source_order_engine.dart';
+import 'provider_score_scope.dart';
 
-/// Runtime reliability adjustments applied on top of configured domain scores.
+/// Per-title provider reliability for the player Source panel.
 ///
-/// Failures add penalty (and trim boost). Successes recover penalty and add
-/// boost so the Source panel badge updates while open via [revision].
+/// Scores are stored per film, TV episode, or anime episode — not globally.
+/// Settings base is **0**. Server and stream outcomes **add** separately
+/// (server ±2, stream ±2; server+stream ok → +2+2=+4). All streams down −2.
+/// Asian drama is not tracked. Score never goes below 0; no cap.
 abstract final class ProviderScoreMemory {
-  static const _legacyStorageKey = 'provider_score_penalties_v1';
-  static const _storageKey = 'provider_score_reliability_v2';
-  static const serverFailPenalty = 20;
-  static const streamFailPenalty = 8;
-  static const successRecovery = 5;
-  static const successBoost = 4;
-  static const maxPenalty = 90;
-  static const maxBoost = 20;
-  static const streamFailBoostLoss = 6;
-  static const serverFailBoostLoss = 12;
+  static const _legacyV3Key = 'provider_score_reliability_v3';
+  static const _legacyV2Key = 'provider_score_reliability_v2';
+  static const _legacyV1Key = 'provider_score_penalties_v1';
+  static const _storageKey = 'provider_score_reliability_v4';
+
+  static const serverFailDelta = -2;
+  static const serverUpDelta = 2;
+  static const streamUpDelta = 2;
+  static const streamFailDelta = -2;
+  static const allStreamsDownDelta = -2;
 
   static final ValueNotifier<int> revision = ValueNotifier<int>(0);
-  static final Map<String, int> _penalties = {};
-  static final Map<String, int> _boosts = {};
+  static final Map<String, int> _scores = {};
+  static final Map<String, int> _lastDelta = {};
+  /// Session-only — scoped server had a working stream since last all-down wipe.
+  static final Map<String, bool> _serverWasWorking = {};
+
   static bool _loaded = false;
   static Future<void>? _loadFuture;
 
-  static Map<String, int> get penalties => Map.unmodifiable(_penalties);
-  static Map<String, int> get boosts => Map.unmodifiable(_boosts);
+  static Map<String, int> get scores => Map.unmodifiable(_scores);
 
   static Future<void> ensureLoaded() {
     if (_loaded) return Future.value();
@@ -39,17 +43,19 @@ abstract final class ProviderScoreMemory {
     try {
       var raw = await kvGetString(_storageKey);
       if (raw == null || raw.isEmpty) {
-        raw = await kvGetString(_legacyStorageKey);
+        raw = await kvGetString(_legacyV3Key);
+      }
+      if (raw == null || raw.isEmpty) {
+        raw = await kvGetString(_legacyV2Key);
+      }
+      if (raw == null || raw.isEmpty) {
+        raw = await kvGetString(_legacyV1Key);
       }
       if (raw != null && raw.isNotEmpty) {
         final decoded = jsonDecode(raw);
-        if (decoded is Map) {
-          if (decoded.containsKey('p') || decoded.containsKey('b')) {
-            _readIntMap(decoded['p'], _penalties, maxPenalty);
-            _readIntMap(decoded['b'], _boosts, maxBoost);
-          } else {
-            _readIntMap(decoded, _penalties, maxPenalty);
-          }
+        if (decoded is Map && decoded.containsKey('s')) {
+          _readScoreMap(decoded['s']);
+          _readDeltaMap(decoded['d']);
         }
       }
     } catch (e) {
@@ -60,15 +66,20 @@ abstract final class ProviderScoreMemory {
     }
   }
 
-  static void _readIntMap(
-    dynamic raw,
-    Map<String, int> target,
-    int maxValue,
-  ) {
+  static void _readScoreMap(dynamic raw) {
     if (raw is! Map) return;
     for (final e in raw.entries) {
       final v = (e.value as num?)?.toInt() ?? 0;
-      if (v > 0) target[e.key.toString()] = v.clamp(1, maxValue);
+      if (v >= 0) _scores[e.key.toString()] = v;
+    }
+  }
+
+  static void _readDeltaMap(dynamic raw) {
+    if (raw is! Map) return;
+    for (final e in raw.entries) {
+      final v = (e.value as num?)?.toInt();
+      if (v == null || v == 0) continue;
+      _lastDelta[e.key.toString()] = v;
     }
   }
 
@@ -76,15 +87,15 @@ abstract final class ProviderScoreMemory {
     try {
       await kvSetString(
         _storageKey,
-        jsonEncode({'p': _penalties, 'b': _boosts}),
+        jsonEncode({'s': _scores, 'd': _lastDelta}),
       );
     } catch (e) {
       debugPrint('[ProviderScoreMemory] persist failed: $e');
     }
   }
 
-  /// Anime panel keys are `sourceKey:sub|dub` — score by engine sourceKey.
-  static String _normalizeId(String providerId) {
+  /// Anime panel keys are `sourceKey:sub|dub` — one score per engine id.
+  static String normalizeProviderId(String providerId) {
     final id = providerId.trim();
     if (id.isEmpty) return id;
     final lower = id.toLowerCase();
@@ -94,106 +105,137 @@ abstract final class ProviderScoreMemory {
     return id;
   }
 
-  static int penaltyFor(String providerId) =>
-      _penalties[_normalizeId(providerId)] ?? 0;
+  static String _memoryKey(ProviderScoreScope scope, String providerId) =>
+      scope.memoryKey(normalizeProviderId(providerId));
 
-  static int boostFor(String providerId) =>
-      _boosts[_normalizeId(providerId)] ?? 0;
+  static int scoreFor(ProviderScoreScope scope, String providerId) =>
+      _scores[_memoryKey(scope, providerId)] ?? 0;
 
-  /// Max points reliability memory may subtract from [domainScore] (never → 1).
-  static int maxPenaltyForBase(int domainScore) =>
-      (domainScore * 0.45).round().clamp(12, 45);
+  static int? lastDeltaFor(ProviderScoreScope scope, String providerId) {
+    final key = _memoryKey(scope, providerId);
+    if (!_lastDelta.containsKey(key)) return null;
+    return _lastDelta[key];
+  }
 
-  static int effectiveScore(
-    int domainScore,
-    String providerId, {
-    bool isPlaying = false,
-  }) {
-    if (domainScore <= 0) return 0;
-    final id = _normalizeId(providerId);
-    final penalty = (_penalties[id] ?? 0).clamp(0, maxPenaltyForBase(domainScore));
-    final boost = _boosts[id] ?? 0;
-    final raw = domainScore - penalty + boost;
-    final ceiling = domainScore + maxBoost;
-    final floor = (domainScore * 0.55).round().clamp(8, domainScore - 1);
-    if (isPlaying) {
-      // Live playback is proof — badge stays at least the configured tier.
-      return raw.clamp(domainScore, ceiling);
+  static Future<void> recordServerFailure(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    await _adjust(scope, providerId, serverFailDelta);
+  }
+
+  static Future<void> recordServerUp(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    if (scope == null) return;
+    final key = _memoryKey(scope, providerId);
+    _serverWasWorking[key] = true;
+    await _adjust(scope, providerId, serverUpDelta);
+  }
+
+  static Future<void> recordStreamUp(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    if (scope == null) return;
+    final key = _memoryKey(scope, providerId);
+    _serverWasWorking[key] = true;
+    await _adjust(scope, providerId, streamUpDelta);
+  }
+
+  static Future<void> recordStreamFail(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    await _adjust(scope, providerId, streamFailDelta);
+  }
+
+  @Deprecated('Use recordStreamUp')
+  static Future<void> recordStreamCheckUp(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    await recordStreamUp(scope, providerId);
+  }
+
+  @Deprecated('Use recordStreamFail')
+  static Future<void> recordStreamCheckFail(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    await recordStreamFail(scope, providerId);
+  }
+
+  @Deprecated('Use recordStreamUp')
+  static Future<void> recordStreamPlayUp(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    await recordStreamUp(scope, providerId);
+  }
+
+  @Deprecated('Use recordStreamFail')
+  static Future<void> recordStreamPlayFail(
+    ProviderScoreScope? scope,
+    String providerId,
+  ) async {
+    await recordStreamFail(scope, providerId);
+  }
+
+  static Future<bool> recordAllStreamsDownIfNeeded({
+    required ProviderScoreScope? scope,
+    required String providerId,
+    required List<String> streamUrls,
+    required bool Function(String url) isStreamFailed,
+  }) async {
+    if (scope == null) return false;
+    await ensureLoaded();
+    final key = _memoryKey(scope, providerId);
+    if (!(_serverWasWorking[key] ?? false)) return false;
+    if (streamUrls.isEmpty) return false;
+
+    for (final url in streamUrls) {
+      if (!isStreamFailed(url)) return false;
     }
-    return raw.clamp(floor, ceiling);
-  }
 
-  /// Apply persisted reliability memory to Source Engine rows for UI + sort.
-  static Map<String, ProviderOrderRow> applyToRows(
-    Map<String, ProviderOrderRow> rows,
-  ) {
-    if (rows.isEmpty) return rows;
-    if (_penalties.isEmpty && _boosts.isEmpty) return rows;
-    return {
-      for (final e in rows.entries)
-        e.key: ProviderOrderRow(
-          id: e.value.id,
-          settingsRank: e.value.settingsRank,
-          domainScore: effectiveScore(e.value.domainScore, e.key),
-          effectiveRank: e.value.effectiveRank,
-          maxDisplacement: e.value.maxDisplacement,
-          supported: e.value.supported,
-        ),
-    };
-  }
-
-  static Future<void> recordServerFailure(String providerId) async {
-    await ensureLoaded();
-    final changed = _adjustPenalty(providerId, serverFailPenalty) |
-        _adjustBoost(providerId, -serverFailBoostLoss);
-    if (!changed) return;
-    revision.value++;
-    await _persist();
-  }
-
-  static Future<void> recordStreamFailure(String providerId) async {
-    await ensureLoaded();
-    final changed = _adjustPenalty(providerId, streamFailPenalty) |
-        _adjustBoost(providerId, -streamFailBoostLoss);
-    if (!changed) return;
-    revision.value++;
-    await _persist();
-  }
-
-  static Future<void> recordSuccess(String providerId) async {
-    await ensureLoaded();
-    final changed = _adjustPenalty(providerId, -successRecovery) |
-        _adjustBoost(providerId, successBoost);
-    if (!changed) return;
-    revision.value++;
-    await _persist();
-  }
-
-  static bool _adjustPenalty(String providerId, int delta) {
-    final id = _normalizeId(providerId);
-    if (id.isEmpty) return false;
-    final prev = _penalties[id] ?? 0;
-    final next = (prev + delta).clamp(0, maxPenalty);
-    if (next == prev) return false;
-    if (next == 0) {
-      _penalties.remove(id);
-    } else {
-      _penalties[id] = next;
-    }
+    _serverWasWorking[key] = false;
+    await _adjust(scope, providerId, allStreamsDownDelta);
     return true;
   }
 
-  static bool _adjustBoost(String providerId, int delta) {
-    final id = _normalizeId(providerId);
-    if (id.isEmpty) return false;
-    final prev = _boosts[id] ?? 0;
-    final next = (prev + delta).clamp(0, maxBoost);
-    if (next == prev) return false;
-    if (next == 0) {
-      _boosts.remove(id);
-    } else {
-      _boosts[id] = next;
+  @visibleForTesting
+  static void resetForTest() {
+    _scores.clear();
+    _lastDelta.clear();
+    _serverWasWorking.clear();
+    _loaded = true;
+    _loadFuture = null;
+  }
+
+  static Future<bool> _adjust(
+    ProviderScoreScope? scope,
+    String providerId,
+    int delta,
+  ) async {
+    if (scope == null || delta == 0) return false;
+    await ensureLoaded();
+    final key = _memoryKey(scope, providerId);
+    if (key.isEmpty) return false;
+
+    final prev = _scores[key] ?? 0;
+    final next = (prev + delta).clamp(0, 1 << 30);
+    if (next == prev) {
+      _lastDelta[key] = delta;
+      revision.value++;
+      await _persist();
+      return true;
     }
+
+    _scores[key] = next;
+    _lastDelta[key] = delta;
+    revision.value++;
+    await _persist();
     return true;
   }
 }

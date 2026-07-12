@@ -22,12 +22,24 @@ bool isStaleResume(
       threshold;
 }
 
-/// Episode has meaningful in-progress watch history (2–90% watched).
-bool hasResumableEpisodeProgress(Map<String, dynamic>? progress) {
+/// Episode was played before and has a saved playback method to reuse.
+bool hasSavedEpisodePlayback(Map<String, dynamic>? progress) {
   if (progress == null) return false;
+  final method = progress['method'] as String?;
+  if (method == null || method.isEmpty || method == 'trakt_import') {
+    return false;
+  }
+  return true;
+}
+
+/// Resume position when still in progress; otherwise replay from the start
+/// using the same saved source.
+Duration resumeStartPositionFromProgress(Map<String, dynamic> progress) {
   final pos = (progress['position'] as int?) ?? 0;
   final dur = (progress['duration'] as int?) ?? 0;
-  return isInProgressResume(pos, dur);
+  if (pos <= 0) return Duration.zero;
+  if (isInProgressResume(pos, dur)) return Duration(milliseconds: pos);
+  return Duration.zero;
 }
 
 /// Latest in-progress history entry for a TV show (by [updatedAt]).

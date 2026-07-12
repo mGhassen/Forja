@@ -39,20 +39,25 @@ void main() {
     });
   });
 
-  group('hasResumableEpisodeProgress', () {
-    test('matches isInProgressResume window', () {
-      expect(hasResumableEpisodeProgress(null), isFalse);
+  group('hasSavedEpisodePlayback', () {
+    test('detects saved methods', () {
+      expect(hasSavedEpisodePlayback(null), isFalse);
+      expect(hasSavedEpisodePlayback({'method': 'trakt_import'}), isFalse);
+      expect(hasSavedEpisodePlayback({'method': 'torrent'}), isTrue);
+      expect(hasSavedEpisodePlayback({'method': 'stream'}), isTrue);
+      expect(hasSavedEpisodePlayback({'method': 'stremio_direct'}), isTrue);
+    });
+  });
+
+  group('resumeStartPositionFromProgress', () {
+    test('uses in-progress position only inside 2–90% window', () {
       expect(
-        hasResumableEpisodeProgress({'position': 1000, 'duration': 100_000}),
-        isFalse,
+        resumeStartPositionFromProgress({'position': 10_000, 'duration': 100_000}),
+        const Duration(milliseconds: 10_000),
       );
       expect(
-        hasResumableEpisodeProgress({'position': 10_000, 'duration': 100_000}),
-        isTrue,
-      );
-      expect(
-        hasResumableEpisodeProgress({'position': 95_000, 'duration': 100_000}),
-        isFalse,
+        resumeStartPositionFromProgress({'position': 95_000, 'duration': 100_000}),
+        Duration.zero,
       );
     });
   });

@@ -94,7 +94,7 @@ abstract final class PlayerSourceResolve {
     required int episode,
     bool Function()? isCancelled,
   }) async {
-    final cacheKey = WebstreamingStreamCache.cacheKey(
+    final cacheKey = WebstreamingStreamCache.cacheKeyFromProgress(
       tmdbId: movie.id,
       mediaType: movie.mediaType,
       season: season,
