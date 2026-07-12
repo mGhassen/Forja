@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
-/// Scales on hover with a flat cinematic shadow (no colored glow).
-/// On TV, delegates to [shellFocusableTap] for D-pad focus lift + scale.
-class HoverScale extends StatefulWidget {
+/// Scales on hover/focus with a flat cinematic shadow (no colored glow).
+/// Uses [shellFocusableTap] for D-pad focus lift + thin white focus border.
+class HoverScale extends StatelessWidget {
   final Widget child;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
@@ -21,57 +21,20 @@ class HoverScale extends StatefulWidget {
   });
 
   @override
-  State<HoverScale> createState() => _HoverScaleState();
-}
-
-class _HoverScaleState extends State<HoverScale> {
-  bool _hover = false;
-
-  @override
   Widget build(BuildContext context) {
-    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-      return shellFocusableTap(
-        context: context,
-        onTap: widget.onTap,
-        borderRadius: widget.radius,
-        scaleOnFocus: widget.scale,
-        child: widget.child,
-      );
-    }
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        onLongPress: widget.onLongPress,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          transform: Matrix4.identity()
-            ..scaleByDouble(
-              _hover ? widget.scale : 1.0,
-              _hover ? widget.scale : 1.0,
-              1.0,
-              1.0,
-            ),
-          transformAlignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.radius),
-            boxShadow: _hover
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
-          ),
-          child: widget.child,
-        ),
-      ),
+    final tap = shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: radius,
+      scaleOnFocus: scale,
+      showFocusBorder: true,
+      child: child,
+    );
+    if (onLongPress == null) return tap;
+    return GestureDetector(
+      onLongPress: onLongPress,
+      behavior: HitTestBehavior.deferToChild,
+      child: tap,
     );
   }
 }

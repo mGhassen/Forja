@@ -776,6 +776,7 @@ class _HubSearchFilmCard extends StatelessWidget {
       context: context,
       onTap: tvActivateOpens ? onOpen : onTap,
       borderRadius: 14,
+      showFocusBorder: true,
       onLeftEdge: onLeftEdge,
       gridIndex: gridIndex,
       gridColumns: gridColumns,
@@ -951,6 +952,7 @@ class _HubSearchCompactCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 12,
+      showFocusBorder: true,
       child: Container(
         width: cardWidth,
         height: cardHeight,

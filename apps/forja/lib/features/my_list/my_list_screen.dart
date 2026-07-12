@@ -258,6 +258,7 @@ class _MyListCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 12,
+      showFocusBorder: true,
       gridIndex: gridIndex,
       gridColumns: gridColumns,
       tvTabId: 'mylist',

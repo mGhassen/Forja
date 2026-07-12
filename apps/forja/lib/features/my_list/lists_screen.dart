@@ -699,6 +699,7 @@ Widget _movieListTile({
     context: context,
     onTap: onTap,
     borderRadius: 14,
+    showFocusBorder: true,
     tvTabId: 'mylist',
     tvZone: ShellTvZone.row,
     child: Container(

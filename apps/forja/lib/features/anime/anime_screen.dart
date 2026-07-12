@@ -868,6 +868,7 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
       tvItemIndex: widget.listIndex,
       borderRadius: 14,
       scaleOnFocus: 1.0,
+      showFocusBorder: true,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedScale(

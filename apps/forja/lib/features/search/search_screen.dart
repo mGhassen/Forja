@@ -1180,6 +1180,7 @@ class _SearchFilmCard extends StatelessWidget {
       context: context,
       onTap: tvActivateOpens ? onOpen : onTap,
       borderRadius: 14,
+      showFocusBorder: true,
       gridIndex: gridIndex,
       gridColumns: gridColumns,
       tvTabId: 'search',
@@ -1485,6 +1486,7 @@ class _SearchCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 12,
+      showFocusBorder: true,
       listIndex: listIndex,
       child: Container(
         decoration: BoxDecoration(
@@ -1575,6 +1577,7 @@ class _StremioSearchCard extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: 12,
+      showFocusBorder: true,
       listIndex: listIndex,
       child: Container(
         decoration: BoxDecoration(

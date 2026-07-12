@@ -157,7 +157,7 @@ Widget shellFocusableTap({
     return FocusableControl(
       onTap: onTap,
       borderRadius: borderRadius,
-      scaleOnFocus: policy.useFocusableMoodChips ? scaleOnFocus : 1.0,
+      scaleOnFocus: scaleOnFocus,
       showFocusBorder: showFocusBorder,
       onLeftEdge: resolvedLeftEdge,
       onUpEdge: onUpEdge,

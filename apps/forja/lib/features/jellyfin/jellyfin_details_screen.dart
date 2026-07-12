@@ -8,6 +8,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/hover_scale.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 // ─── Jellyfin Palette ────────────────────────────────────────────────────────
@@ -17,39 +18,18 @@ const _jfSurface = Color(0xFF13131E);
 const _jfSurfaceLight = Color(0xFF141414);
 
 // ─── Hover / Press Card ─────────────────────────────────────────────────────
-class _HoverCard extends StatefulWidget {
+class _HoverCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
   const _HoverCard({required this.child, this.onTap});
-  @override
-  State<_HoverCard> createState() => _HoverCardState();
-}
-
-class _HoverCardState extends State<_HoverCard> {
-  bool _hovered = false;
-  bool _pressed = false;
-  double get _scale => _pressed ? 0.96 : (_hovered ? 1.04 : 1.0);
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) {
-          setState(() => _pressed = false);
-          widget.onTap?.call();
-        },
-        onTapCancel: () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _scale,
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          child: widget.child,
-        ),
-      ),
+    if (onTap == null) return child;
+    return HoverScale(
+      onTap: onTap!,
+      scale: 1.04,
+      child: child,
     );
   }
 }
@@ -1293,6 +1273,7 @@ class _JellyfinDetailsScreenState extends State<JellyfinDetailsScreen> {
                             );
                           },
                           borderRadius: 14,
+                          showFocusBorder: true,
                           tvTabId: MediaDetailsTv.tabId,
                           tvRowId: 'similar',
                           tvItemIndex: index,
