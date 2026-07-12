@@ -77,5 +77,15 @@ void main() {
       expect(ordered.first, 'miruro:bee');
       expect(ordered, contains('miruro:hop'));
     });
+
+    test('nextProviderIds skips current and follows domain order', () {
+      final next = SourceEngine.nextProviderIds(
+        domain: SourceDomain.movies,
+        candidateIds: ['webstreamr', 'videasy', 'vidnest'],
+        currentId: 'videasy',
+      );
+      expect(next.first, 'vidnest');
+      expect(next, isNot(contains('videasy')));
+    });
   });
 }

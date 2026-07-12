@@ -19,8 +19,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
+import 'package:forja/shared/playback/playback_engine.dart';
+import 'package:forja/shared/playback/player_source_resolve.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/extractors/arabic_service.dart';
@@ -1281,12 +1282,14 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
 
     final chainGen = _fallbackGen;
-    final providerKeys = widget.providers!.keys.toList();
-    int currentIndex = providerKeys.indexOf(_currentProvider ?? '');
+    final providerKeys = PlayerSourceResolve.failoverChain(
+      movie: widget.movie,
+      providers: widget.providers!,
+      currentProviderId: _currentProvider,
+    );
     
-    for (int i = currentIndex + 1; i < providerKeys.length; i++) {
+    for (final nextKey in providerKeys) {
       if (_fallbackAborted(chainGen)) return;
-      final nextKey = providerKeys[i];
       debugPrint('[Player] Auto-falling back to provider: $nextKey');
       
       final success = await _silentSwitchProvider(nextKey, chainGen: chainGen);
@@ -1331,119 +1334,26 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       Map<String, String>? headers;
       List<StreamSource>? sources;
 
-      if (newProvider == 'service111477' && widget.movie != null) {
-        final svc = Site111477Service();
-        List<Site111477Match> hits;
-        if (widget.movie!.mediaType == 'tv') {
-          hits = await svc.findEpisodeSources(
-            showTitle: widget.movie!.title,
-            season: widget.selectedSeason ?? 1,
-            episode: widget.selectedEpisode ?? 1,
-          );
-        } else {
-          final year = widget.movie!.releaseDate.length >= 4
-              ? widget.movie!.releaseDate.substring(0, 4)
-              : null;
-          hits = await svc.findMovieSources(title: widget.movie!.title, year: year);
+      final movie = widget.movie;
+      final providers = widget.providers;
+      if (movie != null && providers != null) {
+        if (newProvider == 'service111477' &&
+            site111477_proxy.is111477ProxyRunning) {
+          await site111477_proxy.stop111477Proxy();
         }
-        if (_fallbackAborted(gen)) return false;
-        if (hits.isNotEmpty) {
-          if (site111477_proxy.is111477ProxyRunning) {
-            await site111477_proxy.stop111477Proxy();
-          }
-          streamUrl = await site111477_proxy.start111477Proxy(hits.first.fileUrl);
-          sources = Site111477Service.toStreamSources(hits);
-          _current111477FileUrl = hits.first.fileUrl;
-        }
-      } else if (newProvider == 'webstreamr' && widget.movie?.imdbId != null) {
-        final webStreamr = WebStreamrService();
-        final webStreamrSources = await webStreamr.getStreams(
-          imdbId: widget.movie!.imdbId!,
-          isMovie: widget.movie!.mediaType == 'movie',
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-        );
-        if (_fallbackAborted(gen)) return false;
-        if (webStreamrSources.isNotEmpty) {
-          streamUrl = webStreamrSources.first.url;
-          sources = webStreamrSources;
-        }
-      } else if (newProvider == 'videasy' && widget.movie != null) {
-        final ve = VideasyExtractor(onLog: (m) => debugPrint(m));
-        final result = await ve.extract(
-          tmdbId: widget.movie!.id.toString(),
-          isMovie: widget.movie!.mediaType == 'movie',
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
+        final hit = await PlayerSourceResolve.resolvePinned(
+          movie: movie,
+          providers: providers,
+          providerId: newProvider,
+          season: widget.selectedSeason ?? 1,
+          episode: widget.selectedEpisode ?? 1,
           isCancelled: () => _fallbackAborted(gen),
         );
         if (_fallbackAborted(gen)) return false;
-        if (result != null && result.url.isNotEmpty) {
-          streamUrl = result.url;
-          headers = result.headers;
-          sources = result.sources;
-        }
-      } else if (newProvider == 'vidsrc' && widget.movie != null) {
-        final ve = VidsrcExtractor();
-        final result = await ve.extract(
-          tmdbId: widget.movie!.id.toString(),
-          isMovie: widget.movie!.mediaType == 'movie',
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-        );
-        if (_fallbackAborted(gen)) return false;
-        if (result != null && result.url.isNotEmpty) {
-          streamUrl = result.url;
-          headers = result.headers;
-          sources = result.sources;
-        }
-      } else if (newProvider.startsWith('nuvio:') && widget.movie != null) {
-        final scraperId = newProvider.substring(6);
-        final results = await NuvioService.instance.runOneScraper(
-          scraperId: scraperId,
-          tmdbId: widget.movie!.id.toString(),
-          type: widget.movie!.mediaType == 'tv' ? 'tv' : 'movie',
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-        );
-        if (_fallbackAborted(gen)) return false;
-        if (results.isNotEmpty) {
-          final first = results.first;
-          streamUrl = first.url;
-          headers = first.headers.isEmpty ? null : first.headers;
-          sources = results.map((r) => StreamSource(
-                url: r.url,
-                title: r.title.isNotEmpty ? r.title : r.name,
-                type: r.url.toLowerCase().contains('.m3u8')
-                    ? 'hls'
-                    : r.url.toLowerCase().contains('.mpd')
-                        ? 'dash'
-                        : 'mp4',
-                headers: r.headers.isEmpty ? null : r.headers,
-              )).toList();
-        }
-      } else if (provider['movie'] != null && provider['tv'] != null) {
-        final String providerUrl;
-        if (widget.movie!.mediaType == 'tv') {
-          providerUrl = provider['tv'](
-            widget.movie!.id.toString(),
-            widget.selectedSeason,
-            widget.selectedEpisode,
-          );
-        } else {
-          providerUrl = provider['movie'](widget.movie!.id.toString());
-        }
-        
-        final extractor = StreamExtractor();
-        final result = await extractor.extract(
-          providerUrl,
-          isCancelled: () => _fallbackAborted(gen),
-        );
-        if (_fallbackAborted(gen)) return false;
-        if (result != null && result.url.isNotEmpty) {
-          streamUrl = result.url;
-          headers = result.headers;
-          sources = result.sources;
+        if (hit != null) {
+          streamUrl = hit.streamUrl;
+          headers = hit.headers;
+          sources = hit.streamSources;
         }
       }
       
@@ -2856,6 +2766,47 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       _sourcePinned = false;
       _currentFallbackSourceIndex = 0;
     });
+    final movie = widget.movie;
+    final providers = widget.providers;
+    if (movie != null && providers != null && providers.isNotEmpty) {
+      final gen = ++_fallbackGen;
+      WebStreamrService().cancelPending();
+      VidsrcExtractor.cancelPending();
+      NuvioService.instance.cancelPending();
+      final hit = await PlayerSourceResolve.resolveAuto(
+        movie: movie,
+        providers: providers,
+        season: widget.selectedSeason ?? 1,
+        episode: widget.selectedEpisode ?? 1,
+        isCancelled: () => _fallbackAborted(gen),
+        onHitsUpdated: (hits) {
+          if (!mounted || _fallbackAborted(gen)) return;
+          widget.providerSourcesCache?.value =
+              PlaybackEngine.hitsToProviderCache(hits);
+        },
+      );
+      if (_fallbackAborted(gen)) return;
+      if (hit != null) {
+        setState(() {
+          _currentProvider = hit.providerId;
+          _currentSources = hit.streamSources;
+          _currentUrl = hit.streamUrl;
+          _currentFallbackSourceIndex = 0;
+          _hasError = false;
+          _errorMessage = '';
+          if (hit.providerId == 'service111477' &&
+              hit.streamSources.isNotEmpty) {
+            _current111477FileUrl = hit.streamSources.first.url;
+          }
+        });
+        final played = await _trySourcesFromIndex(
+          0,
+          chainGen: gen,
+          seekAfterOpen: _positionNotifier.value,
+        );
+        if (played) return;
+      }
+    }
     await _initPlayback();
   }
 
@@ -3492,119 +3443,24 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         streamUrl = cached.first.url;
         headers = cached.first.headers;
         sources = cached;
-      } else if (newProvider == 'service111477' && widget.movie != null) {
-        final svc = Site111477Service();
-        List<Site111477Match> hits;
-        if (widget.movie!.mediaType == 'tv') {
-          hits = await svc.findEpisodeSources(
-            showTitle: widget.movie!.title,
-            season: widget.selectedSeason ?? 1,
-            episode: widget.selectedEpisode ?? 1,
-          );
-        } else {
-          final year = widget.movie!.releaseDate.length >= 4
-              ? widget.movie!.releaseDate.substring(0, 4)
-              : null;
-          hits = await svc.findMovieSources(title: widget.movie!.title, year: year);
+      } else if (widget.movie != null && widget.providers != null) {
+        if (newProvider == 'service111477' &&
+            site111477_proxy.is111477ProxyRunning) {
+          await site111477_proxy.stop111477Proxy();
         }
-        if (_fallbackAborted(gen)) return null;
-        if (hits.isNotEmpty) {
-          if (site111477_proxy.is111477ProxyRunning) {
-            await site111477_proxy.stop111477Proxy();
-          }
-          streamUrl = await site111477_proxy.start111477Proxy(hits.first.fileUrl);
-          sources = Site111477Service.toStreamSources(hits);
-          _current111477FileUrl = hits.first.fileUrl;
-        }
-      } else if (newProvider == 'webstreamr' && widget.movie?.imdbId != null) {
-        final webStreamr = WebStreamrService();
-        final webStreamrSources = await webStreamr.getStreams(
-          imdbId: widget.movie!.imdbId!,
-          isMovie: widget.movie!.mediaType == 'movie',
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-        );
-        if (webStreamrSources.isNotEmpty) {
-          streamUrl = webStreamrSources.first.url;
-          sources = webStreamrSources;
-        }
-        if (_fallbackAborted(gen)) return null;
-      } else if (newProvider == 'videasy' && widget.movie != null) {
-        final ve = VideasyExtractor(onLog: (m) => debugPrint(m));
-        final result = await ve.extract(
-          tmdbId: widget.movie!.id.toString(),
-          isMovie: widget.movie!.mediaType == 'movie',
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
+        final hit = await PlayerSourceResolve.resolvePinned(
+          movie: widget.movie!,
+          providers: widget.providers!,
+          providerId: newProvider,
+          season: widget.selectedSeason ?? 1,
+          episode: widget.selectedEpisode ?? 1,
           isCancelled: () => _fallbackAborted(gen),
         );
         if (_fallbackAborted(gen)) return null;
-        if (result != null && result.url.isNotEmpty) {
-          streamUrl = result.url;
-          headers = result.headers;
-          sources = result.sources;
-        }
-      } else if (newProvider == 'vidsrc' && widget.movie != null) {
-        final ve = VidsrcExtractor();
-        final result = await ve.extract(
-          tmdbId: widget.movie!.id.toString(),
-          isMovie: widget.movie!.mediaType == 'movie',
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-        );
-        if (_fallbackAborted(gen)) return null;
-        if (result != null && result.url.isNotEmpty) {
-          streamUrl = result.url;
-          headers = result.headers;
-          sources = result.sources;
-        }
-      } else if (newProvider.startsWith('nuvio:') && widget.movie != null) {
-        final scraperId = newProvider.substring(6);
-        final results = await NuvioService.instance.runOneScraper(
-          scraperId: scraperId,
-          tmdbId: widget.movie!.id.toString(),
-          type: widget.movie!.mediaType == 'tv' ? 'tv' : 'movie',
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-        );
-        if (_fallbackAborted(gen)) return null;
-        if (results.isNotEmpty) {
-          final first = results.first;
-          streamUrl = first.url;
-          headers = first.headers.isEmpty ? null : first.headers;
-          sources = results.map((r) => StreamSource(
-                url: r.url,
-                title: r.title.isNotEmpty ? r.title : r.name,
-                type: r.url.toLowerCase().contains('.m3u8')
-                    ? 'hls'
-                    : r.url.toLowerCase().contains('.mpd')
-                        ? 'dash'
-                        : 'mp4',
-                headers: r.headers.isEmpty ? null : r.headers,
-              )).toList();
-        }
-      } else if (provider['movie'] != null && provider['tv'] != null) {
-        final String providerUrl;
-        if (widget.movie!.mediaType == 'tv') {
-          providerUrl = provider['tv'](
-            widget.movie!.id.toString(),
-            widget.selectedSeason,
-            widget.selectedEpisode,
-          );
-        } else {
-          providerUrl = provider['movie'](widget.movie!.id.toString());
-        }
-        
-        final extractor = StreamExtractor();
-        final result = await extractor.extract(
-          providerUrl,
-          isCancelled: () => _fallbackAborted(gen),
-        );
-        if (_fallbackAborted(gen)) return null;
-        if (result != null && result.url.isNotEmpty) {
-          streamUrl = result.url;
-          headers = result.headers;
-          sources = result.sources;
+        if (hit != null) {
+          streamUrl = hit.streamUrl;
+          headers = hit.headers;
+          sources = hit.streamSources;
         }
       }
       
@@ -3633,6 +3489,11 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _currentFallbackSourceIndex = 0; // Reset index on manual switch
           _hasError = false;
           _errorMessage = '';
+          if (newProvider == 'service111477' &&
+              _currentSources != null &&
+              _currentSources!.isNotEmpty) {
+            _current111477FileUrl = _currentSources!.first.url;
+          }
         });
         
         _statusController.complete();

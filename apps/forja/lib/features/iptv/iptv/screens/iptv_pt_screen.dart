@@ -1205,8 +1205,7 @@ class _BrowserViewState extends State<_BrowserView> {
       s = s.where((x) => x.categoryId == cat).toList();
     }
 
-    if (ctrl.activeSection == IptvSection.live &&
-        ctrl.liveOnly &&
+    if (        ctrl.activeSection == IptvSection.live &&
         ctrl.aliveStreamIds.isNotEmpty) {
       s = s.where((x) => ctrl.aliveStreamIds.contains(x.streamId)).toList();
     }
@@ -1236,7 +1235,7 @@ class _BrowserViewState extends State<_BrowserView> {
                     : Icons.search_rounded,
                 color: _searchOpen ? IptvShellStyle.accent : null,
               ),
-              if (ctrl.activeSection == IptvSection.live) ...[
+              if (ctrl.activeSection == IptvSection.live)
                 IptvIconAction(
                   tooltip: 'Reload channels',
                   onPressed: ctrl.isLoading
@@ -1244,18 +1243,6 @@ class _BrowserViewState extends State<_BrowserView> {
                       : () => ctrl.openSection(IptvSection.live),
                   icon: Icons.refresh_rounded,
                 ),
-                IptvIconAction(
-                  tooltip: ctrl.isVerifyingAlive
-                      ? 'Stop alive check'
-                      : 'Re-check all streams',
-                  onPressed: ctrl.isVerifyingAlive
-                      ? ctrl.stopAliveCheck
-                      : ctrl.recheckAlive,
-                  icon: ctrl.isVerifyingAlive
-                      ? Icons.stop_circle_rounded
-                      : Icons.verified_outlined,
-                ),
-              ],
             ],
           ),
         if (!widget.embedded)
@@ -1268,10 +1255,6 @@ class _BrowserViewState extends State<_BrowserView> {
               child: _buildOverlaySearchBar(),
             ),
           ),
-        if (ctrl.activeSection == IptvSection.live && ctrl.isVerifyingAlive)
-          _buildAliveProgress(),
-        if (ctrl.activeSection == IptvSection.live && !ctrl.isVerifyingAlive)
-          _buildLiveOnlyToggle(),
         if (ctrl.error != null)
           Padding(
             padding: const EdgeInsets.all(16),
@@ -1350,76 +1333,6 @@ class _BrowserViewState extends State<_BrowserView> {
               onTap: _clearSearchQuery,
             )
           : null,
-    );
-  }
-
-  Widget _buildAliveProgress() {
-    final ctrl = widget.ctrl;
-    final ratio = ctrl.aliveTotal == 0 ? 0.0 : ctrl.aliveChecked / ctrl.aliveTotal;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Checking streams: ${ctrl.aliveChecked}/${ctrl.aliveTotal}  ·  ${ctrl.aliveCount} alive',
-              style: GoogleFonts.poppins(
-                  color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: ratio,
-                minHeight: 4,
-                backgroundColor: Colors.white12,
-                valueColor:
-                    AlwaysStoppedAnimation(IptvShellStyle.accent),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLiveOnlyToggle() {
-    final ctrl = widget.ctrl;
-    final hasCache = ctrl.aliveCheckedAt != null;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Switch(
-                value: ctrl.liveOnly,
-                activeThumbColor: IptvShellStyle.accent,
-                onChanged: hasCache ? ctrl.setLiveOnly : null,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  hasCache
-                      ? 'Show only alive streams (${ctrl.aliveStreamIds.length})'
-                      : 'Show only alive streams — re-check or scroll to probe',
-                  style: GoogleFonts.poppins(
-                      color: Colors.white70, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 

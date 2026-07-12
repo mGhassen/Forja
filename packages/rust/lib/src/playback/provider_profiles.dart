@@ -4,65 +4,102 @@ import 'source_domain.dart';
 ///
 /// Settings order is a tiebreak only; cross-domain providers never compete.
 abstract final class ProviderProfiles {
-  static const Map<String, ProviderProfile> catalog = {
+  /// Mirrors `AnimeStreamProviders.defaultOrder` in the host app.
+  static const _animeOrder = <String>[
+    'miruro:bee',
+    'allanime:Default',
+    'allanime:S-mp4',
+    'megaplay',
+    'vidwish',
+    'miruro:zoro',
+    'animerealms:hianime',
+    'miruro:kiwi',
+    'animerealms:animepahe',
+    'allanime:Yt-mp4',
+    'allanime:Luf-Mp4',
+    'allanime:Uv-mp4',
+    'miruro:ally',
+    'animerealms:allmanga',
+    'miruro:hop',
+    'miruro:bonk',
+    'animerealms:gogoanime',
+    'miruro:moo',
+    'animerealms:zencloud',
+    'animerealms:animekai',
+    'animerealms:animez',
+    'animerealms:kickassanime',
+    'animerealms:anizone',
+    'animerealms:febbox',
+    'miruro:animedunya',
+    'miruro:arc',
+    'miruro:jet',
+    'miruro:bun',
+    'miruro:kuz',
+    'miruro:telli',
+    'animerealms:hanime-tv',
+    'watchhentai',
+    'hentaini',
+  ];
+
+  static final Map<String, ProviderProfile> catalog = {
     // ── Movie / series webstreaming ───────────────────────────────────────
-    'videasy': ProviderProfile(
+    'videasy': const ProviderProfile(
       id: 'videasy',
       priority: {
         SourceDomain.movies: 95,
         SourceDomain.series: 90,
       },
     ),
-    'vidlink': ProviderProfile(
+    'vidlink': const ProviderProfile(
       id: 'vidlink',
       priority: {
         SourceDomain.movies: 80,
         SourceDomain.series: 92,
       },
     ),
-    'vidsrc': ProviderProfile(
+    'vidsrc': const ProviderProfile(
       id: 'vidsrc',
       priority: {
         SourceDomain.movies: 70,
         SourceDomain.series: 70,
       },
     ),
-    'vixsrc': ProviderProfile(
+    'vixsrc': const ProviderProfile(
       id: 'vixsrc',
       priority: {
         SourceDomain.movies: 75,
         SourceDomain.series: 75,
       },
     ),
-    'vidnest': ProviderProfile(
+    'vidnest': const ProviderProfile(
       id: 'vidnest',
       priority: {
         SourceDomain.movies: 65,
         SourceDomain.series: 65,
       },
     ),
-    'vidzee': ProviderProfile(
+    'vidzee': const ProviderProfile(
       id: 'vidzee',
       priority: {
         SourceDomain.movies: 60,
         SourceDomain.series: 60,
       },
     ),
-    'vidrock': ProviderProfile(
+    'vidrock': const ProviderProfile(
       id: 'vidrock',
       priority: {
         SourceDomain.movies: 55,
         SourceDomain.series: 55,
       },
     ),
-    'service111477': ProviderProfile(
+    'service111477': const ProviderProfile(
       id: 'service111477',
       priority: {
         SourceDomain.movies: 85,
         SourceDomain.series: 85,
       },
     ),
-    'webstreamr': ProviderProfile(
+    'webstreamr': const ProviderProfile(
       id: 'webstreamr',
       priority: {
         SourceDomain.movies: 50,
@@ -70,46 +107,11 @@ abstract final class ProviderProfiles {
       },
     ),
 
-    // ── Anime (keys match AnimeStreamProviders) ────────────────────────────
-    'miruro:bee': ProviderProfile(
-      id: 'miruro:bee',
-      priority: {SourceDomain.anime: 100},
-    ),
-    'allanime:Default': ProviderProfile(
-      id: 'allanime:Default',
-      priority: {SourceDomain.anime: 95},
-    ),
-    'allanime:S-mp4': ProviderProfile(
-      id: 'allanime:S-mp4',
-      priority: {SourceDomain.anime: 93},
-    ),
-    'megaplay': ProviderProfile(
-      id: 'megaplay',
-      priority: {SourceDomain.anime: 90},
-    ),
-    'vidwish': ProviderProfile(
-      id: 'vidwish',
-      priority: {SourceDomain.anime: 88},
-    ),
-    'miruro:zoro': ProviderProfile(
-      id: 'miruro:zoro',
-      priority: {SourceDomain.anime: 85},
-    ),
-    'animerealms:hianime': ProviderProfile(
-      id: 'animerealms:hianime',
-      priority: {SourceDomain.anime: 84},
-    ),
-    'miruro:kiwi': ProviderProfile(
-      id: 'miruro:kiwi',
-      priority: {SourceDomain.anime: 82},
-    ),
-    'animerealms:animepahe': ProviderProfile(
-      id: 'animerealms:animepahe',
-      priority: {SourceDomain.anime: 80},
-    ),
+    // ── Anime ─────────────────────────────────────────────────────────────
+    ..._profilesFromOrder(_animeOrder, SourceDomain.anime, start: 100),
 
     // ── Asian drama ───────────────────────────────────────────────────────
-    'kisskh': ProviderProfile(
+    'kisskh': const ProviderProfile(
       id: 'kisskh',
       priority: {
         SourceDomain.asianDrama: 99,
@@ -118,23 +120,40 @@ abstract final class ProviderProfiles {
     ),
 
     // ── IPTV / torrent ────────────────────────────────────────────────────
-    'xtream': ProviderProfile(
+    'xtream': const ProviderProfile(
       id: 'xtream',
       priority: {SourceDomain.iptv: 95},
     ),
-    'm3u': ProviderProfile(
+    'm3u': const ProviderProfile(
       id: 'm3u',
       priority: {SourceDomain.iptv: 80},
     ),
-    'stalker': ProviderProfile(
+    'stalker': const ProviderProfile(
       id: 'stalker',
       priority: {SourceDomain.iptv: 70},
     ),
-    'torrent': ProviderProfile(
+    'torrent': const ProviderProfile(
       id: 'torrent',
       priority: {SourceDomain.torrent: 100},
     ),
   };
+
+  static Map<String, ProviderProfile> _profilesFromOrder(
+    List<String> order,
+    SourceDomain domain, {
+    required int start,
+  }) {
+    final out = <String, ProviderProfile>{};
+    for (var i = 0; i < order.length; i++) {
+      final id = order[i];
+      final score = (start - i).clamp(1, start);
+      out[id] = ProviderProfile(
+        id: id,
+        priority: {domain: score},
+      );
+    }
+    return out;
+  }
 
   static ProviderProfile? of(String id) => catalog[id];
 

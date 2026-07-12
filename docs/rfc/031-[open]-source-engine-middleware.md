@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **8 / 8** acceptance (slice 1) |
-| **Current slice** | Profiles + domain order + PlaybackService shipped |
+| **Progress** | **3 / 3** components · **8 / 8** acceptance (slice 1) · **4 / 4** acceptance (slice 2) |
+| **Current slice** | Player Auto failover + pinned resolve via Source Engine |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -37,6 +37,17 @@
 | 6 | R31-A06 | Feature doc describes Auto + domain engines | ✅ |
 | 7 | R31-A07 | IPTV / torrent engines registered (stubs ok) | ✅ |
 | 8 | R31-A08 | Asian Drama engine profile wired | ✅ |
+
+---
+
+## Acceptance (slice 2 — player Auto / pin)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 9 | R31-A09 | Full anime `defaultOrder` profiles in `ProviderProfiles` | ✅ |
+| 10 | R31-A10 | Auto failover walks `SourceEngine.nextProviderIds` | ✅ |
+| 11 | R31-A11 | Manual pin resolves via `PlaybackService` (strict) | ✅ |
+| 12 | R31-A12 | Selecting Auto re-races domain providers | ✅ |
 
 ---
 

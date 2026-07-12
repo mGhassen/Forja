@@ -792,6 +792,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   }
 
   Widget _buildPortalList(List<VerifiedPortal> list, String? activeKey) {
+    final ctrl = widget.ctrl;
     iptvSyncRow(
       rowId: 'portals',
       sortOrder: 2,
@@ -804,100 +805,156 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       itemBuilder: (_, i) {
         final v = list[i];
         final isActive = v.key == activeKey;
-        final isSelected = widget.ctrl.selected.contains(v.key);
-        final isFav = widget.ctrl.isFavoritePortal(v.key);
-        return iptvTap(
-          context: context,
-          onTap: () {
-            if (widget.ctrl.editMode) {
-              widget.ctrl.toggleSelect(v.key);
-            } else {
-              widget.ctrl.selectPortal(v);
-            }
-          },
-          borderRadius: 10,
-          listIndex: i,
-          tvRowId: 'portals',
-          tvItemIndex: i,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? IptvShellStyle.accent.withValues(alpha: 0.12)
-                  : Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isActive || isSelected
-                    ? IptvShellStyle.accent
-                    : Colors.white.withValues(alpha: 0.06),
-                width: isActive || isSelected ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                if (widget.ctrl.editMode)
-                  Icon(
-                    isSelected
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked,
-                    color: isSelected
-                        ? IptvShellStyle.accent
-                        : Colors.white30,
-                    size: 20,
-                  )
-                else
-                  Icon(Icons.tv_rounded,
-                      color: Colors.white.withValues(alpha: 0.5), size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        v.name.trim().isEmpty ? v.portal.url : v.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        v.portal.url,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white54,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+        final isSelected = ctrl.selected.contains(v.key);
+        final isFav = ctrl.isFavoritePortal(v.key);
+        final health = ctrl.portalHealthFor(v.key);
+        final checking = ctrl.isPortalHealthChecking(v.key);
+        return MouseRegion(
+          onEnter: (_) => ctrl.schedulePortalHealthCheck(v),
+          onExit: (_) => ctrl.cancelPortalHealthCheck(v.key),
+          child: iptvTap(
+            context: context,
+            onTap: () {
+              if (ctrl.editMode) {
+                ctrl.toggleSelect(v.key);
+              } else {
+                ctrl.selectPortal(v);
+              }
+            },
+            borderRadius: 10,
+            listIndex: i,
+            tvRowId: 'portals',
+            tvItemIndex: i,
+            onFocusChange: (focused) {
+              if (focused) {
+                ctrl.schedulePortalHealthCheck(v);
+              } else {
+                ctrl.cancelPortalHealthCheck(v.key);
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              margin: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: BoxDecoration(
+                color: health == false
+                    ? const Color(0xFFEF4444).withValues(alpha: 0.08)
+                    : isActive
+                        ? IptvShellStyle.accent.withValues(alpha: 0.12)
+                        : Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _portalBorderColor(
+                    health: health,
+                    isActive: isActive,
+                    isSelected: isSelected,
                   ),
+                  width: isActive || isSelected || health != null ? 1.5 : 1,
                 ),
-                if (!widget.ctrl.editMode)
-                  iptvTap(
-                    context: context,
-                    onTap: () => widget.ctrl.toggleFavoritePortal(v.key),
-                    borderRadius: 16,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        isFav ? Icons.star_rounded : Icons.star_outline_rounded,
-                        size: 18,
-                        color: isFav
-                            ? const Color(0xFFFBBF24)
-                            : Colors.white38,
-                      ),
+              ),
+              child: Row(
+                children: [
+                  if (ctrl.editMode)
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked,
+                      color: isSelected
+                          ? IptvShellStyle.accent
+                          : Colors.white30,
+                      size: 20,
+                    )
+                  else
+                    Icon(Icons.tv_rounded,
+                        color: Colors.white.withValues(alpha: 0.5), size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          v.name.trim().isEmpty ? v.portal.url : v.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          v.portal.url,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white54,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                  if (checking)
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: Colors.white54,
+                      ),
+                    )
+                  else if (health != null)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: health
+                            ? const Color(0xFF22C55E)
+                            : const Color(0xFFEF4444),
+                      ),
+                    ),
+                  if (!ctrl.editMode)
+                    iptvTap(
+                      context: context,
+                      onTap: () => ctrl.toggleFavoritePortal(v.key),
+                      borderRadius: 16,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          isFav
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          size: 18,
+                          color: isFav
+                              ? const Color(0xFFFBBF24)
+                              : Colors.white38,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );
       },
     );
+  }
+
+  Color _portalBorderColor({
+    required bool? health,
+    required bool isActive,
+    required bool isSelected,
+  }) {
+    if (health == true) {
+      return const Color(0xFF22C55E).withValues(alpha: 0.55);
+    }
+    if (health == false) {
+      return const Color(0xFFEF4444).withValues(alpha: 0.65);
+    }
+    if (isActive || isSelected) return IptvShellStyle.accent;
+    return Colors.white.withValues(alpha: 0.06);
   }
 
   Future<void> _showAddDialog(BuildContext context) async {

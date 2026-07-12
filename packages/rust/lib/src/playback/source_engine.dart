@@ -81,4 +81,26 @@ abstract final class SourceEngine {
     final p = (preferred ?? auto).trim();
     return p.isEmpty || p == auto;
   }
+
+  /// Providers after [currentId] in domain Auto order (for failover).
+  static List<String> nextProviderIds({
+    required SourceDomain domain,
+    required Iterable<String> candidateIds,
+    String? currentId,
+    List<String> settingsOrder = const [],
+  }) {
+    final ordered = orderProviderIds(
+      domain: domain,
+      candidateIds: candidateIds,
+      preferred: auto,
+      settingsOrder: settingsOrder,
+    );
+    if (ordered.isEmpty) return const [];
+    final cur = (currentId ?? '').trim();
+    if (cur.isEmpty) return ordered;
+    final idx = ordered.indexOf(cur);
+    if (idx < 0) return ordered;
+    if (idx + 1 >= ordered.length) return const [];
+    return ordered.sublist(idx + 1);
+  }
 }

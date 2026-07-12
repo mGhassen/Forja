@@ -985,6 +985,55 @@ class IptvController extends ChangeNotifier {
 
   bool? healthFor(String streamId) => streamHealth[streamId];
 
+  // ── Portal panel live probes (hover / focus) ──
+  final Map<String, bool> portalHealth = {};
+  final Set<String> _portalHealthInFlight = {};
+  final Map<String, Timer> _portalHealthDebounce = {};
+  static const _portalHealthDelay = Duration(milliseconds: 350);
+
+  bool? portalHealthFor(String key) => portalHealth[key];
+
+  void schedulePortalHealthCheck(VerifiedPortal v) {
+    final key = v.key;
+    if (key.isEmpty) return;
+    if (portalHealth.containsKey(key)) return;
+    if (_portalHealthInFlight.contains(key)) return;
+    _portalHealthDebounce[key]?.cancel();
+    _portalHealthDebounce[key] = Timer(_portalHealthDelay, () {
+      _portalHealthDebounce.remove(key);
+      unawaited(_runPortalHealthCheck(v));
+    });
+  }
+
+  void cancelPortalHealthCheck(String key) {
+    _portalHealthDebounce[key]?.cancel();
+    _portalHealthDebounce.remove(key);
+  }
+
+  Future<void> _runPortalHealthCheck(VerifiedPortal v) async {
+    final key = v.key;
+    if (portalHealth.containsKey(key)) return;
+    if (!_portalHealthInFlight.add(key)) return;
+    notifyListeners();
+    try {
+      final fresh = await IptvClient.verifyOrNull(
+        v.portal,
+        timeout: const Duration(seconds: 5),
+      );
+      portalHealth[key] = fresh != null;
+      notifyListeners();
+    } catch (_) {
+      portalHealth[key] = false;
+      notifyListeners();
+    } finally {
+      _portalHealthInFlight.remove(key);
+      notifyListeners();
+    }
+  }
+
+  bool isPortalHealthChecking(String key) =>
+      _portalHealthInFlight.contains(key);
+
   void selectBrowserCategory(String id) {
     browserSelectedCategoryId = id;
     notifyListeners();
