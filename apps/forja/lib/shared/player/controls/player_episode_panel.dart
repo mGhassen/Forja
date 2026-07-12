@@ -170,40 +170,64 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   Future<void> _load() async {
     setState(() => _loading = true);
 
-    final count = _seasonCount ?? await _tmdb.getTvSeasonCount(widget.movie.id);
+    final cachedSeasonCount = widget.movie.numberOfSeasons;
+    final countFuture = _seasonCount != null
+        ? Future<int?>.value(_seasonCount)
+        : cachedSeasonCount > 0
+            ? Future<int?>.value(cachedSeasonCount)
+            : _tmdb.getTvSeasonCount(widget.movie.id).then<int?>((v) => v);
+
+    final seasonFuture =
+        _tmdb.getTvSeasonDetails(widget.movie.id, _selectedSeason);
+
+    final results = await Future.wait([countFuture, seasonFuture]);
     if (!mounted) return;
 
-    final data = await _tmdb.getTvSeasonDetails(widget.movie.id, _selectedSeason);
-    if (!mounted) return;
-
+    final count = results[0] as int? ?? 0;
+    final data = results[1] as Map<String, dynamic>;
     final episodes = (data['episodes'] as List<dynamic>? ?? [])
         .cast<Map<String, dynamic>>();
 
-    final progress = <String, Map<String, dynamic>>{};
-    for (final ep in episodes) {
-      final n = ep['episode_number'] as int? ?? 0;
-      if (n <= 0) continue;
-      final p = await WatchHistoryService().getProgress(
-        widget.movie.id,
-        season: _selectedSeason,
-        episode: n,
-      );
-      if (p != null) progress['S${_selectedSeason}_E$n'] = p;
-    }
-
-    if (!mounted) return;
     final chunk = _selectedSeason == widget.currentSeason
         ? _chunkIndexForEpisode(widget.currentEpisode)
         : 0;
+
     setState(() {
       _seasonCount = count;
       _episodes = episodes;
-      _episodeProgress = progress;
+      _episodeProgress = const {};
       _loading = false;
       _episodeChunk = chunk;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
+    unawaited(_hydrateEpisodeProgress(episodes));
+  }
+
+  Future<void> _hydrateEpisodeProgress(
+    List<Map<String, dynamic>> episodes,
+  ) async {
+    if (episodes.isEmpty) return;
+
+    final history = await WatchHistoryService().getHistory();
+    final byUniqueId = <String, Map<String, dynamic>>{
+      for (final item in history)
+        if (item['uniqueId'] is String) item['uniqueId'] as String: item,
+    };
+
+    final progress = <String, Map<String, dynamic>>{};
+    for (final ep in episodes) {
+      final n = ep['episode_number'] as int? ?? 0;
+      if (n <= 0) continue;
+      final uniqueId = '${widget.movie.id}_S${_selectedSeason}_E$n';
+      final item = byUniqueId[uniqueId];
+      if (item != null) {
+        progress['S${_selectedSeason}_E$n'] = item;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _episodeProgress = progress);
   }
 
   void _scrollToCurrent() {
@@ -222,7 +246,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     );
     if (index < 0) return;
 
-    const rowHeight = 88.0;
+    const rowHeight = 116.0;
     final target = (index * rowHeight).clamp(
       0.0,
       _scrollController.position.maxScrollExtent,
@@ -257,6 +281,15 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   }
 
   Future<void> _selectEpisode(int season, int episode) async {
+    final selectedEpisode = _episodes.cast<Map<String, dynamic>?>().firstWhere(
+          (ep) => (ep?['episode_number'] as int? ?? 0) == episode,
+          orElse: () => null,
+        );
+    if (selectedEpisode != null &&
+        episodeAirDateInfo(selectedEpisode).notShippedYet) {
+      return;
+    }
+
     final selected =
         season == widget.currentSeason && episode == widget.currentEpisode;
     widget.onClose();
@@ -342,7 +375,9 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                           selected: selected,
                           positionMs: pos,
                           durationMs: dur,
-                          onTap: () => _selectEpisode(_selectedSeason, num),
+                          onTap: airDate.notShippedYet
+                              ? null
+                              : () => _selectEpisode(_selectedSeason, num),
                         );
                       },
                     ),
@@ -620,7 +655,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
       (e) => e.number == widget.currentEpisode,
     );
     if (index < 0 || !_scrollController.hasClients) return;
-    const rowHeight = 84.0;
+    const rowHeight = 116.0;
     final offset = (index * rowHeight).clamp(0.0, _scrollController.position.maxScrollExtent);
     _scrollController.animateTo(
       offset,
@@ -642,6 +677,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   }
 
   Future<void> _select(PlayerHubEpisode episode) async {
+    if (episode.notShippedYet) return;
     if (episode.number == widget.currentEpisode) {
       widget.onClose();
       return;
@@ -709,7 +745,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
                       selected: selected,
                       positionMs: ep.positionMs,
                       durationMs: ep.durationMs,
-                      onTap: () => _select(ep),
+                      onTap: airDate.notShippedYet ? null : () => _select(ep),
                     );
                   },
                 ),
@@ -733,7 +769,7 @@ class _EpisodeRow extends StatelessWidget {
     required this.selected,
     required this.positionMs,
     required this.durationMs,
-    required this.onTap,
+    this.onTap,
     this.episodeBadge,
   });
 
@@ -750,11 +786,11 @@ class _EpisodeRow extends StatelessWidget {
   final bool selected;
   final int positionMs;
   final int durationMs;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   static const _thumbRadius = 6.0;
-  static const _thumbMinHeight = 72.0;
-  static const _thumbMaxWidth = 196.0;
+  static const _thumbWidth = 184.0;
+  static const _thumbHeight = _thumbWidth * 9 / 16;
 
   @override
   Widget build(BuildContext context) {
@@ -775,82 +811,64 @@ class _EpisodeRow extends StatelessWidget {
         splashColor: ForjaShellColors.inkSplash,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    var height = constraints.maxHeight;
-                    if (!height.isFinite || height <= 0) {
-                      height = _thumbMinHeight;
-                    } else if (height < _thumbMinHeight) {
-                      height = _thumbMinHeight;
-                    }
-                    var width = height * 16 / 9;
-                    if (width > _thumbMaxWidth) {
-                      width = _thumbMaxWidth;
-                      height = width * 9 / 16;
-                    }
-                    return SizedBox(
-                      width: width,
-                      height: height,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius:
-                              BorderRadius.circular(_thumbRadius),
-                          border: selected
-                              ? Border.all(color: Colors.white, width: 2)
-                              : null,
-                        ),
-                        child: ClipRRect(
-                          borderRadius:
-                              BorderRadius.circular(_thumbRadius),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              ..._thumbLayers(
-                                stillUrl: _resolvedThumbnail(thumbnail),
-                                backdropUrl: _resolvedShowArt(
-                                  fallbackBackdropPath,
-                                  fallbackPosterPath,
-                                ),
-                              ),
-                              if (showProgress)
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  child: LinearProgressIndicator(
-                                    value: (positionMs / durationMs)
-                                        .clamp(0.0, 1.0),
-                                    minHeight: 3,
-                                    backgroundColor: Colors.black54,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      ForjaShellColors.progressFill,
-                                    ),
-                                  ),
-                                ),
-                              Positioned(
-                                top: 6,
-                                left: 6,
-                                child: _Badge(
-                                  label: episodeBadge ?? 'E$episodeNumber',
-                                ),
-                              ),
-                              if (durationLabel != null)
-                                Positioned(
-                                  right: 6,
-                                  bottom: 6,
-                                  child: _Badge(label: durationLabel),
-                                ),
-                            ],
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: _thumbWidth,
+                height: _thumbHeight,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(_thumbRadius),
+                    border: selected
+                        ? Border.all(color: Colors.white, width: 2)
+                        : null,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(_thumbRadius),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ..._thumbLayers(
+                          stillUrl: _resolvedThumbnail(thumbnail),
+                          backdropUrl: _resolvedShowArt(
+                            fallbackBackdropPath,
+                            fallbackPosterPath,
                           ),
                         ),
-                      ),
-                    );
-                  },
+                        if (showProgress)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: LinearProgressIndicator(
+                              value: (positionMs / durationMs)
+                                  .clamp(0.0, 1.0),
+                              minHeight: 3,
+                              backgroundColor: Colors.black54,
+                              valueColor: AlwaysStoppedAnimation(
+                                ForjaShellColors.progressFill,
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          top: 6,
+                          left: 6,
+                          child: _Badge(
+                            label: episodeBadge ?? 'E$episodeNumber',
+                          ),
+                        ),
+                        if (durationLabel != null)
+                          Positioned(
+                            right: 6,
+                            bottom: 6,
+                            child: _Badge(label: durationLabel),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -921,7 +939,6 @@ class _EpisodeRow extends StatelessWidget {
             ],
           ),
         ),
-      ),
       ),
     );
   }

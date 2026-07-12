@@ -270,9 +270,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
   Widget _buildEpisodeRow(String? tabId) {
     return HorizontalScroller(
-      height: 248,
+      height: _EpisodeCard.rowScrollerHeight,
       controller: _episodeScrollController,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: _EpisodeCard.rowVerticalPadding),
       itemCount: _visibleEpisodes.length,
       separatorBuilder: (_, _) => const SizedBox(width: 16),
       itemBuilder: (_, i) {
@@ -307,12 +307,14 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           watched: watched,
           positionMs: pos,
           durationMs: dur,
-          onTap: () {
-            widget.onEpisodeSelected(epNum);
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _scrollToSelectedEpisode();
-            });
-          },
+          onTap: airDate.notShippedYet
+              ? null
+              : () {
+                  widget.onEpisodeSelected(epNum);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scrollToSelectedEpisode();
+                  });
+                },
           onFocusChange: widget.onEpisodeFocused == null
               ? null
               : (focused) {
@@ -458,7 +460,7 @@ class _SeasonCard extends StatefulWidget {
     required this.seasonNumber,
     required this.selected,
     required this.posterUrl,
-    required this.onTap,
+    this.onTap,
     this.onLeftEdge,
     this.tvTabId,
     this.tvRowId,
@@ -468,7 +470,7 @@ class _SeasonCard extends StatefulWidget {
   final int seasonNumber;
   final bool selected;
   final String? posterUrl;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final VoidCallback? onLeftEdge;
   final String? tvTabId;
   final String? tvRowId;
@@ -638,7 +640,7 @@ class _EpisodeCard extends StatefulWidget {
     required this.watched,
     required this.positionMs,
     required this.durationMs,
-    required this.onTap,
+    this.onTap,
     required this.onToggleWatched,
     this.onFocusChange,
     this.onLeftEdge,
@@ -658,7 +660,7 @@ class _EpisodeCard extends StatefulWidget {
   final bool watched;
   final int positionMs;
   final int durationMs;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final VoidCallback onToggleWatched;
   final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onLeftEdge;
@@ -668,6 +670,26 @@ class _EpisodeCard extends StatefulWidget {
 
   static const double cardWidth = 268;
   static const double thumbRadius = 10;
+  static const double rowVerticalPadding = 8;
+
+  static const double _bodyTopGap = 10;
+  static const double _metaGap = 4;
+  static const double _titleLineHeight = 14 * 1.25;
+  static const double _dateBlockHeight = _metaGap + 12 * 1.2;
+  static const double _overviewBlockHeight = _metaGap + 12 * 1.4 * 2;
+
+  static double get thumbHeight => cardWidth * 9 / 16;
+
+  /// Height when title, air date, and two-line overview are all visible.
+  static double get maxContentHeight =>
+      thumbHeight +
+      _bodyTopGap +
+      _titleLineHeight +
+      _dateBlockHeight +
+      _overviewBlockHeight;
+
+  static double get rowScrollerHeight =>
+      maxContentHeight.ceilToDouble() + rowVerticalPadding * 2;
 
   @override
   State<_EpisodeCard> createState() => _EpisodeCardState();
@@ -681,7 +703,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final thumbHeight = _EpisodeCard.cardWidth * 9 / 16;
+    final thumbHeight = _EpisodeCard.thumbHeight;
     final showProgress =
         WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
     final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
@@ -691,11 +713,12 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       hovered: _hovered,
       focused: _focused,
     );
-    final showPlayOverlay = active || widget.selected;
+    final enabled = widget.onTap != null;
+    final showPlayOverlay = enabled && (active || widget.selected);
     final tvFocus = policy.useFocusableMoodChips;
     final scale = tvFocus
         ? 1.0
-        : (active || widget.selected ? _hoverScale : 1.0);
+        : (enabled && (active || widget.selected) ? _hoverScale : 1.0);
 
     return FocusableControl(
       onTap: widget.onTap,
@@ -722,7 +745,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         child: GestureDetector(
-          onSecondaryTap: widget.onToggleWatched,
+          onSecondaryTap: enabled ? widget.onToggleWatched : null,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
             width: _EpisodeCard.cardWidth,
@@ -809,50 +832,50 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: _EpisodeCard._bodyTopGap),
+                Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
+                ),
+                if (widget.dateLabel != null) ...[
+                  const SizedBox(height: _EpisodeCard._metaGap),
                   Text(
-                    widget.title,
+                    widget.dateLabel!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      height: 1.25,
+                    style: TextStyle(
+                      color: episodeDateColor(
+                        notShippedYet: widget.dateNotShippedYet,
+                        normal: Colors.white.withValues(alpha: 0.45),
+                      ),
+                      fontSize: 12,
+                      fontWeight: widget.dateNotShippedYet
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      height: 1.2,
                     ),
                   ),
-                  if (widget.dateLabel != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.dateLabel!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: episodeDateColor(
-                          notShippedYet: widget.dateNotShippedYet,
-                          normal: Colors.white.withValues(alpha: 0.45),
-                        ),
-                        fontSize: 12,
-                        fontWeight: widget.dateNotShippedYet
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        height: 1.2,
-                      ),
+                ],
+                if (widget.overview.isNotEmpty) ...[
+                  const SizedBox(height: _EpisodeCard._metaGap),
+                  Text(
+                    widget.overview,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 12,
+                      height: 1.4,
                     ),
-                  ],
-                  if (widget.overview.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.overview,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.45),
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+                  ),
+                ],
                 ],
               ),
             ),
