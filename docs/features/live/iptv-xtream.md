@@ -14,12 +14,14 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 - Open the **Portals** panel (top bar) to add, scrape, search, favorite, or select providers
 - Switch **Live**, **Movies**, and **Series** from section chips in the top bar
+- Catalog is **cached in-session** per portal/section — switching chips reuses the last fetch
+- Hover (or focus) a section chip to reveal **Reload** and force a fresh catalog fetch
 - Browse live channels by category
 - **Search** live, movie, and series catalogs (search icon → bar slides in; filters groups and channels as you type; close clears search)
 - Watch VOD movies and series with seasons/episodes
 - View EPG (program guide) when the portal provides it — disable in **Settings → Playback → IPTV programme guide (EPG)** to skip loading guide data
 - Favorite portals in the Portals panel (star icon)
-- Hover a portal (or focus on TV) to reveal **copy / edit / delete** under the row
+- Portal row actions (**copy / edit / delete**): hover the right ~10% of the row, or keep hovering 3s — also on TV focus
 - Play in the IPTV player screen
 - Change live channels from the in-player channel guide (groups + channel list overlay)
 - Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header
@@ -35,7 +37,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 ## Tips
 
 - **Portals** panel on the right (desktop / Android TV) holds scrape, add, and the full portal list — search filters by name or URL
-- Section chips (**Live** / **Movies** / **Series**) reload the catalog for the active portal
+- Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays cached until you hit the hover **Reload** control
 - On **Android TV**, search fields focus in browse mode first — press **Enter** on the remote to open the keyboard, then type
 - Press **Back** / **Escape** to close the Portals panel before leaving the tab
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide

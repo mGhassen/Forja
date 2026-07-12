@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -152,6 +154,11 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       itemCount: _kSectionShelf.length,
     );
     iptvSyncRow(
+      rowId: 'iptv-section-reload',
+      sortOrder: 0,
+      itemCount: _kSectionShelf.length,
+    );
+    iptvSyncRow(
       rowId: 'iptv-top-tools',
       sortOrder: 1,
       itemCount: 2,
@@ -195,6 +202,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
               isFirst: i == 0,
               isLast: i == _kSectionShelf.length - 1,
               onTap: () => widget.onSection(_kSectionShelf[i].section),
+              onReload: () => ctrl.reloadSection(_kSectionShelf[i].section),
               onDownEdge: _focusDownFromTopBar,
               onRightEdge: i == _kSectionShelf.length - 1
                   ? () => iptvFocusRowItem('iptv-top-tools', 0)
@@ -392,6 +400,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
 }
 
 /// Solid rectangle shelf tab — color only when selected / hovered / focused.
+/// Hover/focus expands right to reveal a catalog reload control.
 class _IptvSectionShelfTab extends StatefulWidget {
   const _IptvSectionShelfTab({
     required this.spec,
@@ -400,6 +409,7 @@ class _IptvSectionShelfTab extends StatefulWidget {
     required this.isFirst,
     required this.isLast,
     required this.onTap,
+    required this.onReload,
     this.onDownEdge,
     this.onRightEdge,
   });
@@ -410,6 +420,7 @@ class _IptvSectionShelfTab extends StatefulWidget {
   final bool isFirst;
   final bool isLast;
   final VoidCallback onTap;
+  final VoidCallback onReload;
   final VoidCallback? onDownEdge;
   final VoidCallback? onRightEdge;
 
@@ -420,6 +431,8 @@ class _IptvSectionShelfTab extends StatefulWidget {
 class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   bool _hover = false;
   bool _focused = false;
+
+  bool get _revealReload => _hover || _focused;
 
   BorderRadius get _radius {
     final r = Radius.circular(_kShelfTabRadius - 1);
@@ -436,7 +449,6 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   @override
   Widget build(BuildContext context) {
     final showColor = widget.selected || _hover || _focused;
-    // Prefer the vivid accent (Series stores green as second stop).
     final accent = widget.spec.section == IptvSection.series
         ? widget.spec.colors.last
         : widget.spec.colors.first;
@@ -444,54 +456,101 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
-      child: iptvTap(
-        context: context,
-        onTap: widget.onTap,
-        borderRadius: _kShelfTabRadius,
-        scaleOnFocus: 1.0,
-        tvZone: ShellTvZone.topBar,
-        tvRowId: 'iptv-sections',
-        listIndex: widget.listIndex,
-        tvItemIndex: widget.listIndex,
-        onDownEdge: widget.onDownEdge,
-        onRightEdge: widget.onRightEdge,
-        onLeftEdge: widget.listIndex == 0
-            ? null
-            : () => iptvFocusRowItem('iptv-sections', widget.listIndex - 1),
-        onFocusChange: (f) => setState(() => _focused = f),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutCubic,
-          height: _kShelfTabHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: showColor
-                ? (widget.selected
-                    ? accent
-                    : accent.withValues(alpha: 0.55))
-                : Colors.transparent,
-            borderRadius: _radius,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.spec.icon,
-                size: 16,
-                color: showColor ? Colors.white : Colors.white60,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                widget.spec.label,
-                style: GoogleFonts.inter(
-                  color: showColor ? Colors.white : Colors.white60,
-                  fontSize: 12.5,
-                  fontWeight:
-                      widget.selected ? FontWeight.w700 : FontWeight.w600,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        height: _kShelfTabHeight,
+        decoration: BoxDecoration(
+          color: showColor
+              ? (widget.selected ? accent : accent.withValues(alpha: 0.55))
+              : Colors.transparent,
+          borderRadius: _radius,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            iptvTap(
+              context: context,
+              onTap: widget.onTap,
+              borderRadius: _kShelfTabRadius,
+              scaleOnFocus: 1.0,
+              tvZone: ShellTvZone.topBar,
+              tvRowId: 'iptv-sections',
+              listIndex: widget.listIndex,
+              tvItemIndex: widget.listIndex,
+              onDownEdge: widget.onDownEdge,
+              onRightEdge: _revealReload
+                  ? () => iptvFocusRowItem(
+                        'iptv-section-reload',
+                        widget.listIndex,
+                      )
+                  : widget.onRightEdge,
+              onLeftEdge: widget.listIndex == 0
+                  ? null
+                  : () =>
+                      iptvFocusRowItem('iptv-sections', widget.listIndex - 1),
+              onFocusChange: (f) => setState(() => _focused = f),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      widget.spec.icon,
+                      size: 16,
+                      color: showColor ? Colors.white : Colors.white60,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      widget.spec.label,
+                      style: GoogleFonts.inter(
+                        color: showColor ? Colors.white : Colors.white60,
+                        fontSize: 12.5,
+                        fontWeight: widget.selected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            ClipRect(
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.centerLeft,
+                widthFactor: _revealReload ? 1 : 0,
+                child: iptvTap(
+                  context: context,
+                  onTap: widget.onReload,
+                  borderRadius: 8,
+                  scaleOnFocus: 1.0,
+                  tvZone: ShellTvZone.topBar,
+                  tvRowId: 'iptv-section-reload',
+                  listIndex: widget.listIndex,
+                  tvItemIndex: widget.listIndex,
+                  onLeftEdge: () =>
+                      iptvFocusRowItem('iptv-sections', widget.listIndex),
+                  onRightEdge: widget.onRightEdge,
+                  onDownEdge: widget.onDownEdge,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Tooltip(
+                      message: 'Reload catalog',
+                      child: Icon(
+                        Icons.refresh_rounded,
+                        size: 16,
+                        color: showColor
+                            ? Colors.white.withValues(alpha: 0.95)
+                            : Colors.white60,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -984,10 +1043,43 @@ class _PortalHoverTile extends StatefulWidget {
 
 class _PortalHoverTileState extends State<_PortalHoverTile> {
   static const _actionW = 108.0;
-  bool _hover = false;
-  bool _focused = false;
+  static const _revealDelay = Duration(seconds: 3);
+  static const _rightHotFraction = 0.10;
 
-  bool get _reveal => _hover || _focused;
+  bool _lineHover = false;
+  bool _focused = false;
+  bool _actionsOpen = false;
+  Timer? _revealTimer;
+
+  bool get _reveal => _focused || _actionsOpen;
+
+  @override
+  void dispose() {
+    _revealTimer?.cancel();
+    super.dispose();
+  }
+
+  void _armRevealTimer() {
+    _revealTimer?.cancel();
+    _revealTimer = Timer(_revealDelay, () {
+      if (!mounted || !_lineHover) return;
+      setState(() => _actionsOpen = true);
+    });
+  }
+
+  void _openActions() {
+    _revealTimer?.cancel();
+    if (!_actionsOpen) setState(() => _actionsOpen = true);
+  }
+
+  void _clearHover() {
+    _revealTimer?.cancel();
+    _revealTimer = null;
+    setState(() {
+      _lineHover = false;
+      _actionsOpen = false;
+    });
+  }
 
   void _copy() {
     final p = widget.portal.portal;
@@ -1018,165 +1110,193 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
             ? (v.portal.username.trim().isEmpty ? 'Portal' : v.portal.username)
             : v.name.trim();
 
-        return MouseRegion(
-          onEnter: (_) {
-            setState(() => _hover = true);
-            ctrl.schedulePortalHealthCheck(v);
-          },
-          onExit: (_) {
-            setState(() => _hover = false);
-            ctrl.cancelPortalHealthCheck(v.key);
-          },
-          child: ColoredBox(
-            color: (_hover || _focused)
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.transparent,
-            child: SizedBox(
-              height: 48,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: iptvTap(
-                      context: context,
-                      onTap: () => ctrl.selectPortal(v),
-                      borderRadius: 0,
-                      listIndex: widget.listIndex,
-                      tvRowId: 'portals',
-                      tvItemIndex: widget.listIndex,
-                      onFocusChange: (focused) {
-                        setState(() => _focused = focused);
-                        if (focused) {
-                          ctrl.schedulePortalHealthCheck(v);
-                        } else {
-                          ctrl.cancelPortalHealthCheck(v.key);
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Row(
-                          children: [
-                            if (checking)
-                              const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.5,
-                                  color: Colors.white54,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return MouseRegion(
+              onEnter: (_) {
+                setState(() => _lineHover = true);
+                _armRevealTimer();
+                ctrl.schedulePortalHealthCheck(v);
+              },
+              onExit: (_) {
+                _clearHover();
+                ctrl.cancelPortalHealthCheck(v.key);
+              },
+              onHover: (event) {
+                final w = constraints.maxWidth;
+                if (w <= 0) return;
+                if (event.localPosition.dx >= w * (1 - _rightHotFraction)) {
+                  _openActions();
+                }
+              },
+              child: ColoredBox(
+                color: (_lineHover || _focused)
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.transparent,
+                child: SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: iptvTap(
+                          context: context,
+                          onTap: () => ctrl.selectPortal(v),
+                          borderRadius: 0,
+                          listIndex: widget.listIndex,
+                          tvRowId: 'portals',
+                          tvItemIndex: widget.listIndex,
+                          onFocusChange: (focused) {
+                            setState(() {
+                              _focused = focused;
+                              if (focused) {
+                                _actionsOpen = true;
+                              } else if (!_lineHover) {
+                                _actionsOpen = false;
+                              }
+                            });
+                            if (focused) {
+                              ctrl.schedulePortalHealthCheck(v);
+                            } else {
+                              ctrl.cancelPortalHealthCheck(v.key);
+                            }
+                          },
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 10),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: Center(
+                                    child: checking
+                                        ? const SizedBox(
+                                            width: 12,
+                                            height: 12,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 1.5,
+                                              color: Colors.white54,
+                                            ),
+                                          )
+                                        : Container(
+                                            width: 7,
+                                            height: 7,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: health == true
+                                                  ? const Color(0xFF22C55E)
+                                                  : health == false
+                                                      ? const Color(0xFFEF4444)
+                                                      : Colors.white24,
+                                            ),
+                                          ),
+                                  ),
                                 ),
-                              )
-                            else
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: health == true
-                                      ? const Color(0xFF22C55E)
-                                      : health == false
-                                          ? const Color(0xFFEF4444)
-                                          : Colors.white24,
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                          color: isActive
+                                              ? Colors.white
+                                              : Colors.white
+                                                  .withValues(alpha: 0.88),
+                                          fontSize: 13,
+                                          fontWeight: isActive
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                          height: 1.15,
+                                        ),
+                                      ),
+                                      Text(
+                                        v.portal.url,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white38,
+                                          fontSize: 11,
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
-                                      color: isActive
-                                          ? Colors.white
-                                          : Colors.white.withValues(alpha: 0.88),
-                                      fontSize: 13,
-                                      fontWeight: isActive
-                                          ? FontWeight.w600
-                                          : FontWeight.w500,
-                                      height: 1.15,
+                                iptvTap(
+                                  context: context,
+                                  onTap: () =>
+                                      ctrl.toggleFavoritePortal(v.key),
+                                  borderRadius: 16,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: Icon(
+                                      isFav
+                                          ? Icons.star_rounded
+                                          : Icons.star_outline_rounded,
+                                      size: 16,
+                                      color: isFav
+                                          ? const Color(0xFFFBBF24)
+                                          : Colors.white30,
                                     ),
                                   ),
-                                  Text(
-                                    v.portal.url,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white38,
-                                      fontSize: 11,
-                                      height: 1.2,
-                                    ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        curve: Curves.easeOutCubic,
+                        width: _reveal ? _actionW : 0,
+                        height: 48,
+                        child: ClipRect(
+                          child: OverflowBox(
+                            minWidth: _actionW,
+                            maxWidth: _actionW,
+                            alignment: Alignment.centerRight,
+                            child: SizedBox(
+                              width: _actionW,
+                              height: 48,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  _railAction(
+                                    tooltip: 'Copy',
+                                    icon: Icons.copy_rounded,
+                                    color: Colors.white60,
+                                    onTap: _copy,
+                                  ),
+                                  _railAction(
+                                    tooltip: 'Edit',
+                                    icon: Icons.edit_rounded,
+                                    color: Colors.white60,
+                                    onTap: widget.onEdit,
+                                  ),
+                                  _railAction(
+                                    tooltip: 'Delete',
+                                    icon: Icons.delete_rounded,
+                                    color: const Color(0xFFEF4444),
+                                    onTap: () => ctrl.deletePortal(v.key),
                                   ),
                                 ],
                               ),
                             ),
-                            iptvTap(
-                              context: context,
-                              onTap: () => ctrl.toggleFavoritePortal(v.key),
-                              borderRadius: 16,
-                              child: Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: Icon(
-                                  isFav
-                                      ? Icons.star_rounded
-                                      : Icons.star_outline_rounded,
-                                  size: 16,
-                                  color: isFav
-                                      ? const Color(0xFFFBBF24)
-                                      : Colors.white30,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    curve: Curves.easeOutCubic,
-                    width: _reveal ? _actionW : 0,
-                    height: 48,
-                    child: ClipRect(
-                      child: OverflowBox(
-                        minWidth: _actionW,
-                        maxWidth: _actionW,
-                        alignment: Alignment.centerRight,
-                        child: SizedBox(
-                          width: _actionW,
-                          height: 48,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              _railAction(
-                                tooltip: 'Copy',
-                                icon: Icons.copy_rounded,
-                                color: Colors.white60,
-                                onTap: _copy,
-                              ),
-                              _railAction(
-                                tooltip: 'Edit',
-                                icon: Icons.edit_rounded,
-                                color: Colors.white60,
-                                onTap: widget.onEdit,
-                              ),
-                              _railAction(
-                                tooltip: 'Delete',
-                                icon: Icons.delete_rounded,
-                                color: const Color(0xFFEF4444),
-                                onTap: () => ctrl.deletePortal(v.key),
-                              ),
-                            ],
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

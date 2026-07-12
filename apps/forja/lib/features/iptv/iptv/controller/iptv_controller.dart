@@ -72,6 +72,8 @@ class IptvController extends ChangeNotifier {
   bool isLoading = false;
   List<IptvCategory> categories = const [];
   List<IptvStream> browserAllStreams = const [];
+  /// In-session catalog cache: `portalKey|section` → last successful fetch.
+  final Map<String, _CatalogSnap> _catalogCache = {};
   List<IptvEpisode> episodes = const [];
   String? error;
 
@@ -312,6 +314,16 @@ class IptvController extends ChangeNotifier {
     }
     if (activeSection == section && !isLoading) return;
     await openSection(section);
+  }
+
+  /// Force network reload for [section] (shelf reload control).
+  Future<void> reloadSection(IptvSection section) async {
+    if (activePortal == null) {
+      openPortalPanel();
+      notifyListeners();
+      return;
+    }
+    await openSection(section, force: true);
   }
 
   Future<void> selectPortal(VerifiedPortal p, {bool closePanel = true}) async {
@@ -601,6 +613,9 @@ class IptvController extends ChangeNotifier {
 
   Future<void> deleteSelected() async {
     if (selected.isEmpty) return;
+    for (final k in selected) {
+      _invalidatePortalCatalogCache(k);
+    }
     final keep = verified.where((v) => !selected.contains(v.key)).toList();
     verified = keep;
     _verifiedKeys
@@ -620,6 +635,7 @@ class IptvController extends ChangeNotifier {
   }
 
   Future<void> deletePortal(String key) async {
+    _invalidatePortalCatalogCache(key);
     selected
       ..clear()
       ..add(key);
@@ -661,6 +677,7 @@ class IptvController extends ChangeNotifier {
       return;
     }
     final wasActive = activePortal?.key == existing.key;
+    _invalidatePortalCatalogCache(existing.key);
     final next = verified
         .where((x) => x.key != existing.key)
         .toList();
@@ -899,10 +916,57 @@ class IptvController extends ChangeNotifier {
     unawaited(selectPortal(p));
   }
 
-  Future<void> openSection(IptvSection section,
-      {bool persistSection = true}) async {
+  Future<void> openSection(
+    IptvSection section, {
+    bool persistSection = true,
+    bool force = false,
+  }) async {
     final p = activePortal;
     if (p == null) return;
+    final cacheKey = _catalogCacheKey(p.key, section);
+
+    if (!force) {
+      final snap = _catalogCache[cacheKey];
+      if (snap != null) {
+        activeSection = section;
+        view = IptvView.browser;
+        isLoading = false;
+        error = null;
+        categories = snap.categories;
+        browserAllStreams = snap.streams;
+        browserSelectedCategoryId = '';
+        browserSearch = '';
+        browserSearchOpen = false;
+        streamHealth.clear();
+        _healthInFlight.clear();
+        _healthQueue.clear();
+        cancelAllLazyChecks();
+        _epgCache.clear();
+        if (section == IptvSection.live) {
+          final key = IptvAliveStore.portalKey(p.portal);
+          liveOnly = await IptvAliveStore.loadLiveOnly(key);
+          final alive = await IptvAliveStore.load(key);
+          if (alive != null) {
+            aliveStreamIds = alive.aliveIds;
+            aliveCheckedAt = alive.checkedAt;
+            _seedHealthFromCache();
+          } else {
+            aliveStreamIds = const {};
+            aliveCheckedAt = null;
+          }
+        } else {
+          liveOnly = false;
+          aliveStreamIds = const {};
+          aliveCheckedAt = null;
+        }
+        if (persistSection) {
+          await IptvStore.saveLastSection(section);
+        }
+        notifyListeners();
+        return;
+      }
+    }
+
     activeSection = section;
     view = IptvView.browser;
     isLoading = true;
@@ -943,6 +1007,11 @@ class IptvController extends ChangeNotifier {
       } else {
         liveOnly = false;
       }
+
+      _catalogCache[cacheKey] = _CatalogSnap(
+        categories: categories,
+        streams: browserAllStreams,
+      );
     } catch (e) {
       error = '$e';
     } finally {
@@ -952,6 +1021,14 @@ class IptvController extends ChangeNotifier {
       }
       notifyListeners();
     }
+  }
+
+  String _catalogCacheKey(String portalKey, IptvSection section) =>
+      '$portalKey|${section.name}';
+
+  void _invalidatePortalCatalogCache(String portalKey) {
+    final prefix = '$portalKey|';
+    _catalogCache.removeWhere((k, _) => k.startsWith(prefix));
   }
 
   void _seedHealthFromCache() {
@@ -1607,6 +1684,12 @@ class IptvController extends ChangeNotifier {
     }
     notifyListeners();
   }
+}
+
+class _CatalogSnap {
+  final List<IptvCategory> categories;
+  final List<IptvStream> streams;
+  const _CatalogSnap({required this.categories, required this.streams});
 }
 
 class _Candidate {
