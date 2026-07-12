@@ -15,7 +15,6 @@ class ForjaInAppWebView extends StatelessWidget {
     this.onWebViewCreated,
     this.onLoadStart,
     this.onLoadStop,
-    this.onProgressChanged,
     this.onEnterFullscreen,
     this.onExitFullscreen,
     this.shouldOverrideUrlLoading,
@@ -34,8 +33,6 @@ class ForjaInAppWebView extends StatelessWidget {
       onLoadStart;
   final void Function(InAppWebViewController controller, WebUri? url)?
       onLoadStop;
-  final void Function(InAppWebViewController controller, int progress)?
-      onProgressChanged;
   final void Function(InAppWebViewController controller)? onEnterFullscreen;
   final void Function(InAppWebViewController controller)? onExitFullscreen;
   final Future<NavigationActionPolicy?> Function(
@@ -72,7 +69,6 @@ class ForjaInAppWebView extends StatelessWidget {
       onWebViewCreated: onWebViewCreated,
       onLoadStart: onLoadStart,
       onLoadStop: onLoadStop,
-      onProgressChanged: onProgressChanged,
       onEnterFullscreen: onEnterFullscreen,
       onExitFullscreen: onExitFullscreen,
       shouldOverrideUrlLoading: shouldOverrideUrlLoading,

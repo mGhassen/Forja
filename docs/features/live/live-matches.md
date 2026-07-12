@@ -14,7 +14,6 @@ Tap **Live Matches** in the navigation bar.
 
 - Switch sport category tabs
 - Browse upcoming and live events
-- Each card shows a centered play control; it highlights and scales when you hover or focus the card
 - Open a match and watch the stream in the embed player (autoplay when the embed allows it)
 - Double-click the video to enter/exit fullscreen (desktop window fullscreen for embeds; native PPV streams use the IPTV player)
 - Refresh lists for new events

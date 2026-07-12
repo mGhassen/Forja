@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -198,186 +197,47 @@ const _ppvStreamApis = [
   'https://api.ppv.cx/api/streams',
 ];
 
-/// Hook jwplayer before the embed bundle runs — force autostart in setup().
-const _ppvJwHookJs = r'''
+/// Force play on embed players that gate behind a gesture / big-play overlay.
+/// One retry only — repeated clicks restart playback and cause visible stutter.
+const _autoplayJs = r'''
 (function () {
-  if (window.__forjaJwHook) return;
-  window.__forjaJwHook = true;
-
-  function kick(inst) {
-    if (!inst) return;
-    try {
-      if (typeof inst.setMute === 'function') inst.setMute(true);
-      if (typeof inst.play === 'function') inst.play(true);
-      if (typeof inst.on === 'function') {
-        inst.on('ready', function () {
-          try { inst.setMute(true); inst.play(true); } catch (_) {}
-        });
-        inst.on('firstFrame', function () {
-          try { inst.setMute(false); } catch (_) {}
-        });
-      }
-    } catch (_) {}
-  }
-
-  function patchInstance(inst) {
-    if (!inst || inst.__forjaPatched) return inst;
-    inst.__forjaPatched = true;
-    if (typeof inst.setup === 'function') {
-      var origSetup = inst.setup;
-      inst.setup = function (cfg) {
-        if (cfg && typeof cfg === 'object') {
-          cfg.autostart = true;
-          cfg.mute = true;
-        }
-        var out = origSetup.apply(this, arguments);
-        kick(inst);
-        return out;
-      };
-    }
-    kick(inst);
-    return inst;
-  }
-
-  function wrapJw(fn) {
-    if (!fn || fn.__forjaWrapped) return fn;
-    var wrapped = function () {
-      return patchInstance(fn.apply(this, arguments));
-    };
-    for (var k in fn) {
-      try { wrapped[k] = fn[k]; } catch (_) {}
-    }
-    wrapped.__forjaWrapped = true;
-    return wrapped;
-  }
-
-  var stored;
-  try {
-    Object.defineProperty(window, 'jwplayer', {
-      configurable: true,
-      enumerable: true,
-      get: function () { return stored; },
-      set: function (v) {
-        stored = typeof v === 'function' ? wrapJw(v) : v;
-      }
-    });
-  } catch (_) {}
-
-  var poll = setInterval(function () {
-    if (typeof stored === 'function') {
-      clearInterval(poll);
-      try { patchInstance(stored()); } catch (_) {}
-      return;
-    }
-    if (typeof window.jwplayer === 'function' && !window.jwplayer.__forjaWrapped) {
-      clearInterval(poll);
-      stored = wrapJw(window.jwplayer);
-      try { patchInstance(stored()); } catch (_) {}
-    }
-  }, 5);
-})();
-''';
-
-/// Poke JW / video elements until playback starts. Safe to call repeatedly.
-const _ppvAutoplayKickJs = r'''
-(function () {
-  if (typeof window.__forjaPpvForcePlay !== 'function') {
-    window.__forjaPpvForcePlay = function () {
+  function clickPlay() {
+    var sels = [
+      'video',
+      '.vjs-big-play-button',
+      '.jw-icon-display',
+      '.plyr__control--overlaid',
+      'button[aria-label*="Play"]',
+      'button[title*="Play"]',
+      '.play-button',
+      '#big_play_button'
+    ];
+    for (var i = 0; i < sels.length; i++) {
       try {
-        if (typeof jwplayer === 'function') {
-          if (typeof jwplayer.getPlayers === 'function') {
-            var players = jwplayer.getPlayers();
-            for (var id in players) {
-              var pl = players[id];
-              if (pl && typeof pl.play === 'function') {
-                pl.setMute(true);
-                pl.play(true);
-              }
+        var nodes = document.querySelectorAll(sels[i]);
+        for (var j = 0; j < nodes.length; j++) {
+          var el = nodes[j];
+          if (el.tagName === 'VIDEO') {
+            el.setAttribute('autoplay', '');
+            el.muted = false;
+            var p = el.play();
+            if (p && p.catch) {
+              p.catch(function () {
+                el.muted = true;
+                el.play().catch(function () {});
+              });
             }
-          }
-          var p = jwplayer();
-          if (p && typeof p.play === 'function') {
-            p.setMute(true);
-            p.play(true);
+          } else if (typeof el.click === 'function') {
+            el.click();
           }
         }
       } catch (_) {}
-
-      var targets = document.querySelectorAll(
-        '.jw-display-icon-container, .jw-icon-display, .jw-display, .jw-icon-playback, video'
-      );
-      targets.forEach(function (el) {
-        if (el.tagName === 'VIDEO') {
-          el.muted = true;
-          el.setAttribute('autoplay', '');
-          el.setAttribute('playsinline', '');
-          var pr = el.play();
-          if (pr && pr.catch) pr.catch(function () {});
-        } else {
-          try { el.click(); } catch (_) {}
-          var r = el.getBoundingClientRect();
-          var cx = r.left + r.width / 2;
-          var cy = r.top + r.height / 2;
-          ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'].forEach(function (type) {
-            el.dispatchEvent(new MouseEvent(type, {
-              bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy
-            }));
-          });
-        }
-      });
-
-      try {
-        document.dispatchEvent(new KeyboardEvent('keydown', {
-          key: ' ', code: 'Space', keyCode: 32, which: 32, bubbles: true
-        }));
-        document.dispatchEvent(new KeyboardEvent('keyup', {
-          key: ' ', code: 'Space', keyCode: 32, which: 32, bubbles: true
-        }));
-      } catch (_) {}
-    };
-  }
-
-  function isPlaying() {
-    var v = document.querySelector('video');
-    return !!(v && !v.paused && v.readyState >= 2);
-  }
-
-  window.__forjaPpvForcePlay();
-
-  if (window.__forjaPpvAutoplayTimer) return;
-  var attempts = 0;
-  window.__forjaPpvAutoplayTimer = setInterval(function () {
-    if (isPlaying() || ++attempts >= 60) {
-      clearInterval(window.__forjaPpvAutoplayTimer);
-      window.__forjaPpvAutoplayTimer = null;
-      return;
     }
-    window.__forjaPpvForcePlay();
-  }, 500);
-
-  if (window.__forjaPpvMutationObs) return;
-  window.__forjaPpvMutationObs = true;
-  try {
-    new MutationObserver(function () {
-      if (!isPlaying()) window.__forjaPpvForcePlay();
-    }).observe(document.documentElement, { childList: true, subtree: true, attributes: true });
-  } catch (_) {}
+  }
+  clickPlay();
+  setTimeout(clickPlay, 1500);
 })();
 ''';
-
-UnmodifiableListView<UserScript> get _ppvAutoplayUserScripts =>
-    UnmodifiableListView([
-      UserScript(
-        source: _ppvJwHookJs,
-        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-        forMainFrameOnly: true,
-      ),
-      UserScript(
-        source: _ppvAutoplayKickJs,
-        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
-        forMainFrameOnly: true,
-      ),
-    ]);
 
 /// Double-click the embed surface → toggle host fullscreen (films / IPTV parity).
 const _dblclickFullscreenJs = r'''
@@ -393,15 +253,6 @@ const _dblclickFullscreenJs = r'''
 ''';
 
 const _ppvReferer = 'https://ppv.is/';
-
-/// Instant route — keeps the card-tap user gesture close to WebView init on macOS.
-Route<void> _ppvEmbedPlayerRoute(Widget screen) {
-  return PageRouteBuilder<void>(
-    pageBuilder: (_, _, _) => screen,
-    transitionDuration: Duration.zero,
-    reverseTransitionDuration: const Duration(milliseconds: 200),
-  );
-}
 
 /// embedindia JW Player resolves tokenised HLS inside the embed browsing
 /// context. The sniffed m3u8 403s in mpv — same as copying the URL into VLC.
@@ -967,8 +818,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     if (_ppvEmbedRequiresWebView(s.iframe)) {
       await Navigator.push(
         context,
-        _ppvEmbedPlayerRoute(
-          _LiveMatchesEmbedPlayerScreen(
+        MaterialPageRoute(
+          builder: (_) => _LiveMatchesEmbedPlayerScreen(
             embedUrl: s.iframe,
             title: s.name,
             subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
@@ -1040,8 +891,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     if (!mounted) return;
     await Navigator.push(
       context,
-      _ppvEmbedPlayerRoute(
-        _LiveMatchesEmbedPlayerScreen(
+      MaterialPageRoute(
+        builder: (_) => _LiveMatchesEmbedPlayerScreen(
           embedUrl: s.iframe,
           title: s.name,
           subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
@@ -1054,8 +905,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   void _openCdnChannel(_CdnChannel channel) {
     Navigator.push(
       context,
-      _ppvEmbedPlayerRoute(
-        _LiveMatchesEmbedPlayerScreen(
+      MaterialPageRoute(
+        builder: (_) => _LiveMatchesEmbedPlayerScreen(
           embedUrl: channel.url,
           title: channel.name,
           badgeLabel: 'CDN Live',
@@ -1141,66 +992,6 @@ class _TeamBadge extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ─── Live match card play overlay ────────────────────────────────────────────
-
-/// Centered glass play control — always on top of card art; scales on hover/focus.
-class _LiveMatchCardPlayOverlay extends StatelessWidget {
-  const _LiveMatchCardPlayOverlay({required this.active});
-
-  final bool active;
-
-  static const _diameter = 48.0;
-  static const _iconSize = 28.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Center(
-          child: AnimatedScale(
-            scale: active ? ShellTokens.focusActiveScale : 1.0,
-            duration: const Duration(milliseconds: 150),
-            curve: Curves.easeOutCubic,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeOutCubic,
-              width: _diameter,
-              height: _diameter,
-              decoration: BoxDecoration(
-                color: active
-                    ? ForjaShellColors.brandGreen
-                    : Colors.black.withValues(alpha: 0.42),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: active
-                      ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
-                      : Colors.white.withValues(alpha: 0.24),
-                ),
-                boxShadow: active
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Icon(
-                Icons.play_arrow_rounded,
-                color: active
-                    ? const Color(0xFF111827)
-                    : Colors.white,
-                size: _iconSize,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1344,7 +1135,23 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
                   ),
                 ),
               ),
-              _LiveMatchCardPlayOverlay(active: active),
+              if (active)
+                Positioned.fill(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.black,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1553,7 +1360,23 @@ class _CdnSportCardState extends State<_CdnSportCard> {
                   ),
                 ),
               ),
-              _LiveMatchCardPlayOverlay(active: active),
+              if (active)
+                Positioned.fill(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.black,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1682,39 +1505,6 @@ class _LiveMatchesEmbedPlayerScreenState
     extends State<_LiveMatchesEmbedPlayerScreen> {
   bool _loading = true;
   bool _isFullscreen = false;
-  InAppWebViewController? _webViewController;
-
-  Future<void> _kickAutoplay([InAppWebViewController? ctrl]) async {
-    final c = ctrl ?? _webViewController;
-    if (c == null) return;
-    try {
-      await c.evaluateJavascript(source: _ppvAutoplayKickJs);
-      await c.evaluateJavascript(source: _dblclickFullscreenJs);
-    } catch (_) {}
-  }
-
-  Future<void> _markPlayingWhenReady(InAppWebViewController ctrl) async {
-    for (var i = 0; i < 40; i++) {
-      if (!mounted) return;
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-      try {
-        final playing = await ctrl.evaluateJavascript(source: '''
-(function () {
-  var v = document.querySelector('video');
-  return !!(v && !v.paused && v.readyState >= 2);
-})();''');
-        if (playing == true) {
-          if (mounted) setState(() => _loading = false);
-          return;
-        }
-        await ctrl.evaluateJavascript(
-          source: 'window.__forjaPpvForcePlay && window.__forjaPpvForcePlay();',
-        );
-      } catch (_) {}
-    }
-    if (mounted) setState(() => _loading = false);
-  }
 
   Future<void> _enterFullscreen() async {
     if (DesktopWindowChrome.isDesktop) {
@@ -1773,12 +1563,6 @@ class _LiveMatchesEmbedPlayerScreenState
     }
   }
 
-  /// JW Player on embedindia initialises after `onLoadStop` — poke play from
-  /// Dart until the `<video>` element reports playing.
-  Future<void> _pollPpvAutoplay(InAppWebViewController ctrl) async {
-    unawaited(_markPlayingWhenReady(ctrl));
-  }
-
   @override
   void dispose() {
     if (DesktopWindowChrome.isDesktop) {
@@ -1804,25 +1588,6 @@ class _LiveMatchesEmbedPlayerScreenState
       return DesktopWindowChrome.topInset(context) + 8;
     }
     return MediaQuery.paddingOf(context).top + 8;
-  }
-
-  Widget _buildSourceBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.blue),
-      ),
-      child: Text(
-        widget.badgeLabel,
-        style: const TextStyle(
-          color: Colors.blue,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
   }
 
   Widget _buildTopBar() {
@@ -1858,6 +1623,22 @@ class _LiveMatchesEmbedPlayerScreenState
               ],
             ),
           ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.blue),
+            ),
+            child: Text(
+              widget.badgeLabel,
+              style: const TextStyle(
+                color: Colors.blue,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1880,7 +1661,6 @@ class _LiveMatchesEmbedPlayerScreenState
                 'Origin': 'https://ppv.is',
               },
             ),
-            initialUserScripts: _ppvAutoplayUserScripts,
             initialSettings: InAppWebViewSettings(
               userAgent: _ua['User-Agent'],
               domStorageEnabled: true,
@@ -1893,7 +1673,6 @@ class _LiveMatchesEmbedPlayerScreenState
               allowsPictureInPictureMediaPlayback: true,
             ),
             onWebViewCreated: (controller) {
-              _webViewController = controller;
               controller.addJavaScriptHandler(
                 handlerName: 'toggleFullscreen',
                 callback: (_) {
@@ -1901,15 +1680,13 @@ class _LiveMatchesEmbedPlayerScreenState
                 },
               );
             },
-            onLoadStart: (_, _) {
-              if (mounted) setState(() => _loading = true);
-            },
-            onProgressChanged: (ctrl, progress) {
-              if (progress >= 85) unawaited(_kickAutoplay(ctrl));
-            },
+            onLoadStart: (_, _) => setState(() => _loading = true),
             onLoadStop: (ctrl, _) async {
-              unawaited(_kickAutoplay(ctrl));
-              unawaited(_pollPpvAutoplay(ctrl));
+              setState(() => _loading = false);
+              try {
+                await ctrl.evaluateJavascript(source: _autoplayJs);
+                await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
+              } catch (_) {}
             },
             onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
             onExitFullscreen: (_) => unawaited(_exitFullscreen()),
@@ -1940,7 +1717,7 @@ class _LiveMatchesEmbedPlayerScreenState
                 color: ForjaShellColors.sectionAccent,
               ),
             ),
-          if (!_isFullscreen) ...[
+          if (!_isFullscreen)
             Positioned(
               top: 0,
               left: 0,
@@ -1956,12 +1733,6 @@ class _LiveMatchesEmbedPlayerScreenState
                 child: _buildTopBar(),
               ),
             ),
-            Positioned(
-              top: _topBarTopPadding(context),
-              right: 16,
-              child: _buildSourceBadge(),
-            ),
-          ],
         ],
       ),
     );
@@ -2196,8 +1967,24 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                     ),
                   ),
                 ),
-              if (hasIframe)
-                _LiveMatchCardPlayOverlay(active: active),
+              // play overlay on hover
+              if (active && hasIframe)
+                Positioned.fill(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.black,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

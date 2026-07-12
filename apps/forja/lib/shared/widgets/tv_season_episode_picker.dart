@@ -232,7 +232,6 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     return HorizontalScroller(
       height: _SeasonCard.cardHeight,
       controller: _seasonScrollController,
-      clipBehavior: Clip.hardEdge,
       itemCount: widget.seasonCount,
       separatorBuilder: (_, _) => const SizedBox(width: 12),
       itemBuilder: (_, i) {
@@ -269,10 +268,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
   Widget _buildEpisodeRow(String? tabId) {
     return HorizontalScroller(
-      height: 240,
+      height: 248,
       controller: _episodeScrollController,
-      clipBehavior: Clip.hardEdge,
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _visibleEpisodes.length,
       separatorBuilder: (_, _) => const SizedBox(width: 16),
       itemBuilder: (_, i) {
