@@ -11,6 +11,8 @@ typedef PlayerSwitchHandler = Future<void> Function(
   Duration resumePosition, {
   BuiltInPlayerEngine? builtInEngine,
   String? externalPlayer,
+  String? streamUrl,
+  Map<String, String>? headers,
 });
 
 typedef PlayerMenuSelectHandler = Future<void> Function({

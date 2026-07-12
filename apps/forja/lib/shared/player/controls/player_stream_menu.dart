@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/player_provider_menu.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
@@ -26,8 +27,11 @@ class PlayerStreamMenuState {
   final List<PlayerSourceStatus> sourceStatuses;
 }
 
-/// Servers → sources drill-down, same panel flow as seasons → episodes.
+/// Unified server + source picker — one panel, grouped by server.
 class PlayerStreamMenu {
+  static const _panelWidth = 360.0;
+  static const _panelMaxHeight = 440.0;
+
   static Widget? reloadTrailing({
     required Future<void> Function()? onReload,
     ValueListenable<bool>? isReloading,
@@ -65,13 +69,13 @@ class PlayerStreamMenu {
   static Future<void> show(
     BuildContext context, {
     Map<String, dynamic>? providers,
+    ValueListenable<Map<String, List<StreamSource>>>? providerSourcesCache,
     ValueListenable<List<StreamProviderProbe>>? providerProbesNotifier,
     required PlayerStreamMenuState Function() readState,
     required Future<List<StreamSource>?> Function(String providerId)
         onSelectProvider,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     bool providersEnabled = true,
-    bool sourcesOnly = false,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
     Listenable? refreshListenable,
@@ -88,156 +92,49 @@ class PlayerStreamMenu {
       return;
     }
 
-    if (sourcesOnly && hasSources) {
-      await _openSources(
-        context,
-        readState: readState,
-        onSelectSource: onSelectSource,
-        margin: margin,
-        anchorContext: anchorContext,
-        onBack: null,
-        refreshListenable: refreshListenable,
-        onReload: onReload,
-        isReloading: isReloading,
-      );
-      return;
-    }
-
-    if (hasProviders) {
-      await _openServers(
-        context,
-        providers: providers,
-        providerProbesNotifier: providerProbesNotifier,
-        readState: readState,
-        onSelectProvider: onSelectProvider,
-        onSelectSource: onSelectSource,
-        providersEnabled: providersEnabled,
-        margin: margin,
-        anchorContext: anchorContext,
-        refreshListenable: refreshListenable,
-        onReload: onReload,
-        isReloading: isReloading,
-      );
-    } else {
-      await _openSources(
-        context,
-        readState: readState,
-        onSelectSource: onSelectSource,
-        margin: margin,
-        anchorContext: anchorContext,
-        onBack: null,
-        refreshListenable: refreshListenable,
-        onReload: onReload,
-        isReloading: isReloading,
-      );
-    }
-  }
-
-  static Future<void> _openServers(
-    BuildContext context, {
-    required Map<String, dynamic> providers,
-    ValueListenable<List<StreamProviderProbe>>? providerProbesNotifier,
-    required PlayerStreamMenuState Function() readState,
-    required Future<List<StreamSource>?> Function(String providerId)
-        onSelectProvider,
-    required Future<void> Function(StreamSource source, int index) onSelectSource,
-    required bool providersEnabled,
-    required EdgeInsets margin,
-    BuildContext? anchorContext,
-    Listenable? refreshListenable,
-    Future<void> Function()? onReload,
-    ValueListenable<bool>? isReloading,
-  }) async {
     Widget buildList() {
       final state = readState();
       final probes = providerProbesNotifier?.value ?? const [];
+      final cache = providerSourcesCache?.value ?? const {};
+
+      if (!hasProviders) {
+        return _sourcesList(
+          sources: state.sources ?? const [],
+          state: state,
+          onSelectSource: onSelectSource,
+        );
+      }
+
       return ListView(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
         shrinkWrap: true,
         children: [
-          ...providers.entries.map((entry) {
-            final key = entry.key;
-            final provider = entry.value;
-            final isCurrent = key == state.currentProviderId;
-            final fallbackName = provider['name']?.toString();
-            final contentLanguage = _contentLanguage(provider);
-            final flags = StreamProviderDisplay.countryFlags(
-              key,
-              contentLanguage: contentLanguage,
-            );
-            final status = _providerStatus(
-              key,
-              probes,
-              isCurrent: isCurrent,
-            );
-            return PlayerPopupListTile(
-              badge: flags.isEmpty ? null : flags,
-              label: StreamProviderDisplay.playerLabel(
-                key,
-                fallbackName: fallbackName,
-                contentLanguage: contentLanguage,
-              ),
-              selected: isCurrent,
-              status: status,
-              trailing: const Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white24,
-                size: 18,
-              ),
-              onTap: () async {
-                PlayerPopupPanel.dismiss();
-                List<StreamSource>? serverSources;
-                if (isCurrent) {
-                  serverSources = readState().sources;
-                } else if (providersEnabled) {
-                  serverSources = await onSelectProvider(key);
-                }
-                serverSources ??= readState().sources;
-                if (serverSources == null || serverSources.isEmpty) {
-                  if (context.mounted) {
-                    ForjaToast.info('No sources for this server', duration: const Duration(seconds: 1));
-                  }
-                  return;
-                }
-                if (!context.mounted) return;
-                await _openSources(
-                  context,
-                  readState: readState,
-                  onSelectSource: onSelectSource,
-                  margin: margin,
-                  anchorContext: anchorContext,
-                  refreshListenable: refreshListenable,
-                  onReload: onReload,
-                  isReloading: isReloading,
-                  onBack: () => _openServers(
-                    context,
-                    providers: providers,
-                    providerProbesNotifier: providerProbesNotifier,
-                    readState: readState,
-                    onSelectProvider: onSelectProvider,
-                    onSelectSource: onSelectSource,
-                    providersEnabled: providersEnabled,
-                    margin: margin,
-                    anchorContext: anchorContext,
-                    refreshListenable: refreshListenable,
-                    onReload: onReload,
-                    isReloading: isReloading,
-                  ),
-                );
-              },
-            );
-          }),
+          for (final entry in providers.entries) ...[
+            _buildServerSection(
+              providerId: entry.key,
+              provider: entry.value,
+              state: state,
+              probes: probes,
+              cachedSources: cache[entry.key],
+              providersEnabled: providersEnabled,
+              onSelectProvider: onSelectProvider,
+              onSelectSource: onSelectSource,
+            ),
+            const SizedBox(height: 6),
+          ],
         ],
       );
     }
 
     await PlayerPopupPanel.show(
       context: context,
-      title: 'Servers',
-      leadingIcon: Icons.cloud_outlined,
+      title: 'Stream source',
+      leadingIcon: Icons.swap_horiz_rounded,
       alignment: Alignment.bottomLeft,
       margin: margin,
       anchorContext: anchorContext,
+      width: _panelWidth,
+      maxHeight: _panelMaxHeight,
       trailing: reloadTrailing(onReload: onReload, isReloading: isReloading),
       child: refreshListenable == null
           ? buildList()
@@ -248,70 +145,181 @@ class PlayerStreamMenu {
     );
   }
 
-  static Future<void> _openSources(
-    BuildContext context, {
-    required PlayerStreamMenuState Function() readState,
+  static Widget _buildServerSection({
+    required String providerId,
+    required dynamic provider,
+    required PlayerStreamMenuState state,
+    required List<StreamProviderProbe> probes,
+    required List<StreamSource>? cachedSources,
+    required bool providersEnabled,
+    required Future<List<StreamSource>?> Function(String providerId)
+        onSelectProvider,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
-    required EdgeInsets margin,
-    BuildContext? anchorContext,
-    required VoidCallback? onBack,
-    Listenable? refreshListenable,
-    Future<void> Function()? onReload,
-    ValueListenable<bool>? isReloading,
-  }) async {
-    Widget buildList() {
-      final state = readState();
-      final sources = state.sources ?? const <StreamSource>[];
-      final statuses = state.sourceStatuses;
+  }) {
+    final isCurrent = providerId == state.currentProviderId;
+    final sectionSources = isCurrent
+        ? (state.sources ?? const <StreamSource>[])
+        : (cachedSources ?? const <StreamSource>[]);
+    final status = _providerStatus(
+      providerId,
+      probes,
+      isCurrent: isCurrent,
+    );
+    final flags = StreamProviderDisplay.countryFlags(
+      providerId,
+      contentLanguage: _contentLanguage(provider),
+    );
+    final label = PlayerProviderMenu.snackbarLabel(providerId, provider);
 
-      return ListView(
-        padding: const EdgeInsets.all(8),
-        shrinkWrap: true,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: isCurrent
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isCurrent
+              ? const Color(0xFF22C55E).withValues(alpha: 0.28)
+              : ForjaShellColors.cinematic.borderSubtle,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ...sources.asMap().entries.map((entry) {
-            final index = entry.key;
-            final source = entry.value;
-            final isCurrent = state.is111477
-                ? source.url == state.current111477FileUrl
-                : source.url == state.currentUrl;
-            final status = index < statuses.length
-                ? statuses[index]
-                : PlayerSourceStatus.ready;
-            return PlayerPopupListTile(
-              badge: source.type.toUpperCase(),
-              badgeColor: playerSourceBadgeColor(source.type),
-              label: source.title,
-              selected: isCurrent,
-              status: status,
-              onTap: () async {
-                PlayerPopupPanel.dismiss();
-                if (!isCurrent) await onSelectSource(source, index);
-              },
-            );
-          }),
-        ],
-      );
-    }
-
-    await PlayerPopupPanel.show(
-      context: context,
-      title: 'Sources',
-      leadingIcon: Icons.dns_outlined,
-      alignment: Alignment.bottomLeft,
-      margin: margin,
-      anchorContext: anchorContext,
-      onBack: onBack,
-      trailing: reloadTrailing(onReload: onReload, isReloading: isReloading),
-      child: refreshListenable == null
-          ? buildList()
-          : ListenableBuilder(
-              listenable: refreshListenable,
-              builder: (context, _) => buildList(),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              onTap: sectionSources.isEmpty && providersEnabled
+                  ? () async {
+                      PlayerPopupPanel.dismiss();
+                      await onSelectProvider(providerId);
+                    }
+                  : null,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+                child: Row(
+                  children: [
+                    if (flags.isNotEmpty) ...[
+                      _ServerFlagBadge(flags: flags),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              fontSize: 13,
+                              fontWeight:
+                                  isCurrent ? FontWeight.w700 : FontWeight.w600,
+                            ),
+                          ),
+                          if (sectionSources.isEmpty && !isCurrent)
+                            Text(
+                              providersEnabled ? 'Tap to load' : 'Unavailable',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.45),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            )
+                          else if (sectionSources.isNotEmpty)
+                            Text(
+                              '${sectionSources.length} source${sectionSources.length == 1 ? '' : 's'}',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.42),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (status != null) ...[
+                      const SizedBox(width: 6),
+                      _StatusDot(status: status),
+                    ],
+                    if (isCurrent)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Text(
+                          'Active',
+                          style: TextStyle(
+                            color: const Color(0xFF22C55E).withValues(alpha: 0.9),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
+          ),
+          if (sectionSources.isNotEmpty) ...[
+            Divider(
+              height: 1,
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
+              child: _sourcesList(
+                sources: sectionSources,
+                state: state,
+                onSelectSource: (source, index) async {
+                  PlayerPopupPanel.dismiss();
+                  if (!isCurrent) {
+                    final loaded = await onSelectProvider(providerId);
+                    final pool = loaded ?? sectionSources;
+                    final targetIndex = pool.indexWhere((s) => s.url == source.url);
+                    if (targetIndex >= 0) {
+                      await onSelectSource(pool[targetIndex], targetIndex);
+                      return;
+                    }
+                  }
+                  await onSelectSource(source, index);
+                },
+                compact: true,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  static List<String>? _contentLanguage(Map<String, dynamic> provider) {
+  static Widget _sourcesList({
+    required List<StreamSource> sources,
+    required PlayerStreamMenuState state,
+    required Future<void> Function(StreamSource source, int index) onSelectSource,
+    bool compact = false,
+  }) {
+    final statuses = state.sourceStatuses;
+    return Column(
+      children: [
+        for (final entry in sources.asMap().entries)
+          _StreamSourceTile(
+            source: entry.value,
+            index: entry.key,
+            state: state,
+            status: entry.key < statuses.length
+                ? statuses[entry.key]
+                : PlayerSourceStatus.ready,
+            compact: compact,
+            onTap: () => onSelectSource(entry.value, entry.key),
+          ),
+      ],
+    );
+  }
+
+  static List<String>? _contentLanguage(dynamic provider) {
+    if (provider is! Map) return null;
     final raw = provider['contentLanguage'];
     if (raw is! List) return null;
     return raw.map((e) => e.toString()).toList();
@@ -333,5 +341,176 @@ class PlayerStreamMenu {
       };
     }
     return null;
+  }
+}
+
+class _ServerFlagBadge extends StatelessWidget {
+  const _ServerFlagBadge({required this.flags});
+
+  final String flags;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        flags,
+        style: const TextStyle(fontSize: 13),
+      ),
+    );
+  }
+}
+
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.status});
+
+  final PlayerSourceStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = playerSourceStatusColor(status);
+    if (status == PlayerSourceStatus.checking) {
+      return SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2, color: color),
+      );
+    }
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _StreamSourceTile extends StatelessWidget {
+  const _StreamSourceTile({
+    required this.source,
+    required this.index,
+    required this.state,
+    required this.status,
+    required this.onTap,
+    this.compact = false,
+  });
+
+  final StreamSource source;
+  final int index;
+  final PlayerStreamMenuState state;
+  final PlayerSourceStatus status;
+  final VoidCallback onTap;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCurrent = state.is111477
+        ? source.url == state.current111477FileUrl
+        : source.url == state.currentUrl;
+    final failed = status == PlayerSourceStatus.failed;
+    final active = isCurrent || status == PlayerSourceStatus.active;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: compact ? 4 : 6),
+      child: Material(
+        color: active
+            ? const Color(0xFF22C55E).withValues(alpha: 0.1)
+            : failed
+                ? const Color(0xFFEF4444).withValues(alpha: 0.07)
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: active
+                  ? Border.all(
+                      color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                    )
+                  : null,
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 10 : 12,
+              vertical: compact ? 8 : 10,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: playerSourceBadgeColor(source.type),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(
+                    source.type.toUpperCase(),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.35,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        source.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: failed
+                              ? Colors.white.withValues(alpha: 0.45)
+                              : Colors.white.withValues(alpha: 0.92),
+                          fontSize: compact ? 13 : 14,
+                          fontWeight:
+                              isCurrent ? FontWeight.w600 : FontWeight.w500,
+                          decoration:
+                              failed ? TextDecoration.lineThrough : null,
+                          decorationColor: Colors.white38,
+                        ),
+                      ),
+                      if (status != PlayerSourceStatus.ready)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            switch (status) {
+                              PlayerSourceStatus.active => 'Playing',
+                              PlayerSourceStatus.failed => 'Unavailable',
+                              PlayerSourceStatus.checking => 'Checking…',
+                              PlayerSourceStatus.ready => '',
+                            },
+                            style: TextStyle(
+                              color: playerSourceStatusColor(status),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (isCurrent)
+                  const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+                else if (status == PlayerSourceStatus.failed)
+                  Icon(
+                    Icons.cancel_rounded,
+                    color: playerSourceStatusColor(status),
+                    size: 18,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
@@ -11,6 +12,7 @@ import 'package:forja/shared/player/player/desktop_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:rust/rust.dart' as site111477_proxy;
 
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
@@ -101,6 +103,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _externalLaunched = false;
   bool _checkingPlayer = true;
   String _externalPlayerName = '';
+  String? _externalStreamUrl;
+  Map<String, String>? _externalHeaders;
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   Duration? _resumePosition;
 
@@ -125,13 +129,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    site111477_proxy.retainForExternalHandoff = false;
+    if (site111477_proxy.is111477ProxyRunning) {
+      unawaited(site111477_proxy.stop111477Proxy(force: true));
+    }
+    super.dispose();
+  }
+
   Future<void> _launchExternal() async {
     if (_externalPlayerName.isEmpty) return;
 
     final success = await ExternalPlayerService.launch(
-      url: widget.streamUrl,
+      url: _externalStreamUrl ?? widget.streamUrl,
       title: widget.title,
-      headers: widget.headers,
+      headers: _externalHeaders ?? widget.headers,
       context: context,
       playerName: _externalPlayerName,
     );
@@ -154,6 +167,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     Duration resumePosition, {
     BuiltInPlayerEngine? builtInEngine,
     String? externalPlayer,
+    String? streamUrl,
+    Map<String, String>? headers,
   }) async {
     if (resumePosition > Duration.zero) {
       _resumePosition = resumePosition;
@@ -165,9 +180,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _useExternalPlayer = true;
         _externalPlayerName = externalPlayer;
         _externalLaunched = false;
+        _externalStreamUrl = streamUrl;
+        _externalHeaders = headers;
       });
+      site111477_proxy.retainForExternalHandoff = true;
       await _launchExternal();
       return;
+    }
+
+    site111477_proxy.retainForExternalHandoff = false;
+    if (site111477_proxy.is111477ProxyRunning) {
+      await site111477_proxy.stop111477Proxy(force: true);
     }
 
     if (builtInEngine == null) return;
@@ -203,9 +226,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
         builtInEngine: _builtInEngine,
         onRelaunch: _launchExternal,
         onSwitchBuiltIn: () {
+          site111477_proxy.retainForExternalHandoff = false;
+          if (site111477_proxy.is111477ProxyRunning) {
+            unawaited(site111477_proxy.stop111477Proxy(force: true));
+          }
           setState(() {
             _useExternalPlayer = false;
             _externalLaunched = false;
+            _externalStreamUrl = null;
+            _externalHeaders = null;
           });
         },
         onSelectPlayer: ({builtInEngine, externalPlayer}) => _switchPlayer(

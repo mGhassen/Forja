@@ -243,6 +243,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       title: title,
       headers: sources.first.headers,
       sources: sources,
+      providers: const {'kisskh': {'name': 'KissKH'}},
       activeProvider: 'kisskh',
       movie: _hubMovieFromDrama(drama, overview: overview),
       startPosition: widget.startPosition,

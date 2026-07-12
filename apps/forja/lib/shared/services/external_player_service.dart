@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/android_player_launcher.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:rust/rust.dart' as site111477_proxy;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  EXTERNAL PLAYER SERVICE
@@ -268,7 +269,11 @@ class ExternalPlayerService {
       orElse: () => players.first,
     );
 
-    final target = await _resolveLaunchTarget(url: url, headers: headers);
+    final target = await _resolveLaunchTarget(
+      url: url,
+      headers: headers,
+      desktop: Platform.isWindows || Platform.isMacOS || Platform.isLinux,
+    );
 
     try {
       if (Platform.isAndroid || Platform.isIOS) {
@@ -295,18 +300,43 @@ class ExternalPlayerService {
     }
   }
 
-  /// Header-protected streams are proxied through the local Rust server so
-  /// external players only need a plain localhost URL (no fragile CLI headers).
+  /// Resolves the URL/headers external players should open.
+  ///
+  /// Desktop mpv/IINA/VLC accept per-field CLI header flags — pass the
+  /// upstream URL + headers directly (this worked before the handoff refactor).
+  /// Mobile players and 111477 CDN URLs still need a local proxy.
   static Future<({String url, Map<String, String>? headers})>
       _resolveLaunchTarget({
     required String url,
     required Map<String, String>? headers,
+    required bool desktop,
   }) async {
+    if (site111477_proxy.is111477LocalProxyUrl(url)) {
+      site111477_proxy.retainForExternalHandoff = true;
+      return (url: url, headers: null);
+    }
+
+    if (site111477_proxy.is111477UpstreamUrl(url)) {
+      final proxied = await site111477_proxy.start111477Proxy(
+        url,
+        headers: headers,
+      );
+      site111477_proxy.retainForExternalHandoff = true;
+      debugPrint('[ExternalPlayer] Proxying 111477 stream for external player');
+      return (url: proxied, headers: null);
+    }
+
+    if (_isLocalProxyUrl(url)) {
+      return (url: url, headers: null);
+    }
+
     if (headers == null || headers.isEmpty) {
       return (url: url, headers: null);
     }
-    if (_isLocalProxyUrl(url)) {
-      return (url: url, headers: null);
+
+    // Desktop players: mpv header flags are reliable — do not rewrite to hls-proxy.
+    if (desktop) {
+      return (url: url, headers: headers);
     }
 
     final proxy = LocalServerService();

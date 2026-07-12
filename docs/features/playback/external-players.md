@@ -23,7 +23,9 @@ While already handed off: **Change player** on the handoff screen.
 ## Tips
 
 - On macOS, **IINA** and **VLC** are launched via their bundled CLI binaries so the stream URL is passed correctly
-- Streams that need **Referer / User-Agent / Origin** headers are proxied through Forja's local server before opening in an external player
+- On desktop, **Referer / User-Agent / Origin** headers are passed as mpv/VLC CLI flags (same approach as before the handoff screen)
+- On Android, header-protected streams may be proxied through Forja's local server when the player cannot accept headers
+- **111477 CDN** direct file links are proxied through Forja's seek cache server so IINA can follow signed redirects
 - External players bypass Forja's subtitle UI — use players with their own sub support if needed
 - Some DRM or header-protected streams may not work outside Forja's proxy if the local server is unavailable
 

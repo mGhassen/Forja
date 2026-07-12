@@ -83,6 +83,81 @@ class PlayerFlatIconButton extends StatelessWidget {
   }
 }
 
+/// Unified stream source control — one pill showing the active server/source.
+class PlayerStreamPickerButton extends StatelessWidget {
+  const PlayerStreamPickerButton({
+    super.key,
+    required this.label,
+    required this.onPressedWithContext,
+    this.enabled = true,
+    this.size = 40,
+    this.iconSize = 18,
+    this.tvFocusable = false,
+    this.focusNode,
+  });
+
+  final String label;
+  final ValueChanged<BuildContext>? onPressedWithContext;
+  final bool enabled;
+  final double size;
+  final double iconSize;
+  final bool tvFocusable;
+  final FocusNode? focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    final onTap = enabled && onPressedWithContext != null
+        ? () => onPressedWithContext!(context)
+        : null;
+    final child = Material(
+      color: Colors.white.withValues(alpha: enabled ? 0.1 : 0.05),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: size, maxWidth: 168),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 12, 0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.swap_horiz_rounded,
+                  color: Colors.white.withValues(alpha: enabled ? 1 : 0.45),
+                  size: iconSize,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: enabled ? 0.95 : 0.45),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final button = tvFocusable
+        ? FocusableControl(
+            focusNode: focusNode,
+            onTap: onTap,
+            borderRadius: 20,
+            child: child,
+          )
+        : child;
+    return Tooltip(message: 'Stream source', child: button);
+  }
+}
+
 class PlayerTopBar extends StatelessWidget {
   const PlayerTopBar({
     super.key,
@@ -211,15 +286,13 @@ class PlayerTopStatusActions extends StatelessWidget {
   const PlayerTopStatusActions({
     super.key,
     required this.onRetry,
-    this.onSources,
-    this.onServers,
-    this.serversEnabled = true,
+    this.onStream,
+    this.streamEnabled = true,
   });
 
   final VoidCallback onRetry;
-  final VoidCallback? onSources;
-  final VoidCallback? onServers;
-  final bool serversEnabled;
+  final VoidCallback? onStream;
+  final bool streamEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -229,9 +302,8 @@ class PlayerTopStatusActions extends StatelessWidget {
       runSpacing: 4,
       children: [
         _link('Retry', onRetry),
-        if (onSources != null) _link('Sources', onSources!),
-        if (onServers != null)
-          _link('Servers', serversEnabled ? onServers! : () {}),
+        if (onStream != null)
+          _link('Stream', streamEnabled ? onStream! : () {}),
       ],
     );
   }

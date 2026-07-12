@@ -52,12 +52,17 @@ class PlayerProviderMenu {
     );
   }
 
-  static String snackbarLabel(String providerId, Map<String, dynamic>? provider) {
-    final fallbackName = provider?['name']?.toString();
+  static String snackbarLabel(String providerId, dynamic provider) {
+    final fallbackName = switch (provider) {
+      final Map<String, dynamic> map => map['name']?.toString(),
+      _ => null,
+    };
     return StreamProviderDisplay.playerListLabel(
       providerId,
       fallbackName: fallbackName,
-      contentLanguage: provider == null ? null : _contentLanguage(provider),
+      contentLanguage: provider is Map<String, dynamic>
+          ? _contentLanguage(provider)
+          : null,
     );
   }
 

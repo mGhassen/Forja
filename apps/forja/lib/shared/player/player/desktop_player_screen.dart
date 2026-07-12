@@ -144,7 +144,7 @@ class _GlassIconButtonState extends State<GlassIconButton> {
 
   Color get _tint {
     if (widget.active) return const Color(0xFF6A0DAD);
-    if (_pressed)      return const Color(0xFF2A2A2E);
+    if (_pressed) return const Color(0xFF2A2A2E);
     return const Color(0xFF1C1C1E);
   }
 
@@ -153,11 +153,14 @@ class _GlassIconButtonState extends State<GlassIconButton> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() { _hovered = false; _pressed = false; }),
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _pressed = false;
+      }),
       child: GestureDetector(
         onTap: widget.onPressed,
         onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp:   (_) => setState(() => _pressed = false),
+        onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
         child: AnimatedScale(
           scale: _pressed ? 0.88 : 1.0,
@@ -172,12 +175,13 @@ class _GlassIconButtonState extends State<GlassIconButton> {
               child: Icon(
                 widget.icon,
                 size: widget.iconSize,
-                color: widget.iconColor ??
+                color:
+                    widget.iconColor ??
                     (widget.active
                         ? Colors.white
                         : _hovered
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.80)),
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.80)),
               ),
             ),
           ),
@@ -213,12 +217,15 @@ class _GlassPillButtonState extends State<GlassPillButton> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() { _hovered = false; _pressed = false; }),
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _pressed = false;
+      }),
       child: GestureDetector(
         onTap: widget.onTap,
-        onTapDown:   (_) => setState(() => _pressed = true),
-        onTapUp:     (_) => setState(() => _pressed = false),
-        onTapCancel: ()  => setState(() => _pressed = false),
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
         child: AnimatedScale(
           scale: _pressed ? 0.90 : 1.0,
           duration: const Duration(milliseconds: 80),
@@ -233,8 +240,8 @@ class _GlassPillButtonState extends State<GlassPillButton> {
                 color: widget.accent != null
                     ? Colors.white
                     : _hovered
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.80),
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.80),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.5,
@@ -292,12 +299,15 @@ class _GlassPlayPauseState extends State<_GlassPlayPause> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() { _hovered = false; _pressed = false; }),
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _pressed = false;
+      }),
       child: GestureDetector(
         onTap: widget.onPressed,
-        onTapDown:   (_) => setState(() => _pressed = true),
-        onTapUp:     (_) => setState(() => _pressed = false),
-        onTapCancel: ()  => setState(() => _pressed = false),
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
         child: AnimatedScale(
           scale: _pressed ? 0.88 : (_hovered ? 1.08 : 1.0),
           duration: const Duration(milliseconds: 100),
@@ -335,10 +345,7 @@ class _OverlayGradient extends StatelessWidget {
         gradient: LinearGradient(
           begin: isTop ? Alignment.topCenter : Alignment.bottomCenter,
           end: isTop ? Alignment.bottomCenter : Alignment.topCenter,
-          colors: [
-            Colors.black.withValues(alpha: 0.72),
-            Colors.transparent,
-          ],
+          colors: [Colors.black.withValues(alpha: 0.72), Colors.transparent],
         ),
       ),
     );
@@ -362,34 +369,34 @@ enum _HwDecMode {
 
 extension _HwDecModeX on _HwDecMode {
   String get mpvValue => switch (this) {
-        _HwDecMode.autoSafe => 'auto-safe',
-        _HwDecMode.autoCopy => 'auto-copy',
-        _HwDecMode.software => 'no',
-      };
+    _HwDecMode.autoSafe => 'auto-safe',
+    _HwDecMode.autoCopy => 'auto-copy',
+    _HwDecMode.software => 'no',
+  };
 
   String get label => switch (this) {
-        _HwDecMode.autoSafe => 'HW+',
-        _HwDecMode.autoCopy => 'COPY',
-        _HwDecMode.software => 'SW',
-      };
+    _HwDecMode.autoSafe => 'HW+',
+    _HwDecMode.autoCopy => 'COPY',
+    _HwDecMode.software => 'SW',
+  };
 
   String get description => switch (this) {
-        _HwDecMode.autoSafe => 'Hardware Decoding: ON (GPU, safe)',
-        _HwDecMode.autoCopy => 'Hardware Decoding: ON (copy-back)',
-        _HwDecMode.software => 'Hardware Decoding: OFF (CPU)',
-      };
+    _HwDecMode.autoSafe => 'Hardware Decoding: ON (GPU, safe)',
+    _HwDecMode.autoCopy => 'Hardware Decoding: ON (copy-back)',
+    _HwDecMode.software => 'Hardware Decoding: OFF (CPU)',
+  };
 
   _HwDecMode get next => switch (this) {
-        _HwDecMode.autoSafe => _HwDecMode.autoCopy,
-        _HwDecMode.autoCopy => _HwDecMode.software,
-        _HwDecMode.software => _HwDecMode.autoSafe,
-      };
+    _HwDecMode.autoSafe => _HwDecMode.autoCopy,
+    _HwDecMode.autoCopy => _HwDecMode.software,
+    _HwDecMode.software => _HwDecMode.autoSafe,
+  };
 
   Color get accent => switch (this) {
-        _HwDecMode.autoSafe => const Color(0xFF7C3AED),
-        _HwDecMode.autoCopy => const Color(0xFF0EA5E9),
-        _HwDecMode.software => Colors.white24,
-      };
+    _HwDecMode.autoSafe => const Color(0xFF7C3AED),
+    _HwDecMode.autoCopy => const Color(0xFF0EA5E9),
+    _HwDecMode.software => Colors.white24,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -419,8 +426,10 @@ class DesktopPlayerScreen extends StatefulWidget {
   final num? hubEpisodeNumber;
   final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
-  final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
-  final Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned;
+  final Future<void> Function(Duration position, Duration duration)?
+  onSaveProgress;
+  final Future<void> Function(String sourceUrl, String sourceTitle)?
+  onSourcePinned;
   final bool pinSource;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
@@ -515,9 +524,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   PlaybackRecovery? _playbackRecovery;
   bool _autoTracksAppliedForSource = false;
   // ── Value Notifiers (rebuild only what's needed, no full setState) ────────
-  final ValueNotifier<Duration> _positionNotifier = ValueNotifier(Duration.zero);
-  final ValueNotifier<Duration> _durationNotifier = ValueNotifier(Duration.zero);
-  final ValueNotifier<Duration> _bufferedNotifier = ValueNotifier(Duration.zero);
+  final ValueNotifier<Duration> _positionNotifier = ValueNotifier(
+    Duration.zero,
+  );
+  final ValueNotifier<Duration> _durationNotifier = ValueNotifier(
+    Duration.zero,
+  );
+  final ValueNotifier<Duration> _bufferedNotifier = ValueNotifier(
+    Duration.zero,
+  );
   final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
   final ValueNotifier<double> _volumeNotifier = ValueNotifier(100.0);
@@ -525,6 +540,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   // ── Subtitles ────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _externalSubtitles = [];
   bool _isFetchingSubs = false;
+
   /// When true, the current subtitle is ASS/SSA or an image-based format (PGS/VobSub).
   /// mpv renders it directly on the video frame, so the custom Flutter overlay is hidden.
   bool _isNativeSubtitle = false;
@@ -540,10 +556,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   // Populated when the playing URL is a master HLS playlist with 2+
   // variants. The gear button in the top control bar is hidden until this
   // notifier holds a non-empty list.
-  final ValueNotifier<List<HlsQuality>?> _hlsQualitiesNotifier = ValueNotifier(null);
+  final ValueNotifier<List<HlsQuality>?> _hlsQualitiesNotifier = ValueNotifier(
+    null,
+  );
   String? _hlsMasterUrl;
   Map<String, String>? _hlsMasterHeaders;
   String? _currentQualityUrl;
+
   /// For provider == 'service111477', the upstream fileUrl currently playing
   /// (the menu compares against this rather than the localhost proxy URL).
   String? _current111477FileUrl;
@@ -579,7 +598,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   // ── Skip Segments (IntroDB) ───────────────────────────────────────────────
   IntroDbResponse? _introDbData;
-  String? _activeSkipLabel;   // e.g. 'Skip Intro', 'Skip Recap', etc.
+  String? _activeSkipLabel; // e.g. 'Skip Intro', 'Skip Recap', etc.
   Duration? _activeSkipTarget; // where to seek when the user taps
   bool _skipDismissed = false; // user dismissed the current segment button
 
@@ -590,7 +609,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   @override
   void initState() {
     super.initState();
-    
+
     // ── Provider initialization ──────────────────────────────────────────
     _currentProvider = widget.activeProvider;
     _sourcePinned = widget.pinSource;
@@ -608,7 +627,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
     widget.sourcesListNotifier?.addListener(_onLiveSourcesUpdated);
     widget.providerProbesNotifier?.addListener(_onLiveSourcesUpdated);
-    
+
     windowManager.addListener(this);
     WidgetsBinding.instance.addObserver(this);
 
@@ -785,7 +804,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     // Save progress when app goes to background or is paused
-    if (state == AppLifecycleState.paused || 
+    if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
@@ -823,7 +842,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     // Save anime watch position
     if (widget.activeProvider != null &&
         widget.activeProvider!.startsWith('anime_') &&
-        pos > 10000 && dur > 0) {
+        pos > 10000 &&
+        dur > 0) {
       _saveAnimeWatchPosition(pos, dur);
     }
 
@@ -975,8 +995,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           type: result.url.contains('.m3u8')
               ? 'hls'
               : result.url.contains('.mpd')
-                  ? 'dash'
-                  : 'mp4',
+              ? 'dash'
+              : 'mp4',
         );
         _currentSources![i] = source;
       }
@@ -989,7 +1009,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         await _configureMpvProperties();
 
         var openUrl = source.url;
-        if (PlayableSourceBridge.requiresProxy(_playableSources, i, _currentProvider)) {
+        if (PlayableSourceBridge.requiresProxy(
+          _playableSources,
+          i,
+          _currentProvider,
+        )) {
           if (!site111477_proxy.is111477ProxyRunning ||
               _current111477FileUrl != source.url) {
             if (site111477_proxy.is111477ProxyRunning) {
@@ -1027,8 +1051,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           _currentFallbackSourceIndex++;
           continue;
         }
-        final needsDuration =
-            sourceExpectsDuration(openUrl, type: source.type);
+        final needsDuration = sourceExpectsDuration(openUrl, type: source.type);
         if (sourceRequiresVideoDecode(openUrl, type: source.type) &&
             !await waitForVideoDecode(_player)) {
           debugPrint('[Player] Source $i opened without video: $openUrl');
@@ -1092,83 +1115,86 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   Future<void> _initPlayback({int sourceStartIndex = 0}) async {
     if (_disposed) return;
-    if (_isInitPlaybackRunning) return; // Prevent re-entrant calls during async extraction
+    if (_isInitPlaybackRunning)
+      return; // Prevent re-entrant calls during async extraction
     _isInitPlaybackRunning = true;
     _playbackConfirmed = false;
-    
+
     try {
-    setState(() {
-      _hasError = false;
-      _errorMessage = '';
-      _showControls = true;
-    });
+      setState(() {
+        _hasError = false;
+        _errorMessage = '';
+        _showControls = true;
+      });
 
-    if (_currentSources != null && _currentSources!.isNotEmpty) {
-      _subscribeToStreams();
-      final played = await _trySourcesFromIndex(sourceStartIndex);
-      if (played) return;
+      if (_currentSources != null && _currentSources!.isNotEmpty) {
+        _subscribeToStreams();
+        final played = await _trySourcesFromIndex(sourceStartIndex);
+        if (played) return;
 
-      if (!_providerPinned) {
-        await _autoFallbackToNextProvider();
-      } else if (mounted) {
-        notifyNoServerAvailable(_statusController);
-        setState(() {
-          _hasError = true;
-          _showControls = true;
-          _errorMessage = 'All sources on this server failed.';
-        });
-        _notifyAllSourcesExhausted();
-      }
-    } else {
-      // No sources list — primary mediaPath (torrent localhost or direct URL).
-      final openUrl = widget.mediaPath;
-      final isTorrent = isLocalTorrentStreamUrl(openUrl) ||
-          widget.magnetLink != null;
-      int retryCount = 0;
-      const maxRetries = 2;
+        if (!_providerPinned) {
+          await _autoFallbackToNextProvider();
+        } else if (mounted) {
+          notifyNoServerAvailable(_statusController);
+          setState(() {
+            _hasError = true;
+            _showControls = true;
+            _errorMessage = 'All sources on this server failed.';
+          });
+          _notifyAllSourcesExhausted();
+        }
+      } else {
+        // No sources list — primary mediaPath (torrent localhost or direct URL).
+        final openUrl = widget.mediaPath;
+        final isTorrent =
+            isLocalTorrentStreamUrl(openUrl) || widget.magnetLink != null;
+        int retryCount = 0;
+        const maxRetries = 2;
 
-      while (retryCount < maxRetries) {
-        try {
-          _subscribeToStreams();
-          await _configureMpvProperties();
-          await resetPlayerForOpen(_player);
-          await applyMediaHttpHeaders(_player, widget.headers);
-          await _player.open(Media(openUrl, httpHeaders: widget.headers));
-          _player.setVolume(_volumeNotifier.value);
-          final opened = await waitForMediaOpen(
-            _player,
-            streamUrl: openUrl,
-            timeout: isTorrent
-                ? const Duration(seconds: 45)
-                : const Duration(seconds: 12),
-          );
-          if (!opened) {
-            throw Exception('Failed to open media');
-          }
-          _detectHlsQualities(openUrl, widget.headers);
-          _playbackConfirmed = true;
-          widget.onPlaybackStarted?.call();
-          return;
-        } catch (e) {
-          retryCount++;
-          debugPrint('[Player] Primary open failed ($retryCount/$maxRetries): $e');
-          if (retryCount >= maxRetries) {
-            if (mounted) {
-              setState(() {
-                _hasError = true;
-                _showControls = true;
-                _errorMessage = isTorrent
-                    ? 'Torrent stream failed to open.'
-                    : 'Playback failed.';
-              });
+        while (retryCount < maxRetries) {
+          try {
+            _subscribeToStreams();
+            await _configureMpvProperties();
+            await resetPlayerForOpen(_player);
+            await applyMediaHttpHeaders(_player, widget.headers);
+            await _player.open(Media(openUrl, httpHeaders: widget.headers));
+            _player.setVolume(_volumeNotifier.value);
+            final opened = await waitForMediaOpen(
+              _player,
+              streamUrl: openUrl,
+              timeout: isTorrent
+                  ? const Duration(seconds: 45)
+                  : const Duration(seconds: 12),
+            );
+            if (!opened) {
+              throw Exception('Failed to open media');
             }
-            await _autoFallbackToNextProvider();
+            _detectHlsQualities(openUrl, widget.headers);
+            _playbackConfirmed = true;
+            widget.onPlaybackStarted?.call();
             return;
+          } catch (e) {
+            retryCount++;
+            debugPrint(
+              '[Player] Primary open failed ($retryCount/$maxRetries): $e',
+            );
+            if (retryCount >= maxRetries) {
+              if (mounted) {
+                setState(() {
+                  _hasError = true;
+                  _showControls = true;
+                  _errorMessage = isTorrent
+                      ? 'Torrent stream failed to open.'
+                      : 'Playback failed.';
+                });
+              }
+              await _autoFallbackToNextProvider();
+              return;
+            }
+            await Future.delayed(Duration(milliseconds: 500 * retryCount));
           }
-          await Future.delayed(Duration(milliseconds: 500 * retryCount));
         }
       }
-    }
     } finally {
       _isInitPlaybackRunning = false;
     }
@@ -1192,11 +1218,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       providers: widget.providers!,
       currentProviderId: _currentProvider,
     );
-    
+
     for (final nextKey in providerKeys) {
       if (_fallbackAborted(chainGen)) return;
       debugPrint('[Player] Auto-falling back to provider: $nextKey');
-      
+
       final success = await _silentSwitchProvider(nextKey, chainGen: chainGen);
       if (success) return;
     }
@@ -1224,11 +1250,17 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       !mounted || _disposed || chainGen != _fallbackGen;
 
   /// Switches provider without showing full error UI on failure, returns success
-  Future<bool> _silentSwitchProvider(String newProvider, {int? chainGen}) async {
+  Future<bool> _silentSwitchProvider(
+    String newProvider, {
+    int? chainGen,
+  }) async {
     final gen = chainGen ?? _fallbackGen;
     if (_fallbackAborted(gen)) return false;
     final provider = widget.providers![newProvider];
-    final providerLabel = PlayerProviderMenu.snackbarLabel(newProvider, provider);
+    final providerLabel = PlayerProviderMenu.snackbarLabel(
+      newProvider,
+      provider,
+    );
     _statusController.upsert(
       'provider-$newProvider',
       providerLabel,
@@ -1261,7 +1293,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           sources = hit.streamSources;
         }
       }
-      
+
       if (_fallbackAborted(gen)) return false;
       if (streamUrl != null && streamUrl.isNotEmpty) {
         final resolvedSources = sources != null && sources.isNotEmpty
@@ -1273,8 +1305,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                   type: streamUrl.toLowerCase().contains('.m3u8')
                       ? 'hls'
                       : streamUrl.toLowerCase().contains('.mpd')
-                          ? 'dash'
-                          : 'mp4',
+                      ? 'dash'
+                      : 'mp4',
                   headers: headers,
                 ),
               ];
@@ -1383,7 +1415,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _durationSub = _player.stream.duration.listen((dur) {
       if (_disposed) return;
       _durationNotifier.value = dur;
-      if (!_hasInitialSeek && dur.inSeconds > 0 && widget.startPosition != null) {
+      if (!_hasInitialSeek &&
+          dur.inSeconds > 0 &&
+          widget.startPosition != null) {
         _hasInitialSeek = true;
         _player.seek(widget.startPosition!);
       }
@@ -1459,7 +1493,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     // Error recovery – log & surface to UI
     _errorSub = _player.stream.error.listen((err) {
       if (_disposed || err.isEmpty) return;
-      final currentUrl = _currentSources != null &&
+      final currentUrl =
+          _currentSources != null &&
               _currentFallbackSourceIndex < _currentSources!.length
           ? _currentSources![_currentFallbackSourceIndex].url
           : null;
@@ -1482,7 +1517,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       if (!isFatalPlayerOpenError(err)) return;
       if (_hasError || _isInitPlaybackRunning) {
         if (_isInitPlaybackRunning) {
-          debugPrint('[Player] Ignoring stale error — _initPlayback already running');
+          debugPrint(
+            '[Player] Ignoring stale error — _initPlayback already running',
+          );
         }
         return;
       }
@@ -1508,7 +1545,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         return;
       }
       if (!_providerPinned) {
-        debugPrint('[Player] Fatal error — no more sources, trying next provider...');
+        debugPrint(
+          '[Player] Fatal error — no more sources, trying next provider...',
+        );
         _autoFallbackToNextProvider();
         return;
       }
@@ -1568,9 +1607,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       if (best == null) return;
 
       final current = _player.state.track.audio;
-      if (current.id == best.id &&
-          current.id != 'auto' &&
-          current.id != 'no') {
+      if (current.id == best.id && current.id != 'auto' && current.id != 'no') {
         if (!_subtitlePinned) await _applyAutoSubtitle();
         return;
       }
@@ -1601,8 +1638,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   /// so only the Flutter overlay draws text.
   void _updateSubVisibility(SubtitleTrack track) {
     final codec = track.codec?.toLowerCase() ?? '';
-    final isNativeCodec = codec.contains('ass') || codec.contains('ssa') ||
-        codec.contains('pgs') || codec.contains('dvd') || codec.contains('dvb') || codec.contains('vobsub');
+    final isNativeCodec =
+        codec.contains('ass') ||
+        codec.contains('ssa') ||
+        codec.contains('pgs') ||
+        codec.contains('dvd') ||
+        codec.contains('dvb') ||
+        codec.contains('vobsub');
     // Also check the track title/id for .ass/.ssa extension (file picker)
     final title = (track.title ?? track.id).toLowerCase();
     final looksAss = title.endsWith('.ass') || title.endsWith('.ssa');
@@ -1612,8 +1654,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       setState(() => _isNativeSubtitle = shouldUseNative);
     }
     if (_player.platform is NativePlayer) {
-      (_player.platform as NativePlayer)
-          .setProperty('sub-visibility', shouldUseNative ? 'yes' : 'no');
+      (_player.platform as NativePlayer).setProperty(
+        'sub-visibility',
+        shouldUseNative ? 'yes' : 'no',
+      );
     }
   }
 
@@ -1625,7 +1669,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       try {
         await mpv.setProperty(key, val);
       } catch (e) {
-        debugPrint('[Player] Warning: failed to set mpv property $key=$val: $e');
+        debugPrint(
+          '[Player] Warning: failed to set mpv property $key=$val: $e',
+        );
       }
     }
 
@@ -1709,12 +1755,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
     // ── HTTP Headers ──────────────────────────────────────────────────────
     if (widget.headers != null) {
-      final referer =
-          widget.headers!['Referer'] ?? widget.headers!['referer'];
+      final referer = widget.headers!['Referer'] ?? widget.headers!['referer'];
       if (referer != null) await safeSet('referrer', referer);
 
-      final ua =
-          widget.headers!['User-Agent'] ?? widget.headers!['user-agent'];
+      final ua = widget.headers!['User-Agent'] ?? widget.headers!['user-agent'];
       if (ua != null) await safeSet('user-agent', ua);
     }
 
@@ -1738,8 +1782,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     setState(() => _hwDecMode = next);
 
     if (_player.platform is NativePlayer) {
-      (_player.platform as NativePlayer)
-          .setProperty('hwdec', next.mpvValue);
+      (_player.platform as NativePlayer).setProperty('hwdec', next.mpvValue);
     }
   }
 
@@ -1754,17 +1797,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   Future<void> _loadOnlineSubtitle(Map<String, dynamic> s) async {
     final url = (s['url'] ?? '').toString();
     if (url.isEmpty) return;
-    final isTranslated = s['translated'] == true ||
-        url.contains('/subtitlecat-translate');
+    final isTranslated =
+        s['translated'] == true || url.contains('/subtitlecat-translate');
 
     // Already-local subtitle (e.g. kisskh decrypted) — feed straight to libmpv.
     if (url.startsWith('file://') || url.startsWith('/')) {
       try {
-        _player.setSubtitleTrack(SubtitleTrack.uri(
-          url.startsWith('file://') ? url : Uri.file(url).toString(),
-          title: s['display'],
-          language: s['language'],
-        ));
+        _player.setSubtitleTrack(
+          SubtitleTrack.uri(
+            url.startsWith('file://') ? url : Uri.file(url).toString(),
+            title: s['display'],
+            language: s['language'],
+          ),
+        );
         if (mounted) setState(() => _selectedExternalSubUrl = url);
       } catch (e) {
         if (!mounted) return;
@@ -1813,11 +1858,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         return;
       }
       final dir = await getTemporaryDirectory();
-      final safeLang = (s['language'] ?? 'sub')
-          .toString()
-          .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+      final safeLang = (s['language'] ?? 'sub').toString().replaceAll(
+        RegExp(r'[^A-Za-z0-9_-]'),
+        '_',
+      );
       final file = File(
-          '${dir.path}/forja_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.srt');
+        '${dir.path}/forja_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.srt',
+      );
       await file.writeAsBytes(res.bodyBytes);
       final uri = Uri.file(file.path).toString();
       final track = SubtitleTrack.uri(
@@ -1846,7 +1893,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     // Pre-populate with Jellyfin subtitles if provided
     final jellyfinSubs = widget.externalSubtitles ?? [];
     if (jellyfinSubs.isNotEmpty) {
-      if (mounted) setState(() => _externalSubtitles = List<Map<String, dynamic>>.from(jellyfinSubs));
+      if (mounted)
+        setState(
+          () => _externalSubtitles = List<Map<String, dynamic>>.from(
+            jellyfinSubs,
+          ),
+        );
     }
 
     if (widget.movie == null || widget.movie!.id <= 0) return;
@@ -1892,7 +1944,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       selectedExternalSubUrl: _selectedExternalSubUrl,
       isFetchingSubs: _isFetchingSubs,
       updateSubVisibility: _updateSubVisibility,
-      onExternalUrlChanged: (url) => setState(() => _selectedExternalSubUrl = url),
+      onExternalUrlChanged: (url) =>
+          setState(() => _selectedExternalSubUrl = url),
       onNativeSubtitleChanged: (v) => setState(() => _isNativeSubtitle = v),
       loadOnlineSubtitle: _loadOnlineSubtitle,
       onSubtitleSettings: _showSubtitleSettings,
@@ -1904,7 +1957,15 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   void _showSubtitleSettings() {
-    final fonts = ['Default', 'Poppins', 'Roboto', 'Roboto Mono', 'Montserrat', 'Open Sans', 'Lato'];
+    final fonts = [
+      'Default',
+      'Poppins',
+      'Roboto',
+      'Roboto Mono',
+      'Montserrat',
+      'Open Sans',
+      'Lato',
+    ];
     final colorOptions = <String, Color>{
       'White': Colors.white,
       'Yellow': const Color(0xFFFFEB3B),
@@ -1917,141 +1978,277 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     showDialog(
       context: context,
       useRootNavigator: false,
-      builder: (context) => StatefulBuilder(builder: (context, setDialog) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF141414),
-          title: const Text('Subtitle Settings',
-              style: TextStyle(color: Colors.white, fontSize: 16)),
-          content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              // ── Size ─────────────────────────────────────────────
-              _subRow('Size', Expanded(child: Slider(
-                value: _subtitleSize, min: 20, max: 80,
-                thumbColor: const Color(0xFF7C3AED),
-                onChanged: (v) { setDialog(() => _subtitleSize = v); setState(() {}); },
-              )), '${_subtitleSize.toInt()}'),
-
-              // ── Delay (arrow buttons) ──────────────────────────
-              _subRow('Delay', Row(mainAxisSize: MainAxisSize.min, children: [
-                IconButton(
-                  icon: const Icon(Icons.remove, color: Colors.white70, size: 20),
-                  onPressed: () {
-                    final v = _subtitleDelay - 0.1;
-                    setDialog(() => _subtitleDelay = double.parse(v.toStringAsFixed(1)));
-                    if (_player.platform is NativePlayer) {
-                      (_player.platform as NativePlayer).setProperty('sub-delay', _subtitleDelay.toString());
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add, color: Colors.white70, size: 20),
-                  onPressed: () {
-                    final v = _subtitleDelay + 0.1;
-                    setDialog(() => _subtitleDelay = double.parse(v.toStringAsFixed(1)));
-                    if (_player.platform is NativePlayer) {
-                      (_player.platform as NativePlayer).setProperty('sub-delay', _subtitleDelay.toString());
-                    }
-                  },
-                ),
-              ]), '${_subtitleDelay.toStringAsFixed(1)}s'),
-
-              // ── Text Color ─────────────────────────────────────
-              _subLabel('Text Color'),
-              const SizedBox(height: 4),
-              Wrap(spacing: 8, runSpacing: 8, children: colorOptions.entries.map((e) {
-                final selected = _subtitleColor.toARGB32() == e.value.toARGB32();
-                return GestureDetector(
-                  onTap: () {
-                    setDialog(() => _subtitleColor = e.value);
-                    setState(() {});
-                    SettingsService().setSubColor(e.value.toARGB32());
-                  },
-                  child: Container(
-                    width: 32, height: 32,
-                    decoration: BoxDecoration(
-                      color: e.value,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selected ? const Color(0xFF7C3AED) : Colors.white24,
-                        width: selected ? 3 : 1,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialog) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF141414),
+            title: const Text(
+              'Subtitle Settings',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Size ─────────────────────────────────────────────
+                  _subRow(
+                    'Size',
+                    Expanded(
+                      child: Slider(
+                        value: _subtitleSize,
+                        min: 20,
+                        max: 80,
+                        thumbColor: const Color(0xFF7C3AED),
+                        onChanged: (v) {
+                          setDialog(() => _subtitleSize = v);
+                          setState(() {});
+                        },
                       ),
                     ),
+                    '${_subtitleSize.toInt()}',
                   ),
-                );
-              }).toList()),
-              const SizedBox(height: 12),
 
-              // ── Background Opacity ─────────────────────────────
-              _subRow('BG Opacity', Expanded(child: Slider(
-                value: _subtitleBgOpacity, min: 0.0, max: 1.0,
-                thumbColor: const Color(0xFF7C3AED),
-                onChanged: (v) { setDialog(() => _subtitleBgOpacity = v); setState(() {}); },
-              )), '${(_subtitleBgOpacity * 100).toInt()}%'),
-
-              // ── Position (bottom padding) ──────────────────────
-              _subRow('Position', Expanded(child: Slider(
-                value: _subtitleBottomPadding, min: 0, max: 120,
-                thumbColor: const Color(0xFF7C3AED),
-                onChanged: (v) { setDialog(() => _subtitleBottomPadding = v); setState(() {}); },
-              )), '${_subtitleBottomPadding.toInt()}'),
-
-              // ── Bold ───────────────────────────────────────────
-              Row(children: [
-                const SizedBox(width: 70, child: Text('Bold', style: TextStyle(color: Colors.white70, fontSize: 13))),
-                const Spacer(),
-                Switch(
-                  value: _subtitleBold,
-                  activeThumbColor: const Color(0xFF7C3AED),
-                  onChanged: (v) { setDialog(() => _subtitleBold = v); setState(() {}); SettingsService().setSubBold(v); },
-                ),
-              ]),
-
-              // ── Font ───────────────────────────────────────────
-              _subLabel('Font'),
-              const SizedBox(height: 4),
-              Wrap(spacing: 6, runSpacing: 6, children: fonts.map((f) {
-                final selected = _subtitleFont == f;
-                return GestureDetector(
-                  onTap: () { setDialog(() => _subtitleFont = f); setState(() {}); SettingsService().setSubFont(f); },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: selected ? const Color(0xFF7C3AED).withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: selected ? const Color(0xFF7C3AED) : Colors.white12),
+                  // ── Delay (arrow buttons) ──────────────────────────
+                  _subRow(
+                    'Delay',
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.remove,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            final v = _subtitleDelay - 0.1;
+                            setDialog(
+                              () => _subtitleDelay = double.parse(
+                                v.toStringAsFixed(1),
+                              ),
+                            );
+                            if (_player.platform is NativePlayer) {
+                              (_player.platform as NativePlayer).setProperty(
+                                'sub-delay',
+                                _subtitleDelay.toString(),
+                              );
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.add,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            final v = _subtitleDelay + 0.1;
+                            setDialog(
+                              () => _subtitleDelay = double.parse(
+                                v.toStringAsFixed(1),
+                              ),
+                            );
+                            if (_player.platform is NativePlayer) {
+                              (_player.platform as NativePlayer).setProperty(
+                                'sub-delay',
+                                _subtitleDelay.toString(),
+                              );
+                            }
+                          },
+                        ),
+                      ],
                     ),
-                    child: Text(f, style: TextStyle(color: selected ? Colors.white : Colors.white54, fontSize: 12)),
+                    '${_subtitleDelay.toStringAsFixed(1)}s',
                   ),
-                );
-              }).toList()),
-            ]),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                SettingsService().setSubSize(_subtitleSize);
-                SettingsService().setSubBgOpacity(_subtitleBgOpacity);
-                SettingsService().setSubBottomPadding(_subtitleBottomPadding);
-                Navigator.pop(context);
-              },
-              child: const Text('Close', style: TextStyle(color: Color(0xFF7C3AED))),
+
+                  // ── Text Color ─────────────────────────────────────
+                  _subLabel('Text Color'),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: colorOptions.entries.map((e) {
+                      final selected =
+                          _subtitleColor.toARGB32() == e.value.toARGB32();
+                      return GestureDetector(
+                        onTap: () {
+                          setDialog(() => _subtitleColor = e.value);
+                          setState(() {});
+                          SettingsService().setSubColor(e.value.toARGB32());
+                        },
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: e.value,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: selected
+                                  ? const Color(0xFF7C3AED)
+                                  : Colors.white24,
+                              width: selected ? 3 : 1,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Background Opacity ─────────────────────────────
+                  _subRow(
+                    'BG Opacity',
+                    Expanded(
+                      child: Slider(
+                        value: _subtitleBgOpacity,
+                        min: 0.0,
+                        max: 1.0,
+                        thumbColor: const Color(0xFF7C3AED),
+                        onChanged: (v) {
+                          setDialog(() => _subtitleBgOpacity = v);
+                          setState(() {});
+                        },
+                      ),
+                    ),
+                    '${(_subtitleBgOpacity * 100).toInt()}%',
+                  ),
+
+                  // ── Position (bottom padding) ──────────────────────
+                  _subRow(
+                    'Position',
+                    Expanded(
+                      child: Slider(
+                        value: _subtitleBottomPadding,
+                        min: 0,
+                        max: 120,
+                        thumbColor: const Color(0xFF7C3AED),
+                        onChanged: (v) {
+                          setDialog(() => _subtitleBottomPadding = v);
+                          setState(() {});
+                        },
+                      ),
+                    ),
+                    '${_subtitleBottomPadding.toInt()}',
+                  ),
+
+                  // ── Bold ───────────────────────────────────────────
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 70,
+                        child: Text(
+                          'Bold',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ),
+                      const Spacer(),
+                      Switch(
+                        value: _subtitleBold,
+                        activeThumbColor: const Color(0xFF7C3AED),
+                        onChanged: (v) {
+                          setDialog(() => _subtitleBold = v);
+                          setState(() {});
+                          SettingsService().setSubBold(v);
+                        },
+                      ),
+                    ],
+                  ),
+
+                  // ── Font ───────────────────────────────────────────
+                  _subLabel('Font'),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: fonts.map((f) {
+                      final selected = _subtitleFont == f;
+                      return GestureDetector(
+                        onTap: () {
+                          setDialog(() => _subtitleFont = f);
+                          setState(() {});
+                          SettingsService().setSubFont(f);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? const Color(0xFF7C3AED).withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: selected
+                                  ? const Color(0xFF7C3AED)
+                                  : Colors.white12,
+                            ),
+                          ),
+                          child: Text(
+                            f,
+                            style: TextStyle(
+                              color: selected ? Colors.white : Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
             ),
-          ],
-        );
-      }),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  SettingsService().setSubSize(_subtitleSize);
+                  SettingsService().setSubBgOpacity(_subtitleBgOpacity);
+                  SettingsService().setSubBottomPadding(_subtitleBottomPadding);
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                  'Close',
+                  style: TextStyle(color: Color(0xFF7C3AED)),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   Widget _subRow(String label, Widget middle, String trailing) {
-    return Row(children: [
-      SizedBox(width: 70, child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13))),
-      if (middle is Expanded) middle else middle,
-      SizedBox(width: 44, child: Text(trailing, style: const TextStyle(color: Colors.white, fontSize: 12), textAlign: TextAlign.right)),
-    ]);
+    return Row(
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+        ),
+        if (middle is Expanded) middle else middle,
+        SizedBox(
+          width: 44,
+          child: Text(
+            trailing,
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _subLabel(String label) {
-    return Align(alignment: Alignment.centerLeft, child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)));
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.white70, fontSize: 13),
+      ),
+    );
   }
 
   Future<void> _loadSubtitlePrefs() async {
@@ -2093,8 +2290,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       }
       return;
     }
-    _torrentStatsSub =
-        TorrentStreamService().statsStream(magnet).listen((stats) {
+    _torrentStatsSub = TorrentStreamService().statsStream(magnet).listen((
+      stats,
+    ) {
       if (!mounted) return;
       setState(() => _torrentStats = stats);
     });
@@ -2110,7 +2308,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       fontWeight: _subtitleBold ? FontWeight.bold : FontWeight.normal,
       backgroundColor: Colors.black.withValues(alpha: _subtitleBgOpacity),
       shadows: [
-        Shadow(blurRadius: 10 * scale, color: Colors.black, offset: Offset.zero),
+        Shadow(
+          blurRadius: 10 * scale,
+          color: Colors.black,
+          offset: Offset.zero,
+        ),
       ],
     );
     if (_subtitleFont == 'Default') return base;
@@ -2190,16 +2392,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _currentQualityUrl = q.url;
     if (mounted) setState(() {});
     if (_hlsMasterHeaders != null && _player.platform is NativePlayer) {
-      final ref = _hlsMasterHeaders!['Referer'] ??
-          _hlsMasterHeaders!['referer'];
+      final ref =
+          _hlsMasterHeaders!['Referer'] ?? _hlsMasterHeaders!['referer'];
       if (ref != null) {
-        await (_player.platform as NativePlayer)
-            .setProperty('referrer', ref);
+        await (_player.platform as NativePlayer).setProperty('referrer', ref);
       }
     }
-    await _player.open(
-      Media(q.url, httpHeaders: _hlsMasterHeaders),
-    );
+    await _player.open(Media(q.url, httpHeaders: _hlsMasterHeaders));
     if (pos.inSeconds > 0) await _player.seek(pos);
     _onMouseMove();
   }
@@ -2283,8 +2482,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     if (merged.length <= prevLen &&
         (_currentSources == null ||
             (merged.length == prevLen &&
-                merged.every((s) =>
-                    _currentSources!.any((c) => c.url == s.url))))) {
+                merged.every(
+                  (s) => _currentSources!.any((c) => c.url == s.url),
+                )))) {
       return;
     }
     setState(() => _currentSources = merged);
@@ -2338,36 +2538,47 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     ];
     final probes = widget.providerProbesNotifier;
     if (probes != null) listenables.add(probes);
+    final cache = widget.providerSourcesCache;
+    if (cache != null) listenables.add(cache);
     return Listenable.merge(listenables);
   }
 
-  void _showSourcesMenu([BuildContext? anchorContext]) {
-    if (_currentSources == null || _currentSources!.isEmpty) return;
-    PlayerStreamMenu.show(
-      context,
-      readState: _streamMenuState,
-      onSelectProvider: _switchProvider,
-      onSelectSource: _switchToStreamSource,
-      sourcesOnly: true,
-      anchorContext: anchorContext,
-      refreshListenable: _streamMenuRefreshListenable(),
-      onReload: _reloadStreamMenu,
-      isReloading: _isReloadingStreams,
-    );
-    _onMouseMove();
+  String _streamPickerLabel() {
+    final key = _currentProvider ?? widget.activeProvider;
+    if (key != null &&
+        widget.providers != null &&
+        widget.providers!.containsKey(key)) {
+      return PlayerProviderMenu.snackbarLabel(key, widget.providers![key]);
+    }
+    final sources = _currentSources;
+    if (sources != null && sources.isNotEmpty) {
+      final current = sources.firstWhere(
+        (s) => _currentProvider == 'service111477'
+            ? s.url == _current111477FileUrl
+            : s.url == _currentUrl,
+        orElse: () => sources.first,
+      );
+      return current.title;
+    }
+    return 'Stream';
   }
 
-  void _showProviderMenu([BuildContext? anchorContext]) {
-    if (widget.providers == null ||
-        widget.providers!.isEmpty ||
-        widget.movie == null ||
-        widget.magnetLink != null ||
-        widget.activeProvider == 'stremio_direct') {
-      return;
-    }
+  bool get _hasStreamPicker {
+    final hasProviders =
+        widget.providers != null &&
+        widget.providers!.isNotEmpty &&
+        widget.magnetLink == null &&
+        widget.activeProvider != 'stremio_direct';
+    final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
+    return hasProviders || hasSources;
+  }
+
+  void _showStreamMenu([BuildContext? anchorContext]) {
+    if (!_hasStreamPicker) return;
     PlayerStreamMenu.show(
       context,
       providers: widget.providers,
+      providerSourcesCache: widget.providerSourcesCache,
       providerProbesNotifier: widget.providerProbesNotifier,
       readState: _streamMenuState,
       onSelectProvider: _switchProvider,
@@ -2494,7 +2705,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         }
         openUrl = await site111477_proxy.start111477Proxy(source.url);
         headers = null;
-      } else if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
+      } else if (_currentProvider == 'arabic' &&
+          source.type == 'arabic_embed') {
         final result = await ArabicService.extractStreamUrl(source.url);
         if (!mounted || _fallbackAborted(switchGen)) return;
         if (result == null) {
@@ -2515,8 +2727,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           type: result.url.contains('.m3u8')
               ? 'hls'
               : result.url.contains('.mpd')
-                  ? 'dash'
-                  : 'mp4',
+              ? 'dash'
+              : 'mp4',
         );
         final ok = await probeStreamSourceUrl(openUrl, headers);
         if (!mounted || _fallbackAborted(switchGen)) return;
@@ -2620,7 +2832,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   void _toggleLoop() {
     setState(() => _loopEnabled = !_loopEnabled);
     _player.setPlaylistMode(
-        _loopEnabled ? PlaylistMode.single : PlaylistMode.none);
+      _loopEnabled ? PlaylistMode.single : PlaylistMode.none,
+    );
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -2770,7 +2983,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     final seasonData = await tmdb.getTvSeasonDetails(tvId, nextSeason);
     final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
     final maxEp = episodes.isNotEmpty
-        ? episodes.map((e) => e['episode_number'] as int).reduce((a, b) => a > b ? a : b)
+        ? episodes
+              .map((e) => e['episode_number'] as int)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
 
     if (nextEpisode > maxEp) {
@@ -2793,7 +3008,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     return (season: nextSeason, episode: nextEpisode);
   }
 
-  String _episodeSwitchStatusLabel(int season, int episode, {String? providerKey}) {
+  String _episodeSwitchStatusLabel(
+    int season,
+    int episode, {
+    String? providerKey,
+  }) {
     final key = providerKey ?? _currentProvider ?? widget.activeProvider;
     if (key != null) {
       return PlayerProviderMenu.snackbarLabel(key, widget.providers?[key]);
@@ -2802,7 +3021,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     return 'S$season E$episode';
   }
 
-  void _showEpisodeSwitchStatus(int season, int episode, {String? providerKey}) {
+  void _showEpisodeSwitchStatus(
+    int season,
+    int episode, {
+    String? providerKey,
+  }) {
     _statusController.upsert(
       'episode-switch',
       _episodeSwitchStatusLabel(season, episode, providerKey: providerKey),
@@ -2897,7 +3120,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   Future<void> _goToEpisode(int season, int episode) async {
-    if (season == widget.selectedSeason && episode == widget.selectedEpisode) return;
+    if (season == widget.selectedSeason && episode == widget.selectedEpisode)
+      return;
     await _switchToEpisode(season, episode);
   }
 
@@ -2910,8 +3134,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       PlayerHubEpisodePanel.show(
         context: context,
         episodes: widget.hubEpisodes!,
-        currentEpisode:
-            widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
+        currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: widget.onHubEpisodeSelected!,
       );
       return;
@@ -2947,16 +3170,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   Future<void> _switchStremioSource(Map<String, dynamic> stream) async {
-    final title =
-        (stream['title'] ?? stream['name'] ?? 'Stremio stream').toString();
+    final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
+        .toString();
     // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
     final statusId = 'source-stremio-${stream.hashCode}';
     _playbackConfirmed = false;
-    _statusController.upsert(
-      statusId,
-      title,
-      kind: StatusRouletteKind.loading,
-    );
+    _statusController.upsert(statusId, title, kind: StatusRouletteKind.loading);
     // Let the overlay paint before heavy resolve work.
     await Future<void>.delayed(Duration.zero);
     if (!mounted) return;
@@ -3101,6 +3320,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     await widget.onSaveProgress!(pos, dur);
   }
 
+  ({String url, Map<String, String>? headers}) _externalHandoffTarget() {
+    var url = _currentUrl ?? widget.mediaPath;
+    Map<String, String>? headers = widget.headers;
+    final sources = _currentSources;
+    final idx = _currentFallbackSourceIndex;
+    if (sources != null && idx >= 0 && idx < sources.length) {
+      final source = sources[idx];
+      headers = source.headers ?? headers;
+      if (url.isEmpty) url = source.url;
+    }
+    return (url: url, headers: headers);
+  }
+
   Future<void> _showPlayerMenu(BuildContext anchorContext) async {
     final handler = widget.onSwitchPlayer;
     if (handler == null) return;
@@ -3111,11 +3343,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       anchorContext: anchorContext,
       usingBuiltIn: true,
       builtInEngine: widget.builtInEngine,
-      onSelect: ({builtInEngine, externalPlayer}) => handler(
-        _positionNotifier.value,
-        builtInEngine: builtInEngine,
-        externalPlayer: externalPlayer,
-      ),
+      onSelect: ({builtInEngine, externalPlayer}) {
+        if (externalPlayer != null) {
+          final target = _externalHandoffTarget();
+          return handler(
+            _positionNotifier.value,
+            externalPlayer: externalPlayer,
+            streamUrl: target.url,
+            headers: target.headers,
+          );
+        }
+        return handler(_positionNotifier.value, builtInEngine: builtInEngine);
+      },
     );
     _onMouseMove();
   }
@@ -3123,7 +3362,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   Future<void> _applyAutoSubtitle() async {
     if (_disposed || _subtitlePinned) return;
     final embedded = _player.state.tracks.subtitle
-        .where((t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'))
+        .where(
+          (t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'),
+        )
         .toList();
     if (embedded.isEmpty) return;
     final track = embedded.first;
@@ -3148,7 +3389,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   void _showSettingsMenu(BuildContext anchorContext) {
-    final hasProviders = widget.providers != null &&
+    final hasProviders =
+        widget.providers != null &&
         widget.providers!.isNotEmpty &&
         widget.movie != null &&
         widget.magnetLink == null &&
@@ -3300,10 +3542,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
               PlayerPopupListTile(
                 label: 'Playback speed',
                 subtitle: '${_player.state.rate}x',
-                trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 18),
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white24,
+                  size: 18,
+                ),
                 onTap: () {
                   PlayerPopupPanel.dismiss();
-                  showSpeedMenu(context, _player.state.rate, (s) => _player.setRate(s));
+                  showSpeedMenu(
+                    context,
+                    _player.state.rate,
+                    (s) => _player.setRate(s),
+                  );
                 },
               ),
               PlayerPopupListTile(
@@ -3363,16 +3613,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     NuvioService.instance.cancelPending();
 
     setState(() => _isSwitchingProvider = true);
-    
+
     final currentPos = _positionNotifier.value;
     final provider = widget.providers![newProvider];
-    final providerLabel = PlayerProviderMenu.snackbarLabel(newProvider, provider);
+    final providerLabel = PlayerProviderMenu.snackbarLabel(
+      newProvider,
+      provider,
+    );
     _statusController.upsert(
       'provider-$newProvider',
       providerLabel,
       kind: StatusRouletteKind.loading,
     );
-    
+
     try {
       String? streamUrl;
       Map<String, String>? headers;
@@ -3403,7 +3656,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           sources = hit.streamSources;
         }
       }
-      
+
       if (_fallbackAborted(gen)) return null;
       if (streamUrl != null && streamUrl.isNotEmpty) {
         // Reset any stale mpv referrer set by the previous provider/quality
@@ -3412,19 +3665,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
           await (_player.platform as NativePlayer).setProperty('referrer', ref);
         }
-        await _player.open(
-          Media(streamUrl, httpHeaders: headers),
-        );
+        await _player.open(Media(streamUrl, httpHeaders: headers));
         if (_fallbackAborted(gen)) return null;
-        
+
         if (currentPos.inSeconds > 0) {
           await _player.seek(currentPos);
         }
         _detectHlsQualities(streamUrl, headers);
-        
+
         setState(() {
           _currentProvider = newProvider;
-          _currentSources = sources == null ? null : dedupeStreamSources(sources);
+          _currentSources = sources == null
+              ? null
+              : dedupeStreamSources(sources);
           _currentUrl = streamUrl;
           _currentFallbackSourceIndex = 0; // Reset index on manual switch
           _hasError = false;
@@ -3435,8 +3688,23 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             _current111477FileUrl = _currentSources!.first.url;
           }
         });
-        
+
         _statusController.complete();
+        final selectedSources = _currentSources;
+        if (selectedSources != null && selectedSources.isNotEmpty) {
+          widget.providerSourcesCache?.value = {
+            ...?widget.providerSourcesCache?.value,
+            newProvider: selectedSources,
+          };
+          unawaited(
+            widget.onSourcePinned?.call(
+              selectedSources.first.url,
+              selectedSources.first.title,
+            ),
+          );
+        } else {
+          unawaited(widget.onSourcePinned?.call(streamUrl, providerLabel));
+        }
         return _currentSources;
       } else {
         if (mounted && !_fallbackAborted(gen)) {
@@ -3602,11 +3870,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   /// Short label shown on the pill button for the current fit mode.
   String get _videoFitLabel => switch (_videoFit) {
-        BoxFit.contain => 'FIT',
-        BoxFit.cover   => 'CROP',
-        BoxFit.fill    => 'FILL',
-        _              => 'FIT',
-      };
+    BoxFit.contain => 'FIT',
+    BoxFit.cover => 'CROP',
+    BoxFit.fill => 'FILL',
+    _ => 'FIT',
+  };
 
   void _cycleAspectRatio() {
     setState(() {
@@ -3636,96 +3904,98 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
 
     return Theme(
-        data: ThemeData.dark(),
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: MouseRegion(
-            onHover: (_) => _onMouseMove(),
-            cursor: _showControls
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.none,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // ── Video ────────────────────────────────────────────────
-                Video(
-                  controller: _controller,
-                  controls: NoVideoControls,
-                  fit: _videoFit,
-                  fill: Colors.black,
-                  subtitleViewConfiguration: const SubtitleViewConfiguration(
-                    visible: false,
+      data: ThemeData.dark(),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: MouseRegion(
+          onHover: (_) => _onMouseMove(),
+          cursor: _showControls
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.none,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // ── Video ────────────────────────────────────────────────
+              Video(
+                controller: _controller,
+                controls: NoVideoControls,
+                fit: _videoFit,
+                fill: Colors.black,
+                subtitleViewConfiguration: const SubtitleViewConfiguration(
+                  visible: false,
+                ),
+              ),
+
+              // Double-click empty video area → toggle fullscreen
+              // (controls chrome sits above and keeps its own hit targets).
+              if (!_isPipMode)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onDoubleTap: () => unawaited(_toggleFullscreen()),
+                    child: const SizedBox.expand(),
                   ),
                 ),
 
-                // Double-click empty video area → toggle fullscreen
-                // (controls chrome sits above and keeps its own hit targets).
-                if (!_isPipMode)
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onDoubleTap: () => unawaited(_toggleFullscreen()),
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-
-                // ── Custom subtitle overlay ──────────────────────────────
-                // Auto-scales relative to the rendered window height so
-                // the text stays readable in normal mode, fullscreen, AND
-                // shrinks proportionally when in PiP (480x270).
-                // Custom subtitle overlay — hidden when mpv natively handles
-                // ASS/SSA or image-based subtitles (they render on the video frame instead).
-                if (!_isNativeSubtitle)
-                  StreamBuilder<List<String>>(
-                    stream: _player.stream.subtitle,
-                    initialData: _player.state.subtitle,
-                    builder: (context, snap) {
-                      final lines = snap.data ?? [];
-                      final text = lines.where((l) => l.trim().isNotEmpty).join('\n');
-                      if (text.isEmpty) return const SizedBox.shrink();
-                      const refHeight = 720.0;
-                      final winH = MediaQuery.of(context).size.height;
-                      final scale = (winH / refHeight).clamp(0.35, 1.0);
-                      final hSidePad = 24.0 * scale;
-                      return Positioned(
-                        left: hSidePad,
-                        right: hSidePad,
-                        bottom: _subtitleBottomPadding * scale,
-                        child: IgnorePointer(
-                          child: Text(
-                            text,
-                            style: _buildSubtitleTextStyle(scale: scale),
-                            textAlign: TextAlign.center,
-                          ),
+              // ── Custom subtitle overlay ──────────────────────────────
+              // Auto-scales relative to the rendered window height so
+              // the text stays readable in normal mode, fullscreen, AND
+              // shrinks proportionally when in PiP (480x270).
+              // Custom subtitle overlay — hidden when mpv natively handles
+              // ASS/SSA or image-based subtitles (they render on the video frame instead).
+              if (!_isNativeSubtitle)
+                StreamBuilder<List<String>>(
+                  stream: _player.stream.subtitle,
+                  initialData: _player.state.subtitle,
+                  builder: (context, snap) {
+                    final lines = snap.data ?? [];
+                    final text = lines
+                        .where((l) => l.trim().isNotEmpty)
+                        .join('\n');
+                    if (text.isEmpty) return const SizedBox.shrink();
+                    const refHeight = 720.0;
+                    final winH = MediaQuery.of(context).size.height;
+                    final scale = (winH / refHeight).clamp(0.35, 1.0);
+                    final hSidePad = 24.0 * scale;
+                    return Positioned(
+                      left: hSidePad,
+                      right: hSidePad,
+                      bottom: _subtitleBottomPadding * scale,
+                      child: IgnorePointer(
+                        child: Text(
+                          text,
+                          style: _buildSubtitleTextStyle(scale: scale),
+                          textAlign: TextAlign.center,
                         ),
-                      );
-                    },
-                  ),
-
-                // ── Controls Overlay ─────────────────────────────────────
-                // Hidden entirely while PiP is active — replaced by the
-                // floating revert button below.
-                if (!_isPipMode)
-                  AnimatedOpacity(
-                    opacity: _showControls ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 220),
-                    child: IgnorePointer(
-                      ignoring: !_showControls,
-                      child: _buildControlsOverlay(),
-                    ),
-                  ),
-
-                // ── PiP revert button (hover-only) ───────────────────────
-                if (_isPipMode) _buildPipRevertOverlay(),
-
-                PlayerStatusOverlay(
-                  controller: _statusController,
-                  bufferingListenable: _isBufferingNotifier,
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
+
+              // ── Controls Overlay ─────────────────────────────────────
+              // Hidden entirely while PiP is active — replaced by the
+              // floating revert button below.
+              if (!_isPipMode)
+                AnimatedOpacity(
+                  opacity: _showControls ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 220),
+                  child: IgnorePointer(
+                    ignoring: !_showControls,
+                    child: _buildControlsOverlay(),
+                  ),
+                ),
+
+              // ── PiP revert button (hover-only) ───────────────────────
+              if (_isPipMode) _buildPipRevertOverlay(),
+
+              PlayerStatusOverlay(
+                controller: _statusController,
+                bufferingListenable: _isBufferingNotifier,
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
 
@@ -3769,7 +4039,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 8),
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(20),
@@ -3796,12 +4068,12 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   Widget _buildControlsOverlay() {
     final isTv = widget.movie?.mediaType == 'tv';
-    final hasEpisodePicker = (isTv && widget.movie != null) ||
+    final hasEpisodePicker =
+        (isTv && widget.movie != null) ||
         (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
-    final hasProviders = widget.providers != null && widget.providers!.isNotEmpty &&
-        widget.magnetLink == null && widget.activeProvider != 'stremio_direct';
-    final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
-    final hasTorrentSources = widget.movie != null &&
+    final hasStreamPicker = _hasStreamPicker;
+    final hasTorrentSources =
+        widget.movie != null &&
         ((_activeMagnet ?? widget.magnetLink)?.isNotEmpty ?? false);
     final compact = MediaQuery.sizeOf(context).width < 900;
     final topBarHeight = PlayerTopBar.totalHeight(
@@ -3813,420 +4085,461 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     return Stack(
       clipBehavior: Clip.none,
       children: [
-      const Positioned(
-        top: 0, left: 0, right: 0,
-        child: PlayerOverlayGradient(isTop: true)),
-      const Positioned(
-        bottom: 0, left: 0, right: 0,
-        child: PlayerOverlayGradient(isTop: false)),
+        const Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: PlayerOverlayGradient(isTop: true),
+        ),
+        const Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: PlayerOverlayGradient(isTop: false),
+        ),
 
-      Positioned(
-        top: 0, left: 0, right: 0,
-        child: PlayerTopBar(
-          title: _displayTitle,
-          season: widget.hubEpisodes != null ? null : widget.selectedSeason,
-          episode: widget.hubEpisodes != null
-              ? null
-              : widget.selectedEpisode,
-          episodeLine: _hubEpisodeLine,
-          statusMessage: _hasError ? _errorMessage : null,
-          statusActions: _hasError
-              ? PlayerTopStatusActions(
-                  onRetry: _initPlayback,
-                  onSources: hasSources ? _showSourcesMenu : null,
-                  onServers: hasProviders ? _showProviderMenu : null,
-                  serversEnabled: !_isSwitchingProvider,
-                )
-              : null,
-          onBack: () async {
-            if (_isFullscreen) {
-              await windowManager.setFullScreen(false);
-              setState(() => _isFullscreen = false);
-            }
-            _saveWatchHistory();
-            if (mounted) Navigator.of(context).pop(_positionNotifier.value);
-          },
-          trailing: PlayerTopBarActions(
-            showPlayer: widget.onSwitchPlayer != null,
-            onPlayer: widget.onSwitchPlayer != null
-                ? (anchorContext) => unawaited(_showPlayerMenu(anchorContext))
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: PlayerTopBar(
+            title: _displayTitle,
+            season: widget.hubEpisodes != null ? null : widget.selectedSeason,
+            episode: widget.hubEpisodes != null ? null : widget.selectedEpisode,
+            episodeLine: _hubEpisodeLine,
+            statusMessage: _hasError ? _errorMessage : null,
+            statusActions: _hasError
+                ? PlayerTopStatusActions(
+                    onRetry: _initPlayback,
+                    onStream: hasStreamPicker ? _showStreamMenu : null,
+                    streamEnabled: !_isSwitchingProvider,
+                  )
                 : null,
-            showCast: CastingService.instance.isAirPlayAvailable ||
-                CastingService.instance.isChromecastAvailable,
-            onCast: () {
-              showPlayerCastPicker(
-                context,
-                streamUrl: _currentUrl,
-                title: widget.title,
-                headers: widget.headers,
-                statusController: _statusController,
-              );
-              _onMouseMove();
+            onBack: () async {
+              if (_isFullscreen) {
+                await windowManager.setFullScreen(false);
+                setState(() => _isFullscreen = false);
+              }
+              _saveWatchHistory();
+              if (mounted) Navigator.of(context).pop(_positionNotifier.value);
             },
-            showPip: PipService.instance.isSupported,
-            pipActive: PipService.instance.isDesktopActive,
-            onPip: () async {
-              await PipService.instance.toggle();
-              if (mounted) setState(() {});
-              _onMouseMove();
-            },
+            trailing: PlayerTopBarActions(
+              showPlayer: widget.onSwitchPlayer != null,
+              onPlayer: widget.onSwitchPlayer != null
+                  ? (anchorContext) => unawaited(_showPlayerMenu(anchorContext))
+                  : null,
+              showCast:
+                  CastingService.instance.isAirPlayAvailable ||
+                  CastingService.instance.isChromecastAvailable,
+              onCast: () {
+                showPlayerCastPicker(
+                  context,
+                  streamUrl: _currentUrl,
+                  title: widget.title,
+                  headers: widget.headers,
+                  statusController: _statusController,
+                );
+                _onMouseMove();
+              },
+              showPip: PipService.instance.isSupported,
+              pipActive: PipService.instance.isDesktopActive,
+              onPip: () async {
+                await PipService.instance.toggle();
+                if (mounted) setState(() {});
+                _onMouseMove();
+              },
+            ),
           ),
         ),
-      ),
 
-      if (_displayMovie != null)
-        Positioned(
-          left: 0,
-          top: topBarHeight,
-          bottom: 120,
-          child: ValueListenableBuilder<bool>(
-            valueListenable: _isPlayingNotifier,
-            builder: (context, playing, _) => AnimatedOpacity(
-              opacity: playing ? 0.0 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              child: IgnorePointer(
-                ignoring: playing,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: PlayerPausedHero(
-                    movie: _displayMovie!,
-                    season: widget.hubEpisodes != null
-                        ? null
-                        : widget.selectedSeason,
-                    episode: widget.hubEpisodes != null
-                        ? null
-                        : widget.selectedEpisode,
-                    episodeLine: _hubEpisodeLine,
-                    episodeOverview: _pausedEpisodeOverview,
+        if (_displayMovie != null)
+          Positioned(
+            left: 0,
+            top: topBarHeight,
+            bottom: 120,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isPlayingNotifier,
+              builder: (context, playing, _) => AnimatedOpacity(
+                opacity: playing ? 0.0 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                child: IgnorePointer(
+                  ignoring: playing,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: PlayerPausedHero(
+                      movie: _displayMovie!,
+                      season: widget.hubEpisodes != null
+                          ? null
+                          : widget.selectedSeason,
+                      episode: widget.hubEpisodes != null
+                          ? null
+                          : widget.selectedEpisode,
+                      episodeLine: _hubEpisodeLine,
+                      episodeOverview: _pausedEpisodeOverview,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
 
-      ListenableBuilder(
-        listenable: playerStatusOverlayListenable(
-          _statusController,
-          _isBufferingNotifier,
-        ),
-        builder: (context, _) {
-          if (playerStatusOverlayVisible(
+        ListenableBuilder(
+          listenable: playerStatusOverlayListenable(
             _statusController,
-            _isBufferingNotifier.value,
-          )) {
-            return const SizedBox.shrink();
-          }
-          return Positioned.fill(
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  PlayerCenterActionButton(
-                    icon: Icons.replay_10_rounded,
-                    onPressed: () {
-                      final pos =
-                          _positionNotifier.value - const Duration(seconds: 10);
-                      _player.seek(pos < Duration.zero ? Duration.zero : pos);
-                      _onMouseMove();
-                    },
-                  ),
-                  const SizedBox(width: 28),
-                  ValueListenableBuilder<bool>(
-                    valueListenable: _isPlayingNotifier,
-                    builder: (context, playing, _) => PlayerCenterActionButton(
-                      icon: playing
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      size: 80,
-                      iconSize: 44,
+            _isBufferingNotifier,
+          ),
+          builder: (context, _) {
+            if (playerStatusOverlayVisible(
+              _statusController,
+              _isBufferingNotifier.value,
+            )) {
+              return const SizedBox.shrink();
+            }
+            return Positioned.fill(
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PlayerCenterActionButton(
+                      icon: Icons.replay_10_rounded,
                       onPressed: () {
-                        _player.playOrPause();
+                        final pos =
+                            _positionNotifier.value -
+                            const Duration(seconds: 10);
+                        _player.seek(pos < Duration.zero ? Duration.zero : pos);
                         _onMouseMove();
                       },
                     ),
-                  ),
-                  const SizedBox(width: 28),
-                  PlayerCenterActionButton(
-                    icon: Icons.forward_10_rounded,
-                    onPressed: () {
-                      final dur = _durationNotifier.value;
-                      final pos =
-                          _positionNotifier.value + const Duration(seconds: 10);
-                      _player.seek(pos > dur ? dur : pos);
-                      _onMouseMove();
-                    },
+                    const SizedBox(width: 28),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _isPlayingNotifier,
+                      builder: (context, playing, _) =>
+                          PlayerCenterActionButton(
+                            icon: playing
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 80,
+                            iconSize: 44,
+                            onPressed: () {
+                              _player.playOrPause();
+                              _onMouseMove();
+                            },
+                          ),
+                    ),
+                    const SizedBox(width: 28),
+                    PlayerCenterActionButton(
+                      icon: Icons.forward_10_rounded,
+                      onPressed: () {
+                        final dur = _durationNotifier.value;
+                        final pos =
+                            _positionNotifier.value +
+                            const Duration(seconds: 10);
+                        _player.seek(pos > dur ? dur : pos);
+                        _onMouseMove();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+
+        if (_activeSkipLabel != null && !_skipDismissed)
+          Positioned(
+            bottom: _showNextEpButton ? 155 : 100,
+            right: 24,
+            child: Material(
+              color: Colors.transparent,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: _performSkip,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _activeSkipLabel!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.skip_next_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-          );
-        },
-      ),
+          ),
 
-      if (_activeSkipLabel != null && !_skipDismissed)
-        Positioned(
-          bottom: _showNextEpButton ? 155 : 100,
-          right: 24,
-          child: Material(
-            color: Colors.transparent,
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              InkWell(
-                onTap: _performSkip,
+        if (_showNextEpButton)
+          Positioned(
+            bottom: 100,
+            right: 24,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _isLoadingNextEp ? null : _nextEpisode,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.white24),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(
-                      _activeSkipLabel!,
-                      style: const TextStyle(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isLoadingNextEp)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      else
+                        const Text(
+                          'Next Episode',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
                         color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        size: 20,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.skip_next_rounded,
-                        color: Colors.white, size: 20),
-                  ]),
+                    ],
+                  ),
                 ),
               ),
-            ]),
+            ),
           ),
-        ),
 
-      if (_showNextEpButton)
         Positioned(
-          bottom: 100,
-          right: 24,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _isLoadingNextEp ? null : _nextEpisode,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white24),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  if (_isLoadingNextEp)
-                    const SizedBox(
-                      width: 18, height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                    )
-                  else
-                    const Text(
-                      'Next Episode',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_rounded,
-                      color: Colors.white, size: 20),
-                ]),
-              ),
-            ),
-          ),
-        ),
-
-      Positioned(
-        bottom: 0, left: 0, right: 0,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            if (_showTorrentStatsOverlay &&
-                _torrentStats != null &&
-                widget.magnetLink != null)
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  // Lift above Skip Intro / Next Episode when those sit bottom-right.
-                  padding: EdgeInsets.only(bottom: 8 + _torrentStatsLift),
-                  child: PlayerTorrentStatsCard(stats: _torrentStats!),
-                ),
-              ),
-            ValueListenableBuilder<Duration>(
-              valueListenable: _durationNotifier,
-              builder: (context, duration, _) =>
-                  ValueListenableBuilder<Duration>(
-                valueListenable: _positionNotifier,
-                builder: (context, position, _) =>
-                    ValueListenableBuilder<Duration>(
-                  valueListenable: _bufferedNotifier,
-                  builder: (context, buffered, _) => SeekBarWithPreview(
-                    duration: duration,
-                    position: position,
-                    bufferedPosition: buffered,
-                    captureFrame: _captureSeekPreview,
-                    onSeek: (t) {
-                      _player.seek(t);
-                      _onMouseMove();
-                    },
-                    onDragStart: () => _hideTimer?.cancel(),
-                    onDragEnd: _startHideTimer,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(children: [
-                  ValueListenableBuilder<bool>(
-                    valueListenable: _isPlayingNotifier,
-                    builder: (context, playing, _) => PlayerFlatIconButton(
-                      icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      tooltip: playing ? 'Pause' : 'Play',
-                      onPressed: () {
-                        _player.playOrPause();
-                        _onMouseMove();
-                      },
+                if (_showTorrentStatsOverlay &&
+                    _torrentStats != null &&
+                    widget.magnetLink != null)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      // Lift above Skip Intro / Next Episode when those sit bottom-right.
+                      padding: EdgeInsets.only(bottom: 8 + _torrentStatsLift),
+                      child: PlayerTorrentStatsCard(stats: _torrentStats!),
                     ),
                   ),
-                  const SizedBox(width: 2),
-                  PlayerFlatIconButton(
-                    icon: Icons.replay_10_rounded,
-                    tooltip: 'Back 10s',
-                    onPressed: () {
-                      final pos = _positionNotifier.value - const Duration(seconds: 10);
-                      _player.seek(pos < Duration.zero ? Duration.zero : pos);
-                      _onMouseMove();
-                    },
-                  ),
-                  const SizedBox(width: 2),
-                  PlayerFlatIconButton(
-                    icon: Icons.forward_10_rounded,
-                    tooltip: 'Forward 10s',
-                    onPressed: () {
-                      final dur = _durationNotifier.value;
-                      final pos = _positionNotifier.value + const Duration(seconds: 10);
-                      _player.seek(pos > dur ? dur : pos);
-                      _onMouseMove();
-                    },
-                  ),
-                  const SizedBox(width: 6),
-                  ValueListenableBuilder<double>(
-                    valueListenable: _volumeNotifier,
-                    builder: (context, vol, _) => PlayerVolumeControl(
-                      volume: vol,
-                      maxVolume: 150,
-                      compact: compact,
-                      onVolumeChanged: _player.setVolume,
-                      onInteraction: _onMouseMove,
-                      onDragStart: () => _hideTimer?.cancel(),
-                      onDragEnd: _startHideTimer,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ValueListenableBuilder<Duration>(
-                    valueListenable: _positionNotifier,
-                    builder: (context, pos, _) =>
-                        ValueListenableBuilder<Duration>(
-                      valueListenable: _durationNotifier,
-                      builder: (context, dur, _) => PlayerTimeRange(
-                        position: pos,
-                        duration: dur,
+                ValueListenableBuilder<Duration>(
+                  valueListenable: _durationNotifier,
+                  builder: (context, duration, _) =>
+                      ValueListenableBuilder<Duration>(
+                        valueListenable: _positionNotifier,
+                        builder: (context, position, _) =>
+                            ValueListenableBuilder<Duration>(
+                              valueListenable: _bufferedNotifier,
+                              builder: (context, buffered, _) =>
+                                  SeekBarWithPreview(
+                                    duration: duration,
+                                    position: position,
+                                    bufferedPosition: buffered,
+                                    captureFrame: _captureSeekPreview,
+                                    onSeek: (t) {
+                                      _player.seek(t);
+                                      _onMouseMove();
+                                    },
+                                    onDragStart: () => _hideTimer?.cancel(),
+                                    onDragEnd: _startHideTimer,
+                                  ),
+                            ),
                       ),
-                    ),
-                  ),
-                ]),
-                Row(children: [
-                  if (hasTorrentSources) ...[
-                    PlayerFlatIconButton(
-                      icon: Icons.link_rounded,
-                      tooltip: 'Sources',
-                      onPressed: _showTorrentSourcesPanel,
-                    ),
-                    const SizedBox(width: 2),
-                  ],
-                  if (hasSources) ...[
-                    PlayerFlatIconButton(
-                      icon: Icons.dns_outlined,
-                      tooltip: 'Sources',
-                      onPressedWithContext: (ctx) => _showSourcesMenu(ctx),
-                    ),
-                    const SizedBox(width: 2),
-                  ],
-                  if (hasProviders) ...[
-                    PlayerFlatIconButton(
-                      icon: Icons.cloud_outlined,
-                      tooltip: 'Servers',
-                      onPressedWithContext: _isSwitchingProvider
-                          ? null
-                          : (ctx) => _showProviderMenu(ctx),
-                      onPressed: () {},
-                    ),
-                    const SizedBox(width: 2),
-                  ],
-                  if (hasEpisodePicker) ...[
-                    PlayerFlatIconButton(
-                      icon: Icons.video_library_outlined,
-                      tooltip: 'Episodes',
-                      onPressedWithContext: _showEpisodesMenu,
-                    ),
-                    const SizedBox(width: 2),
-                  ],
-                  PlayerFlatIconButton(
-                    icon: Icons.audiotrack_rounded,
-                    tooltip: 'Audio',
-                    onPressedWithContext: _showAudioMenu,
-                  ),
-                  const SizedBox(width: 2),
-                  PlayerFlatIconButton(
-                    icon: Icons.subtitles_outlined,
-                    tooltip: 'Subtitles',
-                    onPressedWithContext: _showSubtitlesMenu,
-                  ),
-                  const SizedBox(width: 2),
-                  ValueListenableBuilder<List<HlsQuality>?>(
-                    valueListenable: _hlsQualitiesNotifier,
-                    builder: (context, qs, _) => Row(
-                      mainAxisSize: MainAxisSize.min,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
                       children: [
-                        PlayerFlatIconButton(
-                          icon: Icons.hd_outlined,
-                          tooltip: 'Quality',
-                          onPressedWithContext: _showQualityMenu,
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _isPlayingNotifier,
+                          builder: (context, playing, _) =>
+                              PlayerFlatIconButton(
+                                icon: playing
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                                tooltip: playing ? 'Pause' : 'Play',
+                                onPressed: () {
+                                  _player.playOrPause();
+                                  _onMouseMove();
+                                },
+                              ),
                         ),
                         const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          icon: Icons.replay_10_rounded,
+                          tooltip: 'Back 10s',
+                          onPressed: () {
+                            final pos =
+                                _positionNotifier.value -
+                                const Duration(seconds: 10);
+                            _player.seek(
+                              pos < Duration.zero ? Duration.zero : pos,
+                            );
+                            _onMouseMove();
+                          },
+                        ),
+                        const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          icon: Icons.forward_10_rounded,
+                          tooltip: 'Forward 10s',
+                          onPressed: () {
+                            final dur = _durationNotifier.value;
+                            final pos =
+                                _positionNotifier.value +
+                                const Duration(seconds: 10);
+                            _player.seek(pos > dur ? dur : pos);
+                            _onMouseMove();
+                          },
+                        ),
+                        const SizedBox(width: 6),
+                        ValueListenableBuilder<double>(
+                          valueListenable: _volumeNotifier,
+                          builder: (context, vol, _) => PlayerVolumeControl(
+                            volume: vol,
+                            maxVolume: 150,
+                            compact: compact,
+                            onVolumeChanged: _player.setVolume,
+                            onInteraction: _onMouseMove,
+                            onDragStart: () => _hideTimer?.cancel(),
+                            onDragEnd: _startHideTimer,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ValueListenableBuilder<Duration>(
+                          valueListenable: _positionNotifier,
+                          builder: (context, pos, _) =>
+                              ValueListenableBuilder<Duration>(
+                                valueListenable: _durationNotifier,
+                                builder: (context, dur, _) => PlayerTimeRange(
+                                  position: pos,
+                                  duration: dur,
+                                ),
+                              ),
+                        ),
                       ],
                     ),
-                  ),
-                  PlayerFlatIconButton(
-                    icon: Icons.settings_outlined,
-                    tooltip: 'Settings',
-                    onPressedWithContext: _showSettingsMenu,
-                  ),
-                  const SizedBox(width: 2),
-                  PlayerFlatIconButton(
-                    icon: _isFullscreen
-                        ? Icons.fullscreen_exit_rounded
-                        : Icons.fullscreen_rounded,
-                    tooltip: 'Fullscreen',
-                    onPressed: _toggleFullscreen,
-                  ),
-                ]),
+                    Row(
+                      children: [
+                        if (hasTorrentSources) ...[
+                          PlayerFlatIconButton(
+                            icon: Icons.link_rounded,
+                            tooltip: 'Sources',
+                            onPressed: _showTorrentSourcesPanel,
+                          ),
+                          const SizedBox(width: 2),
+                        ],
+                        if (hasStreamPicker) ...[
+                          PlayerStreamPickerButton(
+                            label: _streamPickerLabel(),
+                            enabled: !_isSwitchingProvider,
+                            onPressedWithContext: (ctx) => _showStreamMenu(ctx),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        if (hasEpisodePicker) ...[
+                          PlayerFlatIconButton(
+                            icon: Icons.video_library_outlined,
+                            tooltip: 'Episodes',
+                            onPressedWithContext: _showEpisodesMenu,
+                          ),
+                          const SizedBox(width: 2),
+                        ],
+                        PlayerFlatIconButton(
+                          icon: Icons.audiotrack_rounded,
+                          tooltip: 'Audio',
+                          onPressedWithContext: _showAudioMenu,
+                        ),
+                        const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          icon: Icons.subtitles_outlined,
+                          tooltip: 'Subtitles',
+                          onPressedWithContext: _showSubtitlesMenu,
+                        ),
+                        const SizedBox(width: 2),
+                        ValueListenableBuilder<List<HlsQuality>?>(
+                          valueListenable: _hlsQualitiesNotifier,
+                          builder: (context, qs, _) => Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              PlayerFlatIconButton(
+                                icon: Icons.hd_outlined,
+                                tooltip: 'Quality',
+                                onPressedWithContext: _showQualityMenu,
+                              ),
+                              const SizedBox(width: 2),
+                            ],
+                          ),
+                        ),
+                        PlayerFlatIconButton(
+                          icon: Icons.settings_outlined,
+                          tooltip: 'Settings',
+                          onPressedWithContext: _showSettingsMenu,
+                        ),
+                        const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          icon: _isFullscreen
+                              ? Icons.fullscreen_exit_rounded
+                              : Icons.fullscreen_rounded,
+                          tooltip: 'Fullscreen',
+                          onPressed: _toggleFullscreen,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ],
             ),
-          ]),
+          ),
         ),
-      ),
-    ]);
+      ],
+    );
   }
-
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4255,11 +4568,11 @@ class _GlassSeekbar extends StatefulWidget {
 }
 
 class _GlassSeekbarState extends State<_GlassSeekbar> {
-  bool   _isDragging  = false;
-  bool   _hovering    = false;
-  double _dragFrac    = 0.0; // 0..1 fraction while dragging
-  double _hoverFrac   = 0.0; // 0..1 fraction of cursor position
-  double _trackWidth  = 0.0; // cached from LayoutBuilder
+  bool _isDragging = false;
+  bool _hovering = false;
+  double _dragFrac = 0.0; // 0..1 fraction while dragging
+  double _hoverFrac = 0.0; // 0..1 fraction of cursor position
+  double _trackWidth = 0.0; // cached from LayoutBuilder
 
   // ── Fractions ───────────────────────────────────────────────────────────
   double get _playFrac {
@@ -4282,8 +4595,7 @@ class _GlassSeekbarState extends State<_GlassSeekbar> {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  double _fracFromLocal(double dx) =>
-      (dx / _trackWidth).clamp(0.0, 1.0);
+  double _fracFromLocal(double dx) => (dx / _trackWidth).clamp(0.0, 1.0);
 
   @override
   Widget build(BuildContext context) {
@@ -4292,7 +4604,7 @@ class _GlassSeekbarState extends State<_GlassSeekbar> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (e) => setState(() {
-        _hovering  = true;
+        _hovering = true;
         _hoverFrac = _fracFromLocal(e.localPosition.dx);
       }),
       onHover: (e) => setState(() {
@@ -4305,12 +4617,12 @@ class _GlassSeekbarState extends State<_GlassSeekbar> {
           widget.onDragStart();
           setState(() {
             _isDragging = true;
-            _dragFrac   = _fracFromLocal(d.localPosition.dx);
-            _hoverFrac  = _dragFrac;
+            _dragFrac = _fracFromLocal(d.localPosition.dx);
+            _hoverFrac = _dragFrac;
           });
         },
         onHorizontalDragUpdate: (d) => setState(() {
-          _dragFrac  = _fracFromLocal(d.localPosition.dx);
+          _dragFrac = _fracFromLocal(d.localPosition.dx);
           _hoverFrac = _dragFrac;
         }),
         onHorizontalDragEnd: (_) {
@@ -4321,7 +4633,7 @@ class _GlassSeekbarState extends State<_GlassSeekbar> {
         },
         onTapUp: (d) {
           final total = widget.duration.inMilliseconds.toDouble();
-          final frac  = _fracFromLocal(d.localPosition.dx);
+          final frac = _fracFromLocal(d.localPosition.dx);
           widget.onSeek(Duration(milliseconds: (frac * total).round()));
         },
         // Extra vertical hit area so the thin bar is easy to grab
@@ -4331,140 +4643,159 @@ class _GlassSeekbarState extends State<_GlassSeekbar> {
             alignment: Alignment.bottomCenter,
             child: SizedBox(
               height: 20,
-              child: LayoutBuilder(builder: (context, constraints) {
-                _trackWidth = constraints.maxWidth;
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  _trackWidth = constraints.maxWidth;
 
-                // ── track height animates from 3 → 6 on active ────────────
-                final trackH = active ? 6.0 : 3.0;
-                // ── thumb radius: 0 → 7 on active, centred on playhead ────
-                final thumbR = active ? 7.0 : 0.0;
-                // ── playhead + hover pixel positions ─────────────────────
-                final playPx  = (_playFrac  * _trackWidth).clamp(0.0, _trackWidth);
-                final hoverPx = (_hoverFrac * _trackWidth).clamp(0.0, _trackWidth);
+                  // ── track height animates from 3 → 6 on active ────────────
+                  final trackH = active ? 6.0 : 3.0;
+                  // ── thumb radius: 0 → 7 on active, centred on playhead ────
+                  final thumbR = active ? 7.0 : 0.0;
+                  // ── playhead + hover pixel positions ─────────────────────
+                  final playPx = (_playFrac * _trackWidth).clamp(
+                    0.0,
+                    _trackWidth,
+                  );
+                  final hoverPx = (_hoverFrac * _trackWidth).clamp(
+                    0.0,
+                    _trackWidth,
+                  );
 
-                // ── Tooltip horizontal clamp so it never overflows ─────────
-                const tipW     = 72.0;
-                final tipLeft  = (hoverPx - tipW / 2).clamp(0.0, _trackWidth - tipW);
+                  // ── Tooltip horizontal clamp so it never overflows ─────────
+                  const tipW = 72.0;
+                  final tipLeft = (hoverPx - tipW / 2).clamp(
+                    0.0,
+                    _trackWidth - tipW,
+                  );
 
-                return Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.centerLeft,
-                  children: [
-                    // ── Background track ────────────────────────────────
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      curve: Curves.easeOut,
-                      height: trackH,
-                      width: _trackWidth,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(trackH),
-                      ),
-                    ),
-
-                    // ── Buffered ─────────────────────────────────────────
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      curve: Curves.easeOut,
-                      height: trackH,
-                      width: (_bufFrac * _trackWidth).clamp(0.0, _trackWidth),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.30),
-                        borderRadius: BorderRadius.circular(trackH),
-                      ),
-                    ),
-
-                    // ── Played ───────────────────────────────────────────
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 80),
-                      curve: Curves.easeOut,
-                      height: trackH,
-                      width: playPx,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(trackH),
-                      ),
-                    ),
-
-                    // ── Hover preview line (ghosted, thin) ───────────────
-                    if (active)
-                      Positioned(
-                        left: hoverPx - 1,
-                        child: AnimatedOpacity(
-                          opacity: active ? 0.45 : 0.0,
-                          duration: const Duration(milliseconds: 120),
-                          child: Container(
-                            width: 1.5,
-                            height: trackH + 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(1),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // ── Playhead thumb dot ───────────────────────────────
-                    Positioned(
-                      left: playPx - thumbR,
-                      child: AnimatedContainer(
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.centerLeft,
+                    children: [
+                      // ── Background track ────────────────────────────────
+                      AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
                         curve: Curves.easeOut,
-                        width:  thumbR * 2,
-                        height: thumbR * 2,
+                        height: trackH,
+                        width: _trackWidth,
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: active
-                              ? [BoxShadow(
-                                  color: Colors.white.withValues(alpha: 0.4),
-                                  blurRadius: 6,
-                                )]
-                              : [],
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(trackH),
                         ),
                       ),
-                    ),
 
-                    // ── Hover tooltip: glassy pill above cursor ──────────
-                    if (active && widget.duration.inMilliseconds > 0)
-                      Positioned(
-                        top: -38,
-                        left: tipLeft,
-                        child: AnimatedOpacity(
-                          opacity: active ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 120),
-                          child: Container(
-                            width: tipW,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1C1C1E).withValues(alpha: 0.92),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.18),
-                                width: 0.6,
+                      // ── Buffered ─────────────────────────────────────────
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeOut,
+                        height: trackH,
+                        width: (_bufFrac * _trackWidth).clamp(0.0, _trackWidth),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.30),
+                          borderRadius: BorderRadius.circular(trackH),
+                        ),
+                      ),
+
+                      // ── Played ───────────────────────────────────────────
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 80),
+                        curve: Curves.easeOut,
+                        height: trackH,
+                        width: playPx,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(trackH),
+                        ),
+                      ),
+
+                      // ── Hover preview line (ghosted, thin) ───────────────
+                      if (active)
+                        Positioned(
+                          left: hoverPx - 1,
+                          child: AnimatedOpacity(
+                            opacity: active ? 0.45 : 0.0,
+                            duration: const Duration(milliseconds: 120),
+                            child: Container(
+                              width: 1.5,
+                              height: trackH + 4,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(1),
                               ),
                             ),
-                            child: Text(
-                                  formatDuration(_hoverTime),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.visible,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'monospace',
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
+                          ),
+                        ),
+
+                      // ── Playhead thumb dot ───────────────────────────────
+                      Positioned(
+                        left: playPx - thumbR,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          curve: Curves.easeOut,
+                          width: thumbR * 2,
+                          height: thumbR * 2,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: active
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                      blurRadius: 6,
+                                    ),
+                                  ]
+                                : [],
                           ),
                         ),
                       ),
-                  ],
-                );
-              }),
+
+                      // ── Hover tooltip: glassy pill above cursor ──────────
+                      if (active && widget.duration.inMilliseconds > 0)
+                        Positioned(
+                          top: -38,
+                          left: tipLeft,
+                          child: AnimatedOpacity(
+                            opacity: active ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 120),
+                            child: Container(
+                              width: tipW,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF1C1C1E,
+                                ).withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  width: 0.6,
+                                ),
+                              ),
+                              child: Text(
+                                formatDuration(_hoverTime),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.visible,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'monospace',
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),

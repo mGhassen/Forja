@@ -9,6 +9,23 @@ import 'package:rust/rust.dart';
 
 Future<void>? _stopFuture;
 
+/// When true, [stop111477Proxy] is a no-op so an external player can keep
+/// reading the localhost seek proxy after the built-in player disposes.
+bool retainForExternalHandoff = false;
+
+bool is111477UpstreamUrl(String url) {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  return host.contains('111477');
+}
+
+bool is111477LocalProxyUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return false;
+  if (uri.host != '127.0.0.1' && uri.host != 'localhost') return false;
+  final proxyPort = site111477ProxyPort;
+  return proxyPort > 0 && uri.port == proxyPort;
+}
+
 Future<String> start111477Proxy(
   String upstreamUrl, {
   Map<String, String>? headers,
@@ -52,7 +69,8 @@ String? get site111477ProxyUrl {
   return port == 0 ? null : 'http://127.0.0.1:$port/';
 }
 
-Future<void> stop111477Proxy() async {
+Future<void> stop111477Proxy({bool force = false}) async {
+  if (retainForExternalHandoff && !force) return;
   if (_stopFuture != null) return _stopFuture;
   if (!is111477ProxyRunning) return;
   final c = Completer<void>();

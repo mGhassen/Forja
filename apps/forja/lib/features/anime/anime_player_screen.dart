@@ -182,6 +182,22 @@ List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) {
   return sources;
 }
 
+Map<String, dynamic> _animeProviderMap(Iterable<AnimeEmbed> embeds) {
+  return {
+    for (final embed in embeds) embed.sourceKey: {'name': embed.displayName},
+  };
+}
+
+Map<String, List<StreamSource>> _hitsToProviderCache(
+  List<_AnimeResolvedHit> hits,
+) {
+  final cache = <String, List<StreamSource>>{};
+  for (final hit in hits) {
+    cache[hit.embed.sourceKey] = _hitsToStreamSources([hit]);
+  }
+  return cache;
+}
+
 Future<List<StreamSource>?> reloadAnimeEpisodeStreams({
   required AnimeService service,
   required List<AnimeEmbed> allEmbeds,
@@ -768,6 +784,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _setStatusLine('${pair.map((e) => e.sourceKey).toSet().length} sources · scanning…');
 
     final sourcesListNotifier = ValueNotifier<List<StreamSource>>(const []);
+    final providerSourcesCache =
+        ValueNotifier<Map<String, List<StreamSource>>>({});
     final urlToSourceKey = <String, String>{};
     final titleToSourceKey = <String, String>{};
 
@@ -779,6 +797,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         titleToSourceKey[t] = h.embed.sourceKey;
       }
       sourcesListNotifier.value = _hitsToStreamSources(all);
+      providerSourcesCache.value = _hitsToProviderCache(all);
       _AnimeStreamSessionCache.write(
         widget.anime.id,
         widget.episodeNumber,
@@ -805,6 +824,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     );
     if (!mounted || _cancelled) {
       sourcesListNotifier.dispose();
+      providerSourcesCache.dispose();
       return;
     }
     if (hits.isNotEmpty) {
@@ -813,13 +833,15 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       await _launchPlayer(
         hits,
         sourcesListNotifier: sourcesListNotifier,
+        providerSourcesCache: providerSourcesCache,
         urlToSourceKey: urlToSourceKey,
         titleToSourceKey: titleToSourceKey,
       );
-      // Notifier disposed inside _launchPlayer after the player closes.
+      // Notifiers disposed inside _launchPlayer after the player closes.
       return;
     }
     sourcesListNotifier.dispose();
+    providerSourcesCache.dispose();
     if (_autoRecheckUsed >= 1) {
       setState(() => _awaitingManualRecheck = true);
       _setPhase('No streams available');
@@ -846,6 +868,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     bool usedSavedSource = false,
     bool fromSessionCache = false,
     ValueNotifier<List<StreamSource>>? sourcesListNotifier,
+    ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache,
     Map<String, String>? urlToSourceKey,
     Map<String, String>? titleToSourceKey,
   }) async {
@@ -965,13 +988,20 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     _fadeOutNotifier.value = true;
     var playbackStarted = false;
+    final ownsProviderCache = providerSourcesCache == null;
+    final liveProviderCache = providerSourcesCache ??
+        ValueNotifier<Map<String, List<StreamSource>>>(
+          _hitsToProviderCache(hits),
+        );
     final playerFuture = AppRouter.openPlayer(
       context,
       streamUrl: winner.media.url,
       title: title,
       headers: winnerHeaders,
       sources: sources,
-      activeProvider: winner.embed.server,
+      providers: _animeProviderMap(_allEmbeds),
+      providerSourcesCache: liveProviderCache,
+      activeProvider: winner.embed.sourceKey,
       externalSubtitles: allSubs.isNotEmpty ? allSubs : null,
       movie: _hubMovieFromAnime(widget.anime),
       hubEpisodes: hubEpisodes,
@@ -1038,6 +1068,11 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final shouldRecheck = !playbackStarted && _launchedFromSavedOrCache;
     _cancelled = true;
     sourcesListNotifier?.dispose();
+    if (ownsProviderCache) {
+      liveProviderCache.dispose();
+    } else {
+      providerSourcesCache!.dispose();
+    }
     if (!playbackStarted && mounted) {
       _fadeOutNotifier.value = false;
       if (!shouldRecheck) {

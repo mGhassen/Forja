@@ -42,15 +42,20 @@ import 'package:forja/shared/theme/app_theme.dart';
 
 class DetailsScreen extends StatefulWidget {
   final Movie movie;
+
   /// Optional: when opened from a Stremio addon search result with a custom ID,
   /// pass the original item so we can auto-select the right addon and use its ID.
   final Map<String, dynamic>? stremioItem;
+
   /// Optional: pre-select a season (e.g. from Continue Watching / Trakt import).
   final int? initialSeason;
+
   /// Optional: pre-select an episode (e.g. from Continue Watching / Trakt import).
   final int? initialEpisode;
+
   /// Optional: resume position from Trakt/Simkl import (used when no local progress matches).
   final Duration? startPosition;
+
   /// When true, auto-plays the best source after the initial fetch/search completes.
   final bool autoPlay;
   const DetailsScreen({
@@ -97,6 +102,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   bool _playSourceTorrent = true;
   bool _playSourceStremio = true;
   bool _playSourceWebstreaming = true;
+
   /// Panel list filter: `all` | `torrents` | `stremio` | `nuvio`.
   String _panelKindFilter = 'all';
 
@@ -115,13 +121,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   bool _isNuvioFetching = false;
   bool _hasNuvioAddons = false;
   StreamSubscription<NuvioScraperResult>? _nuvioSub;
+
   /// Cached list of installed Nuvio addons (refreshed when the Nuvio tab
   /// is opened). Used to render the addon-picker chips.
   List<NuvioAddon> _nuvioAddons = [];
+
   /// Manifest URL of the addon the user has drilled into. `null` means
   /// we're showing the addon-picker chips. Once non-null, scraper chips
   /// for that addon are rendered.
   String? _nuvioSelectedAddonUrl;
+
   /// Scraper id (`<scraperId>`) the user picked. Drives `_selectedSourceId`
   /// (`'nuvio:<scraperId>'`) and the active stream list.
   String? _nuvioSelectedScraperId;
@@ -135,7 +144,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   String? _webstreamingActiveProviderId;
   bool _isWebstreamingOnlyExtracting = false;
   bool _webstreamingOnlyExtractionCancelled = false;
-  final StreamProviderResolver _streamProviderResolver = StreamProviderResolver();
+  final StreamProviderResolver _streamProviderResolver =
+      StreamProviderResolver();
   int _selectedSeason = 1;
   int _selectedEpisode = 1;
   Map<String, dynamic>? _seasonData;
@@ -185,7 +195,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   final ScrollController _episodeScrollController = ScrollController();
   final ScrollController _chipsScrollController = ScrollController();
   final ScrollController _detailsScrollController = ScrollController();
-  final FocusNode _detailsHeroPlayFocus = FocusNode(debugLabel: 'details-hero-play');
+  final FocusNode _detailsHeroPlayFocus = FocusNode(
+    debugLabel: 'details-hero-play',
+  );
   bool _detailsHeroInitialFocusDone = false;
 
   // MDBlist aggregated ratings
@@ -204,9 +216,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     super.initState();
     _movie = widget.movie;
     if (widget.initialSeason != null) _selectedSeason = widget.initialSeason!;
-    if (widget.initialEpisode != null) _selectedEpisode = widget.initialEpisode!;
+    if (widget.initialEpisode != null)
+      _selectedEpisode = widget.initialEpisode!;
     // Start atmosphere color extraction
-    final url = (_movie.posterPath.isNotEmpty ? _movie.posterPath : _movie.backdropPath);
+    final url = (_movie.posterPath.isNotEmpty
+        ? _movie.posterPath
+        : _movie.backdropPath);
     loadAtmosphere(url.startsWith('http') ? url : TmdbApi.getImageUrl(url));
     _checkHistory();
     _loadSortPreference();
@@ -409,8 +424,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _selectedSourceId = _streamAddons.length > 1
               ? 'all_stremio'
               : (_streamAddons.isNotEmpty
-                  ? _streamAddons.first['baseUrl'] as String
-                  : 'all_stremio');
+                    ? _streamAddons.first['baseUrl'] as String
+                    : 'all_stremio');
           _applyStremioFilter();
         case 'nuvio':
           _selectedSourceId = 'nuvio_picker';
@@ -445,11 +460,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   String _webstreamingCacheKey() => WebstreamingStreamCache.cacheKey(
-        tmdbId: _movie.id,
-        mediaType: _movie.mediaType,
-        season: _movie.mediaType == 'tv' ? _selectedSeason : 0,
-        episode: _movie.mediaType == 'tv' ? _selectedEpisode : 0,
-      );
+    tmdbId: _movie.id,
+    mediaType: _movie.mediaType,
+    season: _movie.mediaType == 'tv' ? _selectedSeason : 0,
+    episode: _movie.mediaType == 'tv' ? _selectedEpisode : 0,
+  );
 
   void _applyWebstreamingCacheHit(WebstreamingCacheHit hit) {
     _webstreamingStreams = hit.sources;
@@ -467,6 +482,46 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     );
   }
 
+  Future<void> _rememberWebstreamingSelection(
+    String sourceUrl,
+    String sourceTitle,
+    ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache,
+  ) async {
+    if (sourceUrl.trim().isEmpty) return;
+    final cache = providerSourcesCache?.value ?? const {};
+    String? providerId;
+    List<StreamSource>? providerSources;
+    for (final entry in cache.entries) {
+      final match = entry.value.any((s) => s.url == sourceUrl);
+      if (!match) continue;
+      providerId = entry.key;
+      providerSources = entry.value;
+      break;
+    }
+    providerId ??= _webstreamingActiveProviderId;
+    providerSources ??= _webstreamingStreams;
+    if (providerId == null || providerSources.isEmpty) return;
+    final selected = providerSources.firstWhere(
+      (s) => s.url == sourceUrl,
+      orElse: () => StreamSource(
+        url: sourceUrl,
+        title: sourceTitle,
+        type: sourceUrl.contains('.m3u8') ? 'hls' : 'video',
+      ),
+    );
+    final reordered = [
+      selected,
+      for (final s in providerSources)
+        if (s.url != sourceUrl) s,
+    ];
+    if (!mounted) return;
+    setState(() {
+      _webstreamingActiveProviderId = providerId;
+      _webstreamingStreams = reordered;
+    });
+    await _persistWebstreamingCache(providerId: providerId, sources: reordered);
+  }
+
   Future<bool> _anyWebstreamingSourcePlayable(
     List<StreamSource> sources,
   ) async {
@@ -480,24 +535,38 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _startWebstreamingOnlyPlayback() async {
     final startPosition = _startPositionForAutoPlay(fromRoute: false);
     if (_webstreamingStreams.isNotEmpty) {
-      if (await _anyWebstreamingSourcePlayable(_webstreamingStreams)) {
-        await _playWebstreamingStream(
-          _webstreamingStreams.first,
-          startPosition: startPosition,
-        );
-        return;
-      }
-      debugPrint('[DetailsScreen] in-memory webstreaming stale — rechecking');
-      _webstreamingStreams = [];
-      _webstreamingActiveProviderId = null;
-      await WebstreamingStreamCache.drop(_webstreamingCacheKey());
+      await _playWebstreamingStream(
+        _webstreamingStreams.first,
+        startPosition: startPosition,
+      );
+      return;
     }
 
-    final cached = await WebstreamingStreamCache.read(_webstreamingCacheKey());
+    final sessionCached = WebstreamingStreamCache.readSession(
+      _webstreamingCacheKey(),
+    );
+    if (sessionCached != null && sessionCached.sources.isNotEmpty) {
+      if (!mounted) return;
+      setState(() => _applyWebstreamingCacheHit(sessionCached));
+      debugPrint(
+        '[DetailsScreen] webstreaming session cache hit '
+        '${sessionCached.providerId} (${sessionCached.sources.length})',
+      );
+      await _playWebstreamingStream(
+        sessionCached.sources.first,
+        startPosition: startPosition,
+      );
+      return;
+    }
+
+    final cached = await WebstreamingStreamCache.readDisk(
+      _webstreamingCacheKey(),
+    );
     if (cached != null && cached.sources.isNotEmpty) {
       if (await _anyWebstreamingSourcePlayable(cached.sources)) {
         if (!mounted) return;
         setState(() => _applyWebstreamingCacheHit(cached));
+        WebstreamingStreamCache.writeSession(_webstreamingCacheKey(), cached);
         debugPrint(
           '[DetailsScreen] webstreaming cache hit '
           '${cached.providerId} (${cached.sources.length})',
@@ -525,8 +594,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _webstreamingOnlyExtractionCancelled = false;
     final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
     final sourcesListNotifier = ValueNotifier<List<StreamSource>>(const []);
-    final providerSourcesCache =
-        ValueNotifier<Map<String, List<StreamSource>>>({});
+    final providerSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
+      {},
+    );
     final fadeOutNotifier = ValueNotifier(false);
     var liveNotifiersDisposed = false;
     BuildContext? loadingDialogContext;
@@ -702,6 +772,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 sourcesListNotifier: sourcesListNotifier,
                 providerSourcesCache: providerSourcesCache,
                 providerProbesNotifier: probeNotifier,
+                onSourcePinned: (sourceUrl, sourceTitle) =>
+                    _rememberWebstreamingSelection(
+                      sourceUrl,
+                      sourceTitle,
+                      providerSourcesCache,
+                    ),
                 fadeTransition: true,
               ),
             );
@@ -792,7 +868,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   double? get _heroImdbRating {
     final r = _mdblistRatings;
     if (r == null) return null;
-    final scores = r['scores'] as List<dynamic>? ?? r['ratings'] as List<dynamic>? ?? [];
+    final scores =
+        r['scores'] as List<dynamic>? ?? r['ratings'] as List<dynamic>? ?? [];
     for (final s in scores) {
       final source = (s['source'] ?? '').toString().toLowerCase();
       if (source != 'imdb') continue;
@@ -815,11 +892,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   Widget _buildHeroActionRow() {
-    final hasResume = _lastProgress != null &&
+    final hasResume =
+        _lastProgress != null &&
         ((_lastProgress!['position'] as int? ?? 0) > 0);
     final showPlay = _hasPanelPlaySources;
     final policy = ShellScope.inputPolicyOf(context);
-    if (policy.heroPlayAutoFocus && !_detailsHeroInitialFocusDone && !_isLoading) {
+    if (policy.heroPlayAutoFocus &&
+        !_detailsHeroInitialFocusDone &&
+        !_isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _detailsHeroInitialFocusDone) return;
         if (_detailsHeroPlayFocus.canRequestFocus) {
@@ -934,7 +1014,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     return seasonCount > 1 ? 2 : 1;
   }
 
-  Widget _buildTvPicker({required int tvRowOrderBase, VoidCallback? tvFocusUp}) {
+  Widget _buildTvPicker({
+    required int tvRowOrderBase,
+    VoidCallback? tvFocusUp,
+  }) {
     int seasonCount = _movie.numberOfSeasons;
     if (_seasonData != null && _seasonData!['seasons'] != null) {
       seasonCount = (_seasonData!['seasons'] as List).length;
@@ -943,7 +1026,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (_seasonData != null && _seasonData!['episodesBySeason'] != null) {
       customEpisodes = Map<int, List<Map<String, dynamic>>>.from(
         (_seasonData!['episodesBySeason'] as Map).map(
-          (k, v) => MapEntry(k as int, List<Map<String, dynamic>>.from(v as List)),
+          (k, v) =>
+              MapEntry(k as int, List<Map<String, dynamic>>.from(v as List)),
         ),
       );
     }
@@ -992,14 +1076,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   /// Torrent results after applying panel filters.
   List<TorrentResult> get _filteredTorrentResults => filterTorrentResults(
-        _allTorrentResults,
-        searchQuery: _sourceSearchQuery,
-        qualityFilters: _activeQualityFilters,
-        languageFilters: _activeLanguageFilters,
-        techFilters: _activeTechFilters,
-        audioFilters: _activeAudioFilters,
-        sizeFilters: _activeSizeFilters,
-      );
+    _allTorrentResults,
+    searchQuery: _sourceSearchQuery,
+    qualityFilters: _activeQualityFilters,
+    languageFilters: _activeLanguageFilters,
+    techFilters: _activeTechFilters,
+    audioFilters: _activeAudioFilters,
+    sizeFilters: _activeSizeFilters,
+  );
 
   bool get _panelShowsMerged =>
       _panelKindFilter == 'all' && _panelShowTorrent && _panelShowStremio;
@@ -1026,10 +1110,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final streams = _selectedSourceId == 'all_nuvio'
         ? _nuvioStreams
         : (_selectedSourceId.startsWith('nuvio:')
-            ? _nuvioStreams
-                .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
-                .toList()
-            : <dynamic>[]);
+              ? _nuvioStreams
+                    .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
+                    .toList()
+              : <dynamic>[]);
     return streams
         .whereType<Map<String, dynamic>>()
         .where((s) => _matchesPanelStreamFilters(s))
@@ -1045,21 +1129,25 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       final streams = _panelShowsMerged || _selectedSourceId == 'all_stremio'
           ? _allCombinedStremioStreams
           : _stremioStreams;
-      names.addAll(streams.map(
-        (s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
-      ));
+      names.addAll(
+        streams.map(
+          (s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
+        ),
+      );
     }
     if (_panelShowsNuvio) {
       final streams = _selectedSourceId == 'all_nuvio'
           ? _nuvioStreams
           : (_selectedSourceId.startsWith('nuvio:')
-              ? _nuvioStreams
-                  .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
-                  .toList()
-              : <dynamic>[]);
-      names.addAll(streams.map(
-        (s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
-      ));
+                ? _nuvioStreams
+                      .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
+                      .toList()
+                : <dynamic>[]);
+      names.addAll(
+        streams.map(
+          (s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
+        ),
+      );
     }
     return names;
   }
@@ -1095,10 +1183,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       final streams = _selectedSourceId == 'all_nuvio'
           ? _nuvioStreams
           : (_selectedSourceId.startsWith('nuvio:')
-              ? _nuvioStreams
-                  .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
-                  .toList()
-              : <dynamic>[]);
+                ? _nuvioStreams
+                      .where((s) => s['_addonBaseUrl'] == _selectedSourceId)
+                      .toList()
+                : <dynamic>[]);
       for (final s in streams.whereType<Map<String, dynamic>>()) {
         final bytes = _streamSizeBytes(s);
         if (bytes > 0) sizes.add(bytes);
@@ -1136,8 +1224,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       );
 
   bool _matchesPanelStreamFilters(Map<String, dynamic> s) {
-    final name =
-        '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
+    final name = '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
     if (!_matchesPanelFilters(name)) return false;
     return TorrentReleaseMetadata.matchesSizeFilters(
       _streamSizeBytes(s),
@@ -1213,7 +1300,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   List<dynamic> _streamsForAutoPlay() {
-    if (_isNuvioSource || _selectedSourceId == 'all_nuvio') return _nuvioStreams;
+    if (_isNuvioSource || _selectedSourceId == 'all_nuvio')
+      return _nuvioStreams;
     if (_selectedSourceId == 'all_stremio' || _isTorrentSource) {
       return _allCombinedStremioStreams;
     }
@@ -1236,10 +1324,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     // Home hero Play (and other route autoPlay) → webstreaming, not torrent.
     if (fromRoute && _playSourceWebstreaming) {
-      _consumeAutoPlayFlags(
-        fromRoute: true,
-        fromEpisode: fromEpisode,
-      );
+      _consumeAutoPlayFlags(fromRoute: true, fromEpisode: fromEpisode);
       unawaited(_startWebstreamingOnlyPlayback());
       return;
     }
@@ -1249,10 +1334,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
       if (_isSearching) return;
       if (_allTorrentResults.isNotEmpty) {
-        _consumeAutoPlayFlags(
-          fromRoute: fromRoute,
-          fromEpisode: fromEpisode,
-        );
+        _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
         _playTorrent(_allTorrentResults.first, startPosition: startPosition);
         return;
       }
@@ -1264,10 +1346,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       if (streams.isNotEmpty) {
         final stream = streams.first;
         if (stream is Map<String, dynamic>) {
-          _consumeAutoPlayFlags(
-            fromRoute: fromRoute,
-            fromEpisode: fromEpisode,
-          );
+          _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
           _playStremioStream(stream, startPosition: startPosition);
           return;
         }
@@ -1275,7 +1354,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
 
     final torrentPending =
-        _playSourceTorrent && _playbackProfile.builtinTorrentSearch && _isSearching;
+        _playSourceTorrent &&
+        _playbackProfile.builtinTorrentSearch &&
+        _isSearching;
     final stremioPending =
         _playSourceStremio && (_isStremioFetching || _isNuvioFetching);
     if (torrentPending || stremioPending) return;
@@ -1296,7 +1377,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _syncPanelKindFilterToPlaySources();
     if (!mounted) return;
 
-    final bool isCustomId = stremioItem != null &&
+    final bool isCustomId =
+        stremioItem != null &&
         !(stremioItem['id']?.toString().startsWith('tt') ?? true);
 
     try {
@@ -1306,11 +1388,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       // have all the info we need from the search result.
       if (isCustomId) {
         debugPrint('[DetailsScreen] Custom ID detected: ${stremioItem['id']}');
-        debugPrint('[DetailsScreen] stremioItem keys: ${stremioItem.keys.toList()}');
-        debugPrint('[DetailsScreen] _addonBaseUrl: ${stremioItem['_addonBaseUrl']}');
+        debugPrint(
+          '[DetailsScreen] stremioItem keys: ${stremioItem.keys.toList()}',
+        );
+        debugPrint(
+          '[DetailsScreen] _addonBaseUrl: ${stremioItem['_addonBaseUrl']}',
+        );
         debugPrint('[DetailsScreen] _addonName: ${stremioItem['_addonName']}');
         debugPrint('[DetailsScreen] type: ${stremioItem['type']}');
-        
+
         // Update movie mediaType if it's a collection
         if (stremioItem['type'] == 'collections') {
           _movie = Movie(
@@ -1330,7 +1416,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             screenshots: _movie.screenshots,
           );
         }
-        
+
         if (mounted) {
           setState(() {
             _streamAddons = streamAddons;
@@ -1386,7 +1472,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           _streamAddons = streamAddons;
           _similarMovies = similar;
           _isLoading = false;
-          if (!_playbackProfile.builtinTorrentSearch && streamAddons.isNotEmpty) {
+          if (!_playbackProfile.builtinTorrentSearch &&
+              streamAddons.isNotEmpty) {
             _selectedSourceId = streamAddons.length > 1
                 ? 'all_stremio'
                 : streamAddons.first['baseUrl'] as String;
@@ -1417,8 +1504,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       if (!mounted) return;
       setState(() {
         _hasNuvioAddons = hasEnabled;
-        _nuvioAddons = addons.where((a) =>
-            a.scrapers.any((s) => s.enabled)).toList();
+        _nuvioAddons = addons
+            .where((a) => a.scrapers.any((s) => s.enabled))
+            .toList();
       });
     } catch (_) {}
   }
@@ -1459,8 +1547,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final fallbackName = provider is Map ? provider['name']?.toString() : null;
     List<String>? contentLanguage;
     if (provider is Map && provider['contentLanguage'] is List) {
-      contentLanguage =
-          (provider['contentLanguage'] as List).map((e) => e.toString()).toList();
+      contentLanguage = (provider['contentLanguage'] as List)
+          .map((e) => e.toString())
+          .toList();
     }
     return StreamProviderDisplay.playerLabel(
       key,
@@ -1478,21 +1567,39 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         ? '${_movie.title} - S$_selectedSeason E$_selectedEpisode'
         : _movie.title;
     final providerId = _webstreamingActiveProviderId ?? 'videasy';
-    if (mounted && _sourcesPanelOpen) setState(() => _sourcesPanelOpen = false);
-    await AppRouter.openPlayer(
-      context,
-      streamUrl: source.url,
-      title: title,
-      headers: source.headers,
-      movie: _movie,
-      providers: _orderedWebstreamingProviders,
-      activeProvider: providerId,
-      selectedSeason: isTv ? _selectedSeason : null,
-      selectedEpisode: isTv ? _selectedEpisode : null,
-      startPosition: startPosition ?? widget.startPosition,
-      sources: _webstreamingStreams,
-      fadeTransition: true,
+    final providerSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
+      {
+        providerId: _webstreamingStreams.isNotEmpty
+            ? _webstreamingStreams
+            : <StreamSource>[source],
+      },
     );
+    if (mounted && _sourcesPanelOpen) setState(() => _sourcesPanelOpen = false);
+    try {
+      await AppRouter.openPlayer(
+        context,
+        streamUrl: source.url,
+        title: title,
+        headers: source.headers,
+        movie: _movie,
+        providers: _orderedWebstreamingProviders,
+        activeProvider: providerId,
+        selectedSeason: isTv ? _selectedSeason : null,
+        selectedEpisode: isTv ? _selectedEpisode : null,
+        startPosition: startPosition ?? widget.startPosition,
+        sources: _webstreamingStreams,
+        providerSourcesCache: providerSourcesCache,
+        onSourcePinned: (sourceUrl, sourceTitle) =>
+            _rememberWebstreamingSelection(
+              sourceUrl,
+              sourceTitle,
+              providerSourcesCache,
+            ),
+        fadeTransition: true,
+      );
+    } finally {
+      providerSourcesCache.dispose();
+    }
   }
 
   Future<void> _fetchExternalRatings() async {
@@ -1503,7 +1610,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         ratings = await MdblistService().getRatingsByImdb(_movie.imdbId!);
       } else {
         ratings = await MdblistService().getRatingsByTmdb(
-          _movie.id, _movie.mediaType == 'tv' ? 'show' : 'movie');
+          _movie.id,
+          _movie.mediaType == 'tv' ? 'show' : 'movie',
+        );
       }
       if (mounted && ratings != null) setState(() => _mdblistRatings = ratings);
     } catch (_) {}
@@ -1585,7 +1694,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF141414),
-          title: const Text('Rate on Simkl', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Rate on Simkl',
+            style: TextStyle(color: Colors.white),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1598,7 +1710,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 1),
                       child: Icon(
-                        val <= selected ? Icons.star_rounded : Icons.star_outline_rounded,
+                        val <= selected
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
                         color: const Color(0xFF0BF5E5),
                         size: 28,
                       ),
@@ -1607,23 +1721,44 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 }),
               ),
               const SizedBox(height: 8),
-              Text('$selected / 10',
-                style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(
+                '$selected / 10',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           actions: [
             if (_userSimklRating != null)
               TextButton(
-                onPressed: () { Navigator.pop(ctx); _removeSimklRating(); },
-                child: const Text('Remove', style: TextStyle(color: Colors.redAccent)),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _removeSimklRating();
+                },
+                child: const Text(
+                  'Remove',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
-              onPressed: () { Navigator.pop(ctx); _rateSimklItem(selected); },
-              child: const Text('Rate', style: TextStyle(color: Color(0xFF0BF5E5))),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _rateSimklItem(selected);
+              },
+              child: const Text(
+                'Rate',
+                style: TextStyle(color: Color(0xFF0BF5E5)),
+              ),
             ),
           ],
         ),
@@ -1696,14 +1831,23 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: const Color(0xFF141414),
-          title: const Text('Check-in Failed', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Check-in Failed',
+            style: TextStyle(color: Colors.white),
+          ),
           content: const Text(
             'You may already have an active check-in.\nCancel existing and retry?',
             style: TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, retry')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Yes, retry'),
+            ),
           ],
         ),
       );
@@ -1746,7 +1890,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF141414),
-        title: const Text('Add to Trakt List', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Add to Trakt List',
+          style: TextStyle(color: Colors.white),
+        ),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -1758,7 +1905,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               final count = list['item_count'] ?? 0;
               return ListTile(
                 title: Text(name, style: const TextStyle(color: Colors.white)),
-                subtitle: Text('$count items', style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                subtitle: Text(
+                  '$count items',
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                ),
                 onTap: () => Navigator.pop(ctx, list),
               );
             },
@@ -1772,7 +1922,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (slug.isEmpty) return;
 
     final type = _movie.mediaType == 'tv' ? 'shows' : 'movies';
-    final entry = <String, dynamic>{'ids': {'tmdb': _movie.id}};
+    final entry = <String, dynamic>{
+      'ids': {'tmdb': _movie.id},
+    };
     final success = await TraktService().addToList(
       listId: slug,
       movies: type == 'movies' ? [entry] : [],
@@ -1780,9 +1932,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     );
     if (!mounted) return;
     ForjaToast.show(
-      success
-          ? 'Added to "${selected['name']}"'
-          : 'Failed to add to list',
+      success ? 'Added to "${selected['name']}"' : 'Failed to add to list',
       kind: success ? ForjaToastKind.success : ForjaToastKind.error,
     );
   }
@@ -1794,7 +1944,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF141414),
-          title: const Text('Rate on Trakt', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Rate on Trakt',
+            style: TextStyle(color: Colors.white),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1807,7 +1960,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 1),
                       child: Icon(
-                        val <= selected ? Icons.star_rounded : Icons.star_outline_rounded,
+                        val <= selected
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
                         color: const Color(0xFFFFD700),
                         size: 28,
                       ),
@@ -1816,23 +1971,44 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 }),
               ),
               const SizedBox(height: 8),
-              Text('$selected / 10',
-                style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(
+                '$selected / 10',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           actions: [
             if (_userTraktRating != null)
               TextButton(
-                onPressed: () { Navigator.pop(ctx); _removeTraktRating(); },
-                child: const Text('Remove', style: TextStyle(color: Colors.redAccent)),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _removeTraktRating();
+                },
+                child: const Text(
+                  'Remove',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
-              onPressed: () { Navigator.pop(ctx); _rateTraktItem(selected); },
-              child: Text('Rate', style: TextStyle(color: AppTheme.primaryColor)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _rateTraktItem(selected);
+              },
+              child: Text(
+                'Rate',
+                style: TextStyle(color: AppTheme.primaryColor),
+              ),
             ),
           ],
         ),
@@ -1847,7 +2023,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     // Try TMDB lookup first for IMDB IDs
     if (id.startsWith('tt')) {
       try {
-        final movie = await _api.findByImdbId(id, mediaType: type == 'series' ? 'tv' : 'movie');
+        final movie = await _api.findByImdbId(
+          id,
+          mediaType: type == 'series' ? 'tv' : 'movie',
+        );
         if (movie != null && mounted) {
           await AppRouter.openDetails(context, movie: movie);
           return;
@@ -1879,8 +2058,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           id: id.hashCode,
           imdbId: id.startsWith('tt') ? id : null,
           title: name.isNotEmpty ? name : id,
-          posterPath: '', backdropPath: '', voteAverage: 0,
-          releaseDate: '', overview: '',
+          posterPath: '',
+          backdropPath: '',
+          voteAverage: 0,
+          releaseDate: '',
+          overview: '',
           mediaType: type == 'series' ? 'tv' : 'movie',
         ),
       );
@@ -1904,7 +2086,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           }
           // Only reset to episode 1 if no initial episode was provided,
           // or if we're navigating to a different season after init.
-          if (widget.initialEpisode != null && seasonNumber == widget.initialSeason) {
+          if (widget.initialEpisode != null &&
+              seasonNumber == widget.initialSeason) {
             _selectedEpisode = widget.initialEpisode!;
           } else {
             _selectedEpisode = 1;
@@ -1987,7 +2170,8 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         }
         return;
       }
-      if (_movie.mediaType == 'tv') stremioId = '$stremioId:$_selectedSeason:$_selectedEpisode';
+      if (_movie.mediaType == 'tv')
+        stremioId = '$stremioId:$_selectedSeason:$_selectedEpisode';
       final type = _movie.mediaType == 'tv' ? 'series' : 'movie';
 
       int pendingCount = _streamAddons.length;
@@ -2014,40 +2198,52 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       }
 
       for (final addon in _streamAddons) {
-        _stremio.getStreams(baseUrl: addon['baseUrl'], type: type, id: stremioId).then((streams) {
-          if (!mounted || gen != _stremioFetchGen) return;
-          final tagged = _filterStremioStreams(streams.map((s) {
-            if (s is Map<String, dynamic>) {
-              return <String, dynamic>{
-                ...s,
-                '_addonName': addon['name'] ?? 'Unknown',
-                '_addonBaseUrl': addon['baseUrl'],
-              };
-            }
-            return <String, dynamic>{'_addonName': addon['name'], '_addonBaseUrl': addon['baseUrl']};
-          }).toList());
+        _stremio
+            .getStreams(baseUrl: addon['baseUrl'], type: type, id: stremioId)
+            .then((streams) {
+              if (!mounted || gen != _stremioFetchGen) return;
+              final tagged = _filterStremioStreams(
+                streams.map((s) {
+                  if (s is Map<String, dynamic>) {
+                    return <String, dynamic>{
+                      ...s,
+                      '_addonName': addon['name'] ?? 'Unknown',
+                      '_addonBaseUrl': addon['baseUrl'],
+                    };
+                  }
+                  return <String, dynamic>{
+                    '_addonName': addon['name'],
+                    '_addonBaseUrl': addon['baseUrl'],
+                  };
+                }).toList(),
+              );
 
-          setState(() {
-            // Only show chip if addon returned results
-            if (tagged.isNotEmpty) {
-              _loadedAddonBaseUrls.add(addon['baseUrl'] as String);
-            }
-            // Append below existing results
-            _allCombinedStremioStreams.addAll(tagged);
-            if (_selectedSourceId == 'all_stremio' ||
-                _selectedSourceId == addon['baseUrl']) {
-              _applyStremioFilter();
-            }
-          });
-        }).catchError((_) {
-          // No-op: don't show chip for errored addons
-        }).whenComplete(() {
-          completeOne();
-        });
+              setState(() {
+                // Only show chip if addon returned results
+                if (tagged.isNotEmpty) {
+                  _loadedAddonBaseUrls.add(addon['baseUrl'] as String);
+                }
+                // Append below existing results
+                _allCombinedStremioStreams.addAll(tagged);
+                if (_selectedSourceId == 'all_stremio' ||
+                    _selectedSourceId == addon['baseUrl']) {
+                  _applyStremioFilter();
+                }
+              });
+            })
+            .catchError((_) {
+              // No-op: don't show chip for errored addons
+            })
+            .whenComplete(() {
+              completeOne();
+            });
       }
     } catch (e) {
       if (mounted && gen == _stremioFetchGen) {
-        setState(() { _errorMessage = 'Error: $e'; _isStremioFetching = false; });
+        setState(() {
+          _errorMessage = 'Error: $e';
+          _isStremioFetching = false;
+        });
       }
     }
   }
@@ -2078,16 +2274,21 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       String scraperName = scraperId;
       for (final a in _nuvioAddons) {
         for (final s in a.scrapers) {
-          if (s.id == scraperId) { scraperName = s.name; break; }
+          if (s.id == scraperId) {
+            scraperName = s.name;
+            break;
+          }
         }
       }
       setState(() {
         _nuvioStreams = results
-            .map((r) => <String, dynamic>{
-                  ...r.toStremioStream(sourceLabel: scraperName),
-                  '_addonName': scraperName,
-                  '_addonBaseUrl': 'nuvio:$scraperId',
-                })
+            .map(
+              (r) => <String, dynamic>{
+                ...r.toStremioStream(sourceLabel: scraperName),
+                '_addonName': scraperName,
+                '_addonBaseUrl': 'nuvio:$scraperId',
+              },
+            )
             .toList();
         _isNuvioFetching = false;
         _errorMessage = _nuvioStreams.isEmpty
@@ -2133,12 +2334,16 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (!mounted) return;
         if (batch.streams.isEmpty) return; // failed/empty scrapers add nothing
         setState(() {
-          _nuvioStreams.addAll(batch.streams.map((s) => <String, dynamic>{
+          _nuvioStreams.addAll(
+            batch.streams.map(
+              (s) => <String, dynamic>{
                 ...s,
                 '_addonName': s['sourceName'] ?? batch.scraperName,
                 '_addonBaseUrl':
                     'nuvio://${s['sourceName'] ?? batch.scraperId}',
-              }));
+              },
+            ),
+          );
           if (_selectedSourceId == 'all_nuvio') _errorMessage = null;
         });
       },
@@ -2161,31 +2366,51 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   }
 
   /// Fetches streams using the custom Stremio ID from the originating addon.
-  Future<void> _fetchStremioStreamsForCustomId(Map<String, dynamic> item) async {
+  Future<void> _fetchStremioStreamsForCustomId(
+    Map<String, dynamic> item,
+  ) async {
     final customId = item['id']?.toString() ?? '';
     final addonBaseUrl = item['_addonBaseUrl']?.toString() ?? '';
     final addonName = item['_addonName']?.toString() ?? 'Unknown';
-    final type = item['type']?.toString() ?? (_movie.mediaType == 'tv' ? 'series' : 'movie');
-    debugPrint('[CustomIdStreams] customId=$customId, addonBaseUrl=$addonBaseUrl, type=$type');
+    final type =
+        item['type']?.toString() ??
+        (_movie.mediaType == 'tv' ? 'series' : 'movie');
+    debugPrint(
+      '[CustomIdStreams] customId=$customId, addonBaseUrl=$addonBaseUrl, type=$type',
+    );
     if (customId.isEmpty || addonBaseUrl.isEmpty) {
-      debugPrint('[CustomIdStreams] SKIPPED: customId empty=${customId.isEmpty}, addonBaseUrl empty=${addonBaseUrl.isEmpty}');
+      debugPrint(
+        '[CustomIdStreams] SKIPPED: customId empty=${customId.isEmpty}, addonBaseUrl empty=${addonBaseUrl.isEmpty}',
+      );
       return;
     }
 
     final gen = ++_stremioFetchGen;
-    setState(() { _isStremioFetching = true; _errorMessage = null; _stremioStreams = []; _allCombinedStremioStreams = []; _loadedAddonBaseUrls.clear(); });
-    
+    setState(() {
+      _isStremioFetching = true;
+      _errorMessage = null;
+      _stremioStreams = [];
+      _allCombinedStremioStreams = [];
+      _loadedAddonBaseUrls.clear();
+    });
+
     try {
       if (type == 'collections') {
-        final meta = await _stremio.getMeta(baseUrl: addonBaseUrl, type: type, id: customId);
+        final meta = await _stremio.getMeta(
+          baseUrl: addonBaseUrl,
+          type: type,
+          id: customId,
+        );
         if (!mounted || gen != _stremioFetchGen) return;
         if (meta != null && meta['videos'] != null) {
           final videos = meta['videos'] as List;
-          debugPrint('[CustomIdStreams] Got ${videos.length} collection items from meta');
-          
+          debugPrint(
+            '[CustomIdStreams] Got ${videos.length} collection items from meta',
+          );
+
           // Parse videos to build collection structure
           _parseCollectionVideos(videos);
-          
+
           // Collections don't have streams - they're just containers for other content
           // The UI will display the collection items and allow navigation to them
           if (mounted && gen == _stremioFetchGen) {
@@ -2197,32 +2422,51 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           return;
         }
       }
-      
+
       if (type == 'series') {
-        final meta = await _stremio.getMeta(baseUrl: addonBaseUrl, type: type, id: customId);
+        final meta = await _stremio.getMeta(
+          baseUrl: addonBaseUrl,
+          type: type,
+          id: customId,
+        );
         if (!mounted || gen != _stremioFetchGen) return;
         if (meta != null && meta['videos'] != null) {
           final videos = meta['videos'] as List;
           debugPrint('[CustomIdStreams] Got ${videos.length} videos from meta');
-          
+
           // Parse videos to build season/episode structure
           _parseCustomIdVideos(videos);
-          
+
           // Now fetch streams for the selected episode
           final selectedVideo = _getSelectedVideoFromCustomId(videos);
           if (selectedVideo != null) {
             final videoId = selectedVideo['id']?.toString() ?? '';
-            debugPrint('[CustomIdStreams] Fetching streams for video: $videoId');
-            final streams = await _stremio.getStreams(baseUrl: addonBaseUrl, type: type, id: videoId);
+            debugPrint(
+              '[CustomIdStreams] Fetching streams for video: $videoId',
+            );
+            final streams = await _stremio.getStreams(
+              baseUrl: addonBaseUrl,
+              type: type,
+              id: videoId,
+            );
             debugPrint('[CustomIdStreams] Got ${streams.length} streams');
-            
+
             if (!mounted || gen != _stremioFetchGen) return;
-            final tagged = _filterStremioStreams(streams.map((s) {
-              if (s is Map<String, dynamic>) {
-                return <String, dynamic>{...s, '_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-              }
-              return <String, dynamic>{'_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-            }).toList());
+            final tagged = _filterStremioStreams(
+              streams.map((s) {
+                if (s is Map<String, dynamic>) {
+                  return <String, dynamic>{
+                    ...s,
+                    '_addonName': addonName,
+                    '_addonBaseUrl': addonBaseUrl,
+                  };
+                }
+                return <String, dynamic>{
+                  '_addonName': addonName,
+                  '_addonBaseUrl': addonBaseUrl,
+                };
+              }).toList(),
+            );
             setState(() {
               _stremioStreams = tagged;
               _allCombinedStremioStreams = tagged;
@@ -2234,17 +2478,31 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           }
         }
       }
-      
-      final streams = await _stremio.getStreams(baseUrl: addonBaseUrl, type: type, id: customId);
+
+      final streams = await _stremio.getStreams(
+        baseUrl: addonBaseUrl,
+        type: type,
+        id: customId,
+      );
       debugPrint('[CustomIdStreams] Got ${streams.length} streams');
-      if (streams.isNotEmpty) debugPrint('[CustomIdStreams] First stream: ${streams.first}');
+      if (streams.isNotEmpty)
+        debugPrint('[CustomIdStreams] First stream: ${streams.first}');
       if (!mounted || gen != _stremioFetchGen) return;
-      final tagged = _filterStremioStreams(streams.map((s) {
-        if (s is Map<String, dynamic>) {
-          return <String, dynamic>{...s, '_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-        }
-        return <String, dynamic>{'_addonName': addonName, '_addonBaseUrl': addonBaseUrl};
-      }).toList());
+      final tagged = _filterStremioStreams(
+        streams.map((s) {
+          if (s is Map<String, dynamic>) {
+            return <String, dynamic>{
+              ...s,
+              '_addonName': addonName,
+              '_addonBaseUrl': addonBaseUrl,
+            };
+          }
+          return <String, dynamic>{
+            '_addonName': addonName,
+            '_addonBaseUrl': addonBaseUrl,
+          };
+        }).toList(),
+      );
       setState(() {
         _stremioStreams = tagged;
         _allCombinedStremioStreams = tagged;
@@ -2266,14 +2524,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   /// Parses the videos array from custom ID meta to build season/episode structure
   void _parseCustomIdVideos(List videos) {
     if (videos.isEmpty) return;
-    
+
     // Build a map of seasons to episodes
     final Map<int, List<Map<String, dynamic>>> seasonMap = {};
     for (final video in videos) {
       if (video is! Map) continue;
       final season = video['season'] as int? ?? 1;
       final episode = video['episode'] as int? ?? 1;
-      
+
       seasonMap.putIfAbsent(season, () => []);
       seasonMap[season]!.add({
         'id': video['id'],
@@ -2284,12 +2542,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         'released': video['released'],
       });
     }
-    
+
     // Sort episodes within each season
     for (final episodes in seasonMap.values) {
-      episodes.sort((a, b) => (a['episode'] as int).compareTo(b['episode'] as int));
+      episodes.sort(
+        (a, b) => (a['episode'] as int).compareTo(b['episode'] as int),
+      );
     }
-    
+
     // Store in _seasonData format compatible with existing UI
     if (mounted) {
       setState(() {
@@ -2303,7 +2563,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         }
         final episodes = seasonMap[_selectedSeason] ?? [];
         if (episodes.isEmpty || _selectedEpisode > episodes.length) {
-          _selectedEpisode = episodes.isNotEmpty ? episodes.first['episode'] : 1;
+          _selectedEpisode = episodes.isNotEmpty
+              ? episodes.first['episode']
+              : 1;
         }
       });
     }
@@ -2312,11 +2574,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   /// Parses the videos array from collection meta to build collection items list
   void _parseCollectionVideos(List videos) {
     if (videos.isEmpty) return;
-    
+
     final List<Map<String, dynamic>> items = [];
     for (final video in videos) {
       if (video is! Map) continue;
-      
+
       items.add({
         'id': video['id'],
         'title': video['title'] ?? 'Unknown',
@@ -2326,7 +2588,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         'overview': video['overview'],
       });
     }
-    
+
     if (mounted) {
       setState(() {
         _collectionItems = items;
@@ -2355,24 +2617,39 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       if (_allCombinedStremioStreams.isEmpty) {
         return _fetchAllStremioStreams();
       }
-      setState(() { _stremioStreams = _allCombinedStremioStreams; _errorMessage = null; });
+      setState(() {
+        _stremioStreams = _allCombinedStremioStreams;
+        _errorMessage = null;
+      });
       return;
     }
     final addon = _streamAddons.firstWhere(
       (a) => a['baseUrl'] == _selectedSourceId,
-      orElse: () => _streamAddons.isNotEmpty ? _streamAddons.first : <String, dynamic>{},);
+      orElse: () =>
+          _streamAddons.isNotEmpty ? _streamAddons.first : <String, dynamic>{},
+    );
     if (addon.isEmpty) return;
     final gen = ++_stremioFetchGen;
-    setState(() { _isStremioFetching = true; _errorMessage = null; _stremioStreams = []; });
+    setState(() {
+      _isStremioFetching = true;
+      _errorMessage = null;
+      _stremioStreams = [];
+    });
     try {
       String stremioId = _movie.imdbId ?? '';
-      if (_movie.mediaType == 'tv') stremioId = '$stremioId:$_selectedSeason:$_selectedEpisode';
+      if (_movie.mediaType == 'tv')
+        stremioId = '$stremioId:$_selectedSeason:$_selectedEpisode';
       final type = _movie.mediaType == 'tv' ? 'series' : 'movie';
-      final streams = await _stremio.getStreams(baseUrl: addon['baseUrl'], type: type, id: stremioId);
+      final streams = await _stremio.getStreams(
+        baseUrl: addon['baseUrl'],
+        type: type,
+        id: stremioId,
+      );
       if (!mounted || gen != _stremioFetchGen) return;
       setState(() {
         _stremioStreams = _filterStremioStreams(streams);
-        if (streams.isEmpty) _errorMessage = 'No streams found in ${addon['name']}';
+        if (streams.isEmpty)
+          _errorMessage = 'No streams found in ${addon['name']}';
       });
     } catch (e) {
       if (!mounted || gen != _stremioFetchGen) return;
@@ -2399,15 +2676,24 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
   }
 
-  Future<void> _searchTvTorrents(String seasonQuery, String episodeQuery) async {
+  Future<void> _searchTvTorrents(
+    String seasonQuery,
+    String episodeQuery,
+  ) async {
     final gen = ++_torrentSearchGen;
-    setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
+    setState(() {
+      _isSearching = true;
+      _allTorrentResults = [];
+      _errorMessage = null;
+    });
     try {
       final results = await Future.wait([
-        Engine.searchTorrents(seasonQuery).then(
-            (list) => list.map(TorrentResult.fromJson).toList()),
-        Engine.searchTorrents(episodeQuery).then(
-            (list) => list.map(TorrentResult.fromJson).toList()),
+        Engine.searchTorrents(
+          seasonQuery,
+        ).then((list) => list.map(TorrentResult.fromJson).toList()),
+        Engine.searchTorrents(
+          episodeQuery,
+        ).then((list) => list.map(TorrentResult.fromJson).toList()),
       ]);
       if (!mounted || gen != _torrentSearchGen) return;
       final filteredSeason = (await Engine.filterTorrents(
@@ -2423,14 +2709,24 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         requiredEpisode: _selectedEpisode,
       )).map(TorrentResult.fromJson).toList();
       final combined = <String, TorrentResult>{};
-      for (var r in filteredEpisode) { combined[r.magnet] = r; }
-      for (var r in filteredSeason) { combined[r.magnet] = r; }
+      for (var r in filteredEpisode) {
+        combined[r.magnet] = r;
+      }
+      for (var r in filteredSeason) {
+        combined[r.magnet] = r;
+      }
       if (!mounted || gen != _torrentSearchGen) return;
-      setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
+      setState(() {
+        _allTorrentResults = combined.values.toList();
+        _isSearching = false;
+      });
       _sortResults();
     } catch (e) {
       if (mounted && gen == _torrentSearchGen) {
-        setState(() { _errorMessage = e.toString(); _isSearching = false; });
+        setState(() {
+          _errorMessage = e.toString();
+          _isSearching = false;
+        });
         _maybeAutoPlay();
       }
     }
@@ -2438,22 +2734,32 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   Future<void> _searchTorrents(String query) async {
     final gen = ++_torrentSearchGen;
-    setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
+    setState(() {
+      _isSearching = true;
+      _allTorrentResults = [];
+      _errorMessage = null;
+    });
     try {
-      final results = (await Engine.searchTorrents(query))
-          .map(TorrentResult.fromJson)
-          .toList();
+      final results = (await Engine.searchTorrents(
+        query,
+      )).map(TorrentResult.fromJson).toList();
       if (!mounted || gen != _torrentSearchGen) return;
       final filtered = (await Engine.filterTorrents(
         results.map((e) => e.toJson()).toList(),
         _movie.title,
       )).map(TorrentResult.fromJson).toList();
       if (!mounted || gen != _torrentSearchGen) return;
-      setState(() { _allTorrentResults = filtered; _isSearching = false; });
+      setState(() {
+        _allTorrentResults = filtered;
+        _isSearching = false;
+      });
       _sortResults();
     } catch (e) {
       if (mounted && gen == _torrentSearchGen) {
-        setState(() { _errorMessage = e.toString(); _isSearching = false; });
+        setState(() {
+          _errorMessage = e.toString();
+          _isSearching = false;
+        });
         _maybeAutoPlay();
       }
     }
@@ -2466,20 +2772,27 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _searchJackett() async {
     if (!_isJackettConfigured) {
       if (mounted) {
-        ForjaToast.info('Jackett is not configured. Go to Settings to add your Base URL and API Key.');
+        ForjaToast.info(
+          'Jackett is not configured. Go to Settings to add your Base URL and API Key.',
+        );
       }
       return;
     }
 
     final gen = ++_torrentSearchGen;
-    setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
+    setState(() {
+      _isSearching = true;
+      _allTorrentResults = [];
+      _errorMessage = null;
+    });
 
     try {
       final baseUrl = await _settings.getJackettBaseUrl();
       final apiKey = await _settings.getJackettApiKey();
       if (!mounted || gen != _torrentSearchGen) return;
 
-      if (baseUrl == null || apiKey == null) throw Exception('Jackett configuration missing');
+      if (baseUrl == null || apiKey == null)
+        throw Exception('Jackett configuration missing');
 
       if (_movie.mediaType == 'tv') {
         final s = _selectedSeason.toString().padLeft(2, '0');
@@ -2502,18 +2815,31 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           requiredEpisode: _selectedEpisode,
         )).map(TorrentResult.fromJson).toList();
         final combined = <String, TorrentResult>{};
-        for (var r in filteredEpisode) { combined[r.magnet] = r; }
-        for (var r in filteredSeason) { combined[r.magnet] = r; }
+        for (var r in filteredEpisode) {
+          combined[r.magnet] = r;
+        }
+        for (var r in filteredSeason) {
+          combined[r.magnet] = r;
+        }
         if (!mounted || gen != _torrentSearchGen) return;
         if (combined.isEmpty) {
-          setState(() { _errorMessage = 'No results found for "S${s}E$e". Try checking your configured indexers in Jackett.'; _isSearching = false; });
+          setState(() {
+            _errorMessage =
+                'No results found for "S${s}E$e". Try checking your configured indexers in Jackett.';
+            _isSearching = false;
+          });
           _maybeAutoPlay();
         } else {
-          setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
+          setState(() {
+            _allTorrentResults = combined.values.toList();
+            _isSearching = false;
+          });
           _sortResults();
         }
       } else {
-        final year = _movie.releaseDate.length >= 4 ? _movie.releaseDate.substring(0, 4) : '';
+        final year = _movie.releaseDate.length >= 4
+            ? _movie.releaseDate.substring(0, 4)
+            : '';
         final query = year.isNotEmpty ? '${_movie.title} $year' : _movie.title;
         final results = await _jackett.search(baseUrl, apiKey, query);
         if (!mounted || gen != _torrentSearchGen) return;
@@ -2523,16 +2849,26 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         )).map(TorrentResult.fromJson).toList();
         if (!mounted || gen != _torrentSearchGen) return;
         if (filtered.isEmpty) {
-          setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Jackett.'; _isSearching = false; });
+          setState(() {
+            _errorMessage =
+                'No results found for "$query". Try checking your configured indexers in Jackett.';
+            _isSearching = false;
+          });
           _maybeAutoPlay();
         } else {
-          setState(() { _allTorrentResults = filtered; _isSearching = false; });
+          setState(() {
+            _allTorrentResults = filtered;
+            _isSearching = false;
+          });
           _sortResults();
         }
       }
     } catch (e) {
       if (mounted && gen == _torrentSearchGen) {
-        setState(() { _errorMessage = e.toString(); _isSearching = false; });
+        setState(() {
+          _errorMessage = e.toString();
+          _isSearching = false;
+        });
         _maybeAutoPlay();
       }
     }
@@ -2545,26 +2881,37 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<void> _searchProwlarr() async {
     if (!_isProwlarrConfigured) {
       if (mounted) {
-        ForjaToast.info('Prowlarr is not configured. Go to Settings to add your Base URL and API Key.');
+        ForjaToast.info(
+          'Prowlarr is not configured. Go to Settings to add your Base URL and API Key.',
+        );
       }
       return;
     }
 
     final gen = ++_torrentSearchGen;
-    setState(() { _isSearching = true; _allTorrentResults = []; _errorMessage = null; });
+    setState(() {
+      _isSearching = true;
+      _allTorrentResults = [];
+      _errorMessage = null;
+    });
 
     try {
       final baseUrl = await _settings.getProwlarrBaseUrl();
       final apiKey = await _settings.getProwlarrApiKey();
       if (!mounted || gen != _torrentSearchGen) return;
 
-      if (baseUrl == null || apiKey == null) throw Exception('Prowlarr configuration missing');
+      if (baseUrl == null || apiKey == null)
+        throw Exception('Prowlarr configuration missing');
 
       final tagIds = await _settings.getProwlarrTagIds();
       if (!mounted || gen != _torrentSearchGen) return;
       List<int>? allowedIndexerIds;
       if (tagIds.isNotEmpty) {
-        final resolved = await _prowlarr.resolveTagIndexerIds(baseUrl, apiKey, tagIds);
+        final resolved = await _prowlarr.resolveTagIndexerIds(
+          baseUrl,
+          apiKey,
+          tagIds,
+        );
         if (!mounted || gen != _torrentSearchGen) return;
         if (resolved.isNotEmpty) allowedIndexerIds = resolved;
       }
@@ -2573,8 +2920,18 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         final s = _selectedSeason.toString().padLeft(2, '0');
         final e = _selectedEpisode.toString().padLeft(2, '0');
         final results = await Future.wait([
-          _prowlarr.search(baseUrl, apiKey, '${_movie.title} S$s', indexerIds: allowedIndexerIds),
-          _prowlarr.search(baseUrl, apiKey, '${_movie.title} S${s}E$e', indexerIds: allowedIndexerIds),
+          _prowlarr.search(
+            baseUrl,
+            apiKey,
+            '${_movie.title} S$s',
+            indexerIds: allowedIndexerIds,
+          ),
+          _prowlarr.search(
+            baseUrl,
+            apiKey,
+            '${_movie.title} S${s}E$e',
+            indexerIds: allowedIndexerIds,
+          ),
         ]);
         if (!mounted || gen != _torrentSearchGen) return;
         final filteredSeason = (await Engine.filterTorrents(
@@ -2590,20 +2947,38 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           requiredEpisode: _selectedEpisode,
         )).map(TorrentResult.fromJson).toList();
         final combined = <String, TorrentResult>{};
-        for (var r in filteredEpisode) { combined[r.magnet] = r; }
-        for (var r in filteredSeason) { combined[r.magnet] = r; }
+        for (var r in filteredEpisode) {
+          combined[r.magnet] = r;
+        }
+        for (var r in filteredSeason) {
+          combined[r.magnet] = r;
+        }
         if (!mounted || gen != _torrentSearchGen) return;
         if (combined.isEmpty) {
-          setState(() { _errorMessage = 'No results found for "S${s}E$e". Try checking your configured indexers in Prowlarr.'; _isSearching = false; });
+          setState(() {
+            _errorMessage =
+                'No results found for "S${s}E$e". Try checking your configured indexers in Prowlarr.';
+            _isSearching = false;
+          });
           _maybeAutoPlay();
         } else {
-          setState(() { _allTorrentResults = combined.values.toList(); _isSearching = false; });
+          setState(() {
+            _allTorrentResults = combined.values.toList();
+            _isSearching = false;
+          });
           _sortResults();
         }
       } else {
-        final year = _movie.releaseDate.length >= 4 ? _movie.releaseDate.substring(0, 4) : '';
+        final year = _movie.releaseDate.length >= 4
+            ? _movie.releaseDate.substring(0, 4)
+            : '';
         final query = year.isNotEmpty ? '${_movie.title} $year' : _movie.title;
-        final results = await _prowlarr.search(baseUrl, apiKey, query, indexerIds: allowedIndexerIds);
+        final results = await _prowlarr.search(
+          baseUrl,
+          apiKey,
+          query,
+          indexerIds: allowedIndexerIds,
+        );
         if (!mounted || gen != _torrentSearchGen) return;
         final filtered = (await Engine.filterTorrents(
           results.map((e) => e.toJson()).toList(),
@@ -2611,16 +2986,26 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         )).map(TorrentResult.fromJson).toList();
         if (!mounted || gen != _torrentSearchGen) return;
         if (filtered.isEmpty) {
-          setState(() { _errorMessage = 'No results found for "$query". Try checking your configured indexers in Prowlarr.'; _isSearching = false; });
+          setState(() {
+            _errorMessage =
+                'No results found for "$query". Try checking your configured indexers in Prowlarr.';
+            _isSearching = false;
+          });
           _maybeAutoPlay();
         } else {
-          setState(() { _allTorrentResults = filtered; _isSearching = false; });
+          setState(() {
+            _allTorrentResults = filtered;
+            _isSearching = false;
+          });
           _sortResults();
         }
       }
     } catch (e) {
       if (mounted && gen == _torrentSearchGen) {
-        setState(() { _errorMessage = e.toString(); _isSearching = false; });
+        setState(() {
+          _errorMessage = e.toString();
+          _isSearching = false;
+        });
         _maybeAutoPlay();
       }
     }
@@ -2633,10 +3018,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   // ─── play methods ─────────────────────────────────────────────────────────
 
-  void _playStremioStream(Map<String, dynamic> stream, {Duration? startPosition}) async {
+  void _playStremioStream(
+    Map<String, dynamic> stream, {
+    Duration? startPosition,
+  }) async {
     if (mounted && _sourcesPanelOpen) setState(() => _sourcesPanelOpen = false);
     final stremioId = widget.stremioItem?['id']?.toString() ?? _movie.imdbId;
-    final stremioAddonBaseUrl = stream['_addonBaseUrl']?.toString() ?? _selectedSourceId;
+    final stremioAddonBaseUrl =
+        stream['_addonBaseUrl']?.toString() ?? _selectedSourceId;
     final isTv = _movie.mediaType == 'tv';
 
     final useDebrid = await _settings.useDebridForStreams();
@@ -2783,7 +3172,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             // Pop back to MainScreen, then fire the search notifier
             Navigator.popUntil(context, (route) => route.isFirst);
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              ShellBus.openStremioSearch(query: query, addonBaseUrl: addonBaseUrl ?? '');
+              ShellBus.openStremioSearch(
+                query: query,
+                addonBaseUrl: addonBaseUrl ?? '',
+              );
             });
           }
           return;
@@ -2791,8 +3183,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         case 'discover':
           // Open the catalog screen for this discover link
           if (mounted) {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => StremioCatalogScreen()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => StremioCatalogScreen()),
+            );
           }
           return;
       }
@@ -2890,7 +3284,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               return;
             }
             abortPlayback();
-            ForjaToast.info('Torrent file downloads not yet supported. Please use magnet links.');
+            ForjaToast.info(
+              'Torrent file downloads not yet supported. Please use magnet links.',
+            );
             return;
           }
         } catch (e) {
@@ -2991,7 +3387,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+            Center(
+              child: CircularProgressIndicator(color: AppTheme.primaryColor),
+            ),
             const MediaDetailsBackButton(),
           ],
         ),
@@ -2999,8 +3397,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
 
     final scaffold = Scaffold(
-        backgroundColor: AppTheme.bgDark,
-        body: Stack(children: [
+      backgroundColor: AppTheme.bgDark,
+      body: Stack(
+        children: [
           _buildScrollLayout(),
           if (!_isCollection && _hasPanelPlaySources)
             TorrentSourcesPanel(
@@ -3009,8 +3408,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               child: _buildSourcesPanelContent(),
             ),
           const MediaDetailsBackButton(),
-        ]),
-      );
+        ],
+      ),
+    );
 
     return scaffold;
   }
@@ -3134,14 +3534,15 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildSourcesPanelContent() {
-    final showMerged = _panelKindFilter == 'all' &&
-        _panelShowTorrent &&
-        _panelShowStremio;
+    final showMerged =
+        _panelKindFilter == 'all' && _panelShowTorrent && _panelShowStremio;
     final showTorrents = _panelKindFilter == 'torrents' || showMerged;
     final showNuvio = _panelKindFilter == 'nuvio';
     final showSort = showTorrents && !showNuvio;
     final showAudio = showTorrents && !showNuvio;
-    final providerChips = showMerged ? const <Map<String, dynamic>>[] : _sourceChips();
+    final providerChips = showMerged
+        ? const <Map<String, dynamic>>[]
+        : _sourceChips();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3176,8 +3577,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           activeLanguageFilters: _activeLanguageFilters,
           activeTechFilters: _activeTechFilters,
           activeSizeFilters: _activeSizeFilters,
-          onQualityFiltersChanged: (v) => setState(() => _activeQualityFilters = v),
-          onLanguageFiltersChanged: (v) => setState(() => _activeLanguageFilters = v),
+          onQualityFiltersChanged: (v) =>
+              setState(() => _activeQualityFilters = v),
+          onLanguageFiltersChanged: (v) =>
+              setState(() => _activeLanguageFilters = v),
           onTechFiltersChanged: (v) => setState(() => _activeTechFilters = v),
           onSizeFiltersChanged: (v) => setState(() => _activeSizeFilters = v),
           showAudioFilters: showAudio,
@@ -3191,8 +3594,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                   _sortResults();
                 }
               : null,
-          showCacheLine:
-              showTorrents && _playbackProfile.localTorrentEngine,
+          showCacheLine: showTorrents && _playbackProfile.localTorrentEngine,
           cacheRefreshToken: Object.hash(
             _sourcesPanelOpen,
             _allTorrentResults.length,
@@ -3245,10 +3647,13 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     final chips = <Map<String, dynamic>>[];
     if (_panelKindFilter == 'torrents') {
       chips.add({'id': 'forja', 'label': 'Forja'});
-      if (_isJackettConfigured) chips.add({'id': 'jackett', 'label': '🔍 Jackett'});
-      if (_isProwlarrConfigured) chips.add({'id': 'prowlarr', 'label': '🔍 Prowlarr'});
+      if (_isJackettConfigured)
+        chips.add({'id': 'jackett', 'label': '🔍 Jackett'});
+      if (_isProwlarrConfigured)
+        chips.add({'id': 'prowlarr', 'label': '🔍 Prowlarr'});
       for (final a in _streamAddons) {
-        if (a['type'] == 'torrent') chips.add({'id': a['baseUrl'], 'label': a['name']});
+        if (a['type'] == 'torrent')
+          chips.add({'id': a['baseUrl'], 'label': a['name']});
       }
     } else if (_panelKindFilter == 'nuvio') {
       if (_nuvioSelectedAddonUrl == null) {
@@ -3263,10 +3668,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         final addon = _nuvioAddons.firstWhere(
           (a) => a.manifestUrl == _nuvioSelectedAddonUrl,
           orElse: () => NuvioAddon(
-              manifestUrl: _nuvioSelectedAddonUrl!,
-              name: '',
-              version: '',
-              scrapers: const []),
+            manifestUrl: _nuvioSelectedAddonUrl!,
+            name: '',
+            version: '',
+            scrapers: const [],
+          ),
         );
         for (final s in addon.scrapers) {
           if (!s.enabled) continue;
@@ -3403,18 +3809,23 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     );
   }
 
-  Widget _stremioTileFor(Map<String, dynamic> s, {required bool showAddonName}) {
+  Widget _stremioTileFor(
+    Map<String, dynamic> s, {
+    required bool showAddonName,
+  }) {
     final title = s['title'] ?? s['name'] ?? 'Unknown Stream';
     final description = s['description'] ?? '';
     double prog = 0;
     var resumable = false;
     if (_lastProgress != null) {
-      final String? sid =
-          s['infoHash'] != null ? 'magnet:?xt=urn:btih:${s['infoHash']}' : s['url'];
+      final String? sid = s['infoHash'] != null
+          ? 'magnet:?xt=urn:btih:${s['infoHash']}'
+          : s['url'];
       if (sid != null) {
         final hs = _lastProgress!['sourceId'] as String;
-        final match =
-            s['infoHash'] != null ? _getHash(hs) == _getHash(sid) : hs == sid;
+        final match = s['infoHash'] != null
+            ? _getHash(hs) == _getHash(sid)
+            : hs == sid;
         if (match) {
           final pos = _lastProgress!['position'] as int;
           final dur = _lastProgress!['duration'] as int;
@@ -3453,22 +3864,35 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (_errorMessage != null) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent))),
+        child: Center(
+          child: Text(
+            _errorMessage!,
+            style: const TextStyle(color: Colors.redAccent),
+          ),
+        ),
       );
     }
 
-    final torrents = _panelShowsTorrents ? _filteredTorrentResults : <TorrentResult>[];
-    final stremio = _panelShowsStremio ? _filteredPanelStremioStreams : <Map<String, dynamic>>[];
-    final nuvio = _panelShowsNuvio ? _filteredPanelNuvioStreams : <Map<String, dynamic>>[];
+    final torrents = _panelShowsTorrents
+        ? _filteredTorrentResults
+        : <TorrentResult>[];
+    final stremio = _panelShowsStremio
+        ? _filteredPanelStremioStreams
+        : <Map<String, dynamic>>[];
+    final nuvio = _panelShowsNuvio
+        ? _filteredPanelNuvioStreams
+        : <Map<String, dynamic>>[];
     final count = torrents.length + stremio.length + nuvio.length;
-    final rawCount = (_panelShowsTorrents ? _allTorrentResults.length : 0) +
+    final rawCount =
+        (_panelShowsTorrents ? _allTorrentResults.length : 0) +
         (_panelShowsStremio
             ? (_panelShowsMerged || _selectedSourceId == 'all_stremio'
-                ? _allCombinedStremioStreams.length
-                : _stremioStreams.length)
+                  ? _allCombinedStremioStreams.length
+                  : _stremioStreams.length)
             : 0) +
         (_panelShowsNuvio ? _nuvioStreams.length : 0);
-    final isFetching = (_panelShowsTorrents && _isSearching) ||
+    final isFetching =
+        (_panelShowsTorrents && _isSearching) ||
         (_panelShowsStremio && _isStremioFetching) ||
         (_panelShowsNuvio && _isNuvioFetching);
 
@@ -3509,7 +3933,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     return ListView.separated(
       shrinkWrap: !inPanel,
-      physics: inPanel ? const BouncingScrollPhysics() : const NeverScrollableScrollPhysics(),
+      physics: inPanel
+          ? const BouncingScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       itemCount: count,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
@@ -3518,10 +3944,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         if (j < stremio.length) {
           return _stremioTileFor(stremio[j], showAddonName: showAddonName);
         }
-        return _stremioTileFor(
-          nuvio[j - stremio.length],
-          showAddonName: true,
-        );
+        return _stremioTileFor(nuvio[j - stremio.length], showAddonName: true);
       },
     );
   }
@@ -3531,15 +3954,14 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _sectionLabel(String text) => Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: 20,
-          letterSpacing: -0.3,
-        ),
-      );
-
+    text,
+    style: const TextStyle(
+      color: Colors.white,
+      fontWeight: FontWeight.w800,
+      fontSize: 20,
+      letterSpacing: -0.3,
+    ),
+  );
 
   Widget _buildCollectionItemsSection({
     required int tvRowOrder,
@@ -3579,7 +4001,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               context: context,
               onTap: () => _openCollectionItem(id),
               borderRadius: 12,
-              tvTabId: policy.useFocusableMoodChips ? MediaDetailsTv.tabId : null,
+              tvTabId: policy.useFocusableMoodChips
+                  ? MediaDetailsTv.tabId
+                  : null,
               tvRowId: policy.useFocusableMoodChips ? 'collection' : null,
               tvItemIndex: index,
               child: Container(
@@ -3587,7 +4011,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -3604,7 +4030,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                             width: 120,
                             height: 68,
                             color: Colors.white.withValues(alpha: 0.1),
-                            child: const Icon(Icons.movie, color: Colors.white24),
+                            child: const Icon(
+                              Icons.movie,
+                              color: Colors.white24,
+                            ),
                           ),
                         ),
                       ),
@@ -3648,7 +4077,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 16),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white38,
+                      size: 16,
+                    ),
                   ],
                 ),
               ),
@@ -3682,8 +4115,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           id: id.hashCode,
           imdbId: id.startsWith('tt') ? id : null,
           title: id,
-          posterPath: '', backdropPath: '', voteAverage: 0,
-          releaseDate: '', overview: '',
+          posterPath: '',
+          backdropPath: '',
+          voteAverage: 0,
+          releaseDate: '',
+          overview: '',
           mediaType: 'movie',
         ),
       );
