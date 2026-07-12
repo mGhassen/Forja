@@ -395,6 +395,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (_isWebstreamingSource) {
       _webstreamingStreams = [];
       _webstreamingActiveProviderId = null;
+      unawaited(_hydrateWebstreamingFromCache());
     }
   }
 
@@ -470,6 +471,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   void _applyWebstreamingCacheHit(WebstreamingCacheHit hit) {
     _webstreamingStreams = hit.sources;
     _webstreamingActiveProviderId = hit.providerId;
+  }
+
+  Future<void> _hydrateWebstreamingFromCache() async {
+    if (!_playSourceWebstreaming || _webstreamingStreams.isNotEmpty) return;
+    final cached = await WebstreamingStreamCache.read(_webstreamingCacheKey());
+    if (cached == null || cached.sources.isEmpty || !mounted) return;
+    setState(() => _applyWebstreamingCacheHit(cached));
+    debugPrint(
+      '[DetailsScreen] hydrated webstreaming cache '
+      '${cached.providerId} (${cached.sources.length})',
+    );
   }
 
   Future<void> _persistWebstreamingCache({
@@ -1517,6 +1529,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           }
           _syncSelectedSourceToPlaySources();
         });
+        await _hydrateWebstreamingFromCache();
         _maybeAutoPlay();
         if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
           _autoSearch();
@@ -2134,6 +2147,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
             _selectedEpisode = 1;
           }
         });
+        await _hydrateWebstreamingFromCache();
         await _loadEpisodeProgressForSeason(seasonNumber);
         _checkHistory();
         if (_selectedSourceId == 'forja') {

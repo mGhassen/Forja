@@ -22,7 +22,7 @@ class WebstreamingStreamCache {
 
   static const _diskKey = 'forja_webstreaming_stream_cache_v1';
   static const _diskMaxEntries = 24;
-  static const _diskMaxAge = Duration(minutes: 25);
+  static const _diskMaxAge = Duration(hours: 2);
   static const _sessionTtl = Duration(hours: 2);
   static const _sessionMaxEntries = 32;
 

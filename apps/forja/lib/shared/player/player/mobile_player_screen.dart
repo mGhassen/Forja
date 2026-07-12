@@ -544,7 +544,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   final Set<int> _checkingSourceIndices = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
-  bool _isSwitchingProvider = false;
   bool _isInitPlaybackRunning = false;
   bool _allSourcesExhaustedNotified = false;
   bool _playbackConfirmed = false;
@@ -583,6 +582,13 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // ── Provider initialization ──────────────────────────────────────────
     _currentProvider = widget.activeProvider;
     _sourcePinned = widget.pinSource;
+    if (widget.pinSource ||
+        (widget.activeProvider != null &&
+            widget.sources != null &&
+            widget.sources!.isNotEmpty)) {
+      _providerPinned = true;
+      _sourcePinned = true;
+    }
     unawaited(_loadPlayerAutoSettings());
     _currentSources = widget.sources == null
         ? null
@@ -715,6 +721,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       }
 
       _loadSubtitlePrefs();
+      await _loadPlayerAutoSettings();
+      if (!mounted) return;
       _initPlayback();
       _startHideTimer();
       _fetchSubtitles();
@@ -943,6 +951,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         method = 'amri';
         sourceId = widget.mediaPath;
       }
+      final resolvedStreamUrl = _currentUrl ?? widget.mediaPath;
       WatchHistoryService().saveProgress(
         tmdbId: widget.movie!.id,
         imdbId: widget.movie!.imdbId,
@@ -960,7 +969,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
             : null,
         magnetLink: widget.magnetLink,
         fileIndex: widget.fileIndex,
-        streamUrl: isStremioDirect ? widget.mediaPath : null,
+        streamUrl: isStremioDirect
+            ? widget.mediaPath
+            : (method == 'stream' ? resolvedStreamUrl : null),
         stremioId: widget.stremioId,
         stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
         stremioType: widget.movie!.mediaType == 'tv' ? 'series' : 'movie',
@@ -1027,9 +1038,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     final triedUrls = <String>{};
     _currentFallbackSourceIndex = startIndex;
+    final runGen = chainGen ?? _fallbackGen;
 
     while (_currentFallbackSourceIndex < _currentSources!.length) {
-      if (chainGen != null && _fallbackAborted(chainGen)) return false;
+      if (_fallbackAborted(runGen)) return false;
 
       final i = _currentFallbackSourceIndex;
       var source = _currentSources![i];
@@ -2976,7 +2988,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       readState: _streamMenuState,
       onSelectProvider: _switchProvider,
       onSelectSource: _switchToStreamSource,
-      providersEnabled: !_isSwitchingProvider,
       anchorContext: anchorContext,
       margin: EdgeInsets.only(right: 12, bottom: bottom),
       refreshListenable: _streamMenuRefreshListenable(),
@@ -3833,8 +3844,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   }
 
   Future<List<StreamSource>?> _switchProvider(String newProvider) async {
-    if (_isSwitchingProvider) return null;
-
     _providerPinned = true;
     _sourcePinned = false;
     unawaited(SettingsService().setPlayerAutoServer(false));
@@ -3843,8 +3852,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     WebStreamrService().cancelPending();
     VidsrcExtractor.cancelPending();
     NuvioService.instance.cancelPending();
-
-    setState(() => _isSwitchingProvider = true);
 
     final currentPos = _positionNotifier.value;
     final provider = widget.providers![newProvider];
@@ -3956,10 +3963,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSwitchingProvider = false);
       }
     }
     return null;
@@ -4489,7 +4492,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                 ? PlayerTopStatusActions(
                     onRetry: _initPlayback,
                     onStream: hasStreamPicker ? _showStreamMenu : null,
-                    streamEnabled: !_isSwitchingProvider,
                   )
                 : null,
             onBack: _exitPlayer,
@@ -4754,7 +4756,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                               size: btnSize,
                               iconSize: iconSz - 2,
                               label: _streamPickerLabel(),
-                              enabled: !_isSwitchingProvider,
                               onPressedWithContext: (ctx) =>
                                   _showStreamMenu(ctx),
                             ),

@@ -94,10 +94,15 @@ Future<bool> _resumeWebStreamProvider(
   );
 
   final cached = await WebstreamingStreamCache.read(cacheKey);
-  if (cached != null &&
-      cached.providerId == providerId &&
-      cached.sources.isNotEmpty) {
+  if (cached != null && cached.sources.isNotEmpty) {
     if (!context.mounted) return false;
+    final activeProvider = cached.providerId.isNotEmpty
+        ? cached.providerId
+        : providerId;
+    debugPrint(
+      '[Resume] webstreaming cache hit $cacheKey '
+      '($activeProvider, ${cached.sources.length})',
+    );
     await AppRouter.openPlayer(
       context,
       streamUrl: cached.sources.first.url,
@@ -105,11 +110,32 @@ Future<bool> _resumeWebStreamProvider(
       headers: cached.sources.first.headers,
       movie: movie,
       providers: StreamProviders.providers,
-      activeProvider: providerId,
+      activeProvider: activeProvider,
       selectedSeason: movie.mediaType == 'tv' ? season : null,
       selectedEpisode: movie.mediaType == 'tv' ? episode : null,
       startPosition: startPosition,
       sources: cached.sources,
+      pinSource: true,
+      fadeTransition: true,
+    );
+    return true;
+  }
+
+  final savedStreamUrl = item['streamUrl'] as String?;
+  if (savedStreamUrl != null && savedStreamUrl.trim().isNotEmpty) {
+    if (!context.mounted) return false;
+    debugPrint('[Resume] watch-history streamUrl hit $cacheKey');
+    await AppRouter.openPlayer(
+      context,
+      streamUrl: savedStreamUrl,
+      title: _displayTitle(movie, season: season, episode: episode),
+      movie: movie,
+      providers: StreamProviders.providers,
+      activeProvider: providerId.isNotEmpty ? providerId : 'stream',
+      selectedSeason: movie.mediaType == 'tv' ? season : null,
+      selectedEpisode: movie.mediaType == 'tv' ? episode : null,
+      startPosition: startPosition,
+      pinSource: true,
       fadeTransition: true,
     );
     return true;

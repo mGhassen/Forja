@@ -102,6 +102,7 @@ class ExternalPlayerService {
       ],
       desktopArgs: (url, title, headers) => [
         if (title != null) '--force-media-title=$title',
+        ..._mpvStreamArgs(prefix: '--'),
         ..._mpvHeaderArgs(headers, prefix: '--'),
         url,
       ],
@@ -170,6 +171,7 @@ class ExternalPlayerService {
       linuxBinary: 'mpv',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--force-media-title=$title',
+        ..._mpvStreamArgs(prefix: '--'),
         ..._mpvHeaderArgs(headers, prefix: '--'),
         url,
       ],
@@ -210,6 +212,7 @@ class ExternalPlayerService {
       macBinary: 'iina',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--mpv-force-media-title=$title',
+        ..._mpvStreamArgs(prefix: '--mpv-'),
         ..._mpvHeaderArgs(headers, prefix: '--mpv-'),
         url,
       ],
@@ -230,6 +233,7 @@ class ExternalPlayerService {
       macBinary: 'mpv',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--force-media-title=$title',
+        ..._mpvStreamArgs(prefix: '--'),
         ..._mpvHeaderArgs(headers, prefix: '--'),
         url,
       ],
@@ -302,9 +306,9 @@ class ExternalPlayerService {
 
   /// Resolves the URL/headers external players should open.
   ///
-  /// Desktop mpv/IINA/VLC accept per-field CLI header flags — pass the
-  /// upstream URL + headers directly (this worked before the handoff refactor).
-  /// Mobile players and 111477 CDN URLs still need a local proxy.
+  /// HLS streams with custom headers are proxied so segment/key requests inherit
+  /// Referer/Origin (same as the built-in player). Direct files pass headers via
+  /// mpv CLI flags. 111477 CDN files use the seek cache proxy.
   static Future<({String url, Map<String, String>? headers})>
       _resolveLaunchTarget({
     required String url,
@@ -313,6 +317,7 @@ class ExternalPlayerService {
   }) async {
     if (site111477_proxy.is111477LocalProxyUrl(url)) {
       site111477_proxy.retainForExternalHandoff = true;
+      debugPrint('[ExternalPlayer] Using active 111477 seek proxy');
       return (url: url, headers: null);
     }
 
@@ -327,6 +332,7 @@ class ExternalPlayerService {
     }
 
     if (_isLocalProxyUrl(url)) {
+      debugPrint('[ExternalPlayer] Using existing local proxy URL');
       return (url: url, headers: null);
     }
 
@@ -334,26 +340,57 @@ class ExternalPlayerService {
       return (url: url, headers: null);
     }
 
-    // Desktop players: mpv header flags are reliable — do not rewrite to hls-proxy.
-    if (desktop) {
+    // HLS needs the local proxy on every platform — mpv header flags only cover
+    // the master playlist, not AES keys / CDN segments on other hosts.
+    if (_isHlsStreamUrl(url)) {
+      final proxy = LocalServerService();
+      if (proxy.port <= 0) {
+        await proxy.start();
+      }
+      if (proxy.port > 0) {
+        final proxied = proxy.getHlsProxyUrl(url, headers);
+        debugPrint(
+          '[ExternalPlayer] Proxying HLS stream for external player '
+          '(127.0.0.1:${proxy.port})',
+        );
+        return (url: proxied, headers: null);
+      }
+      debugPrint(
+        '[ExternalPlayer] HLS proxy unavailable — passing headers to player',
+      );
       return (url: url, headers: headers);
     }
 
-    final proxy = LocalServerService();
-    if (proxy.port <= 0) {
-      await proxy.start();
-    }
-    if (proxy.port > 0) {
-      final proxied = proxy.getHlsProxyUrl(url, headers);
-      debugPrint('[ExternalPlayer] Proxying stream for external player');
-      return (url: proxied, headers: null);
+    if (!desktop) {
+      final proxy = LocalServerService();
+      if (proxy.port <= 0) {
+        await proxy.start();
+      }
+      if (proxy.port > 0) {
+        final proxied = proxy.getHlsProxyUrl(url, headers);
+        debugPrint('[ExternalPlayer] Proxying stream for external player');
+        return (url: proxied, headers: null);
+      }
     }
 
-    debugPrint(
-      '[ExternalPlayer] Local proxy unavailable — passing headers to player',
-    );
+    debugPrint('[ExternalPlayer] Passing direct URL with HTTP headers');
     return (url: url, headers: headers);
   }
+
+  static bool _isHlsStreamUrl(String url) {
+    final u = url.toLowerCase();
+    return u.contains('.m3u8') || u.contains('/playlist/');
+  }
+
+  /// Match built-in [applyMediaHttpHeaders] mpv network/HLS tuning.
+  static List<String> _mpvStreamArgs({required String prefix}) => [
+        '${prefix}network-timeout=30',
+        '${prefix}tls-verify=no',
+        '${prefix}hls-bitrate=no',
+        '${prefix}cache=yes',
+        '${prefix}demuxer-readahead-secs=120',
+        '${prefix}ytdl=no',
+      ];
 
   static bool _isLocalProxyUrl(String url) {
     final uri = Uri.tryParse(url);
@@ -365,8 +402,7 @@ class ExternalPlayerService {
         uri.path.contains('/comic-proxy');
   }
 
-  /// mpv / IINA header flags — one option per field (comma-join breaks on
-  /// User-Agent values like "KHTML, like Gecko").
+  /// mpv / IINA header flags — mirrors built-in [applyMediaHttpHeaders].
   static List<String> _mpvHeaderArgs(
     Map<String, String>? headers, {
     required String prefix,
@@ -377,16 +413,21 @@ class ExternalPlayerService {
     if (referer != null) args.add('${prefix}referrer=$referer');
     final ua = headers['User-Agent'] ?? headers['user-agent'];
     if (ua != null) args.add('${prefix}user-agent=$ua');
+
+    final headerFields = <String>[];
+    if (referer != null) headerFields.add('Referer: $referer');
     final origin = headers['Origin'] ?? headers['origin'];
-    if (origin != null) {
-      args.add('${prefix}http-header-fields=Origin: $origin');
-    }
+    if (origin != null) headerFields.add('Origin: $origin');
+    if (ua != null) headerFields.add('User-Agent: $ua');
     for (final entry in headers.entries) {
       final key = entry.key.toLowerCase();
       if (key == 'referer' || key == 'user-agent' || key == 'origin') {
         continue;
       }
-      args.add('${prefix}http-header-fields=${entry.key}: ${entry.value}');
+      headerFields.add('${entry.key}: ${entry.value}');
+    }
+    if (headerFields.isNotEmpty) {
+      args.add('${prefix}http-header-fields=${headerFields.join(',')}');
     }
     return args;
   }
@@ -476,7 +517,9 @@ class ExternalPlayerService {
       args = playerArgs;
     }
 
-    debugPrint('[ExternalPlayer] Launching: $executable ${args.join(' ')}');
+    debugPrint(
+      '[ExternalPlayer] Launching: $executable (${args.length} args) → ${args.last}',
+    );
     await Process.start(executable, args, mode: ProcessStartMode.detached);
     return true;
   }

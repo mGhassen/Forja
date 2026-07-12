@@ -1,5 +1,6 @@
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/playback_service.dart';
+import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:rust/rust.dart';
 
 /// Player-side helpers for Source Engine Auto / pinned resolve.
@@ -93,6 +94,32 @@ abstract final class PlayerSourceResolve {
     required int episode,
     bool Function()? isCancelled,
   }) async {
+    final cacheKey = WebstreamingStreamCache.cacheKey(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: season,
+      episode: episode,
+    );
+    final cached = await WebstreamingStreamCache.read(cacheKey);
+    if (cached != null &&
+        cached.sources.isNotEmpty &&
+        cached.providerId == providerId) {
+      final rank = providers.keys.toList().indexOf(cached.providerId);
+      final sources = await PlaybackSelection.rankLegacySources(
+        sources: cached.sources,
+        providerId: cached.providerId.isNotEmpty ? cached.providerId : providerId,
+        providerRank: rank >= 0 ? rank : 0,
+      );
+      final first = sources.first;
+      return PlaybackResolveHit(
+        providerId: cached.providerId.isNotEmpty ? cached.providerId : providerId,
+        providerRank: rank >= 0 ? rank : 0,
+        streamUrl: first.url,
+        headers: first.headers,
+        sources: sources,
+      );
+    }
+
     final order = await _movieSettingsOrder(movie);
     return resolvePinned(
       domain: domainFor(movie),

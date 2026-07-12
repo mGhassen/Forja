@@ -241,6 +241,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
           Duration.zero,
           builtInEngine: builtInEngine,
           externalPlayer: externalPlayer,
+          streamUrl: _externalStreamUrl,
+          headers: _externalHeaders,
         ),
       );
     }

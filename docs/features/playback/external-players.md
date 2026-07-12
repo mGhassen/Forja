@@ -23,9 +23,10 @@ While already handed off: **Change player** on the handoff screen.
 ## Tips
 
 - On macOS, **IINA** and **VLC** are launched via their bundled CLI binaries so the stream URL is passed correctly
-- On desktop, **Referer / User-Agent / Origin** headers are passed as mpv/VLC CLI flags (same approach as before the handoff screen)
-- On Android, header-protected streams may be proxied through Forja's local server when the player cannot accept headers
-- **111477 CDN** direct file links are proxied through Forja's seek cache server so IINA can follow signed redirects
+- **HLS streams** (m3u8 / playlist URLs) with custom headers are proxied through Forja's local server so segment and AES-key requests work in external players
+- **Direct files** (mp4/mkv) pass Referer / User-Agent / Origin as mpv CLI flags
+- **111477 CDN** links use Forja's seek cache proxy for signed redirects
+- External players receive the same mpv network settings as the built-in player (`tls-verify`, HLS cache, timeouts)
 - External players bypass Forja's subtitle UI — use players with their own sub support if needed
 - Some DRM or header-protected streams may not work outside Forja's proxy if the local server is unavailable
 

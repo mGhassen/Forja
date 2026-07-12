@@ -576,7 +576,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   final Set<int> _checkingSourceIndices = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
-  bool _isSwitchingProvider = false;
   bool _isInitPlaybackRunning = false;
   bool _allSourcesExhaustedNotified = false;
   bool _playbackConfirmed = false;
@@ -613,6 +612,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     // ── Provider initialization ──────────────────────────────────────────
     _currentProvider = widget.activeProvider;
     _sourcePinned = widget.pinSource;
+    if (widget.pinSource ||
+        (widget.activeProvider != null &&
+            widget.sources != null &&
+            widget.sources!.isNotEmpty)) {
+      _providerPinned = true;
+      _sourcePinned = true;
+    }
     unawaited(_loadPlayerAutoSettings());
     _currentSources = widget.sources == null
         ? null
@@ -679,6 +685,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || !_playerReady) return;
       await waitForRouteTransition(context);
+      if (!mounted || !_playerReady) return;
+      await _loadPlayerAutoSettings();
       if (!mounted || !_playerReady) return;
       _loadSubtitlePrefs();
       _loadTorrentStatsPref();
@@ -869,6 +877,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         method = 'amri';
         sourceId = widget.mediaPath;
       }
+      final resolvedStreamUrl = _currentUrl ?? widget.mediaPath;
       WatchHistoryService().saveProgress(
         tmdbId: widget.movie!.id,
         imdbId: widget.movie!.imdbId,
@@ -886,7 +895,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             : null,
         magnetLink: widget.magnetLink,
         fileIndex: widget.fileIndex,
-        streamUrl: isStremioDirect ? widget.mediaPath : null,
+        streamUrl: isStremioDirect
+            ? widget.mediaPath
+            : (method == 'stream' ? resolvedStreamUrl : null),
         stremioId: widget.stremioId,
         stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
         stremioType: widget.movie!.mediaType == 'tv' ? 'series' : 'movie',
@@ -950,9 +961,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
     final triedUrls = <String>{};
     _currentFallbackSourceIndex = startIndex;
+    final runGen = chainGen ?? _fallbackGen;
 
     while (_currentFallbackSourceIndex < _currentSources!.length) {
-      if (chainGen != null && _fallbackAborted(chainGen)) return false;
+      if (_fallbackAborted(runGen)) return false;
 
       final i = _currentFallbackSourceIndex;
       var source = _currentSources![i];
@@ -2583,7 +2595,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       readState: _streamMenuState,
       onSelectProvider: _switchProvider,
       onSelectSource: _switchToStreamSource,
-      providersEnabled: !_isSwitchingProvider,
       anchorContext: anchorContext,
       refreshListenable: _streamMenuRefreshListenable(),
       onReload: _reloadStreamMenu,
@@ -3614,8 +3625,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   }
 
   Future<List<StreamSource>?> _switchProvider(String newProvider) async {
-    if (_isSwitchingProvider) return null;
-
     _providerPinned = true;
     _sourcePinned = false;
     unawaited(SettingsService().setPlayerAutoServer(false));
@@ -3624,8 +3633,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     WebStreamrService().cancelPending();
     VidsrcExtractor.cancelPending();
     NuvioService.instance.cancelPending();
-
-    setState(() => _isSwitchingProvider = true);
 
     final currentPos = _positionNotifier.value;
     final provider = widget.providers![newProvider];
@@ -3737,10 +3744,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSwitchingProvider = false);
       }
     }
     return null;
@@ -4125,7 +4128,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                 ? PlayerTopStatusActions(
                     onRetry: _initPlayback,
                     onStream: hasStreamPicker ? _showStreamMenu : null,
-                    streamEnabled: !_isSwitchingProvider,
                   )
                 : null,
             onBack: () async {
@@ -4490,7 +4492,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                         if (hasStreamPicker) ...[
                           PlayerStreamPickerButton(
                             label: _streamPickerLabel(),
-                            enabled: !_isSwitchingProvider,
                             onPressedWithContext: (ctx) => _showStreamMenu(ctx),
                           ),
                           const SizedBox(width: 6),

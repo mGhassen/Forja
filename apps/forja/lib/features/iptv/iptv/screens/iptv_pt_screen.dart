@@ -13,6 +13,7 @@ import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -1672,6 +1673,55 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 }
 
+class _StreamThumbPlayHint extends StatelessWidget {
+  const _StreamThumbPlayHint({required this.active});
+
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        AnimatedOpacity(
+          opacity: active ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 150),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.34),
+            ),
+          ),
+        ),
+        AnimatedOpacity(
+          opacity: active ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 150),
+          child: Center(
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: ForjaShellColors.brandGreen,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.28),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.play_arrow_rounded,
+                color: Color(0xFF111827),
+                size: 18,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _StreamCard extends StatefulWidget {
   final IptvStream stream;
   final IptvController ctrl;
@@ -1725,19 +1775,19 @@ class _StreamCardState extends State<_StreamCard> {
 
   Color _surfaceColor(bool active, bool? health) {
     if (health == false) {
-      return const Color(0xFFEF4444).withValues(alpha: active ? 0.14 : 0.08);
+      return const Color(0xFFEF4444).withValues(alpha: active ? 0.11 : 0.08);
     }
-    return Colors.white.withValues(alpha: active ? 0.11 : 0.05);
+    return Colors.white.withValues(alpha: active ? 0.09 : 0.05);
   }
 
   Color _borderColor(bool active, bool? health) {
     if (widget.stream.kind != 'live' || health == null) {
-      return Colors.white.withValues(alpha: active ? 0.24 : 0.08);
+      return Colors.white.withValues(alpha: active ? 0.18 : 0.08);
     }
     if (health) {
-      return const Color(0xFF22C55E).withValues(alpha: active ? 0.75 : 0.55);
+      return const Color(0xFF22C55E).withValues(alpha: active ? 0.62 : 0.45);
     }
-    return const Color(0xFFEF4444).withValues(alpha: active ? 0.85 : 0.65);
+    return const Color(0xFFEF4444).withValues(alpha: active ? 0.72 : 0.55);
   }
 
   void _showEpgSheet(BuildContext context) {
@@ -1798,6 +1848,21 @@ class _StreamCardState extends State<_StreamCard> {
                         ),
                       ),
                     ),
+                  Positioned.fill(
+                    child: AnimatedOpacity(
+                      opacity: active ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.32),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  ShellCardPlayOverlay(active: true, visible: active),
                 ],
               ),
             ),
@@ -1831,34 +1896,28 @@ class _StreamCardState extends State<_StreamCard> {
               _EpgNowFooter(stream: widget.stream, ctrl: widget.ctrl),
           ],
         );
-        Widget card = AnimatedScale(
-          scale: active ? 1.03 : 1.0,
-          duration: const Duration(milliseconds: 160),
+        Widget card = AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
           curve: Curves.easeOutCubic,
-          child: Material(
-            color: Colors.transparent,
-            child: Ink(
-              decoration: BoxDecoration(
-                color: _surfaceColor(active, health),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _borderColor(active, health)),
-              ),
-              child: iptvTap(
-                context: context,
-                onTap: widget.onTap,
-                borderRadius: 12,
-                gridIndex: widget.gridIndex,
-                gridColumns: widget.gridColumns,
-                tvRowId: 'browser-streams',
-                tvZone: ShellTvZone.grid,
-                onLeftEdge: widget.onLeftEdge,
-                onUpEdge: widget.onUpEdge,
-                showFocusBorder: true,
-                onFocusChange: _onFocus,
-                onHoverChange: _onHover,
-                child: column,
-              ),
-            ),
+          decoration: BoxDecoration(
+            color: _surfaceColor(active, health),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _borderColor(active, health)),
+          ),
+          child: iptvTap(
+            context: context,
+            onTap: widget.onTap,
+            borderRadius: 12,
+            scaleOnFocus: 1.0,
+            gridIndex: widget.gridIndex,
+            gridColumns: widget.gridColumns,
+            tvRowId: 'browser-streams',
+            tvZone: ShellTvZone.grid,
+            onLeftEdge: widget.onLeftEdge,
+            onUpEdge: widget.onUpEdge,
+            onFocusChange: _onFocus,
+            onHoverChange: _onHover,
+            child: column,
           ),
         );
 
@@ -1935,18 +1994,18 @@ class _StreamRowTileState extends State<_StreamRowTile> {
 
   Color _surfaceColor(bool active, bool? health) {
     if (health == false) {
-      return const Color(0xFFEF4444).withValues(alpha: active ? 0.14 : 0.08);
+      return const Color(0xFFEF4444).withValues(alpha: active ? 0.11 : 0.08);
     }
-    return Colors.white.withValues(alpha: active ? 0.11 : 0.05);
+    return Colors.white.withValues(alpha: active ? 0.09 : 0.05);
   }
 
   Color _borderColor(bool active, bool? health) {
     if (widget.stream.kind != 'live' || health == null) {
-      return Colors.white.withValues(alpha: active ? 0.24 : 0.08);
+      return Colors.white.withValues(alpha: active ? 0.18 : 0.08);
     }
     return health
-        ? const Color(0xFF22C55E).withValues(alpha: active ? 0.75 : 0.55)
-        : const Color(0xFFEF4444).withValues(alpha: active ? 0.85 : 0.65);
+        ? const Color(0xFF22C55E).withValues(alpha: active ? 0.62 : 0.45)
+        : const Color(0xFFEF4444).withValues(alpha: active ? 0.72 : 0.55);
   }
 
   @override
@@ -1960,40 +2019,39 @@ class _StreamRowTileState extends State<_StreamRowTile> {
         final active = _active(context);
         final tile = Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: AnimatedScale(
-            scale: active ? 1.02 : 1.0,
-            duration: const Duration(milliseconds: 160),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
             curve: Curves.easeOutCubic,
-            child: Material(
-              color: Colors.transparent,
-              child: Ink(
-                decoration: BoxDecoration(
-                  color: _surfaceColor(active, health),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _borderColor(active, health)),
-                ),
-                child: iptvTap(
-                  context: context,
-                  onTap: widget.onTap,
-                  borderRadius: 12,
-                  listIndex: widget.listIndex,
-                  tvItemIndex: widget.listIndex,
-                  tvRowId: 'browser-streams',
-                  tvZone: ShellTvZone.row,
-                  onLeftEdge: widget.onLeftEdge,
-                  showFocusBorder: true,
-                  onFocusChange: _onFocus,
-                  onHoverChange: _onHover,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(9),
-                          child: SizedBox(
-                            width: 58,
-                            height: 58,
-                            child: widget.stream.icon.isEmpty
+            decoration: BoxDecoration(
+              color: _surfaceColor(active, health),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _borderColor(active, health)),
+            ),
+            child: iptvTap(
+              context: context,
+              onTap: widget.onTap,
+              borderRadius: 12,
+              scaleOnFocus: 1.0,
+              listIndex: widget.listIndex,
+              tvItemIndex: widget.listIndex,
+              tvRowId: 'browser-streams',
+              tvZone: ShellTvZone.row,
+              onLeftEdge: widget.onLeftEdge,
+              onFocusChange: _onFocus,
+              onHoverChange: _onHover,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(9),
+                      child: SizedBox(
+                        width: 58,
+                        height: 58,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            widget.stream.icon.isEmpty
                                 ? const _StreamPlaceholder()
                                 : Image.network(
                                     widget.stream.icon,
@@ -2004,8 +2062,11 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                                         ? child
                                         : const _StreamPlaceholder(),
                                   ),
-                          ),
+                            _StreamThumbPlayHint(active: active),
+                          ],
                         ),
+                      ),
+                    ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
@@ -2060,17 +2121,19 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                             ),
                           )
                         else
-                          const Padding(
-                            padding: EdgeInsets.only(left: 8),
-                            child: Icon(
-                              Icons.play_circle_outline_rounded,
-                              color: Colors.white38,
-                              size: 20,
+                          AnimatedOpacity(
+                            opacity: active ? 0.0 : 1.0,
+                            duration: const Duration(milliseconds: 150),
+                            child: const Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Icon(
+                                Icons.play_circle_outline_rounded,
+                                color: Colors.white38,
+                                size: 20,
+                              ),
                             ),
                           ),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ),
