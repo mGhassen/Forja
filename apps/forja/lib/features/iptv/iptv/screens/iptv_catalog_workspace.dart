@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -1353,43 +1351,15 @@ class _PortalHoverTile extends StatefulWidget {
 
 class _PortalHoverTileState extends State<_PortalHoverTile> {
   static const _actionW = 108.0;
-  static const _revealDelay = Duration(seconds: 3);
-  static const _rightHotFraction = 0.10;
   static const _statusSlot = 18.0;
 
   bool _lineHover = false;
   bool _focused = false;
-  bool _actionsOpen = false;
-  Timer? _revealTimer;
 
-  bool get _reveal => _focused || _actionsOpen;
-
-  @override
-  void dispose() {
-    _revealTimer?.cancel();
-    super.dispose();
-  }
-
-  void _armRevealTimer() {
-    _revealTimer?.cancel();
-    _revealTimer = Timer(_revealDelay, () {
-      if (!mounted || !_lineHover) return;
-      setState(() => _actionsOpen = true);
-    });
-  }
-
-  void _openActions() {
-    _revealTimer?.cancel();
-    if (!_actionsOpen) setState(() => _actionsOpen = true);
-  }
+  bool get _reveal => _focused || _lineHover;
 
   void _clearHover() {
-    _revealTimer?.cancel();
-    _revealTimer = null;
-    setState(() {
-      _lineHover = false;
-      _actionsOpen = false;
-    });
+    setState(() => _lineHover = false);
   }
 
   void _copy() {
@@ -1501,26 +1471,16 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
             ? (v.portal.username.trim().isEmpty ? 'Portal' : v.portal.username)
             : v.name.trim();
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return MouseRegion(
-              onEnter: (_) {
-                setState(() => _lineHover = true);
-                _armRevealTimer();
-                ctrl.schedulePortalHealthCheck(v);
-              },
-              onExit: (_) {
-                _clearHover();
-                ctrl.cancelPortalHealthCheck(v.key);
-              },
-              onHover: (event) {
-                final w = constraints.maxWidth;
-                if (w <= 0) return;
-                if (event.localPosition.dx >= w * (1 - _rightHotFraction)) {
-                  _openActions();
-                }
-              },
-              child: ColoredBox(
+        return MouseRegion(
+          onEnter: (_) {
+            setState(() => _lineHover = true);
+            ctrl.schedulePortalHealthCheck(v);
+          },
+          onExit: (_) {
+            _clearHover();
+            ctrl.cancelPortalHealthCheck(v.key);
+          },
+          child: ColoredBox(
                 color: isActive
                     ? playerSourceStatusColor(
                         PlayerSourceStatus.active,
@@ -1541,14 +1501,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                           tvRowId: 'portals',
                           tvItemIndex: widget.listIndex,
                           onFocusChange: (focused) {
-                            setState(() {
-                              _focused = focused;
-                              if (focused) {
-                                _actionsOpen = true;
-                              } else if (!_lineHover) {
-                                _actionsOpen = false;
-                              }
-                            });
+                            setState(() => _focused = focused);
                             if (focused) {
                               ctrl.schedulePortalHealthCheck(v);
                             } else {
@@ -1674,8 +1627,6 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                 ),
               ),
             );
-          },
-        );
       },
     );
   }

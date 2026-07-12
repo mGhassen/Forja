@@ -101,8 +101,7 @@ class ExternalPlayerService {
       ],
       desktopArgs: (url, title, headers) => [
         if (title != null) '--force-media-title=$title',
-        if (headers != null)
-          '--http-header-fields=${headers.entries.map((e) => '${e.key}: ${e.value}').join(',')}',
+        ..._mpvHeaderArgs(headers, prefix: '--'),
         url,
       ],
     ),
@@ -118,10 +117,7 @@ class ExternalPlayerService {
       windowsRegistryBinary: 'vlc.exe',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--meta-title=$title',
-        if (headers != null && headers.containsKey('Referer'))
-          '--http-referrer=${headers['Referer']}',
-        if (headers != null && headers.containsKey('User-Agent'))
-          '--http-user-agent=${headers['User-Agent']}',
+        ..._vlcHeaderArgs(headers),
         url,
       ],
     ),
@@ -173,8 +169,7 @@ class ExternalPlayerService {
       linuxBinary: 'mpv',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--force-media-title=$title',
-        if (headers != null)
-          '--http-header-fields=${headers.entries.map((e) => '${e.key}: ${e.value}').join(',')}',
+        ..._mpvHeaderArgs(headers, prefix: '--'),
         url,
       ],
     ),
@@ -183,8 +178,7 @@ class ExternalPlayerService {
       linuxBinary: 'vlc',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--meta-title=$title',
-        if (headers != null && headers.containsKey('Referer'))
-          '--http-referrer=${headers['Referer']}',
+        ..._vlcHeaderArgs(headers),
         url,
       ],
     ),
@@ -215,8 +209,7 @@ class ExternalPlayerService {
       macBinary: 'iina',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--mpv-force-media-title=$title',
-        if (headers != null)
-          '--mpv-http-header-fields=${headers.entries.map((e) => '${e.key}: ${e.value}').join(',')}',
+        ..._mpvHeaderArgs(headers, prefix: '--mpv-'),
         url,
       ],
     ),
@@ -227,10 +220,7 @@ class ExternalPlayerService {
       macBinary: 'vlc',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--meta-title=$title',
-        if (headers != null && headers.containsKey('Referer'))
-          '--http-referrer=${headers['Referer']}',
-        if (headers != null && headers.containsKey('User-Agent'))
-          '--http-user-agent=${headers['User-Agent']}',
+        ..._vlcHeaderArgs(headers),
         url,
       ],
     ),
@@ -239,6 +229,7 @@ class ExternalPlayerService {
       macBinary: 'mpv',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--force-media-title=$title',
+        ..._mpvHeaderArgs(headers, prefix: '--'),
         url,
       ],
     ),
@@ -276,11 +267,23 @@ class ExternalPlayerService {
       orElse: () => players.first,
     );
 
+    final target = await _resolveLaunchTarget(url: url, headers: headers);
+
     try {
       if (Platform.isAndroid || Platform.isIOS) {
-        return await _launchAndroid(player, url, title, headers);
+        return await _launchAndroid(
+          player,
+          target.url,
+          title,
+          target.headers,
+        );
       } else {
-        return await _launchDesktop(player, url, title, headers);
+        return await _launchDesktop(
+          player,
+          target.url,
+          title,
+          target.headers,
+        );
       }
     } catch (e) {
       debugPrint('[ExternalPlayer] Error launching ${player.displayName}: $e');
@@ -289,6 +292,82 @@ class ExternalPlayerService {
       }
       return false;
     }
+  }
+
+  /// Header-protected streams are proxied through the local Rust server so
+  /// external players only need a plain localhost URL (no fragile CLI headers).
+  static Future<({String url, Map<String, String>? headers})>
+      _resolveLaunchTarget({
+    required String url,
+    required Map<String, String>? headers,
+  }) async {
+    if (headers == null || headers.isEmpty) {
+      return (url: url, headers: null);
+    }
+    if (_isLocalProxyUrl(url)) {
+      return (url: url, headers: null);
+    }
+
+    final proxy = LocalServerService();
+    if (proxy.port <= 0) {
+      await proxy.start();
+    }
+    if (proxy.port > 0) {
+      final proxied = proxy.getHlsProxyUrl(url, headers);
+      debugPrint('[ExternalPlayer] Proxying stream for external player');
+      return (url: proxied, headers: null);
+    }
+
+    debugPrint(
+      '[ExternalPlayer] Local proxy unavailable — passing headers to player',
+    );
+    return (url: url, headers: headers);
+  }
+
+  static bool _isLocalProxyUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    if (uri.host != '127.0.0.1' && uri.host != 'localhost') return false;
+    return uri.path.contains('/hls-proxy') ||
+        uri.path.contains('/jellyfin-stream') ||
+        uri.path.contains('/toky-proxy') ||
+        uri.path.contains('/comic-proxy');
+  }
+
+  /// mpv / IINA header flags — one option per field (comma-join breaks on
+  /// User-Agent values like "KHTML, like Gecko").
+  static List<String> _mpvHeaderArgs(
+    Map<String, String>? headers, {
+    required String prefix,
+  }) {
+    if (headers == null || headers.isEmpty) return [];
+    final args = <String>[];
+    final referer = headers['Referer'] ?? headers['referer'];
+    if (referer != null) args.add('${prefix}referrer=$referer');
+    final ua = headers['User-Agent'] ?? headers['user-agent'];
+    if (ua != null) args.add('${prefix}user-agent=$ua');
+    final origin = headers['Origin'] ?? headers['origin'];
+    if (origin != null) {
+      args.add('${prefix}http-header-fields=Origin: $origin');
+    }
+    for (final entry in headers.entries) {
+      final key = entry.key.toLowerCase();
+      if (key == 'referer' || key == 'user-agent' || key == 'origin') {
+        continue;
+      }
+      args.add('${prefix}http-header-fields=${entry.key}: ${entry.value}');
+    }
+    return args;
+  }
+
+  static List<String> _vlcHeaderArgs(Map<String, String>? headers) {
+    if (headers == null || headers.isEmpty) return [];
+    final args = <String>[];
+    final referer = headers['Referer'] ?? headers['referer'];
+    if (referer != null) args.add('--http-referrer=$referer');
+    final ua = headers['User-Agent'] ?? headers['user-agent'];
+    if (ua != null) args.add('--http-user-agent=$ua');
+    return args;
   }
 
   // ── Android Launch ─────────────────────────────────────────────────────

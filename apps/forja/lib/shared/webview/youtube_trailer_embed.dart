@@ -46,14 +46,9 @@ function patchYoutubeIframeReferrer(el) {
   if (!el) return;
   var iframe = el.tagName === 'IFRAME' ? el : el.querySelector('iframe');
   if (!iframe) return;
-  iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+  if (iframe.getAttribute('referrerpolicy') !== 'strict-origin-when-cross-origin') {
+    iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+  }
 }
-function observeYoutubeIframeReferrer() {
-  var root = document.getElementById('player');
-  if (!root) return;
-  patchYoutubeIframeReferrer(root);
-  new MutationObserver(function() { patchYoutubeIframeReferrer(root); })
-    .observe(root, { childList: true, subtree: true, attributes: true });
-}
-observeYoutubeIframeReferrer();
+patchYoutubeIframeReferrer(document.getElementById('player'));
 ''';

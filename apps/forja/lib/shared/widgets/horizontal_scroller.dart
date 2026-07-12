@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Horizontal scrollable strip with overlaid left/right arrow buttons.
@@ -228,30 +227,43 @@ class _ArrowButton extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           opacity: visible ? 1 : 0,
           child: Center(
-            child: Material(
-              color: Colors.black.withValues(alpha: 0.55),
-              shape: const CircleBorder(),
-              elevation: 6,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: onTap,
-                child: Container(
-                  width: 44,
-                  height: 44,
+            child: ForjaInteractive(
+              onTap: onTap,
+              hoverScale: 1.06,
+              pressScale: 0.95,
+              builder: (hover, pressed) {
+                return Container(
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    color: ForjaShellColors.surfaceElevated
+                        .withValues(alpha: hover ? 0.98 : 0.92),
                     border: Border.all(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.6),
-                      width: 1.2,
+                      color: hover
+                          ? ForjaShellColors.textPrimary
+                              .withValues(alpha: 0.22)
+                          : ForjaShellColors.borderSubtle,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Icon(
-                    left ? Icons.chevron_left : Icons.chevron_right,
-                    color: Colors.white,
-                    size: 26,
+                    left
+                        ? Icons.chevron_left_rounded
+                        : Icons.chevron_right_rounded,
+                    color: hover
+                        ? ForjaShellColors.textPrimary
+                        : ForjaShellColors.iconActive,
+                    size: 24,
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ),

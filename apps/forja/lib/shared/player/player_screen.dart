@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/external_player_service.dart';
-import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/external_player_handoff_screen.dart';
 import 'package:forja/shared/player/player/exo_player_screen.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';
 import 'package:forja/shared/player/player/tv_player_screen.dart';
@@ -11,8 +11,6 @@ import 'package:forja/shared/player/player/desktop_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
-import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
@@ -208,10 +206,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     // External player mode — show a "playing externally" screen
     if (_useExternalPlayer) {
-      return _ExternalPlayerWaitScreen(
+      return ExternalPlayerHandoffScreen(
         title: widget.title,
         playerName: _externalPlayerName,
-        streamUrl: widget.streamUrl,
         launched: _externalLaunched,
         builtInEngine: _builtInEngine,
         onRelaunch: _launchExternal,
@@ -400,273 +397,5 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onSwitchPlayer: _switchPlayer,
       );
     }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  EXTERNAL PLAYER WAIT SCREEN
-//
-//  Shown while the video is playing in an external app. Keeps the app alive
-//  (and the torrent engine streaming) while the user watches elsewhere.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ExternalPlayerWaitScreen extends StatefulWidget {
-  final String title;
-  final String playerName;
-  final String streamUrl;
-  final bool launched;
-  final BuiltInPlayerEngine builtInEngine;
-  final VoidCallback onRelaunch;
-  final VoidCallback onSwitchBuiltIn;
-  final PlayerMenuSelectHandler onSelectPlayer;
-
-  const _ExternalPlayerWaitScreen({
-    required this.title,
-    required this.playerName,
-    required this.streamUrl,
-    required this.launched,
-    required this.builtInEngine,
-    required this.onRelaunch,
-    required this.onSwitchBuiltIn,
-    required this.onSelectPlayer,
-  });
-
-  @override
-  State<_ExternalPlayerWaitScreen> createState() =>
-      _ExternalPlayerWaitScreenState();
-}
-
-class _ExternalPlayerWaitScreenState extends State<_ExternalPlayerWaitScreen> {
-  bool _pickingPlayer = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
-    return Scaffold(
-      backgroundColor: DesignTokens.bgDark,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              top: isDesktop ? 16 : 8,
-              left: 16,
-              child: ForjaPlainIcon(
-                icon: Icons.chevron_left_rounded,
-                size: 28,
-                color: ForjaShellColors.textPrimary,
-                tooltip: 'Back',
-                onTap: () => Navigator.of(context).pop(),
-              ),
-            ),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: ForjaShellColors.sectionIconBg,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: ForjaShellColors.borderSubtle),
-                        ),
-                        child: widget.launched
-                            ? Icon(
-                                Icons.open_in_new_rounded,
-                                color: ForjaShellColors.iconActive,
-                                size: 32,
-                              )
-                            : Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: ForjaShellColors.brandGreen,
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 28),
-                      Text(
-                        widget.launched
-                            ? 'Playing in ${widget.playerName}'
-                            : 'Launching ${widget.playerName}…',
-                        style: GoogleFonts.inter(
-                          color: ForjaShellColors.textPrimary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.2,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        widget.title,
-                        style: GoogleFonts.inter(
-                          color: ForjaShellColors.textSecondary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        widget.launched
-                            ? 'The stream is being kept alive.\nYou can go back when you\'re done watching.'
-                            : 'Opening the video in the external player…',
-                        style: GoogleFonts.inter(
-                          color: ForjaShellColors.textSecondary
-                              .withValues(alpha: 0.85),
-                          fontSize: 14,
-                          height: 1.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (widget.launched) ...[
-                        const SizedBox(height: 36),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          child: _pickingPlayer
-                              ? _InlinePlayerPicker(
-                                  key: const ValueKey('picker'),
-                                  playerName: widget.playerName,
-                                  builtInEngine: widget.builtInEngine,
-                                  onSelectPlayer: widget.onSelectPlayer,
-                                  onCancel: () =>
-                                      setState(() => _pickingPlayer = false),
-                                )
-                              : Column(
-                                  key: const ValueKey('actions'),
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Center(
-                                      child: HeroPillPlayButton(
-                                        label:
-                                            'Re-launch in ${widget.playerName}',
-                                        icon: Icons.refresh_rounded,
-                                        tone: HeroPillPlayTone.secondary,
-                                        onTap: widget.onRelaunch,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Center(
-                                      child: HeroPillPlayButton(
-                                        label: 'Change player',
-                                        icon: Icons.smart_display_outlined,
-                                        tone: HeroPillPlayTone.secondary,
-                                        onTap: () =>
-                                            setState(() => _pickingPlayer = true),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    ForjaGhostButton(
-                                      label: 'Use built-in player instead',
-                                      icon: Icons.play_circle_outline_rounded,
-                                      onTap: widget.onSwitchBuiltIn,
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ],
-                      const SizedBox(height: 28),
-                      Center(
-                        child: HeroPillPlayButton(
-                          label: 'Go back',
-                          icon: Icons.arrow_back_rounded,
-                          primary: true,
-                          onTap: () => Navigator.of(context).pop(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InlinePlayerPicker extends StatelessWidget {
-  const _InlinePlayerPicker({
-    super.key,
-    required this.playerName,
-    required this.builtInEngine,
-    required this.onSelectPlayer,
-    required this.onCancel,
-  });
-
-  final String playerName;
-  final BuiltInPlayerEngine builtInEngine;
-  final PlayerMenuSelectHandler onSelectPlayer;
-  final VoidCallback onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: ForjaShellColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ForjaShellColors.borderSubtle),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 4, 8),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.smart_display_outlined,
-                  size: 18,
-                  color: ForjaShellColors.iconActive,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Choose player',
-                    style: GoogleFonts.inter(
-                      color: ForjaShellColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                ForjaCloseButton.compact(
-                  color: ForjaShellColors.textSecondary,
-                  onTap: onCancel,
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: ForjaShellColors.borderSubtle),
-          PlayerAppMenu.buildPickerList(
-            usingBuiltIn: false,
-            builtInEngine: builtInEngine,
-            externalPlayerName: playerName,
-            physics: const NeverScrollableScrollPhysics(),
-            onSelect: ({builtInEngine, externalPlayer}) async {
-              onCancel();
-              await onSelectPlayer(
-                builtInEngine: builtInEngine,
-                externalPlayer: externalPlayer,
-              );
-            },
-          ),
-        ],
-      ),
-    );
   }
 }
