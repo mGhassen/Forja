@@ -102,6 +102,7 @@ class PlayerStreamMenu {
           sources: state.sources ?? const [],
           state: state,
           onSelectSource: onSelectSource,
+          useIndexedStatuses: true,
         );
       }
 
@@ -272,6 +273,7 @@ class PlayerStreamMenu {
               child: _sourcesList(
                 sources: sectionSources,
                 state: state,
+                useIndexedStatuses: isCurrent,
                 onSelectSource: (source, index) async {
                   PlayerPopupPanel.dismiss();
                   if (!isCurrent) {
@@ -299,6 +301,7 @@ class PlayerStreamMenu {
     required PlayerStreamMenuState state,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     bool compact = false,
+    bool useIndexedStatuses = false,
   }) {
     final statuses = state.sourceStatuses;
     return Column(
@@ -308,7 +311,7 @@ class PlayerStreamMenu {
             source: entry.value,
             index: entry.key,
             state: state,
-            status: entry.key < statuses.length
+            status: useIndexedStatuses && entry.key < statuses.length
                 ? statuses[entry.key]
                 : PlayerSourceStatus.ready,
             compact: compact,

@@ -1832,6 +1832,21 @@ class _StreamCardState extends State<_StreamCard> {
                                 p == null ? child : const _StreamPlaceholder(),
                           ),
                   ),
+                  Positioned.fill(
+                    child: AnimatedOpacity(
+                      opacity: active ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.32),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  ShellCardPlayOverlay(active: true, visible: active),
                   if (health != null)
                     Positioned(
                       top: 6,
@@ -1848,21 +1863,6 @@ class _StreamCardState extends State<_StreamCard> {
                         ),
                       ),
                     ),
-                  Positioned.fill(
-                    child: AnimatedOpacity(
-                      opacity: active ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 150),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.32),
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  ShellCardPlayOverlay(active: true, visible: active),
                 ],
               ),
             ),
