@@ -7,6 +7,8 @@ class PlayerHubEpisode {
   final int runtimeMinutes;
   final int positionMs;
   final int durationMs;
+  final String? airDateLabel;
+  final bool notShippedYet;
 
   const PlayerHubEpisode({
     required this.number,
@@ -16,6 +18,8 @@ class PlayerHubEpisode {
     this.runtimeMinutes = 0,
     this.positionMs = 0,
     this.durationMs = 0,
+    this.airDateLabel,
+    this.notShippedYet = false,
   });
 
   String get displayNumber =>

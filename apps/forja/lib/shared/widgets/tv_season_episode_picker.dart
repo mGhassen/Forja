@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
@@ -291,6 +292,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
         final pos = prog?['position'] as int? ?? 0;
         final dur = prog?['duration'] as int? ??
             (runtime > 0 ? runtime * 60000 : 0);
+        final airDate = episodeAirDateInfo(ep);
 
         return _EpisodeCard(
           key: ValueKey('ep-${widget.selectedSeason}-$epNum'),
@@ -298,6 +300,8 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           title: title,
           overview: overview,
           runtime: runtime,
+          dateLabel: airDate.label,
+          dateNotShippedYet: airDate.notShippedYet,
           thumbnail: thumbnail,
           selected: widget.selectedEpisode == epNum,
           watched: watched,
@@ -627,6 +631,8 @@ class _EpisodeCard extends StatefulWidget {
     required this.title,
     required this.overview,
     required this.runtime,
+    this.dateLabel,
+    this.dateNotShippedYet = false,
     required this.thumbnail,
     required this.selected,
     required this.watched,
@@ -645,6 +651,8 @@ class _EpisodeCard extends StatefulWidget {
   final String title;
   final String overview;
   final int runtime;
+  final String? dateLabel;
+  final bool dateNotShippedYet;
   final dynamic thumbnail;
   final bool selected;
   final bool watched;
@@ -813,6 +821,25 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                       height: 1.25,
                     ),
                   ),
+                  if (widget.dateLabel != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.dateLabel!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: episodeDateColor(
+                          notShippedYet: widget.dateNotShippedYet,
+                          normal: Colors.white.withValues(alpha: 0.45),
+                        ),
+                        fontSize: 12,
+                        fontWeight: widget.dateNotShippedYet
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
                   if (widget.overview.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(

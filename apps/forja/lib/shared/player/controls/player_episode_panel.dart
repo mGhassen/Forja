@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
@@ -326,12 +327,17 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                         final pos = prog?['position'] as int? ?? 0;
                         final dur = prog?['duration'] as int? ??
                             (runtime > 0 ? runtime * 60000 : 0);
+                        final airDate = episodeAirDateInfo(ep);
 
                         return _EpisodeRow(
                           episodeNumber: num,
                           title: name,
                           overview: overview,
                           runtime: runtime,
+                          dateLabel: airDate.label,
+                          dateNotShippedYet: airDate.notShippedYet,
+                          fallbackBackdropPath: widget.movie.backdropPath,
+                          fallbackPosterPath: widget.movie.posterPath,
                           thumbnail: thumbnail,
                           selected: selected,
                           positionMs: pos,
@@ -460,6 +466,8 @@ class PlayerHubEpisodePanel {
     required List<PlayerHubEpisode> episodes,
     required num currentEpisode,
     required Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected,
+    String? fallbackBackdropPath,
+    String? fallbackPosterPath,
   }) {
     dismiss();
 
@@ -473,6 +481,8 @@ class PlayerHubEpisodePanel {
           currentEpisode: currentEpisode,
           onEpisodeSelected: onEpisodeSelected,
           onClose: dismiss,
+          fallbackBackdropPath: fallbackBackdropPath,
+          fallbackPosterPath: fallbackPosterPath,
         ),
       ),
     );
@@ -488,12 +498,16 @@ class _HubEpisodePanelOverlay extends StatefulWidget {
     required this.currentEpisode,
     required this.onEpisodeSelected,
     required this.onClose,
+    this.fallbackBackdropPath,
+    this.fallbackPosterPath,
   });
 
   final List<PlayerHubEpisode> episodes;
   final num currentEpisode;
   final Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected;
   final VoidCallback onClose;
+  final String? fallbackBackdropPath;
+  final String? fallbackPosterPath;
 
   @override
   State<_HubEpisodePanelOverlay> createState() =>
@@ -522,6 +536,8 @@ class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay> {
         currentEpisode: widget.currentEpisode,
         onEpisodeSelected: widget.onEpisodeSelected,
         onClose: widget.onClose,
+        fallbackBackdropPath: widget.fallbackBackdropPath,
+        fallbackPosterPath: widget.fallbackPosterPath,
       ),
     );
   }
@@ -533,12 +549,16 @@ class _HubEpisodePanelBody extends StatefulWidget {
     required this.currentEpisode,
     required this.onEpisodeSelected,
     required this.onClose,
+    this.fallbackBackdropPath,
+    this.fallbackPosterPath,
   });
 
   final List<PlayerHubEpisode> episodes;
   final num currentEpisode;
   final Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected;
   final VoidCallback onClose;
+  final String? fallbackBackdropPath;
+  final String? fallbackPosterPath;
 
   @override
   State<_HubEpisodePanelBody> createState() => _HubEpisodePanelBodyState();
@@ -669,6 +689,10 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
                       itemBuilder: (_, i) {
                         final ep = _visibleEpisodes[i];
                     final selected = ep.number == widget.currentEpisode;
+                    final airDate = EpisodeAirDateInfo(
+                      label: ep.airDateLabel,
+                      notShippedYet: ep.notShippedYet,
+                    );
                     return _EpisodeRow(
                       episodeNumber: ep.number is int
                           ? ep.number as int
@@ -677,6 +701,10 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
                       title: ep.title,
                       overview: ep.overview ?? '',
                       runtime: ep.runtimeMinutes,
+                      dateLabel: airDate.label,
+                      dateNotShippedYet: airDate.notShippedYet,
+                      fallbackBackdropPath: widget.fallbackBackdropPath,
+                      fallbackPosterPath: widget.fallbackPosterPath,
                       thumbnail: ep.thumbnailUrl,
                       selected: selected,
                       positionMs: ep.positionMs,
@@ -697,6 +725,10 @@ class _EpisodeRow extends StatelessWidget {
     required this.title,
     required this.overview,
     required this.runtime,
+    this.dateLabel,
+    this.dateNotShippedYet = false,
+    this.fallbackBackdropPath,
+    this.fallbackPosterPath,
     required this.thumbnail,
     required this.selected,
     required this.positionMs,
@@ -710,18 +742,22 @@ class _EpisodeRow extends StatelessWidget {
   final String title;
   final String overview;
   final int runtime;
+  final String? dateLabel;
+  final bool dateNotShippedYet;
+  final String? fallbackBackdropPath;
+  final String? fallbackPosterPath;
   final dynamic thumbnail;
   final bool selected;
   final int positionMs;
   final int durationMs;
   final VoidCallback onTap;
 
-  static const _thumbWidth = 112.0;
   static const _thumbRadius = 6.0;
+  static const _thumbMinHeight = 72.0;
+  static const _thumbMaxWidth = 196.0;
 
   @override
   Widget build(BuildContext context) {
-    final thumbHeight = _thumbWidth * 9 / 16;
     final durationLabel = runtime > 0 ? '${runtime}m' : null;
     final showProgress =
         WatchProgressBar.isResumable(positionMs, durationMs);
@@ -738,63 +774,83 @@ class _EpisodeRow extends StatelessWidget {
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: _thumbWidth,
-                height: thumbHeight,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(_thumbRadius),
-                  border: selected
-                      ? Border.all(color: Colors.white, width: 2)
-                      : null,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(_thumbRadius),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (_resolvedThumbnail(thumbnail) case final url?)
-                        CachedNetworkImage(
-                          imageUrl: url.startsWith('http')
-                              ? url
-                              : TmdbApi.getStillUrl(url),
-                          fit: BoxFit.cover,
-                          errorWidget: (_, _, _) => _thumbFallback(),
-                        )
-                      else
-                        _thumbFallback(),
-                      if (showProgress)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: LinearProgressIndicator(
-                            value: (positionMs / durationMs).clamp(0.0, 1.0),
-                            minHeight: 3,
-                            backgroundColor: Colors.black54,
-                            valueColor: AlwaysStoppedAnimation(
-                              ForjaShellColors.progressFill,
-                            ),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    var height = constraints.maxHeight;
+                    if (!height.isFinite || height <= 0) {
+                      height = _thumbMinHeight;
+                    } else if (height < _thumbMinHeight) {
+                      height = _thumbMinHeight;
+                    }
+                    var width = height * 16 / 9;
+                    if (width > _thumbMaxWidth) {
+                      width = _thumbMaxWidth;
+                      height = width * 9 / 16;
+                    }
+                    return SizedBox(
+                      width: width,
+                      height: height,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius:
+                              BorderRadius.circular(_thumbRadius),
+                          border: selected
+                              ? Border.all(color: Colors.white, width: 2)
+                              : null,
+                        ),
+                        child: ClipRRect(
+                          borderRadius:
+                              BorderRadius.circular(_thumbRadius),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              ..._thumbLayers(
+                                stillUrl: _resolvedThumbnail(thumbnail),
+                                backdropUrl: _resolvedShowArt(
+                                  fallbackBackdropPath,
+                                  fallbackPosterPath,
+                                ),
+                              ),
+                              if (showProgress)
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: LinearProgressIndicator(
+                                    value: (positionMs / durationMs)
+                                        .clamp(0.0, 1.0),
+                                    minHeight: 3,
+                                    backgroundColor: Colors.black54,
+                                    valueColor: AlwaysStoppedAnimation(
+                                      ForjaShellColors.progressFill,
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                top: 6,
+                                left: 6,
+                                child: _Badge(
+                                  label: episodeBadge ?? 'E$episodeNumber',
+                                ),
+                              ),
+                              if (durationLabel != null)
+                                Positioned(
+                                  right: 6,
+                                  bottom: 6,
+                                  child: _Badge(label: durationLabel),
+                                ),
+                            ],
                           ),
                         ),
-                      Positioned(
-                        top: 6,
-                        left: 6,
-                        child: _Badge(label: episodeBadge ?? 'E$episodeNumber'),
                       ),
-                      if (durationLabel != null)
-                        Positioned(
-                          right: 6,
-                          bottom: 6,
-                          child: _Badge(label: durationLabel),
-                        ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -827,11 +883,30 @@ class _EpisodeRow extends StatelessWidget {
                           ),
                       ],
                     ),
+                    if (dateLabel != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        dateLabel!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: episodeDateColor(
+                            notShippedYet: dateNotShippedYet,
+                            normal: ForjaShellColors.cinematic.textSecondary,
+                          ),
+                          fontSize: 12,
+                          fontWeight: dateNotShippedYet
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
                     if (overview.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         overview,
-                        maxLines: 3,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: ForjaShellColors.cinematic.textSecondary,
@@ -847,6 +922,7 @@ class _EpisodeRow extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -854,6 +930,58 @@ class _EpisodeRow extends StatelessWidget {
     final value = thumbnail?.toString().trim();
     if (value == null || value.isEmpty || value == 'null') return null;
     return value;
+  }
+
+  static String? _resolvedShowArt(String? backdropPath, String? posterPath) {
+    final backdrop = backdropPath?.trim();
+    if (backdrop != null && backdrop.isNotEmpty) {
+      return backdrop.startsWith('http')
+          ? backdrop
+          : TmdbApi.getBackdropUrl(backdrop);
+    }
+    final poster = posterPath?.trim();
+    if (poster != null && poster.isNotEmpty) {
+      return poster.startsWith('http') ? poster : TmdbApi.getImageUrl(poster);
+    }
+    return null;
+  }
+
+  List<Widget> _thumbLayers({
+    required String? stillUrl,
+    required String? backdropUrl,
+  }) {
+    String? resolvedStill;
+    if (stillUrl != null) {
+      resolvedStill =
+          stillUrl.startsWith('http') ? stillUrl : TmdbApi.getStillUrl(stillUrl);
+    }
+
+    if (dateNotShippedYet) {
+      final imageUrl = backdropUrl ?? resolvedStill;
+      return [
+        if (imageUrl != null)
+          CachedNetworkImage(
+            imageUrl: imageUrl,
+            fit: BoxFit.cover,
+            errorWidget: (_, _, _) => _thumbFallback(),
+          )
+        else
+          _thumbFallback(),
+        ColoredBox(color: Colors.black.withValues(alpha: 0.52)),
+      ];
+    }
+
+    if (resolvedStill != null) {
+      return [
+        CachedNetworkImage(
+          imageUrl: resolvedStill,
+          fit: BoxFit.cover,
+          errorWidget: (_, _, _) => _thumbFallback(),
+        ),
+      ];
+    }
+
+    return [_thumbFallback()];
   }
 
   Widget _thumbFallback() {

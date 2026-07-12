@@ -221,6 +221,22 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return url != null && _isCurrentMagnet(url);
   }
 
+  /// Single scroll target in merged lists — torrent row wins over Stremio when
+  /// both share the same infoHash (Torrentio mirrors the active magnet).
+  int? _currentItemIndex(
+    List<TorrentResult> torrents,
+    List<Map<String, dynamic>> stremio,
+  ) {
+    for (var i = 0; i < torrents.length; i++) {
+      if (_isCurrentMagnet(torrents[i].magnet)) return i;
+    }
+    final offset = torrents.length;
+    for (var i = 0; i < stremio.length; i++) {
+      if (_isCurrentStremio(stremio[i])) return offset + i;
+    }
+    return null;
+  }
+
   void _requestScrollToCurrent() {
     _pendingScrollToCurrent = true;
     _scheduleScrollToCurrent();
@@ -917,6 +933,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
     _scheduleScrollToCurrent();
 
+    final currentIndex = _currentItemIndex(torrents, stremio);
+
     return ListView.separated(
       controller: _listScrollController,
       padding: const EdgeInsets.only(top: 2, bottom: 8),
@@ -925,7 +943,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       itemBuilder: (context, i) {
         if (i < torrents.length) {
           final r = torrents[i];
-          final isCurrent = _isCurrentMagnet(r.magnet);
+          final isCurrent = i == currentIndex;
           return KeyedSubtree(
             key: isCurrent ? _currentTileKey : null,
             child: TorrentSourceTile(
@@ -941,7 +959,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
         final description = (s['description'] ?? '').toString();
         final presentation =
             stremioTilePresentation(s, isResumable: false);
-        final isCurrent = _isCurrentStremio(s);
+        final isCurrent = i == currentIndex;
         return KeyedSubtree(
           key: isCurrent ? _currentTileKey : null,
           child: StremioSourceTile(

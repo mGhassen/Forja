@@ -196,6 +196,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
               'overview': '',
               'runtime': _data.duration ?? 0,
               'still_path': e.thumbnail,
+              'aired': e.aired,
             },
           )
           .toList(),

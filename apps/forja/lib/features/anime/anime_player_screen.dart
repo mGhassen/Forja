@@ -157,10 +157,8 @@ List<_AnimeResolvedHit>? _hitsFromJson(List<Map<String, dynamic>>? raw) {
 
 String _animeStreamSourceTitle(AnimeEmbed embed, AnimeStreamResult direct) {
   final tag = direct.streamLabel?.trim();
-  if (tag != null && tag.isNotEmpty) {
-    return '${embed.displayName} · $tag';
-  }
-  return embed.displayName;
+  if (tag != null && tag.isNotEmpty) return tag;
+  return 'Stream';
 }
 
 List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) {
@@ -171,8 +169,9 @@ List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) {
       headers['Referer'] = '${h.embed.refererOrigin}/';
       headers.putIfAbsent('Origin', () => h.embed.refererOrigin);
     }
+    final rawTitle = h.media.sources?.first.title?.trim();
     final sourceTitle =
-        h.media.sources?.first.title ?? h.embed.displayName;
+        (rawTitle != null && rawTitle.isNotEmpty) ? rawTitle : 'Stream';
     sources.add(StreamSource(
       url: h.media.url,
       title: sourceTitle,
@@ -306,6 +305,7 @@ List<PlayerHubEpisode> _hubEpisodesFromAnime(
             number: e.number,
             title: e.title,
             thumbnailUrl: _episodeThumbnail(e, anime),
+            notShippedYet: !e.aired,
           ),
         )
         .toList();
@@ -456,10 +456,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
   @override
   void dispose() {
-    // Keep background fill alive only while the player route is still open.
-    if (!_playerLaunched) {
-      _haltBackgroundResolve();
-    }
+    _haltBackgroundResolve();
     _messageNotifier.dispose();
     _fadeOutNotifier.dispose();
     _probeNotifier.dispose();
@@ -1041,6 +1038,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         ValueNotifier<Map<String, List<StreamSource>>>(
           _hitsToProviderCache(hits),
         );
+    final liveProbeNotifier = ValueNotifier<List<StreamProviderProbe>>(
+      List<StreamProviderProbe>.from(_probeNotifier.value),
+    );
     final playerFuture = AppRouter.openPlayer(
       context,
       streamUrl: winner.media.url,
@@ -1050,7 +1050,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       sources: sources,
       providers: _animeProviderMap(_allEmbeds),
       providerSourcesCache: liveProviderCache,
-      providerProbesNotifier: _probeNotifier,
+      providerProbesNotifier: liveProbeNotifier,
       activeProvider: winner.embed.panelKey,
       externalSubtitles: allSubs.isNotEmpty ? allSubs : null,
       movie: _hubMovieFromAnime(widget.anime),
@@ -1119,6 +1119,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _haltBackgroundResolve();
     final shouldRecheck = !playbackStarted && _launchedFromSavedOrCache;
     sourcesListNotifier?.dispose();
+    liveProbeNotifier.dispose();
     if (ownsProviderCache) {
       liveProviderCache.dispose();
     } else {

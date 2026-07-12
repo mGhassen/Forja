@@ -1219,6 +1219,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         _playbackConfirmed = true;
         _statusController.complete();
         _markSourceActive(i);
+        unawaited(
+          ProviderScoreMemory.recordSuccess(_currentProvider ?? ''),
+        );
         widget.onPlaybackStarted?.call();
         await _ensureTvPlaybackStarted();
         return true;
@@ -3031,6 +3034,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   void _markProviderLoadSucceeded(String providerId) {
     if (!_providerLoadFailures.value.contains(providerId)) {
       unawaited(ProviderScoreMemory.recordSuccess(providerId));
+      _notifySourceMenuChanged();
       return;
     }
     final next = {..._providerLoadFailures.value}..remove(providerId);
@@ -3045,6 +3049,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       _sourceMenuRevision,
       _isReloadingStreams,
       _providerLoadFailures,
+      ProviderScoreMemory.revision,
     ];
     final probes = widget.providerProbesNotifier;
     if (probes != null) listenables.add(probes);
@@ -3543,6 +3548,8 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         episodes: widget.hubEpisodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: widget.onHubEpisodeSelected!,
+        fallbackBackdropPath: widget.movie?.backdropPath,
+        fallbackPosterPath: widget.movie?.posterPath,
       );
       return;
     }

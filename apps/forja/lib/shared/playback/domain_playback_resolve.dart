@@ -143,7 +143,7 @@ class DomainStreamProviderResolver extends StreamProviderResolver {
         };
         final title = (direct.streamLabel?.isNotEmpty == true)
             ? direct.streamLabel!
-            : embed.displayName;
+            : 'Stream';
         primaryUrl ??= direct.url;
         primaryHeaders ??= headers;
         sources.add(StreamSource(

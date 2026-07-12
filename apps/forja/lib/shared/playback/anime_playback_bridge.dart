@@ -220,7 +220,7 @@ abstract final class AnimePlaybackBridge {
       final headers = Map<String, String>.from(h.media.headers);
       sources.add(StreamSource(
         url: h.media.url,
-        title: h.media.sources?.first.title ?? h.embed.displayName,
+        title: h.media.sources?.first.title ?? 'Stream',
         type: h.media.url.contains('.m3u8') ? 'hls' : 'video',
         headers: headers,
       ));

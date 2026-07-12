@@ -13,8 +13,16 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 class AppRouter {
   AppRouter._();
 
-  static Route<T> slideRoute<T>(WidgetBuilder builder) {
+  /// [RouteSettings.name] for [openPlayer] — used to replace an existing
+  /// player instead of stacking two [PlayerScreen] routes on macOS.
+  static const playerRouteName = 'forja/player';
+
+  static Route<T> slideRoute<T>(
+    WidgetBuilder builder, {
+    RouteSettings? settings,
+  }) {
     return PageRouteBuilder<T>(
+      settings: settings,
       opaque: true,
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),
       transitionDuration: const Duration(milliseconds: 350),
@@ -71,8 +79,10 @@ class AppRouter {
   static Route<T> fadeRoute<T>(
     WidgetBuilder builder, {
     Duration duration = const Duration(milliseconds: 1000),
+    RouteSettings? settings,
   }) {
     return PageRouteBuilder<T>(
+      settings: settings,
       opaque: true,
       fullscreenDialog: true,
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),
@@ -214,8 +224,10 @@ class AppRouter {
     ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier,
     bool fadeTransition = false,
   }) {
-    final routeBuilder = fadeTransition ? fadeRoute : slideRoute;
-    return Navigator.of(context, rootNavigator: true).push<T>(
+    final routeBuilder = fadeTransition ? fadeRoute<T> : slideRoute<T>;
+    const settings = RouteSettings(name: playerRouteName);
+    final navigator = Navigator.of(context, rootNavigator: true);
+    return navigator.pushAndRemoveUntil<T>(
       routeBuilder(
         (_) => PlayerScreen(
           streamUrl: streamUrl,
@@ -250,7 +262,9 @@ class AppRouter {
           providerSourcesCache: providerSourcesCache,
           providerProbesNotifier: providerProbesNotifier,
         ),
+        settings: settings,
       ),
+      (route) => route.isFirst || route.settings.name != playerRouteName,
     );
   }
 }
