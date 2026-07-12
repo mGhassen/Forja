@@ -50,9 +50,11 @@ abstract final class Engine {
           );
           await EngineWorkerPool.start(_libraryPath!);
           return;
-        } catch (e) {
+        } catch (e, st) {
           RustLib.reset();
           lastError = e;
+          debugPrint('[Engine] candidate "$candidate" failed: $e');
+          if (kDebugMode) debugPrint('[Engine] stack: $st');
         }
       }
       debugPrint('[Engine] Rust library not loaded: $lastError');
