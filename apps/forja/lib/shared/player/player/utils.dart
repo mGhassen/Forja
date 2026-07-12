@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
+import 'package:rust/rust.dart' as site111477_proxy;
 
 /// mpv must see Referer / User-Agent before `open`, not after.
 Future<void> applyMediaHttpHeaders(
@@ -445,4 +447,21 @@ Future<bool> probeStreamSourceUrl(
   } catch (_) {
     return false;
   }
+}
+
+/// Menu pre-check — 111477 catalog URLs skip slow CDN HEAD/GET; proxy validates at play.
+Future<bool> validateStreamSourceForCheck({
+  required String? providerId,
+  required StreamSource source,
+  Map<String, String>? headers,
+}) async {
+  if (providerId == 'service111477') {
+    final url = source.url.trim();
+    if (url.isEmpty || isUnplayableCachedStreamUrl(url)) return false;
+    if (site111477_proxy.is111477LocalProxyUrl(url)) {
+      return probeStreamSourceUrl(url, headers);
+    }
+    return url.contains('://');
+  }
+  return probeStreamSourceUrl(source.url, headers);
 }

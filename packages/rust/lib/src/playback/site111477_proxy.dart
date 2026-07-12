@@ -7,6 +7,8 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 
+import '../isolate_runner.dart';
+
 Future<void>? _stopFuture;
 
 /// When true, [stop111477Proxy] is a no-op so an external player can keep
@@ -44,7 +46,7 @@ Future<String> start111477Proxy(
   final tmp = await getTemporaryDirectory();
   final cacheDir = '${tmp.path}${Platform.pathSeparator}site111477_cache';
 
-  final raw = RustLib.instance.seek111477StartJson(jsonEncode({
+  final raw = await runSeek111477StartJson(jsonEncode({
     'upstream_url': upstreamUrl,
     'headers': headers ?? <String, String>{},
     'cache_dir': cacheDir,

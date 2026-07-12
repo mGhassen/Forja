@@ -585,6 +585,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   final Set<int> _failedSourceIndices = {};
   final Set<int> _checkingSourceIndices = {};
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
+  final Set<String> _streamProbedProviders = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
   bool _isInitPlaybackRunning = false;
@@ -2885,6 +2886,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             _failedSourceIndices.clear();
             _checkingSourceIndices.clear();
             _urlCheckStatuses.clear();
+            _streamProbedProviders.clear();
           });
           _notifySourceMenuChanged();
         }
@@ -2943,6 +2945,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
   }
 
+  /// Verifies every cached provider's streams once playback is up, so the score
+  /// reflects real stream health. Per provider: any stream OK → stream verdict
+  /// **+2**; every stream dead → **−2**. Netted with the server verdict, an up
+  /// server whose streams are all dead shows **0**.
   Future<void> _probeCachedProviderStreamsInBackground() async {
     if (_disposed || !mounted || _scoreScope == null) return;
     final cache = Map<String, List<StreamSource>>.from(
@@ -2958,10 +2964,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       final providerId = entry.key;
       final sources = entry.value;
       if (sources.isEmpty) continue;
+      if (_streamProbedProviders.contains(providerId)) continue;
+      _streamProbedProviders.add(providerId);
 
-      for (var i = 0; i < sources.length; i++) {
+      var anyOk = false;
+      var probedAny = false;
+
+      for (final source in sources) {
         if (_disposed || !mounted) return;
-        final source = sources[i];
         final url = source.url.trim();
         if (url.isEmpty) continue;
 
@@ -2970,29 +2980,40 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
             (url == playingUrl || url == _currentUrl);
         if (isActiveStream) {
           _setUrlCheckStatus(url, PlayerSourceStatus.active);
+          anyOk = true;
+          continue;
+        }
+        if (_urlCheckStatuses[url] == PlayerSourceStatus.ready ||
+            _urlCheckStatuses[url] == PlayerSourceStatus.active) {
+          anyOk = true;
           continue;
         }
 
-        if (_urlCheckStatuses.containsKey(url)) continue;
-
         _setUrlCheckStatus(url, PlayerSourceStatus.checking);
-        _notifySourceMenuChanged();
-
         final validated = await _resolveValidatedStream(
           source,
           providerId: providerId,
         );
         if (_disposed || !mounted) return;
+        probedAny = true;
 
         if (validated != null) {
           _setUrlCheckStatus(url, PlayerSourceStatus.ready);
-          await _recordStreamCheckSuccess(providerId);
+          anyOk = true;
         } else {
           _setUrlCheckStatus(url, PlayerSourceStatus.failed);
-          await _recordStreamCheckFailure(providerId);
         }
-        _notifySourceMenuChanged();
       }
+
+      final scope = _scoreScope;
+      if (scope != null) {
+        if (anyOk) {
+          await ProviderScoreMemory.recordStreamUp(scope, providerId);
+        } else if (probedAny) {
+          await ProviderScoreMemory.recordStreamFail(scope, providerId);
+        }
+      }
+      _notifySourceMenuChanged();
     }
   }
 
@@ -3190,6 +3211,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       onSelectProvider: _switchProvider,
       onSelectSource: _switchToStreamSource,
       onCheckSource: _checkStreamSource,
+      onPause: () {
+        _player.pause();
+        _onMouseMove();
+      },
       anchorContext: anchorContext,
       refreshListenable: _streamMenuRefreshListenable(),
       onReload: _reloadStreamMenu,
@@ -3288,7 +3313,11 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     var resolved = source;
 
     if (pid == 'service111477') {
-      final ok = await probeStreamSourceUrl(source.url, headers);
+      final ok = await validateStreamSourceForCheck(
+        providerId: pid,
+        source: source,
+        headers: headers,
+      );
       if (!ok) return null;
       return (openUrl: source.url, headers: headers, resolved: source);
     }

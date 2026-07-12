@@ -104,6 +104,7 @@ class PlayerStreamMenu {
     required Future<bool> Function(StreamSource source, int index,
             [String? providerId])
         onCheckSource,
+    VoidCallback? onPause,
     bool providersEnabled = true,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
@@ -154,6 +155,7 @@ class PlayerStreamMenu {
           onSelectProvider: onSelectProvider,
           onSelectSource: onSelectSource,
           onCheckSource: onCheckSource,
+          onPause: onPause,
           providersEnabled: providersEnabled,
           refreshListenable: refreshListenable,
           onReload: onReload,
@@ -187,6 +189,7 @@ class PlayerStreamMenu {
     bool useIndexedStatuses = false,
     String? providerId,
     String? serverLabel,
+    VoidCallback? onPause,
   }) {
     final statuses = state.sourceStatuses;
     final ordered = _orderedSourceEntries(
@@ -242,6 +245,7 @@ class PlayerStreamMenu {
                   dismiss();
                   await onSelectSource(entry.value, entry.key);
                 },
+                onPause: isPlaying ? onPause : null,
               );
             },
           ),
@@ -488,9 +492,9 @@ class PlayerStreamMenu {
     }
     final score = ProviderScoreMemory.scoreFor(scoreScope, providerId);
     final lastDelta = ProviderScoreMemory.lastDeltaFor(scoreScope, providerId);
-    final color = score >= 8
+    final color = score >= 4
         ? playerSourceStatusColor(PlayerSourceStatus.active)
-        : score >= 4
+        : score >= 2
             ? Colors.white.withValues(alpha: 0.82)
             : Colors.white.withValues(alpha: 0.52);
     return Row(
@@ -887,6 +891,7 @@ class _StreamMenuOverlay extends StatefulWidget {
     required this.onSelectSource,
     required this.onCheckSource,
     required this.onClose,
+    this.onPause,
     this.providers,
     this.providerSourcesCache,
     this.providerLoadFailures,
@@ -915,6 +920,7 @@ class _StreamMenuOverlay extends StatefulWidget {
   final Future<void> Function(StreamSource source, int index) onSelectSource;
   final Future<bool> Function(StreamSource source, int index, [String? providerId])
       onCheckSource;
+  final VoidCallback? onPause;
   final bool providersEnabled;
   final Listenable? refreshListenable;
   final Future<void> Function()? onReload;
@@ -1177,7 +1183,11 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                             child: Text(
                               subtitle,
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.42),
+                                color: isPlaying
+                                    ? playerSourceStatusColor(
+                                        PlayerSourceStatus.active,
+                                      )
+                                    : Colors.white.withValues(alpha: 0.42),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1221,6 +1231,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                 }
                 await widget.onSelectSource(source, index);
               },
+              onPause: widget.onPause,
             ),
           ),
       ],
@@ -1447,6 +1458,7 @@ class _FlatMenuRow extends StatefulWidget {
     this.status,
     this.onCheck,
     this.onPlay,
+    this.onPause,
   });
 
   final String label;
@@ -1456,6 +1468,7 @@ class _FlatMenuRow extends StatefulWidget {
   final PlayerSourceStatus? status;
   final VoidCallback? onCheck;
   final VoidCallback? onPlay;
+  final VoidCallback? onPause;
 
   @override
   State<_FlatMenuRow> createState() => _FlatMenuRowState();
@@ -1469,6 +1482,8 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     final failed = widget.status == PlayerSourceStatus.failed;
     final canPlay = widget.onPlay != null && !widget.isPlaying && !failed;
     final showPlayArrow = canPlay && _hovered;
+    final showPause = widget.onPause != null && widget.isPlaying;
+    final activeColor = playerSourceStatusColor(PlayerSourceStatus.active);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -1535,21 +1550,36 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
                 SizedBox(
                   width: 28,
                   height: 28,
-                  child: showPlayArrow
+                  child: showPause
                       ? Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: widget.onPlay,
+                            onTap: widget.onPause,
                             borderRadius: BorderRadius.circular(4),
                             hoverColor: Colors.white.withValues(alpha: 0.08),
                             child: Icon(
-                              Icons.play_arrow_rounded,
+                              Icons.pause_rounded,
                               size: 22,
-                              color: Colors.white.withValues(alpha: 0.72),
+                              color: activeColor,
                             ),
                           ),
                         )
-                      : null,
+                      : showPlayArrow
+                          ? Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: widget.onPlay,
+                                borderRadius: BorderRadius.circular(4),
+                                hoverColor:
+                                    Colors.white.withValues(alpha: 0.08),
+                                child: Icon(
+                                  Icons.play_arrow_rounded,
+                                  size: 22,
+                                  color: Colors.white.withValues(alpha: 0.72),
+                                ),
+                              ),
+                            )
+                          : null,
                 ),
               ],
             ),

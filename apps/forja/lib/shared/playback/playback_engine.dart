@@ -6,7 +6,13 @@ import 'package:rust/rust.dart';
 
 /// Playback orchestrator — parallel resolve + ranked candidates.
 abstract final class PlaybackEngine {
-  static const playStartMaxInFlight = 6;
+  /// Parallel probes at play start — keep low so Videasy WASM / 111477 proxy
+  /// do not stack on the main isolate.
+  static const playStartMaxInFlight = 2;
+
+  static const _heavyProviders = {'videasy', 'service111477'};
+
+  static bool _isHeavyProvider(String key) => _heavyProviders.contains(key);
 
   /// Race providers with limited concurrency. Returns the first successful hit.
   ///
@@ -31,6 +37,7 @@ abstract final class PlaybackEngine {
     if (keys.isEmpty) return null;
     final r = resolver ?? StreamProviderResolver();
     final taskResolvers = <StreamProviderResolver>[];
+    final inFlightKeys = <String>{};
 
     void cancelInFlightResolvers() {
       for (final taskResolver in taskResolvers) {
@@ -64,6 +71,7 @@ abstract final class PlaybackEngine {
     void onResolved(String key, PlaybackResolveHit? hit) {
       settled++;
       inFlight--;
+      inFlightKeys.remove(key);
       if (cancelled()) {
         stopLaunching = true;
         nextIndex = total;
@@ -102,9 +110,11 @@ abstract final class PlaybackEngine {
           inFlight < maxInFlight &&
           nextIndex < total) {
         final key = keys[nextIndex];
+        if (_isHeavyProvider(key) && inFlight > 0) break;
         final rank = effectiveRanks?[key] ?? nextIndex;
         nextIndex++;
         inFlight++;
+        inFlightKeys.add(key);
         onProgress?.call(key, 'trying');
         // Domain resolvers (KissKH, anime embeds) must not be replaced with a
         // plain resolver when only one provider is racing or concurrency is 1.

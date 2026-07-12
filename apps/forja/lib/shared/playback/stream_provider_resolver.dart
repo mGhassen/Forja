@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:rust/rust.dart';
-import 'package:rust/rust.dart' as site111477_proxy;
 
 /// A magnet / torrent link — NOT a direct HTTP(S) stream.
 ///
@@ -78,10 +77,11 @@ class StreamProviderResolver {
         hits = await svc.findMovieSources(title: movie.title, year: year);
       }
       if (cancelled() || hits.isEmpty) return null;
-      final proxiedUrl = await site111477_proxy.start111477Proxy(hits.first.fileUrl);
-      if (cancelled()) return null;
+      // Index match only — localhost seek proxy starts at playback (player bridge).
+      final fileUrl = hits.first.fileUrl;
+      if (fileUrl.trim().isEmpty) return null;
       return StreamProviderResolveResult(
-        streamUrl: proxiedUrl,
+        streamUrl: fileUrl,
         sources: Site111477Service.toStreamSources(hits),
       );
     }

@@ -56,4 +56,43 @@ void main() {
       expect(ProviderScoreMemory.scoreFor(scope, 'empty'), 0);
     });
   });
+
+  group('ProviderScoreMemory netted verdicts', () {
+    final scope = ProviderScoreScope.movie(tmdbId: 7);
+
+    test('up server + all streams dead nets 0', () async {
+      await ProviderScoreMemory.recordServerUp(scope, 'vidrock');
+      expect(ProviderScoreMemory.scoreFor(scope, 'vidrock'), 2);
+      await ProviderScoreMemory.recordStreamFail(scope, 'vidrock');
+      expect(ProviderScoreMemory.scoreFor(scope, 'vidrock'), 0);
+      expect(ProviderScoreMemory.lastDeltaFor(scope, 'vidrock'), -2);
+    });
+
+    test('up server + working stream nets 4', () async {
+      await ProviderScoreMemory.recordServerUp(scope, 'vixsrc');
+      await ProviderScoreMemory.recordStreamUp(scope, 'vixsrc');
+      expect(ProviderScoreMemory.scoreFor(scope, 'vixsrc'), 4);
+    });
+
+    test('a proven working stream is sticky over later dead reports', () async {
+      await ProviderScoreMemory.recordServerUp(scope, 'vidnest');
+      await ProviderScoreMemory.recordStreamUp(scope, 'vidnest');
+      await ProviderScoreMemory.recordStreamFail(scope, 'vidnest');
+      expect(ProviderScoreMemory.scoreFor(scope, 'vidnest'), 4);
+    });
+
+    test('server that never resolved floors at 0', () async {
+      await ProviderScoreMemory.recordServerFailure(scope, 'vidzee');
+      expect(ProviderScoreMemory.scoreFor(scope, 'vidzee'), 0);
+      expect(ProviderScoreMemory.lastDeltaFor(scope, 'vidzee'), -2);
+    });
+
+    test('re-checking the same title does not drift', () async {
+      for (var i = 0; i < 5; i++) {
+        await ProviderScoreMemory.recordServerUp(scope, 'webstreamr');
+        await ProviderScoreMemory.recordStreamFail(scope, 'webstreamr');
+      }
+      expect(ProviderScoreMemory.scoreFor(scope, 'webstreamr'), 0);
+    });
+  });
 }

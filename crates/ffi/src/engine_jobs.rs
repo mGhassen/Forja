@@ -34,6 +34,7 @@ pub enum JobKind {
     HttpPost = 6,
     IptvProbeStream = 7,
     TorrentStream = 8,
+    Seek111477Start = 9,
 }
 
 pub fn submit(kind: u32, payload_json: String) -> u64 {
@@ -194,6 +195,21 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
                     req.season,
                     req.episode,
                     req.file_idx,
+                ))
+            })
+            .await
+            .map_err(|e| e.to_string())?
+        }
+        k if k == JobKind::Seek111477Start as u32 => {
+            let req: RequestJsonPayload =
+                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let payload = req.request_json;
+            let token = utils::engine_cancel::cancellation_token();
+            tokio::task::spawn_blocking(move || {
+                utils::engine_cancel::attach_job_token(token);
+                Ok(crate::engine_seek111477::seek111477_start(
+                    &crate::RUNTIME,
+                    payload,
                 ))
             })
             .await

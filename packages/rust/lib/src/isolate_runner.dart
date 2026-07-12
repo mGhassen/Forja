@@ -80,6 +80,11 @@ Future<String> runSite111477IndexRequestJson(String requestJson) =>
       {'requestJson': requestJson},
     );
 
+Future<String> runSeek111477StartJson(String requestJson) => EngineJobs.run(
+      EngineAsyncJob.seek111477Start,
+      {'requestJson': requestJson},
+    );
+
 Future<String> runMegaResolveJson(String embedUrl) => EngineWorkerPool.run(
       EngineJobKind.megaResolve,
       {'embedUrl': embedUrl},

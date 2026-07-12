@@ -10,7 +10,9 @@ abstract final class ProviderScoreProbeSync {
   static String _key(ProviderScoreScope scope, String providerId) =>
       scope.memoryKey(ProviderScoreMemory.normalizeProviderId(providerId));
 
-  /// Providers with resolved streams are up — never score fail while sources exist.
+  /// Drives only the **server** verdict: a provider that already extracted
+  /// streams resolved successfully (server up), even if those streams later
+  /// prove dead — stream health is scored separately by the player probe.
   static StreamProviderProbeStatus effectiveStatus({
     required StreamProviderProbeStatus status,
     required bool hasSources,

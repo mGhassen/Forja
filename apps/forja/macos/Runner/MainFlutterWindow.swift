@@ -78,24 +78,33 @@ private func registerExternalPlayerChannel(_ controller: FlutterViewController) 
       return
     }
 
-    let config = NSWorkspace.OpenConfiguration()
-    config.activates = true
-    NSWorkspace.shared.open(
-      [streamURL],
-      withApplicationAt: appURL,
-      configuration: config
-    ) { _, error in
-      if let error = error {
-        result(
-          FlutterError(
-            code: "launch_failed",
-            message: error.localizedDescription,
-            details: nil
-          )
+    var components = URLComponents()
+    components.scheme = "iina"
+    components.host = "weblink"
+    components.queryItems = [
+      URLQueryItem(name: "url", value: streamURL.absoluteString)
+    ]
+    guard let iinaURL = components.url else {
+      result(
+        FlutterError(
+          code: "bad_iina_url",
+          message: "Could not build IINA URL scheme",
+          details: nil
         )
-      } else {
-        result(true)
-      }
+      )
+      return
+    }
+
+    if NSWorkspace.shared.open(iinaURL) {
+      result(true)
+    } else {
+      result(
+        FlutterError(
+          code: "launch_failed",
+          message: "IINA URL scheme launch returned false",
+          details: nil
+        )
+      )
     }
   }
 }

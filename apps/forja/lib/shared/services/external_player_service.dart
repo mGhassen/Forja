@@ -628,10 +628,11 @@ class ExternalPlayerService {
 
     // macOS sandbox: IINA must be opened with `open -a IINA.app <url>` — the
     // main IINA binary rejects `--mpv-*` flags (`--args` only works for iina-cli,
-    // which cannot run sandboxed). Header-protected streams use hls-proxy above.
+    // which cannot run sandboxed). Use IINA's `iina://weblink` scheme instead.
+    // Header-protected streams use hls-proxy above.
     final List<String> args;
     if (iinaOpenUrl) {
-      args = ['-a', player.macAppPath!, url];
+      args = ['iina://weblink?url=${Uri.encodeComponent(url)}'];
     } else if (viaOpen) {
       args = ['-a', player.macAppPath!, '--args', ...playerArgs];
     } else {

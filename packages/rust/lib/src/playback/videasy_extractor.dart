@@ -29,7 +29,7 @@ class VideasyExtractor {
   static const _playerOrigin = 'https://player.videasy.to';
   static const _fetchTimeout = Duration(seconds: 5);
   static const _defaultExtractTimeout = Duration(seconds: 20);
-  static const _maxInFlight = 4;
+  static const _maxInFlight = 2;
 
   static const _wingsHost = 'api.wingsdatabase.com';
   static const _legacyHost = 'api.videasy.net';
