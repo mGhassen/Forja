@@ -470,11 +470,11 @@ class IptvAliveChecker {
 // Catalog Xtream-Codes scraper
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Which backend the catalog scraper should pull from. The labels are
-/// intentionally opaque (best/works) so the underlying source
-/// names aren't surfaced in the UI.
-///   - [best]    → Reddit OAuth2 scraper (unlimited, freshest)
-///   - [works]   → GitHub XML2 dumps (quick plain-text dumps)
+/// Which backend the catalog scraper should pull from.
+///
+/// Prefer calling [IptvScraper.scrapeCatalogPage] without [source] — both
+/// backends are chained in one pass (Reddit → XML2). Kept for callers that
+/// still pass an explicit backend.
 enum CatalogSource { best, works }
 
 /// Parsed Reddit catalog pagination cursor.
@@ -648,34 +648,46 @@ class IptvScraper {
   }
 
   /// Cursor encoding for [scrapeCatalogPage]:
-  ///   `null`                 → first page → start with selected source
-  ///   `'xml2:N'`             → fetch XML2 file at index N
-  ///   `'reddit:'`            → start of reddit catalog
-  ///   `'reddit:<token>'`     → reddit page with `after=<token>`
+  ///   `null`                 → start Reddit catalog
+  ///   `'reddit:<sub>:<tok>'` → Reddit pagination
+  ///   `'xml2:N'`             → XML2 dump at index N
   ///
-  /// [source] restricts scraping to a single backend; the scraper never
-  /// falls through to a different source. Source names are intentionally
-  /// opaque externally — see [CatalogSource] doc.
+  /// By default both backends are chained: when Reddit is exhausted the
+  /// next page is `xml2:0`. Pass [source] only to lock to one backend.
   static Future<ScrapePage> scrapeCatalogPage({
     int maxResults = 50,
     String? after,
-    CatalogSource source = CatalogSource.best,
+    CatalogSource? source,
   }) async {
-    switch (source) {
-      case CatalogSource.best:
-        return _scrapeRedditCatalog(maxResults: maxResults, after: after);
-
-      case CatalogSource.works:
-        // XML2 GitHub dumps (fast plain-text fetches).
-        final files = await _getXml2Files();
-        final idx = after == null
-            ? 0
-            : int.tryParse(after.substring('xml2:'.length)) ?? 0;
-        if (idx < files.length) {
-          return _scrapeXml2File(idx, files);
-        }
-        return const ScrapePage(portals: [], nextAfter: null);
+    if (source == CatalogSource.works ||
+        (after != null && after.startsWith('xml2:'))) {
+      final files = await _getXml2Files();
+      final idx = after == null || !after.startsWith('xml2:')
+          ? 0
+          : int.tryParse(after.substring('xml2:'.length)) ?? 0;
+      if (idx < files.length) {
+        return _scrapeXml2File(idx, files);
+      }
+      return const ScrapePage(portals: [], nextAfter: null);
     }
+
+    if (source == CatalogSource.best) {
+      return _scrapeRedditCatalog(maxResults: maxResults, after: after);
+    }
+
+    // Unified: Reddit first, then XML2.
+    final reddit = await _scrapeRedditCatalog(
+      maxResults: maxResults,
+      after: after,
+    );
+    if (reddit.hasMore) return reddit;
+
+    final files = await _getXml2Files();
+    if (files.isEmpty) {
+      return ScrapePage(portals: reddit.portals, nextAfter: null);
+    }
+    // Hand off to XML2 on the next Get-More / page fetch.
+    return ScrapePage(portals: reddit.portals, nextAfter: 'xml2:0');
   }
 
   static Future<ScrapePage> _scrapeXml2File(

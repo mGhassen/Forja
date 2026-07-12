@@ -156,10 +156,6 @@ class _IptvCatalogShell extends StatelessWidget {
           ctrl: ctrl,
           onTogglePanel: ctrl.togglePortalPanel,
           onSection: ctrl.requestSection,
-          onSearch: ctrl.toggleBrowserSearch,
-          onM3u: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const M3uPlaylistsScreen()),
-          ),
         ),
         Expanded(
           child: Stack(
@@ -570,8 +566,6 @@ class _PortalListView extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSourcePicker(),
-          const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -590,36 +584,6 @@ class _PortalListView extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSourcePicker() {
-    const items = <(CatalogSource, String, String)>[
-      (CatalogSource.best, 'Source 1', 'Best'),
-      (CatalogSource.works, 'Source 2', 'Works'),
-    ];
-    iptvSyncRow(
-      rowId: 'portal-sources',
-      sortOrder: 1,
-      itemCount: items.length,
-    );
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            _SourceChip(
-              label: items[i].$2,
-              tag: items[i].$3,
-              selected: ctrl.scrapeSource == items[i].$1,
-              enabled: !ctrl.isScraping,
-              listIndex: i,
-              onTap: () => ctrl.setScrapeSource(items[i].$1),
-            ),
-            if (i < items.length - 1) const SizedBox(width: 8),
-          ],
         ],
       ),
     );
@@ -1057,14 +1021,81 @@ class _BrowserView extends StatefulWidget {
 class _BrowserViewState extends State<_BrowserView> {
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
+  final FocusNode _openPortalFocus = FocusNode(debugLabel: 'iptv-open-portal');
   Timer? _scrollSettleTimer;
+  bool _didInitialFocus = false;
+  bool _wasLoading = false;
 
   bool get _searchOpen => widget.ctrl.browserSearchOpen;
+  bool get _needsPortal => widget.ctrl.activePortal == null;
 
   @override
   void initState() {
     super.initState();
     _searchCtrl.text = widget.ctrl.browserSearch;
+    _wasLoading = widget.ctrl.isLoading;
+    widget.ctrl.addListener(_onCtrlChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncInitialFocus());
+  }
+
+  @override
+  void dispose() {
+    widget.ctrl.removeListener(_onCtrlChanged);
+    _scrollSettleTimer?.cancel();
+    _searchFocus.dispose();
+    _openPortalFocus.dispose();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onCtrlChanged() {
+    if (!mounted) return;
+    final loading = widget.ctrl.isLoading;
+    final finishedLoad = _wasLoading && !loading;
+    _wasLoading = loading;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_needsPortal) {
+        // Don't steal focus while the portals panel is open.
+        if (!widget.ctrl.portalPanelOpen &&
+            !_openPortalFocus.hasFocus) {
+          _focusOpenPortalButton();
+        }
+        return;
+      }
+      if (loading) return;
+      if (finishedLoad || !_didInitialFocus) {
+        if (widget.ctrl.categories.isNotEmpty ||
+            widget.ctrl.browserAllStreams.isNotEmpty) {
+          _focusCatalogGroup();
+        }
+      }
+    });
+  }
+
+  void _syncInitialFocus() {
+    if (!mounted) return;
+    if (_needsPortal) {
+      _focusOpenPortalButton();
+    } else if (!widget.ctrl.isLoading) {
+      _focusCatalogGroup();
+    }
+  }
+
+  void _focusOpenPortalButton() {
+    if (!_openPortalFocus.canRequestFocus) return;
+    _openPortalFocus.requestFocus();
+    _didInitialFocus = false;
+  }
+
+  void _focusCatalogGroup() {
+    final focused = widget.wide
+        ? iptvFocusRowItem('browser-categories', 0)
+        : iptvFocusRowItem('browser-category-chips', 0);
+    if (!focused) {
+      iptvFocusRowItem('browser-streams', 0);
+    }
+    _didInitialFocus = true;
   }
 
   @override
@@ -1110,14 +1141,6 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   void _toggleSearch() => toggleSearch();
-
-  @override
-  void dispose() {
-    _scrollSettleTimer?.cancel();
-    _searchFocus.dispose();
-    _searchCtrl.dispose();
-    super.dispose();
-  }
 
   bool _onScrollNotification(ScrollNotification n) {
     if (n is ScrollStartNotification) {
@@ -1235,15 +1258,16 @@ class _BrowserViewState extends State<_BrowserView> {
               ],
             ],
           ),
-        ClipRect(
-          child: AnimatedAlign(
-            alignment: Alignment.topCenter,
-            heightFactor: _searchOpen ? 1 : 0,
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOutCubic,
-            child: _buildOverlaySearchBar(),
+        if (!widget.embedded)
+          ClipRect(
+            child: AnimatedAlign(
+              alignment: Alignment.topCenter,
+              heightFactor: _searchOpen ? 1 : 0,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+              child: _buildOverlaySearchBar(),
+            ),
           ),
-        ),
         if (ctrl.activeSection == IptvSection.live && ctrl.isVerifyingAlive)
           _buildAliveProgress(),
         if (ctrl.activeSection == IptvSection.live && !ctrl.isVerifyingAlive)
@@ -1269,6 +1293,11 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   Widget _buildChoosePortalEmpty(BuildContext context) {
+    iptvSyncRow(
+      rowId: 'iptv-open-portal',
+      sortOrder: 0,
+      itemCount: 1,
+    );
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -1289,17 +1318,13 @@ class _BrowserViewState extends State<_BrowserView> {
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(color: Colors.white60, fontSize: 14),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             IptvPrimaryButton(
               icon: Icons.dns_rounded,
-              label: 'Open portals',
-              onPressed: widget.ctrl.openPortalPanel,
-            ),
-            const SizedBox(height: 10),
-            IptvPrimaryButton(
-              icon: Icons.add_rounded,
-              label: 'Add portal',
-              subtle: true,
+              label: 'Open portal',
+              focusNode: _openPortalFocus,
+              tvRowId: 'iptv-open-portal',
+              tvItemIndex: 0,
               onPressed: widget.ctrl.openPortalPanel,
             ),
           ],

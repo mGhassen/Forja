@@ -24,7 +24,6 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header
 - View programme guide (NOW / NEXT with progress) as a floating card at the bottom-right of the player when your portal provides EPG
 - Switch audio tracks and subtitles from the player controls when the stream provides them
-- Open **M3U playlists** from the playlist icon in the top bar
 
 ## Setup
 

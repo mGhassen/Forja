@@ -33,6 +33,7 @@ Widget iptvTap({
   String? tvRowId,
   int? tvItemIndex,
   ShellTvZone? tvZone,
+  FocusNode? focusNode,
   VoidCallback? onLeftEdge,
   VoidCallback? onRightEdge,
   VoidCallback? onUpEdge,
@@ -53,6 +54,7 @@ Widget iptvTap({
     tvRowId: tvRowId,
     tvItemIndex: tvItemIndex ?? listIndex ?? gridIndex,
     tvZone: tvZone ?? (tvRowId != null ? ShellTvZone.row : null),
+    focusNode: focusNode,
     onLeftEdge: onLeftEdge,
     onRightEdge: onRightEdge,
     onUpEdge: onUpEdge,
@@ -236,6 +238,7 @@ class IptvPrimaryButton extends StatelessWidget {
   final bool subtle;
   final String? tvRowId;
   final int? tvItemIndex;
+  final FocusNode? focusNode;
 
   const IptvPrimaryButton({
     super.key,
@@ -246,6 +249,7 @@ class IptvPrimaryButton extends StatelessWidget {
     this.subtle = false,
     this.tvRowId,
     this.tvItemIndex,
+    this.focusNode,
   });
 
   @override
@@ -268,6 +272,7 @@ class IptvPrimaryButton extends StatelessWidget {
           borderRadius: 14,
           tvRowId: tvRowId,
           tvItemIndex: tvItemIndex,
+          focusNode: focusNode,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(

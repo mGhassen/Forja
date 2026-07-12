@@ -4,13 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
-import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
-
-const _kShelfPillHeight = 40.0;
 
 /// Colored Live / Movies / Series shelf — same hues as the old section tiles.
 class _IptvSectionShelfSpec {
@@ -48,107 +45,221 @@ const _kSectionShelf = <_IptvSectionShelfSpec>[
   ),
 ];
 
-/// Top bar for catalog-first IPTV: colored shelf left, tools right.
-class IptvCatalogTopBar extends StatelessWidget {
+const _kShelfTabHeight = 36.0;
+const _kShelfTabRadius = 8.0;
+const _kSearchCollapsed = 40.0;
+const _kSearchExpanded = 260.0;
+
+/// Top bar: solid shelf tabs left · expanding search + portal right.
+class IptvCatalogTopBar extends StatefulWidget {
   const IptvCatalogTopBar({
     super.key,
     required this.ctrl,
     required this.onTogglePanel,
     required this.onSection,
-    required this.onSearch,
-    required this.onM3u,
   });
 
   final IptvController ctrl;
   final VoidCallback onTogglePanel;
   final ValueChanged<IptvSection> onSection;
-  final VoidCallback onSearch;
-  final VoidCallback onM3u;
+
+  @override
+  State<IptvCatalogTopBar> createState() => _IptvCatalogTopBarState();
+}
+
+class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
+    with SingleTickerProviderStateMixin {
+  final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+  late final AnimationController _searchAnim;
+  late final Animation<double> _searchExpand;
+
+  IptvController get ctrl => widget.ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl.text = ctrl.browserSearch;
+    _searchAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    _searchExpand = CurvedAnimation(
+      parent: _searchAnim,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    if (ctrl.browserSearchOpen) {
+      _searchAnim.value = 1;
+    }
+    ctrl.addListener(_onCtrl);
+  }
+
+  @override
+  void dispose() {
+    ctrl.removeListener(_onCtrl);
+    _searchAnim.dispose();
+    _searchCtrl.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
+
+  void _onCtrl() {
+    if (!mounted) return;
+    final open = ctrl.browserSearchOpen;
+    if (open && _searchAnim.status != AnimationStatus.completed) {
+      _searchAnim.forward();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFocus.requestFocus();
+      });
+    } else if (!open && _searchAnim.status != AnimationStatus.dismissed) {
+      _searchAnim.reverse();
+      _searchCtrl.clear();
+      _searchFocus.unfocus();
+    }
+    setState(() {});
+  }
 
   String get _portalLabel {
     final p = ctrl.activePortal;
-    if (p == null) return 'Choose portal';
+    if (p == null) return 'Portals';
     final n = p.name.trim();
     if (n.isNotEmpty) return n;
     return p.portal.url;
   }
 
   void _focusDownFromTopBar() {
-    if (!iptvFocusRowItem('browser-categories')) {
+    if (!iptvFocusRowItem('browser-categories') &&
+        !iptvFocusRowItem('browser-category-chips')) {
       iptvFocusRowItem('browser-streams');
     }
   }
 
+  void _openSearch() {
+    if (ctrl.browserSearchOpen) return;
+    ctrl.openBrowserSearch();
+  }
+
+  void _closeSearch() {
+    ctrl.closeBrowserSearch();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hasPortal = ctrl.activePortal != null;
-    final toolCount = 2 +
-        (hasPortal && ctrl.activeSection == IptvSection.live ? 2 : 0);
-
     iptvSyncRow(
       rowId: 'iptv-sections',
       sortOrder: 0,
       itemCount: _kSectionShelf.length,
-      onFocusUp: null,
     );
     iptvSyncRow(
       rowId: 'iptv-top-tools',
       sortOrder: 1,
-      itemCount: toolCount + 1, // + portal button
+      itemCount: 2,
     );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         ShellTokens.bodyHorizontalPadding,
-        12,
-        12,
         10,
+        12,
+        8,
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildSectionShelf(context),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _buildPortalPill(context),
-            ),
-          ),
-          _buildTopTools(context, hasPortal),
+          _buildShelf(context),
+          const Spacer(),
+          _buildExpandingSearch(context),
+          const SizedBox(width: 8),
+          _buildPortalButton(context),
         ],
       ),
     );
   }
 
-  Widget _buildSectionShelf(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < _kSectionShelf.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
-          _IptvSectionShelfPill(
-            spec: _kSectionShelf[i],
-            selected: ctrl.activeSection == _kSectionShelf[i].section,
-            listIndex: i,
-            onTap: () => onSection(_kSectionShelf[i].section),
-            onDownEdge: _focusDownFromTopBar,
-            onRightEdge: i == _kSectionShelf.length - 1
-                ? () => iptvFocusRowItem('iptv-top-tools', 0)
-                : null,
-          ),
+  Widget _buildShelf(BuildContext context) {
+    return Container(
+      height: _kShelfTabHeight,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(_kShelfTabRadius),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < _kSectionShelf.length; i++)
+            _IptvSectionShelfTab(
+              spec: _kSectionShelf[i],
+              selected: ctrl.activeSection == _kSectionShelf[i].section,
+              listIndex: i,
+              isFirst: i == 0,
+              isLast: i == _kSectionShelf.length - 1,
+              onTap: () => widget.onSection(_kSectionShelf[i].section),
+              onDownEdge: _focusDownFromTopBar,
+              onRightEdge: i == _kSectionShelf.length - 1
+                  ? () => iptvFocusRowItem('iptv-top-tools', 0)
+                  : null,
+            ),
         ],
-      ],
+      ),
     );
   }
 
-  Widget _buildPortalPill(BuildContext context) {
-    final selected = ctrl.portalPanelOpen;
-    final hasPortal = ctrl.activePortal != null;
+  Widget _buildExpandingSearch(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _searchExpand,
+      builder: (context, _) {
+        final t = _searchExpand.value;
+        final width =
+            _kSearchCollapsed + (_kSearchExpanded - _kSearchCollapsed) * t;
+
+        // Field lays out at full width; ClipRect reveals it as the shell expands.
+        return Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            width: width,
+            height: _kSearchCollapsed,
+            child: ClipRect(
+              child: Stack(
+                alignment: Alignment.centerRight,
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  Opacity(
+                    opacity: t,
+                    child: IgnorePointer(
+                      ignoring: t < 0.55,
+                      child: OverflowBox(
+                        maxWidth: _kSearchExpanded,
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: _kSearchExpanded,
+                          child: _buildSearchField(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (t < 0.95)
+                    Opacity(
+                      opacity: (1.0 - t * 1.4).clamp(0.0, 1.0),
+                      child: IgnorePointer(
+                        ignoring: t > 0.2,
+                        child: _buildSearchIcon(context),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchIcon(BuildContext context) {
     return iptvTap(
       context: context,
-      onTap: onTogglePanel,
-      borderRadius: _kShelfPillHeight / 2,
+      onTap: _openSearch,
+      borderRadius: _kSearchCollapsed / 2,
       tvZone: ShellTvZone.topBar,
       tvRowId: 'iptv-top-tools',
       tvItemIndex: 0,
@@ -156,21 +267,94 @@ class IptvCatalogTopBar extends StatelessWidget {
       onLeftEdge: () =>
           iptvFocusRowItem('iptv-sections', _kSectionShelf.length - 1),
       onRightEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+      child: Container(
+        width: _kSearchCollapsed,
+        height: _kSearchCollapsed,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(_kSearchCollapsed / 2),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        ),
+        child: const Icon(Icons.search_rounded, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
+  Widget _buildSearchField(BuildContext context) {
+    return Container(
+      height: _kSearchCollapsed,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(_kSearchCollapsed / 2),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      padding: const EdgeInsets.only(left: 4, right: 4),
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          const Icon(Icons.search_rounded, color: Colors.white70, size: 18),
+          const SizedBox(width: 6),
+          Expanded(
+            child: TvBrowseTextField(
+              controller: _searchCtrl,
+              focusNode: _searchFocus,
+              onChanged: ctrl.setBrowserSearch,
+              onEscape: _closeSearch,
+              browsePlaceholder: 'Search…',
+              browseHintStyle: GoogleFonts.inter(
+                color: Colors.white38,
+                fontSize: 13,
+              ),
+              caretHeight: 16,
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+          iptvTap(
+            context: context,
+            onTap: _closeSearch,
+            borderRadius: 16,
+            child: const Padding(
+              padding: EdgeInsets.all(6),
+              child: Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPortalButton(BuildContext context) {
+    final selected = ctrl.portalPanelOpen;
+    final hasPortal = ctrl.activePortal != null;
+    return iptvTap(
+      context: context,
+      onTap: widget.onTogglePanel,
+      borderRadius: _kShelfTabRadius,
+      tvZone: ShellTvZone.topBar,
+      tvRowId: 'iptv-top-tools',
+      tvItemIndex: 1,
+      onDownEdge: _focusDownFromTopBar,
+      onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', 0),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
-        height: _kShelfPillHeight,
-        constraints: const BoxConstraints(maxWidth: 220),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        height: _kShelfTabHeight,
+        constraints: const BoxConstraints(maxWidth: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: selected
-              ? Colors.white.withValues(alpha: 0.16)
-              : Colors.black.withValues(alpha: 0.42),
-          borderRadius: BorderRadius.circular(_kShelfPillHeight / 2),
+              ? Colors.white.withValues(alpha: 0.14)
+              : Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(_kShelfTabRadius),
           border: Border.all(
             color: !hasPortal
-                ? IptvShellStyle.accent.withValues(alpha: 0.7)
-                : Colors.white.withValues(alpha: selected ? 0.35 : 0.24),
+                ? IptvShellStyle.accent.withValues(alpha: 0.65)
+                : Colors.white.withValues(alpha: selected ? 0.28 : 0.10),
           ),
         ),
         child: Row(
@@ -178,101 +362,43 @@ class IptvCatalogTopBar extends StatelessWidget {
           children: [
             Icon(
               hasPortal ? Icons.dns_rounded : Icons.add_link_rounded,
-              size: 18,
+              size: 16,
               color: hasPortal ? Colors.white : IptvShellStyle.accent,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 7),
             Flexible(
               child: Text(
-                hasPortal ? _portalLabel : 'Portals',
+                _portalLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
                   color: Colors.white,
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
             Icon(
               selected ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-              size: 18,
-              color: Colors.white70,
+              size: 16,
+              color: Colors.white60,
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildTopTools(BuildContext context, bool hasPortal) {
-    var toolIndex = 1;
-    final tools = <Widget>[
-      _IptvTopTool(
-        tooltip: 'M3U Playlists',
-        icon: Icons.playlist_play_rounded,
-        onTap: onM3u,
-        tvItemIndex: toolIndex++,
-        onDownEdge: _focusDownFromTopBar,
-      ),
-      _IptvTopTool(
-        tooltip: ctrl.browserSearchOpen ? 'Close search' : 'Search catalog',
-        icon: ctrl.browserSearchOpen
-            ? Icons.close_rounded
-            : Icons.search_rounded,
-        active: ctrl.browserSearchOpen,
-        onTap: onSearch,
-        tvItemIndex: toolIndex++,
-        onDownEdge: _focusDownFromTopBar,
-      ),
-    ];
-    if (hasPortal && ctrl.activeSection == IptvSection.live) {
-      tools.add(
-        _IptvTopTool(
-          tooltip: 'Reload channels',
-          icon: Icons.refresh_rounded,
-          onTap: ctrl.isLoading
-              ? null
-              : () => ctrl.openSection(IptvSection.live),
-          tvItemIndex: toolIndex++,
-          onDownEdge: _focusDownFromTopBar,
-        ),
-      );
-      tools.add(
-        _IptvTopTool(
-          tooltip: ctrl.isVerifyingAlive
-              ? 'Stop alive check'
-              : 'Re-check all streams',
-          icon: ctrl.isVerifyingAlive
-              ? Icons.stop_circle_rounded
-              : Icons.verified_outlined,
-          active: ctrl.isVerifyingAlive,
-          onTap: ctrl.isVerifyingAlive
-              ? ctrl.stopAliveCheck
-              : ctrl.recheckAlive,
-          tvItemIndex: toolIndex,
-          onDownEdge: _focusDownFromTopBar,
-        ),
-      );
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final t in tools) ...[
-          const SizedBox(width: 4),
-          t,
-        ],
-      ],
-    );
-  }
 }
 
-class _IptvSectionShelfPill extends StatelessWidget {
-  const _IptvSectionShelfPill({
+/// Solid rectangle shelf tab — color only when selected / hovered / focused.
+class _IptvSectionShelfTab extends StatefulWidget {
+  const _IptvSectionShelfTab({
     required this.spec,
     required this.selected,
     required this.listIndex,
+    required this.isFirst,
+    required this.isLast,
     required this.onTap,
     this.onDownEdge,
     this.onRightEdge,
@@ -281,129 +407,90 @@ class _IptvSectionShelfPill extends StatelessWidget {
   final _IptvSectionShelfSpec spec;
   final bool selected;
   final int listIndex;
+  final bool isFirst;
+  final bool isLast;
   final VoidCallback onTap;
   final VoidCallback? onDownEdge;
   final VoidCallback? onRightEdge;
 
   @override
-  Widget build(BuildContext context) {
-    return iptvTap(
-      context: context,
-      onTap: onTap,
-      borderRadius: _kShelfPillHeight / 2,
-      tvZone: ShellTvZone.topBar,
-      tvRowId: 'iptv-sections',
-      listIndex: listIndex,
-      tvItemIndex: listIndex,
-      onDownEdge: onDownEdge,
-      onRightEdge: onRightEdge,
-      onLeftEdge: listIndex == 0
-          ? null
-          : () => iptvFocusRowItem('iptv-sections', listIndex - 1),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        height: _kShelfPillHeight,
-        padding: EdgeInsets.symmetric(
-          horizontal: selected ? 16 : 12,
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: selected
-                ? spec.colors
-                : [
-                    spec.colors[0].withValues(alpha: 0.28),
-                    spec.colors[1].withValues(alpha: 0.18),
-                  ],
-          ),
-          borderRadius: BorderRadius.circular(_kShelfPillHeight / 2),
-          border: Border.all(
-            color: selected
-                ? Colors.white.withValues(alpha: 0.35)
-                : Colors.white.withValues(alpha: 0.12),
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: spec.colors[0].withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(spec.icon, color: Colors.white, size: 18),
-            const SizedBox(width: 7),
-            Text(
-              spec.label,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  State<_IptvSectionShelfTab> createState() => _IptvSectionShelfTabState();
 }
 
-class _IptvTopTool extends StatelessWidget {
-  const _IptvTopTool({
-    required this.tooltip,
-    required this.icon,
-    required this.onTap,
-    required this.tvItemIndex,
-    this.active = false,
-    this.onDownEdge,
-  });
+class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
+  bool _hover = false;
+  bool _focused = false;
 
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback? onTap;
-  final int tvItemIndex;
-  final bool active;
-  final VoidCallback? onDownEdge;
+  BorderRadius get _radius {
+    final r = Radius.circular(_kShelfTabRadius - 1);
+    if (widget.isFirst && widget.isLast) return BorderRadius.all(r);
+    if (widget.isFirst) {
+      return BorderRadius.only(topLeft: r, bottomLeft: r);
+    }
+    if (widget.isLast) {
+      return BorderRadius.only(topRight: r, bottomRight: r);
+    }
+    return BorderRadius.zero;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
+    final showColor = widget.selected || _hover || _focused;
+    // Prefer the vivid accent (Series stores green as second stop).
+    final accent = widget.spec.section == IptvSection.series
+        ? widget.spec.colors.last
+        : widget.spec.colors.first;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
       child: iptvTap(
         context: context,
-        onTap: onTap,
-        borderRadius: 20,
+        onTap: widget.onTap,
+        borderRadius: _kShelfTabRadius,
+        scaleOnFocus: 1.0,
         tvZone: ShellTvZone.topBar,
-        tvRowId: 'iptv-top-tools',
-        tvItemIndex: tvItemIndex,
-        onDownEdge: onDownEdge,
-        onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', tvItemIndex - 1),
+        tvRowId: 'iptv-sections',
+        listIndex: widget.listIndex,
+        tvItemIndex: widget.listIndex,
+        onDownEdge: widget.onDownEdge,
+        onRightEdge: widget.onRightEdge,
+        onLeftEdge: widget.listIndex == 0
+            ? null
+            : () => iptvFocusRowItem('iptv-sections', widget.listIndex - 1),
+        onFocusChange: (f) => setState(() => _focused = f),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          width: 40,
-          height: 40,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          height: _kShelfTabHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: active
-                ? IptvShellStyle.accent.withValues(alpha: 0.22)
-                : Colors.white.withValues(alpha: 0.08),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: active
-                  ? IptvShellStyle.accent.withValues(alpha: 0.55)
-                  : Colors.white.withValues(alpha: 0.12),
-            ),
+            color: showColor
+                ? (widget.selected
+                    ? accent
+                    : accent.withValues(alpha: 0.55))
+                : Colors.transparent,
+            borderRadius: _radius,
           ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: active ? IptvShellStyle.accent : Colors.white,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.spec.icon,
+                size: 16,
+                color: showColor ? Colors.white : Colors.white60,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.spec.label,
+                style: GoogleFonts.inter(
+                  color: showColor ? Colors.white : Colors.white60,
+                  fontSize: 12.5,
+                  fontWeight:
+                      widget.selected ? FontWeight.w700 : FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -432,6 +519,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   final FocusNode _searchFocus = FocusNode();
   final FocusNode _panelFocus = FocusNode();
   String _query = '';
+  bool _searchOpen = false;
 
   @override
   void initState() {
@@ -447,6 +535,35 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     _searchFocus.dispose();
     _panelFocus.dispose();
     super.dispose();
+  }
+
+  void _openSearch() {
+    if (_searchOpen) {
+      _searchFocus.requestFocus();
+      return;
+    }
+    setState(() => _searchOpen = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocus.requestFocus();
+    });
+  }
+
+  void _closeSearch() {
+    if (!_searchOpen && _query.isEmpty) return;
+    _searchCtrl.clear();
+    setState(() {
+      _searchOpen = false;
+      _query = '';
+    });
+    _searchFocus.unfocus();
+  }
+
+  void _toggleSearch() {
+    if (_searchOpen) {
+      _closeSearch();
+    } else {
+      _openSearch();
+    }
   }
 
   List<VerifiedPortal> get _filtered {
@@ -470,6 +587,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent &&
             event.logicalKey == LogicalKeyboardKey.escape) {
+          if (_searchOpen) {
+            _closeSearch();
+            return KeyEventResult.handled;
+          }
           widget.onClose();
           return KeyEventResult.handled;
         }
@@ -484,40 +605,60 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             children: [
               _buildHeader(context),
               if (ctrl.editMode && ctrl.verified.isNotEmpty) _buildEditBar(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                child: TvBrowseTextField(
-                  controller: _searchCtrl,
-                  focusNode: _searchFocus,
-                  onChanged: (v) => setState(() => _query = v),
-                  browsePlaceholder: 'Search portals…',
-                  browseHintStyle: GoogleFonts.poppins(
-                    color: Colors.white38,
-                    fontSize: 13,
-                  ),
-                  caretHeight: 18,
-                  style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'Search portals…',
-                    hintStyle: GoogleFonts.poppins(
-                      color: Colors.white38,
-                      fontSize: 13,
-                    ),
-                    prefixIcon: const Icon(Icons.search_rounded,
-                        color: Colors.white54, size: 20),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.08),
+              ClipRect(
+                child: AnimatedAlign(
+                  alignment: Alignment.topCenter,
+                  heightFactor: _searchOpen ? 1 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: TvBrowseTextField(
+                      controller: _searchCtrl,
+                      focusNode: _searchFocus,
+                      onChanged: (v) => setState(() => _query = v),
+                      onEscape: _closeSearch,
+                      browsePlaceholder: 'Search portals…',
+                      browseHintStyle: GoogleFonts.poppins(
+                        color: Colors.white38,
+                        fontSize: 13,
                       ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.08),
+                      caretHeight: 18,
+                      style: GoogleFonts.poppins(
+                          color: Colors.white, fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Search portals…',
+                        hintStyle: GoogleFonts.poppins(
+                          color: Colors.white38,
+                          fontSize: 13,
+                        ),
+                        prefixIcon: const Icon(Icons.search_rounded,
+                            color: Colors.white54, size: 20),
+                        suffixIcon: _query.isEmpty
+                            ? null
+                            : iptvCloseButton(
+                                context,
+                                onTap: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _query = '');
+                                  _searchFocus.requestFocus();
+                                },
+                              ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.05),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -540,7 +681,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                     ? _buildEmpty()
                     : _buildPortalList(list, activeKey),
               ),
-              _buildFooter(context),
             ],
           ),
         ),
@@ -564,6 +704,20 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             style: IptvShellStyle.headerTitle.copyWith(fontSize: 18),
           ),
           const Spacer(),
+          IptvIconAction(
+            tooltip: _searchOpen ? 'Close search' : 'Search portals',
+            onPressed: _toggleSearch,
+            icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
+            color: _searchOpen ? IptvShellStyle.accent : null,
+          ),
+          IptvIconAction(
+            tooltip: ctrl.isScraping ? 'Stop scrape' : 'Scrape portals',
+            onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
+            icon: ctrl.isScraping
+                ? Icons.stop_circle_rounded
+                : Icons.travel_explore_rounded,
+            color: ctrl.isScraping ? IptvShellStyle.accent : null,
+          ),
           IptvIconAction(
             tooltip: 'Add portal',
             onPressed: () => _showAddDialog(context),
@@ -692,9 +846,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                         : Colors.white30,
                     size: 20,
                   )
-                else if (isFav)
-                  const Icon(Icons.star_rounded,
-                      color: Color(0xFFFBBF24), size: 18)
                 else
                   Icon(Icons.tv_rounded,
                       color: Colors.white.withValues(alpha: 0.5), size: 18),
@@ -746,99 +897,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildFooter(BuildContext context) {
-    final ctrl = widget.ctrl;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildSourcePicker(),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: IptvPrimaryButton(
-                  icon: ctrl.isScraping
-                      ? Icons.stop_circle_rounded
-                      : Icons.travel_explore,
-                  label: ctrl.isScraping ? 'Stop' : 'Scrape',
-                  onPressed:
-                      ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
-                ),
-              ),
-              if (ctrl.canGetMore) ...[
-                const SizedBox(width: 8),
-                Expanded(
-                  child: IptvPrimaryButton(
-                    icon: Icons.add_circle_outline,
-                    label: 'Get more',
-                    subtle: true,
-                    onPressed: ctrl.isScraping ? null : ctrl.getMore,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          if (ctrl.verified.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            IptvPrimaryButton(
-              icon: Icons.refresh_rounded,
-              label: 'Re-verify saved',
-              subtle: true,
-              onPressed: ctrl.runVerification,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSourcePicker() {
-    final items = <(CatalogSource, String)>[
-      (CatalogSource.best, 'Source 1'),
-      (CatalogSource.works, 'Source 2'),
-    ];
-    return Row(
-      children: [
-        for (var i = 0; i < items.length; i++) ...[
-          Expanded(
-            child: iptvTap(
-              context: context,
-              onTap: widget.ctrl.isScraping
-                  ? null
-                  : () => widget.ctrl.setScrapeSource(items[i].$1),
-              borderRadius: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: shellChipDecoration(
-                  selected: widget.ctrl.scrapeSource == items[i].$1,
-                  radius: 10,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  items[i].$2,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (i < items.length - 1) const SizedBox(width: 8),
-        ],
-      ],
     );
   }
 

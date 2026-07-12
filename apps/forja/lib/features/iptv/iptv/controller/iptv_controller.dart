@@ -31,23 +31,6 @@ class IptvController extends ChangeNotifier {
   String statusText = '';
   List<VerifiedPortal> verified = const [];
 
-  /// Which catalog backend Scrape / Get More pulls from. Defaults to the
-  /// pre-validated source ("Best"). Switching resets pagination so the
-  /// new source starts at its first page; previously-attempted dead
-  /// credentials are still skipped.
-  CatalogSource scrapeSource = CatalogSource.best;
-
-  void setScrapeSource(CatalogSource s) {
-    if (s == scrapeSource) return;
-    scrapeSource = s;
-    _scrapeAfter = null;
-    _pendingPortals.clear();
-    _pendingKeys.clear();
-    canGetMore = false;
-    statusText = '';
-    notifyListeners();
-  }
-
   /// Subset of [verified] that the user added manually. The portal-list
   /// screen only ever shows these; portals discovered automatically by
   /// the channel scraper are kept internally for channel results but are
@@ -335,8 +318,7 @@ class IptvController extends ChangeNotifier {
     activePortal = p;
     await IptvStore.saveLastPortalKey(p.key);
     if (closePanel) closePortalPanel();
-    final section = activeSection ?? await IptvStore.loadLastSection();
-    await openSection(section);
+    await openSection(IptvSection.live);
   }
 
   List<VerifiedPortal> _sortFavoritesFirst(List<VerifiedPortal> list) {
@@ -449,7 +431,6 @@ class IptvController extends ChangeNotifier {
           page = await IptvScraper.scrapeCatalogPage(
             maxResults: 50,
             after: _scrapeAfter,
-            source: scrapeSource,
           );
           _scrapeAfter = page.nextAfter;
 
@@ -466,9 +447,8 @@ class IptvController extends ChangeNotifier {
 
           if (page.portals.isEmpty) {
             emptyPagesInRow++;
-            // Dead Reddit source: stop after cycling all subs with zero portals.
-            if (scrapeSource == CatalogSource.best &&
-                emptyPagesInRow >= IptvScraper.catalogSubCount) {
+            // Unified catalog: stop after many empty pages across backends.
+            if (emptyPagesInRow >= IptvScraper.catalogSubCount + 8) {
               exhausted = true;
               break;
             }
@@ -545,7 +525,7 @@ class IptvController extends ChangeNotifier {
         statusText = 'Stopped.';
       } else if (newAlive.isEmpty) {
         statusText = exhausted
-            ? 'No live portals found in this source.'
+            ? 'No live portals found.'
             : (canGetMore
                 ? 'No new live portals. Try Get More.'
                 : 'No new live portals.');
@@ -554,7 +534,7 @@ class IptvController extends ChangeNotifier {
         statusText = hit
             ? 'Found ${newAlive.length} live portals.'
             : 'Found ${newAlive.length} live portals'
-                '${exhausted ? ' (source exhausted).' : ' (stopped early).'}';
+                '${exhausted ? ' (catalog exhausted).' : ' (stopped early).'}';
         if (_pendingPortals.isNotEmpty) {
           statusText += ' (${_pendingPortals.length} more queued)';
         }
@@ -1302,7 +1282,7 @@ class IptvController extends ChangeNotifier {
         try {
           final after = _channelCatalogAfter[ch.id];
           final page = await IptvScraper.scrapeCatalogPage(
-              maxResults: 60, after: after, source: scrapeSource);
+              maxResults: 60, after: after);
           if (_channelCancel) {
             channelIsRunning = false;
             channelStatus = 'Stopped.';
