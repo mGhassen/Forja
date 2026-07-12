@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'utils.dart'; // Ensure formatDuration is available
 
 class PlayerIconButton extends StatelessWidget {
@@ -101,6 +103,9 @@ class CustomSeekbar extends StatefulWidget {
   final ValueChanged<Duration>? onSeek;
   final VoidCallback? onDragStart;
   final VoidCallback? onDragEnd;
+  final bool tvFocusable;
+  final FocusNode? focusNode;
+  final Duration tvSeekStep;
 
   const CustomSeekbar({
     super.key,
@@ -110,6 +115,9 @@ class CustomSeekbar extends StatefulWidget {
     this.onSeek,
     this.onDragStart,
     this.onDragEnd,
+    this.tvFocusable = false,
+    this.focusNode,
+    this.tvSeekStep = const Duration(seconds: 10),
   });
 
   @override
@@ -119,10 +127,61 @@ class CustomSeekbar extends StatefulWidget {
 class _CustomSeekbarState extends State<CustomSeekbar> {
   bool _isDragging = false;
   double _dragValue = 0.0; // In milliseconds
-  
+  bool _tvFocused = false;
+
   // Hover state for Desktop
   bool _isHovering = false;
   double _hoverValue = 0.0; // In milliseconds
+
+  late final FocusNode _ownedFocusNode = FocusNode(debugLabel: 'player-seekbar');
+
+  FocusNode get _focusNode => widget.focusNode ?? _ownedFocusNode;
+
+  @override
+  void dispose() {
+    if (widget.focusNode == null) {
+      _ownedFocusNode.dispose();
+    }
+    super.dispose();
+  }
+
+  void _seekByStep(int direction) {
+    final onSeek = widget.onSeek;
+    if (onSeek == null) return;
+    final total = widget.duration;
+    if (total <= Duration.zero) return;
+    final delta = widget.tvSeekStep * direction;
+    var next = widget.position + delta;
+    if (next < Duration.zero) next = Duration.zero;
+    if (next > total) next = total;
+    onSeek(next);
+  }
+
+  KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
+    if (!widget.tvFocusable || !shellTvIsNavigationKey(event)) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      _seekByStep(-1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      _seekByStep(1);
+      return KeyEventResult.handled;
+    }
+    TraversalDirection? direction;
+    if (key == LogicalKeyboardKey.arrowUp) {
+      direction = TraversalDirection.up;
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      direction = TraversalDirection.down;
+    }
+    if (direction != null &&
+        FocusScope.of(context).focusInDirection(direction)) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +202,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        return MouseRegion(
+        final track = MouseRegion(
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) => setState(() => _isHovering = false),
           onHover: (details) {
@@ -189,15 +248,15 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                 children: [
                   // Background Track
                   Container(
-                    height: 3.0,
+                    height: _tvFocused ? 4.0 : 3.0,
                     width: double.infinity,
-                    color: Colors.white.withValues(alpha: 0.30),
+                    color: Colors.white.withValues(alpha: _tvFocused ? 0.40 : 0.30),
                   ),
                   // Buffered Track
                   FractionallySizedBox(
                     widthFactor: bufferedRelative,
                     child: Container(
-                      height: 3.0,
+                      height: _tvFocused ? 4.0 : 3.0,
                       color: Colors.white.withValues(alpha: 0.55),
                     ),
                   ),
@@ -205,16 +264,16 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                   FractionallySizedBox(
                     widthFactor: relativePosition,
                     child: Container(
-                      height: 3.0,
+                      height: _tvFocused ? 4.0 : 3.0,
                       color: Colors.white,
                     ),
                   ),
                   // Thumb
                   Positioned(
-                    left: (relativePosition * constraints.maxWidth) - (_isDragging ? 8.0 : 6.0),
+                    left: (relativePosition * constraints.maxWidth) - ((_isDragging || _tvFocused) ? 8.0 : 6.0),
                     child: Container(
-                      width: _isDragging ? 16.0 : 12.0,
-                      height: _isDragging ? 16.0 : 12.0,
+                      width: (_isDragging || _tvFocused) ? 16.0 : 12.0,
+                      height: (_isDragging || _tvFocused) ? 16.0 : 12.0,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
@@ -228,12 +287,14 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                       ),
                     ),
                   ),
-                  // Tooltip (Hover on Windows, Drag on Mobile/Windows)
-                  if (_isDragging || _isHovering)
+                  // Tooltip (Hover on Windows, Drag on Mobile/Windows, TV focus)
+                  if (_isDragging || _isHovering || _tvFocused)
                     Positioned(
                       left: (_isDragging 
                           ? (relativePosition * constraints.maxWidth) 
-                          : (_hoverValue / safeTotal * constraints.maxWidth)) - 24, // Center roughly (assuming width ~48)
+                          : _isHovering
+                              ? (_hoverValue / safeTotal * constraints.maxWidth)
+                              : (relativePosition * constraints.maxWidth)) - 24,
                       top: -35,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -242,7 +303,13 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          formatDuration(Duration(milliseconds: _isDragging ? _dragValue.toInt() : _hoverValue.toInt())),
+                          formatDuration(Duration(
+                            milliseconds: _isDragging
+                                ? _dragValue.toInt()
+                                : _isHovering
+                                    ? _hoverValue.toInt()
+                                    : widget.position.inMilliseconds,
+                          )),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -253,6 +320,26 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                     ),
                 ],
               ),
+            ),
+          ),
+        );
+
+        if (!widget.tvFocusable) return track;
+
+        return Focus(
+          focusNode: _focusNode,
+          onFocusChange: (focused) => setState(() => _tvFocused = focused),
+          onKeyEvent: _onTvKey,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              border: _tvFocused
+                  ? Border.all(color: Colors.white, width: 1.5)
+                  : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+              child: track,
             ),
           ),
         );

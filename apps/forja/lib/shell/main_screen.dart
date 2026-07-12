@@ -81,6 +81,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final List<String> _tabLru = ['home'];
   List<String> _visibleIds = _bootstrapVisibleNavIds();
   bool _initialNavResolved = false;
+  UpdateInfo? _pendingUpdate;
+  bool _updateDialogShown = false;
+  VoidCallback? _splashDismissedForUpdateListener;
+  BuildContext? _shellScopedContext;
 
   String? get _currentTabId =>
       _visibleIds.isEmpty || _selectedIndex >= _visibleIds.length
@@ -226,23 +230,47 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
     _loadNavbarConfig();
     _syncCurrentNavTab();
-    _checkForUpdates();
+    _scheduleStartupUpdateCheck();
   }
 
-  Future<void> _checkForUpdates() async {
+  void _scheduleStartupUpdateCheck() {
+    unawaited(_loadPendingUpdate());
+    if (ShellBus.splashDismissed.value) {
+      _presentPendingUpdateIfAny();
+      return;
+    }
+    _splashDismissedForUpdateListener = () {
+      if (!ShellBus.splashDismissed.value) return;
+      ShellBus.splashDismissed.removeListener(_splashDismissedForUpdateListener!);
+      _splashDismissedForUpdateListener = null;
+      _presentPendingUpdateIfAny();
+    };
+    ShellBus.splashDismissed.addListener(_splashDismissedForUpdateListener!);
+  }
+
+  Future<void> _loadPendingUpdate() async {
     try {
-      final updater = AppUpdaterService();
-      final updateInfo = await updater.checkForUpdates();
-      if (updateInfo != null && mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => UpdateDialog(updateInfo: updateInfo),
-        );
-      }
+      final updateInfo = await AppUpdaterService().checkForUpdates();
+      if (!mounted) return;
+      _pendingUpdate = updateInfo;
+      _presentPendingUpdateIfAny();
     } catch (e) {
       debugPrint('[MainScreen] Update check failed: $e');
     }
+  }
+
+  void _presentPendingUpdateIfAny() {
+    if (_updateDialogShown || _pendingUpdate == null || !mounted) return;
+    if (!ShellBus.splashDismissed.value) return;
+
+    _updateDialogShown = true;
+    final updateInfo = _pendingUpdate!;
+    Future<void>.delayed(const Duration(milliseconds: 350), () {
+      if (!mounted || _pendingUpdate == null) return;
+      final hostContext = _shellScopedContext ?? context;
+      if (!hostContext.mounted) return;
+      unawaited(UpdateDialog.show(hostContext, updateInfo));
+    });
   }
 
   Future<void> _loadNavbarConfig() async {
@@ -360,13 +388,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
     ShellBus.clearHideGlobalNav();
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
+    if (_splashDismissedForUpdateListener != null) {
+      ShellBus.splashDismissed.removeListener(_splashDismissedForUpdateListener!);
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return ShellScopeBuilder(
-      builder: (context, profile) {
+      builder: (shellContext, profile) {
+        _shellScopedContext = shellContext;
         final config = shellPlatformConfigFor(profile);
         final showHomeTopBar = _currentTabId == 'home' &&
             config.showHomeTopBar &&

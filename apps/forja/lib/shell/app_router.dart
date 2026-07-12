@@ -6,6 +6,7 @@ import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/player/trailer_player_screen.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 
@@ -177,13 +178,17 @@ class AppRouter {
     Movie? movie,
     String? languageCode,
   }) {
+    final hostContext = context;
     return Navigator.of(context, rootNavigator: true).push<T>(
       slideRoute(
-        (_) => TrailerPlayerScreen(
-          trailers: trailers,
-          initialIndex: initialIndex,
-          movie: movie,
-          languageCode: languageCode,
+        (_) => ShellScope.rehost(
+          hostContext,
+          TrailerPlayerScreen(
+            trailers: trailers,
+            initialIndex: initialIndex,
+            movie: movie,
+            languageCode: languageCode,
+          ),
         ),
       ),
     );

@@ -78,6 +78,10 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   late final AnimationController _searchAnim;
   late final Animation<double> _searchExpand;
   bool _searchDialogOpen = false;
+  bool _searchToolFocused = false;
+  bool _searchToolHovered = false;
+  bool _portalToolFocused = false;
+  bool _portalToolHovered = false;
 
   IptvController get ctrl => widget.ctrl;
 
@@ -134,8 +138,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   }
 
   void _focusDownFromTopBar() {
-    if (!iptvFocusRowItem('browser-categories') &&
-        !iptvFocusRowItem('browser-category-chips')) {
+    if (!iptvFocusRowItem('browser-categories')) {
       iptvFocusRowItem('browser-streams');
     }
   }
@@ -315,6 +318,11 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   }
 
   Widget _buildSearchIcon(BuildContext context, {bool compact = false}) {
+    final active = iptvFocusActive(
+      context,
+      hovered: _searchToolHovered,
+      focused: _searchToolFocused,
+    );
     return iptvTap(
       context: context,
       onTap: () => _openSearch(context, compact: compact),
@@ -326,15 +334,23 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       onLeftEdge: () =>
           iptvFocusRowItem('iptv-sections', _kSectionShelf.length - 1),
       onRightEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+      onFocusChange: (focused) => setState(() => _searchToolFocused = focused),
+      onHoverChange: (hovered) => setState(() => _searchToolHovered = hovered),
       child: Container(
         width: _kSearchCollapsed,
         height: _kSearchCollapsed,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: Colors.white.withValues(alpha: active ? 0.14 : 0.08),
           borderRadius: BorderRadius.circular(_kSearchCollapsed / 2),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: active ? 0.22 : 0.12),
+          ),
         ),
-        child: const Icon(Icons.search_rounded, color: Colors.white, size: 20),
+        child: Icon(
+          Icons.search_rounded,
+          color: iptvFocusFg(Colors.white60, active),
+          size: 20,
+        ),
       ),
     );
   }
@@ -390,6 +406,12 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   Widget _buildPortalButton(BuildContext context, {bool compact = false}) {
     final selected = ctrl.portalPanelOpen;
     final hasPortal = ctrl.activePortal != null;
+    final active = iptvFocusActive(
+      context,
+      hovered: _portalToolHovered,
+      focused: _portalToolFocused,
+    );
+    final showHighlight = selected || active;
     return iptvTap(
       context: context,
       onTap: widget.onTogglePanel,
@@ -399,6 +421,11 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       tvItemIndex: 1,
       onDownEdge: _focusDownFromTopBar,
       onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', 0),
+      onRightEdge: selected
+          ? () => iptvFocusRowItem('portals', 0)
+          : null,
+      onFocusChange: (focused) => setState(() => _portalToolFocused = focused),
+      onHoverChange: (hovered) => setState(() => _portalToolHovered = hovered),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
@@ -406,14 +433,14 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         constraints: BoxConstraints(maxWidth: compact ? 44 : 180),
         padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12),
         decoration: BoxDecoration(
-          color: selected
-              ? Colors.white.withValues(alpha: 0.14)
+          color: showHighlight
+              ? Colors.white.withValues(alpha: selected ? 0.14 : 0.10)
               : Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(_kShelfTabRadius),
           border: Border.all(
             color: !hasPortal
                 ? IptvShellStyle.accent.withValues(alpha: 0.65)
-                : Colors.white.withValues(alpha: selected ? 0.28 : 0.10),
+                : Colors.white.withValues(alpha: showHighlight ? 0.28 : 0.10),
           ),
         ),
         child: Row(
@@ -422,7 +449,9 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
             Icon(
               hasPortal ? Icons.dns_rounded : Icons.add_link_rounded,
               size: 16,
-              color: hasPortal ? Colors.white : IptvShellStyle.accent,
+              color: hasPortal
+                  ? iptvFocusFg(Colors.white, active)
+                  : iptvFocusFg(IptvShellStyle.accent, active),
             ),
             if (!compact) ...[
               const SizedBox(width: 7),
@@ -432,7 +461,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    color: Colors.white,
+                    color: iptvFocusFg(Colors.white, active),
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                   ),
@@ -444,7 +473,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                     ? Icons.expand_less_rounded
                     : Icons.expand_more_rounded,
                 size: 16,
-                color: Colors.white60,
+                color: iptvFocusFg(Colors.white60, active),
               ),
             ],
           ],
@@ -760,17 +789,29 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _panelFocus.requestFocus();
-    });
+    widget.ctrl.addListener(_onCtrlChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelContent());
   }
 
   @override
   void dispose() {
+    widget.ctrl.removeListener(_onCtrlChanged);
     _searchCtrl.dispose();
     _searchFocus.dispose();
     _panelFocus.dispose();
     super.dispose();
+  }
+
+  void _onCtrlChanged() {
+    if (!mounted) return;
+    if (widget.ctrl.portalPanelOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelContent());
+    }
+  }
+
+  void _focusPanelContent() {
+    if (!mounted || !widget.ctrl.portalPanelOpen || _searchOpen) return;
+    iptvFocusRowItem('portals', 0);
   }
 
   void _openSearch() {
@@ -821,13 +862,18 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     return Focus(
       focusNode: _panelFocus,
       onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        final key = event.logicalKey;
+        if (key == LogicalKeyboardKey.escape ||
+            key == LogicalKeyboardKey.goBack) {
           if (_searchOpen) {
             _closeSearch();
             return KeyEventResult.handled;
           }
           widget.onClose();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            iptvRestoreCatalogFocus();
+          });
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
@@ -933,6 +979,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
 
   Widget _buildHeader(BuildContext context) {
     final ctrl = widget.ctrl;
+    iptvSyncRow(rowId: 'iptv-portal-header', sortOrder: 0, itemCount: 3);
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
       decoration: BoxDecoration(
@@ -952,6 +999,11 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             onPressed: _toggleSearch,
             icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
             color: _searchOpen ? IptvShellStyle.accent : null,
+            tvRowId: 'iptv-portal-header',
+            tvItemIndex: 0,
+            tvZone: ShellTvZone.topBar,
+            onDownEdge: () => iptvFocusRowItem('portals', 0),
+            onRightEdge: () => iptvFocusRowItem('iptv-portal-header', 1),
           ),
           IptvIconAction(
             tooltip: ctrl.isScraping ? 'Stop scrape' : 'Scrape portals',
@@ -960,11 +1012,22 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 ? Icons.stop_circle_rounded
                 : Icons.travel_explore_rounded,
             color: ctrl.isScraping ? IptvShellStyle.accent : null,
+            tvRowId: 'iptv-portal-header',
+            tvItemIndex: 1,
+            tvZone: ShellTvZone.topBar,
+            onDownEdge: () => iptvFocusRowItem('portals', 0),
+            onLeftEdge: () => iptvFocusRowItem('iptv-portal-header', 0),
+            onRightEdge: () => iptvFocusRowItem('iptv-portal-header', 2),
           ),
           IptvIconAction(
             tooltip: 'Add portal',
             onPressed: () => _showAddDialog(context),
             icon: Icons.add_rounded,
+            tvRowId: 'iptv-portal-header',
+            tvItemIndex: 2,
+            tvZone: ShellTvZone.topBar,
+            onDownEdge: () => iptvFocusRowItem('portals', 0),
+            onLeftEdge: () => iptvFocusRowItem('iptv-portal-header', 1),
           ),
           iptvCloseButton(context, onTap: widget.onClose),
         ],
@@ -1723,10 +1786,31 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   bool _sharing = false;
   bool _showShareCode = false;
   String? _shareCode;
+  late final FocusNode _copyFocus;
+  late final FocusNode _editFocus;
+  late final FocusNode _deleteFocus;
 
   bool get _reveal => _focused || _lineHover;
 
   double get _rowHeight => _rowH;
+
+  @override
+  void initState() {
+    super.initState();
+    _copyFocus = FocusNode(debugLabel: 'iptv-portal-copy');
+    _editFocus = FocusNode(debugLabel: 'iptv-portal-edit');
+    _deleteFocus = FocusNode(debugLabel: 'iptv-portal-delete');
+  }
+
+  @override
+  void dispose() {
+    _copyFocus.dispose();
+    _editFocus.dispose();
+    _deleteFocus.dispose();
+    super.dispose();
+  }
+
+  String get _actionsRowId => 'portal-${widget.listIndex}-actions';
 
   void _clearHover() {
     setState(() => _lineHover = false);
@@ -1862,6 +1946,14 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
             ? (v.portal.username.trim().isEmpty ? 'Portal' : v.portal.username)
             : v.name.trim();
 
+        if (_reveal) {
+          iptvSyncRow(
+            rowId: _actionsRowId,
+            sortOrder: 200 + widget.listIndex,
+            itemCount: 3,
+          );
+        }
+
         return MouseRegion(
           onEnter: (_) {
             setState(() => _lineHover = true);
@@ -1905,6 +1997,14 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                       listIndex: widget.listIndex,
                       tvRowId: 'portals',
                       tvItemIndex: widget.listIndex,
+                      onLeftEdge: () {
+                        if (!iptvFocusRowItem('browser-streams')) {
+                          iptvFocusRowItem('browser-categories', 0);
+                        }
+                      },
+                      onRightEdge: _reveal
+                          ? () => _copyFocus.requestFocus()
+                          : null,
                       onFocusChange: (focused) {
                         setState(() => _focused = focused);
                         if (focused) {
@@ -1998,20 +2098,23 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                             ),
                             Align(
                               alignment: Alignment.center,
-                              child: iptvTap(
-                                context: context,
-                                onTap: () => ctrl.toggleFavoritePortal(v.key),
-                                borderRadius: 16,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: Icon(
-                                    isFav
-                                        ? Icons.star_rounded
-                                        : Icons.star_outline_rounded,
-                                    size: 16,
-                                    color: isFav
-                                        ? const Color(0xFFFBBF24)
-                                        : Colors.white30,
+                              child: ExcludeFocus(
+                                excluding: iptvUseTvFocus(context),
+                                child: iptvTap(
+                                  context: context,
+                                  onTap: () => ctrl.toggleFavoritePortal(v.key),
+                                  borderRadius: 16,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: Icon(
+                                      isFav
+                                          ? Icons.star_rounded
+                                          : Icons.star_outline_rounded,
+                                      size: 16,
+                                      color: isFav
+                                          ? const Color(0xFFFBBF24)
+                                          : Colors.white30,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -2037,25 +2140,40 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              _railAction(
+                              _IptvRailAction(
                                 tooltip: 'Copy share code',
                                 icon: _sharing
                                     ? Icons.hourglass_top_rounded
                                     : Icons.copy_rounded,
                                 color: Colors.white60,
                                 onTap: _sharing ? null : _copy,
+                                focusNode: _copyFocus,
+                                tvRowId: _actionsRowId,
+                                tvItemIndex: 0,
+                                onLeftEdge: () =>
+                                    iptvFocusRowItem('portals', widget.listIndex),
+                                onRightEdge: () => _editFocus.requestFocus(),
                               ),
-                              _railAction(
+                              _IptvRailAction(
                                 tooltip: 'Edit',
                                 icon: Icons.edit_rounded,
                                 color: Colors.white60,
                                 onTap: widget.onEdit,
+                                focusNode: _editFocus,
+                                tvRowId: _actionsRowId,
+                                tvItemIndex: 1,
+                                onLeftEdge: () => _copyFocus.requestFocus(),
+                                onRightEdge: () => _deleteFocus.requestFocus(),
                               ),
-                              _railAction(
+                              _IptvRailAction(
                                 tooltip: 'Delete',
                                 icon: Icons.delete_rounded,
                                 color: const Color(0xFFEF4444),
                                 onTap: () => ctrl.deletePortal(v.key),
+                                focusNode: _deleteFocus,
+                                tvRowId: _actionsRowId,
+                                tvItemIndex: 2,
+                                onLeftEdge: () => _editFocus.requestFocus(),
                               ),
                             ],
                           ),
@@ -2167,24 +2285,76 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     );
   }
 
-  Widget _railAction({
-    required String tooltip,
-    required IconData icon,
-    required Color color,
-    VoidCallback? onTap,
-  }) {
+}
+
+class _IptvRailAction extends StatefulWidget {
+  const _IptvRailAction({
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    this.onTap,
+    this.focusNode,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.onLeftEdge,
+    this.onRightEdge,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+  final FocusNode? focusNode;
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+
+  @override
+  State<_IptvRailAction> createState() => _IptvRailActionState();
+}
+
+class _IptvRailActionState extends State<_IptvRailAction> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _active =>
+      iptvFocusActive(context, hovered: _hovered, focused: _focused);
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = iptvFocusFg(widget.color, _active);
+    final child = SizedBox(
+      width: 32,
+      height: 32,
+      child: Icon(widget.icon, size: 16, color: fg),
+    );
+    if (iptvUseTvFocus(context)) {
+      return Tooltip(
+        message: widget.tooltip,
+        child: iptvTap(
+          context: context,
+          onTap: widget.onTap,
+          borderRadius: 6,
+          focusNode: widget.focusNode,
+          tvRowId: widget.tvRowId,
+          tvItemIndex: widget.tvItemIndex,
+          onLeftEdge: widget.onLeftEdge,
+          onRightEdge: widget.onRightEdge,
+          onFocusChange: (focused) => setState(() => _focused = focused),
+          onHoverChange: (hovered) => setState(() => _hovered = hovered),
+          child: child,
+        ),
+      );
+    }
     return Tooltip(
-      message: tooltip,
+      message: widget.tooltip,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: widget.onTap,
           borderRadius: BorderRadius.circular(6),
-          child: SizedBox(
-            width: 32,
-            height: 32,
-            child: Icon(icon, size: 16, color: color),
-          ),
+          child: child,
         ),
       ),
     );

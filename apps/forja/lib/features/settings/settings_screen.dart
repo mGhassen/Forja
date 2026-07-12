@@ -3509,11 +3509,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() => _isCheckingUpdate = false);
 
         if (updateInfo != null) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => UpdateDialog(updateInfo: updateInfo),
-          );
+          unawaited(UpdateDialog.show(context, updateInfo));
         } else {
           ForjaToast.success("You're running the latest version!");
         }

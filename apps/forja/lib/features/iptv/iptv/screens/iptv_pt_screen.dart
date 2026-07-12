@@ -62,6 +62,10 @@ class _IptvPtScreenState extends State<IptvPtScreen>
     super.initState();
     _ctrl = IptvController();
     _ctrl.addListener(_syncShellNav);
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'iptv',
+      restoreFocus: iptvRestoreCatalogFocus,
+    );
     _ctrl.init().then((_) {
       if (mounted) markShellTabFresh();
     });
@@ -77,6 +81,7 @@ class _IptvPtScreenState extends State<IptvPtScreen>
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.unregisterTabDefaults('iptv');
     ShellTvFocusCoordinator.clearTab('iptv');
     _ctrl.removeListener(_syncShellNav);
     _ctrl.dispose();
@@ -1071,6 +1076,7 @@ class _BrowserViewState extends State<_BrowserView> {
   Timer? _scrollSettleTimer;
   bool _didInitialFocus = false;
   bool _wasLoading = false;
+  bool _wasPortalPanelOpen = false;
 
   bool get _searchOpen => widget.ctrl.browserSearchOpen;
   bool get _needsPortal => widget.ctrl.activePortal == null;
@@ -1080,6 +1086,7 @@ class _BrowserViewState extends State<_BrowserView> {
     super.initState();
     _searchCtrl.text = widget.ctrl.browserSearch;
     _wasLoading = widget.ctrl.isLoading;
+    _wasPortalPanelOpen = widget.ctrl.portalPanelOpen;
     widget.ctrl.addListener(_onCtrlChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncInitialFocus());
   }
@@ -1099,8 +1106,15 @@ class _BrowserViewState extends State<_BrowserView> {
     final loading = widget.ctrl.isLoading;
     final finishedLoad = _wasLoading && !loading;
     _wasLoading = loading;
+    final panelOpen = widget.ctrl.portalPanelOpen;
+    final panelClosed = _wasPortalPanelOpen && !panelOpen;
+    _wasPortalPanelOpen = panelOpen;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (panelClosed && !_needsPortal) {
+        _focusCatalogGroup();
+        return;
+      }
       if (_needsPortal) {
         // Don't steal focus while the portals panel is open.
         if (!widget.ctrl.portalPanelOpen && !_openPortalFocus.hasFocus) {
@@ -1108,6 +1122,7 @@ class _BrowserViewState extends State<_BrowserView> {
         }
         return;
       }
+      if (widget.ctrl.portalPanelOpen) return;
       if (loading) return;
       if (finishedLoad || !_didInitialFocus) {
         if (widget.ctrl.categories.isNotEmpty ||
@@ -1134,10 +1149,7 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   void _focusCatalogGroup() {
-    final focused = (widget.wide || widget.compact)
-        ? iptvFocusRowItem('browser-categories', 0)
-        : iptvFocusRowItem('browser-category-chips', 0);
-    if (!focused) {
+    if (!iptvFocusRowItem('browser-categories', 0)) {
       iptvFocusRowItem('browser-streams', 0);
     }
     _didInitialFocus = true;
@@ -1499,11 +1511,7 @@ class _BrowserViewState extends State<_BrowserView> {
           sortOrder: 3,
           itemCount: list.length,
           onFocusUp: () {
-            if (widget.wide || widget.compact) {
-              iptvFocusRowItem('browser-categories');
-            } else {
-              iptvFocusRowItem('browser-category-chips');
-            }
+            iptvFocusRowItem('browser-categories');
           },
         );
         final cats = _filteredCategories;
@@ -1525,16 +1533,13 @@ class _BrowserViewState extends State<_BrowserView> {
             gridIndex: i,
             gridColumns: cross,
             onUpEdge: i < cross
-                ? () {
-                    if (widget.wide || widget.compact) {
-                      iptvFocusRowItem(
-                        'browser-categories',
-                        selectedCatIdx >= 0 ? selectedCatIdx : 0,
-                      );
-                    } else {
-                      iptvFocusRowItem('browser-category-chips');
-                    }
-                  }
+                ? () => iptvFocusRowItem(
+                      'browser-categories',
+                      selectedCatIdx >= 0 ? selectedCatIdx : 0,
+                    )
+                : null,
+            onRightEdge: widget.ctrl.portalPanelOpen && (i % cross) == cross - 1
+                ? () => iptvFocusRowItem('portals', 0)
                 : null,
             onLeftEdge: (widget.wide || widget.compact) && i % cross == 0
                 ? () => iptvFocusRowItem(
@@ -1590,6 +1595,9 @@ class _BrowserViewState extends State<_BrowserView> {
             'browser-categories',
             selectedCatIdx >= 0 ? selectedCatIdx : 0,
           ),
+          onRightEdge: ctrl.portalPanelOpen
+              ? () => iptvFocusRowItem('portals', 0)
+              : null,
           onTap: () => _onStreamTap(stream),
         );
       },
@@ -1729,6 +1737,7 @@ class _StreamCard extends StatefulWidget {
   final int? gridColumns;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onRightEdge;
   const _StreamCard({
     required this.stream,
     required this.ctrl,
@@ -1737,6 +1746,7 @@ class _StreamCard extends StatefulWidget {
     this.gridColumns,
     this.onLeftEdge,
     this.onUpEdge,
+    this.onRightEdge,
   });
 
   @override
@@ -1914,6 +1924,7 @@ class _StreamCardState extends State<_StreamCard> {
             tvZone: ShellTvZone.grid,
             onLeftEdge: widget.onLeftEdge,
             onUpEdge: widget.onUpEdge,
+            onRightEdge: widget.onRightEdge,
             onFocusChange: _onFocus,
             onHoverChange: _onHover,
             child: column,
@@ -1949,6 +1960,7 @@ class _StreamRowTile extends StatefulWidget {
     required this.onTap,
     this.listIndex,
     this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final IptvStream stream;
@@ -1957,6 +1969,7 @@ class _StreamRowTile extends StatefulWidget {
   final VoidCallback onTap;
   final int? listIndex;
   final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   State<_StreamRowTile> createState() => _StreamRowTileState();
@@ -2036,6 +2049,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
               tvRowId: 'browser-streams',
               tvZone: ShellTvZone.row,
               onLeftEdge: widget.onLeftEdge,
+              onRightEdge: widget.onRightEdge,
               onFocusChange: _onFocus,
               onHoverChange: _onHover,
               child: Padding(

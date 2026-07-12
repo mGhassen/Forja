@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:rust/rust.dart';
@@ -39,6 +41,10 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   bool _ready = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  final FocusNode _playFocus = FocusNode(debugLabel: 'trailer-play');
+  final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
+  bool _tvFocus = false;
+  bool _initialFocusClaimed = false;
 
   MediaTrailer get _trailer => widget.trailers[_currentIndex];
 
@@ -59,7 +65,37 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    _playFocus.dispose();
+    _nextTrailerFocus.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv == _tvFocus) return;
+    _tvFocus = tv;
+    if (tv && !_initialFocusClaimed) {
+      _initialFocusClaimed = true;
+      _claimPlayFocus();
+    }
+  }
+
+  void _claimPlayFocus() {
+    if (!_tvFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_playFocus.canRequestFocus) return;
+      _playFocus.requestFocus();
+    });
+  }
+
+  void _focusNextTrailerIfNeeded() {
+    if (!_tvFocus || !_ended || !_hasNextTrailer) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_nextTrailerFocus.canRequestFocus) return;
+      _nextTrailerFocus.requestFocus();
+    });
   }
 
   void _exitTrailer() {
@@ -72,6 +108,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   }
 
   bool _handleKeyEvent(KeyEvent event) {
+    if (_tvFocus) return false;
     if (event is! KeyDownEvent) return false;
     if (event.logicalKey != LogicalKeyboardKey.escape) return false;
     _exitTrailer();
@@ -544,6 +581,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
       _position = Duration.zero;
       _duration = Duration.zero;
     });
+    _claimPlayFocus();
   }
 
   Future<void> _showSubtitleMenu(BuildContext anchorContext) async {
@@ -834,309 +872,366 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          ForjaInAppWebView(
-            key: ValueKey('trailer-player-${_trailer.key}'),
-            initialData: InAppWebViewInitialData(
-              data: _embedHtml(),
-              baseUrl: WebUri(kYoutubeEmbedOrigin),
+    final tvFocus = _tvFocus;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _exitTrailer();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            ForjaInAppWebView(
+              key: ValueKey('trailer-player-${_trailer.key}'),
+              initialData: InAppWebViewInitialData(
+                data: _embedHtml(),
+                baseUrl: WebUri(kYoutubeEmbedOrigin),
+              ),
+              initialSettings: InAppWebViewSettings(
+                mediaPlaybackRequiresUserGesture: false,
+                allowsInlineMediaPlayback: true,
+                transparentBackground: false,
+                disableVerticalScroll: true,
+                disableHorizontalScroll: true,
+                supportZoom: false,
+              ),
+              onWebViewCreated: (controller) {
+                _controller = controller;
+                controller.addJavaScriptHandler(
+                  handlerName: 'trailerReady',
+                  callback: (_) {
+                    if (!mounted) return;
+                    setState(() => _ready = true);
+                  },
+                );
+                controller.addJavaScriptHandler(
+                  handlerName: 'trailerState',
+                  callback: (args) {
+                    if (!mounted || args.length < 2) return;
+                    final playing = args[0] == true;
+                    final ended = args[1] == true;
+                    if (_playing == playing && _ended == ended) return;
+                    setState(() {
+                      _playing = playing;
+                      _ended = ended;
+                    });
+                    if (ended) _focusNextTrailerIfNeeded();
+                  },
+                );
+                controller.addJavaScriptHandler(
+                  handlerName: 'trailerProgress',
+                  callback: (args) {
+                    if (!mounted || args.length < 2) return;
+                    final currentSec = (args[0] as num?)?.toDouble() ?? 0;
+                    final durationSec = (args[1] as num?)?.toDouble() ?? 0;
+                    final pos = Duration(milliseconds: (currentSec * 1000).round());
+                    final dur = Duration(milliseconds: (durationSec * 1000).round());
+                    if (_position == pos && _duration == dur) return;
+                    setState(() {
+                      _position = pos;
+                      _duration = dur;
+                    });
+                  },
+                );
+                controller.addJavaScriptHandler(
+                  handlerName: 'trailerEscape',
+                  callback: (_) => _exitTrailer(),
+                );
+              },
             ),
-            initialSettings: InAppWebViewSettings(
-              mediaPlaybackRequiresUserGesture: false,
-              allowsInlineMediaPlayback: true,
-              transparentBackground: false,
-              disableVerticalScroll: true,
-              disableHorizontalScroll: true,
-              supportZoom: false,
-            ),
-            onWebViewCreated: (controller) {
-              _controller = controller;
-              controller.addJavaScriptHandler(
-                handlerName: 'trailerReady',
-                callback: (_) {
-                  if (!mounted) return;
-                  setState(() => _ready = true);
-                },
-              );
-              controller.addJavaScriptHandler(
-                handlerName: 'trailerState',
-                callback: (args) {
-                  if (!mounted || args.length < 2) return;
-                  final playing = args[0] == true;
-                  final ended = args[1] == true;
-                  if (_playing == playing && _ended == ended) return;
-                  setState(() {
-                    _playing = playing;
-                    _ended = ended;
-                  });
-                },
-              );
-              controller.addJavaScriptHandler(
-                handlerName: 'trailerProgress',
-                callback: (args) {
-                  if (!mounted || args.length < 2) return;
-                  final currentSec = (args[0] as num?)?.toDouble() ?? 0;
-                  final durationSec = (args[1] as num?)?.toDouble() ?? 0;
-                  final pos = Duration(milliseconds: (currentSec * 1000).round());
-                  final dur = Duration(milliseconds: (durationSec * 1000).round());
-                  if (_position == pos && _duration == dur) return;
-                  setState(() {
-                    _position = pos;
-                    _duration = dur;
-                  });
-                },
-              );
-              controller.addJavaScriptHandler(
-                handlerName: 'trailerEscape',
-                callback: (_) => _exitTrailer(),
-              );
-            },
+            DesktopWindowChrome.overlayDragStrip(),
+            _buildChromeOverlay(tvFocus: tvFocus),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChromeOverlay({required bool tvFocus}) {
+    final layers = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          top: DesktopWindowChrome.isDesktop
+              ? DesktopWindowChrome.topInset(context) + 6
+              : MediaQuery.paddingOf(context).top + 6,
+          left: 8,
+          child: PlayerFlatIconButton(
+            icon: Icons.arrow_back_rounded,
+            tooltip: 'Back',
+            tvFocusable: tvFocus,
+            onPressed: _exitTrailer,
           ),
-          DesktopWindowChrome.overlayDragStrip(),
-          Positioned(
-            top: DesktopWindowChrome.isDesktop
-                ? DesktopWindowChrome.topInset(context) + 6
-                : MediaQuery.paddingOf(context).top + 6,
-            left: 8,
-            child: PlayerFlatIconButton(
-              icon: Icons.arrow_back_rounded,
-              tooltip: 'Back',
-              onPressed: _exitTrailer,
-            ),
-          ),
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
+        ),
+        const Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ExcludeFocus(
             child: PlayerOverlayGradient(isTop: true),
           ),
-          if (_ended && _hasNextTrailer)
-            Positioned.fill(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Up next',
-                        style: TextStyle(
-                          color: ForjaShellColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _nextTrailer!.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _playNextTrailer,
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.white24),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Next Trailer',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Icon(
-                                  Icons.arrow_forward_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+        ),
+        if (_ended && _hasNextTrailer) _buildUpNextOverlay(tvFocus: tvFocus),
+        _buildBottomChrome(tvFocus: tvFocus),
+      ],
+    );
+
+    if (!tvFocus) return layers;
+    return Positioned.fill(
+      child: FocusScope(
+        debugLabel: 'trailer-player-chrome',
+        child: FocusTraversalGroup(child: layers),
+      ),
+    );
+  }
+
+  Widget _buildUpNextOverlay({required bool tvFocus}) {
+    final button = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Next Trailer',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.92),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 1.0],
-                ),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 32, 16, 14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (widget.movie != null)
-                        PlayerTitleMeta(
-                          title: _trailer.name,
-                          movie: widget.movie,
-                        )
-                      else
-                        Text(
-                          _trailer.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      const SizedBox(height: 12),
-                      CustomSeekbar(
-                        duration: _duration,
-                        position: _position,
-                        onSeek: _seek,
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              PlayerFlatIconButton(
-                                icon: _showReplayControl
-                                    ? Icons.replay_rounded
-                                    : _playing
-                                        ? Icons.pause_rounded
-                                        : Icons.play_arrow_rounded,
-                                tooltip: _showReplayControl
-                                    ? 'Replay'
-                                    : _playing
-                                        ? 'Pause'
-                                        : 'Play',
-                                onPressed: () {
-                                  if (!_ready) return;
-                                  _togglePlayPause();
-                                },
-                              ),
-                              const SizedBox(width: 2),
-                              PlayerFlatIconButton(
-                                icon: Icons.replay_10_rounded,
-                                tooltip: 'Back 10s',
-                                onPressed: () {
-                                  if (!_ready) return;
-                                  _skip(-10);
-                                },
-                              ),
-                              const SizedBox(width: 2),
-                              PlayerFlatIconButton(
-                                icon: Icons.forward_10_rounded,
-                                tooltip: 'Forward 10s',
-                                onPressed: () {
-                                  if (!_ready) return;
-                                  _skip(10);
-                                },
-                              ),
-                              const SizedBox(width: 2),
-                              PlayerFlatIconButton(
-                                icon: _muted
-                                    ? Icons.volume_off_rounded
-                                    : Icons.volume_up_rounded,
-                                tooltip: 'Mute',
-                                onPressed: () {
-                                  if (!_ready) return;
-                                  _toggleMute();
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              PlayerTimeRange(
-                                position: _position,
-                                duration: _duration,
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              PlayerFlatIconButton(
-                                icon: Icons.audiotrack_rounded,
-                                tooltip: 'Audio',
-                                onPressedWithContext: _showAudioMenu,
-                              ),
-                              const SizedBox(width: 2),
-                              PlayerFlatIconButton(
-                                icon: Icons.subtitles_outlined,
-                                tooltip: 'Subtitles',
-                                onPressedWithContext: _showSubtitleMenu,
-                              ),
-                              const SizedBox(width: 2),
-                              PlayerFlatIconButton(
-                                icon: Icons.hd_outlined,
-                                tooltip: 'Quality',
-                                onPressedWithContext: _showQualityMenu,
-                              ),
-                              const SizedBox(width: 2),
-                              PlayerFlatIconButton(
-                                icon: Icons.speed_rounded,
-                                tooltip: 'Playback speed',
-                                onPressedWithContext: _showSpeedMenu,
-                              ),
-                              if (!_ready) ...[
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Loading…',
-                                  style: TextStyle(
-                                    color: ForjaShellColors.textSecondary,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          ),
+          SizedBox(width: 8),
+          Icon(
+            Icons.arrow_forward_rounded,
+            color: Colors.white,
+            size: 20,
           ),
         ],
       ),
     );
+
+    return Positioned.fill(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Up next',
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _nextTrailer!.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (tvFocus)
+                FocusableControl(
+                  focusNode: _nextTrailerFocus,
+                  onTap: _playNextTrailer,
+                  borderRadius: 8,
+                  child: button,
+                )
+              else
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _playNextTrailer,
+                    borderRadius: BorderRadius.circular(8),
+                    child: button,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomChrome({required bool tvFocus}) {
+    final excludeFromTraversal = tvFocus && _ended && _hasNextTrailer;
+    final chrome = Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.92),
+              Colors.transparent,
+            ],
+            stops: const [0.0, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 32, 16, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.movie != null)
+                  PlayerTitleMeta(
+                    title: _trailer.name,
+                    movie: widget.movie,
+                  )
+                else
+                  Text(
+                    _trailer.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                CustomSeekbar(
+                  duration: _duration,
+                  position: _position,
+                  onSeek: _seek,
+                  tvFocusable: tvFocus,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        PlayerFlatIconButton(
+                          tvFocusable: tvFocus,
+                          focusNode: tvFocus ? _playFocus : null,
+                          icon: _showReplayControl
+                              ? Icons.replay_rounded
+                              : _playing
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                          tooltip: _showReplayControl
+                              ? 'Replay'
+                              : _playing
+                                  ? 'Pause'
+                                  : 'Play',
+                          onPressed: () {
+                            if (!_ready) return;
+                            unawaited(_togglePlayPause());
+                          },
+                        ),
+                        const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          tvFocusable: tvFocus,
+                          icon: Icons.replay_10_rounded,
+                          tooltip: 'Back 10s',
+                          onPressed: () {
+                            if (!_ready) return;
+                            unawaited(_skip(-10));
+                          },
+                        ),
+                        const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          tvFocusable: tvFocus,
+                          icon: Icons.forward_10_rounded,
+                          tooltip: 'Forward 10s',
+                          onPressed: () {
+                            if (!_ready) return;
+                            unawaited(_skip(10));
+                          },
+                        ),
+                        const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          tvFocusable: tvFocus,
+                          icon: _muted
+                              ? Icons.volume_off_rounded
+                              : Icons.volume_up_rounded,
+                          tooltip: 'Mute',
+                          onPressed: () {
+                            if (!_ready) return;
+                            unawaited(_toggleMute());
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        PlayerTimeRange(
+                          position: _position,
+                          duration: _duration,
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        PlayerFlatIconButton(
+                          tvFocusable: tvFocus,
+                          icon: Icons.audiotrack_rounded,
+                          tooltip: 'Audio',
+                          onPressedWithContext: _showAudioMenu,
+                        ),
+                        const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          tvFocusable: tvFocus,
+                          icon: Icons.subtitles_outlined,
+                          tooltip: 'Subtitles',
+                          onPressedWithContext: _showSubtitleMenu,
+                        ),
+                        const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          tvFocusable: tvFocus,
+                          icon: Icons.hd_outlined,
+                          tooltip: 'Quality',
+                          onPressedWithContext: _showQualityMenu,
+                        ),
+                        const SizedBox(width: 2),
+                        PlayerFlatIconButton(
+                          tvFocusable: tvFocus,
+                          icon: Icons.speed_rounded,
+                          tooltip: 'Playback speed',
+                          onPressedWithContext: _showSpeedMenu,
+                        ),
+                        if (!_ready) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            'Loading…',
+                            style: TextStyle(
+                              color: ForjaShellColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (!excludeFromTraversal) return chrome;
+    return ExcludeFocus(child: chrome);
   }
 }

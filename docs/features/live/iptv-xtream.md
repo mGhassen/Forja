@@ -42,6 +42,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - **Portals** panel on the right (desktop / Android TV) holds scrape, add, and the full portal list — search filters by name or URL
 - Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays cached until you hit the hover **Reload** control
 - On **Android TV**, search fields focus in browse mode first — press **Enter** on the remote to open the keyboard, then type
+- On **Android TV**, D-pad moves **Live / Movies / Series** → categories → streams; with the **Portals** panel open, **Right** from the stream grid (or portal button) enters the portal list, **Left** from a portal row returns to the catalog, **Right** on a focused portal row reaches **copy / edit / delete**
 - Press **Back** / **Escape** to close the Portals panel before leaving the tab
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests

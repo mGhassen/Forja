@@ -12,6 +12,21 @@ bool iptvUseTvFocus(BuildContext context) {
   return resolveShellProfile(context) == ShellProfile.tv;
 }
 
+/// D-pad / hover active state for IPTV focusable controls.
+bool iptvFocusActive(
+  BuildContext context, {
+  required bool hovered,
+  required bool focused,
+}) =>
+    ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: hovered,
+      focused: focused,
+    );
+
+/// Idle tint → white when focused/hovered (no scale).
+Color iptvFocusFg(Color idle, bool active) => active ? Colors.white : idle;
+
 /// Focus a registered IPTV row item (restores last index when [index] is null).
 bool iptvFocusRowItem(String rowId, [int? index]) {
   final handle = ShellTvFocusCoordinator.rowHandle('iptv', rowId);
@@ -20,12 +35,22 @@ bool iptvFocusRowItem(String rowId, [int? index]) {
   return ShellTvFocusCoordinator.focusRowItem('iptv', rowId, idx);
 }
 
+/// Restore IPTV catalog focus when returning from the nav rail (RIGHT / Enter).
+bool iptvRestoreCatalogFocus({int? portalIndex}) {
+  if (iptvFocusRowItem('portals', portalIndex ?? 0)) return true;
+  if (iptvFocusRowItem('iptv-sections', 0)) return true;
+  if (iptvFocusRowItem('browser-categories', 0)) return true;
+  if (iptvFocusRowItem('browser-streams', 0)) return true;
+  if (iptvFocusRowItem('iptv-open-portal', 0)) return true;
+  return false;
+}
+
 Widget iptvTap({
   required BuildContext context,
   required Widget child,
   VoidCallback? onTap,
   double borderRadius = 12,
-  double scaleOnFocus = ShellTokens.focusActiveScale,
+  double? scaleOnFocus,
   int? listIndex,
   int? gridIndex,
   int? gridColumns,
@@ -43,11 +68,13 @@ Widget iptvTap({
   bool showFocusBorder = false,
 }) {
   if (onTap == null) return child;
+  final resolvedScale = scaleOnFocus ??
+      (iptvUseTvFocus(context) ? 1.0 : ShellTokens.focusActiveScale);
   return shellFocusableTap(
     context: context,
     onTap: onTap,
     borderRadius: borderRadius,
-    scaleOnFocus: scaleOnFocus,
+    scaleOnFocus: resolvedScale,
     listIndex: listIndex,
     gridIndex: gridIndex,
     gridColumns: gridColumns,
@@ -99,18 +126,14 @@ Widget iptvBackButton(
 }) {
   if (onTap == null) return const SizedBox.shrink();
   if (iptvUseTvFocus(context)) {
-    return iptvTap(
-      context: context,
+    return _IptvFocusIconTap(
+      icon: Icons.arrow_back_rounded,
       onTap: onTap,
+      idleColor: color,
+      size: size,
+      hitSize: size + 12,
       borderRadius: 22,
-      scaleOnFocus: 1.0,
-      child: ForjaPlainIcon(
-        icon: Icons.arrow_back_rounded,
-        color: color,
-        size: size,
-        hoverScale: 1.15,
-        tooltip: tooltip,
-      ),
+      tooltip: tooltip,
     );
   }
   return ForjaPlainIcon(
@@ -130,30 +153,94 @@ Widget iptvCloseButton(
   double size = 18,
   double hitSize = 32,
 }) {
-  final btn = ForjaCloseButton.compact(
+  if (onTap == null) return const SizedBox.shrink();
+  final idle = color ?? Colors.white54;
+  if (iptvUseTvFocus(context)) {
+    return _IptvFocusIconTap(
+      icon: Icons.close_rounded,
+      onTap: onTap,
+      idleColor: idle,
+      size: size,
+      hitSize: hitSize,
+      borderRadius: hitSize / 2,
+    );
+  }
+  return ForjaCloseButton.compact(
     tooltip: null,
-    color: color ?? Colors.white54,
+    color: idle,
     size: size,
     hitSize: hitSize,
-    onTap: iptvUseTvFocus(context) ? null : onTap,
-  );
-  if (onTap == null) return btn;
-  if (!iptvUseTvFocus(context)) return btn;
-  return iptvTap(
-    context: context,
     onTap: onTap,
-    borderRadius: hitSize / 2,
-    scaleOnFocus: 1.0,
-    child: btn,
   );
 }
 
-class IptvIconAction extends StatelessWidget {
+class _IptvFocusIconTap extends StatefulWidget {
+  const _IptvFocusIconTap({
+    required this.icon,
+    required this.onTap,
+    required this.idleColor,
+    required this.size,
+    required this.hitSize,
+    required this.borderRadius,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Color idleColor;
+  final double size;
+  final double hitSize;
+  final double borderRadius;
+  final String? tooltip;
+
+  @override
+  State<_IptvFocusIconTap> createState() => _IptvFocusIconTapState();
+}
+
+class _IptvFocusIconTapState extends State<_IptvFocusIconTap> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _active =>
+      iptvFocusActive(context, hovered: _hovered, focused: _focused);
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(
+      widget.icon,
+      size: widget.size,
+      color: iptvFocusFg(widget.idleColor, _active),
+    );
+    final child = SizedBox(
+      width: widget.hitSize,
+      height: widget.hitSize,
+      child: Center(child: icon),
+    );
+    final tap = iptvTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: widget.borderRadius,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: child,
+    );
+    if (widget.tooltip == null) return tap;
+    return Tooltip(message: widget.tooltip!, child: tap);
+  }
+}
+
+class IptvIconAction extends StatefulWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
   final Color? color;
   final double iconSize;
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final ShellTvZone? tvZone;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   const IptvIconAction({
     super.key,
@@ -162,35 +249,60 @@ class IptvIconAction extends StatelessWidget {
     required this.onPressed,
     this.color,
     this.iconSize = 24,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.tvZone,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   @override
+  State<IptvIconAction> createState() => _IptvIconActionState();
+}
+
+class _IptvIconActionState extends State<IptvIconAction> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _active =>
+      iptvFocusActive(context, hovered: _hovered, focused: _focused);
+
+  @override
   Widget build(BuildContext context) {
-    final resolvedColor = color ?? IptvShellStyle.accent;
+    final idle = widget.color ?? IptvShellStyle.accent;
+    final fg = iptvFocusFg(idle, _active);
     if (iptvUseTvFocus(context)) {
       return iptvTap(
         context: context,
-        onTap: onPressed,
+        onTap: widget.onPressed,
         borderRadius: 24,
-        scaleOnFocus: 1.0,
+        tvRowId: widget.tvRowId,
+        tvItemIndex: widget.tvItemIndex,
+        tvZone: widget.tvZone,
+        onDownEdge: widget.onDownEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: (hovered) => setState(() => _hovered = hovered),
         child: Tooltip(
-          message: tooltip,
+          message: widget.tooltip,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Icon(icon, color: resolvedColor, size: iconSize),
+            child: Icon(widget.icon, color: fg, size: widget.iconSize),
           ),
         ),
       );
     }
     return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, color: resolvedColor, size: iconSize),
+      tooltip: widget.tooltip,
+      onPressed: widget.onPressed,
+      icon: Icon(widget.icon, color: idle, size: widget.iconSize),
     );
   }
 }
 
-class IptvTextAction extends StatelessWidget {
+class IptvTextAction extends StatefulWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
@@ -205,31 +317,44 @@ class IptvTextAction extends StatelessWidget {
   });
 
   @override
+  State<IptvTextAction> createState() => _IptvTextActionState();
+}
+
+class _IptvTextActionState extends State<IptvTextAction> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _active =>
+      iptvFocusActive(context, hovered: _hovered, focused: _focused);
+
+  @override
   Widget build(BuildContext context) {
-    final fg = color ?? IptvShellStyle.accent;
+    final idle = widget.color ?? IptvShellStyle.accent;
+    final fg = iptvFocusFg(idle, _active);
     if (iptvUseTvFocus(context)) {
       return iptvTap(
         context: context,
-        onTap: onPressed,
+        onTap: widget.onPressed,
         borderRadius: 8,
-        scaleOnFocus: 1.0,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: (hovered) => setState(() => _hovered = hovered),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: fg, size: 18),
+              Icon(widget.icon, color: fg, size: 18),
               const SizedBox(width: 6),
-              Text(label, style: GoogleFonts.poppins(color: fg)),
+              Text(widget.label, style: GoogleFonts.poppins(color: fg)),
             ],
           ),
         ),
       );
     }
     return TextButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, color: fg, size: 18),
-      label: Text(label, style: GoogleFonts.poppins(color: fg)),
+      onPressed: widget.onPressed,
+      icon: Icon(widget.icon, color: idle, size: 18),
+      label: Text(widget.label, style: GoogleFonts.poppins(color: idle)),
     );
   }
 }
@@ -345,7 +470,6 @@ class IptvRoundIcon extends StatelessWidget {
           context: context,
           onTap: onTap,
           borderRadius: size / 2,
-          scaleOnFocus: 1.08,
           tvRowId: tvRowId,
           tvItemIndex: tvItemIndex,
           child: child,
