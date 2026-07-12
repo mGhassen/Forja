@@ -490,6 +490,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   bool _playerReady = false;
   bool _disposed = false;
   int _fallbackGen = 0;
+  final Map<String, int> _providerLoadGens = {};
   bool _historySaved = false;
   bool _hasError = false;
   String _errorMessage = '';
@@ -2651,6 +2652,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       providerProbesNotifier: widget.providerProbesNotifier,
       statusController: _statusController,
       readState: _streamMenuState,
+      onLoadProvider: _loadProvider,
       onSelectProvider: _switchProvider,
       onSelectSource: _switchToStreamSource,
       anchorContext: anchorContext,
@@ -3687,6 +3689,43 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         },
       ),
     );
+  }
+
+  Future<List<StreamSource>?> _loadProvider(String providerId) async {
+    final cached = widget.providerSourcesCache?.value[providerId];
+    if (cached != null && cached.isNotEmpty) return cached;
+
+    final gen = (_providerLoadGens[providerId] ?? 0) + 1;
+    _providerLoadGens[providerId] = gen;
+
+    try {
+      if (widget.movie == null || widget.providers == null) return null;
+      final hit = await PlayerSourceResolve.resolvePinnedForMovie(
+        movie: widget.movie!,
+        providers: widget.providers!,
+        providerId: providerId,
+        season: widget.selectedSeason ?? 1,
+        episode: widget.selectedEpisode ?? 1,
+        isCancelled: () => (_providerLoadGens[providerId] ?? 0) != gen,
+      );
+      if ((_providerLoadGens[providerId] ?? 0) != gen) return null;
+      if (hit != null && hit.streamSources.isNotEmpty) {
+        final sources = dedupeStreamSources(hit.streamSources);
+        widget.providerSourcesCache?.value = {
+          ...?widget.providerSourcesCache?.value,
+          providerId: sources,
+        };
+        _sourceMenuRevision.value++;
+        return sources;
+      }
+      _sourceMenuRevision.value++;
+      return null;
+    } catch (_) {
+      if ((_providerLoadGens[providerId] ?? 0) == gen) {
+        _sourceMenuRevision.value++;
+      }
+      return null;
+    }
   }
 
   Future<List<StreamSource>?> _switchProvider(String newProvider) async {

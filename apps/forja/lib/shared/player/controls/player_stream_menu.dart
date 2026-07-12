@@ -36,6 +36,8 @@ class PlayerStreamMenuState {
 
 /// Unified server + source picker — right-side panel with grouped providers.
 class PlayerStreamMenu {
+  static const _statusSlot = 18.0;
+
   static OverlayEntry? _entry;
   static Completer<void>? _completer;
 
@@ -90,6 +92,8 @@ class PlayerStreamMenu {
     PlayerStatusController? statusController,
     required PlayerStreamMenuState Function() readState,
     required Future<List<StreamSource>?> Function(String providerId)
+        onLoadProvider,
+    required Future<List<StreamSource>?> Function(String providerId)
         onSelectProvider,
     required Future<void> Function(StreamSource source, int index)
         onSelectSource,
@@ -132,6 +136,7 @@ class PlayerStreamMenu {
           providerProbesNotifier: providerProbesNotifier,
           statusController: statusController,
           readState: readState,
+          onLoadProvider: onLoadProvider,
           onSelectProvider: onSelectProvider,
           onSelectSource: onSelectSource,
           providersEnabled: providersEnabled,
@@ -147,85 +152,6 @@ class PlayerStreamMenu {
     return _completer!.future;
   }
 
-  static Widget _buildServerGroup({
-    required String providerId,
-    required dynamic provider,
-    required PlayerStreamMenuState state,
-    required List<StreamProviderProbe> probes,
-    PlayerStatusController? statusController,
-    required List<StreamSource>? cachedSources,
-    required bool providersEnabled,
-    required Future<List<StreamSource>?> Function(String providerId)
-        onSelectProvider,
-    required Future<void> Function(StreamSource source, int index)
-        onSelectSource,
-  }) {
-    final isCurrent = providerId == state.currentProviderId;
-    final sectionSources = isCurrent
-        ? (state.sources ?? const <StreamSource>[])
-        : (cachedSources ?? const <StreamSource>[]);
-    final status = _providerStatus(
-      providerId,
-      probes,
-      isCurrent: isCurrent,
-      statusController: statusController,
-      playbackConfirmed: state.playbackConfirmed,
-    );
-    final flags = StreamProviderDisplay.countryFlags(
-      providerId,
-      contentLanguage: _contentLanguage(provider),
-    );
-    final label = PlayerProviderMenu.snackbarLabel(providerId, provider);
-    final subtitle = _providerSubtitle(
-      status: status,
-      sourceCount: sectionSources.length,
-      providersEnabled: providersEnabled,
-      isCurrent: isCurrent,
-      playbackConfirmed: state.playbackConfirmed,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SectionHeader(
-          label: flags.isEmpty ? label : '$flags  $label',
-          subtitle: subtitle,
-          status: status,
-          isCurrent: isCurrent && state.playbackConfirmed,
-        ),
-        if (sectionSources.isEmpty)
-          _FlatMenuRow(
-            label: providersEnabled ? 'Load streams' : 'Unavailable',
-            selected: false,
-            status: status ?? PlayerSourceStatus.ready,
-            onTap: providersEnabled
-                ? () => unawaited(onSelectProvider(providerId))
-                : null,
-          )
-        else
-          _sourcesList(
-            sources: sectionSources,
-            state: state,
-            useIndexedStatuses: isCurrent,
-            onSelectSource: (source, index) async {
-              dismiss();
-              if (!isCurrent) {
-                final loaded = await onSelectProvider(providerId);
-                final pool = loaded ?? sectionSources;
-                final targetIndex =
-                    pool.indexWhere((s) => s.url == source.url);
-                if (targetIndex >= 0) {
-                  await onSelectSource(pool[targetIndex], targetIndex);
-                  return;
-                }
-              }
-              await onSelectSource(source, index);
-            },
-          ),
-      ],
-    );
-  }
-
   static Widget _sourcesList({
     required List<StreamSource> sources,
     required PlayerStreamMenuState state,
@@ -234,7 +160,12 @@ class PlayerStreamMenu {
     bool useIndexedStatuses = false,
   }) {
     final statuses = state.sourceStatuses;
-    final ordered = _orderedSourceEntries(sources, state);
+    final ordered = _orderedSourceEntries(
+      sources,
+      state,
+      statuses: statuses,
+      useStatuses: useIndexedStatuses,
+    );
     return Column(
       children: [
         for (final entry in ordered)
@@ -255,31 +186,86 @@ class PlayerStreamMenu {
   }
 
   static List<MapEntry<String, dynamic>> _orderedProviderEntries(
-    Map<String, dynamic> providers,
-    String? currentProviderId,
-  ) {
+    Map<String, dynamic> providers, {
+    required PlayerStreamMenuState state,
+    required List<StreamProviderProbe> probes,
+    required Map<String, List<StreamSource>> cache,
+    required Set<String> loadingProviders,
+    required Set<String> failedProviders,
+    PlayerStatusController? statusController,
+  }) {
     final entries = providers.entries.toList();
-    if (currentProviderId == null ||
-        !providers.containsKey(currentProviderId)) {
-      return entries;
+
+    final scoreIndex = <String, int>{};
+    for (var i = 0; i < probes.length; i++) {
+      scoreIndex[probes[i].id] = i;
     }
+    for (var i = 0; i < entries.length; i++) {
+      scoreIndex.putIfAbsent(entries[i].key, () => probes.length + i);
+    }
+
+    int tier(String providerId) {
+      final isCurrent = providerId == state.currentProviderId;
+      if (isCurrent && state.playbackConfirmed) return 0;
+
+      final status = _resolveProviderStatus(
+        providerId,
+        probes: probes,
+        isCurrent: isCurrent,
+        statusController: statusController,
+        playbackConfirmed: state.playbackConfirmed,
+        loadingProviders: loadingProviders,
+        failedProviders: failedProviders,
+      );
+      final sectionSources = isCurrent
+          ? (state.sources ?? const <StreamSource>[])
+          : (cache[providerId] ?? const <StreamSource>[]);
+
+      if (sectionSources.isNotEmpty ||
+          status == PlayerSourceStatus.ready ||
+          status == PlayerSourceStatus.active) {
+        return 1;
+      }
+      if (status == PlayerSourceStatus.checking) return 2;
+      if (status == PlayerSourceStatus.failed) return 4;
+      return 3;
+    }
+
     entries.sort((a, b) {
-      if (a.key == currentProviderId) return -1;
-      if (b.key == currentProviderId) return 1;
-      return 0;
+      final tierDiff = tier(a.key).compareTo(tier(b.key));
+      if (tierDiff != 0) return tierDiff;
+      return (scoreIndex[a.key] ?? 999).compareTo(scoreIndex[b.key] ?? 999);
     });
     return entries;
   }
 
   static List<MapEntry<int, StreamSource>> _orderedSourceEntries(
     List<StreamSource> sources,
-    PlayerStreamMenuState state,
-  ) {
+    PlayerStreamMenuState state, {
+    List<PlayerSourceStatus> statuses = const [],
+    bool useStatuses = false,
+  }) {
     final entries = sources.asMap().entries.toList();
+
+    int tier(int index, StreamSource source) {
+      if (_isCurrentSource(source, state) && state.playbackConfirmed) {
+        return 0;
+      }
+      if (useStatuses && index < statuses.length) {
+        return switch (statuses[index]) {
+          PlayerSourceStatus.active => 0,
+          PlayerSourceStatus.ready => 1,
+          PlayerSourceStatus.checking => 2,
+          PlayerSourceStatus.failed => 3,
+        };
+      }
+      if (_isCurrentSource(source, state)) return 1;
+      return 1;
+    }
+
     entries.sort((a, b) {
-      final aCurrent = _isCurrentSource(a.value, state);
-      final bCurrent = _isCurrentSource(b.value, state);
-      if (aCurrent != bCurrent) return aCurrent ? -1 : 1;
+      final tierDiff = tier(a.key, a.value).compareTo(tier(b.key, b.value));
+      if (tierDiff != 0) return tierDiff;
       return a.key.compareTo(b.key);
     });
     return entries;
@@ -301,14 +287,22 @@ class PlayerStreamMenu {
     return raw.map((e) => e.toString()).toList();
   }
 
-  static PlayerSourceStatus? _providerStatus(
-    String providerId,
-    List<StreamProviderProbe> probes, {
+  static PlayerSourceStatus _resolveProviderStatus(
+    String providerId, {
+    required List<StreamProviderProbe> probes,
     required bool isCurrent,
     PlayerStatusController? statusController,
     bool playbackConfirmed = false,
+    required Set<String> loadingProviders,
+    required Set<String> failedProviders,
   }) {
     if (isCurrent && playbackConfirmed) return PlayerSourceStatus.active;
+    if (loadingProviders.contains(providerId)) {
+      return PlayerSourceStatus.checking;
+    }
+    if (failedProviders.contains(providerId)) {
+      return PlayerSourceStatus.failed;
+    }
 
     final fromController = _providerStatusFromController(
       providerId,
@@ -319,13 +313,13 @@ class PlayerStreamMenu {
     for (final probe in probes) {
       if (probe.id != providerId) continue;
       return switch (probe.status) {
-        StreamProviderProbeStatus.pending => null,
+        StreamProviderProbeStatus.pending => PlayerSourceStatus.ready,
         StreamProviderProbeStatus.trying => PlayerSourceStatus.checking,
         StreamProviderProbeStatus.failed => PlayerSourceStatus.failed,
         StreamProviderProbeStatus.success => PlayerSourceStatus.ready,
       };
     }
-    return null;
+    return PlayerSourceStatus.ready;
   }
 
   static PlayerSourceStatus? _providerStatusFromController(
@@ -346,32 +340,98 @@ class PlayerStreamMenu {
   }
 
   static String? _providerSubtitle({
-    required PlayerSourceStatus? status,
     required int sourceCount,
-    required bool providersEnabled,
-    required bool isCurrent,
-    required bool playbackConfirmed,
+    required bool isPlaying,
   }) {
-    if (isCurrent && playbackConfirmed) return 'Playing now';
-    if (sourceCount > 0 &&
-        status != PlayerSourceStatus.checking &&
-        status != PlayerSourceStatus.failed) {
+    if (isPlaying) return 'Playing now';
+    if (sourceCount > 0) {
       return '$sourceCount stream${sourceCount == 1 ? '' : 's'}';
     }
-    return switch (status) {
-      PlayerSourceStatus.checking => 'Checking…',
-      PlayerSourceStatus.failed => 'Unavailable',
-      PlayerSourceStatus.ready =>
-        providersEnabled ? 'Not loaded' : 'Unavailable',
-      PlayerSourceStatus.active => 'Playing now',
-      null => providersEnabled ? 'Not loaded' : 'Unavailable',
+    return null;
+  }
+
+  static Widget _statusGlyph({
+    required PlayerSourceStatus status,
+    required bool isPlaying,
+    required bool isLoaded,
+  }) {
+    if (isPlaying) {
+      return _statusGlyphFor(PlayerSourceStatus.active);
+    }
+    if (status == PlayerSourceStatus.checking) {
+      return _statusGlyphFor(PlayerSourceStatus.checking);
+    }
+    if (status == PlayerSourceStatus.failed) {
+      return _statusGlyphFor(PlayerSourceStatus.failed);
+    }
+    if (isLoaded) {
+      return _statusGlyphFor(PlayerSourceStatus.active, dotOnly: true);
+    }
+    return const SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Center(
+        child: Text(
+          '...',
+          style: TextStyle(
+            color: Colors.white38,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+            height: 1,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _statusGlyphFor(
+    PlayerSourceStatus status, {
+    bool dotOnly = false,
+  }) {
+    final color = playerSourceStatusColor(status);
+    final Widget glyph = switch (status) {
+      PlayerSourceStatus.active when !dotOnly => Icon(
+          Icons.play_circle_filled_rounded,
+          color: color,
+          size: _statusSlot,
+        ),
+      PlayerSourceStatus.active => Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+      PlayerSourceStatus.failed => Icon(
+          Icons.cancel_rounded,
+          color: color,
+          size: _statusSlot,
+        ),
+      PlayerSourceStatus.checking => SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(strokeWidth: 2, color: color),
+        ),
+      PlayerSourceStatus.ready => Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
     };
+    return SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Center(child: glyph),
+    );
   }
 }
 
 class _StreamMenuOverlay extends StatefulWidget {
   const _StreamMenuOverlay({
     required this.readState,
+    required this.onLoadProvider,
     required this.onSelectProvider,
     required this.onSelectSource,
     required this.onClose,
@@ -390,6 +450,7 @@ class _StreamMenuOverlay extends StatefulWidget {
   final ValueListenable<List<StreamProviderProbe>>? providerProbesNotifier;
   final PlayerStatusController? statusController;
   final PlayerStreamMenuState Function() readState;
+  final Future<List<StreamSource>?> Function(String providerId) onLoadProvider;
   final Future<List<StreamSource>?> Function(String providerId) onSelectProvider;
   final Future<void> Function(StreamSource source, int index) onSelectSource;
   final bool providersEnabled;
@@ -404,6 +465,9 @@ class _StreamMenuOverlay extends StatefulWidget {
 
 class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   bool _open = false;
+  final Set<String> _loadingProviders = {};
+  final Set<String> _failedProviders = {};
+  final Map<String, int> _loadGens = {};
 
   @override
   void initState() {
@@ -416,10 +480,219 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   bool get _hasProviders =>
       widget.providers != null && widget.providers!.isNotEmpty;
 
+  List<StreamSource> _sectionSources({
+    required String providerId,
+    required PlayerStreamMenuState state,
+    required Map<String, List<StreamSource>> cache,
+  }) {
+    final isCurrent = providerId == state.currentProviderId;
+    return isCurrent
+        ? (state.sources ?? const <StreamSource>[])
+        : (cache[providerId] ?? const <StreamSource>[]);
+  }
+
+  Future<void> _tapServer({
+    required String providerId,
+    required PlayerStreamMenuState state,
+    required Map<String, List<StreamSource>> cache,
+  }) async {
+    if (!widget.providersEnabled) return;
+
+    final sources = _sectionSources(
+      providerId: providerId,
+      state: state,
+      cache: cache,
+    );
+    if (sources.isNotEmpty || _loadingProviders.contains(providerId)) return;
+
+    final gen = (_loadGens[providerId] ?? 0) + 1;
+    _loadGens[providerId] = gen;
+    setState(() {
+      _loadingProviders.add(providerId);
+      _failedProviders.remove(providerId);
+    });
+
+    try {
+      final loaded = await widget.onLoadProvider(providerId);
+      if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
+      setState(() {
+        _loadingProviders.remove(providerId);
+        if (loaded == null || loaded.isEmpty) {
+          _failedProviders.add(providerId);
+        } else {
+          _failedProviders.remove(providerId);
+        }
+      });
+    } catch (_) {
+      if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
+      setState(() {
+        _loadingProviders.remove(providerId);
+        _failedProviders.add(providerId);
+      });
+    }
+  }
+
+  Widget _buildServerGroup({
+    required String providerId,
+    required dynamic provider,
+    required PlayerStreamMenuState state,
+    required List<StreamProviderProbe> probes,
+    required Map<String, List<StreamSource>> cache,
+  }) {
+    final isCurrent = providerId == state.currentProviderId;
+    final isPlaying = isCurrent && state.playbackConfirmed;
+    final sectionSources = _sectionSources(
+      providerId: providerId,
+      state: state,
+      cache: cache,
+    );
+    final isLoaded = sectionSources.isNotEmpty;
+    final status = PlayerStreamMenu._resolveProviderStatus(
+      providerId,
+      probes: probes,
+      isCurrent: isCurrent,
+      statusController: widget.statusController,
+      playbackConfirmed: state.playbackConfirmed,
+      loadingProviders: _loadingProviders,
+      failedProviders: _failedProviders,
+    );
+    final flags = StreamProviderDisplay.countryFlags(
+      providerId,
+      contentLanguage: PlayerStreamMenu._contentLanguage(provider),
+    );
+    final label = PlayerProviderMenu.snackbarLabel(providerId, provider);
+    final subtitle = PlayerStreamMenu._providerSubtitle(
+      sourceCount: sectionSources.length,
+      isPlaying: isPlaying,
+    );
+    final canLoad = widget.providersEnabled &&
+        !isLoaded &&
+        status != PlayerSourceStatus.checking;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Material(
+          color: isPlaying
+              ? playerSourceStatusColor(PlayerSourceStatus.active)
+                  .withValues(alpha: 0.07)
+              : Colors.transparent,
+          child: InkWell(
+            onTap: canLoad
+                ? () => unawaited(
+                      _tapServer(
+                        providerId: providerId,
+                        state: state,
+                        cache: cache,
+                      ),
+                    )
+                : null,
+            hoverColor: ForjaShellColors.inkHover,
+            splashColor: ForjaShellColors.inkSplash,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  PlayerStreamMenu._statusGlyph(
+                    status: status,
+                    isPlaying: isPlaying,
+                    isLoaded: isLoaded,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          flags.isEmpty ? label : '$flags  $label',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isPlaying
+                                ? Colors.white
+                                : status == PlayerSourceStatus.failed
+                                    ? Colors.white.withValues(alpha: 0.42)
+                                    : isLoaded
+                                        ? Colors.white.withValues(alpha: 0.92)
+                                        : Colors.white.withValues(alpha: 0.62),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            height: 1.25,
+                            decoration: status == PlayerSourceStatus.failed
+                                ? TextDecoration.lineThrough
+                                : null,
+                            decorationColor: Colors.white38,
+                          ),
+                        ),
+                        if (subtitle != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              subtitle,
+                              style: TextStyle(
+                                color: isPlaying
+                                    ? playerSourceStatusColor(
+                                        PlayerSourceStatus.active,
+                                      )
+                                    : Colors.white.withValues(alpha: 0.42),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (isLoaded)
+          PlayerStreamMenu._sourcesList(
+            sources: sectionSources,
+            state: state,
+            useIndexedStatuses: isCurrent,
+            onSelectSource: (source, index) async {
+              PlayerStreamMenu.dismiss();
+              if (!isCurrent) {
+                final loaded = await widget.onSelectProvider(providerId);
+                final pool = loaded ?? sectionSources;
+                final targetIndex =
+                    pool.indexWhere((s) => s.url == source.url);
+                if (targetIndex >= 0) {
+                  await widget.onSelectSource(pool[targetIndex], targetIndex);
+                  return;
+                }
+              }
+              await widget.onSelectSource(source, index);
+            },
+          ),
+      ],
+    );
+  }
+
   Widget _buildList() {
     final state = widget.readState();
     final probes = widget.providerProbesNotifier?.value ?? const [];
     final cache = widget.providerSourcesCache?.value ?? const {};
+
+    // Clear stale loading flags when cache fills from outside the panel.
+    final loadedWhileLoading = _loadingProviders
+        .where((id) => (cache[id]?.isNotEmpty ?? false))
+        .toList();
+    if (loadedWhileLoading.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          for (final id in loadedWhileLoading) {
+            _loadingProviders.remove(id);
+            _failedProviders.remove(id);
+          }
+        });
+      });
+    }
 
     if (!_hasProviders) {
       return PlayerStreamMenu._sourcesList(
@@ -432,7 +705,12 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
 
     final orderedProviders = PlayerStreamMenu._orderedProviderEntries(
       widget.providers!,
-      state.currentProviderId,
+      state: state,
+      probes: probes,
+      cache: cache,
+      loadingProviders: _loadingProviders,
+      failedProviders: _failedProviders,
+      statusController: widget.statusController,
     );
 
     return ListView(
@@ -447,16 +725,12 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                 color: Colors.white.withValues(alpha: 0.08),
               ),
             ),
-          PlayerStreamMenu._buildServerGroup(
+          _buildServerGroup(
             providerId: orderedProviders[i].key,
             provider: orderedProviders[i].value,
             state: state,
             probes: probes,
-            statusController: widget.statusController,
-            cachedSources: cache[orderedProviders[i].key],
-            providersEnabled: widget.providersEnabled,
-            onSelectProvider: widget.onSelectProvider,
-            onSelectSource: widget.onSelectSource,
+            cache: cache,
           ),
         ],
       ],
@@ -529,87 +803,6 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       enableBlur: false,
       child: _buildBody(),
     );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.label,
-    this.subtitle,
-    this.status,
-    this.isCurrent = false,
-  });
-
-  final String label;
-  final String? subtitle;
-  final PlayerSourceStatus? status;
-  final bool isCurrent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isCurrent
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.88),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    height: 1.25,
-                  ),
-                ),
-                if (subtitle != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      subtitle!,
-                      style: TextStyle(
-                        color: _subtitleColor(status),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          if (status == PlayerSourceStatus.checking)
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: playerSourceStatusColor(status!),
-              ),
-            )
-          else if (isCurrent)
-            Icon(
-              Icons.play_arrow_rounded,
-              size: 18,
-              color: playerSourceStatusColor(PlayerSourceStatus.active),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Color _subtitleColor(PlayerSourceStatus? status) {
-    if (status == PlayerSourceStatus.checking ||
-        status == PlayerSourceStatus.failed) {
-      return playerSourceStatusColor(status!);
-    }
-    return Colors.white.withValues(alpha: 0.42);
   }
 }
 

@@ -78,6 +78,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
   int _gridFocusedIndex = 0;
   int? _pendingGridFocusIndex;
   bool _searchFieldEditing = false;
+  bool _initialFocusScheduled = false;
   ModalRoute<void>? _route;
   AnimationStatusListener? _routeAnimationListener;
 
@@ -92,26 +93,38 @@ class _HubSearchPageState extends State<HubSearchPage> {
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
     ShellBus.shellOverlayHasPage.addListener(_onShellOverlayChanged);
     _loadRecommendations();
-    _ensureSearchFieldFocused();
+  }
+
+  void _scheduleEnsureSearchFieldFocused() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _ensureSearchFieldFocused();
+    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final route = ModalRoute.of(context);
-    if (route == _route) return;
-    _detachRouteAnimationListener();
-    _route = route;
-    final animation = route?.animation;
-    if (animation == null) return;
-    _routeAnimationListener = (status) {
-      if (status == AnimationStatus.completed && mounted) {
-        _ensureSearchFieldFocused();
+    if (route != _route) {
+      _detachRouteAnimationListener();
+      _route = route;
+      final animation = route?.animation;
+      if (animation != null) {
+        _routeAnimationListener = (status) {
+          if (status == AnimationStatus.completed && mounted) {
+            _scheduleEnsureSearchFieldFocused();
+          }
+        };
+        animation.addStatusListener(_routeAnimationListener!);
+        if (animation.isCompleted) {
+          _scheduleEnsureSearchFieldFocused();
+        }
       }
-    };
-    animation.addStatusListener(_routeAnimationListener!);
-    if (animation.isCompleted) {
-      _ensureSearchFieldFocused();
+    }
+
+    if (!_initialFocusScheduled) {
+      _initialFocusScheduled = true;
+      _scheduleEnsureSearchFieldFocused();
     }
   }
 
@@ -126,7 +139,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   void _onShellOverlayChanged() {
     if (ShellBus.shellOverlayHasPage.value) {
-      _ensureSearchFieldFocused();
+      _scheduleEnsureSearchFieldFocused();
     }
   }
 
@@ -160,7 +173,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
         itemCount: titles.length,
       );
       if (_query.isEmpty && _tvFocus(context)) {
-        _ensureSearchFieldFocused();
+        _scheduleEnsureSearchFieldFocused();
       }
     } catch (_) {}
   }
