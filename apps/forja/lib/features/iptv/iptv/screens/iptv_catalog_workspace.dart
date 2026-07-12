@@ -1082,7 +1082,7 @@ _PortalExpiryTone _portalExpiryTone(String expiry) {
   final end = _parsePortalExpiryDate(label);
   if (end == null) {
     return _PortalExpiryTone(
-      color: Colors.white54,
+      color: Colors.white38,
       label: label == 'Unknown' ? 'Ends: Unknown' : 'Ends: $label',
     );
   }
@@ -1093,13 +1093,13 @@ _PortalExpiryTone _portalExpiryTone(String expiry) {
 
   final Color color;
   if (days < 0) {
-    color = const Color(0xFFBC8F8F);
+    color = const Color(0xFFEF4444);
   } else if (days <= 7) {
-    color = const Color(0xFFB8A68E);
+    color = const Color(0xFFF59E0B);
   } else if (days <= 30) {
-    color = const Color(0xFFADAD9E);
+    color = const Color(0xFFEAB308);
   } else {
-    color = const Color(0xFF94AD9F);
+    color = const Color(0xFF22C55E);
   }
 
   final prefix = days < 0 ? 'Expired' : 'Ends';
