@@ -4,7 +4,7 @@
 
 ## What it is
 
-Home is the default tab when you first install Forja. It pulls metadata from TMDB and shows a hero carousel, mood/genre chips, and scrollable rows: trending, popular, top rated, now playing, and more. If you're logged into Trakt, you also get recommendations and TV/movie calendars. Stremio addon catalogs can appear as rails when addons are installed. You can change the startup tab by selecting its star in **Settings → Navigation Bar**.
+Home is the default tab when you first install Forja. It pulls metadata from TMDB and shows a hero carousel, mood circles (icon + label), and scrollable rows: trending, popular, top rated, now playing, and more. If you're logged into Trakt, you also get recommendations and TV/movie calendars. Stremio addon catalogs can appear as rails when addons are installed. You can change the startup tab by selecting its star in **Settings → Navigation Bar**.
 
 ## How to open it
 
@@ -15,7 +15,7 @@ Tap **Home** in the navigation bar (first tab by default).
 - Browse featured and trending movies and series
 - **Films / TV Shows / Categories** (desktop hero menu) filter every Home rail — hero, featured, popular, mood row, new releases, and the three genre rows at the bottom. With no tab selected, rows mix films and series; pick **Films** or **TV Shows** to limit all rails to that type. **Categories** narrows by TMDB genre (or **All** to clear).
 - See **Featured This Month** — popular titles released in the current month
-- Use mood/genre chips to filter what appears in rails
+- Pick a mood circle under **What's your mood?** to filter the mood results row
 - See **Tonight's Pick** and **Because you watched…** (BestSimilar) suggestions
 - Resume from **Continue watching** (local watch history)
 - Tap **Play** on the hero to auto-start **webstreaming** (best extractor) on the details screen — not torrent search

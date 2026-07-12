@@ -170,6 +170,7 @@ class _HomeScreenState extends State<HomeScreen>
     String id,
     String label,
     IconData icon,
+    Color accent,
     List<int> movieGenres,
     List<int> tvGenres,
   })> _moods = [
@@ -177,6 +178,7 @@ class _HomeScreenState extends State<HomeScreen>
       id: 'mind',
       label: 'Mind-Bending',
       icon: Icons.psychology_rounded,
+      accent: Color(0xFF8B5CF6),
       movieGenres: [878, 9648],
       tvGenres: [10765, 9648],
     ),
@@ -184,6 +186,7 @@ class _HomeScreenState extends State<HomeScreen>
       id: 'feel',
       label: 'Feel-Good',
       icon: Icons.wb_sunny_rounded,
+      accent: Color(0xFFFBBF24),
       movieGenres: [35, 10751],
       tvGenres: [35, 10751],
     ),
@@ -191,6 +194,7 @@ class _HomeScreenState extends State<HomeScreen>
       id: 'dark',
       label: 'Dark Thrillers',
       icon: Icons.dark_mode_rounded,
+      accent: Color(0xFF64748B),
       movieGenres: [53, 80],
       tvGenres: [80, 9648],
     ),
@@ -198,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen>
       id: 'romance',
       label: 'Romance',
       icon: Icons.favorite_rounded,
+      accent: Color(0xFFEC4899),
       movieGenres: [10749],
       tvGenres: [18],
     ),
@@ -205,6 +210,7 @@ class _HomeScreenState extends State<HomeScreen>
       id: 'horror',
       label: 'Horror',
       icon: Icons.bedtime_rounded,
+      accent: Color(0xFF7C3AED),
       movieGenres: [27],
       tvGenres: [10765, 9648],
     ),
@@ -212,6 +218,7 @@ class _HomeScreenState extends State<HomeScreen>
       id: 'action',
       label: 'Action',
       icon: Icons.local_fire_department_rounded,
+      accent: Color(0xFFF97316),
       movieGenres: [28, 12],
       tvGenres: [10759],
     ),
@@ -219,6 +226,7 @@ class _HomeScreenState extends State<HomeScreen>
       id: 'animated',
       label: 'Animated',
       icon: Icons.brush_rounded,
+      accent: Color(0xFF06B6D4),
       movieGenres: [16],
       tvGenres: [16],
     ),
@@ -226,6 +234,7 @@ class _HomeScreenState extends State<HomeScreen>
       id: 'drama',
       label: 'Drama',
       icon: Icons.theaters_rounded,
+      accent: Color(0xFF3B82F6),
       movieGenres: [18],
       tvGenres: [18],
     ),
@@ -3199,14 +3208,174 @@ class _StremioCatalogCard extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
-//  MOOD SECTION — chip filter + result row
+//  MOOD SECTION — circle picker + result row
 // ═══════════════════════════════════════════════════════════════════════════════
+
+/// Circular mood picker — layout matches details **Main Characters** cast row.
+class _HomeMoodCircleItem extends StatefulWidget {
+  const _HomeMoodCircleItem({
+    required this.label,
+    required this.icon,
+    required this.accent,
+    required this.selected,
+    required this.onTap,
+    this.listIndex,
+    this.tvTabId,
+    this.tvRowId,
+    this.onDownEdge,
+    this.onUpEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+  });
+
+  static const double circleSize = 72;
+  static const double itemWidth = 96;
+  static const double horizontalGap = 24;
+  static const double rowHeight = circleSize + 8 + 34;
+
+  final String label;
+  final IconData icon;
+  final Color accent;
+  final bool selected;
+  final VoidCallback? onTap;
+  final int? listIndex;
+  final String? tvTabId;
+  final String? tvRowId;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+
+  @override
+  State<_HomeMoodCircleItem> createState() => _HomeMoodCircleItemState();
+}
+
+class _HomeMoodCircleItemState extends State<_HomeMoodCircleItem> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool get _active => widget.selected || _hovered || _focused;
+
+  Widget _circle() {
+    final accent = widget.accent;
+    final bgAlpha = widget.selected ? 0.62 : (_active ? 0.42 : 0.22);
+    final borderColor = widget.selected
+        ? accent
+        : _active
+            ? accent.withValues(alpha: 0.95)
+            : accent.withValues(alpha: 0.35);
+    final iconSize = _active ? 34.0 : 26.0;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      width: _HomeMoodCircleItem.circleSize,
+      height: _HomeMoodCircleItem.circleSize,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: accent.withValues(alpha: bgAlpha),
+        border: Border.all(
+          color: borderColor,
+          width: widget.selected ? 2.5 : 1.5,
+        ),
+        boxShadow: _active
+            ? [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.4),
+                  blurRadius: 14,
+                ),
+              ]
+            : null,
+      ),
+      child: AnimatedScale(
+        scale: _active ? 1.12 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: Icon(
+          widget.icon,
+          size: iconSize,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _content() {
+    return SizedBox(
+      width: _HomeMoodCircleItem.itemWidth,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _circle(),
+          const SizedBox(height: 8),
+          Text(
+            widget.label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _active
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.72),
+              fontSize: 12.5,
+              fontWeight:
+                  widget.selected || _focused ? FontWeight.w700 : FontWeight.w600,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = _content();
+    final policy = ShellScope.inputPolicyOf(context);
+
+    if (policy.useFocusableMoodChips) {
+      return shellFocusableTap(
+        context: context,
+        onTap: widget.onTap,
+        borderRadius: _HomeMoodCircleItem.circleSize / 2,
+        scaleOnFocus: 1.0,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: policy.scaleOnHover
+            ? (hovered) => setState(() => _hovered = hovered)
+            : null,
+        listIndex: widget.listIndex,
+        tvTabId: widget.tvTabId,
+        tvRowId: widget.tvRowId,
+        tvItemIndex: widget.listIndex,
+        tvZone: ShellTvZone.chipStrip,
+        onDownEdge: widget.onDownEdge,
+        onUpEdge: widget.onUpEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
+        child: content,
+      );
+    }
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: content,
+      ),
+    );
+  }
+}
 
 class _MoodSection extends StatefulWidget {
   final List<({
     String id,
     String label,
     IconData icon,
+    Color accent,
     List<int> movieGenres,
     List<int> tvGenres,
   })> moods;
@@ -3234,6 +3403,75 @@ class _MoodSection extends StatefulWidget {
 class _MoodSectionState extends State<_MoodSection> {
   List<Movie>? _cachedResults;
 
+  double _moodRowContentWidth(int count) {
+    if (count <= 0) return 0;
+    return count * _HomeMoodCircleItem.itemWidth +
+        (count - 1) * _HomeMoodCircleItem.horizontalGap;
+  }
+
+  Widget _moodCircleItem({
+    required BuildContext context,
+    required int i,
+    required List<({
+      String id,
+      String label,
+      IconData icon,
+      Color accent,
+      List<int> movieGenres,
+      List<int> tvGenres,
+    })> moods,
+    required String selectedId,
+    required ValueChanged<String> onSelect,
+  }) {
+    final m = moods[i];
+    final isSelected = m.id == selectedId;
+    return _HomeMoodCircleItem(
+      label: m.label,
+      icon: m.icon,
+      accent: m.accent,
+      selected: isSelected,
+      listIndex: i,
+      tvTabId: 'home',
+      tvRowId: 'mood-chips',
+      onTap: () {
+        if (m.id != selectedId) {
+          onSelect(m.id);
+        } else if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+          ShellTvFocusCoordinator.focusFromChipStripDown(
+            tabId: 'home',
+            chipRowId: 'mood-chips',
+            resultsRowId: 'mood-results',
+          );
+        }
+      },
+      onLeftEdge: shellTvChipLeftEdge(
+        context,
+        tabId: 'home',
+        rowId: 'mood-chips',
+        index: i,
+      ),
+      onRightEdge: shellTvChipRightEdge(
+        tabId: 'home',
+        rowId: 'mood-chips',
+        index: i,
+        itemCount: moods.length,
+      ),
+      onUpEdge: () {
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: 'home',
+          rowId: 'mood-chips',
+          currentIndex: i,
+          down: false,
+        );
+      },
+      onDownEdge: shellTvChipDownToRow(
+        tabId: 'home',
+        chipRowId: 'mood-chips',
+        resultsRowId: 'mood-results',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final moods = widget.moods;
@@ -3260,7 +3498,7 @@ class _MoodSectionState extends State<_MoodSection> {
             style: ShellSectionTitle.titleStyle,
           ),
         ),
-        // Chip strip
+        // Mood circle strip — centered when it fits the viewport
         Builder(
           builder: (context) {
             if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
@@ -3271,118 +3509,60 @@ class _MoodSectionState extends State<_MoodSection> {
                 itemCount: moods.length,
               );
             }
-            return FocusTraversalGroup(
-              policy: OrderedTraversalPolicy(),
-              child: HorizontalScroller(
-                height: 40,
-                padding: EdgeInsets.symmetric(
-                  horizontal: shellHomeSectionHorizontalPadding(context),
-                ),
-                itemCount: moods.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, i) {
-              final m = moods[i];
-              final isSelected = m.id == selectedId;
-              if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-                return ForjaShellChip(
-                  label: m.label,
-                  selected: isSelected,
-                  icon: m.icon,
-                  listIndex: i,
-                  tvTabId: 'home',
-                  tvRowId: 'mood-chips',
-                  onTap: () {
-                    if (m.id != selectedId) {
-                      onSelect(m.id);
-                    } else {
-                      ShellTvFocusCoordinator.focusFromChipStripDown(
-                        tabId: 'home',
-                        chipRowId: 'mood-chips',
-                        resultsRowId: 'mood-results',
-                      );
-                    }
-                  },
-                  onLeftEdge: shellTvChipLeftEdge(
-                    context,
-                    tabId: 'home',
-                    rowId: 'mood-chips',
-                    index: i,
-                  ),
-                  onRightEdge: shellTvChipRightEdge(
-                    tabId: 'home',
-                    rowId: 'mood-chips',
-                    index: i,
-                    itemCount: moods.length,
-                  ),
-                  onUpEdge: () {
-                    ShellTvFocusCoordinator.moveVerticalInTab(
-                      tabId: 'home',
-                      rowId: 'mood-chips',
-                      currentIndex: i,
-                      down: false,
-                    );
-                  },
-                  onDownEdge: shellTvChipDownToRow(
-                    tabId: 'home',
-                    chipRowId: 'mood-chips',
-                    resultsRowId: 'mood-results',
-                  ),
-                );
-              }
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final contentWidth = _moodRowContentWidth(moods.length);
+                final fitsCentered = contentWidth <= constraints.maxWidth;
 
-              final chip = Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? ForjaShellColors.chipSelectedBg
-                      : Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: isSelected
-                        ? ForjaShellColors.chipSelectedBorder
-                        : Colors.white.withValues(alpha: 0.08),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      m.icon,
-                      size: 14,
-                      color: isSelected
-                          ? ForjaShellColors.chipSelectedIcon
-                          : Colors.white.withValues(alpha: 0.7),
-                    ),
-                    SizedBox(width: shellScaled(context, 6).clamp(3.0, 6.0)),
-                    Text(
-                      m.label,
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.75),
-                        fontSize: 12.5,
-                        fontWeight:
-                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                if (fitsCentered) {
+                  return SizedBox(
+                    height: _HomeMoodCircleItem.rowHeight,
+                    width: double.infinity,
+                    child: FocusTraversalGroup(
+                      policy: OrderedTraversalPolicy(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          for (var i = 0; i < moods.length; i++) ...[
+                            if (i > 0)
+                              const SizedBox(
+                                width: _HomeMoodCircleItem.horizontalGap,
+                              ),
+                            _moodCircleItem(
+                              context: context,
+                              i: i,
+                              moods: moods,
+                              selectedId: selectedId,
+                              onSelect: onSelect,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              );
+                  );
+                }
 
-              return Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(24),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(24),
-                  hoverColor: ForjaShellColors.inkHover,
-                  splashColor: ForjaShellColors.inkSplash,
-                  highlightColor: ForjaShellColors.inkSplash,
-                  onTap: () => onSelect(m.id),
-                  child: chip,
-                ),
-              );
-            },
-              ),
+                return FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: HorizontalScroller(
+                    height: _HomeMoodCircleItem.rowHeight,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: shellHomeSectionHorizontalPadding(context),
+                    ),
+                    itemCount: moods.length,
+                    separatorBuilder: (_, _) => const SizedBox(
+                      width: _HomeMoodCircleItem.horizontalGap,
+                    ),
+                    itemBuilder: (context, i) => _moodCircleItem(
+                      context: context,
+                      i: i,
+                      moods: moods,
+                      selectedId: selectedId,
+                      onSelect: onSelect,
+                    ),
+                  ),
+                );
+              },
             );
           },
         ),

@@ -44,7 +44,16 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   bool _focused = false;
   FocusNode? _ownedNode;
 
-  FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
+  FocusNode? _nodeFor(ForjaInteractive w) => w.focusNode ?? _ownedNode;
+
+  FocusNode get _effectiveNode {
+    final node = _nodeFor(widget);
+    assert(
+      node != null,
+      'ForjaInteractive with onTap must have a FocusNode',
+    );
+    return node!;
+  }
 
   ShellInputPolicy _policy(BuildContext context) =>
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
@@ -62,7 +71,10 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   void didUpdateWidget(covariant ForjaInteractive oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.focusNode != widget.focusNode) {
-      _unregisterTvItemNode(oldWidget.tvMeta);
+      _unregisterTvItemNode(
+        oldWidget.tvMeta,
+        node: _nodeFor(oldWidget),
+      );
       if (widget.focusNode == null) {
         _ownedNode ??= FocusNode(debugLabel: 'forja-interactive');
       } else {
@@ -72,7 +84,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       _registerTvItemNode();
     } else if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
         oldWidget.tvMeta?.itemIndex != widget.tvMeta?.itemIndex) {
-      _unregisterTvItemNode(oldWidget.tvMeta);
+      _unregisterTvItemNode(oldWidget.tvMeta, node: _nodeFor(oldWidget));
       _registerTvItemNode();
     }
   }
@@ -92,23 +104,25 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     );
   }
 
-  void _unregisterTvItemNode(ShellTvFocusMeta? meta) {
+  void _unregisterTvItemNode(ShellTvFocusMeta? meta, {FocusNode? node}) {
     if (meta == null) return;
     if (meta.zone != ShellTvZone.row && meta.zone != ShellTvZone.chipStrip) {
       return;
     }
     if (meta.rowId == null || meta.itemIndex == null) return;
+    final effectiveNode = node ?? _nodeFor(widget);
+    if (effectiveNode == null) return;
     ShellTvFocusCoordinator.unregisterItemNode(
       tabId: meta.tabId,
       rowId: meta.rowId!,
       index: meta.itemIndex!,
-      node: _effectiveNode,
+      node: effectiveNode,
     );
   }
 
   @override
   void dispose() {
-    _unregisterTvItemNode(widget.tvMeta);
+    _unregisterTvItemNode(widget.tvMeta, node: _nodeFor(widget));
     _ownedNode?.dispose();
     super.dispose();
   }

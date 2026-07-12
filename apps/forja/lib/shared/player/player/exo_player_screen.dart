@@ -12,6 +12,7 @@ import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -317,7 +318,12 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
 
   Future<void> _exit() async {
     await _saveProgress();
-    if (mounted) Navigator.of(context).pop();
+    if (!mounted) return;
+    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+      ShellTvFocusCoordinator.handleShellBackKey();
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   Future<void> _showPlayerMenu(BuildContext anchorContext) async {

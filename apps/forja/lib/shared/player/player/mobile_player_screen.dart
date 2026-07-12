@@ -39,6 +39,7 @@ import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_tv_remote.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
@@ -1123,7 +1124,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // errors from media_kit surface teardown during an active rotation.
     await Future.delayed(const Duration(milliseconds: 300));
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    if (mounted) Navigator.of(context).pop(_positionNotifier.value);
+    if (!mounted) return;
+    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+      ShellTvFocusCoordinator.handleShellBackKey();
+      return;
+    }
+    Navigator.of(context).pop(_positionNotifier.value);
   }
 
   @override
