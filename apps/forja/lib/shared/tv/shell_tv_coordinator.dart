@@ -621,18 +621,41 @@ abstract final class ShellTvFocusCoordinator {
     return focusRowItem(tabId, rowId, next);
   }
 
+  static bool moveInGrid({
+    required String tabId,
+    required String rowId,
+    required int currentIndex,
+    required int columns,
+    required int rowDelta,
+    required int colDelta,
+  }) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null || handle.itemCount <= 0 || columns <= 0) {
+      return false;
+    }
+    final row = currentIndex ~/ columns;
+    final col = currentIndex % columns;
+    final nextRow = row + rowDelta;
+    final nextCol = col + colDelta;
+    if (nextCol < 0 || nextCol >= columns) return false;
+    final nextIndex = nextRow * columns + nextCol;
+    if (nextIndex < 0 || nextIndex >= handle.itemCount) return false;
+    return focusRowItem(tabId, rowId, nextIndex);
+  }
+
   static void onRowItemFocused({
     required String tabId,
     required String rowId,
     required int index,
     required FocusNode node,
+    ShellTvZone zone = ShellTvZone.row,
   }) {
     final handle = _rowHandle(tabId, rowId);
     if (handle != null) handle.lastFocusedIndex = index;
     saveFocus(
       tabId,
       ShellTvFocusMemory(
-        zone: ShellTvZone.row,
+        zone: zone,
         rowId: rowId,
         itemIndex: index,
         node: node,
@@ -651,14 +674,22 @@ abstract final class ShellTvFocusCoordinator {
 
     if (!down) {
       if (handle.isFirstRow) {
-        handle.onFocusUp?.call();
+        if (handle.onFocusUp != null) {
+          handle.onFocusUp!();
+          return true;
+        }
         return focusHero(revealFull: true, tabId: tabId);
       }
       final prev = _prevRow(tabId, handle.sortOrder);
       if (prev == null) return false;
-      final target = prev.sortOrder < 0
-          ? 0
-          : prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
+      if (prev.sortOrder < 0) {
+        if (handle.onFocusUp != null) {
+          handle.onFocusUp!();
+          return true;
+        }
+        return focusHero(revealFull: true, tabId: tabId);
+      }
+      final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
       return focusRowItem(tabId, prev.rowId, target);
     }
 
@@ -721,6 +752,7 @@ class ShellTvFocusMeta {
     required this.zone,
     this.rowId,
     this.itemIndex,
+    this.gridColumns,
     this.onSave,
   });
 
@@ -728,13 +760,31 @@ class ShellTvFocusMeta {
   final ShellTvZone zone;
   final String? rowId;
   final int? itemIndex;
+  final int? gridColumns;
   final void Function(FocusNode node)? onSave;
+
+  bool _isHorizontalNavZone() =>
+      zone == ShellTvZone.row ||
+      zone == ShellTvZone.chipStrip ||
+      zone == ShellTvZone.topBar;
 
   bool Function()? resolveDownEdge() {
     if (rowId == null || itemIndex == null) return null;
-    if (zone != ShellTvZone.row && zone != ShellTvZone.chipStrip) {
-      return null;
+    if (zone == ShellTvZone.grid && gridColumns != null) {
+      final tid = tabId;
+      final rid = rowId!;
+      final idx = itemIndex!;
+      final cols = gridColumns!;
+      return () => ShellTvFocusCoordinator.moveInGrid(
+            tabId: tid,
+            rowId: rid,
+            currentIndex: idx,
+            columns: cols,
+            rowDelta: 1,
+            colDelta: 0,
+          );
     }
+    if (!_isHorizontalNavZone()) return null;
     final tid = tabId;
     final rid = rowId!;
     final idx = itemIndex!;
@@ -767,9 +817,21 @@ class ShellTvFocusMeta {
 
   bool Function()? resolveUpEdge() {
     if (rowId == null || itemIndex == null) return null;
-    if (zone != ShellTvZone.row && zone != ShellTvZone.chipStrip) {
-      return null;
+    if (zone == ShellTvZone.grid && gridColumns != null) {
+      final tid = tabId;
+      final rid = rowId!;
+      final idx = itemIndex!;
+      final cols = gridColumns!;
+      return () => ShellTvFocusCoordinator.moveInGrid(
+            tabId: tid,
+            rowId: rid,
+            currentIndex: idx,
+            columns: cols,
+            rowDelta: -1,
+            colDelta: 0,
+          );
     }
+    if (!_isHorizontalNavZone()) return null;
     final tid = tabId;
     final rid = rowId!;
     final idx = itemIndex!;
@@ -802,9 +864,24 @@ class ShellTvFocusMeta {
 
   bool Function()? resolveLeftEdge() {
     if (rowId == null || itemIndex == null) return null;
-    if (zone != ShellTvZone.row && zone != ShellTvZone.chipStrip) {
-      return null;
+    if (zone == ShellTvZone.grid && gridColumns != null) {
+      final tid = tabId;
+      final rid = rowId!;
+      final idx = itemIndex!;
+      final cols = gridColumns!;
+      return () {
+        if (idx % cols <= 0) return true;
+        return ShellTvFocusCoordinator.moveInGrid(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          columns: cols,
+          rowDelta: 0,
+          colDelta: -1,
+        );
+      };
     }
+    if (!_isHorizontalNavZone()) return null;
     final tid = tabId;
     final rid = rowId!;
     final idx = itemIndex!;
@@ -825,9 +902,24 @@ class ShellTvFocusMeta {
 
   bool Function()? resolveRightEdge() {
     if (rowId == null || itemIndex == null) return null;
-    if (zone != ShellTvZone.row && zone != ShellTvZone.chipStrip) {
-      return null;
+    if (zone == ShellTvZone.grid && gridColumns != null) {
+      final tid = tabId;
+      final rid = rowId!;
+      final idx = itemIndex!;
+      final cols = gridColumns!;
+      return () {
+        if (idx % cols >= cols - 1) return true;
+        return ShellTvFocusCoordinator.moveInGrid(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          columns: cols,
+          rowDelta: 0,
+          colDelta: 1,
+        );
+      };
     }
+    if (!_isHorizontalNavZone()) return null;
     final tid = tabId;
     final rid = rowId!;
     final idx = itemIndex!;
@@ -848,7 +940,9 @@ class ShellTvFocusMeta {
 
   void notifyFocused(FocusNode node) {
     onSave?.call(node);
-    if ((zone == ShellTvZone.row || zone == ShellTvZone.chipStrip) &&
+    if ((zone == ShellTvZone.row ||
+            zone == ShellTvZone.chipStrip ||
+            zone == ShellTvZone.grid) &&
         rowId != null &&
         itemIndex != null) {
       ShellTvFocusCoordinator.onRowItemFocused(
@@ -856,6 +950,7 @@ class ShellTvFocusMeta {
         rowId: rowId!,
         index: itemIndex!,
         node: node,
+        zone: zone,
       );
     }
     switch (zone) {

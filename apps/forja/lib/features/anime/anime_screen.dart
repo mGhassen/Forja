@@ -704,6 +704,14 @@ class _AnimeScreenState extends State<AnimeScreen>
                   chipRowId: 'mood-chips',
                   resultsRowId: 'mood-results',
                 ),
+                onUpEdge: () {
+                  ShellTvFocusCoordinator.moveVerticalInTab(
+                    tabId: 'anime',
+                    rowId: 'mood-chips',
+                    currentIndex: i,
+                    down: false,
+                  );
+                },
               );
             },
           ),

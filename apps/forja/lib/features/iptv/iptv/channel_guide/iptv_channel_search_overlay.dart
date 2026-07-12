@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/shared/design/design.dart';
 
@@ -111,7 +112,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   }
 
   KeyEventResult _onResultNavigationKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (_results.isEmpty) return KeyEventResult.ignored;
 
     final key = event.logicalKey;
@@ -132,7 +133,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   }
 
   KeyEventResult _onOverlayKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       widget.onClose();
       return KeyEventResult.handled;
@@ -143,7 +144,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   KeyEventResult _onSearchFieldKey(FocusNode node, KeyEvent event) {
     final nav = _onResultNavigationKey(event);
     if (nav == KeyEventResult.handled) return nav;
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       widget.onClose();
       return KeyEventResult.handled;

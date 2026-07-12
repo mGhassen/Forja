@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// D-pad / leanback remote key handling for [MobilePlayerScreen] TV mode.
 class PlayerTvRemoteKeyHandler {
@@ -24,7 +25,7 @@ class PlayerTvRemoteKeyHandler {
   final VoidCallback onToggleControls;
 
   bool handle(KeyEvent event, {required bool showControls}) {
-    if (event is! KeyDownEvent) return false;
+    if (!shellTvIsNavigationKey(event)) return false;
 
     final key = event.logicalKey;
 

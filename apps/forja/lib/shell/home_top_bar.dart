@@ -320,6 +320,15 @@ class _HomeTopBarState extends State<HomeTopBar> {
                             ? 20.0
                             : 36.0;
 
+                    if (tvFocus) {
+                      shellTvRegisterRow(
+                        tabId: 'home',
+                        rowId: 'top-bar',
+                        sortOrder: -2,
+                        itemCount: 3,
+                      );
+                    }
+
                     final tabs = FocusTraversalGroup(
                       policy: OrderedTraversalPolicy(),
                       child: Row(
@@ -551,6 +560,7 @@ class _CategoryTabState extends State<_CategoryTab> {
         scaleOnFocus: ShellTokens.focusActiveScale,
         listIndex: widget.listIndex,
         tvTabId: 'home',
+        tvRowId: 'top-bar',
         tvZone: ShellTvZone.topBar,
         tvItemIndex: widget.listIndex,
         onDownEdge: widget.onDownEdge,

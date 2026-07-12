@@ -32,6 +32,7 @@ import 'package:forja/shared/widgets/media_details_trailers_section.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
@@ -819,8 +820,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
       isInTraktCollection: _isInTraktCollection,
       playFocusNode: policy.heroPlayAutoFocus ? _detailsHeroPlayFocus : null,
       tvTabId: policy.useFocusableMoodChips ? MediaDetailsTv.tabId : null,
-      tvFocusUp: _revealedDetailsHeroPlayFocus,
+      tvFocusUp: policy.useFocusableMoodChips ? _popDetailsFromTvUp : null,
     );
+  }
+
+  void _popDetailsFromTvUp() {
+    maybePopShellOverlay();
   }
 
   Future<void> _clearProgress() async {

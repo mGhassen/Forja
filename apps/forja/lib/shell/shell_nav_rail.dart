@@ -49,7 +49,7 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
     return Focus(
       onFocusChange: (focused) => setState(() => _focused = focused),
       onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
         if (event.logicalKey == LogicalKeyboardKey.enter ||
             event.logicalKey == LogicalKeyboardKey.select) {
           widget.onPressed();
@@ -495,7 +495,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
           widget.onFocusChanged();
         },
         onKeyEvent: (node, event) {
-          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
           if (shellTvIsActivateKey(event)) {
             _enterPageFromNav();
             return KeyEventResult.handled;

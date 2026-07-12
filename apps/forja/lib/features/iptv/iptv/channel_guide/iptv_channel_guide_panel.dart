@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
-
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 
@@ -266,7 +266,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
 
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.escape) {

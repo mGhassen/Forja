@@ -341,13 +341,22 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                     selected: widget.selectedSeason == season,
                     posterUrl: _seasonPosterUrl(season),
                     onTap: () {
-                      if (season == widget.selectedSeason) return;
+                      if (season == widget.selectedSeason) {
+                        if (tabId != null &&
+                            widget.tvEpisodeRowId != null &&
+                            _visibleEpisodes.isNotEmpty) {
+                          ShellTvFocusCoordinator.focusRowItem(
+                            tabId,
+                            _episodeRowId,
+                            0,
+                          );
+                        }
+                        return;
+                      }
                       setState(() => _episodeChunk = 0);
                       widget.onSeasonSelected(season);
                     },
-                    onLeftEdge: tabId == 'home'
-                        ? shellTvNavLeftEdge(context, listIndex: i)
-                        : null,
+                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
                     tvTabId: tabId,
                     tvRowId: widget.tvSeasonRowId != null ? _seasonRowId : null,
                     listIndex: i,
@@ -432,9 +441,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                           },
                     onToggleWatched: () =>
                         widget.onToggleWatched(widget.selectedSeason, epNum),
-                    onLeftEdge: tabId == 'home'
-                        ? shellTvNavLeftEdge(context, listIndex: i)
-                        : null,
+                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
                     tvTabId: tabId,
                     tvRowId: widget.tvEpisodeRowId != null ? _episodeRowId : null,
                     listIndex: i,

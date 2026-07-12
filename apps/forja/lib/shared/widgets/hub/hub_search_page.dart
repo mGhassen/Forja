@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 
@@ -280,7 +281,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   KeyEventResult _searchFieldKeyEvent(FocusNode node, KeyEvent event) {
     if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
         _focusFirstHelper()) {
       return KeyEventResult.handled;

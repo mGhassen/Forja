@@ -193,12 +193,14 @@ class _SourceChip extends StatelessWidget {
   final bool selected;
   final bool enabled;
   final VoidCallback onTap;
+  final int? listIndex;
   const _SourceChip({
     required this.label,
     required this.tag,
     required this.selected,
     required this.enabled,
     required this.onTap,
+    this.listIndex,
   });
 
   @override
@@ -221,6 +223,9 @@ class _SourceChip extends StatelessWidget {
             context: context,
             onTap: enabled ? onTap : null,
             borderRadius: 12,
+            listIndex: listIndex,
+            tvRowId: 'portal-sources',
+            tvItemIndex: listIndex,
             child: Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: 12, vertical: 8),
@@ -438,6 +443,39 @@ class _PortalListView extends StatelessWidget {
   }
 
   Widget _buildBottomBar(BuildContext context) {
+    final actions = <({IconData icon, String label, bool subtle, VoidCallback? onPressed})>[
+      (
+        icon: ctrl.isScraping ? Icons.stop_circle_rounded : Icons.travel_explore,
+        label: ctrl.isScraping ? 'Stop' : 'Scrape',
+        subtle: false,
+        onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
+      ),
+      if (ctrl.canGetMore)
+        (
+          icon: Icons.add_circle_outline,
+          label: 'Get More',
+          subtle: true,
+          onPressed: ctrl.isScraping ? null : ctrl.getMore,
+        ),
+      (
+        icon: Icons.tv_rounded,
+        label: 'Channels',
+        subtle: true,
+        onPressed: ctrl.openChannelsHub,
+      ),
+      if (ctrl.verified.isNotEmpty)
+        (
+          icon: Icons.refresh_rounded,
+          label: 'Re-verify',
+          subtle: true,
+          onPressed: ctrl.runVerification,
+        ),
+    ];
+    iptvSyncRow(
+      rowId: 'portal-actions',
+      sortOrder: 2,
+      itemCount: actions.length,
+    );
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       decoration: BoxDecoration(
@@ -455,36 +493,17 @@ class _PortalListView extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                IptvPrimaryButton(
-                  icon: ctrl.isScraping
-                      ? Icons.stop_circle_rounded
-                      : Icons.travel_explore,
-                  label: ctrl.isScraping ? 'Stop' : 'Scrape',
-                  onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
-                ),
-                const SizedBox(width: 8),
-                if (ctrl.canGetMore)
+                for (var i = 0; i < actions.length; i++) ...[
                   IptvPrimaryButton(
-                    icon: Icons.add_circle_outline,
-                    label: 'Get More',
-                    subtle: true,
-                    onPressed: ctrl.isScraping ? null : ctrl.getMore,
+                    icon: actions[i].icon,
+                    label: actions[i].label,
+                    subtle: actions[i].subtle,
+                    onPressed: actions[i].onPressed,
+                    tvRowId: 'portal-actions',
+                    tvItemIndex: i,
                   ),
-                if (ctrl.canGetMore) const SizedBox(width: 8),
-                IptvPrimaryButton(
-                  icon: Icons.tv_rounded,
-                  label: 'Channels',
-                  subtle: true,
-                  onPressed: ctrl.openChannelsHub,
-                ),
-                const SizedBox(width: 8),
-                if (ctrl.verified.isNotEmpty)
-                  IptvPrimaryButton(
-                    icon: Icons.refresh_rounded,
-                    label: 'Re-verify',
-                    subtle: true,
-                    onPressed: ctrl.runVerification,
-                  ),
+                  if (i < actions.length - 1) const SizedBox(width: 8),
+                ],
               ],
             ),
           ),
@@ -498,19 +517,25 @@ class _PortalListView extends StatelessWidget {
       (CatalogSource.best, 'Source 1', 'Best'),
       (CatalogSource.works, 'Source 2', 'Works'),
     ];
+    iptvSyncRow(
+      rowId: 'portal-sources',
+      sortOrder: 1,
+      itemCount: items.length,
+    );
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          for (final it in items) ...[
+          for (var i = 0; i < items.length; i++) ...[
             _SourceChip(
-              label: it.$2,
-              tag: it.$3,
-              selected: ctrl.scrapeSource == it.$1,
+              label: items[i].$2,
+              tag: items[i].$3,
+              selected: ctrl.scrapeSource == items[i].$1,
               enabled: !ctrl.isScraping,
-              onTap: () => ctrl.setScrapeSource(it.$1),
+              listIndex: i,
+              onTap: () => ctrl.setScrapeSource(items[i].$1),
             ),
-            const SizedBox(width: 8),
+            if (i < items.length - 1) const SizedBox(width: 8),
           ],
         ],
       ),
@@ -818,6 +843,12 @@ class _SectionPickView extends StatelessWidget {
             child: LayoutBuilder(
               builder: (_, c) {
                 final cross = c.maxWidth >= 800 ? 3 : (c.maxWidth >= 520 ? 3 : 1);
+                const sections = 3;
+                iptvSyncRow(
+                  rowId: 'section-pick',
+                  sortOrder: 0,
+                  itemCount: sections,
+                );
                 return GridView.count(
                   padding: const EdgeInsets.all(20),
                   crossAxisCount: cross,
@@ -829,18 +860,24 @@ class _SectionPickView extends StatelessWidget {
                       icon: Icons.live_tv_rounded,
                       label: 'Live TV',
                       colors: const [Color(0xFFEF4444), Color(0xFF7C2D12)],
+                      gridIndex: 0,
+                      gridColumns: cross,
                       onTap: () => ctrl.openSection(IptvSection.live),
                     ),
                     _SectionTile(
                       icon: Icons.movie_rounded,
                       label: 'Movies',
                       colors: const [Color(0xFFEC4899), Color(0xFF8B5CF6)],
+                      gridIndex: 1,
+                      gridColumns: cross,
                       onTap: () => ctrl.openSection(IptvSection.vod),
                     ),
                     _SectionTile(
                       icon: Icons.video_library_rounded,
                       label: 'Series',
                       colors: const [Color(0xFF374151), Color(0xFF1CE783)],
+                      gridIndex: 2,
+                      gridColumns: cross,
                       onTap: () => ctrl.openSection(IptvSection.series),
                     ),
                   ],
@@ -858,12 +895,16 @@ class _SectionTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final List<Color> colors;
+  final int? gridIndex;
+  final int? gridColumns;
   final VoidCallback onTap;
   const _SectionTile({
     required this.icon,
     required this.label,
     required this.colors,
     required this.onTap,
+    this.gridIndex,
+    this.gridColumns,
   });
 
   @override
@@ -890,6 +931,10 @@ class _SectionTile extends StatelessWidget {
           context: context,
           onTap: onTap,
           borderRadius: 20,
+          gridIndex: gridIndex,
+          gridColumns: gridColumns,
+          tvRowId: 'section-pick',
+          tvZone: ShellTvZone.grid,
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1244,6 +1289,7 @@ class _BrowserViewState extends State<_BrowserView> {
           rowId: 'browser-categories',
           sortOrder: 1,
           itemCount: cats.length,
+          orientation: ShellTvRowOrientation.vertical,
         );
         return ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1257,6 +1303,8 @@ class _BrowserViewState extends State<_BrowserView> {
             borderRadius: 8,
             listIndex: i,
             tvRowId: 'browser-categories',
+            tvItemIndex: i,
+            onRightEdge: () => iptvFocusRowItem('browser-streams'),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
@@ -1316,6 +1364,8 @@ class _BrowserViewState extends State<_BrowserView> {
               borderRadius: 20,
               listIndex: i,
               tvRowId: 'browser-category-chips',
+              tvItemIndex: i,
+              onDownEdge: () => iptvFocusRowItem('browser-streams'),
               child: ChoiceChip(
                 label: Text(c.name.isEmpty ? 'Uncategorized' : c.name,
                     style: GoogleFonts.poppins(
@@ -1380,6 +1430,15 @@ class _BrowserViewState extends State<_BrowserView> {
     return LayoutBuilder(
       builder: (ctx, c) {
         final cross = (c.maxWidth ~/ 180).clamp(2, 8);
+        iptvSyncRow(
+          rowId: 'browser-streams',
+          sortOrder: 2,
+          itemCount: list.length,
+        );
+        final cats = _filteredCategories;
+        final selectedCatIdx = cats.indexWhere(
+          (cat) => cat.id == ctrl.browserSelectedCategoryId,
+        );
         final grid = GridView.builder(
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -1392,6 +1451,14 @@ class _BrowserViewState extends State<_BrowserView> {
           itemBuilder: (_, i) => _StreamCard(
             stream: list[i],
             ctrl: widget.ctrl,
+            gridIndex: i,
+            gridColumns: cross,
+            onLeftEdge: widget.wide && i % cross == 0
+                ? () => iptvFocusRowItem(
+                      'browser-categories',
+                      selectedCatIdx >= 0 ? selectedCatIdx : 0,
+                    )
+                : null,
             onTap: () => _onStreamTap(list[i]),
           ),
         );
@@ -1437,10 +1504,16 @@ class _StreamCard extends StatelessWidget {
   final IptvStream stream;
   final IptvController ctrl;
   final VoidCallback onTap;
+  final int? gridIndex;
+  final int? gridColumns;
+  final VoidCallback? onLeftEdge;
   const _StreamCard({
     required this.stream,
     required this.ctrl,
     required this.onTap,
+    this.gridIndex,
+    this.gridColumns,
+    this.onLeftEdge,
   });
 
   Color _borderColor(bool? health) {
@@ -1548,6 +1621,20 @@ class _StreamCard extends StatelessWidget {
                     context: context,
                     onTap: onTap,
                     borderRadius: 12,
+                    gridIndex: gridIndex,
+                    gridColumns: gridColumns,
+                    tvRowId: 'browser-streams',
+                    tvZone: ShellTvZone.grid,
+                    onLeftEdge: onLeftEdge,
+                    onFocusChange: stream.kind == 'live'
+                        ? (focused) {
+                            if (focused) {
+                              ctrl.scheduleLazyCheck(stream);
+                            } else {
+                              ctrl.cancelLazyCheck(stream.streamId);
+                            }
+                          }
+                        : null,
                     child: column,
                   )
                 : InkWell(
@@ -1611,16 +1698,7 @@ class _LiveHealthProbe extends StatelessWidget {
     }
 
     if (isTvProfile(context)) {
-      return Focus(
-        onFocusChange: (focused) {
-          if (focused) {
-            ctrl.scheduleLazyCheck(stream);
-          } else {
-            ctrl.cancelLazyCheck(stream.streamId);
-          }
-        },
-        child: child,
-      );
+      return child;
     }
 
     return VisibilityDetector(
@@ -1865,12 +1943,19 @@ class _EpisodeListView extends StatelessWidget {
   }
 
   Widget _buildList(BuildContext context) {
-    // Group by season
     final bySeason = <int, List<IptvEpisode>>{};
     for (final e in ctrl.episodes) {
       bySeason.putIfAbsent(e.season, () => []).add(e);
     }
     final seasons = bySeason.keys.toList()..sort();
+    final total = ctrl.episodes.length;
+    iptvSyncRow(
+      rowId: 'episodes',
+      sortOrder: 0,
+      itemCount: total,
+      orientation: ShellTvRowOrientation.vertical,
+    );
+    var flatIndex = 0;
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: seasons.length,
@@ -1887,7 +1972,15 @@ class _EpisodeListView extends StatelessWidget {
                 child: Text('Season $season',
                     style: IptvShellStyle.pageTitle.copyWith(fontSize: 22)),
               ),
-              ...eps.map((e) => _EpisodeTile(episode: e, ctrl: ctrl)),
+              ...eps.map((e) {
+                final tile = _EpisodeTile(
+                  episode: e,
+                  ctrl: ctrl,
+                  listIndex: flatIndex,
+                );
+                flatIndex++;
+                return tile;
+              }),
             ],
           ),
         );
@@ -1899,7 +1992,12 @@ class _EpisodeListView extends StatelessWidget {
 class _EpisodeTile extends StatelessWidget {
   final IptvEpisode episode;
   final IptvController ctrl;
-  const _EpisodeTile({required this.episode, required this.ctrl});
+  final int? listIndex;
+  const _EpisodeTile({
+    required this.episode,
+    required this.ctrl,
+    this.listIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1923,6 +2021,9 @@ class _EpisodeTile extends StatelessWidget {
           ));
         },
         borderRadius: 10,
+        listIndex: listIndex,
+        tvRowId: 'episodes',
+        tvItemIndex: listIndex,
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 4),
           padding: const EdgeInsets.all(10),
@@ -2084,6 +2185,11 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                 : LayoutBuilder(
                     builder: (_, c) {
                       final cross = (c.maxWidth ~/ 160).clamp(2, 8);
+                      iptvSyncRow(
+                        rowId: 'channels-hub',
+                        sortOrder: 0,
+                        itemCount: results.length,
+                      );
                       return GridView.builder(
                         padding: const EdgeInsets.all(12),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -2097,6 +2203,8 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                           final ch = results[i];
                           return _ChannelTile(
                             channel: ch,
+                            gridIndex: i,
+                            gridColumns: cross,
                             onTap: () => widget.ctrl.openHardcodedChannel(ch),
                           );
                         },
@@ -2113,7 +2221,14 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
 class _ChannelTile extends StatelessWidget {
   final HardcodedChannel channel;
   final VoidCallback onTap;
-  const _ChannelTile({required this.channel, required this.onTap});
+  final int? gridIndex;
+  final int? gridColumns;
+  const _ChannelTile({
+    required this.channel,
+    required this.onTap,
+    this.gridIndex,
+    this.gridColumns,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2129,6 +2244,10 @@ class _ChannelTile extends StatelessWidget {
           context: context,
           onTap: onTap,
           borderRadius: 14,
+          gridIndex: gridIndex,
+          gridColumns: gridColumns,
+          tvRowId: 'channels-hub',
+          tvZone: ShellTvZone.grid,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -2439,6 +2558,11 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
     return LayoutBuilder(
       builder: (_, c) {
         final cross = (c.maxWidth ~/ 320).clamp(1, 4);
+        iptvSyncRow(
+          rowId: 'channel-results',
+          sortOrder: 0,
+          itemCount: displayed.length,
+        );
         return GridView.builder(
           padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -2456,6 +2580,8 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
               ctrl: ctrl,
               editMode: _editMode,
               selected: selected,
+              gridIndex: i,
+              gridColumns: cross,
               isFavorite: ctrl.isFavoriteHit(
                   ctrl.activeHardcoded?.id ?? '', hit),
               onToggleFavorite: () => ctrl.toggleFavoriteHit(hit),
@@ -2541,6 +2667,8 @@ class _ChannelHitCard extends StatelessWidget {
   final bool editMode;
   final bool selected;
   final bool isFavorite;
+  final int? gridIndex;
+  final int? gridColumns;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final VoidCallback onToggleFavorite;
@@ -2553,6 +2681,8 @@ class _ChannelHitCard extends StatelessWidget {
     required this.onTap,
     required this.onLongPress,
     required this.onToggleFavorite,
+    this.gridIndex,
+    this.gridColumns,
   });
 
   @override
@@ -2574,6 +2704,10 @@ class _ChannelHitCard extends StatelessWidget {
           context: context,
           onTap: onTap,
           borderRadius: 12,
+          gridIndex: gridIndex,
+          gridColumns: gridColumns,
+          tvRowId: 'channel-results',
+          tvZone: ShellTvZone.grid,
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: Row(

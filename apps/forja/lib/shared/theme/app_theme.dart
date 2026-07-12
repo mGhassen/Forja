@@ -208,7 +208,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     if (meta == null) return;
     if (meta.zone != ShellTvZone.row &&
         meta.zone != ShellTvZone.grid &&
-        meta.zone != ShellTvZone.chipStrip) {
+        meta.zone != ShellTvZone.chipStrip &&
+        meta.zone != ShellTvZone.topBar) {
       return;
     }
     if (meta.rowId == null || meta.itemIndex == null) return;
@@ -224,7 +225,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     if (meta == null) return;
     if (meta.zone != ShellTvZone.row &&
         meta.zone != ShellTvZone.grid &&
-        meta.zone != ShellTvZone.chipStrip) {
+        meta.zone != ShellTvZone.chipStrip &&
+        meta.zone != ShellTvZone.topBar) {
       return;
     }
     if (meta.rowId == null || meta.itemIndex == null) return;
@@ -279,11 +281,32 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     );
     if (handled == KeyEventResult.handled) return handled;
 
+    if (widget.tvMeta == null &&
+        policy.useFocusableMoodChips &&
+        shellTvIsNavigationKey(event)) {
+      final key = event.logicalKey;
+      TraversalDirection? direction;
+      if (key == LogicalKeyboardKey.arrowLeft) {
+        direction = TraversalDirection.left;
+      } else if (key == LogicalKeyboardKey.arrowRight) {
+        direction = TraversalDirection.right;
+      } else if (key == LogicalKeyboardKey.arrowUp) {
+        direction = TraversalDirection.up;
+      } else if (key == LogicalKeyboardKey.arrowDown) {
+        direction = TraversalDirection.down;
+      }
+      if (direction != null &&
+          FocusScope.of(context).focusInDirection(direction)) {
+        return KeyEventResult.handled;
+      }
+    }
+
     final trap = shellTvTrapRowGeometry(
       event: event,
       tvFocus: policy.useFocusableMoodChips,
       tvMeta: widget.tvMeta,
-      trapHorizontal: policy.useFocusableMoodChips,
+      trapHorizontal:
+          policy.useFocusableMoodChips && widget.tvMeta?.rowId != null,
     );
     if (trap == KeyEventResult.handled) return trap;
 

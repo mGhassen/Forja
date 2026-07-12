@@ -738,10 +738,17 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       onTap: slide.onPlay,
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
       tvTabId: tvNav ? widget.tvTabId : null,
-      onUpEdge: tvNav ? ShellTvFocus.focusHubHeroSearch : null,
+      onUpEdge: tvNav
+          ? () {
+              ShellTvFocusCoordinator.revealHeroForTab(widget.tvTabId ?? '');
+              ShellTvFocus.focusHubHeroSearch();
+            }
+          : null,
       onKeyEvent: tvNav
           ? (node, event) {
-              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              if (!shellTvIsNavigationKey(event)) {
+                return KeyEventResult.ignored;
+              }
               if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
                 if (ShellTvFocusCoordinator.focusActiveNavTab()) {
                   return KeyEventResult.handled;
@@ -761,7 +768,12 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         HeroPillIconGroup(
           tvFocusOrderStart: tvNav ? 2 : null,
           tvTabId: tvNav ? widget.tvTabId : null,
-          onUpEdge: tvNav ? ShellTvFocus.focusHubHeroSearch : null,
+          onUpEdge: tvNav
+          ? () {
+              ShellTvFocusCoordinator.revealHeroForTab(widget.tvTabId ?? '');
+              ShellTvFocus.focusHubHeroSearch();
+            }
+          : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,

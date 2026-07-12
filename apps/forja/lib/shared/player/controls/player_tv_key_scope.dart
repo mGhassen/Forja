@@ -78,6 +78,9 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (!widget.enabled) return KeyEventResult.ignored;
+    if (widget.showControls && playerTvChromeHasFocus(widget.focusNode)) {
+      return KeyEventResult.ignored;
+    }
     if (_handler.handle(event, showControls: widget.showControls)) {
       return KeyEventResult.handled;
     }

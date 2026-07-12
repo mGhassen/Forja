@@ -3,6 +3,10 @@ import 'package:flutter/services.dart';
 
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
+/// D-pad navigation key — first press and OS key-repeat.
+bool shellTvIsNavigationKey(KeyEvent event) =>
+    event is KeyDownEvent || event is KeyRepeatEvent;
+
 /// TV D-pad focus anchors shared across shell nav, home chrome, and catalog rows.
 abstract final class ShellTvFocus {
   static String? currentNavTabId;
@@ -77,7 +81,7 @@ abstract final class ShellTvFocus {
 
   /// Handle TV UP before directional focus can land on a stray ancestor.
   static KeyEventResult onArrowUp(KeyEvent event, bool Function() onUp) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey != LogicalKeyboardKey.arrowUp) {
       return KeyEventResult.ignored;
     }
@@ -92,7 +96,7 @@ KeyEventResult shellTrapTvFocusHorizontalEdge(
   bool trapRight = false,
   bool trapLeft = false,
 }) {
-  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+  if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
   if (trapRight && event.logicalKey == LogicalKeyboardKey.arrowRight) {
     return KeyEventResult.handled;
   }
@@ -111,11 +115,15 @@ KeyEventResult shellTvHandleRowArrows({
   VoidCallback? onUpEdge,
   VoidCallback? onDownEdge,
 }) {
-  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+  if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
   final key = event.logicalKey;
   final rowBound = tvMeta != null &&
       tvMeta.rowId != null &&
-      (tvMeta.zone == ShellTvZone.row || tvMeta.zone == ShellTvZone.chipStrip);
+      (tvMeta.zone == ShellTvZone.row ||
+          tvMeta.zone == ShellTvZone.chipStrip ||
+          tvMeta.zone == ShellTvZone.topBar);
+  final gridBound =
+      tvMeta != null && tvMeta.zone == ShellTvZone.grid && tvMeta.rowId != null;
 
   if (key == LogicalKeyboardKey.arrowLeft) {
     if (onLeftEdge != null) {
@@ -130,6 +138,7 @@ KeyEventResult shellTvHandleRowArrows({
     if (tvMeta?.zone == ShellTvZone.chipStrip || rowBound) {
       return KeyEventResult.handled;
     }
+    if (gridBound) return KeyEventResult.handled;
     return KeyEventResult.ignored;
   }
   if (key == LogicalKeyboardKey.arrowUp) {
@@ -142,7 +151,7 @@ KeyEventResult shellTvHandleRowArrows({
       up();
       return KeyEventResult.handled;
     }
-    if (rowBound) return KeyEventResult.handled;
+    if (rowBound || gridBound) return KeyEventResult.handled;
     return KeyEventResult.ignored;
   }
   if (key == LogicalKeyboardKey.arrowDown) {
@@ -155,7 +164,7 @@ KeyEventResult shellTvHandleRowArrows({
       down();
       return KeyEventResult.handled;
     }
-    if (rowBound) return KeyEventResult.handled;
+    if (rowBound || gridBound) return KeyEventResult.handled;
     return KeyEventResult.ignored;
   }
   if (key == LogicalKeyboardKey.arrowRight) {
@@ -171,6 +180,7 @@ KeyEventResult shellTvHandleRowArrows({
     if (tvMeta?.zone == ShellTvZone.chipStrip || rowBound) {
       return KeyEventResult.handled;
     }
+    if (gridBound) return KeyEventResult.handled;
     return KeyEventResult.ignored;
   }
   return KeyEventResult.ignored;
@@ -183,9 +193,10 @@ KeyEventResult shellTvTrapRowGeometry({
   ShellTvFocusMeta? tvMeta,
   bool trapHorizontal = false,
 }) {
-  if (!tvFocus || event is! KeyDownEvent) return KeyEventResult.ignored;
+  if (!tvFocus || !shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
   final key = event.logicalKey;
-  final rowBound = tvMeta?.rowId != null;
+  final grid = tvMeta?.zone == ShellTvZone.grid;
+  final rowBound = tvMeta?.rowId != null && !grid;
   final chip = tvMeta?.zone == ShellTvZone.chipStrip;
 
   if (trapHorizontal || rowBound || chip) {
@@ -194,7 +205,7 @@ KeyEventResult shellTvTrapRowGeometry({
       return KeyEventResult.handled;
     }
   }
-  if (rowBound &&
+  if ((rowBound || grid) &&
       (key == LogicalKeyboardKey.arrowUp ||
           key == LogicalKeyboardKey.arrowDown)) {
     return KeyEventResult.handled;

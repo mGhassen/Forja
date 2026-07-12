@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shell/shell_bus.dart';
 
 /// Prevents nested horizontal rows from scrolling the parent vertical list.
 bool shellAbsorbHorizontalScroll(ScrollNotification notification) =>
@@ -20,7 +20,6 @@ VoidCallback? shellTvNavLeftEdge(
   final tvFocus = policy?.useFocusableMoodChips ??
       resolveShellProfile(context) == ShellProfile.tv;
   if (!tvFocus) return null;
-  if (ShellBus.shellOverlayHasPage.value) return null;
   if (!navLeftAlways && listIndex != 0) return null;
   return ShellTvFocusCoordinator.focusActiveNavTab;
 }
@@ -61,7 +60,15 @@ VoidCallback? _resolveTvNavLeftEdge(
   if (onLeftEdge != null) return onLeftEdge;
   if (tvTabId != null &&
       tvTabId != ShellTvFocus.currentNavTabId &&
-      tvTabId != 'home') {
+      tvTabId != 'home' &&
+      tvTabId != MediaDetailsTv.tabId &&
+      tvTabId != 'iptv' &&
+      tvTabId != 'search' &&
+      tvTabId != 'anime' &&
+      tvTabId != 'asian_drama' &&
+      tvTabId != 'live_matches' &&
+      tvTabId != 'mylist' &&
+      tvTabId != 'settings') {
     return null;
   }
   if (gridIndex != null && gridColumns != null) {
@@ -86,6 +93,7 @@ ShellTvFocusMeta? _resolveTvMeta({
   required String? tvRowId,
   required int? tvItemIndex,
   required ShellTvZone? tvZone,
+  int? gridColumns,
 }) {
   if (tabId == null || tabId.isEmpty) return null;
   final zone = tvZone ??
@@ -96,6 +104,7 @@ ShellTvFocusMeta? _resolveTvMeta({
     zone: zone,
     rowId: tvRowId,
     itemIndex: tvItemIndex,
+    gridColumns: gridColumns,
   );
 }
 
@@ -141,6 +150,7 @@ Widget shellFocusableTap({
     tvRowId: tvRowId,
     tvItemIndex: tvItemIndex ?? listIndex ?? gridIndex,
     tvZone: tvZone,
+    gridColumns: gridColumns,
   );
 
   if (policy.useFocusableMoodChips || showFocusBorder) {

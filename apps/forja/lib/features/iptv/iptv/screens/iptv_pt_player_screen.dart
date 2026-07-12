@@ -1301,7 +1301,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   Widget _buildOverlay(bool compact) {
-    return Container(
+    final overlay = Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -1325,6 +1325,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           ],
         ),
       ),
+    );
+    if (!iptvUseTvFocus(context)) return overlay;
+    return FocusScope(
+      debugLabel: 'player-chrome',
+      child: FocusTraversalGroup(child: overlay),
     );
   }
 
@@ -1511,6 +1516,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   Widget _buildBottomBar(bool compact) {
+    const rowId = 'iptv-player-controls';
+    final expectedCount = 3 // play, replay, mute
+        + 3 // subs, audio, stats
+        + (widget.channelGuide != null ? 2 : 0)
+        + (_sources.length > 1 ? 1 : 0)
+        + 1; // fullscreen
+    iptvSyncRow(rowId: rowId, sortOrder: 0, itemCount: expectedCount);
+    var i = 0;
+
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: compact ? 16 : 24, vertical: compact ? 12 : 18),
@@ -1519,6 +1533,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           IptvRoundIcon(
             icon: _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
             big: true,
+            tvRowId: rowId,
+            tvItemIndex: i++,
             onTap: () async {
               if (_playing) {
                 _userPlayWhenReady = false;
@@ -1527,11 +1543,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               } else {
                 _userPlayWhenReady = true;
                 _pausedAt = null;
-                // Always just resume — never throw away buffered data on
-                // play. If the user paused specifically to *let the stream
-                // buffer*, blowing the cache and reopening would be the
-                // exact opposite of what they want. If the buffer is too
-                // stale to play, the watchdog will recover us.
                 await _player.play();
               }
               _scheduleHideControls();
@@ -1540,6 +1551,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           const SizedBox(width: 14),
           IptvRoundIcon(
             icon: Icons.replay_rounded,
+            tvRowId: rowId,
+            tvItemIndex: i++,
             onTap: () async {
               _retryAttempt = 0;
               await _openCurrent();
@@ -1547,13 +1560,14 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             },
           ),
           const SizedBox(width: 14),
-          // Mute toggle
           IptvRoundIcon(
             icon: _muted || _volume == 0
                 ? Icons.volume_off_rounded
                 : (_volume < 40
                     ? Icons.volume_down_rounded
                     : Icons.volume_up_rounded),
+            tvRowId: rowId,
+            tvItemIndex: i++,
             onTap: _toggleMute,
             onLongPress: () {
               setState(() => _showVolumeSlider = !_showVolumeSlider);
@@ -1561,7 +1575,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
               _scheduleHideControls();
             },
           ),
-          // Volume slider (responsive: shrinks on small screens)
           AnimatedSize(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOut,
@@ -1600,6 +1613,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           Builder(
             builder: (btnCtx) => IptvRoundIcon(
               icon: Icons.subtitles_outlined,
+              tvRowId: rowId,
+              tvItemIndex: i++,
               onTap: () => _showSubtitleMenu(btnCtx),
             ),
           ),
@@ -1607,6 +1622,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           Builder(
             builder: (btnCtx) => IptvRoundIcon(
               icon: Icons.audiotrack_rounded,
+              tvRowId: rowId,
+              tvItemIndex: i++,
               onTap: () => _showAudioMenu(btnCtx),
             ),
           ),
@@ -1614,6 +1631,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           Builder(
             builder: (btnCtx) => IptvRoundIcon(
               icon: Icons.monitor_heart_outlined,
+              tvRowId: rowId,
+              tvItemIndex: i++,
               onTap: () => _showStatsMenu(btnCtx),
             ),
           ),
@@ -1621,11 +1640,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           if (widget.channelGuide != null) ...[
             IptvRoundIcon(
               icon: Icons.search_rounded,
+              tvRowId: rowId,
+              tvItemIndex: i++,
               onTap: _toggleSearch,
             ),
             const SizedBox(width: 14),
             IptvRoundIcon(
               icon: Icons.grid_view_rounded,
+              tvRowId: rowId,
+              tvItemIndex: i++,
               onTap: _toggleGuide,
             ),
             const SizedBox(width: 14),
@@ -1633,6 +1656,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           if (_sources.length > 1)
             IptvRoundIcon(
               icon: Icons.swap_horiz_rounded,
+              tvRowId: rowId,
+              tvItemIndex: i++,
               onTap: _showSourcePicker,
             ),
           if (_sources.length > 1) const SizedBox(width: 14),
@@ -1640,6 +1665,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
             icon: _isFullscreen
                 ? Icons.fullscreen_exit_rounded
                 : Icons.fullscreen_rounded,
+            tvRowId: rowId,
+            tvItemIndex: i++,
             onTap: _toggleFullscreen,
           ),
         ],

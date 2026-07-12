@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/shared/design/design.dart';
 
@@ -425,6 +426,12 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
   }
 
   Widget _buildList() {
+    iptvSyncRow(
+      rowId: 'm3u-playlists',
+      sortOrder: 0,
+      itemCount: _playlists.length,
+      orientation: ShellTvRowOrientation.vertical,
+    );
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       itemCount: _playlists.length,
@@ -433,6 +440,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
         final p = _playlists[i];
         return _PlaylistCard(
           playlist: p,
+          listIndex: i,
           onTap: () {
             Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => M3uChannelsScreen(playlist: p),
@@ -505,11 +513,13 @@ class _PlaylistCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onRefresh;
   final VoidCallback onDelete;
+  final int? listIndex;
   const _PlaylistCard({
     required this.playlist,
     required this.onTap,
     required this.onRefresh,
     required this.onDelete,
+    this.listIndex,
   });
 
   @override
@@ -534,6 +544,9 @@ class _PlaylistCard extends StatelessWidget {
           context: context,
           onTap: onTap,
           borderRadius: 14,
+          listIndex: listIndex,
+          tvRowId: 'm3u-playlists',
+          tvItemIndex: listIndex,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -727,14 +740,26 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
                           style: GoogleFonts.poppins(color: Colors.white60),
                         ),
                       )
-                    : ListView.separated(
+                    : Builder(builder: (_) {
+                        iptvSyncRow(
+                          rowId: 'm3u-channels',
+                          sortOrder: 1,
+                          itemCount: list.length,
+                          orientation: ShellTvRowOrientation.vertical,
+                        );
+                        return ListView.separated(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         itemCount: list.length,
                         separatorBuilder: (context, index) => const SizedBox(height: 6),
                         itemBuilder: (_, i) =>
-                            _ChannelTile(channel: list[i], onTap: () => _play(list[i])),
-                      ),
+                            _ChannelTile(
+                              channel: list[i],
+                              listIndex: i,
+                              onTap: () => _play(list[i]),
+                            ),
+                      );
+                      }),
               ),
             ],
           ),
@@ -817,7 +842,14 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
             const SizedBox(height: 8),
             SizedBox(
               height: 36,
-              child: NotificationListener<ScrollNotification>(
+              child: Builder(builder: (_) {
+                final chipCount = _groups.length + 1;
+                iptvSyncRow(
+                  rowId: 'm3u-groups',
+                  sortOrder: 0,
+                  itemCount: chipCount,
+                );
+                return NotificationListener<ScrollNotification>(
                 onNotification: (_) {
                   _updateScrollArrows();
                   return false;
@@ -828,13 +860,14 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
                       controller: _groupScrollCtrl,
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 28),
-                      itemCount: _groups.length + 1,
+                      itemCount: chipCount,
                       separatorBuilder: (context, index) => const SizedBox(width: 6),
                       itemBuilder: (_, i) {
                         if (i == 0) {
                           return _GroupChip(
                             label: 'All',
                             selected: _group == null,
+                            listIndex: i,
                             onTap: () => setState(() => _group = null),
                           );
                         }
@@ -842,6 +875,7 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
                         return _GroupChip(
                           label: g,
                           selected: _group == g,
+                          listIndex: i,
                           onTap: () => setState(() => _group = g),
                         );
                       },
@@ -870,7 +904,8 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
                     ),
                   ],
                 ),
-              ),
+              );
+              }),
             ),
           ],
         ],
@@ -883,8 +918,13 @@ class _GroupChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _GroupChip(
-      {required this.label, required this.selected, required this.onTap});
+  final int? listIndex;
+  const _GroupChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.listIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -897,6 +937,10 @@ class _GroupChip extends StatelessWidget {
           onTap: onTap,
           borderRadius: 10,
           scaleOnFocus: 1.0,
+          listIndex: listIndex,
+          tvRowId: 'm3u-groups',
+          tvItemIndex: listIndex,
+          onDownEdge: () => iptvFocusRowItem('m3u-channels'),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Text(
@@ -977,7 +1021,12 @@ class _ScrollArrow extends StatelessWidget {
 class _ChannelTile extends StatelessWidget {
   final M3uChannel channel;
   final VoidCallback onTap;
-  const _ChannelTile({required this.channel, required this.onTap});
+  final int? listIndex;
+  const _ChannelTile({
+    required this.channel,
+    required this.onTap,
+    this.listIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -993,6 +1042,9 @@ class _ChannelTile extends StatelessWidget {
           context: context,
           onTap: onTap,
           borderRadius: 10,
+          listIndex: listIndex,
+          tvRowId: 'm3u-channels',
+          tvItemIndex: listIndex,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(

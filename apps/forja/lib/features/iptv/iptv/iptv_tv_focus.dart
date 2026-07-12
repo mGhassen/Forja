@@ -12,6 +12,14 @@ bool iptvUseTvFocus(BuildContext context) {
   return resolveShellProfile(context) == ShellProfile.tv;
 }
 
+/// Focus a registered IPTV row item (restores last index when [index] is null).
+bool iptvFocusRowItem(String rowId, [int? index]) {
+  final handle = ShellTvFocusCoordinator.rowHandle('iptv', rowId);
+  if (handle == null || handle.itemCount <= 0) return false;
+  final idx = (index ?? handle.lastFocusedIndex).clamp(0, handle.itemCount - 1);
+  return ShellTvFocusCoordinator.focusRowItem('iptv', rowId, idx);
+}
+
 Widget iptvTap({
   required BuildContext context,
   required Widget child,
@@ -25,6 +33,11 @@ Widget iptvTap({
   String? tvRowId,
   int? tvItemIndex,
   ShellTvZone? tvZone,
+  VoidCallback? onLeftEdge,
+  VoidCallback? onRightEdge,
+  VoidCallback? onUpEdge,
+  VoidCallback? onDownEdge,
+  ValueChanged<bool>? onFocusChange,
 }) {
   if (onTap == null) return child;
   return shellFocusableTap(
@@ -40,16 +53,22 @@ Widget iptvTap({
     tvRowId: tvRowId,
     tvItemIndex: tvItemIndex ?? listIndex ?? gridIndex,
     tvZone: tvZone ?? (tvRowId != null ? ShellTvZone.row : null),
+    onLeftEdge: onLeftEdge,
+    onRightEdge: onRightEdge,
+    onUpEdge: onUpEdge,
+    onDownEdge: onDownEdge,
+    onFocusChange: onFocusChange,
     child: child,
   );
 }
 
-/// Registers a horizontal IPTV row with the TV coordinator.
+/// Registers an IPTV row with the TV coordinator.
 void iptvSyncRow({
   required String rowId,
   required int sortOrder,
   required int itemCount,
   VoidCallback? onFocusUp,
+  ShellTvRowOrientation orientation = ShellTvRowOrientation.horizontal,
 }) {
   if (itemCount <= 0) {
     shellTvUnregisterRow(tabId: 'iptv', rowId: rowId);
@@ -61,6 +80,7 @@ void iptvSyncRow({
     sortOrder: sortOrder,
     itemCount: itemCount,
     onFocusUp: onFocusUp,
+    orientation: orientation,
   );
 }
 
@@ -214,6 +234,8 @@ class IptvPrimaryButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool busy;
   final bool subtle;
+  final String? tvRowId;
+  final int? tvItemIndex;
 
   const IptvPrimaryButton({
     super.key,
@@ -222,6 +244,8 @@ class IptvPrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.busy = false,
     this.subtle = false,
+    this.tvRowId,
+    this.tvItemIndex,
   });
 
   @override
@@ -242,6 +266,8 @@ class IptvPrimaryButton extends StatelessWidget {
           context: context,
           onTap: busy ? null : onPressed,
           borderRadius: 14,
+          tvRowId: tvRowId,
+          tvItemIndex: tvItemIndex,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(
@@ -281,6 +307,8 @@ class IptvRoundIcon extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
   final bool big;
+  final String? tvRowId;
+  final int? tvItemIndex;
 
   const IptvRoundIcon({
     super.key,
@@ -288,6 +316,8 @@ class IptvRoundIcon extends StatelessWidget {
     required this.onTap,
     this.onLongPress,
     this.big = false,
+    this.tvRowId,
+    this.tvItemIndex,
   });
 
   @override
@@ -307,6 +337,8 @@ class IptvRoundIcon extends StatelessWidget {
           onTap: onTap,
           borderRadius: size / 2,
           scaleOnFocus: 1.08,
+          tvRowId: tvRowId,
+          tvItemIndex: tvItemIndex,
           child: child,
         ),
       );

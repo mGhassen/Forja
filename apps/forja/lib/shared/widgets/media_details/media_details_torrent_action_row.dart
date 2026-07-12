@@ -160,6 +160,7 @@ class _MediaDetailsTorrentActionRowState
       onTap: onTap,
       focusNode: attachFocus ? widget.playFocusNode : null,
       onKeyEvent: attachFocus ? widget.onPlayKeyEvent : null,
+      onUpEdge: widget.tvTabId != null ? widget.tvFocusUp : null,
       tvTabId: widget.tvTabId,
       tvRowId: widget.tvTabId != null ? MediaDetailsTv.heroRowId : null,
       tvItemIndex: tvItemIndex,
@@ -240,6 +241,7 @@ class _MediaDetailsTorrentActionRowState
           tvTabId: widget.tvTabId,
           tvRowId: widget.tvTabId != null ? MediaDetailsTv.heroRowId : null,
           tvItemIndexStart: idx,
+          onUpEdge: widget.tvFocusUp,
           slots: [
             HeroPillIconSlot(
               icon: Icons.delete_outline_rounded,
@@ -274,6 +276,7 @@ class _MediaDetailsTorrentActionRowState
         tvTabId: widget.tvTabId,
         tvRowId: widget.tvTabId != null ? MediaDetailsTv.heroRowId : null,
         tvItemIndexStart: iconStart,
+        onUpEdge: widget.tvFocusUp,
         slots: [
           MyListHeroPillButton.movieSlot(context, movie: widget.movie),
           if (widget.showPlay)

@@ -2199,10 +2199,17 @@ class _HomeScreenState extends State<HomeScreen>
       tvTabId: tvNav ? 'home' : null,
       tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
       tvItemIndex: tvNav ? 0 : null,
-      onUpEdge: tvNav ? ShellTvFocus.focusHomeMenu : null,
+      onUpEdge: tvNav
+          ? () {
+              ShellTvFocusCoordinator.revealHeroForTab('home');
+              ShellTvFocus.focusHomeMenu();
+            }
+          : null,
       onKeyEvent: policy.heroPlayAutoFocus
           ? (node, event) {
-              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              if (!shellTvIsNavigationKey(event)) {
+                return KeyEventResult.ignored;
+              }
               if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
                 if (ShellTvFocusCoordinator.focusActiveNavTab()) {
                   return KeyEventResult.handled;
@@ -2225,7 +2232,12 @@ class _HomeScreenState extends State<HomeScreen>
           tvTabId: tvNav ? 'home' : null,
           tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
           tvItemIndexStart: tvNav ? 1 : null,
-          onUpEdge: tvNav ? ShellTvFocus.focusHomeMenu : null,
+          onUpEdge: tvNav
+          ? () {
+              ShellTvFocusCoordinator.revealHeroForTab('home');
+              ShellTvFocus.focusHomeMenu();
+            }
+          : null,
           slots: [
             HeroPillIconSlot(
               icon: Icons.info_outline_rounded,
@@ -2248,7 +2260,10 @@ class _HomeScreenState extends State<HomeScreen>
     return DetailsHeroTvActionScope(
       tabId: 'home',
       itemCount: heroItemCount,
-      onFocusUp: ShellTvFocus.focusHomeMenu,
+      onFocusUp: () {
+        ShellTvFocusCoordinator.revealHeroForTab('home');
+        ShellTvFocus.focusHomeMenu();
+      },
       child: body,
     );
   }

@@ -634,7 +634,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
   KeyEventResult _searchFieldKeyEvent(FocusNode node, KeyEvent event) {
     if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       final count = _helperItemCount();
       if (count <= 0) return KeyEventResult.ignored;

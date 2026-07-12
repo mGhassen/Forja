@@ -176,14 +176,34 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
         if (custom == KeyEventResult.handled) return KeyEventResult.handled;
         final arrow = shellTvHandleRowArrows(event: event, tvMeta: widget.tvMeta);
         if (arrow == KeyEventResult.handled) return arrow;
+        if (widget.tvMeta == null &&
+            policy.useFocusableMoodChips &&
+            shellTvIsNavigationKey(event)) {
+          final key = event.logicalKey;
+          TraversalDirection? direction;
+          if (key == LogicalKeyboardKey.arrowLeft) {
+            direction = TraversalDirection.left;
+          } else if (key == LogicalKeyboardKey.arrowRight) {
+            direction = TraversalDirection.right;
+          } else if (key == LogicalKeyboardKey.arrowUp) {
+            direction = TraversalDirection.up;
+          } else if (key == LogicalKeyboardKey.arrowDown) {
+            direction = TraversalDirection.down;
+          }
+          if (direction != null &&
+              FocusScope.of(context).focusInDirection(direction)) {
+            return KeyEventResult.handled;
+          }
+        }
         final trap = shellTvTrapRowGeometry(
           event: event,
           tvFocus: policy.useFocusableMoodChips,
           tvMeta: widget.tvMeta,
-          trapHorizontal: policy.useFocusableMoodChips,
+          trapHorizontal:
+              policy.useFocusableMoodChips && widget.tvMeta?.rowId != null,
         );
         if (trap == KeyEventResult.handled) return trap;
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
         if (shellTvIsActivateKey(event)) {
           widget.onTap!();
           return KeyEventResult.handled;
