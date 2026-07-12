@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +29,6 @@ class PlayerEpisodePanel {
     required int currentSeason,
     required int currentEpisode,
     required Future<void> Function(int season, int episode) onEpisodeSelected,
-    Uint8List? frozenFrame,
   }) {
     dismiss();
 
@@ -45,7 +43,6 @@ class PlayerEpisodePanel {
         currentEpisode: currentEpisode,
         onEpisodeSelected: onEpisodeSelected,
         onClose: dismiss,
-        frozenFrame: frozenFrame,
       ),
     );
 
@@ -62,7 +59,6 @@ class _EpisodePanelOverlay extends StatefulWidget {
     required this.currentEpisode,
     required this.onEpisodeSelected,
     required this.onClose,
-    this.frozenFrame,
   });
 
   final Movie movie;
@@ -71,7 +67,6 @@ class _EpisodePanelOverlay extends StatefulWidget {
   final int currentEpisode;
   final Future<void> Function(int season, int episode) onEpisodeSelected;
   final VoidCallback onClose;
-  final Uint8List? frozenFrame;
 
   @override
   State<_EpisodePanelOverlay> createState() => _EpisodePanelOverlayState();
@@ -90,12 +85,10 @@ class _EpisodePanelOverlayState extends State<_EpisodePanelOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    // Same full-height shell as media-details Sources so frost has bounded height.
     return TorrentSourcesPanel(
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      frozenFrame: widget.frozenFrame,
       child: _EpisodePanelBody(
         movie: widget.movie,
         initialSeason: widget.initialSeason,
@@ -538,8 +531,7 @@ class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay> {
     return TorrentSourcesPanel(
       isOpen: _open,
       onClose: widget.onClose,
-      // BackdropFilter over live video — no freeze-frame image (anime / hub).
-      enableBlur: true,
+      enableBlur: false,
       child: _HubEpisodePanelBody(
         episodes: widget.episodes,
         currentEpisode: widget.currentEpisode,

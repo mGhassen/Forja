@@ -4,7 +4,7 @@
 
 ## What it is
 
-Live Matches pulls schedules and streams from sports APIs (DamiTV, CDN Live TV). Browse by sport category, pick a match, and watch in an embedded WebView player.
+Live Matches pulls schedules and streams from sports APIs ([PPV](https://ppv.is) / `api.ppv.st`, with CDN Live TV as an alternate path in code). Browse by sport category, pick a match, and watch in an embedded WebView player that attempts autoplay on load.
 
 ## How to open it
 
@@ -14,13 +14,13 @@ Tap **Live Matches** in the navigation bar.
 
 - Switch sport category tabs
 - Browse upcoming and live events
-- Open a match and watch the stream
+- Open a match and watch the stream (autoplay when the embed allows it)
 - Refresh lists for new events
 
 ## Tips
 
 - Streams are third-party — availability changes with broadcasts and region
-- WebView playback may behave differently per platform
+- WebView playback may behave differently per platform; some embeds still require a tap if the site blocks unmuted autoplay
 
 ## Related
 

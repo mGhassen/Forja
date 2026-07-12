@@ -132,30 +132,32 @@ class _DamiTvStream {
     final teams = j['teams'] as Map<String, dynamic>?;
     final home = teams?['home'] as Map<String, dynamic>?;
     final away = teams?['away'] as Map<String, dynamic>?;
-    
-    String p = (j['poster'] ?? '').toString();
-    if (p.startsWith('/')) p = 'https://dami-tv.pro$p';
 
-    String hb = (home?['badge'] ?? '').toString();
-    if (hb.startsWith('/')) hb = 'https://dami-tv.pro$hb';
+    String abs(String path) {
+      if (path.startsWith('/')) return 'https://ppv.is$path';
+      return path;
+    }
 
-    String ab = (away?['badge'] ?? '').toString();
-    if (ab.startsWith('/')) ab = 'https://dami-tv.pro$ab';
-    
+    final league = (j['league'] ?? j['tag'] ?? j['source_tag'] ?? '').toString();
+    final viewersRaw = j['viewers'];
+    final viewers = viewersRaw is num
+        ? viewersRaw.toInt()
+        : int.tryParse(viewersRaw?.toString() ?? '') ?? 0;
+
     return _DamiTvStream(
       id: (j['id'] ?? '').toString(),
       name: (j['name'] ?? '').toString(),
-      poster: p,
+      poster: abs((j['poster'] ?? '').toString()),
       startsAt: (j['starts_at'] as num?)?.toInt() ?? 0,
       endsAt: (j['ends_at'] as num?)?.toInt() ?? 0,
       categoryName: (j['category_name'] ?? '').toString(),
       status: (j['status'] ?? '').toString(),
-      league: (j['league'] ?? '').toString(),
+      league: league,
       homeTeam: home?['name'] as String?,
-      homeBadge: hb,
+      homeBadge: abs((home?['badge'] ?? '').toString()),
       awayTeam: away?['name'] as String?,
-      awayBadge: ab,
-      viewers: (j['viewers'] as num?)?.toInt() ?? 0,
+      awayBadge: abs((away?['badge'] ?? '').toString()),
+      viewers: viewers,
       iframe: (j['iframe'] ?? '').toString(),
     );
   }
@@ -173,28 +175,88 @@ class _DamiTvStream {
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
-const _ua = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'};
+const _ua = {
+  'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+  'Origin': 'https://ppv.is',
+  'Referer': 'https://ppv.is/',
+};
+
+const _ppvStreamApis = [
+  'https://api.ppv.st/api/streams',
+  'https://api.ppv.cx/api/streams',
+];
+
+/// Force play on embed players that gate behind a gesture / big-play overlay.
+const _autoplayJs = r'''
+(function () {
+  function clickPlay() {
+    var sels = [
+      'video',
+      '.vjs-big-play-button',
+      '.jw-icon-display',
+      '.plyr__control--overlaid',
+      'button[aria-label*="Play"]',
+      'button[title*="Play"]',
+      '.play-button',
+      '#big_play_button'
+    ];
+    for (var i = 0; i < sels.length; i++) {
+      try {
+        var nodes = document.querySelectorAll(sels[i]);
+        for (var j = 0; j < nodes.length; j++) {
+          var el = nodes[j];
+          if (el.tagName === 'VIDEO') {
+            el.setAttribute('autoplay', '');
+            el.muted = false;
+            var p = el.play();
+            if (p && p.catch) {
+              p.catch(function () {
+                el.muted = true;
+                el.play().catch(function () {});
+              });
+            }
+          } else if (typeof el.click === 'function') {
+            el.click();
+          }
+        }
+      } catch (_) {}
+    }
+  }
+  clickPlay();
+  setTimeout(clickPlay, 500);
+  setTimeout(clickPlay, 1500);
+  setTimeout(clickPlay, 3000);
+})();
+''';
 
 Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
-  try {
-    final resp = await http.get(Uri.parse('https://dami-tv.pro/papi/api/streams'), headers: _ua)
-        .timeout(const Duration(seconds: 12));
-    if (resp.statusCode != 200) return [];
-    final body = jsonDecode(resp.body) as Map<String, dynamic>;
-    if (body['success'] != true) return [];
-    
-    final result = <_DamiTvStream>[];
-    final categories = body['streams'] as List? ?? [];
-    for (final cat in categories) {
-      final streams = cat['streams'] as List? ?? [];
-      for (final s in streams) {
-        try { result.add(_DamiTvStream.fromJson(s as Map<String, dynamic>)); } catch (_) {}
+  for (final endpoint in _ppvStreamApis) {
+    try {
+      final resp = await http
+          .get(Uri.parse(endpoint), headers: _ua)
+          .timeout(const Duration(seconds: 12));
+      if (resp.statusCode != 200) continue;
+      final body = jsonDecode(resp.body) as Map<String, dynamic>;
+      if (body['success'] != true) continue;
+
+      final result = <_DamiTvStream>[];
+      final categories = body['streams'] as List? ?? [];
+      for (final cat in categories) {
+        final streams = cat['streams'] as List? ?? [];
+        for (final s in streams) {
+          try {
+            result.add(_DamiTvStream.fromJson(s as Map<String, dynamic>));
+          } catch (_) {}
+        }
       }
+      if (result.isNotEmpty) return result;
+    } catch (_) {
+      continue;
     }
-    return result;
-  } catch (_) {
-    return [];
   }
+  return [];
 }
 
 Future<List<_CdnChannel>> _fetchCdnChannels() async {
@@ -1096,16 +1158,29 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
       body: Stack(
         children: [
           ForjaInAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+            initialUrlRequest: URLRequest(
+              url: WebUri(widget.url),
+              headers: const {
+                'Referer': 'https://ppv.is/',
+                'Origin': 'https://ppv.is',
+              },
+            ),
             initialSettings: InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               javaScriptEnabled: true,
               disableDefaultErrorPage: true,
               supportMultipleWindows: false,
+              allowsAirPlayForMediaPlayback: true,
+              allowsPictureInPictureMediaPlayback: true,
             ),
             onLoadStart: (_, _) => setState(() => _loading = true),
-            onLoadStop:  (_, _) => setState(() => _loading = false),
+            onLoadStop: (ctrl, _) async {
+              setState(() => _loading = false);
+              try {
+                await ctrl.evaluateJavascript(source: _autoplayJs);
+              } catch (_) {}
+            },
             onEnterFullscreen: (_) => _enterFullscreen(),
             onExitFullscreen:  (_) => _exitFullscreen(),
             shouldOverrideUrlLoading: (ctrl, action) async {
@@ -1384,7 +1459,7 @@ class _DamiTvPlayerScreenState extends State<_DamiTvPlayerScreen> {
                     color: Colors.blue.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: Colors.blue)),
-                child: const Text('Dami TV', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                child: const Text('PPV', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
               ),
             ),
           ),
@@ -1393,16 +1468,29 @@ class _DamiTvPlayerScreenState extends State<_DamiTvPlayerScreen> {
       body: Stack(
         children: [
           ForjaInAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(embedUrl)),
+            initialUrlRequest: URLRequest(
+              url: WebUri(embedUrl),
+              headers: const {
+                'Referer': 'https://ppv.is/',
+                'Origin': 'https://ppv.is',
+              },
+            ),
             initialSettings: InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               javaScriptEnabled: true,
               disableDefaultErrorPage: true,
               supportMultipleWindows: false,
+              allowsAirPlayForMediaPlayback: true,
+              allowsPictureInPictureMediaPlayback: true,
             ),
             onLoadStart: (_, _) => setState(() => _loading = true),
-            onLoadStop:  (_, _) => setState(() => _loading = false),
+            onLoadStop: (ctrl, _) async {
+              setState(() => _loading = false);
+              try {
+                await ctrl.evaluateJavascript(source: _autoplayJs);
+              } catch (_) {}
+            },
             onEnterFullscreen: (_) => _enterFullscreen(),
             onExitFullscreen:  (_) => _exitFullscreen(),
             shouldOverrideUrlLoading: (ctrl, action) async {

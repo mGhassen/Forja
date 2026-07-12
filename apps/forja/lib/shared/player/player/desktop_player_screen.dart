@@ -2913,18 +2913,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     await _switchToEpisode(season, episode);
   }
 
-  Future<Uint8List?> _capturePanelFrostFrame() async {
-    try {
-      final jpeg = await _player.screenshot(format: 'image/jpeg');
-      if (jpeg != null && jpeg.isNotEmpty) return jpeg;
-    } catch (_) {}
-    try {
-      final png = await _player.screenshot(format: 'image/png');
-      if (png != null && png.isNotEmpty) return png;
-    } catch (_) {}
-    return null;
-  }
-
   Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
     if (widget.hubEpisodes != null &&
         widget.hubEpisodes!.isNotEmpty &&
@@ -2940,7 +2928,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       );
       return;
     }
-    final frame = await _capturePanelFrostFrame();
     if (!mounted) return;
     final movie = widget.movie;
     if (movie == null || movie.mediaType != 'tv') return;
@@ -2953,7 +2940,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       currentEpisode: episode,
       onEpisodeSelected: _goToEpisode,
       anchorContext: anchorContext,
-      frozenFrame: frame,
     );
   }
 
