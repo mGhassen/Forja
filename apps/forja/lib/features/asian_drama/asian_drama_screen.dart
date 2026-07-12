@@ -177,8 +177,35 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
       }
 
-      // Same launch contract as details → Resume (fresh title + episode ids).
-      final details = await _service.getDetails(id);
+      final card = _cardFromHistoryEntry(entry);
+
+      // Fast path — same launch contract as details → Resume after load:
+      // history already stores kisskh episode id + number; player only
+      // calls getDetails when the episode list is empty (not here).
+      if (epId != null && epId > 0) {
+        final ep = KdramaEpisode(id: epId, number: epNum);
+        openAsianDramaPlayer(
+          context,
+          drama: card,
+          episode: ep,
+          allEpisodes: [ep],
+          startPosition: startPosition,
+        ).then((_) => _refreshHistory());
+        return;
+      }
+
+      // Slow path — legacy history rows without episodeId need live episode list.
+      KdramaDetails details;
+      try {
+        details = await _service.getDetails(id);
+      } catch (e) {
+        if ('$e'.contains('→ 429')) {
+          await Future.delayed(const Duration(milliseconds: 800));
+          details = await _service.getDetails(id);
+        } else {
+          rethrow;
+        }
+      }
       if (!mounted) return;
       final ep = details.episodeForResume(
         episodeNumber: epNum,
@@ -198,7 +225,12 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       ).then((_) => _refreshHistory());
     } catch (e) {
       if (!mounted) return;
-      ForjaToast.error('Resume failed: $e');
+      final raw = '$e';
+      if (raw.contains('→ 429')) {
+        ForjaToast.error('kisskh is busy — wait a moment or open details and Resume.');
+      } else {
+        ForjaToast.error('Resume failed: $e');
+      }
     } finally {
       if (mounted) setState(() => _resumingDramaId = null);
     }

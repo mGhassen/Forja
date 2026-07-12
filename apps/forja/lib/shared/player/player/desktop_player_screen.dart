@@ -2701,6 +2701,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       refreshListenable: _streamMenuRefreshListenable(),
       onReload: _reloadStreamMenu,
       isReloading: _isReloadingStreams,
+      movie: widget.movie,
     );
     _onMouseMove();
   }

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
@@ -41,6 +40,29 @@ class ExternalPlayerService {
   /// The full list including "Built-in Player" as first option.
   static List<String> get playerNames =>
       ['Built-in Player', ...availablePlayers.map((p) => p.displayName)];
+
+  /// External players that are actually installed on this device.
+  ///
+  /// Desktop: probes known paths and PATH (`which` / `where`).
+  /// Mobile: returns the full platform list (Android intents fail gracefully).
+  static Future<List<ExternalPlayer>> getInstalledPlayers() async {
+    final players = availablePlayers;
+    if (players.isEmpty) return const [];
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      return players;
+    }
+
+    final installed = <ExternalPlayer>[];
+    await Future.wait(
+      players.map((player) async {
+        if (await _findDesktopExecutable(player) != null) {
+          installed.add(player);
+        }
+      }),
+    );
+    return installed;
+  }
 
   // ── Mobile (Android / iOS) ─────────────────────────────────────────────
 
@@ -272,7 +294,6 @@ class ExternalPlayerService {
       url: url,
       headers: headers,
       desktop: Platform.isWindows || Platform.isMacOS || Platform.isLinux,
-      playerName: player.displayName,
     );
 
     debugPrint(
@@ -307,15 +328,13 @@ class ExternalPlayerService {
 
   /// Resolves the URL/headers external players should open.
   ///
-  /// VLC/mpv: direct URL + CLI headers (VLC propagates Referer on HLS itself).
-  /// IINA on macOS: HLS + headers → local [hls-proxy] (segment/key fetches).
+  /// Desktop: direct URL + player CLI headers (VLC and IINA use the same URL).
   /// Android: hls-proxy when headers are required. 111477 uses seek proxy.
   static Future<({String url, Map<String, String>? headers})>
       _resolveLaunchTarget({
     required String url,
     required Map<String, String>? headers,
     required bool desktop,
-    String? playerName,
   }) async {
     if (site111477_proxy.is111477LocalProxyUrl(url)) {
       site111477_proxy.retainForExternalHandoff = true;
@@ -342,29 +361,6 @@ class ExternalPlayerService {
       return (url: url, headers: null);
     }
 
-    // IINA does not reliably attach Referer/Origin to vixsrc-style HLS
-    // segment + AES-key requests. VLC does — keep VLC on direct URL.
-    if (desktop &&
-        Platform.isMacOS &&
-        playerName == 'IINA' &&
-        _isHlsStream(url)) {
-      final playUrl = await _resolveHlsVariantIfMaster(url, headers);
-      final proxy = LocalServerService();
-      if (proxy.port <= 0) {
-        await proxy.start();
-      }
-      if (proxy.port > 0) {
-        final proxied = proxy.getHlsProxyUrl(playUrl, headers);
-        debugPrint(
-          '[ExternalPlayer] IINA HLS proxy (127.0.0.1:${proxy.port}) '
-          'variant=${playUrl != url}',
-        );
-        return (url: proxied, headers: null);
-      }
-      debugPrint('[ExternalPlayer] IINA HLS proxy unavailable — direct URL');
-    }
-
-    // Desktop VLC/mpv: headers go to the player CLI.
     if (desktop) {
       debugPrint('[ExternalPlayer] Direct URL — player CLI headers');
       return (url: url, headers: headers);
@@ -397,57 +393,6 @@ class ExternalPlayerService {
         '${prefix}ytdl=no',
       ];
 
-  static bool _isHlsStream(String url) {
-    final lower = url.toLowerCase();
-    return lower.contains('.m3u8') || lower.contains('/playlist/');
-  }
-
-  /// Master HLS playlists (vixsrc `/playlist/…`) list variant URLs — mpv in
-  /// IINA often fails on the master when AES keys live on another host.
-  static Future<String> _resolveHlsVariantIfMaster(
-    String url,
-    Map<String, String> headers,
-  ) async {
-    if (!_isHlsStream(url)) return url;
-
-    final client = HttpClient();
-    try {
-      final request = await client.getUrl(Uri.parse(url));
-      for (final entry in headers.entries) {
-        request.headers.set(entry.key, entry.value);
-      }
-      final response = await request.close();
-      if (response.statusCode != 200) return url;
-      final body = await response.transform(utf8.decoder).join();
-      if (!body.contains('#EXT-X-STREAM-INF')) return url;
-
-      String? fallback;
-      for (final line in body.split('\n')) {
-        final trimmed = line.trim();
-        if (!trimmed.startsWith('http')) continue;
-        if (!trimmed.contains('type=video') && !trimmed.contains('.m3u8')) {
-          continue;
-        }
-        fallback ??= trimmed;
-        if (trimmed.contains('rendition=720p') ||
-            trimmed.contains('RESOLUTION=1280x720')) {
-          debugPrint('[ExternalPlayer] HLS variant → 720p');
-          return trimmed;
-        }
-      }
-      if (fallback != null) {
-        debugPrint('[ExternalPlayer] HLS variant → first video rendition');
-        return fallback;
-      }
-      return url;
-    } catch (e) {
-      debugPrint('[ExternalPlayer] HLS variant resolve failed: $e');
-      return url;
-    } finally {
-      client.close(force: true);
-    }
-  }
-
   static bool _isLocalProxyUrl(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) return false;
@@ -458,53 +403,61 @@ class ExternalPlayerService {
         uri.path.contains('/comic-proxy');
   }
 
-  /// Raw mpv header flags (after `iina-cli … --`). Separate argv entries —
-  /// no comma-joined [http-header-fields] (breaks on "KHTML, like Gecko").
-  static List<String> _mpvRawHeaderArgs(Map<String, String> headers) {
-    final args = <String>[];
+  /// iina-cli mangles `--mpv-referrer=…&…` (Referer query strings). VLC's
+  /// `--http-referrer` does not. Write headers to `/tmp` and use the same
+  /// direct stream URL VLC opens.
+  static const String _iinaMpvConfigDir = '/tmp';
+
+  static Future<File> _writeIinaMpvConfig(Map<String, String> headers) async {
+    final buf = StringBuffer();
     final referer = headers['Referer'] ?? headers['referer'];
     if (referer != null) {
-      args.add('--referrer=$referer');
-      args.add('--http-header-fields=Referer: $referer');
+      _mpvConfigLine(buf, 'referrer', referer);
     }
     final ua = headers['User-Agent'] ?? headers['user-agent'];
     if (ua != null) {
-      args.add('--user-agent=$ua');
-      args.add('--http-header-fields=User-Agent: $ua');
+      _mpvConfigLine(buf, 'user-agent', ua);
     }
+    final headerFields = <String>[];
+    if (referer != null) headerFields.add('Referer: $referer');
     final origin = headers['Origin'] ?? headers['origin'];
-    if (origin != null) {
-      args.add('--http-header-fields=Origin: $origin');
+    if (origin != null) headerFields.add('Origin: $origin');
+    if (ua != null) headerFields.add('User-Agent: $ua');
+    if (headerFields.isNotEmpty) {
+      _mpvConfigLine(buf, 'http-header-fields', headerFields.join(','));
     }
-    return args;
+    final file = File(
+      '$_iinaMpvConfigDir/forja_iina_'
+      '${DateTime.now().microsecondsSinceEpoch}.conf',
+    );
+    await file.writeAsString(buf.toString());
+    return file;
   }
 
-  static List<String> _desktopLaunchArgs({
+  static void _mpvConfigLine(StringBuffer buf, String key, String value) {
+    buf.writeln('$key="${_mpvConfigEscape(value)}"');
+  }
+
+  static String _mpvConfigEscape(String value) =>
+      value.replaceAll('\\', r'\\').replaceAll('"', r'\"');
+
+  static Future<List<String>> _desktopLaunchArgs({
     required ExternalPlayer player,
     required String url,
     required String title,
     Map<String, String>? headers,
-  }) {
+  }) async {
     if (Platform.isMacOS && player.displayName == 'IINA') {
-      if (_isLocalProxyUrl(url)) {
-        return [
-          if (title.isNotEmpty) '--mpv-force-media-title=$title',
-          url,
-        ];
-      }
-      if (headers != null && headers.isNotEmpty) {
-        return [
-          url,
-          '--',
-          if (title.isNotEmpty) '--force-media-title=$title',
-          ..._mpvStreamArgs(prefix: '--'),
-          ..._mpvRawHeaderArgs(headers),
-        ];
-      }
-      return [
+      final args = <String>[
         if (title.isNotEmpty) '--mpv-force-media-title=$title',
-        url,
       ];
+      if (headers != null && headers.isNotEmpty) {
+        final config = await _writeIinaMpvConfig(headers);
+        debugPrint('[ExternalPlayer] IINA mpv config → ${config.path}');
+        args.insert(0, '--mpv-include=${config.path}');
+      }
+      args.add(url);
+      return args;
     }
 
     return player.desktopArgs?.call(url, title, headers) ?? [url];
@@ -619,7 +572,7 @@ class ExternalPlayerService {
       return false;
     }
 
-    final playerArgs = _desktopLaunchArgs(
+    final playerArgs = await _desktopLaunchArgs(
       player: player,
       url: url,
       title: title,

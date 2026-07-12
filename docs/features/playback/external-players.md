@@ -6,7 +6,7 @@
 
 Playback always starts in Forja’s built-in player. During a stream you can send the resolved URL to an external player installed on your device. That choice applies to the **current stream only** — the next title opens in the built-in player again.
 
-Options vary by platform (e.g. IINA, VLC, and mpv on macOS; MX Player on Android).
+Options vary by platform (e.g. IINA, VLC, and mpv on macOS; MX Player on Android). On desktop, the **Player** menu only lists apps that are actually installed — install mpv with Homebrew (`brew install mpv`) if you want the standalone mpv option; IINA and VLC are detected from `/Applications/`.
 
 ## How to open it
 
@@ -22,8 +22,8 @@ While already handed off: **Change player** on the handoff screen.
 
 ## Tips
 
-- On macOS, **VLC** gets the real URL plus `--http-referrer` / `--http-user-agent` (VLC propagates those on HLS segment requests)
-- On macOS, **IINA** uses Forja's local **hls-proxy** for header-protected HLS (vixsrc, embed sniffers) so every segment and AES-key fetch gets Referer/Origin — keep Forja open on the handoff screen; non-HLS streams use `iina-cli` with raw mpv flags after `--`
+- On macOS, **VLC** opens the direct stream URL with `--http-referrer` / `--http-user-agent`
+- On macOS, **IINA** opens the **same direct URL** but loads Referer/User-Agent/Origin from a temp mpv config in `/tmp` (`--mpv-include`) — iina-cli breaks when those values contain `&` in CLI flags
 - **Android** may still use Forja's local hls-proxy when the player cannot accept headers
 - **111477 CDN** direct file links use Forja's seek cache proxy (signed redirects)
 - External players receive the same mpv network settings as the built-in player (`tls-verify`, HLS cache, timeouts)

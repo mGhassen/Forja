@@ -3096,6 +3096,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       refreshListenable: _streamMenuRefreshListenable(),
       onReload: _reloadStreamMenu,
       isReloading: _isReloadingStreams,
+      movie: widget.movie,
     );
     _startHideTimer();
   }

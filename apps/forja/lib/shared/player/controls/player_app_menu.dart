@@ -91,21 +91,89 @@ class PlayerAppMenu {
           const SizedBox(height: 8),
           const _SectionLabel('External app'),
         ],
-        ...ExternalPlayerService.availablePlayers.map(
-          (player) => PlayerPopupListTile(
-            label: player.displayName,
-            selected:
-                !usingBuiltIn && externalPlayerName == player.displayName,
-            onTap: () async {
-              onDismiss?.call();
-              if (!usingBuiltIn && externalPlayerName == player.displayName) {
-                return;
-              }
-              await onSelect(externalPlayer: player.displayName);
-            },
-          ),
+        _InstalledExternalPlayers(
+          usingBuiltIn: usingBuiltIn,
+          externalPlayerName: externalPlayerName,
+          onSelect: onSelect,
+          onDismiss: onDismiss,
         ),
       ],
+    );
+  }
+}
+
+class _InstalledExternalPlayers extends StatefulWidget {
+  const _InstalledExternalPlayers({
+    required this.usingBuiltIn,
+    required this.externalPlayerName,
+    required this.onSelect,
+    this.onDismiss,
+  });
+
+  final bool usingBuiltIn;
+  final String? externalPlayerName;
+  final PlayerMenuSelectHandler onSelect;
+  final VoidCallback? onDismiss;
+
+  @override
+  State<_InstalledExternalPlayers> createState() =>
+      _InstalledExternalPlayersState();
+}
+
+class _InstalledExternalPlayersState extends State<_InstalledExternalPlayers> {
+  late final Future<List<ExternalPlayer>> _playersFuture =
+      ExternalPlayerService.getInstalledPlayers();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<ExternalPlayer>>(
+      future: _playersFuture,
+      builder: (context, snapshot) {
+        final players = snapshot.data;
+        if (players == null) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        if (players.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+            child: Text(
+              'No external players installed',
+              style: GoogleFonts.inter(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          );
+        }
+        return Column(
+          children: players
+              .map(
+                (player) => PlayerPopupListTile(
+                  label: player.displayName,
+                  selected: !widget.usingBuiltIn &&
+                      widget.externalPlayerName == player.displayName,
+                  onTap: () async {
+                    widget.onDismiss?.call();
+                    if (!widget.usingBuiltIn &&
+                        widget.externalPlayerName == player.displayName) {
+                      return;
+                    }
+                    await widget.onSelect(externalPlayer: player.displayName);
+                  },
+                ),
+              )
+              .toList(growable: false),
+        );
+      },
     );
   }
 }
