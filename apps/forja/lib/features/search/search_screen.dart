@@ -74,6 +74,7 @@ class SearchScreenState extends State<SearchScreen>
   final FocusNode _focusNode = FocusNode();
   final FocusNode _firstHelperFocusNode = FocusNode();
   final ScrollController _helpersScrollController = ScrollController();
+  final ScrollController _resultsScrollController = ScrollController();
 
   Timer? _debounce;
   String _query = '';
@@ -433,6 +434,7 @@ class SearchScreenState extends State<SearchScreen>
     _focusNode.dispose();
     _firstHelperFocusNode.dispose();
     _helpersScrollController.dispose();
+    _resultsScrollController.dispose();
     super.dispose();
   }
 
@@ -544,8 +546,6 @@ class SearchScreenState extends State<SearchScreen>
     });
   }
 
-  void _focusResultCard() => _focusResultCardAt(_gridFocusedIndex);
-
   void _scheduleFocusOnResultCardIfPending() {
     final pending = _pendingGridFocusIndex;
     if (pending == null) return;
@@ -589,6 +589,129 @@ class SearchScreenState extends State<SearchScreen>
     tryFocus();
   }
 
+  void _focusFirstHelper() => _focusHelperAtIndex(0);
+
+  RenderBox? _tvItemRenderBox(String rowId, int index) {
+    final node = ShellTvFocusCoordinator.itemNode('search', rowId, index);
+    final ctx = node?.context;
+    if (ctx == null || !ctx.mounted) return null;
+    final renderObject = ctx.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.hasSize ||
+        !renderObject.attached) {
+      return null;
+    }
+    return renderObject;
+  }
+
+  double? _tvItemCenterGlobalY(String rowId, int index) {
+    final box = _tvItemRenderBox(rowId, index);
+    if (box == null) return null;
+    return box.localToGlobal(box.size.center(Offset.zero)).dy;
+  }
+
+  double? _gridRowScrollStride() {
+    const gridColumns = 4;
+    for (var row = 0; row < 24; row++) {
+      final y0 = _tvItemCenterGlobalY('results', row * gridColumns);
+      final y1 = _tvItemCenterGlobalY('results', (row + 1) * gridColumns);
+      if (y0 != null && y1 != null) return y1 - y0;
+    }
+    final box = _tvItemRenderBox('results', 0);
+    if (box == null) return null;
+    return box.size.height + 16;
+  }
+
+  int _closestGridRowForGlobalY(double helperCenterY, int maxRow) {
+    const gridColumns = 4;
+    var bestRow = 0;
+    var bestDelta = double.infinity;
+    var sawRenderedRow = false;
+
+    for (var row = 0; row <= maxRow; row++) {
+      final centerY = _tvItemCenterGlobalY('results', row * gridColumns);
+      if (centerY == null) continue;
+      sawRenderedRow = true;
+      final delta = (centerY - helperCenterY).abs();
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        bestRow = row;
+      }
+    }
+
+    if (sawRenderedRow) return bestRow;
+
+    final anchorY = _tvItemCenterGlobalY('results', 0);
+    final stride = _gridRowScrollStride();
+    if (anchorY != null && stride != null && stride > 0) {
+      return ((helperCenterY - anchorY) / stride).round().clamp(0, maxRow);
+    }
+    return 0;
+  }
+
+  void _ensureGridRowVisible(int row) {
+    const gridColumns = 4;
+    final index = row * gridColumns;
+    final node = ShellTvFocusCoordinator.itemNode('search', 'results', index);
+    final ctx = node?.context;
+    if (ctx != null && ctx.mounted) {
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.2,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
+    if (!_resultsScrollController.hasClients) return;
+    final stride = _gridRowScrollStride();
+    if (stride == null || stride <= 0) return;
+    final maxExtent = _resultsScrollController.position.maxScrollExtent;
+    _resultsScrollController.jumpTo((row * stride).clamp(0.0, maxExtent));
+  }
+
+  /// Right from a recommendation → film card on the visually aligned grid row.
+  void _focusResultCardAtVisualLevel(int helperIndex) {
+    const gridColumns = 4;
+    final count = _flatResults().length;
+    if (count == 0) return;
+
+    final maxRow = (count - 1) ~/ gridColumns;
+    final helperY = _tvItemCenterGlobalY('helpers', helperIndex);
+    final targetRow = helperY == null
+        ? 0
+        : _closestGridRowForGlobalY(helperY, maxRow);
+    final targetIndex = (targetRow * gridColumns).clamp(0, count - 1);
+
+    _ensureGridRowVisible(targetRow);
+
+    void tryFocus({int attempt = 0}) {
+      if (!mounted) return;
+      if (ShellTvFocusCoordinator.focusRowItem(
+        'search',
+        'results',
+        targetIndex,
+      )) {
+        _pendingGridFocusIndex = null;
+        _focusNode.unfocus();
+        setState(() {
+          _gridFocusedIndex = targetIndex;
+          _helperFocusedIndex = null;
+        });
+        return;
+      }
+      if (attempt >= 4) {
+        _focusResultCardAt(targetIndex);
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        tryFocus(attempt: attempt + 1);
+      });
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => tryFocus());
+  }
+
   void _resetHelpersScroll() {
     if (!_helpersScrollController.hasClients) return;
     if (_helpersScrollController.offset <= 0) return;
@@ -605,9 +728,9 @@ class SearchScreenState extends State<SearchScreen>
     return () => _focusHelperAtIndex(index + 1);
   }
 
-  VoidCallback? _helperRightEdge() {
+  VoidCallback? _helperRightEdge(int index) {
     if (_query.trim().isEmpty || _flatResults().isEmpty) return null;
-    return _focusResultCard;
+    return () => _focusResultCardAtVisualLevel(index);
   }
 
   void _onSearchFieldFocusChange() {
@@ -696,13 +819,9 @@ class SearchScreenState extends State<SearchScreen>
     if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      final count = _helperItemCount();
-      if (count <= 0) return KeyEventResult.ignored;
-      final idx = (_helperFocusedIndex ?? 0).clamp(0, count - 1);
-      if (ShellTvFocusCoordinator.focusRowItem('search', 'helpers', idx)) {
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
+      if (_helperItemCount() <= 0) return KeyEventResult.ignored;
+      _focusFirstHelper();
+      return KeyEventResult.handled;
     }
     if (shellTvIsActivateKey(event) && _searchFieldEditing) {
       _submitSearchField();
@@ -998,7 +1117,7 @@ class SearchScreenState extends State<SearchScreen>
               focusNode: index == 0 ? _firstHelperFocusNode : null,
               onUpEdge: _helperUpEdge(index),
               onDownEdge: _helperDownEdge(index, count),
-              onRightEdge: _helperRightEdge(),
+              onRightEdge: _helperRightEdge(index),
               ensureVisibleMode: ShellTvEnsureVisibleMode.row,
               onFocusChange: (focused) {
                 if (focused) {
@@ -1055,6 +1174,7 @@ class SearchScreenState extends State<SearchScreen>
     return FocusTraversalGroup(
       policy: OrderedTraversalPolicy(),
       child: GridView.builder(
+        controller: _resultsScrollController,
         clipBehavior: Clip.none,
         padding: const EdgeInsets.only(bottom: 8),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -1066,6 +1186,8 @@ class SearchScreenState extends State<SearchScreen>
         itemCount: results.length,
         itemBuilder: (context, index) {
           final item = results[index];
+          final firstColumn = index % gridColumns == 0;
+          final firstRow = index ~/ gridColumns == 0;
           return Padding(
             padding: const EdgeInsets.all(4),
             child: _SearchFilmCard(
@@ -1075,9 +1197,14 @@ class SearchScreenState extends State<SearchScreen>
               gridColumns: gridColumns,
               onTap: () => _setGridFocusedIndex(index),
               onOpen: () => _openResult(item),
+              onLeftEdge: firstColumn && tvFocus ? _focusFirstHelper : null,
+              onUpEdge: firstRow && tvFocus ? _focusSearchFieldBrowse : null,
               onFocusChange: (focused) {
                 if (focused) {
-                  setState(() => _gridFocusedIndex = index);
+                  setState(() {
+                    _gridFocusedIndex = index;
+                    _helperFocusedIndex = null;
+                  });
                 }
               },
             ),
@@ -1257,6 +1384,8 @@ class _SearchFilmCard extends StatefulWidget {
     required this.onTap,
     required this.onOpen,
     this.onFocusChange,
+    this.onLeftEdge,
+    this.onUpEdge,
     this.gridIndex,
     this.gridColumns,
   });
@@ -1266,6 +1395,8 @@ class _SearchFilmCard extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onOpen;
   final ValueChanged<bool>? onFocusChange;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onUpEdge;
   final int? gridIndex;
   final int? gridColumns;
 
@@ -1288,6 +1419,8 @@ class _SearchFilmCardState extends State<_SearchFilmCard> {
       onTap: tvActivateOpens ? widget.onOpen : widget.onTap,
       borderRadius: 14,
       showFocusBorder: true,
+      onLeftEdge: widget.onLeftEdge,
+      onUpEdge: widget.onUpEdge,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
       tvTabId: 'search',
