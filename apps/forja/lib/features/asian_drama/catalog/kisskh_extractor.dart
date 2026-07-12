@@ -84,6 +84,7 @@ class KissKhExtractor {
 
     _apiCompleter = Completer<Map<String, dynamic>>();
     _subsBuffer.clear();
+    final pageLoaded = Completer<void>();
 
     try {
       _web = ForjaHeadlessInAppWebView(
@@ -98,12 +99,29 @@ class KissKhExtractor {
           javaScriptEnabled: true,
           domStorageEnabled: true,
           userAgent: _userAgent,
-          mediaPlaybackRequiresUserGesture: true,
+          mediaPlaybackRequiresUserGesture: false,
           allowsInlineMediaPlayback: true,
         ),
         onWebViewCreated: (controller) => _controller = controller,
-        onLoadStop: (_, _) {
+        onLoadStop: (controller, loadedUrl) async {
+          if (!pageLoaded.isCompleted) pageLoaded.complete();
           onProgress?.call('loaded', 'Waiting for stream key…');
+          if (kDebugMode) {
+            debugPrint('[KissKhExtractor] page loaded: $loadedUrl');
+          }
+          try {
+            await controller.evaluateJavascript(
+              source: 'window.__kkhInstallHooks && window.__kkhInstallHooks(); true;',
+            );
+          } catch (e) {
+            debugPrint('[KissKhExtractor] rehook failed: $e');
+          }
+        },
+        onReceivedError: (controller, request, error) {
+          debugPrint(
+            '[KissKhExtractor] load error ${request.url}: '
+            '${error.description} (${error.type})',
+          );
         },
         onConsoleMessage: (_, msg) {
           var s = msg.message.trim();
@@ -152,7 +170,19 @@ class KissKhExtractor {
         },
       );
 
+      if (kDebugMode) {
+        debugPrint('[KissKhExtractor] opening $pageUrl');
+      }
+
       await _web!.run();
+      if (cancelled()) return null;
+
+      await pageLoaded.future.timeout(
+        const Duration(seconds: 35),
+        onTimeout: () {
+          debugPrint('[KissKhExtractor] page load timeout — waiting for API anyway');
+        },
+      );
       if (cancelled()) return null;
 
       final api = await _apiCompleter!.future.timeout(
@@ -395,13 +425,10 @@ class KissKhExtractor {
     });
   }).observe(document.documentElement, { childList: true, subtree: true });
 
-  log('intercept ready for ep $epId');
-
   function tryHandle(url, json) {
     try {
       if (!url) return;
-      if (url.indexOf('/api/DramaList/Episode/') !== -1 &&
-          url.indexOf('.png') !== -1) {
+      if (url.indexOf('/api/DramaList/Episode/') !== -1) {
         sendVideo(json || {});
       } else if (url.indexOf('/api/Sub/') !== -1) {
         if (Array.isArray(json)) sendSubs(json);
@@ -409,47 +436,56 @@ class KissKhExtractor {
     } catch (e) { log('handle err: ' + e); }
   }
 
-  // Hook fetch
-  const origFetch = window.fetch;
-  window.fetch = function () {
-    const req = arguments[0];
-    const url = (typeof req === 'string') ? req : (req && req.url) || '';
-    return origFetch.apply(this, arguments).then(function (res) {
-      try {
-        if (url.indexOf('/api/DramaList/Episode/') !== -1 ||
-            url.indexOf('/api/Sub/') !== -1) {
-          res.clone().json().then(function (j) { tryHandle(url, j); })
-            .catch(function () {});
-        }
-      } catch (e) {}
-      return res;
-    });
-  };
-
-  // Hook XMLHttpRequest as well — Angular's HttpClient uses it.
-  const OrigXhr = window.XMLHttpRequest;
-  function HookedXhr() {
-    const x = new OrigXhr();
-    let _url = '';
-    const _open = x.open;
-    x.open = function (m, u) {
-      _url = u || '';
-      return _open.apply(x, arguments);
+  function installHooks() {
+    var origFetch = window.fetch;
+    window.fetch = function () {
+      var req = arguments[0];
+      var url = (typeof req === 'string') ? req : (req && req.url) || '';
+      if (url.indexOf('/api/DramaList/Episode/') !== -1 ||
+          url.indexOf('/api/Sub/') !== -1) {
+        log('fetch hit: ' + url);
+      }
+      return origFetch.apply(this, arguments).then(function (res) {
+        try {
+          if (url.indexOf('/api/DramaList/Episode/') !== -1 ||
+              url.indexOf('/api/Sub/') !== -1) {
+            res.clone().json().then(function (j) { tryHandle(url, j); })
+              .catch(function () {});
+          }
+        } catch (e) {}
+        return res;
+      });
     };
-    x.addEventListener('load', function () {
-      try {
-        if (_url.indexOf('/api/DramaList/Episode/') !== -1 ||
-            _url.indexOf('/api/Sub/') !== -1) {
-          let j = null;
-          try { j = JSON.parse(x.responseText); } catch (e) {}
-          tryHandle(_url, j);
-        }
-      } catch (e) {}
-    });
-    return x;
+
+    var OrigXhr = window.XMLHttpRequest;
+    function HookedXhr() {
+      var x = new OrigXhr();
+      var _url = '';
+      var _open = x.open;
+      x.open = function (m, u) {
+        _url = u || '';
+        return _open.apply(x, arguments);
+      };
+      x.addEventListener('load', function () {
+        try {
+          if (_url.indexOf('/api/DramaList/Episode/') !== -1 ||
+              _url.indexOf('/api/Sub/') !== -1) {
+            log('xhr hit: ' + _url);
+            var j = null;
+            try { j = JSON.parse(x.responseText); } catch (e) {}
+            tryHandle(_url, j);
+          }
+        } catch (e) {}
+      });
+      return x;
+    }
+    HookedXhr.prototype = OrigXhr.prototype;
+    window.XMLHttpRequest = HookedXhr;
   }
-  HookedXhr.prototype = OrigXhr.prototype;
-  window.XMLHttpRequest = HookedXhr;
+
+  window.__kkhInstallHooks = installHooks;
+  installHooks();
+  log('intercept ready for ep $epId');
 })();
 ''';
   }

@@ -2778,7 +2778,7 @@ class _HistoryCardState extends State<_HistoryCard> {
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedScale(
-        scale: _active(context) ? 1.05 : 1.0,
+        scale: _active(context) ? ShellCardPlayOverlay.cardHoverScale : 1.0,
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         child: Container(

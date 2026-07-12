@@ -1672,7 +1672,7 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 }
 
-class _StreamCard extends StatelessWidget {
+class _StreamCard extends StatefulWidget {
   final IptvStream stream;
   final IptvController ctrl;
   final VoidCallback onTap;
@@ -1690,24 +1690,76 @@ class _StreamCard extends StatelessWidget {
     this.onUpEdge,
   });
 
-  Color _borderColor(bool? health) {
-    if (stream.kind != 'live' || health == null) {
-      return Colors.white.withValues(alpha: 0.08);
+  @override
+  State<_StreamCard> createState() => _StreamCardState();
+}
+
+class _StreamCardState extends State<_StreamCard> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool _active(BuildContext context) => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  void _onHover(bool hovered) {
+    setState(() => _hovered = hovered);
+    _syncLiveProbe(hovered || _focused);
+  }
+
+  void _onFocus(bool focused) {
+    setState(() => _focused = focused);
+    _syncLiveProbe(focused || _hovered);
+  }
+
+  void _syncLiveProbe(bool active) {
+    if (widget.stream.kind != 'live') return;
+    if (active) {
+      widget.ctrl.scheduleLazyCheck(widget.stream);
+    } else {
+      widget.ctrl.cancelLazyCheck(widget.stream.streamId);
+    }
+  }
+
+  Color _surfaceColor(bool active, bool? health) {
+    if (health == false) {
+      return const Color(0xFFEF4444).withValues(alpha: active ? 0.14 : 0.08);
+    }
+    return Colors.white.withValues(alpha: active ? 0.11 : 0.05);
+  }
+
+  Color _borderColor(bool active, bool? health) {
+    if (widget.stream.kind != 'live' || health == null) {
+      return Colors.white.withValues(alpha: active ? 0.24 : 0.08);
     }
     if (health) {
-      return const Color(0xFF22C55E).withValues(alpha: 0.55);
+      return const Color(0xFF22C55E).withValues(alpha: active ? 0.75 : 0.55);
     }
-    return const Color(0xFFEF4444).withValues(alpha: 0.65);
+    return const Color(0xFFEF4444).withValues(alpha: active ? 0.85 : 0.65);
+  }
+
+  void _showEpgSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _EpgSheet(stream: widget.stream, ctrl: widget.ctrl),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: ctrl,
+      listenable: widget.ctrl,
       builder: (_, _) {
-        final health = stream.kind == 'live'
-            ? ctrl.healthFor(stream.streamId)
+        final health = widget.stream.kind == 'live'
+            ? widget.ctrl.healthFor(widget.stream.streamId)
             : null;
+        final active = _active(context);
         final column = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1719,10 +1771,10 @@ class _StreamCard extends StatelessWidget {
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(12),
                     ),
-                    child: stream.icon.isEmpty
+                    child: widget.stream.icon.isEmpty
                         ? const _StreamPlaceholder()
                         : Image.network(
-                            stream.icon,
+                            widget.stream.icon,
                             fit: BoxFit.cover,
                             errorBuilder: (_, _, _) =>
                                 const _StreamPlaceholder(),
@@ -1752,7 +1804,7 @@ class _StreamCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(8),
               child: Tooltip(
-                message: stream.name,
+                message: widget.stream.name,
                 waitDuration: const Duration(milliseconds: 600),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -1760,7 +1812,7 @@ class _StreamCard extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 220),
                     child: Text(
-                      stream.name,
+                      widget.stream.name,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       softWrap: true,
@@ -1775,73 +1827,63 @@ class _StreamCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (stream.kind == 'live')
-              _EpgNowFooter(stream: stream, ctrl: ctrl),
+            if (widget.stream.kind == 'live')
+              _EpgNowFooter(stream: widget.stream, ctrl: widget.ctrl),
           ],
         );
-        final card = Material(
-          color: Colors.transparent,
-          child: Ink(
-            decoration: BoxDecoration(
-              color: health == false
-                  ? const Color(0xFFEF4444).withValues(alpha: 0.08)
-                  : Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _borderColor(health)),
+        Widget card = AnimatedScale(
+          scale: active ? 1.03 : 1.0,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          child: Material(
+            color: Colors.transparent,
+            child: Ink(
+              decoration: BoxDecoration(
+                color: _surfaceColor(active, health),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _borderColor(active, health)),
+              ),
+              child: iptvTap(
+                context: context,
+                onTap: widget.onTap,
+                borderRadius: 12,
+                gridIndex: widget.gridIndex,
+                gridColumns: widget.gridColumns,
+                tvRowId: 'browser-streams',
+                tvZone: ShellTvZone.grid,
+                onLeftEdge: widget.onLeftEdge,
+                onUpEdge: widget.onUpEdge,
+                showFocusBorder: true,
+                onFocusChange: _onFocus,
+                onHoverChange: _onHover,
+                child: column,
+              ),
             ),
-            child: iptvUseTvFocus(context)
-                ? iptvTap(
-                    context: context,
-                    onTap: onTap,
-                    borderRadius: 12,
-                    gridIndex: gridIndex,
-                    gridColumns: gridColumns,
-                    tvRowId: 'browser-streams',
-                    tvZone: ShellTvZone.grid,
-                    onLeftEdge: onLeftEdge,
-                    onUpEdge: onUpEdge,
-                    onFocusChange: stream.kind == 'live'
-                        ? (focused) {
-                            if (focused) {
-                              ctrl.scheduleLazyCheck(stream);
-                            } else {
-                              ctrl.cancelLazyCheck(stream.streamId);
-                            }
-                          }
-                        : null,
-                    child: column,
-                  )
-                : InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: onTap,
-                    onLongPress: stream.kind == 'live' && ctrl.epgEnabled
-                        ? () => _showEpgSheet(context)
-                        : null,
-                    child: column,
-                  ),
           ),
         );
 
-        if (stream.kind != 'live') return card;
+        if (!iptvUseTvFocus(context) &&
+            widget.stream.kind == 'live' &&
+            widget.ctrl.epgEnabled) {
+          card = GestureDetector(
+            onLongPress: () => _showEpgSheet(context),
+            child: card,
+          );
+        }
 
-        return _LiveHealthProbe(stream: stream, ctrl: ctrl, child: card);
+        if (widget.stream.kind != 'live') return card;
+
+        return _LiveHealthProbe(
+          stream: widget.stream,
+          ctrl: widget.ctrl,
+          child: card,
+        );
       },
-    );
-  }
-
-  void _showEpgSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => _EpgSheet(stream: stream, ctrl: ctrl),
     );
   }
 }
 
-class _StreamRowTile extends StatelessWidget {
+class _StreamRowTile extends StatefulWidget {
   const _StreamRowTile({
     required this.stream,
     required this.ctrl,
@@ -1858,135 +1900,176 @@ class _StreamRowTile extends StatelessWidget {
   final int? listIndex;
   final VoidCallback? onLeftEdge;
 
-  Color _borderColor(bool? health) {
-    if (stream.kind != 'live' || health == null) {
-      return Colors.white.withValues(alpha: 0.08);
+  @override
+  State<_StreamRowTile> createState() => _StreamRowTileState();
+}
+
+class _StreamRowTileState extends State<_StreamRowTile> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool _active(BuildContext context) => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  void _onHover(bool hovered) {
+    setState(() => _hovered = hovered);
+    _syncLiveProbe(hovered || _focused);
+  }
+
+  void _onFocus(bool focused) {
+    setState(() => _focused = focused);
+    _syncLiveProbe(focused || _hovered);
+  }
+
+  void _syncLiveProbe(bool active) {
+    if (widget.stream.kind != 'live') return;
+    if (active) {
+      widget.ctrl.scheduleLazyCheck(widget.stream);
+    } else {
+      widget.ctrl.cancelLazyCheck(widget.stream.streamId);
+    }
+  }
+
+  Color _surfaceColor(bool active, bool? health) {
+    if (health == false) {
+      return const Color(0xFFEF4444).withValues(alpha: active ? 0.14 : 0.08);
+    }
+    return Colors.white.withValues(alpha: active ? 0.11 : 0.05);
+  }
+
+  Color _borderColor(bool active, bool? health) {
+    if (widget.stream.kind != 'live' || health == null) {
+      return Colors.white.withValues(alpha: active ? 0.24 : 0.08);
     }
     return health
-        ? const Color(0xFF22C55E).withValues(alpha: 0.55)
-        : const Color(0xFFEF4444).withValues(alpha: 0.65);
+        ? const Color(0xFF22C55E).withValues(alpha: active ? 0.75 : 0.55)
+        : const Color(0xFFEF4444).withValues(alpha: active ? 0.85 : 0.65);
   }
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: ctrl,
+      listenable: widget.ctrl,
       builder: (_, _) {
-        final health = stream.kind == 'live'
-            ? ctrl.healthFor(stream.streamId)
+        final health = widget.stream.kind == 'live'
+            ? widget.ctrl.healthFor(widget.stream.streamId)
             : null;
+        final active = _active(context);
         final tile = Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Material(
-            color: Colors.transparent,
-            child: Ink(
-              decoration: BoxDecoration(
-                color: health == false
-                    ? const Color(0xFFEF4444).withValues(alpha: 0.08)
-                    : Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _borderColor(health)),
-              ),
-              child: iptvTap(
-                context: context,
-                onTap: onTap,
-                borderRadius: 12,
-                listIndex: listIndex,
-                tvItemIndex: listIndex,
-                tvRowId: 'browser-streams',
-                tvZone: ShellTvZone.row,
-                onLeftEdge: onLeftEdge,
-                onFocusChange: stream.kind == 'live'
-                    ? (focused) {
-                        if (focused) {
-                          ctrl.scheduleLazyCheck(stream);
-                        } else {
-                          ctrl.cancelLazyCheck(stream.streamId);
-                        }
-                      }
-                    : null,
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(9),
-                        child: SizedBox(
-                          width: 58,
-                          height: 58,
-                          child: stream.icon.isEmpty
-                              ? const _StreamPlaceholder()
-                              : Image.network(
-                                  stream.icon,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) =>
-                                      const _StreamPlaceholder(),
-                                  loadingBuilder: (_, child, p) => p == null
-                                      ? child
-                                      : const _StreamPlaceholder(),
-                                ),
+          child: AnimatedScale(
+            scale: active ? 1.02 : 1.0,
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            child: Material(
+              color: Colors.transparent,
+              child: Ink(
+                decoration: BoxDecoration(
+                  color: _surfaceColor(active, health),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _borderColor(active, health)),
+                ),
+                child: iptvTap(
+                  context: context,
+                  onTap: widget.onTap,
+                  borderRadius: 12,
+                  listIndex: widget.listIndex,
+                  tvItemIndex: widget.listIndex,
+                  tvRowId: 'browser-streams',
+                  tvZone: ShellTvZone.row,
+                  onLeftEdge: widget.onLeftEdge,
+                  showFocusBorder: true,
+                  onFocusChange: _onFocus,
+                  onHoverChange: _onHover,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
+                          child: SizedBox(
+                            width: 58,
+                            height: 58,
+                            child: widget.stream.icon.isEmpty
+                                ? const _StreamPlaceholder()
+                                : Image.network(
+                                    widget.stream.icon,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) =>
+                                        const _StreamPlaceholder(),
+                                    loadingBuilder: (_, child, p) => p == null
+                                        ? child
+                                        : const _StreamPlaceholder(),
+                                  ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              stream.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(
-                                color: health == false
-                                    ? Colors.white54
-                                    : Colors.white,
-                                fontSize: 12,
-                                height: 1.18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (categoryName.isNotEmpty) ...[
-                              const SizedBox(height: 3),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                categoryName,
-                                maxLines: 1,
+                                widget.stream.name,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
-                                  color: Colors.white.withValues(alpha: 0.45),
-                                  fontSize: 10,
-                                  height: 1.1,
-                                  fontWeight: FontWeight.w500,
+                                  color: health == false
+                                      ? Colors.white54
+                                      : Colors.white,
+                                  fontSize: 12,
+                                  height: 1.18,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
+                              if (widget.categoryName.isNotEmpty) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  widget.categoryName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white.withValues(alpha: 0.45),
+                                    fontSize: 10,
+                                    height: 1.1,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                              if (widget.stream.kind == 'live')
+                                _EpgNowFooter(
+                                  stream: widget.stream,
+                                  ctrl: widget.ctrl,
+                                ),
                             ],
-                            if (stream.kind == 'live')
-                              _EpgNowFooter(stream: stream, ctrl: ctrl),
-                          ],
-                        ),
-                      ),
-                      if (health != null)
-                        Container(
-                          width: 9,
-                          height: 9,
-                          margin: const EdgeInsets.only(left: 8),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: health
-                                ? const Color(0xFF22C55E)
-                                : const Color(0xFFEF4444),
-                          ),
-                        )
-                      else
-                        const Padding(
-                          padding: EdgeInsets.only(left: 8),
-                          child: Icon(
-                            Icons.play_circle_outline_rounded,
-                            color: Colors.white38,
-                            size: 20,
                           ),
                         ),
-                    ],
+                        if (health != null)
+                          Container(
+                            width: 9,
+                            height: 9,
+                            margin: const EdgeInsets.only(left: 8),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: health
+                                  ? const Color(0xFF22C55E)
+                                  : const Color(0xFFEF4444),
+                            ),
+                          )
+                        else
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: Icon(
+                              Icons.play_circle_outline_rounded,
+                              color: Colors.white38,
+                              size: 20,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1994,8 +2077,12 @@ class _StreamRowTile extends StatelessWidget {
           ),
         );
 
-        if (stream.kind != 'live') return tile;
-        return _LiveHealthProbe(stream: stream, ctrl: ctrl, child: tile);
+        if (widget.stream.kind != 'live') return tile;
+        return _LiveHealthProbe(
+          stream: widget.stream,
+          ctrl: widget.ctrl,
+          child: tile,
+        );
       },
     );
   }
@@ -2023,15 +2110,7 @@ class _LiveHealthProbe extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isDesktopPlatform()) {
-      return MouseRegion(
-        onEnter: (_) => ctrl.scheduleLazyCheck(stream),
-        onExit: (_) => ctrl.cancelLazyCheck(stream.streamId),
-        child: child,
-      );
-    }
-
-    if (isTvProfile(context)) {
+    if (isDesktopPlatform() || isTvProfile(context)) {
       return child;
     }
 

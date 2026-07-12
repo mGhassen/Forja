@@ -39,6 +39,8 @@ Widget iptvTap({
   VoidCallback? onUpEdge,
   VoidCallback? onDownEdge,
   ValueChanged<bool>? onFocusChange,
+  ValueChanged<bool>? onHoverChange,
+  bool showFocusBorder = false,
 }) {
   if (onTap == null) return child;
   return shellFocusableTap(
@@ -60,6 +62,8 @@ Widget iptvTap({
     onUpEdge: onUpEdge,
     onDownEdge: onDownEdge,
     onFocusChange: onFocusChange,
+    onHoverChange: onHoverChange,
+    showFocusBorder: showFocusBorder,
     child: child,
   );
 }

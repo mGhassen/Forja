@@ -670,7 +670,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
   bool _hovered = false;
   bool _focused = false;
 
-  static const double _hoverScale = 1.05;
+  static const double _hoverScale = ShellCardPlayOverlay.cardHoverScale;
 
   @override
   Widget build(BuildContext context) {
@@ -802,7 +802,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                     ),
                   ),
                 ),
-                  const SizedBox(height: 10),
+                const SizedBox(height: 10),
                   Text(
                     widget.title,
                     maxLines: 1,
@@ -832,7 +832,6 @@ class _EpisodeCardState extends State<_EpisodeCard> {
             ),
           ),
         ),
-      ),
     );
   }
 

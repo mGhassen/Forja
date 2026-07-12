@@ -873,7 +873,7 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedScale(
-        scale: _activeFor(policy) ? 1.05 : 1.0,
+        scale: _activeFor(policy) ? ShellCardPlayOverlay.cardHoverScale : 1.0,
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         child: Container(
