@@ -29,10 +29,10 @@ class PlatformDefaults {
   static const List<String> phoneNavIds = ['home', 'search', 'mylist'];
 
   static const List<String> androidTvNavIds = [
-    'home',
     'search',
-    'anime',
+    'home',
     'asian_drama',
+    'anime',
     'iptv',
     'live_matches',
     'mylist',

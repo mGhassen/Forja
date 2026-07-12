@@ -445,6 +445,7 @@ class SettingsService {
   static const String _navbarShell085Key = 'navbar_shell_085';
   static const String _navbarShell086Key = 'navbar_shell_086';
   static const String _navbarShell087Key = 'navbar_shell_087';
+  static const String _navbarShell088Key = 'navbar_shell_088';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Default visible tabs (settings appended in MainScreen).
@@ -469,6 +470,20 @@ class SettingsService {
     migrated[0] = 'home';
     migrated[1] = 'search';
     return migrated;
+  }
+
+  /// Prior Android TV defaults — migrate to [PlatformDefaults.androidTvNavIds].
+  static const List<List<String>> _legacyAndroidTvNavOrders = [
+    ['home', 'search', 'anime', 'asian_drama', 'iptv', 'live_matches', 'mylist'],
+    ['home', 'search', 'asian_drama', 'anime', 'iptv', 'live_matches', 'mylist'],
+    ['search', 'home', 'anime', 'asian_drama', 'iptv', 'live_matches', 'mylist'],
+  ];
+
+  static bool _isLegacyAndroidTvNav(List<String> ids) {
+    for (final legacy in _legacyAndroidTvNavOrders) {
+      if (listEquals(ids, legacy)) return true;
+    }
+    return false;
   }
 
   static int initialShellTabIndex(
@@ -561,6 +576,7 @@ class SettingsService {
       await kvSetString(_navbarShell085Key, '1');
       await kvSetString(_navbarShell086Key, '1');
       await kvSetString(_navbarShell087Key, '1');
+      await kvSetString(_navbarShell088Key, '1');
     }
 
     await kvSetString(_platformDefaultsSeededKey, profile.name);
@@ -629,6 +645,19 @@ class SettingsService {
         }
       }
       await kvSetString(_navbarShell087Key, '1');
+    }
+    if (!await kvHasKey(_navbarShell088Key)) {
+      if (platformProfile == PlatformProfile.androidTv &&
+          await kvHasKey(_navbarConfigKey)) {
+        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+        if (_isLegacyAndroidTvNav(raw)) {
+          await kvSetStringList(
+            _navbarConfigKey,
+            List<String>.from(PlatformDefaults.androidTvNavIds),
+          );
+        }
+      }
+      await kvSetString(_navbarShell088Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

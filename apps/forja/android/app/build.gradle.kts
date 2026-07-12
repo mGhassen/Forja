@@ -16,7 +16,7 @@ if (buildRust) {
         workingDir = repoRoot
         commandLine("bash", "scripts/build_rust_mobile.sh", "android")
     }
-    tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    tasks.matching { it.name == "preReleaseBuild" || it.name == "preDebugBuild" }.configureEach {
         dependsOn("buildRustAndroid")
     }
 }

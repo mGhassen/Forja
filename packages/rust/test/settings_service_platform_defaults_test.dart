@@ -92,7 +92,49 @@ void main() {
     expect(nav.indexOf('home'), lessThan(nav.indexOf('iptv')));
   });
 
-  test('Android TV search-first nav migrates back to home-first', () async {
+  test('Android TV legacy nav migrates to search-first default', () async {
+    await kvSetStringList('navbar_config', const [
+      'home',
+      'search',
+      'anime',
+      'asian_drama',
+      'iptv',
+      'live_matches',
+      'mylist',
+    ]);
+    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetString('navbar_shell_080', '1');
+    await kvSetString('navbar_shell_081', '1');
+    await kvSetString('navbar_shell_084', '1');
+    await kvSetString('navbar_shell_085', '1');
+    await kvSetString('navbar_shell_086', '1');
+    await kvSetString('navbar_shell_087', '1');
+
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+    final service = SettingsService();
+    final nav = await service.getNavbarConfig();
+
+    expect(nav, PlatformDefaults.androidTvNavIds);
+  });
+
+  test('Android TV custom nav is not overwritten by shell 088', () async {
+    await kvSetStringList('navbar_config', const ['home', 'iptv', 'search']);
+    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetString('navbar_shell_080', '1');
+    await kvSetString('navbar_shell_081', '1');
+    await kvSetString('navbar_shell_084', '1');
+    await kvSetString('navbar_shell_085', '1');
+    await kvSetString('navbar_shell_086', '1');
+    await kvSetString('navbar_shell_087', '1');
+
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+    final service = SettingsService();
+    final nav = await service.getNavbarConfig();
+
+    expect(nav, ['home', 'iptv', 'search']);
+  });
+
+  test('Android TV search-first legacy migrates to new default', () async {
     await kvSetStringList('navbar_config', const [
       'search',
       'home',
@@ -112,7 +154,34 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav.take(2), ['home', 'search']);
+    expect(nav, PlatformDefaults.androidTvNavIds);
+  });
+
+  test('Android TV search-first legacy is left unchanged once shell 088 applied',
+      () async {
+    await kvSetStringList('navbar_config', const [
+      'search',
+      'home',
+      'anime',
+      'asian_drama',
+      'iptv',
+      'live_matches',
+      'mylist',
+    ]);
+    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetString('navbar_shell_080', '1');
+    await kvSetString('navbar_shell_081', '1');
+    await kvSetString('navbar_shell_084', '1');
+    await kvSetString('navbar_shell_085', '1');
+    await kvSetString('navbar_shell_086', '1');
+    await kvSetString('navbar_shell_087', '1');
+    await kvSetString('navbar_shell_088', '1');
+
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+    final service = SettingsService();
+    final nav = await service.getNavbarConfig();
+
+    expect(nav.take(2), ['search', 'home']);
   });
 
   test('desktop search-first nav migrates back to home-first', () async {
