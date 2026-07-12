@@ -3211,9 +3211,97 @@ class _StremioCatalogCard extends StatelessWidget {
 //  MOOD SECTION — circle picker + result row
 // ═══════════════════════════════════════════════════════════════════════════════
 
+class _HomeMoodCircleLayout {
+  const _HomeMoodCircleLayout({
+    required this.circleSize,
+    required this.itemWidth,
+    required this.horizontalGap,
+    required this.rowHeight,
+    required this.labelFontSize,
+    required this.iconSize,
+    required this.iconSizeActive,
+    required this.labelMaxLines,
+  });
+
+  final double circleSize;
+  final double itemWidth;
+  final double horizontalGap;
+  final double rowHeight;
+  final double labelFontSize;
+  final double iconSize;
+  final double iconSizeActive;
+  final int labelMaxLines;
+
+  static const desktop = _HomeMoodCircleLayout(
+    circleSize: 72,
+    itemWidth: 96,
+    horizontalGap: 24,
+    rowHeight: 72 + 8 + 34,
+    labelFontSize: 12.5,
+    iconSize: 26,
+    iconSizeActive: 34,
+    labelMaxLines: 2,
+  );
+
+  double contentWidth(int itemCount) {
+    if (itemCount <= 0) return 0;
+    return itemCount * itemWidth + (itemCount - 1) * horizontalGap;
+  }
+
+  /// TV: shrink items so every mood fits on screen without horizontal scroll.
+  static _HomeMoodCircleLayout forTv({
+    required int itemCount,
+    required double maxWidth,
+  }) {
+    if (itemCount <= 0) return desktop;
+
+    const edgePad = 12.0;
+    final available = (maxWidth - edgePad * 2).clamp(240.0, double.infinity);
+
+    var gap = 10.0;
+    var itemWidth = 78.0;
+    while (
+        itemCount * itemWidth + (itemCount - 1) * gap > available &&
+        itemWidth > 52) {
+      itemWidth -= 2;
+      gap = math.max(4, gap - 1);
+    }
+
+    final circleSize = (itemWidth * 0.74).clamp(40.0, 54.0);
+    final labelFontSize = itemWidth < 64 ? 9.5 : 10.5;
+    final labelLineHeight = 1.15;
+    final rowHeight = circleSize + 6 + labelFontSize * labelLineHeight + 2;
+    final iconSize = circleSize * 0.42;
+    final iconSizeActive = circleSize * 0.52;
+
+    return _HomeMoodCircleLayout(
+      circleSize: circleSize,
+      itemWidth: itemWidth,
+      horizontalGap: gap,
+      rowHeight: rowHeight,
+      labelFontSize: labelFontSize,
+      iconSize: iconSize,
+      iconSizeActive: iconSizeActive,
+      labelMaxLines: 1,
+    );
+  }
+
+  static _HomeMoodCircleLayout resolve(
+    BuildContext context, {
+    required int itemCount,
+    required double maxWidth,
+  }) {
+    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return forTv(itemCount: itemCount, maxWidth: maxWidth);
+    }
+    return desktop;
+  }
+}
+
 /// Circular mood picker — layout matches details **Main Characters** cast row.
 class _HomeMoodCircleItem extends StatefulWidget {
   const _HomeMoodCircleItem({
+    required this.layout,
     required this.label,
     required this.icon,
     required this.accent,
@@ -3228,11 +3316,7 @@ class _HomeMoodCircleItem extends StatefulWidget {
     this.onRightEdge,
   });
 
-  static const double circleSize = 72;
-  static const double itemWidth = 96;
-  static const double horizontalGap = 24;
-  static const double rowHeight = circleSize + 8 + 34;
-
+  final _HomeMoodCircleLayout layout;
   final String label;
   final IconData icon;
   final Color accent;
@@ -3257,6 +3341,7 @@ class _HomeMoodCircleItemState extends State<_HomeMoodCircleItem> {
   bool get _active => widget.selected || _hovered || _focused;
 
   Widget _circle() {
+    final layout = widget.layout;
     final accent = widget.accent;
     final bgAlpha = widget.selected ? 0.62 : (_active ? 0.42 : 0.22);
     final borderColor = widget.selected
@@ -3264,13 +3349,14 @@ class _HomeMoodCircleItemState extends State<_HomeMoodCircleItem> {
         : _active
             ? accent.withValues(alpha: 0.95)
             : accent.withValues(alpha: 0.35);
-    final iconSize = _active ? 34.0 : 26.0;
+    final iconSize =
+        _active ? layout.iconSizeActive : layout.iconSize;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
-      width: _HomeMoodCircleItem.circleSize,
-      height: _HomeMoodCircleItem.circleSize,
+      width: layout.circleSize,
+      height: layout.circleSize,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
@@ -3283,7 +3369,7 @@ class _HomeMoodCircleItemState extends State<_HomeMoodCircleItem> {
             ? [
                 BoxShadow(
                   color: accent.withValues(alpha: 0.4),
-                  blurRadius: 14,
+                  blurRadius: layout.circleSize * 0.2,
                 ),
               ]
             : null,
@@ -3302,26 +3388,27 @@ class _HomeMoodCircleItemState extends State<_HomeMoodCircleItem> {
   }
 
   Widget _content() {
+    final layout = widget.layout;
     return SizedBox(
-      width: _HomeMoodCircleItem.itemWidth,
+      width: layout.itemWidth,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _circle(),
-          const SizedBox(height: 8),
+          SizedBox(height: layout.labelMaxLines == 1 ? 6 : 8),
           Text(
             widget.label,
-            maxLines: 2,
+            maxLines: layout.labelMaxLines,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: _active
                   ? Colors.white
                   : Colors.white.withValues(alpha: 0.72),
-              fontSize: 12.5,
+              fontSize: layout.labelFontSize,
               fontWeight:
                   widget.selected || _focused ? FontWeight.w700 : FontWeight.w600,
-              height: 1.2,
+              height: 1.15,
             ),
           ),
         ],
@@ -3333,12 +3420,13 @@ class _HomeMoodCircleItemState extends State<_HomeMoodCircleItem> {
   Widget build(BuildContext context) {
     final content = _content();
     final policy = ShellScope.inputPolicyOf(context);
+    final borderRadius = widget.layout.circleSize / 2;
 
     if (policy.useFocusableMoodChips) {
       return shellFocusableTap(
         context: context,
         onTap: widget.onTap,
-        borderRadius: _HomeMoodCircleItem.circleSize / 2,
+        borderRadius: borderRadius,
         scaleOnFocus: 1.0,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange: policy.scaleOnHover
@@ -3403,14 +3491,9 @@ class _MoodSection extends StatefulWidget {
 class _MoodSectionState extends State<_MoodSection> {
   List<Movie>? _cachedResults;
 
-  double _moodRowContentWidth(int count) {
-    if (count <= 0) return 0;
-    return count * _HomeMoodCircleItem.itemWidth +
-        (count - 1) * _HomeMoodCircleItem.horizontalGap;
-  }
-
   Widget _moodCircleItem({
     required BuildContext context,
+    required _HomeMoodCircleLayout layout,
     required int i,
     required List<({
       String id,
@@ -3426,6 +3509,7 @@ class _MoodSectionState extends State<_MoodSection> {
     final m = moods[i];
     final isSelected = m.id == selectedId;
     return _HomeMoodCircleItem(
+      layout: layout,
       label: m.label,
       icon: m.icon,
       accent: m.accent,
@@ -3472,6 +3556,55 @@ class _MoodSectionState extends State<_MoodSection> {
     );
   }
 
+  Widget _centeredMoodRow({
+    required BuildContext context,
+    required _HomeMoodCircleLayout layout,
+    required List<({
+      String id,
+      String label,
+      IconData icon,
+      Color accent,
+      List<int> movieGenres,
+      List<int> tvGenres,
+    })> moods,
+    required String selectedId,
+    required ValueChanged<String> onSelect,
+    bool scaleToFit = false,
+  }) {
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < moods.length; i++) ...[
+          if (i > 0) SizedBox(width: layout.horizontalGap),
+          _moodCircleItem(
+            context: context,
+            layout: layout,
+            i: i,
+            moods: moods,
+            selectedId: selectedId,
+            onSelect: onSelect,
+          ),
+        ],
+      ],
+    );
+
+    return SizedBox(
+      height: layout.rowHeight,
+      width: double.infinity,
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: scaleToFit
+            ? FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: row,
+              )
+            : Center(child: row),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final moods = widget.moods;
@@ -3498,10 +3631,12 @@ class _MoodSectionState extends State<_MoodSection> {
             style: ShellSectionTitle.titleStyle,
           ),
         ),
-        // Mood circle strip — centered when it fits the viewport
+        // Mood circle strip — TV: always centered, no scroll; desktop: center or scroll
         Builder(
           builder: (context) {
-            if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+            final tvNav =
+                ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+            if (tvNav) {
               shellTvRegisterRow(
                 tabId: 'home',
                 rowId: 'mood-chips',
@@ -3511,50 +3646,48 @@ class _MoodSectionState extends State<_MoodSection> {
             }
             return LayoutBuilder(
               builder: (context, constraints) {
-                final contentWidth = _moodRowContentWidth(moods.length);
-                final fitsCentered = contentWidth <= constraints.maxWidth;
+                final layout = _HomeMoodCircleLayout.resolve(
+                  context,
+                  itemCount: moods.length,
+                  maxWidth: constraints.maxWidth,
+                );
 
+                if (tvNav) {
+                  return _centeredMoodRow(
+                    context: context,
+                    layout: layout,
+                    moods: moods,
+                    selectedId: selectedId,
+                    onSelect: onSelect,
+                    scaleToFit: true,
+                  );
+                }
+
+                final fitsCentered =
+                    layout.contentWidth(moods.length) <= constraints.maxWidth;
                 if (fitsCentered) {
-                  return SizedBox(
-                    height: _HomeMoodCircleItem.rowHeight,
-                    width: double.infinity,
-                    child: FocusTraversalGroup(
-                      policy: OrderedTraversalPolicy(),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          for (var i = 0; i < moods.length; i++) ...[
-                            if (i > 0)
-                              const SizedBox(
-                                width: _HomeMoodCircleItem.horizontalGap,
-                              ),
-                            _moodCircleItem(
-                              context: context,
-                              i: i,
-                              moods: moods,
-                              selectedId: selectedId,
-                              onSelect: onSelect,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                  return _centeredMoodRow(
+                    context: context,
+                    layout: layout,
+                    moods: moods,
+                    selectedId: selectedId,
+                    onSelect: onSelect,
                   );
                 }
 
                 return FocusTraversalGroup(
                   policy: OrderedTraversalPolicy(),
                   child: HorizontalScroller(
-                    height: _HomeMoodCircleItem.rowHeight,
+                    height: layout.rowHeight,
                     padding: EdgeInsets.symmetric(
                       horizontal: shellHomeSectionHorizontalPadding(context),
                     ),
                     itemCount: moods.length,
-                    separatorBuilder: (_, _) => const SizedBox(
-                      width: _HomeMoodCircleItem.horizontalGap,
-                    ),
+                    separatorBuilder: (_, _) =>
+                        SizedBox(width: layout.horizontalGap),
                     itemBuilder: (context, i) => _moodCircleItem(
                       context: context,
+                      layout: layout,
                       i: i,
                       moods: moods,
                       selectedId: selectedId,
