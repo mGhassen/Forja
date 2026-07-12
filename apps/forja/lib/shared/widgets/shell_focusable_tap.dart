@@ -172,14 +172,10 @@ Widget shellFocusableTap({
     );
   }
 
-  Widget body = Material(
-    color: Colors.transparent,
-    borderRadius: BorderRadius.circular(borderRadius),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(borderRadius),
-      onTap: onTap,
-      child: child,
-    ),
+  Widget body = shellRoundedInkHost(
+    radius: borderRadius,
+    onTap: onTap,
+    child: child,
   );
 
   if (policy.scaleOnHover && onHoverChange != null) {

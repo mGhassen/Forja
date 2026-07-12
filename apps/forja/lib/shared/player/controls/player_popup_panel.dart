@@ -399,9 +399,12 @@ class PlayerPopupListTile extends StatelessWidget {
     return Material(
       color: rowColor,
       borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
+        hoverColor: ForjaShellColors.inkHover,
+        splashColor: ForjaShellColors.inkSplash,
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),

@@ -139,8 +139,16 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
                   itemBuilder: (_, i) {
                     final v = items[i];
                     final selected = v == current;
-                    return ListTile(
-                      title: Text(label(v),
+                    return Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        hoverColor: ForjaShellColors.inkHover,
+                        title: Text(label(v),
                           style: TextStyle(
                               color: selected
                                   ? ForjaShellColors.cinematic.textPrimary
@@ -154,6 +162,7 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
                           : null,
                       onTap: () => Navigator.of(context)
                           .pop(_PickResult<T>(v, false)),
+                      ),
                     );
                   },
                 ),

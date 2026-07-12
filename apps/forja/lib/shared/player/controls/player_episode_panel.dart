@@ -390,6 +390,9 @@ class _SeasonDropdown extends StatelessWidget {
         backgroundColor: WidgetStatePropertyAll(
           ForjaShellColors.cinematic.menuSurface,
         ),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        ),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -399,7 +402,7 @@ class _SeasonDropdown extends StatelessWidget {
         final isSelected = n == selectedSeason;
         return MenuItemButton(
           onPressed: () => onSelected(n),
-          style: ButtonStyle(
+          style: shellMenuItemStyle().merge(ButtonStyle(
             foregroundColor: WidgetStatePropertyAll(
               isSelected
                   ? ForjaShellColors.cinematic.textPrimary
@@ -410,7 +413,7 @@ class _SeasonDropdown extends StatelessWidget {
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
-          ),
+          )),
           child: Text('Season $n'),
         );
       }),
@@ -771,9 +774,12 @@ class _EpisodeRow extends StatelessWidget {
           ? Colors.white.withValues(alpha: 0.1)
           : Colors.transparent,
       borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
+        hoverColor: ForjaShellColors.inkHover,
+        splashColor: ForjaShellColors.inkSplash,
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Row(

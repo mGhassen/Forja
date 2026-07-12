@@ -22,6 +22,83 @@ BoxDecoration shellChipDecoration({
   );
 }
 
+/// Clipped Material + InkWell — hover/splash follow [radius] (pills, list rows).
+Widget shellRoundedInkHost({
+  required Widget child,
+  required double radius,
+  VoidCallback? onTap,
+  Color? backgroundColor,
+  BoxDecoration? decoration,
+  EdgeInsetsGeometry? padding,
+}) {
+  final borderRadius = BorderRadius.circular(radius);
+  Widget body = child;
+  if (padding != null) {
+    body = Padding(padding: padding, child: child);
+  }
+
+  if (onTap == null && decoration == null && backgroundColor == null) {
+    return body;
+  }
+
+  if (onTap == null) {
+    return Material(
+      color: backgroundColor ?? Colors.transparent,
+      borderRadius: borderRadius,
+      clipBehavior: Clip.antiAlias,
+      child: decoration != null
+          ? Ink(decoration: decoration, child: body)
+          : body,
+    );
+  }
+
+  return Material(
+    color: backgroundColor ?? Colors.transparent,
+    borderRadius: borderRadius,
+    clipBehavior: Clip.antiAlias,
+    child: decoration != null
+        ? Ink(
+            decoration: decoration,
+            child: InkWell(
+              borderRadius: borderRadius,
+              onTap: onTap,
+              hoverColor: ForjaShellColors.inkHover,
+              splashColor: ForjaShellColors.inkSplash,
+              child: body,
+            ),
+          )
+        : InkWell(
+            borderRadius: borderRadius,
+            onTap: onTap,
+            hoverColor: ForjaShellColors.inkHover,
+            splashColor: ForjaShellColors.inkSplash,
+            child: body,
+          ),
+  );
+}
+
+/// Rounded hover/focus overlay for [MenuItemButton] and compact list rows.
+ButtonStyle shellMenuItemStyle({
+  double radius = 8,
+  EdgeInsetsGeometry padding =
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+}) {
+  return ButtonStyle(
+    padding: WidgetStatePropertyAll(padding),
+    shape: WidgetStatePropertyAll(
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+    ),
+    overlayColor: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.hovered) ||
+          states.contains(WidgetState.focused) ||
+          states.contains(WidgetState.pressed)) {
+        return ForjaShellColors.inkHover;
+      }
+      return null;
+    }),
+  );
+}
+
 /// Selectable pill chip for filters, moods, modes — no theme purple borders.
 class ForjaShellChip extends StatelessWidget {
   const ForjaShellChip({
@@ -117,15 +194,10 @@ class ForjaShellChip extends StatelessWidget {
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: borderRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        borderRadius: borderRadius,
-        onTap: onTap,
-        child: chip,
-      ),
+    return shellRoundedInkHost(
+      radius: radius,
+      onTap: onTap,
+      child: chip,
     );
   }
 }

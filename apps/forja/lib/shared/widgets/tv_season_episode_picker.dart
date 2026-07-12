@@ -489,94 +489,86 @@ class _SeasonCardState extends State<_SeasonCard> {
     final borderWidth = widget.selected ? 2.0 : 1.0;
     final scale = _hovered && !widget.selected ? 1.04 : 1.0;
 
-    return FocusableControl(
+    return shellFocusableTap(
+      context: context,
       onTap: widget.onTap,
       borderRadius: _SeasonCard.radius,
       scaleOnFocus: 1.0,
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
       onLeftEdge: widget.onLeftEdge,
-      tvMeta: widget.tvTabId != null &&
-              widget.tvRowId != null &&
-              widget.listIndex != null
-          ? ShellTvFocusMeta(
-              tabId: widget.tvTabId!,
-              zone: ShellTvZone.row,
-              rowId: widget.tvRowId,
-              itemIndex: widget.listIndex,
-            )
-          : null,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: AnimatedScale(
-          scale: scale,
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellTvZone.row,
+      child: AnimatedScale(
+        scale: scale,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: _SeasonCard.cardWidth,
-            height: _SeasonCard.cardHeight,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(_SeasonCard.radius),
-              border: Border.all(color: borderColor, width: borderWidth),
-              boxShadow: widget.selected
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(_SeasonCard.radius - borderWidth),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (widget.posterUrl != null)
-                    CachedNetworkImage(
-                      imageUrl: widget.posterUrl!,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) => _fallback(),
-                    )
-                  else
-                    _fallback(),
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.85),
-                          ],
-                          stops: const [0.45, 1.0],
-                        ),
+          width: _SeasonCard.cardWidth,
+          height: _SeasonCard.cardHeight,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_SeasonCard.radius),
+            border: Border.all(color: borderColor, width: borderWidth),
+            boxShadow: widget.selected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: ClipRRect(
+            borderRadius:
+                BorderRadius.circular(_SeasonCard.radius - borderWidth),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (widget.posterUrl != null)
+                  CachedNetworkImage(
+                    imageUrl: widget.posterUrl!,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => _fallback(),
+                  )
+                else
+                  _fallback(),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.85),
+                        ],
+                        stops: const [0.45, 1.0],
                       ),
                     ),
                   ),
-                  Positioned(
-                    left: 8,
-                    right: 8,
-                    bottom: 10,
-                    child: Text(
-                      'Season ${widget.seasonNumber}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(
-                          alpha: widget.selected ? 1.0 : 0.85,
-                        ),
-                        fontSize: 12,
-                        fontWeight:
-                            widget.selected ? FontWeight.w700 : FontWeight.w600,
+                ),
+                Positioned(
+                  left: 8,
+                  right: 8,
+                  bottom: 10,
+                  child: Text(
+                    'Season ${widget.seasonNumber}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(
+                        alpha: widget.selected ? 1.0 : 0.85,
                       ),
+                      fontSize: 12,
+                      fontWeight:
+                          widget.selected ? FontWeight.w700 : FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -598,23 +590,30 @@ class _PickerPill extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
 
+  static const double _radius = 22;
+
   @override
   Widget build(BuildContext context) {
-    final pill = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(22),
-      ),
+    const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 9);
+    final policy = ShellScope.inputPolicyOf(context);
+    final decoration = BoxDecoration(
+      color: const Color(0xFF2A2A2A),
+      borderRadius: BorderRadius.circular(_radius),
+    );
+
+    final pill = shellRoundedInkHost(
+      radius: _radius,
+      decoration: decoration,
+      onTap: policy.useFocusableMoodChips ? null : onTap,
+      padding: padding,
       child: child,
     );
 
-    if (onTap == null) return pill;
+    if (onTap == null || !policy.useFocusableMoodChips) return pill;
 
     return FocusableControl(
       onTap: onTap,
-      borderRadius: 22,
+      borderRadius: _radius,
       scaleOnFocus: ShellTokens.focusActiveScale,
       child: pill,
     );

@@ -25,6 +25,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
+import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -1144,17 +1145,16 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         final played = await _trySourcesFromIndex(sourceStartIndex);
         if (played) return;
 
-        if (!_providerPinned) {
-          await _autoFallbackToNextProvider();
-        } else if (mounted) {
-          notifyNoServerAvailable(_statusController);
-          setState(() {
-            _hasError = true;
-            _showControls = true;
-            _errorMessage = 'All sources on this server failed.';
-          });
-          _notifyAllSourcesExhausted();
+        // Cached / pinned URL could not open — drop it and race other providers.
+        if (_providerPinned || _sourcePinned) {
+          debugPrint(
+            '[Player] Preferred source failed to open — unlocking failover',
+          );
+          await _invalidateWebstreamingCacheForCurrent();
+          _providerPinned = false;
+          _sourcePinned = false;
         }
+        await _autoFallbackToNextProvider();
       } else {
         // No sources list — primary mediaPath (torrent localhost or direct URL).
         final openUrl = widget.mediaPath;
@@ -1210,6 +1210,19 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     } finally {
       _isInitPlaybackRunning = false;
     }
+  }
+
+  Future<void> _invalidateWebstreamingCacheForCurrent() async {
+    final movie = widget.movie;
+    if (movie == null) return;
+    final key = WebstreamingStreamCache.cacheKey(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason ?? 0,
+      episode: widget.selectedEpisode ?? 0,
+    );
+    await WebstreamingStreamCache.drop(key);
+    debugPrint('[Player] dropped stale webstreaming cache $key');
   }
 
   Future<void> _autoFallbackToNextProvider() async {
@@ -1541,12 +1554,21 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       }
       _playbackConfirmed = false;
       if (_sourcePinned) {
-        setState(() {
-          _hasError = true;
-          _showControls = true;
-          _errorMessage = 'Playback failed on the selected source.';
-        });
-        return;
+        // Manual source lock: stop. Cache/resume pin: unlock and keep trying.
+        if (!(widget.pinSource || _hasResolvedWebStream)) {
+          setState(() {
+            _hasError = true;
+            _showControls = true;
+            _errorMessage = 'Playback failed on the selected source.';
+          });
+          return;
+        }
+        debugPrint(
+          '[Player] Cached/preferred source died — unlocking failover',
+        );
+        unawaited(_invalidateWebstreamingCacheForCurrent());
+        _sourcePinned = false;
+        _providerPinned = false;
       }
       final next = _currentFallbackSourceIndex + 1;
       if (_currentSources != null && next < _currentSources!.length) {
