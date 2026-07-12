@@ -340,7 +340,7 @@ class _SourceBadgeSpec {
   final _SourceBadgeTone tone;
 }
 
-class _SourceBadgeCard extends StatelessWidget {
+class _SourceBadgeCard extends StatefulWidget {
   const _SourceBadgeCard({
     required this.onTap,
     required this.title,
@@ -370,50 +370,96 @@ class _SourceBadgeCard extends StatelessWidget {
   final String? flags;
 
   @override
+  State<_SourceBadgeCard> createState() => _SourceBadgeCardState();
+}
+
+class _SourceBadgeCardState extends State<_SourceBadgeCard> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  Color _backgroundColor(bool active) {
+    if (widget.accentFill != null) {
+      final base = widget.accentFill!;
+      return active
+          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.10), base)
+          : base;
+    }
+    if (widget.isResumable || widget.highlightStart) {
+      final base = ForjaShellColors.chipSelectedBg;
+      return active
+          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.06), base)
+          : base;
+    }
+    return active
+        ? Colors.white.withValues(alpha: 0.10)
+        : Colors.white.withValues(alpha: 0.04);
+  }
+
+  Color _borderColor(bool active) {
+    if (widget.accentBorder != null) {
+      final base = widget.accentBorder!;
+      return active
+          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.18), base)
+          : base;
+    }
+    if (widget.isResumable || widget.highlightStart) {
+      return ForjaShellColors.chipSelectedBorder;
+    }
+    return active
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.white.withValues(alpha: 0.07);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final metrics = ShellScope.metricsOf(context);
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
     const padV = 10.0;
     const titleSize = 13.0;
     final cinematic = ForjaShellColors.cinematic;
     final hasProvider =
-        provider != null && provider!.trim().isNotEmpty;
-    final hasSeeders = seeders != null && seeders!.trim().isNotEmpty;
-    final hasFlags = flags != null && flags!.trim().isNotEmpty;
+        widget.provider != null && widget.provider!.trim().isNotEmpty;
+    final hasSeeders = widget.seeders != null && widget.seeders!.trim().isNotEmpty;
+    final hasFlags = widget.flags != null && widget.flags!.trim().isNotEmpty;
     const seedColor = Color(0xFF22C55E);
 
     return FocusableControl(
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: 10,
-      child: Container(
-        decoration: BoxDecoration(
-          color: accentFill ??
-              ((isResumable || highlightStart)
-                  ? ForjaShellColors.chipSelectedBg
-                  : Colors.white.withValues(alpha: 0.04)),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: accentBorder ??
-                ((isResumable || highlightStart)
-                    ? ForjaShellColors.chipSelectedBorder
-                    : Colors.white.withValues(alpha: 0.07)),
+      scaleOnFocus: 1.0,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: _backgroundColor(active),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _borderColor(active)),
           ),
-        ),
-        child: Stack(
-          children: [
+          child: Stack(
+            children: [
             Padding(
               padding: EdgeInsets.fromLTRB(12, padV, 12, padV),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (leading != null) ...[
-                    leading!,
+                  if (widget.leading != null) ...[
+                    widget.leading!,
                     const SizedBox(width: 10),
                   ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (isResumable)
+                        if (widget.isResumable)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 2),
                             child: Text(
@@ -432,7 +478,7 @@ class _SourceBadgeCard extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                title,
+                                widget.title,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -454,7 +500,7 @@ class _SourceBadgeCard extends StatelessWidget {
                                   children: [
                                     if (hasProvider)
                                       Text(
-                                        provider!,
+                                        widget.provider!,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.right,
@@ -477,7 +523,7 @@ class _SourceBadgeCard extends StatelessWidget {
                                           ),
                                           const SizedBox(width: 2),
                                           Text(
-                                            seeders!,
+                                            widget.seeders!,
                                             style: TextStyle(
                                               color: seedColor,
                                               fontSize: metrics.torrentPanelMetaFontSize,
@@ -495,7 +541,7 @@ class _SourceBadgeCard extends StatelessWidget {
                           ],
                         ),
                         // Row 2: plain flags + quality / size / codec / tech
-                        if (hasFlags || badges.isNotEmpty) ...[
+                        if (hasFlags || widget.badges.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 6,
@@ -504,13 +550,13 @@ class _SourceBadgeCard extends StatelessWidget {
                             children: [
                               if (hasFlags)
                                 Text(
-                                  flags!,
+                                  widget.flags!,
                                   style: TextStyle(
                                     fontSize: metrics.torrentPanelChipFontSize,
                                     height: 1.1,
                                   ),
                                 ),
-                              for (final badge in badges)
+                              for (final badge in widget.badges)
                                 _SourceMetaBadge(badge: badge),
                             ],
                           ),
@@ -521,7 +567,7 @@ class _SourceBadgeCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (isResumable && progress > 0)
+            if (widget.isResumable && widget.progress > 0)
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -531,14 +577,15 @@ class _SourceBadgeCard extends StatelessWidget {
                     bottom: Radius.circular(10),
                   ),
                   child: LinearProgressIndicator(
-                    value: progress,
+                    value: widget.progress,
                     backgroundColor: Colors.transparent,
                     color: ForjaShellColors.progressFill,
                     minHeight: 2.5,
                   ),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );

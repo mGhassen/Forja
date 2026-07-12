@@ -3,6 +3,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_facts_panel.dart';
+import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 
@@ -113,6 +114,7 @@ class HubDetailsHero extends StatelessWidget {
                           actionRow: actionRow,
                           positionMs: positionMs,
                           durationMs: durationMs,
+                          availableWidth: constraints.maxWidth,
                           maxHeight: constraints.maxHeight,
                         ),
                       ),
@@ -140,6 +142,7 @@ class _HubHeroLayout extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.availableWidth,
     this.maxHeight,
   });
 
@@ -153,6 +156,7 @@ class _HubHeroLayout extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final double? availableWidth;
   final double? maxHeight;
 
   @override
@@ -170,7 +174,7 @@ class _HubHeroLayout extends StatelessWidget {
       actionRow: actionRow,
       positionMs: positionMs,
       durationMs: durationMs,
-      maxContentWidth: compact ? width : leftColumnWidth,
+      maxContentWidth: compact ? (availableWidth ?? width) : leftColumnWidth,
       maxHeight: maxHeight,
     );
 
@@ -441,7 +445,7 @@ class _HubHeroMainColumn extends StatelessWidget {
           ],
           if (actionRow != null) ...[
             const SizedBox(height: _actionGap),
-            actionRow!,
+            DetailsHeroActionRowFit(child: actionRow!),
           ],
           if (showProgress) ...[
             const SizedBox(height: 14),

@@ -3,6 +3,25 @@ import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
+/// Scales hero action rows down on narrow viewports instead of overflowing.
+class DetailsHeroActionRowFit extends StatelessWidget {
+  const DetailsHeroActionRowFit({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Registers [MediaDetailsTv.heroRowId] for hub-style hero action clusters.
 class DetailsHeroTvActionScope extends StatefulWidget {
   const DetailsHeroTvActionScope({

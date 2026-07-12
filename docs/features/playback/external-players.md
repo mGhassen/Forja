@@ -4,7 +4,7 @@
 
 ## What it is
 
-Instead of the built-in media_kit player, you can send stream URLs to external players installed on your device. Options vary by platform (e.g. VLC and mpv on desktop, MX Player on Android).
+Instead of the built-in media_kit player, you can send stream URLs to external players installed on your device. Options vary by platform (e.g. IINA, VLC, and mpv on macOS; MX Player on Android).
 
 ## How to open it
 
@@ -17,6 +17,7 @@ Instead of the built-in media_kit player, you can send stream URLs to external p
 
 ## Tips
 
+- On macOS, **IINA** and **VLC** are launched via their bundled CLI binaries so the stream URL is passed correctly
 - External players bypass Forja's subtitle UI — use players with their own sub support if needed
 - Some DRM or header-protected streams may not work outside Forja's proxy
 

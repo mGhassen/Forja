@@ -39,7 +39,8 @@ class IptvPtScreen extends StatefulWidget {
   State<IptvPtScreen> createState() => _IptvPtScreenState();
 }
 
-class _IptvPtScreenState extends State<IptvPtScreen> with ShellTabRefresh<IptvPtScreen> {
+class _IptvPtScreenState extends State<IptvPtScreen>
+    with ShellTabRefresh<IptvPtScreen> {
   late final IptvController _ctrl;
 
   @override
@@ -290,7 +291,9 @@ class _SourceChip extends StatelessWidget {
         color: Colors.transparent,
         child: Ink(
           decoration: BoxDecoration(
-            color: selected ? IptvShellStyle.chipSelectedBg : Colors.white.withValues(alpha: 0.04),
+            color: selected
+                ? IptvShellStyle.chipSelectedBg
+                : Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected
@@ -306,8 +309,7 @@ class _SourceChip extends StatelessWidget {
             tvRowId: 'portal-sources',
             tvItemIndex: listIndex,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -323,9 +325,7 @@ class _SourceChip extends StatelessWidget {
                   Text(
                     tag,
                     style: GoogleFonts.poppins(
-                      color: selected
-                          ? Colors.white
-                          : IptvShellStyle.accent,
+                      color: selected ? Colors.white : IptvShellStyle.accent,
                       fontWeight: FontWeight.w500,
                       fontSize: 11,
                     ),
@@ -362,9 +362,7 @@ class _PortalListView extends StatelessWidget {
               IptvIconAction(
                 tooltip: 'M3U Playlists',
                 onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const M3uPlaylistsScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const M3uPlaylistsScreen()),
                 ),
                 icon: Icons.playlist_play_rounded,
               ),
@@ -377,15 +375,14 @@ class _PortalListView extends StatelessWidget {
                 IptvIconAction(
                   tooltip: ctrl.editMode ? 'Done' : 'Edit',
                   onPressed: ctrl.toggleEditMode,
-                  icon: ctrl.editMode ? Icons.check_rounded : Icons.edit_rounded,
-                  color: ctrl.editMode
-                      ? IptvShellStyle.accent
-                      : Colors.white70,
+                  icon: ctrl.editMode
+                      ? Icons.check_rounded
+                      : Icons.edit_rounded,
+                  color: ctrl.editMode ? IptvShellStyle.accent : Colors.white70,
                 ),
             ],
           ),
-          if (ctrl.editMode && ctrl.verified.isNotEmpty)
-            _buildEditBar(),
+          if (ctrl.editMode && ctrl.verified.isNotEmpty) _buildEditBar(),
           Expanded(
             child: ctrl.verified.isEmpty
                 ? _buildEmpty(context)
@@ -417,8 +414,9 @@ class _PortalListView extends StatelessWidget {
           const SizedBox(width: 12),
           IptvIconAction(
             tooltip: 'Delete selected',
-            onPressed:
-                ctrl.selected.isEmpty ? null : () => ctrl.deleteSelected(),
+            onPressed: ctrl.selected.isEmpty
+                ? null
+                : () => ctrl.deleteSelected(),
             icon: Icons.delete_rounded,
             color: ctrl.selected.isEmpty
                 ? Colors.white24
@@ -441,11 +439,16 @@ class _PortalListView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.satellite_alt_rounded,
-                      size: 80, color: IptvShellStyle.accent),
+                  Icon(
+                    Icons.satellite_alt_rounded,
+                    size: 80,
+                    color: IptvShellStyle.accent,
+                  ),
                   const SizedBox(height: 24),
-                  Text('No portals yet',
-                      style: IptvShellStyle.pageTitle.copyWith(fontSize: 36)),
+                  Text(
+                    'No portals yet',
+                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 36),
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     ctrl.statusText.isEmpty
@@ -476,11 +479,7 @@ class _PortalListView extends StatelessWidget {
       builder: (context, c) {
         final cross = (c.maxWidth ~/ 320).clamp(1, 4);
         final count = ctrl.verified.length;
-        iptvSyncRow(
-          rowId: 'portals',
-          sortOrder: 0,
-          itemCount: count,
-        );
+        iptvSyncRow(rowId: 'portals', sortOrder: 0, itemCount: count);
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -522,34 +521,37 @@ class _PortalListView extends StatelessWidget {
   }
 
   Widget _buildBottomBar(BuildContext context) {
-    final actions = <({IconData icon, String label, bool subtle, VoidCallback? onPressed})>[
-      (
-        icon: ctrl.isScraping ? Icons.stop_circle_rounded : Icons.travel_explore,
-        label: ctrl.isScraping ? 'Stop' : 'Scrape',
-        subtle: false,
-        onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
-      ),
-      if (ctrl.canGetMore)
-        (
-          icon: Icons.add_circle_outline,
-          label: 'Get More',
-          subtle: true,
-          onPressed: ctrl.isScraping ? null : ctrl.getMore,
-        ),
-      (
-        icon: Icons.tv_rounded,
-        label: 'Channels',
-        subtle: true,
-        onPressed: ctrl.openChannelsHub,
-      ),
-      if (ctrl.verified.isNotEmpty)
-        (
-          icon: Icons.refresh_rounded,
-          label: 'Re-verify',
-          subtle: true,
-          onPressed: ctrl.runVerification,
-        ),
-    ];
+    final actions =
+        <({IconData icon, String label, bool subtle, VoidCallback? onPressed})>[
+          (
+            icon: ctrl.isScraping
+                ? Icons.stop_circle_rounded
+                : Icons.travel_explore,
+            label: ctrl.isScraping ? 'Stop' : 'Scrape',
+            subtle: false,
+            onPressed: ctrl.isScraping ? ctrl.stopScrape : ctrl.scrape,
+          ),
+          if (ctrl.canGetMore)
+            (
+              icon: Icons.add_circle_outline,
+              label: 'Get More',
+              subtle: true,
+              onPressed: ctrl.isScraping ? null : ctrl.getMore,
+            ),
+          (
+            icon: Icons.tv_rounded,
+            label: 'Channels',
+            subtle: true,
+            onPressed: ctrl.openChannelsHub,
+          ),
+          if (ctrl.verified.isNotEmpty)
+            (
+              icon: Icons.refresh_rounded,
+              label: 'Re-verify',
+              subtle: true,
+              onPressed: ctrl.runVerification,
+            ),
+        ];
     iptvSyncRow(
       rowId: 'portal-actions',
       sortOrder: 2,
@@ -600,66 +602,80 @@ class _PortalListView extends StatelessWidget {
         AnimatedBuilder(
           animation: ctrl,
           builder: (_, _) => AlertDialog(
-          backgroundColor: IptvShellStyle.surface,
-          title: Text('Add Portal',
-              style: IptvShellStyle.pageTitle.copyWith(fontSize: 26)),
-          content: SizedBox(
-            width: 360,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _input(urlCtrl, 'http://portal.example.com:8080', 'Portal URL'),
-                const SizedBox(height: 8),
-                _input(userCtrl, 'username', 'Username'),
-                const SizedBox(height: 8),
-                _input(passCtrl, 'password', 'Password', obscure: true),
-                if (ctrl.addError != null) ...[
-                  const SizedBox(height: 10),
-                  Text(ctrl.addError!,
+            backgroundColor: IptvShellStyle.surface,
+            title: Text(
+              'Add Portal',
+              style: IptvShellStyle.pageTitle.copyWith(fontSize: 26),
+            ),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _input(
+                    urlCtrl,
+                    'http://portal.example.com:8080',
+                    'Portal URL',
+                  ),
+                  const SizedBox(height: 8),
+                  _input(userCtrl, 'username', 'Username'),
+                  const SizedBox(height: 8),
+                  _input(passCtrl, 'password', 'Password', obscure: true),
+                  if (ctrl.addError != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      ctrl.addError!,
                       style: GoogleFonts.poppins(
-                          color: const Color(0xFFEF4444), fontSize: 12)),
+                        color: const Color(0xFFEF4444),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          actions: [
-            IptvTextAction(
-              icon: Icons.close_rounded,
-              label: 'Cancel',
-              color: Colors.white70,
-              onPressed: ctrl.isAdding
-                  ? null
-                  : () {
-                      ctrl.dismissAddDialog();
-                      Navigator.of(ctx).pop();
-                    },
-            ),
-            IptvPrimaryButton(
-              icon: Icons.add_rounded,
-              label: ctrl.isAdding ? 'Adding…' : 'Add',
-              busy: ctrl.isAdding,
-              onPressed: ctrl.isAdding
-                  ? null
-                  : () async {
-                      await ctrl.addManual(
-                        url: urlCtrl.text,
-                        username: userCtrl.text,
-                        password: passCtrl.text,
-                      );
-                      if (ctrl.addError == null && ctx.mounted) {
+            actions: [
+              IptvTextAction(
+                icon: Icons.close_rounded,
+                label: 'Cancel',
+                color: Colors.white70,
+                onPressed: ctrl.isAdding
+                    ? null
+                    : () {
+                        ctrl.dismissAddDialog();
                         Navigator.of(ctx).pop();
-                      }
-                    },
-            ),
-          ],
-        ),
+                      },
+              ),
+              IptvPrimaryButton(
+                icon: Icons.add_rounded,
+                label: ctrl.isAdding ? 'Adding…' : 'Add',
+                busy: ctrl.isAdding,
+                onPressed: ctrl.isAdding
+                    ? null
+                    : () async {
+                        await ctrl.addManual(
+                          url: urlCtrl.text,
+                          username: userCtrl.text,
+                          password: passCtrl.text,
+                        );
+                        if (ctrl.addError == null && ctx.mounted) {
+                          Navigator.of(ctx).pop();
+                        }
+                      },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _input(TextEditingController c, String hint, String label,
-      {bool obscure = false}) {
+  Widget _input(
+    TextEditingController c,
+    String hint,
+    String label, {
+    bool obscure = false,
+  }) {
     return TextField(
       controller: c,
       obscureText: obscure,
@@ -745,9 +761,7 @@ class _PortalCard extends StatelessWidget {
                     selected
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked,
-                    color: selected
-                        ? IptvShellStyle.accent
-                        : Colors.white30,
+                    color: selected ? IptvShellStyle.accent : Colors.white30,
                   ),
                   const SizedBox(width: 12),
                 ] else
@@ -757,8 +771,11 @@ class _PortalCard extends StatelessWidget {
                       color: IptvShellStyle.chipSelectedBg,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.tv_rounded,
-                        color: Colors.white, size: 22),
+                    child: Icon(
+                      Icons.tv_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -766,31 +783,40 @@ class _PortalCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(_displayName(v),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14)),
+                      Text(
+                        _displayName(v),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text(_redactUrl(v.portal.url),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                              color: Colors.white60, fontSize: 11)),
+                      Text(
+                        _redactUrl(v.portal.url),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white60,
+                          fontSize: 11,
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
                           _Pill(
-                              icon: Icons.event_rounded,
-                              label: v.expiry,
-                              color: const Color(0xFFA855F7)),
+                            icon: Icons.event_rounded,
+                            label: v.expiry,
+                            color: const Color(0xFFA855F7),
+                          ),
                           const SizedBox(width: 6),
                           _Pill(
-                              icon: Icons.people_rounded,
-                              label: '${v.activeConnections}/${v.maxConnections}',
-                              color: const Color(0xFF22C55E)),
+                            icon: Icons.people_rounded,
+                            label: '${v.activeConnections}/${v.maxConnections}',
+                            color: const Color(0xFF22C55E),
+                          ),
                         ],
                       ),
                     ],
@@ -801,9 +827,18 @@ class _PortalCard extends StatelessWidget {
                     tooltip: 'Copy portal details',
                     onPressed: () {
                       final p = v.portal;
-                      final cleanUrl = p.url.replaceFirst('http://', '').replaceFirst('https://', '');
-                      Clipboard.setData(ClipboardData(text: '$cleanUrl:${p.username}:${p.password}'));
-                      ForjaToast.success('Portal details copied to clipboard', duration: const Duration(seconds: 2));
+                      final cleanUrl = p.url
+                          .replaceFirst('http://', '')
+                          .replaceFirst('https://', '');
+                      Clipboard.setData(
+                        ClipboardData(
+                          text: '$cleanUrl:${p.username}:${p.password}',
+                        ),
+                      );
+                      ForjaToast.success(
+                        'Portal details copied to clipboard',
+                        duration: const Duration(seconds: 2),
+                      );
                     },
                     icon: Icons.copy_rounded,
                     color: Colors.white54,
@@ -812,7 +847,9 @@ class _PortalCard extends StatelessWidget {
                   IptvIconAction(
                     tooltip: isFavorite ? 'Unfavorite' : 'Favorite',
                     onPressed: onToggleFavorite,
-                    icon: isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+                    icon: isFavorite
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
                     color: isFavorite
                         ? const Color(0xFFFACC15)
                         : Colors.white38,
@@ -859,9 +896,14 @@ class _Pill extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 11),
           const SizedBox(width: 4),
-          Text(label,
-              style: GoogleFonts.poppins(
-                  color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -889,7 +931,9 @@ class _SectionPickView extends StatelessWidget {
           Expanded(
             child: LayoutBuilder(
               builder: (_, c) {
-                final cross = c.maxWidth >= 800 ? 3 : (c.maxWidth >= 520 ? 3 : 1);
+                final cross = c.maxWidth >= 800
+                    ? 3
+                    : (c.maxWidth >= 520 ? 3 : 1);
                 const sections = 3;
                 iptvSyncRow(
                   rowId: 'section-pick',
@@ -988,8 +1032,10 @@ class _SectionTile extends StatelessWidget {
               children: [
                 Icon(icon, color: Colors.white, size: 56),
                 const SizedBox(height: 14),
-                Text(label,
-                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 28)),
+                Text(
+                  label,
+                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 28),
+                ),
               ],
             ),
           ),
@@ -1057,8 +1103,7 @@ class _BrowserViewState extends State<_BrowserView> {
       if (!mounted) return;
       if (_needsPortal) {
         // Don't steal focus while the portals panel is open.
-        if (!widget.ctrl.portalPanelOpen &&
-            !_openPortalFocus.hasFocus) {
+        if (!widget.ctrl.portalPanelOpen && !_openPortalFocus.hasFocus) {
           _focusOpenPortalButton();
         }
         return;
@@ -1089,7 +1134,7 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   void _focusCatalogGroup() {
-    final focused = widget.wide
+    final focused = (widget.wide || widget.compact)
         ? iptvFocusRowItem('browser-categories', 0)
         : iptvFocusRowItem('browser-category-chips', 0);
     if (!focused) {
@@ -1101,8 +1146,7 @@ class _BrowserViewState extends State<_BrowserView> {
   @override
   void didUpdateWidget(covariant _BrowserView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.ctrl.browserSearchOpen &&
-        !oldWidget.ctrl.browserSearchOpen) {
+    if (widget.ctrl.browserSearchOpen && !oldWidget.ctrl.browserSearchOpen) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _searchFocus.requestFocus();
       });
@@ -1231,9 +1275,7 @@ class _BrowserViewState extends State<_BrowserView> {
               IptvIconAction(
                 tooltip: _searchOpen ? 'Close search' : 'Search channels',
                 onPressed: _toggleSearch,
-                icon: _searchOpen
-                    ? Icons.close_rounded
-                    : Icons.search_rounded,
+                icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
                 color: _searchOpen ? IptvShellStyle.accent : null,
               ),
               if (ctrl.activeSection == IptvSection.live) ...[
@@ -1271,14 +1313,18 @@ class _BrowserViewState extends State<_BrowserView> {
         if (ctrl.error != null)
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(ctrl.error!,
-                style: GoogleFonts.poppins(
-                    color: const Color(0xFFEF4444))),
+            child: Text(
+              ctrl.error!,
+              style: GoogleFonts.poppins(color: const Color(0xFFEF4444)),
+            ),
           ),
         Expanded(
           child: ctrl.isLoading
               ? Center(
-                  child: CircularProgressIndicator(color: IptvShellStyle.accent))
+                  child: CircularProgressIndicator(
+                    color: IptvShellStyle.accent,
+                  ),
+                )
               : _buildContent(),
         ),
       ],
@@ -1289,11 +1335,7 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   Widget _buildChoosePortalEmpty(BuildContext context) {
-    iptvSyncRow(
-      rowId: 'iptv-open-portal',
-      sortOrder: 0,
-      itemCount: 1,
-    );
+    iptvSyncRow(rowId: 'iptv-open-portal', sortOrder: 0, itemCount: 1);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -1301,8 +1343,11 @@ class _BrowserViewState extends State<_BrowserView> {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.satellite_alt_rounded,
-                size: 72, color: IptvShellStyle.accent),
+            Icon(
+              Icons.satellite_alt_rounded,
+              size: 72,
+              color: IptvShellStyle.accent,
+            ),
             const SizedBox(height: 20),
             Text(
               'Choose a portal',
@@ -1341,39 +1386,34 @@ class _BrowserViewState extends State<_BrowserView> {
       onClear: _clearSearchQuery,
       onEscape: _closeSearch,
       clearSuffix: query.isNotEmpty
-          ? iptvCloseButton(
-              context,
-              onTap: _clearSearchQuery,
-            )
+          ? iptvCloseButton(context, onTap: _clearSearchQuery)
           : null,
     );
   }
 
   Widget _buildContent() {
-    final useSidebar = !widget.compact;
-    return Row(
-      children: [
-        if (useSidebar)
-          SizedBox(
-            width: widget.wide ? 240 : 200,
-            child: _buildCategorySidebar(),
-          ),
-        if (!useSidebar)
-          // mobile: horizontal chips
-          const SizedBox.shrink(),
-        Expanded(
-          child: Column(
-            children: [
-              if (!useSidebar) _buildCategoryChips(),
-              Expanded(child: _buildStreamGrid()),
-            ],
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final categoryWidth = widget.compact
+            ? (constraints.maxWidth * 0.34).clamp(132.0, 184.0)
+            : (widget.wide ? 240.0 : 200.0);
+
+        return Row(
+          children: [
+            SizedBox(
+              width: categoryWidth,
+              child: _buildCategorySidebar(compact: widget.compact),
+            ),
+            Expanded(
+              child: widget.compact ? _buildStreamRows() : _buildStreamGrid(),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildCategorySidebar() {
+  Widget _buildCategorySidebar({bool compact = false}) {
     final ctrl = widget.ctrl;
     return Container(
       decoration: BoxDecoration(
@@ -1381,114 +1421,67 @@ class _BrowserViewState extends State<_BrowserView> {
           right: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
         ),
       ),
-      child: Builder(builder: (_) {
-        final cats = _filteredCategories;
-        iptvSyncRow(
-          rowId: 'browser-categories',
-          sortOrder: 2,
-          itemCount: cats.length,
-          orientation: ShellTvRowOrientation.vertical,
-          onFocusUp: () => iptvFocusRowItem('iptv-sections'),
-        );
-        return ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: cats.length,
-        itemBuilder: (_, i) {
-          final c = cats[i];
-          final selected = c.id == ctrl.browserSelectedCategoryId;
-          return iptvTap(
-            context: context,
-            onTap: () => ctrl.selectBrowserCategory(c.id),
-            borderRadius: 8,
-            listIndex: i,
-            tvRowId: 'browser-categories',
-            tvItemIndex: i,
-            onUpEdge: i == 0
-                ? () => iptvFocusRowItem('iptv-sections')
-                : null,
-            onRightEdge: () => iptvFocusRowItem('browser-streams'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: selected
-                    ? IptvShellStyle.accent.withValues(alpha: 0.12)
-                    : Colors.transparent,
-                border: Border(
-                  left: BorderSide(
+      child: Builder(
+        builder: (_) {
+          final cats = _filteredCategories;
+          iptvSyncRow(
+            rowId: 'browser-categories',
+            sortOrder: 2,
+            itemCount: cats.length,
+            orientation: ShellTvRowOrientation.vertical,
+            onFocusUp: () => iptvFocusRowItem('iptv-sections'),
+          );
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: cats.length,
+            itemBuilder: (_, i) {
+              final c = cats[i];
+              final selected = c.id == ctrl.browserSelectedCategoryId;
+              return iptvTap(
+                context: context,
+                onTap: () => ctrl.selectBrowserCategory(c.id),
+                borderRadius: 8,
+                listIndex: i,
+                tvRowId: 'browser-categories',
+                tvItemIndex: i,
+                onUpEdge: i == 0
+                    ? () => iptvFocusRowItem('iptv-sections')
+                    : null,
+                onRightEdge: () => iptvFocusRowItem('browser-streams'),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 10 : 14,
+                    vertical: compact ? 9 : 10,
+                  ),
+                  decoration: BoxDecoration(
                     color: selected
-                        ? IptvShellStyle.accent
+                        ? IptvShellStyle.accent.withValues(alpha: 0.12)
                         : Colors.transparent,
-                    width: 3,
+                    border: Border(
+                      left: BorderSide(
+                        color: selected
+                            ? IptvShellStyle.accent
+                            : Colors.transparent,
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    c.name.isEmpty ? 'Uncategorized' : c.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      color: selected ? Colors.white : Colors.white70,
+                      fontSize: compact ? 11 : 12,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    ),
                   ),
                 ),
-              ),
-              child: Text(
-                c.name.isEmpty ? 'Uncategorized' : c.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
-                  color: selected ? Colors.white : Colors.white70,
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ),
+              );
+            },
           );
         },
-        );
-      }),
-    );
-  }
-
-  Widget _buildCategoryChips() {
-    final ctrl = widget.ctrl;
-    return SizedBox(
-      height: 40,
-      child: Builder(builder: (_) {
-        final cats = _filteredCategories;
-        iptvSyncRow(
-          rowId: 'browser-category-chips',
-          sortOrder: 2,
-          itemCount: cats.length,
-          onFocusUp: () => iptvFocusRowItem('iptv-sections'),
-        );
-        return ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: cats.length,
-        itemBuilder: (_, i) {
-          final c = cats[i];
-          final selected = c.id == ctrl.browserSelectedCategoryId;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            child: iptvTap(
-              context: context,
-              onTap: () => ctrl.selectBrowserCategory(c.id),
-              borderRadius: 20,
-              listIndex: i,
-              tvRowId: 'browser-category-chips',
-              tvItemIndex: i,
-              onUpEdge: () => iptvFocusRowItem('iptv-sections'),
-              onDownEdge: () => iptvFocusRowItem('browser-streams'),
-              child: ChoiceChip(
-                label: Text(c.name.isEmpty ? 'Uncategorized' : c.name,
-                    style: GoogleFonts.poppins(
-                        color: selected ? Colors.black : Colors.white70,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600)),
-                selected: selected,
-                showCheckmark: false,
-                backgroundColor: Colors.white.withValues(alpha: 0.06),
-                selectedColor: IptvShellStyle.accent,
-                onSelected: iptvUseTvFocus(context)
-                    ? null
-                    : (_) => ctrl.selectBrowserCategory(c.id),
-              ),
-            ),
-          );
-        },
-        );
-      }),
+      ),
     );
   }
 
@@ -1496,40 +1489,7 @@ class _BrowserViewState extends State<_BrowserView> {
     final ctrl = widget.ctrl;
     final list = _filteredStreams;
     if (list.isEmpty) {
-      if (ctrl.browserAllStreams.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                ctrl.error ?? 'Failed to load channels — check connection',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(color: Colors.white60),
-              ),
-              const SizedBox(height: 16),
-              IptvPrimaryButton(
-                icon: Icons.refresh_rounded,
-                label: 'Reload',
-                onPressed: ctrl.activeSection == null
-                    ? null
-                    : () => ctrl.openSection(ctrl.activeSection!),
-              ),
-            ],
-          ),
-        );
-      }
-      if (ctrl.activeSection == IptvSection.live && ctrl.liveOnly) {
-        final msg = ctrl.isVerifyingAlive
-            ? 'Checking streams…'
-            : 'No alive streams found';
-        return Center(
-          child: Text(msg, style: GoogleFonts.poppins(color: Colors.white60)),
-        );
-      }
-      return Center(
-        child: Text('No streams in this view',
-            style: GoogleFonts.poppins(color: Colors.white60)),
-      );
+      return _buildStreamsEmpty();
     }
     return LayoutBuilder(
       builder: (ctx, c) {
@@ -1539,7 +1499,7 @@ class _BrowserViewState extends State<_BrowserView> {
           sortOrder: 3,
           itemCount: list.length,
           onFocusUp: () {
-            if (widget.wide) {
+            if (widget.wide || widget.compact) {
               iptvFocusRowItem('browser-categories');
             } else {
               iptvFocusRowItem('browser-category-chips');
@@ -1566,7 +1526,7 @@ class _BrowserViewState extends State<_BrowserView> {
             gridColumns: cross,
             onUpEdge: i < cross
                 ? () {
-                    if (widget.wide) {
+                    if (widget.wide || widget.compact) {
                       iptvFocusRowItem(
                         'browser-categories',
                         selectedCatIdx >= 0 ? selectedCatIdx : 0,
@@ -1576,11 +1536,11 @@ class _BrowserViewState extends State<_BrowserView> {
                     }
                   }
                 : null,
-            onLeftEdge: widget.wide && i % cross == 0
+            onLeftEdge: (widget.wide || widget.compact) && i % cross == 0
                 ? () => iptvFocusRowItem(
-                      'browser-categories',
-                      selectedCatIdx >= 0 ? selectedCatIdx : 0,
-                    )
+                    'browser-categories',
+                    selectedCatIdx >= 0 ? selectedCatIdx : 0,
+                  )
                 : null,
             onTap: () => _onStreamTap(list[i]),
           ),
@@ -1591,6 +1551,93 @@ class _BrowserViewState extends State<_BrowserView> {
           child: grid,
         );
       },
+    );
+  }
+
+  Widget _buildStreamRows() {
+    final ctrl = widget.ctrl;
+    final list = _filteredStreams;
+    if (list.isEmpty) return _buildStreamsEmpty();
+
+    final cats = _filteredCategories;
+    final selectedCatIdx = cats.indexWhere(
+      (cat) => cat.id == ctrl.browserSelectedCategoryId,
+    );
+    final categoryNames = {for (final c in ctrl.categories) c.id: c.name};
+
+    iptvSyncRow(
+      rowId: 'browser-streams',
+      sortOrder: 3,
+      itemCount: list.length,
+      orientation: ShellTvRowOrientation.vertical,
+      onFocusUp: () => iptvFocusRowItem(
+        'browser-categories',
+        selectedCatIdx >= 0 ? selectedCatIdx : 0,
+      ),
+    );
+
+    final rows = ListView.builder(
+      padding: const EdgeInsets.fromLTRB(8, 6, 10, 12),
+      itemCount: list.length,
+      itemBuilder: (_, i) {
+        final stream = list[i];
+        return _StreamRowTile(
+          stream: stream,
+          ctrl: ctrl,
+          categoryName: categoryNames[stream.categoryId] ?? '',
+          listIndex: i,
+          onLeftEdge: () => iptvFocusRowItem(
+            'browser-categories',
+            selectedCatIdx >= 0 ? selectedCatIdx : 0,
+          ),
+          onTap: () => _onStreamTap(stream),
+        );
+      },
+    );
+    if (!_LiveHealthProbe.usesScrollDebounce(context)) return rows;
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
+      child: rows,
+    );
+  }
+
+  Widget _buildStreamsEmpty() {
+    final ctrl = widget.ctrl;
+    if (ctrl.browserAllStreams.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              ctrl.error ?? 'Failed to load channels — check connection',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(color: Colors.white60),
+            ),
+            const SizedBox(height: 16),
+            IptvPrimaryButton(
+              icon: Icons.refresh_rounded,
+              label: 'Reload',
+              onPressed: ctrl.activeSection == null
+                  ? null
+                  : () => ctrl.openSection(ctrl.activeSection!),
+            ),
+          ],
+        ),
+      );
+    }
+    if (ctrl.activeSection == IptvSection.live && ctrl.liveOnly) {
+      final msg = ctrl.isVerifyingAlive
+          ? 'Checking streams…'
+          : 'No alive streams found';
+      return Center(
+        child: Text(msg, style: GoogleFonts.poppins(color: Colors.white60)),
+      );
+    }
+    return Center(
+      child: Text(
+        'No streams in this view',
+        style: GoogleFonts.poppins(color: Colors.white60),
+      ),
     );
   }
 
@@ -1612,14 +1659,16 @@ class _BrowserViewState extends State<_BrowserView> {
             streamHealth: Map<String, bool>.from(ctrl.streamHealth),
           )
         : null;
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => IptvPtPlayerScreen.singleStream(
-        url: url,
-        stream: s,
-        portalName: p.name,
-        channelGuide: channelGuide,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => IptvPtPlayerScreen.singleStream(
+          url: url,
+          stream: s,
+          portalName: p.name,
+          channelGuide: channelGuide,
+        ),
       ),
-    ));
+    );
   }
 }
 
@@ -1656,81 +1705,80 @@ class _StreamCard extends StatelessWidget {
     return ListenableBuilder(
       listenable: ctrl,
       builder: (_, _) {
-        final health =
-            stream.kind == 'live' ? ctrl.healthFor(stream.streamId) : null;
+        final health = stream.kind == 'live'
+            ? ctrl.healthFor(stream.streamId)
+            : null;
         final column = Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Expanded(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12)),
-                          child: stream.icon.isEmpty
-                              ? const _StreamPlaceholder()
-                              : Image.network(
-                                  stream.icon,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) =>
-                                      const _StreamPlaceholder(),
-                                  loadingBuilder: (_, child, p) => p == null
-                                      ? child
-                                      : const _StreamPlaceholder(),
-                                ),
-                        ),
-                        if (health != null)
-                          Positioned(
-                            top: 6,
-                            right: 6,
-                            child: Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: health
-                                    ? const Color(0xFF22C55E)
-                                    : const Color(0xFFEF4444),
-                                border: Border.all(
-                                    color: Colors.black54, width: 1),
-                              ),
-                            ),
-                          ),
-                      ],
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Tooltip(
-                      message: stream.name,
-                      waitDuration: const Duration(milliseconds: 600),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 220),
-                          child: Text(
-                            stream.name,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            softWrap: true,
-                            style: GoogleFonts.poppins(
-                                color: health == false
-                                    ? Colors.white54
-                                    : Colors.white,
-                                fontSize: 12,
-                                height: 1.15,
-                                fontWeight: FontWeight.w500),
+                    child: stream.icon.isEmpty
+                        ? const _StreamPlaceholder()
+                        : Image.network(
+                            stream.icon,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) =>
+                                const _StreamPlaceholder(),
+                            loadingBuilder: (_, child, p) =>
+                                p == null ? child : const _StreamPlaceholder(),
                           ),
+                  ),
+                  if (health != null)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: health
+                              ? const Color(0xFF22C55E)
+                              : const Color(0xFFEF4444),
+                          border: Border.all(color: Colors.black54, width: 1),
                         ),
                       ),
                     ),
-                  ),
-                  if (stream.kind == 'live')
-                    _EpgNowFooter(stream: stream, ctrl: ctrl),
                 ],
-              );
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Tooltip(
+                message: stream.name,
+                waitDuration: const Duration(milliseconds: 600),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 220),
+                    child: Text(
+                      stream.name,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: true,
+                      style: GoogleFonts.poppins(
+                        color: health == false ? Colors.white54 : Colors.white,
+                        fontSize: 12,
+                        height: 1.15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (stream.kind == 'live')
+              _EpgNowFooter(stream: stream, ctrl: ctrl),
+          ],
+        );
         final card = Material(
           color: Colors.transparent,
           child: Ink(
@@ -1789,6 +1837,166 @@ class _StreamCard extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) => _EpgSheet(stream: stream, ctrl: ctrl),
+    );
+  }
+}
+
+class _StreamRowTile extends StatelessWidget {
+  const _StreamRowTile({
+    required this.stream,
+    required this.ctrl,
+    required this.categoryName,
+    required this.onTap,
+    this.listIndex,
+    this.onLeftEdge,
+  });
+
+  final IptvStream stream;
+  final IptvController ctrl;
+  final String categoryName;
+  final VoidCallback onTap;
+  final int? listIndex;
+  final VoidCallback? onLeftEdge;
+
+  Color _borderColor(bool? health) {
+    if (stream.kind != 'live' || health == null) {
+      return Colors.white.withValues(alpha: 0.08);
+    }
+    return health
+        ? const Color(0xFF22C55E).withValues(alpha: 0.55)
+        : const Color(0xFFEF4444).withValues(alpha: 0.65);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: ctrl,
+      builder: (_, _) {
+        final health = stream.kind == 'live'
+            ? ctrl.healthFor(stream.streamId)
+            : null;
+        final tile = Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Material(
+            color: Colors.transparent,
+            child: Ink(
+              decoration: BoxDecoration(
+                color: health == false
+                    ? const Color(0xFFEF4444).withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _borderColor(health)),
+              ),
+              child: iptvTap(
+                context: context,
+                onTap: onTap,
+                borderRadius: 12,
+                listIndex: listIndex,
+                tvItemIndex: listIndex,
+                tvRowId: 'browser-streams',
+                tvZone: ShellTvZone.row,
+                onLeftEdge: onLeftEdge,
+                onFocusChange: stream.kind == 'live'
+                    ? (focused) {
+                        if (focused) {
+                          ctrl.scheduleLazyCheck(stream);
+                        } else {
+                          ctrl.cancelLazyCheck(stream.streamId);
+                        }
+                      }
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(9),
+                        child: SizedBox(
+                          width: 58,
+                          height: 58,
+                          child: stream.icon.isEmpty
+                              ? const _StreamPlaceholder()
+                              : Image.network(
+                                  stream.icon,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) =>
+                                      const _StreamPlaceholder(),
+                                  loadingBuilder: (_, child, p) => p == null
+                                      ? child
+                                      : const _StreamPlaceholder(),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              stream.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: health == false
+                                    ? Colors.white54
+                                    : Colors.white,
+                                fontSize: 12,
+                                height: 1.18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (categoryName.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                categoryName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white.withValues(alpha: 0.45),
+                                  fontSize: 10,
+                                  height: 1.1,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                            if (stream.kind == 'live')
+                              _EpgNowFooter(stream: stream, ctrl: ctrl),
+                          ],
+                        ),
+                      ),
+                      if (health != null)
+                        Container(
+                          width: 9,
+                          height: 9,
+                          margin: const EdgeInsets.only(left: 8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: health
+                                ? const Color(0xFF22C55E)
+                                : const Color(0xFFEF4444),
+                          ),
+                        )
+                      else
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8),
+                          child: Icon(
+                            Icons.play_circle_outline_rounded,
+                            color: Colors.white38,
+                            size: 20,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        if (stream.kind != 'live') return tile;
+        return _LiveHealthProbe(stream: stream, ctrl: ctrl, child: tile);
+      },
     );
   }
 }
@@ -1856,10 +2064,7 @@ class _EpgNowFooter extends StatelessWidget {
       builder: (_, snap) {
         final data = snap.data;
         if (data == null || data.isEmpty) return const SizedBox.shrink();
-        final now = data.firstWhere(
-          (e) => e.isNow,
-          orElse: () => data.first,
-        );
+        final now = data.firstWhere((e) => e.isNow, orElse: () => data.first);
         return Padding(
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
           child: Row(
@@ -1875,10 +2080,11 @@ class _EpgNowFooter extends StatelessWidget {
                 child: Text(
                   now.isNow ? 'NOW' : 'NEXT',
                   style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5),
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
@@ -1888,9 +2094,10 @@ class _EpgNowFooter extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
-                      color: Colors.white70,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w500),
+                    color: Colors.white70,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -1923,13 +2130,16 @@ class _EpgSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(stream.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                stream.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
               Flexible(
                 child: SingleChildScrollView(
@@ -1938,79 +2148,90 @@ class _EpgSheet extends StatelessWidget {
                     builder: (_, snap) {
                       if (snap.connectionState != ConnectionState.done) {
                         return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                          color: IptvShellStyle.accent, strokeWidth: 2),
-                    ),
-                  );
-                }
-                final data = snap.data ?? const <EpgEntry>[];
-                if (data.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text('No EPG available for this channel.',
-                        style: GoogleFonts.poppins(
-                            color: Colors.white60, fontSize: 12)),
-                  );
-                }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final e in data)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 86,
-                              child: Text(
-                                '${_fmtTime(e.start)}–${_fmtTime(e.stop)}',
-                                style: GoogleFonts.poppins(
-                                    color: e.isNow
-                                        ? const Color(0xFFEF4444)
-                                        : Colors.white60,
-                                    fontSize: 11,
-                                    fontWeight: e.isNow
-                                        ? FontWeight.w700
-                                        : FontWeight.w500),
-                              ),
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: IptvShellStyle.accent,
+                              strokeWidth: 2,
                             ),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                          ),
+                        );
+                      }
+                      final data = snap.data ?? const <EpgEntry>[];
+                      if (data.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Text(
+                            'No EPG available for this channel.',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white60,
+                              fontSize: 12,
+                            ),
+                          ),
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final e in data)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                      e.title.isEmpty ? '—' : e.title,
+                                  SizedBox(
+                                    width: 86,
+                                    child: Text(
+                                      '${_fmtTime(e.start)}–${_fmtTime(e.stop)}',
                                       style: GoogleFonts.poppins(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600)),
-                                  if (e.description.isNotEmpty)
-                                    Padding(
-                                      padding:
-                                          const EdgeInsets.only(top: 2),
-                                      child: Text(
-                                        e.description,
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.poppins(
-                                            color: Colors.white60,
-                                            fontSize: 10),
+                                        color: e.isNow
+                                            ? const Color(0xFFEF4444)
+                                            : Colors.white60,
+                                        fontSize: 11,
+                                        fontWeight: e.isNow
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
                                       ),
                                     ),
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          e.title.isEmpty ? '—' : e.title,
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (e.description.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 2,
+                                            ),
+                                            child: Text(
+                                              e.description,
+                                              maxLines: 3,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.poppins(
+                                                color: Colors.white60,
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
@@ -2028,8 +2249,7 @@ class _StreamPlaceholder extends StatelessWidget {
     return Container(
       color: Colors.white.withValues(alpha: 0.03),
       child: const Center(
-        child:
-            Icon(Icons.tv_rounded, color: Colors.white24, size: 36),
+        child: Icon(Icons.tv_rounded, color: Colors.white24, size: 36),
       ),
     );
   }
@@ -2055,13 +2275,18 @@ class _EpisodeListView extends StatelessWidget {
           Expanded(
             child: ctrl.isLoading
                 ? Center(
-                    child: CircularProgressIndicator(color: IptvShellStyle.accent))
+                    child: CircularProgressIndicator(
+                      color: IptvShellStyle.accent,
+                    ),
+                  )
                 : ctrl.episodes.isEmpty
-                    ? Center(
-                        child: Text('No episodes found',
-                            style: GoogleFonts.poppins(color: Colors.white60)),
-                      )
-                    : _buildList(context),
+                ? Center(
+                    child: Text(
+                      'No episodes found',
+                      style: GoogleFonts.poppins(color: Colors.white60),
+                    ),
+                  )
+                : _buildList(context),
           ),
         ],
       ),
@@ -2095,8 +2320,10 @@ class _EpisodeListView extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                child: Text('Season $season',
-                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 22)),
+                child: Text(
+                  'Season $season',
+                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 22),
+                ),
               ),
               ...eps.map((e) {
                 final tile = _EpisodeTile(
@@ -2135,16 +2362,16 @@ class _EpisodeTile extends StatelessWidget {
           final p = ctrl.activePortal;
           if (p == null) return;
           final url = IptvClient.episodeUrl(p.portal, episode);
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => IptvPtPlayerScreen(
-              sources: [
-                IptvPlaySource(url: url, label: p.name),
-              ],
-              title: 'Ep ${episode.episode} · ${episode.title}',
-              subtitle: 'Season ${episode.season}',
-              logoUrl: episode.image,
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => IptvPtPlayerScreen(
+                sources: [IptvPlaySource(url: url, label: p.name)],
+                title: 'Ep ${episode.episode} · ${episode.title}',
+                subtitle: 'Season ${episode.season}',
+                logoUrl: episode.image,
+              ),
             ),
-          ));
+          );
         },
         borderRadius: 10,
         listIndex: listIndex,
@@ -2170,8 +2397,7 @@ class _EpisodeTile extends StatelessWidget {
                       : Image.network(
                           episode.image,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              const _StreamPlaceholder(),
+                          errorBuilder: (_, _, _) => const _StreamPlaceholder(),
                         ),
                 ),
               ),
@@ -2181,26 +2407,35 @@ class _EpisodeTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Ep ${episode.episode}  ${episode.title}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
+                    Text(
+                      'Ep ${episode.episode}  ${episode.title}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     if (episode.plot.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(episode.plot,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                              color: Colors.white60, fontSize: 11)),
+                      Text(
+                        episode.plot,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white60,
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ),
-              Icon(Icons.play_circle_outline_rounded,
-                  color: IptvShellStyle.accent),
+              Icon(
+                Icons.play_circle_outline_rounded,
+                color: IptvShellStyle.accent,
+              ),
             ],
           ),
         ),
@@ -2260,16 +2495,19 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
               focusNode: _searchFocus,
               onChanged: (v) => setState(() => _query = v),
               browsePlaceholder: 'Search channels…',
-              browseHintStyle:
-                  GoogleFonts.poppins(color: Colors.white38, fontSize: 14),
+              browseHintStyle: GoogleFonts.poppins(
+                color: Colors.white38,
+                fontSize: 14,
+              ),
               caretHeight: 18,
               style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search channels…',
-                hintStyle:
-                    GoogleFonts.poppins(color: Colors.white38, fontSize: 14),
-                prefixIcon:
-                    Icon(Icons.search_rounded, color: Colors.white54),
+                hintStyle: GoogleFonts.poppins(
+                  color: Colors.white38,
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(Icons.search_rounded, color: Colors.white54),
                 suffixIcon: _query.isEmpty
                     ? null
                     : iptvCloseButton(
@@ -2281,8 +2519,10 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                       ),
                 filled: true,
                 fillColor: const Color(0xFF1A1A22),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -2293,8 +2533,10 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      BorderSide(color: IptvShellStyle.accent, width: 1.2),
+                  borderSide: BorderSide(
+                    color: IptvShellStyle.accent,
+                    width: 1.2,
+                  ),
                 ),
               ),
             ),
@@ -2305,7 +2547,9 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                     child: Text(
                       'No channels match “$_query”.',
                       style: GoogleFonts.poppins(
-                          color: Colors.white54, fontSize: 14),
+                        color: Colors.white54,
+                        fontSize: 14,
+                      ),
                     ),
                   )
                 : LayoutBuilder(
@@ -2379,17 +2623,22 @@ class _ChannelTile extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(channel.short,
-                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 36)),
+                Text(
+                  channel.short,
+                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 36),
+                ),
                 const SizedBox(height: 4),
-                Text(channel.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500)),
+                Text(
+                  channel.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -2413,6 +2662,7 @@ class _ChannelResultsView extends StatefulWidget {
 
 class _ChannelResultsViewState extends State<_ChannelResultsView> {
   bool _editMode = false;
+
   /// Selection tracks streamUrl, not index, so it stays valid when the
   /// displayed list is filtered/sorted by the search box & EPG-first sort.
   final Set<String> _selected = {};
@@ -2479,9 +2729,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                     if (!_editMode) _selected.clear();
                   }),
                   icon: _editMode ? Icons.check_rounded : Icons.edit_rounded,
-                  color: _editMode
-                      ? IptvShellStyle.accent
-                      : Colors.white70,
+                  color: _editMode ? IptvShellStyle.accent : Colors.white70,
                 ),
             ],
           ),
@@ -2494,15 +2742,18 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                 onChanged: (v) => setState(() => _query = v),
                 browsePlaceholder: 'Search hits…',
                 browseHintStyle: GoogleFonts.poppins(
-                    color: Colors.white38, fontSize: 14),
+                  color: Colors.white38,
+                  fontSize: 14,
+                ),
                 caretHeight: 18,
                 style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Search hits…',
                   hintStyle: GoogleFonts.poppins(
-                      color: Colors.white38, fontSize: 14),
-                  prefixIcon: Icon(Icons.search_rounded,
-                      color: Colors.white54),
+                    color: Colors.white38,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(Icons.search_rounded, color: Colors.white54),
                   suffixIcon: _query.isEmpty
                       ? null
                       : iptvCloseButton(
@@ -2515,7 +2766,9 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                   filled: true,
                   fillColor: const Color(0xFF1A1A22),
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -2527,7 +2780,9 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                        color: IptvShellStyle.accent, width: 1.2),
+                      color: IptvShellStyle.accent,
+                      width: 1.2,
+                    ),
                   ),
                 ),
               ),
@@ -2546,14 +2801,18 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                   ),
                   const Spacer(),
                   IptvTextAction(
-                    icon: displayed.isNotEmpty &&
+                    icon:
+                        displayed.isNotEmpty &&
                             _selected.containsAll(
-                                displayed.map((h) => h.streamUrl))
+                              displayed.map((h) => h.streamUrl),
+                            )
                         ? Icons.deselect_rounded
                         : Icons.select_all_rounded,
-                    label: displayed.isNotEmpty &&
+                    label:
+                        displayed.isNotEmpty &&
                             _selected.containsAll(
-                                displayed.map((h) => h.streamUrl))
+                              displayed.map((h) => h.streamUrl),
+                            )
                         ? 'Clear'
                         : 'Select all',
                     onPressed: () {
@@ -2574,11 +2833,10 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                       tooltip: 'Delete selected',
                       onPressed: () async {
                         final indices = <int>{};
-                        for (var i = 0;
-                            i < ctrl.channelResults.length;
-                            i++) {
+                        for (var i = 0; i < ctrl.channelResults.length; i++) {
                           if (_selected.contains(
-                              ctrl.channelResults[i].streamUrl)) {
+                            ctrl.channelResults[i].streamUrl,
+                          )) {
                             indices.add(i);
                           }
                         }
@@ -2599,14 +2857,16 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
             child: ctrl.channelResults.isEmpty
                 ? _buildEmpty()
                 : displayed.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No hits match “$_query”.',
-                          style: GoogleFonts.poppins(
-                              color: Colors.white54, fontSize: 14),
-                        ),
-                      )
-                    : _buildResults(displayed),
+                ? Center(
+                    child: Text(
+                      'No hits match “$_query”.',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white54,
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
+                : _buildResults(displayed),
           ),
           _buildBottomBar(),
         ],
@@ -2628,7 +2888,9 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
             width: 16,
             height: 16,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: IptvShellStyle.accent),
+              strokeWidth: 2,
+              color: IptvShellStyle.accent,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -2636,8 +2898,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
               widget.ctrl.channelStatus,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                  color: Colors.white70, fontSize: 12),
+              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
             ),
           ),
           IptvTextAction(
@@ -2658,8 +2919,11 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_off_rounded,
-                size: 80, color: IptvShellStyle.accent),
+            Icon(
+              Icons.search_off_rounded,
+              size: 80,
+              color: IptvShellStyle.accent,
+            ),
             const SizedBox(height: 16),
             Text(
               ctrl.channelIsRunning ? 'Searching…' : 'No hits yet',
@@ -2709,7 +2973,9 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
               gridIndex: i,
               gridColumns: cross,
               isFavorite: ctrl.isFavoriteHit(
-                  ctrl.activeHardcoded?.id ?? '', hit),
+                ctrl.activeHardcoded?.id ?? '',
+                hit,
+              ),
               onToggleFavorite: () => ctrl.toggleFavoriteHit(hit),
               onTap: () {
                 if (_editMode) {
@@ -2729,13 +2995,15 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
                     hit,
                     ...ctrl.channelResults.where((h) => h != hit),
                   ];
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => IptvPtPlayerScreen.fromHits(
-                      hits: ordered,
-                      title: ctrl.activeHardcoded?.name ?? hit.stream.name,
-                      logoUrl: hit.stream.icon,
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => IptvPtPlayerScreen.fromHits(
+                        hits: ordered,
+                        title: ctrl.activeHardcoded?.name ?? hit.stream.name,
+                        logoUrl: hit.stream.icon,
+                      ),
                     ),
-                  ));
+                  );
                 }
               },
               onLongPress: () {
@@ -2777,8 +3045,7 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
               icon: Icons.add_circle_outline,
               label: 'Get More',
               subtle: true,
-              onPressed:
-                  ctrl.channelIsRunning ? null : ctrl.getMoreChannels,
+              onPressed: ctrl.channelIsRunning ? null : ctrl.getMoreChannels,
             ),
           ],
         ),
@@ -2843,9 +3110,7 @@ class _ChannelHitCard extends StatelessWidget {
                     selected
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked,
-                    color: selected
-                        ? IptvShellStyle.accent
-                        : Colors.white30,
+                    color: selected ? IptvShellStyle.accent : Colors.white30,
                   ),
                   const SizedBox(width: 8),
                 ],
@@ -2874,23 +3139,30 @@ class _ChannelHitCard extends StatelessWidget {
                       Tooltip(
                         message: hit.stream.name,
                         waitDuration: const Duration(milliseconds: 600),
-                        child: Text(hit.stream.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            softWrap: true,
-                            style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 12,
-                                height: 1.2,
-                                fontWeight: FontWeight.w600)),
+                        child: Text(
+                          hit.stream.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: true,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 12,
+                            height: 1.2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      Text('via ${_portalLabel(hit.portal)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                          style: GoogleFonts.poppins(
-                              color: Colors.white60, fontSize: 10)),
+                      Text(
+                        'via ${_portalLabel(hit.portal)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white60,
+                          fontSize: 10,
+                        ),
+                      ),
                       _HitEpgNowRow(hit: hit, ctrl: ctrl),
                     ],
                   ),
@@ -2908,8 +3180,10 @@ class _ChannelHitCard extends StatelessWidget {
                     iconSize: 20,
                   ),
                 if (!editMode)
-                  Icon(Icons.play_circle_outline_rounded,
-                      color: IptvShellStyle.accent),
+                  Icon(
+                    Icons.play_circle_outline_rounded,
+                    color: IptvShellStyle.accent,
+                  ),
               ],
             ),
           ),
@@ -2943,10 +3217,7 @@ class _HitEpgNowRow extends StatelessWidget {
       builder: (_, snap) {
         final data = snap.data;
         if (data == null || data.isEmpty) return const SizedBox.shrink();
-        final now = data.firstWhere(
-          (e) => e.isNow,
-          orElse: () => data.first,
-        );
+        final now = data.firstWhere((e) => e.isNow, orElse: () => data.first);
         return Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Row(
@@ -2962,10 +3233,11 @@ class _HitEpgNowRow extends StatelessWidget {
                 child: Text(
                   now.isNow ? 'NOW' : 'NEXT',
                   style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5),
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
@@ -2975,9 +3247,10 @@ class _HitEpgNowRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500),
+                    color: Colors.white70,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],

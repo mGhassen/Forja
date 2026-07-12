@@ -198,6 +198,14 @@ abstract final class ShellTokens {
     return sideGutter + padding;
   }
 
+  /// Back chevron on details overlays — clears compact ☰ when the rail collapses.
+  static double detailsBackButtonLeftInset(double viewportWidth) {
+    final base = detailsContentLeftInset(viewportWidth);
+    if (viewportWidth >= shellNavCompactMaxWidth) return base;
+    final menuLane = bodyHorizontalPadding + shellNavMenuButtonWidth;
+    return base > menuLane ? base : menuLane;
+  }
+
   /// Cinematic hero band (~82% viewport) — see media-details feature doc.
   static const double detailsHeroViewportFraction = 0.82;
 

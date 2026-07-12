@@ -28,7 +28,6 @@ class HeroOverviewText extends StatefulWidget {
 }
 
 class _HeroOverviewTextState extends State<HeroOverviewText> {
-  static const _ellipsis = '...';
   static const _readMoreGap = 8.0;
   bool _expanded = false;
 
@@ -60,26 +59,6 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: maxWidth);
     return painter.didExceedMaxLines;
-  }
-
-  String _truncate(String text, double maxWidth, int maxLines) {
-    var low = 0;
-    var high = text.length;
-    while (low < high) {
-      final mid = (low + high + 1) ~/ 2;
-      final candidate = text.substring(0, mid).trimRight();
-      final painter = TextPainter(
-        text: TextSpan(text: '$candidate$_ellipsis', style: widget.style),
-        maxLines: maxLines,
-        textDirection: TextDirection.ltr,
-      )..layout(maxWidth: maxWidth);
-      if (!painter.didExceedMaxLines) {
-        low = mid;
-      } else {
-        high = mid - 1;
-      }
-    }
-    return '${text.substring(0, low).trimRight()}$_ellipsis';
   }
 
   int _maxLinesForHeight(double maxWidth, double maxHeight, {required bool reserveReadMore}) {
@@ -142,10 +121,10 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          _truncate(widget.overview, maxWidth, effectiveMaxLines),
+          widget.overview,
           style: widget.style,
           maxLines: effectiveMaxLines,
-          overflow: TextOverflow.clip,
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: _readMoreGap),
         GestureDetector(

@@ -107,6 +107,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   bool _playerReady = false;
   int _videoEpoch = 0;
   bool _softwareDecodeForced = false;
+  /// Probed after each open — pure-live feeds must never be seek()'d.
+  bool _streamSeekable = false;
 
   StreamSubscription? _posSub, _playingSub, _bufferingSub, _errorSub, _logSub;
   StreamSubscription? _durSub, _bufferSub;
@@ -179,6 +181,13 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   static const Duration _coldRetryInterval = Duration(seconds: 15);
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
+
+  static bool _isBenignMpvError(String msg) {
+    final lower = msg.toLowerCase();
+    return lower.contains('cannot seek') ||
+        lower.contains('force-seekable') ||
+        lower.contains("expected '=' and a value");
+  }
 
   bool _disposed = false;
   bool _playerAlive = false;
@@ -426,23 +435,21 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     });
     _errorSub = _player.stream.error.listen((err) {
       final msg = err.toString();
-      debugPrint('[IPTV Player] error: $msg');
       // Benign mpv chatter we don't want to restart the stream over:
       //  - "Cannot seek in this stream" / "force-seekable=yes"  → pure-live
       //    stream, the live-edge seek failed (harmless).
       //  - "Expected '=' and a value"                          → libav option
       //    parser warning for HLS-only opts on a non-HLS stream.
-      final lower = msg.toLowerCase();
-      if (lower.contains('cannot seek') ||
-          lower.contains('force-seekable') ||
-          lower.contains("expected '=' and a value")) {
+      if (_isBenignMpvError(msg)) {
         return;
       }
+      debugPrint('[IPTV Player] error: $msg');
       // "Stream ends prematurely" / "End of file" on a live HTTP feed means
       // the CDN dropped the TCP connection mid-stream. mpv's reconnect_at_eof
       // only fires on clean EOF, not on premature close, so we have to force
       // a full player recreation to get a fresh socket — gentle seek/reopen
       // attempts will just keep failing on the same dead connection.
+      final lower = msg.toLowerCase();
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {
@@ -481,6 +488,24 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     });
   }
 
+  /// Probe whether mpv reports a seekable DVR window for the current source.
+  Future<void> _probeStreamCapabilities() async {
+    _streamSeekable = false;
+    try {
+      final p = _player.platform;
+      if (p is! NativePlayer) return;
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (_disposed) return;
+      final seekableRaw = await p.getProperty('seekable');
+      final durRaw = await p.getProperty('duration');
+      final isSeekable = seekableRaw.toString().toLowerCase() == 'yes';
+      final dur = double.tryParse(durRaw.toString()) ?? 0.0;
+      _streamSeekable = isSeekable && dur > 0;
+    } catch (_) {
+      _streamSeekable = false;
+    }
+  }
+
   Future<void> _openCurrent() async {
     final src = _sources[_sourceIdx];
     // Connect silently — no banner. The buffering indicator (if any) will
@@ -495,9 +520,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       _lastPos = Duration.zero;
       _lastPosChange = DateTime.now();
       _openedAt = DateTime.now();
-      // For HLS streams that DO expose a DVR window, jump to the live edge
-      // shortly after open so we never replay stale buffered packets.
-      _scheduleJumpToLive();
+      unawaited(_probeStreamCapabilities().then((_) {
+        if (mounted) _scheduleJumpToLive();
+      }));
       // Clear banner after a short successful run
       Future.delayed(const Duration(seconds: 2), () {
         if (!mounted) return;
@@ -511,25 +536,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   /// Best-effort jump to the live edge after a (re)open.
-  /// Only fires when the stream actually exposes a DVR window (seekable=yes
-  /// AND a finite duration). On pure-live streams seeking emits a noisy
-  /// "Cannot seek in this stream / force-seekable=yes" error that the
-  /// watchdog would otherwise treat as a failure.
+  /// Only fires when [_streamSeekable] — pure-live MPEG-TS / direct HTTP
+  /// feeds must not be seek()'d (mpv prints noisy errors and it can't help).
   void _scheduleJumpToLive() {
-    Future.delayed(const Duration(milliseconds: 1500), () async {
-      if (!mounted) return;
+    if (!_streamSeekable) return;
+    Future.delayed(const Duration(milliseconds: 700), () async {
+      if (!mounted || !_streamSeekable) return;
       try {
         final p = _player.platform;
         if (p is! NativePlayer) return;
-
-        final seekableRaw = await p.getProperty('seekable');
-        final durRaw = await p.getProperty('duration');
-        final isSeekable = seekableRaw.toString().toLowerCase() == 'yes';
-        final dur = double.tryParse(durRaw.toString()) ?? 0.0;
-        if (!isSeekable || dur <= 0) {
-          // Pure live — nothing to seek to.
-          return;
-        }
 
         // Drop any data that piled up while paused / mid-recovery, then
         // jump to the live edge of the DVR window.
@@ -630,6 +645,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     }
     _recoveryInFlight = true;
     _lastRecoveryAt = now;
+    _streamSeekable = false;
     debugPrint(
         '[IPTV Watchdog] recovery (#${_retryAttempt + 1}, hard=$forceHard): $reason');
 
@@ -711,9 +727,13 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
           debugPrint('[IPTV] hard recreate failed: $e');
         }
       } else if (_retryAttempt <= 2) {
-        try {
-          await _player.seek(Duration.zero);
-        } catch (_) {}
+        // Seek-to-zero only helps on DVR/HLS windows. Pure-live feeds reject
+        // every seek and spam "Cannot seek in this stream" on each recovery.
+        if (_streamSeekable) {
+          try {
+            await _player.seek(Duration.zero);
+          } catch (_) {}
+        }
         try {
           await _player.open(
             Media(_sources[_sourceIdx].url,
@@ -751,6 +771,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       _lastPos = Duration.zero;
       _lastPosChange = DateTime.now();
       _openedAt = DateTime.now();
+      unawaited(_probeStreamCapabilities());
     } finally {
       _recoveryInFlight = false;
     }

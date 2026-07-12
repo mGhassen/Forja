@@ -828,7 +828,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           focusNode: _focusNode,
           autofocus: !tvFocus,
           readOnly: browseOnly,
-          showCursor: browseOnly && _query.isNotEmpty,
+          showCursor: !browseOnly || _query.isNotEmpty,
           enableInteractiveSelection: !browseOnly,
           onChanged: _onSearchChanged,
           style: TextStyle(
@@ -838,6 +838,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             height: 1.15,
           ),
           cursorColor: ForjaShellColors.textPrimary,
+          cursorHeight: 36,
           decoration: InputDecoration(
             hintText: showBrowsePlaceholder ? null : hint,
             hintStyle: hintStyle,
@@ -880,9 +881,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             color: selected
                 ? ForjaShellColors.textPrimary
                 : ForjaShellColors.textSecondary,
-            fontSize: selected ? 14 : 13,
+            fontSize: selected ? 18 : 16,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            height: 1.2,
+            height: 1.25,
           ),
         ),
       ),
@@ -1250,6 +1251,41 @@ class _SearchFilmCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (selected)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      child: Center(
+                        child: Material(
+                          color: Colors.transparent,
+                          shape: const CircleBorder(),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            hoverColor: ForjaShellColors.inkHover,
+                            splashColor: ForjaShellColors.inkSplash,
+                            highlightColor: ForjaShellColors.inkSplash,
+                            onTap: onOpen,
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.55),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.info_outline_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 if (result.rating != null)
                   Positioned(
                     top: 8,

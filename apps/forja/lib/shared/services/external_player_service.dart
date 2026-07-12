@@ -211,18 +211,26 @@ class ExternalPlayerService {
     ExternalPlayer(
       displayName: 'IINA',
       macAppPath: '/Applications/IINA.app',
+      macCliBinary: 'iina-cli',
       macBinary: 'iina',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--mpv-force-media-title=$title',
+        if (headers != null)
+          '--mpv-http-header-fields=${headers.entries.map((e) => '${e.key}: ${e.value}').join(',')}',
         url,
       ],
     ),
     ExternalPlayer(
       displayName: 'VLC',
       macAppPath: '/Applications/VLC.app',
+      macCliBinary: 'VLC',
       macBinary: 'vlc',
       desktopArgs: (url, title, headers) => [
         if (title != null) '--meta-title=$title',
+        if (headers != null && headers.containsKey('Referer'))
+          '--http-referrer=${headers['Referer']}',
+        if (headers != null && headers.containsKey('User-Agent'))
+          '--http-user-agent=${headers['User-Agent']}',
         url,
       ],
     ),
@@ -390,7 +398,14 @@ class ExternalPlayerService {
     }
 
     if (Platform.isMacOS) {
-      // Check app bundle — handled specially in _launchDesktop
+      // Prefer app-bundled CLI (e.g. IINA's iina-cli) — `open -a` does not
+      // reliably pass stream URLs to the GUI executable.
+      if (player.macAppPath != null && player.macCliBinary != null) {
+        final cliPath =
+            '${player.macAppPath}/Contents/MacOS/${player.macCliBinary}';
+        if (await File(cliPath).exists()) return cliPath;
+      }
+      // Fallback: open the .app bundle (no URL args).
       if (player.macAppPath != null &&
           await Directory(player.macAppPath!).exists()) {
         return 'open'; // Caller must prepend [-a, appPath] to args
@@ -465,6 +480,7 @@ class ExternalPlayer {
 
   // macOS
   final String? macAppPath;
+  final String? macCliBinary;
   final String? macBinary;
 
   // Desktop args builder
@@ -483,6 +499,7 @@ class ExternalPlayer {
     this.windowsRegistryBinary,
     this.linuxBinary,
     this.macAppPath,
+    this.macCliBinary,
     this.macBinary,
     this.desktopArgs,
   });

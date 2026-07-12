@@ -9,6 +9,7 @@ import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 
 /// Colored Live / Movies / Series shelf — same hues as the old section tiles.
@@ -75,6 +76,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   final FocusNode _searchFocus = FocusNode();
   late final AnimationController _searchAnim;
   late final Animation<double> _searchExpand;
+  bool _searchDialogOpen = false;
 
   IptvController get ctrl => widget.ctrl;
 
@@ -137,13 +139,51 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     }
   }
 
-  void _openSearch() {
-    if (ctrl.browserSearchOpen) return;
+  Future<void> _openSearch(
+    BuildContext context, {
+    required bool compact,
+  }) async {
+    if (!compact) {
+      if (ctrl.browserSearchOpen) return;
+      ctrl.openBrowserSearch();
+      return;
+    }
+
+    if (_searchDialogOpen) {
+      _searchFocus.requestFocus();
+      return;
+    }
+
+    _searchCtrl.text = ctrl.browserSearch;
     ctrl.openBrowserSearch();
+    _searchDialogOpen = true;
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.58),
+      builder: (dialogContext) => ShellScope.rehost(
+        context,
+        _IptvCatalogSearchDialog(
+          controller: _searchCtrl,
+          focusNode: _searchFocus,
+          onChanged: ctrl.setBrowserSearch,
+          onClear: _clearSearchQuery,
+          onClose: () => Navigator.of(dialogContext).pop(),
+        ),
+      ),
+    );
+    _searchDialogOpen = false;
+    if (mounted && ctrl.browserSearchOpen) {
+      _closeSearch();
+    }
   }
 
   void _closeSearch() {
     ctrl.closeBrowserSearch();
+  }
+
+  void _clearSearchQuery() {
+    _searchCtrl.clear();
+    ctrl.setBrowserSearch('');
   }
 
   @override
@@ -158,28 +198,46 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       sortOrder: 0,
       itemCount: _kSectionShelf.length,
     );
-    iptvSyncRow(
-      rowId: 'iptv-top-tools',
-      sortOrder: 1,
-      itemCount: 2,
-    );
+    iptvSyncRow(rowId: 'iptv-top-tools', sortOrder: 1, itemCount: 2);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        ShellTokens.bodyHorizontalPadding,
-        10,
-        12,
-        8,
-      ),
-      child: Row(
-        children: [
-          _buildShelf(context),
-          const Spacer(),
-          _buildExpandingSearch(context),
-          const SizedBox(width: 8),
-          _buildPortalButton(context),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 760;
+        final compactNav =
+            MediaQuery.sizeOf(context).width <
+            ShellTokens.shellNavCompactMaxWidth;
+        final leadingInset = compactNav
+            ? (DesktopWindowChrome.leadingInset(context) +
+                  ShellTokens.shellNavMenuButtonWidth)
+            : ShellTokens.bodyHorizontalPadding;
+        final leftPadding = leadingInset.clamp(
+          ShellTokens.bodyHorizontalPadding,
+          constraints.maxWidth * 0.28,
+        );
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(leftPadding, 10, 12, 8),
+          child: Row(
+            children: [
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: _buildShelf(context),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              compact
+                  ? _buildSearchIcon(context, compact: true)
+                  : _buildExpandingSearch(context),
+              const SizedBox(width: 8),
+              _buildPortalButton(context, compact: compact),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -263,10 +321,10 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     );
   }
 
-  Widget _buildSearchIcon(BuildContext context) {
+  Widget _buildSearchIcon(BuildContext context, {bool compact = false}) {
     return iptvTap(
       context: context,
-      onTap: _openSearch,
+      onTap: () => _openSearch(context, compact: compact),
       borderRadius: _kSearchCollapsed / 2,
       tvZone: ShellTvZone.topBar,
       tvRowId: 'iptv-top-tools',
@@ -336,7 +394,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     );
   }
 
-  Widget _buildPortalButton(BuildContext context) {
+  Widget _buildPortalButton(BuildContext context, {bool compact = false}) {
     final selected = ctrl.portalPanelOpen;
     final hasPortal = ctrl.activePortal != null;
     return iptvTap(
@@ -352,8 +410,8 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
         height: _kShelfTabHeight,
-        constraints: const BoxConstraints(maxWidth: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        constraints: BoxConstraints(maxWidth: compact ? 44 : 180),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12),
         decoration: BoxDecoration(
           color: selected
               ? Colors.white.withValues(alpha: 0.14)
@@ -373,26 +431,152 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
               size: 16,
               color: hasPortal ? Colors.white : IptvShellStyle.accent,
             ),
-            const SizedBox(width: 7),
-            Flexible(
-              child: Text(
-                _portalLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
+            if (!compact) ...[
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  _portalLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 2),
-            Icon(
-              selected ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-              size: 16,
-              color: Colors.white60,
-            ),
+              const SizedBox(width: 2),
+              Icon(
+                selected
+                    ? Icons.expand_less_rounded
+                    : Icons.expand_more_rounded,
+                size: 16,
+                color: Colors.white60,
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IptvCatalogSearchDialog extends StatefulWidget {
+  const _IptvCatalogSearchDialog({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onClear,
+    required this.onClose,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+  final VoidCallback onClose;
+
+  @override
+  State<_IptvCatalogSearchDialog> createState() =>
+      _IptvCatalogSearchDialogState();
+}
+
+class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTextChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: DecoratedBox(
+          decoration: IptvShellStyle.dialogSurface(),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Search IPTV',
+                        style: IptvShellStyle.overlayTitle,
+                      ),
+                    ),
+                    iptvCloseButton(context, onTap: widget.onClose),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TvBrowseTextField(
+                  controller: widget.controller,
+                  focusNode: widget.focusNode,
+                  onChanged: widget.onChanged,
+                  onEscape: widget.onClose,
+                  browsePlaceholder: 'Search channels or categories…',
+                  browseHintStyle: GoogleFonts.inter(
+                    color: Colors.white38,
+                    fontSize: 14,
+                  ),
+                  caretHeight: 18,
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Search channels or categories…',
+                    hintStyle: GoogleFonts.inter(
+                      color: Colors.white38,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: Colors.white54,
+                      size: 20,
+                    ),
+                    suffixIcon: widget.controller.text.isEmpty
+                        ? null
+                        : iptvCloseButton(context, onTap: widget.onClear),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.06),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: IptvShellStyle.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: IptvShellStyle.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: IptvShellStyle.accent,
+                        width: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -481,14 +665,14 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
               onDownEdge: widget.onDownEdge,
               onRightEdge: _revealReload
                   ? () => iptvFocusRowItem(
-                        'iptv-section-reload',
-                        widget.listIndex,
-                      )
+                      'iptv-section-reload',
+                      widget.listIndex,
+                    )
                   : widget.onRightEdge,
               onLeftEdge: widget.listIndex == 0
                   ? null
                   : () =>
-                      iptvFocusRowItem('iptv-sections', widget.listIndex - 1),
+                        iptvFocusRowItem('iptv-sections', widget.listIndex - 1),
               onFocusChange: (f) => setState(() => _focused = f),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -683,15 +867,20 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                       ),
                       caretHeight: 18,
                       style: GoogleFonts.poppins(
-                          color: Colors.white, fontSize: 13),
+                        color: Colors.white,
+                        fontSize: 13,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Search portals…',
                         hintStyle: GoogleFonts.poppins(
                           color: Colors.white38,
                           fontSize: 13,
                         ),
-                        prefixIcon: const Icon(Icons.search_rounded,
-                            color: Colors.white54, size: 20),
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          color: Colors.white54,
+                          size: 20,
+                        ),
                         suffixIcon: _query.isEmpty
                             ? null
                             : iptvCloseButton(
@@ -723,7 +912,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 child: Text(
                   ctrl.statusText.isEmpty
                       ? '${list.length} portal${list.length == 1 ? '' : 's'}'
@@ -794,8 +986,11 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.satellite_alt_rounded,
-                size: 48, color: IptvShellStyle.accent),
+            Icon(
+              Icons.satellite_alt_rounded,
+              size: 48,
+              color: IptvShellStyle.accent,
+            ),
             const SizedBox(height: 12),
             Text('No portals yet', style: IptvShellStyle.headerTitle),
             const SizedBox(height: 8),
@@ -846,20 +1041,14 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       context: context,
       builder: (ctx) => ShellScope.rehost(
         context,
-        _PortalFormDialog(
-          ctrl: widget.ctrl,
-          existing: existing,
-        ),
+        _PortalFormDialog(ctrl: widget.ctrl, existing: existing),
       ),
     );
   }
 }
 
 class _PortalFormDialog extends StatefulWidget {
-  const _PortalFormDialog({
-    required this.ctrl,
-    this.existing,
-  });
+  const _PortalFormDialog({required this.ctrl, this.existing});
 
   final IptvController ctrl;
   final VerifiedPortal? existing;
@@ -914,110 +1103,239 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     }
   }
 
+  void _cancel() {
+    widget.ctrl.dismissAddDialog();
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
     return AnimatedBuilder(
       animation: ctrl,
-      builder: (_, _) => AlertDialog(
-        backgroundColor: IptvShellStyle.surface,
-        title: Text(
-          _editing ? 'Edit Portal' : 'Add Portal',
-          style: IptvShellStyle.pageTitle.copyWith(fontSize: 26),
-        ),
-        content: SizedBox(
-          width: 360,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _portalInput(_urlCtrl, 'http://portal.example.com:8080', 'URL'),
-              const SizedBox(height: 8),
-              _portalInput(_userCtrl, 'username', 'Username'),
-              const SizedBox(height: 8),
-              _portalInput(
-                _passCtrl,
-                'password',
-                'Password',
-                obscure: _obscurePassword,
-                suffix: IconButton(
-                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                  onPressed: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                  icon: Icon(
-                    _obscurePassword
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                    size: 20,
-                    color: Colors.white54,
+      builder: (_, _) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: DecoratedBox(
+            decoration: IptvShellStyle.dialogSurface(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 16, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _editing ? 'Edit Portal' : 'Add Portal',
+                          style: IptvShellStyle.overlayTitle,
+                        ),
+                      ),
+                      ForjaPlainIcon(
+                        icon: Icons.close_rounded,
+                        tooltip: 'Close',
+                        color: IptvShellStyle.iconMuted,
+                        size: 22,
+                        onTap: ctrl.isAdding ? null : _cancel,
+                      ),
+                    ],
                   ),
-                ),
+                  const SizedBox(height: 22),
+                  _portalField(
+                    _urlCtrl,
+                    'URL',
+                    hint: 'http://portal.example.com:8080',
+                  ),
+                  const SizedBox(height: 18),
+                  _portalField(_userCtrl, 'Username', hint: 'username'),
+                  const SizedBox(height: 18),
+                  _portalField(
+                    _passCtrl,
+                    'Password',
+                    hint: 'password',
+                    obscure: _obscurePassword,
+                    suffix: ForjaPlainIcon(
+                      icon: _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      tooltip: _obscurePassword
+                          ? 'Show password'
+                          : 'Hide password',
+                      color: IptvShellStyle.iconMuted,
+                      size: 20,
+                      onTap: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                  if (ctrl.addError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      ctrl.addError!,
+                      style: GoogleFonts.poppins(
+                        color: IptvShellStyle.liveBadge,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      _portalDialogAction(
+                        icon: Icons.close_rounded,
+                        label: 'Cancel',
+                        color: IptvShellStyle.textSecondary,
+                        onTap: ctrl.isAdding ? null : _cancel,
+                      ),
+                      const SizedBox(width: 12),
+                      _portalSaveAction(ctrl),
+                    ],
+                  ),
+                ],
               ),
-              if (ctrl.addError != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  ctrl.addError!,
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFFEF4444),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
-        actions: [
-          IptvTextAction(
-            icon: Icons.close_rounded,
-            label: 'Cancel',
-            color: Colors.white70,
-            onPressed: ctrl.isAdding
-                ? null
-                : () {
-                    ctrl.dismissAddDialog();
-                    Navigator.of(context).pop();
-                  },
-          ),
-          IptvPrimaryButton(
-            icon: _editing ? Icons.check_rounded : Icons.add_rounded,
-            label: ctrl.isAdding
-                ? (_editing ? 'Saving…' : 'Adding…')
-                : (_editing ? 'Save' : 'Add'),
-            busy: ctrl.isAdding,
-            onPressed: ctrl.isAdding ? null : _submit,
-          ),
-        ],
       ),
     );
   }
 
-  Widget _portalInput(
+  Widget _portalDialogAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onTap,
+    FontWeight fontWeight = FontWeight.w500,
+  }) {
+    return ForjaInteractive(
+      onTap: onTap,
+      hoverScale: 1.02,
+      pressScale: 0.98,
+      builder: (hover, pressed) {
+        final fg = (hover || pressed) ? ForjaShellColors.iconHover : color;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: fg),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  color: fg,
+                  fontSize: 14,
+                  fontWeight: fontWeight,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _portalSaveAction(IptvController ctrl) {
+    final label = ctrl.isAdding
+        ? (_editing ? 'Saving…' : 'Adding…')
+        : (_editing ? 'Save' : 'Add');
+    final icon = _editing ? Icons.check_rounded : Icons.add_rounded;
+
+    if (ctrl.isAdding) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: IptvShellStyle.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: IptvShellStyle.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _portalDialogAction(
+      icon: icon,
+      label: label,
+      color: IptvShellStyle.textPrimary,
+      fontWeight: FontWeight.w600,
+      onTap: _submit,
+    );
+  }
+
+  Widget _portalField(
     TextEditingController c,
-    String hint,
     String label, {
+    String? hint,
     bool obscure = false,
     Widget? suffix,
   }) {
-    return TextField(
-      controller: c,
-      obscureText: obscure,
-      style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: GoogleFonts.poppins(color: Colors.white60, fontSize: 12),
-        hintText: hint,
-        hintStyle: GoogleFonts.poppins(color: Colors.white24, fontSize: 12),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        suffixIcon: suffix,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.poppins(
+            color: IptvShellStyle.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.8,
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        const SizedBox(height: 6),
+        TextField(
+          controller: c,
+          obscureText: obscure,
+          style: GoogleFonts.poppins(
+            color: IptvShellStyle.textPrimary,
+            fontSize: 14,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: GoogleFonts.poppins(
+              color: Colors.white.withValues(alpha: 0.25),
+              fontSize: 14,
+            ),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            suffixIcon: suffix,
+            suffixIconConstraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 40,
+            ),
+            border: UnderlineInputBorder(
+              borderSide: BorderSide(color: IptvShellStyle.border),
+            ),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: IptvShellStyle.border),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: IptvShellStyle.textPrimary,
+                width: 1.5,
+              ),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -1083,8 +1401,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
 
   void _copy() {
     final p = widget.portal.portal;
-    final cleanUrl =
-        p.url.replaceFirst('http://', '').replaceFirst('https://', '');
+    final cleanUrl = p.url
+        .replaceFirst('http://', '')
+        .replaceFirst('https://', '');
     Clipboard.setData(
       ClipboardData(text: '$cleanUrl:${p.username}:${p.password}'),
     );
@@ -1161,8 +1480,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                             }
                           },
                           child: Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Row(
                               children: [
                                 SizedBox(
@@ -1186,8 +1504,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                               color: health == true
                                                   ? const Color(0xFF22C55E)
                                                   : health == false
-                                                      ? const Color(0xFFEF4444)
-                                                      : Colors.white24,
+                                                  ? const Color(0xFFEF4444)
+                                                  : Colors.white24,
                                             ),
                                           ),
                                   ),
@@ -1206,8 +1524,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                         style: GoogleFonts.poppins(
                                           color: isActive
                                               ? Colors.white
-                                              : Colors.white
-                                                  .withValues(alpha: 0.88),
+                                              : Colors.white.withValues(
+                                                  alpha: 0.88,
+                                                ),
                                           fontSize: 13,
                                           fontWeight: isActive
                                               ? FontWeight.w600
@@ -1230,8 +1549,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                 ),
                                 iptvTap(
                                   context: context,
-                                  onTap: () =>
-                                      ctrl.toggleFavoritePortal(v.key),
+                                  onTap: () => ctrl.toggleFavoritePortal(v.key),
                                   borderRadius: 16,
                                   child: Padding(
                                     padding: const EdgeInsets.all(4),

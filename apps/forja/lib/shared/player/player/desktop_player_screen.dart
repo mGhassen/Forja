@@ -1100,6 +1100,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     setState(() {
       _hasError = false;
       _errorMessage = '';
+      _showControls = true;
     });
 
     if (_currentSources != null && _currentSources!.isNotEmpty) {
@@ -2221,6 +2222,10 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   void _markSourceFailed(int index) {
     _failedSourceIndices.add(index);
     _checkingSourceIndices.remove(index);
+    _hideTimer?.cancel();
+    if (mounted && !_showControls) {
+      setState(() => _showControls = true);
+    }
     _notifySourceMenuChanged();
   }
 
@@ -2284,6 +2289,13 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     }
     setState(() => _currentSources = merged);
     _notifySourceMenuChanged();
+    if (!_playbackConfirmed &&
+        !_isInitPlaybackRunning &&
+        !_allSourcesExhaustedNotified &&
+        merged.length > prevLen &&
+        _currentFallbackSourceIndex < merged.length) {
+      unawaited(_initPlayback(sourceStartIndex: _currentFallbackSourceIndex));
+    }
   }
 
   Future<void> _probeAllSourcesInBackground() async {
@@ -3459,9 +3471,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   void _startHideTimer() {
     _hideTimer?.cancel();
-    if (!_isPlayingNotifier.value) return;
+    if (_isInitPlaybackRunning ||
+        !_playbackConfirmed ||
+        _hasError ||
+        !_isPlayingNotifier.value) {
+      return;
+    }
     _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && !_disposed && !_hasError) {
+      if (mounted &&
+          !_disposed &&
+          !_hasError &&
+          _playbackConfirmed &&
+          !_isInitPlaybackRunning) {
         setState(() => _showControls = false);
       }
     });

@@ -1227,6 +1227,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         }
       },
       onAllSourcesExhausted: () {
+        _fadeOutNotifier.value = false;
         if (navigator.canPop()) navigator.pop();
       },
       onReloadStreams: () => reloadAnimeEpisodeStreams(
@@ -1241,6 +1242,18 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     final shouldRecheck = !playbackStarted && _launchedFromSavedOrCache;
     _cancelled = true;
     sourcesListNotifier?.dispose();
+    if (!playbackStarted && mounted) {
+      _fadeOutNotifier.value = false;
+      if (!shouldRecheck) {
+        setState(() {
+          _awaitingManualRecheck = true;
+          _failedAll = false;
+        });
+        _setPhase('Playback failed');
+        _setStatusLine('Tap reload to try again');
+        _probeNotifier.value = const [];
+      }
+    }
     if (shouldRecheck && mounted) {
       await _handleStaleSavedStreams();
     }

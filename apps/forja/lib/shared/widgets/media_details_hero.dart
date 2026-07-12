@@ -12,6 +12,7 @@ import 'package:forja/shared/widgets/hero/hero_facts_panel.dart';
 import 'package:forja/shared/widgets/hero/hero_meta_line.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
+import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -780,6 +781,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                               actionRow: widget.actionRow,
                               positionMs: _positionMs,
                               durationMs: _durationMs,
+                              availableWidth: constraints.maxWidth,
                               maxHeight: constraints.maxHeight,
                             ),
                             if (_showTrailer)
@@ -943,6 +945,7 @@ class _HeroLayout extends StatelessWidget {
     this.actionRow,
     this.positionMs,
     this.durationMs,
+    this.availableWidth,
     this.maxHeight,
   });
 
@@ -964,6 +967,7 @@ class _HeroLayout extends StatelessWidget {
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
+  final double? availableWidth;
   final double? maxHeight;
 
   @override
@@ -981,7 +985,7 @@ class _HeroLayout extends StatelessWidget {
       actionRow: actionRow,
       positionMs: positionMs,
       durationMs: durationMs,
-      maxContentWidth: compact ? width : leftColumnWidth,
+      maxContentWidth: compact ? (availableWidth ?? width) : leftColumnWidth,
       maxHeight: maxHeight,
     );
 
@@ -1266,7 +1270,7 @@ class _HeroMainColumn extends StatelessWidget {
           ],
           if (actionRow != null) ...[
             const SizedBox(height: _actionGap),
-            actionRow!,
+            DetailsHeroActionRowFit(child: actionRow!),
           ],
           if (showProgress) ...[
             const SizedBox(height: 14),

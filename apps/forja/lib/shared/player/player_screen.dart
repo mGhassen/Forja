@@ -11,6 +11,8 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
@@ -194,10 +196,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget build(BuildContext context) {
     // Still checking settings
     if (_checkingPlayer) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
+      return Scaffold(
+        backgroundColor: DesignTokens.bgDark,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF7C3AED)),
+          child: CircularProgressIndicator(
+            color: ForjaShellColors.brandGreen,
+          ),
         ),
       );
     }
@@ -434,145 +438,137 @@ class _ExternalPlayerWaitScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop =
+        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: DesignTokens.bgDark,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Icon
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.open_in_new_rounded,
-                    color: Color(0xFF7C3AED),
-                    size: 40,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Title
-                Text(
-                  launched ? 'Playing in $playerName' : 'Launching $playerName...',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-
-                // Subtitle
-                Text(
-                  title,
-                  style: const TextStyle(color: Colors.white54, fontSize: 14),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-
-                // Info text
-                Text(
-                  launched
-                      ? 'The stream is being kept alive.\nYou can go back when you\'re done watching.'
-                      : 'Opening the video in the external player...',
-                  style: const TextStyle(color: Colors.white38, fontSize: 13),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
-
-                // Action buttons
-                if (launched) ...[
-                  // Re-launch button
-                  SizedBox(
-                    width: 260,
-                    child: OutlinedButton.icon(
-                      onPressed: onRelaunch,
-                      icon: const Icon(Icons.refresh_rounded, size: 20),
-                      label: Text('Re-launch in $playerName'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF7C3AED),
-                        side: const BorderSide(color: Color(0xFF7C3AED)),
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 14, horizontal: 20),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            Positioned(
+              top: isDesktop ? 16 : 8,
+              left: 16,
+              child: ForjaPlainIcon(
+                icon: Icons.chevron_left_rounded,
+                size: 28,
+                color: ForjaShellColors.textPrimary,
+                tooltip: 'Back',
+                onTap: () => Navigator.of(context).pop(),
+              ),
+            ),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: ForjaShellColors.sectionIconBg,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: ForjaShellColors.borderSubtle),
                         ),
+                        child: launched
+                            ? Icon(
+                                Icons.open_in_new_rounded,
+                                color: ForjaShellColors.iconActive,
+                                size: 32,
+                              )
+                            : Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: ForjaShellColors.brandGreen,
+                                ),
+                              ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (onChangePlayer != null)
-                    SizedBox(
-                      width: 260,
-                      child: OutlinedButton.icon(
-                        onPressed: onChangePlayer,
-                        icon: const Icon(Icons.smart_display_outlined, size: 20),
-                        label: const Text('Change player'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white70,
-                          side: const BorderSide(color: Colors.white24),
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 14, horizontal: 20),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 28),
+                      Text(
+                        launched
+                            ? 'Playing in $playerName'
+                            : 'Launching $playerName…',
+                        style: GoogleFonts.inter(
+                          color: ForjaShellColors.textPrimary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          color: ForjaShellColors.textSecondary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        launched
+                            ? 'The stream is being kept alive.\nYou can go back when you\'re done watching.'
+                            : 'Opening the video in the external player…',
+                        style: GoogleFonts.inter(
+                          color: ForjaShellColors.textSecondary
+                              .withValues(alpha: 0.85),
+                          fontSize: 14,
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (launched) ...[
+                        const SizedBox(height: 36),
+                        Center(
+                          child: HeroPillPlayButton(
+                            label: 'Re-launch in $playerName',
+                            icon: Icons.refresh_rounded,
+                            tone: HeroPillPlayTone.secondary,
+                            onTap: onRelaunch,
                           ),
                         ),
+                        if (onChangePlayer != null) ...[
+                          const SizedBox(height: 12),
+                          Center(
+                            child: HeroPillPlayButton(
+                              label: 'Change player',
+                              icon: Icons.smart_display_outlined,
+                              tone: HeroPillPlayTone.secondary,
+                              onTap: onChangePlayer,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        ForjaGhostButton(
+                          label: 'Use built-in player instead',
+                          icon: Icons.play_circle_outline_rounded,
+                          onTap: onSwitchBuiltIn,
+                        ),
+                      ],
+                      const SizedBox(height: 28),
+                      Center(
+                        child: HeroPillPlayButton(
+                          label: 'Go back',
+                          icon: Icons.arrow_back_rounded,
+                          primary: true,
+                          onTap: () => Navigator.of(context).pop(),
+                        ),
                       ),
-                    ),
-
-                  if (onChangePlayer != null) const SizedBox(height: 12),
-
-                  // Switch to built-in button
-                  SizedBox(
-                    width: 260,
-                    child: TextButton.icon(
-                      onPressed: onSwitchBuiltIn,
-                      icon: const Icon(Icons.play_circle_outline, size: 20),
-                      label: const Text('Use Built-in Player Instead'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white54,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 14, horizontal: 20),
-                      ),
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 32),
-
-                // Back button
-                SizedBox(
-                  width: 260,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 20),
-                    label: const Text('Go Back'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 20),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -4,11 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
+import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
+import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/extractors/stream_extractor.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
+import 'package:rust/rust.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
@@ -189,6 +195,7 @@ const _ppvStreamApis = [
 ];
 
 /// Force play on embed players that gate behind a gesture / big-play overlay.
+/// One retry only — repeated clicks restart playback and cause visible stutter.
 const _autoplayJs = r'''
 (function () {
   function clickPlay() {
@@ -225,11 +232,54 @@ const _autoplayJs = r'''
     }
   }
   clickPlay();
-  setTimeout(clickPlay, 500);
   setTimeout(clickPlay, 1500);
-  setTimeout(clickPlay, 3000);
 })();
 ''';
+
+const _ppvReferer = 'https://ppv.is/';
+
+Map<String, String> get _ppvStreamHeaders => {
+      'User-Agent': _ua['User-Agent']!,
+      'Referer': _ppvReferer,
+      'Origin': 'https://ppv.is',
+    };
+
+String _buildPpvIframeWrapper(String embedUrl) => '''<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<meta name="referrer" content="unsafe-url">
+<title>player</title>
+<style>html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style>
+</head><body>
+<iframe id="p" src="$embedUrl" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="unsafe-url"></iframe>
+</body></html>''';
+
+/// Sniff the direct HLS/MP4 URL from a PPV embed, proxied so Referer applies
+/// to every segment request.
+Future<String?> _resolvePpvPlayUrl(String embedUrl) async {
+  debugPrint('[LiveMatches] Extracting PPV embed: $embedUrl');
+  final extracted = await StreamExtractor().extract(
+    embedUrl,
+    referer: _ppvReferer,
+    iframeWrapperBaseUrl: _ppvReferer,
+    timeout: const Duration(seconds: 25),
+  );
+  if (extracted == null || extracted.url.isEmpty) {
+    debugPrint('[LiveMatches] PPV extract failed — WebView fallback');
+    return null;
+  }
+
+  debugPrint('[LiveMatches] PPV extracted: ${extracted.url}');
+  final headers =
+      extracted.headers.isNotEmpty ? extracted.headers : _ppvStreamHeaders;
+
+  final proxy = LocalServerService();
+  await proxy.start();
+  if (proxy.port > 0) {
+    return proxy.getHlsProxyUrl(extracted.url, headers);
+  }
+  return extracted.url;
+}
 
 Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
   for (final endpoint in _ppvStreamApis) {
@@ -672,19 +722,88 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     }
   }
 
-  void _openDamiTvStream(_DamiTvStream s) {
+  Future<void> _openDamiTvStream(_DamiTvStream s) async {
     if (s.iframe.isEmpty) {
       ForjaToast.info('Stream not yet available for this event');
       return;
     }
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => _DamiTvPlayerScreen(stream: s),
-    ));
+    if (!mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            decoration: BoxDecoration(
+              color: ForjaShellColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
+                const SizedBox(height: 16),
+                Text(
+                  'Connecting to stream…',
+                  style: const TextStyle(color: ForjaShellColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    String? playUrl;
+    try {
+      playUrl = await _resolvePpvPlayUrl(s.iframe);
+    } catch (e) {
+      debugPrint('[LiveMatches] PPV resolve error: $e');
+    }
+
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    if (playUrl != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => IptvPtPlayerScreen(
+            sources: [IptvPlaySource(url: playUrl!, label: 'PPV')],
+            title: s.name,
+            subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
+          ),
+        ),
+      );
+      return;
+    }
+
+    ForjaToast.info('Opening embed player…');
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _LiveMatchesEmbedPlayerScreen(
+          embedUrl: s.iframe,
+          title: s.name,
+          subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
+          badgeLabel: 'PPV',
+        ),
+      ),
+    );
   }
 
   void _openCdnChannel(_CdnChannel channel) {
     Navigator.push(context, MaterialPageRoute(
-      builder: (_) => _CdnPlayerScreen(url: channel.url, title: channel.name),
+      builder: (_) => _LiveMatchesEmbedPlayerScreen(
+        embedUrl: channel.url,
+        title: channel.name,
+        badgeLabel: 'CDN Live',
+      ),
     ));
   }
 
@@ -1092,18 +1211,28 @@ class _CdnChannelSheet extends StatelessWidget {
   }
 }
 
-// ─── CDN Player Screen ────────────────────────────────────────────────────────
+// ─── Embed WebView player (PPV / CDN fallback) ───────────────────────────────
 
-class _CdnPlayerScreen extends StatefulWidget {
-  final String url;
+class _LiveMatchesEmbedPlayerScreen extends StatefulWidget {
+  final String embedUrl;
   final String title;
-  const _CdnPlayerScreen({required this.url, required this.title});
+  final String? subtitle;
+  final String badgeLabel;
+
+  const _LiveMatchesEmbedPlayerScreen({
+    required this.embedUrl,
+    required this.title,
+    this.subtitle,
+    required this.badgeLabel,
+  });
 
   @override
-  State<_CdnPlayerScreen> createState() => _CdnPlayerScreenState();
+  State<_LiveMatchesEmbedPlayerScreen> createState() =>
+      _LiveMatchesEmbedPlayerScreenState();
 }
 
-class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
+class _LiveMatchesEmbedPlayerScreenState
+    extends State<_LiveMatchesEmbedPlayerScreen> {
   bool _loading = true;
   bool _isFullscreen = false;
 
@@ -1128,44 +1257,85 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: _isFullscreen ? null : AppBar(
-        backgroundColor: Colors.black,
-        title: Text(widget.title,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.blue)),
-                child: const Text('CDN Live', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+  double _topBarTopPadding(BuildContext context) {
+    if (DesktopWindowChrome.isDesktop) {
+      return DesktopWindowChrome.topInset(context) + 8;
+    }
+    return MediaQuery.paddingOf(context).top + 8;
+  }
+
+  Widget _buildTopBar() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(8, _topBarTopPadding(context), 16, 16),
+      child: Row(
+        children: [
+          iptvBackButton(
+            context,
+            onTap: () => Navigator.of(context).maybePop(),
+            color: Colors.white,
+            size: 26,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: IptvShellStyle.overlayTitle,
+                ),
+                if ((widget.subtitle ?? '').isNotEmpty)
+                  Text(
+                    widget.subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.blue),
+            ),
+            child: Text(
+              widget.badgeLabel,
+              style: const TextStyle(
+                color: Colors.blue,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final embedUrl = widget.embedUrl;
+    return Scaffold(
+      backgroundColor: Colors.black,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           ForjaInAppWebView(
-            initialUrlRequest: URLRequest(
-              url: WebUri(widget.url),
-              headers: const {
-                'Referer': 'https://ppv.is/',
-                'Origin': 'https://ppv.is',
-              },
+            initialData: InAppWebViewInitialData(
+              data: _buildPpvIframeWrapper(embedUrl),
+              baseUrl: WebUri(_ppvReferer),
+              historyUrl: WebUri(_ppvReferer),
+              mimeType: 'text/html',
+              encoding: 'utf-8',
             ),
             initialSettings: InAppWebViewSettings(
+              userAgent: _ua['User-Agent'],
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               javaScriptEnabled: true,
@@ -1182,16 +1352,16 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
               } catch (_) {}
             },
             onEnterFullscreen: (_) => _enterFullscreen(),
-            onExitFullscreen:  (_) => _exitFullscreen(),
+            onExitFullscreen: (_) => _exitFullscreen(),
             shouldOverrideUrlLoading: (ctrl, action) async {
               final url = action.request.url?.toString() ?? '';
-              final embedHost = Uri.tryParse(widget.url)?.host ?? '';
+              final embedHost = Uri.tryParse(embedUrl)?.host ?? '';
               if (embedHost.isNotEmpty && !url.contains(embedHost)) {
                 http.get(Uri.parse(url), headers: {
                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                       'AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/122.0.0.0 Safari/537.36',
-                  'Referer': widget.url,
+                  'Referer': embedUrl,
                 }).catchError((_) => http.Response('', 200));
                 return NavigationActionPolicy.CANCEL;
               }
@@ -1199,7 +1369,27 @@ class _CdnPlayerScreenState extends State<_CdnPlayerScreen> {
             },
           ),
           if (_loading)
-            Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent)),
+            Center(
+              child: CircularProgressIndicator(
+                color: ForjaShellColors.sectionAccent,
+              ),
+            ),
+          if (!_isFullscreen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.black87, Colors.transparent],
+                  ),
+                ),
+                child: _buildTopBar(),
+              ),
+            ),
         ],
       ),
     );
@@ -1398,120 +1588,6 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
             ),
           ),
         ),
-    );
-  }
-}
-
-// ─── Dami TV WebView Player ───────────────────────────────────────────────────
-
-class _DamiTvPlayerScreen extends StatefulWidget {
-  final _DamiTvStream stream;
-  const _DamiTvPlayerScreen({required this.stream});
-
-  @override
-  State<_DamiTvPlayerScreen> createState() => _DamiTvPlayerScreenState();
-}
-
-class _DamiTvPlayerScreenState extends State<_DamiTvPlayerScreen> {
-  bool _loading = true;
-  bool _isFullscreen = false;
-
-  void _enterFullscreen() async {
-    setState(() => _isFullscreen = true);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-    ]);
-  }
-
-  void _exitFullscreen() async {
-    setState(() => _isFullscreen = false);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    await SystemChrome.setPreferredOrientations([]);
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setPreferredOrientations([]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final embedUrl = widget.stream.iframe;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: _isFullscreen ? null : AppBar(
-        backgroundColor: Colors.black,
-        title: Text(widget.stream.name,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.blue)),
-                child: const Text('PPV', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          ForjaInAppWebView(
-            initialUrlRequest: URLRequest(
-              url: WebUri(embedUrl),
-              headers: const {
-                'Referer': 'https://ppv.is/',
-                'Origin': 'https://ppv.is',
-              },
-            ),
-            initialSettings: InAppWebViewSettings(
-              mediaPlaybackRequiresUserGesture: false,
-              allowsInlineMediaPlayback: true,
-              javaScriptEnabled: true,
-              disableDefaultErrorPage: true,
-              supportMultipleWindows: false,
-              allowsAirPlayForMediaPlayback: true,
-              allowsPictureInPictureMediaPlayback: true,
-            ),
-            onLoadStart: (_, _) => setState(() => _loading = true),
-            onLoadStop: (ctrl, _) async {
-              setState(() => _loading = false);
-              try {
-                await ctrl.evaluateJavascript(source: _autoplayJs);
-              } catch (_) {}
-            },
-            onEnterFullscreen: (_) => _enterFullscreen(),
-            onExitFullscreen:  (_) => _exitFullscreen(),
-            shouldOverrideUrlLoading: (ctrl, action) async {
-              final url = action.request.url?.toString() ?? '';
-              final embedHost = Uri.tryParse(embedUrl)?.host ?? '';
-              if (embedHost.isNotEmpty && !url.contains(embedHost)) {
-                http.get(Uri.parse(url), headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                      'AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/122.0.0.0 Safari/537.36',
-                  'Referer': embedUrl,
-                }).catchError((_) => http.Response('', 200));
-                return NavigationActionPolicy.CANCEL;
-              }
-              return NavigationActionPolicy.ALLOW;
-            },
-          ),
-          if (_loading)
-            Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent)),
-        ],
-      ),
     );
   }
 }
