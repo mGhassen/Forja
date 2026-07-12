@@ -5,8 +5,9 @@ set -euo pipefail
 # untagged commit, oldest first). Used by .github/workflows/backfill-tags.yml.
 #
 # Usage:
-#   ./scripts/backfill_version_tags.sh          # create and push tags
+#   ./scripts/backfill_version_tags.sh          # create and push tags (CI: needs BACKFILL_GITHUB_TOKEN)
 #   ./scripts/backfill_version_tags.sh --dry-run
+#   ./scripts/backfill_version_tags.sh --range-touches-workflows  # exit 0 if PAT required (CI preflight)
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DRY_RUN=0

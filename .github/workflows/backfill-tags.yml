@@ -10,27 +10,50 @@ on:
         type: boolean
         default: false
 
-# GITHUB_TOKEN cannot push tags pointing at commits that changed
-# .github/workflows/* — use a PAT with the `workflow` scope as
-# BACKFILL_GITHUB_TOKEN, or run ./scripts/backfill_version_tags.sh locally.
+# GITHUB_TOKEN cannot push tags when commits in the backfill range touched
+# .github/workflows/* (GitHub requires workflows: write on the pusher identity).
+# Non-dry-run runs require repository secret BACKFILL_GITHUB_TOKEN — a fine-grained
+# PAT on this repo with Contents: Read and write + Actions: Read and write.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   backfill:
     name: Backfill v* tags
     runs-on: ubuntu-latest
     steps:
+      - name: Require BACKFILL_GITHUB_TOKEN
+        if: inputs.dry_run != true
+        env:
+          HAS_PAT: ${{ secrets.BACKFILL_GITHUB_TOKEN != '' }}
+        run: |
+          if [[ "$HAS_PAT" != "true" ]]; then
+            echo "::error::Repository secret BACKFILL_GITHUB_TOKEN is not set."
+            echo "Backfill cannot push tags from GitHub Actions using GITHUB_TOKEN alone."
+            echo "Add a fine-grained PAT (this repo: Contents Read and write + Actions Read and write)"
+            echo "as Settings → Secrets and variables → Actions → BACKFILL_GITHUB_TOKEN, then re-run."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
+        if: inputs.dry_run == true
         with:
           fetch-depth: 0
-          # Prefer PAT so tags on workflow-touching commits can be pushed.
-          token: ${{ secrets.BACKFILL_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Configure git
+      - uses: actions/checkout@v4
+        if: inputs.dry_run != true
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.BACKFILL_GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Configure git for tag push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ "${{ inputs.dry_run }}" != "true" ]]; then
+            git remote set-url origin "https://x-access-token:${{ secrets.BACKFILL_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          fi
 
       - name: List existing tags
         run: |
@@ -41,25 +64,6 @@ jobs:
             git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Require PAT when backfill touches workflows
-        if: inputs.dry_run != true
-        env:
-          HAS_PAT: ${{ secrets.BACKFILL_GITHUB_TOKEN != '' }}
-        run: |
-          chmod +x scripts/backfill_version_tags.sh
-          if [[ "$HAS_PAT" == "true" ]]; then
-            echo "BACKFILL_GITHUB_TOKEN is set."
-            exit 0
-          fi
-          if ./scripts/backfill_version_tags.sh --range-touches-workflows; then
-            echo "::error::BACKFILL_GITHUB_TOKEN is required for this backfill."
-            echo "Some untagged commits modify .github/workflows/*; GITHUB_TOKEN cannot push those tags."
-            echo "Add a fine-grained PAT (Contents: Read and write + Actions: Read and write) as repo secret BACKFILL_GITHUB_TOKEN,"
-            echo "or run locally: ./scripts/backfill_version_tags.sh"
-            exit 1
-          fi
-          echo "No workflow changes in backfill range; GITHUB_TOKEN is sufficient."
 
       - name: Backfill tags for untagged commits
         run: |
