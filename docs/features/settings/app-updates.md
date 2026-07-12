@@ -19,7 +19,7 @@ Forja can check GitHub Releases for newer builds when the app starts and lets yo
 ## Tips
 
 - Published releases: `./scripts/release_ci.sh` or `melos run release` — searchable tag list locally (needs `gh` CLI)
-- Or in GitHub: Actions → **Release new version** (bump) or **Release existing tag** (type tag); pick platforms
+- Or in GitHub: Actions → **Release Forja** → **New version** or **Existing tag**; pick platforms
 - Tag backfill: Actions → **Backfill version tags** (requires repo secret `BACKFILL_GITHUB_TOKEN` — fine-grained PAT with Contents + Actions write on this repo)
 - Android TV releases publish two APKs: `Forja-{version}-android-tv-arm64.apk` and `Forja-{version}-android-tv-armeabi-v7a.apk`; the in-app updater picks the matching ABI
 - Optional smoke build: Actions → **Build Forja** (workflow artifacts only, no release)

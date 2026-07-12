@@ -1,14 +1,18 @@
 # Nuvio scrapers
 
-> Install community scraper manifests for extra stream links in direct streaming mode.
+> Install community scraper manifests for extra stream links in the **Sources** panel (Direct torrent).
 
 ## What it is
 
-Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Install a manifest in Settings, enable individual scrapers, and they feed the hero **Play streaming** path on [media details](../movies-tv/media-details.md) (and the Nuvio tab in **Sources** when used as Stremio-style addons).
+Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Install a manifest in Settings, enable individual scrapers, and pick them from the **Nuvio** tab in **Sources** on [media details](../movies-tv/media-details.md) (white **Play** / link icon — same panel as Forja torrent search).
+
+Nuvio is **not** part of green **Play** webstreaming. Direct links only there; torrent/magnet scrapers (e.g. Torrentio) stay in **Sources** and play through the torrent engine.
 
 ## How to open it
 
-**Settings → Providers & Addons → Nuvio Addons**
+1. Enable **Direct torrent** under **Play sources** in **Settings → Playback**
+2. Open a title → white **Play** / **Sources** → **Nuvio** tab
+3. Or install/manage addons under **Settings → Providers & Addons → Nuvio Addons**
 
 ## What you can do
 
@@ -16,23 +20,24 @@ Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper sea
 - See scraper count per addon
 - Toggle each scraper on/off without removing the addon
 - Remove an entire addon
-- Reorder Nuvio providers in Settings → Playback (with other stream providers)
+- Pick a scraper chip in **Sources → Nuvio** and play a result (magnets use the local torrent engine; HTTP links play directly)
 
 ## Setup
 
-1. Obtain a Nuvio manifest URL (community lists or your own)
-2. Paste into **Install Nuvio Addon** and tap Install
-3. Enable scrapers you want; disable noisy or slow ones
+1. Enable **Direct torrent** in **Settings → Playback**
+2. Obtain a Nuvio manifest URL (community lists or your own) — the app also ships a bundled catalog virtually when not installed
+3. Paste into **Install Nuvio Addon** and tap Install (optional — bundled scrapers work without install)
+4. Enable scrapers you want; disable noisy or slow ones
 
 ## Tips
 
-- Scraper scripts are cached locally after first install
+- Scraper scripts are cached locally after first use
 - Refreshing an addon merges new scrapers while keeping your enabled/disabled choices
-- Nuvio runs in direct streaming mode — not on the torrent details screen
-- **Direct streaming is direct links only.** Scrapers that return torrent/magnet links (e.g. Torrentio) are ignored by the green **Play** race — those belong in the **Sources** panel, which routes magnets through the torrent engine
+- **Webstreaming** (green **Play**) uses VidLink, WebStreamr, Videasy, etc. — not Nuvio
 
 ## Related
 
-- [Direct streaming mode](../movies-tv/direct-streaming-mode.md)
-- [Stream providers](../sources/stream-providers.md)
+- [Media details](../movies-tv/media-details.md)
+- [Webstreaming](../movies-tv/direct-streaming-mode.md)
+- [Playback settings](../settings/playback-settings.md)
 - [Scrapers overview](README.md)

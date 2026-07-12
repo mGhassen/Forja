@@ -9,7 +9,7 @@ import 'package:rust/rust.dart';
 
 bool isWebStreamProviderId(String sourceId) {
   if (sourceId.isEmpty) return false;
-  if (sourceId.startsWith('nuvio:')) return true;
+  if (sourceId.startsWith('nuvio:')) return false;
   if (StreamProviderDisplay.hasProfile(sourceId)) return true;
   return StreamProviders.providers.containsKey(sourceId);
 }

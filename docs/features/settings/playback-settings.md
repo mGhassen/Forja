@@ -12,7 +12,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 
 ## What you can do
 
-- Enable **Play sources**: direct torrent, Stremio, and webstreaming (all on by default on phone and desktop; **Android TV** fresh install enables **Webstreaming** only — turn on torrent or Stremio in this screen if you want **Sources**)
+- Enable **Play sources**: **Direct torrent** (Forja search + **Nuvio** scrapers in **Sources**), **Stremio**, and **Webstreaming** (all on by default on phone and desktop; **Android TV** fresh install enables **Webstreaming** only — turn on Direct torrent or Stremio in this screen if you want **Sources**)
 - On **Android**, choose **Built-in engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — in Settings or from the **Player** button in the playback controls
 - Set **Preferred audio language**
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
@@ -22,8 +22,8 @@ Core playback preferences: which backends **Play** tries on the media details sc
 
 ## Tips
 
-- Play source toggles: green **Play** (play icon) uses webstreaming; white link **Play** / **Sources** use torrent + Stremio (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel merges torrent and Stremio into one list with an **All / Torrents / Stremio** filter.
-- **Source scoring** tables: drag sets your **baseline** order per type. **Domain score** may move a provider at most **±2** positions before checking. **Effective** shows the pre-check order the engine uses. Failed checks in the player Source panel apply persisted reliability memory (sort on next open). The **score badge** shows the configured domain tier; it dims when reliability is low and stays bright for the playing server. Stream quality (codec, resolution, latency) is scored **after** resolve — not shown in settings.
+- Play source toggles: green **Play** (play icon) uses **Webstreaming** extractors only; white link **Play** / **Sources** use **Direct torrent** (Forja + **Nuvio** tab) and **Stremio** (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel uses **All / Torrents / Stremio / Nuvio** when Direct torrent and Nuvio scrapers are available.
+- **Source scoring** tables: drag sets your **baseline** order per type. **Domain score** may move a provider at most **±2** positions before checking. **Effective** shows the pre-check order the engine uses. In the player Source panel, the **badge number** is the live reliability score (starts at domain tier, moves on checks). Stream quality (codec, resolution, latency) is scored **after** resolve — not shown in settings.
 - **Max stream quality** caps what the playback engine picks automatically (device probe still applies under Auto)
 - Anime uses the same resolve + Rust scoring pipeline as movies; saved source pin still wins when set
 - External player is chosen per stream from the in-player **Player** menu — playback always starts in the built-in player

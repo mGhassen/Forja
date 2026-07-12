@@ -100,12 +100,27 @@ abstract final class ProviderScoreMemory {
   static int boostFor(String providerId) =>
       _boosts[_normalizeId(providerId)] ?? 0;
 
-  static int effectiveScore(int domainScore, String providerId) {
+  /// Max points reliability memory may subtract from [domainScore] (never → 1).
+  static int maxPenaltyForBase(int domainScore) =>
+      (domainScore * 0.45).round().clamp(12, 45);
+
+  static int effectiveScore(
+    int domainScore,
+    String providerId, {
+    bool isPlaying = false,
+  }) {
     if (domainScore <= 0) return 0;
     final id = _normalizeId(providerId);
-    final penalty = _penalties[id] ?? 0;
+    final penalty = (_penalties[id] ?? 0).clamp(0, maxPenaltyForBase(domainScore));
     final boost = _boosts[id] ?? 0;
-    return (domainScore - penalty + boost).clamp(1, domainScore);
+    final raw = domainScore - penalty + boost;
+    final ceiling = domainScore + maxBoost;
+    final floor = (domainScore * 0.55).round().clamp(8, domainScore - 1);
+    if (isPlaying) {
+      // Live playback is proof — badge stays at least the configured tier.
+      return raw.clamp(domainScore, ceiling);
+    }
+    return raw.clamp(floor, ceiling);
   }
 
   /// Apply persisted reliability memory to Source Engine rows for UI + sort.

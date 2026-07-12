@@ -1,6 +1,6 @@
 # Forja — optional multi-platform build (manual only)
 # Artifacts only — no version bump, no GitHub Release.
-# Release packaging: .github/workflows/release-new.yml and release-tag.yml (manual)
+# Release packaging: .github/workflows/release.yml (manual)
 name: Build Forja
 
 on:

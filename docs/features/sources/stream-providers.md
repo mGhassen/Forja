@@ -6,7 +6,7 @@
 
 Forja resolves streams through a **Source Engine** middleware. Movie/TV scrapers never compete with anime or Asian Drama scrapers. Each domain has provider **profiles** (configured domain scores). Your **settings order** is the baseline; domain scores may adjust each provider by at most **±2** ranks before checking. The playback layer then scores resolved URLs against your device (codec, resolution, latency).
 
-Built-in movie/series providers include Videasy, VidLink, VixSrc, Vidnest, 111477, WebStreamr, and each enabled [Nuvio](../scrapers/nuvio.md) scraper.
+Built-in **webstreaming** movie/series providers include Videasy, VidLink, VixSrc, Vidnest, 111477, and WebStreamr. [Nuvio](../scrapers/nuvio.md) scrapers are **not** in this list — they live in the **Sources** panel under **Direct torrent**.
 
 ## How to open it
 
@@ -19,7 +19,7 @@ Built-in movie/series providers include Videasy, VidLink, VixSrc, Vidnest, 11147
 - **Auto** — Source Engine races providers (up to six at once) and opens the first working hit. Other servers resolve when you pick them in the player menu.
 - **Manual** — pick a server; Forja stays on it (strict — no silent cross-provider fallback)
 - Source links are **not** pre-checked on open — tap a stream to probe it (status on the left). Use the hover **play** arrow to switch. The current stream keeps playing until a play succeeds
-- Failed server/stream checks lower that provider’s **sort position** on the next panel open (persisted reliability memory). The **score badge** still shows the configured domain tier (e.g. VixSrc **75**); it dims when reliability memory is low, and stays bright while that server is playing
+- The **score badge** starts at each provider’s domain tier (e.g. VixSrc **75**) and **updates live** while the panel is open — **down** when server/stream checks fail, **up** when they succeed (persisted across sessions). While that server is **Playing now**, the badge stays at least the base tier
 - Reorder providers in Settings (baseline per domain; effective order preview in table)
 - On decoder failure, try the next compatible source, then software decode once
 
@@ -27,7 +27,7 @@ Built-in movie/series providers include Videasy, VidLink, VixSrc, Vidnest, 11147
 
 | Domain | Typical engines |
 |--------|-----------------|
-| Movies / TV | Videasy, VidLink, WebStreamr, Nuvio, … |
+| Movies / TV | Videasy, VidLink, WebStreamr, … |
 | Anime | Miruro, AllAnime, AnimeRealms, … |
 | Asian Drama | KissKH |
 | IPTV | Xtream / M3U / Stalker (portal) |

@@ -1,0 +1,400 @@
+# Sole source of version bumps, git tags (v*), and GitHub Releases.
+# Manual dispatch only. Backfill untagged commits: "Backfill version tags" workflow.
+name: Release Forja
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_mode:
+        description: New version or existing tag
+        type: choice
+        options:
+          - New version
+          - Existing tag
+        default: New version
+      bump:
+        description: Version bump (New version only)
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      tag:
+        description: Git tag (Existing tag only, e.g. v1.4.0) — use ./scripts/release_ci.sh list-tags locally
+        type: string
+        default: ''
+      prerelease:
+        description: Mark as pre-release
+        type: boolean
+        default: false
+      platform_macos:
+        description: Build macOS
+        type: boolean
+        default: true
+      platform_windows:
+        description: Build Windows
+        type: boolean
+        default: true
+      platform_linux:
+        description: Build Linux
+        type: boolean
+        default: true
+      platform_android_tv:
+        description: Build Android TV (arm64 + armeabi-v7a APKs)
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_CHANNEL: stable
+  APP_DIR: apps/forja
+
+jobs:
+  resolve_version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.final.outputs.version }}
+    steps:
+      - name: Validate platform selection
+        run: |
+          if [[ "${{ inputs.platform_macos }}" != "true" && \
+                "${{ inputs.platform_windows }}" != "true" && \
+                "${{ inputs.platform_linux }}" != "true" && \
+                "${{ inputs.platform_android_tv }}" != "true" ]]; then
+            echo "::error::Select at least one platform to release."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List existing tags
+        if: inputs.version_mode == 'Existing tag'
+        run: |
+          git fetch origin --tags --force
+          {
+            echo "## Available release tags (newest first)"
+            echo '```'
+            git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure git
+        if: inputs.version_mode == 'New version'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version and tag
+        if: inputs.version_mode == 'New version'
+        id: bump
+        run: |
+          chmod +x scripts/bump_version.sh
+          NEW="$(./scripts/bump_version.sh "${{ inputs.bump }}")"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Bumped to $NEW"
+
+          if git rev-parse "v${NEW}" >/dev/null 2>&1; then
+            echo "::error::Tag v${NEW} already exists — sync pubspec to the latest tag, push, then re-run."
+            exit 1
+          fi
+          git add apps/forja/pubspec.yaml installer/windows/setup.iss
+          git commit -m "chore: release v${NEW}"
+          git tag -a "v${NEW}" -m "Forja ${NEW}"
+          git push origin HEAD
+          git push origin "v${NEW}"
+
+      - name: Resolve existing tag
+        if: inputs.version_mode == 'Existing tag'
+        id: existing
+        run: |
+          tag="${{ inputs.tag }}"
+          tag="${tag#"${tag%%[![:space:]]*}"}"
+          tag="${tag%"${tag##*[![:space:]]}"}"
+          if [[ -z "$tag" ]]; then
+            echo "::error::Existing tag mode requires the tag input (e.g. v1.4.0)."
+            exit 1
+          fi
+          if [[ "$tag" != v* ]]; then
+            tag="v${tag}"
+          fi
+          if ! git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag does not exist. See workflow summary for available tags."
+            exit 1
+          fi
+          version="${tag#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing $tag ($version)"
+
+      - name: Set version output
+        id: final
+        run: |
+          if [[ "${{ inputs.version_mode }}" == "New version" ]]; then
+            echo "version=${{ steps.bump.outputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ steps.existing.outputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  build_macos:
+    name: macOS
+    if: ${{ inputs.platform_macos }}
+    needs: resolve_version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.resolve_version.outputs.version }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Build Rust FFI
+        run: ./scripts/build_rust_release.sh
+
+      - name: Build macOS app
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          flutter pub get
+          flutter build macos --release
+
+      - name: Verify installer payload
+        run: ./scripts/verify_installer_payload.sh macos
+
+      - name: Package DMG
+        run: ./scripts/package_macos_dmg.sh "${{ needs.resolve_version.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Forja-macOS-dmg
+          path: dist/Forja-${{ needs.resolve_version.outputs.version }}-macos-arm64.dmg
+
+  build_windows:
+    name: Windows
+    if: ${{ inputs.platform_windows }}
+    needs: resolve_version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.resolve_version.outputs.version }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Build Rust FFI
+        shell: bash
+        run: ./scripts/build_rust_release.sh
+
+      - name: Build Windows app
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          flutter pub get
+          flutter build windows --release
+
+      - name: Embed Rust in release output
+        shell: bash
+        run: ./scripts/embed_rust_in_release_output.sh windows
+
+      - name: Verify installer payload
+        shell: bash
+        run: ./scripts/verify_installer_payload.sh windows
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = "${{ needs.resolve_version.outputs.version }}"
+          $outName = "Forja-$version-windows-setup"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DMyAppVersion=$version" `
+            "/DMyOutputBaseFilename=$outName" `
+            "installer\windows\setup.iss"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Forja-Windows-setup
+          path: installer/windows/Output/Forja-${{ needs.resolve_version.outputs.version }}-windows-setup.exe
+
+  build_linux:
+    name: Linux
+    if: ${{ inputs.platform_linux }}
+    needs: resolve_version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.resolve_version.outputs.version }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev libmpv-dev libfuse2 libsecret-1-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            file wget curl
+
+      - name: Build Rust FFI
+        run: ./scripts/build_rust_release.sh
+
+      - name: Build Linux app
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          flutter pub get
+          flutter build linux --release
+
+      - name: Embed Rust in release output
+        run: ./scripts/embed_rust_in_release_output.sh linux
+
+      - name: Verify installer payload
+        run: ./scripts/verify_installer_payload.sh linux
+
+      - name: Package AppImage
+        run: ./scripts/package_linux_appimage.sh "${{ needs.resolve_version.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Forja-Linux-appimage
+          path: dist/Forja-${{ needs.resolve_version.outputs.version }}-linux-x86_64.AppImage
+
+  build_android_tv:
+    name: Android TV
+    if: ${{ inputs.platform_android_tv }}
+    needs: resolve_version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.resolve_version.outputs.version }}
+
+      - name: Verify Android signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.FORJA_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.FORJA_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.FORJA_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$KEYSTORE_B64" || -z "$KEYSTORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
+            echo "::error::Android TV release requires FORJA_KEYSTORE_BASE64, FORJA_KEYSTORE_PASSWORD, and FORJA_KEY_PASSWORD secrets."
+            exit 1
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Decode release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.FORJA_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.FORJA_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.FORJA_KEY_ALIAS }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > apps/forja/android/release.keystore
+          alias="${KEY_ALIAS:-forja}"
+          if ! keytool -list \
+            -keystore apps/forja/android/release.keystore \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$alias" >/dev/null 2>&1; then
+            echo "::error::No key with alias '$alias' in decoded keystore."
+            echo "Available aliases:"
+            keytool -list -keystore apps/forja/android/release.keystore \
+              -storepass "$KEYSTORE_PASSWORD" || true
+            exit 1
+          fi
+
+      - name: Build Android TV APKs
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          FORJA_KEY_ALIAS: ${{ secrets.FORJA_KEY_ALIAS }}
+        run: |
+          flutter pub get
+          flutter build apk --release --split-per-abi \
+            -PFORJA_KEYSTORE_PATH="${{ github.workspace }}/apps/forja/android/release.keystore" \
+            -PFORJA_KEYSTORE_PASSWORD="${{ secrets.FORJA_KEYSTORE_PASSWORD }}" \
+            -PFORJA_KEY_ALIAS="${FORJA_KEY_ALIAS:-forja}" \
+            -PFORJA_KEY_PASSWORD="${{ secrets.FORJA_KEY_PASSWORD }}"
+
+      - name: Package Android TV APKs
+        run: ./scripts/package_android_tv_apk.sh "${{ needs.resolve_version.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Forja-Android-TV-apks
+          path: |
+            dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-arm64.apk
+            dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-armeabi-v7a.apk
+
+  publish_release:
+    name: Publish GitHub Release
+    needs:
+      - resolve_version
+      - build_macos
+      - build_windows
+      - build_linux
+      - build_android_tv
+    if: >
+      !cancelled() &&
+      needs.resolve_version.result == 'success' &&
+      (needs.build_macos.result == 'success' || needs.build_macos.result == 'skipped') &&
+      (needs.build_windows.result == 'success' || needs.build_windows.result == 'skipped') &&
+      (needs.build_linux.result == 'success' || needs.build_linux.result == 'skipped') &&
+      (needs.build_android_tv.result == 'success' || needs.build_android_tv.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Flatten release assets
+        run: |
+          mkdir -p release-flat
+          find release-assets -type f \( \
+            -name '*.dmg' -o \
+            -name '*.exe' -o \
+            -name '*.AppImage' -o \
+            -name '*.apk' \
+          \) -exec cp {} release-flat/ \;
+          ls -la release-flat/
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.resolve_version.outputs.version }}
+          name: Forja ${{ needs.resolve_version.outputs.version }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: true
+          files: release-flat/*

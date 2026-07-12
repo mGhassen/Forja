@@ -13,8 +13,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-RELEASE_NEW_WORKFLOW="release-new.yml"
-RELEASE_TAG_WORKFLOW="release-tag.yml"
+RELEASE_WORKFLOW="release.yml"
 BACKFILL_WORKFLOW="backfill-tags.yml"
 
 require_gh() {
@@ -99,37 +98,26 @@ pick_platforms() {
   [[ "$ans" =~ ^[Yy] ]] && PRERELEASE=true
 }
 
-platform_args() {
-  echo \
-    -f "prerelease=$PRERELEASE" \
-    -f "platform_macos=$PLATFORM_MACOS" \
-    -f "platform_windows=$PLATFORM_WINDOWS" \
-    -f "platform_linux=$PLATFORM_LINUX" \
+trigger_release() {
+  local mode="$1"
+  local tag="${2:-}"
+  require_gh
+  pick_platforms
+
+  local -a args=(
+    -f "version_mode=$mode"
+    -f "tag=$tag"
+    -f "bump=${BUMP:-patch}"
+    -f "prerelease=$PRERELEASE"
+    -f "platform_macos=$PLATFORM_MACOS"
+    -f "platform_windows=$PLATFORM_WINDOWS"
+    -f "platform_linux=$PLATFORM_LINUX"
     -f "platform_android_tv=$PLATFORM_ANDROID_TV"
-}
+  )
 
-trigger_release_new() {
-  require_gh
-  pick_platforms
-  echo "Triggering Release new version (bump=${BUMP:-patch})…"
-  # shellcheck disable=SC2046
-  gh workflow run "$RELEASE_NEW_WORKFLOW" \
-    -f "bump=${BUMP:-patch}" \
-    $(platform_args)
-  gh run list --workflow="$RELEASE_NEW_WORKFLOW" --limit 1
-  echo "Watch: gh run watch"
-}
-
-trigger_release_tag() {
-  local tag="$1"
-  require_gh
-  pick_platforms
-  echo "Triggering Release existing tag ($tag)…"
-  # shellcheck disable=SC2046
-  gh workflow run "$RELEASE_TAG_WORKFLOW" \
-    -f "tag=$tag" \
-    $(platform_args)
-  gh run list --workflow="$RELEASE_TAG_WORKFLOW" --limit 1
+  echo "Triggering Release Forja ($mode)…"
+  gh workflow run "$RELEASE_WORKFLOW" "${args[@]}"
+  gh run list --workflow="$RELEASE_WORKFLOW" --limit 1
   echo "Watch: gh run watch"
 }
 
@@ -188,7 +176,7 @@ cmd_release_tag() {
   local raw="${1#TAG=}"
   local tag
   tag="$(normalize_tag "$raw")"
-  trigger_release_tag "$tag"
+  trigger_release "Existing tag" "$tag"
 }
 
 cmd_bump() {
@@ -198,7 +186,7 @@ cmd_bump() {
     *) echo "error: bump must be patch, minor, or major" >&2; exit 1 ;;
   esac
   BUMP="$bump"
-  trigger_release_new
+  trigger_release "New version" ""
 }
 
 interactive_menu() {
@@ -219,7 +207,7 @@ interactive_menu() {
   case "$choice" in
     1)
       tag="$(pick_tag_interactive)"
-      trigger_release_tag "$tag"
+      trigger_release "Existing tag" "$tag"
       ;;
     2)
       echo "Bump: 1=patch 2=minor 3=major"

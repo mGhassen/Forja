@@ -3,8 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'nuvio_service.dart';
 
-/// Auto-installs / auto-refreshes the curated bundled Nuvio addon so its
-/// scrapers are available out-of-the-box in Direct Streaming Mode.
+/// Keeps the bundled Nuvio manifest fresh so scrapers are available in the
+/// **Sources** panel (Direct torrent play source).
 ///
 /// Call [ensureInstalled] from `main()` (unawaited). Behaviour:
 ///   * If the manifest isn't installed yet, install it (lightweight refresh —

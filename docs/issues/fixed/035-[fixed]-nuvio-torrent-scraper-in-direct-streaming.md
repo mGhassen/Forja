@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4 / 4** |
+| **Progress** | **Complete · 7 / 7** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,10 @@
 | 1 | I35-T01 | Reject magnet/torrent URLs in `StreamProviderResolver` `nuvio:` branch | ✅ |
 | 2 | I35-T02 | Guard cached + watch-history stream resume against replaying a torrent URL | ✅ |
 | 3 | I35-T03 | Guard details-screen `_tryResumeWebStreamFromWatchHistory` | ✅ |
+| 4 | I35-T04 | Remove Nuvio from webstreaming provider map + Settings source scoring | ✅ |
+| 5 | I35-T05 | Sources panel: Nuvio tab gated on **Direct torrent** (not Stremio) | ✅ |
+| 6 | I35-T06 | `listScrapingAddons` / `listSourcesPanelAddons` — bundled virtual in Sources | ✅ |
+| 7 | I35-T07 | `isWebStreamProviderId` no longer treats `nuvio:*` as webstream | ✅ |
 
 ---
 
@@ -54,6 +58,11 @@ The Direct Streaming resolver treated every `nuvio:*` result as a direct HTTP st
 
 - `history_playback_resume.dart`: `_resumeWebStreamProvider` skips the cached-source and saved-`streamUrl` shortcuts when the URL is a torrent, falling through to a fresh (now torrent-free) resolve.
 - `details_screen.dart`: `_tryResumeWebStreamFromWatchHistory` bails when the saved URL is a torrent.
+
+- `details_screen.dart`: `_panelShowNuvio` → `_playSourceTorrent && _hasNuvioAddons`; `_checkAndFetchNuvio` uses `listSourcesPanelAddons()` (bundled + installed); no longer merges Nuvio into `_webstreamingProviders`.
+- `nuvio_service.dart`: `listScrapingAddons()` / `listSourcesPanelAddons()`; batch scrapers use bundled virtual manifest; removed `getProviderEntries()` webstreaming surfacing.
+- `settings_screen.dart`: Stremio toggle no longer claims Nuvio; Direct torrent subtitle mentions Nuvio; source scoring excludes Nuvio scrapers.
+- `history_playback_resume.dart`: `isWebStreamProviderId('nuvio:…')` → false.
 
 ### Not changed (by design)
 

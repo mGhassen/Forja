@@ -261,7 +261,13 @@ class PlayerStreamMenu {
     }
 
     int sortScore(String providerId) {
-      return _effectiveSortScore(scoreRows[providerId], providerId);
+      final isCurrent =
+          providerId == state.currentProviderId && state.playbackConfirmed;
+      return _liveScore(
+        scoreRows[providerId],
+        providerId,
+        isPlaying: isCurrent,
+      );
     }
 
     int tier(String providerId) {
@@ -385,10 +391,18 @@ class PlayerStreamMenu {
     };
   }
 
-  /// Runtime reliability adjusts sort order only — badge shows configured tier.
-  static int _effectiveSortScore(ProviderOrderRow? row, String providerId) {
+  /// Live reliability score for badge + sort (updates via [revision]).
+  static int _liveScore(
+    ProviderOrderRow? row,
+    String providerId, {
+    bool isPlaying = false,
+  }) {
     if (row == null || !row.supported || row.domainScore <= 0) return 0;
-    return ProviderScoreMemory.effectiveScore(row.domainScore, providerId);
+    return ProviderScoreMemory.effectiveScore(
+      row.domainScore,
+      providerId,
+      isPlaying: isPlaying,
+    );
   }
 
   static Widget _scoreBadge(
@@ -399,16 +413,21 @@ class PlayerStreamMenu {
     if (row == null || !row.supported || row.domainScore <= 0) {
       return const SizedBox(width: _scoreColWidth, height: _badgeHeight);
     }
-    final score = row.domainScore;
-    final penalized = !isPlaying &&
-        ProviderScoreMemory.effectiveScore(score, providerId) < score;
-    final color = penalized
-        ? Colors.white.withValues(alpha: 0.38)
+    final base = row.domainScore;
+    final score = ProviderScoreMemory.effectiveScore(
+      base,
+      providerId,
+      isPlaying: isPlaying,
+    );
+    final color = score > base
+        ? playerSourceStatusColor(PlayerSourceStatus.active)
         : score >= 90
             ? playerSourceStatusColor(PlayerSourceStatus.active)
             : score >= 75
                 ? Colors.white.withValues(alpha: 0.82)
-                : Colors.white.withValues(alpha: 0.52);
+                : score < base
+                    ? Colors.white.withValues(alpha: 0.42)
+                    : Colors.white.withValues(alpha: 0.52);
     return Container(
       width: _scoreColWidth,
       height: _badgeHeight,

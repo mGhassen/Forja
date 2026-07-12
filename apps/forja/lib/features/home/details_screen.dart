@@ -233,7 +233,6 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _fetchUserTraktRating();
     _fetchUserSimklRating();
     _fetchTraktCollectionStatus();
-    _loadWebstreamingProviders();
     _loadWebstreamingProviderOrder();
   }
 
@@ -443,9 +442,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   bool get _panelShowStremio => _playSourceStremio;
 
-  bool get _panelShowNuvio => _playSourceStremio && _hasNuvioAddons;
+  bool get _panelShowNuvio => _playSourceTorrent && _hasNuvioAddons;
 
-  bool get _hasPanelPlaySources => _panelShowTorrent || _panelShowStremio;
+  bool get _hasPanelPlaySources =>
+      _panelShowTorrent || _panelShowStremio || _panelShowNuvio;
 
   String _defaultPanelKindFilter() {
     if (_panelShowTorrent && _panelShowStremio) return 'all';
@@ -469,7 +469,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   bool _isCurrentSourceAllowed() {
     if (_isTorrentSource) return _panelShowTorrent;
-    if (_isNuvioSource) return _panelShowStremio;
+    if (_isNuvioSource) return _panelShowNuvio;
     if (_isWebstreamingSource) return false;
     return _panelShowStremio;
   }
@@ -1546,9 +1546,9 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         _playSourceTorrent &&
         _playbackProfile.builtinTorrentSearch &&
         _isSearching;
-    final stremioPending =
-        _playSourceStremio && (_isStremioFetching || _isNuvioFetching);
-    if (torrentPending || stremioPending) return;
+    final stremioPending = _playSourceStremio && _isStremioFetching;
+    final nuvioPending = _panelShowNuvio && _isNuvioFetching;
+    if (torrentPending || stremioPending || nuvioPending) return;
 
     if (fromEpisode) {
       _failEpisodePlayPending();
@@ -1673,10 +1673,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         _maybeAutoPlay();
         if (_playSourceTorrent && _playbackProfile.builtinTorrentSearch) {
           _autoSearch();
+          _checkAndFetchNuvio();
         }
         if (_playSourceStremio) {
           _fetchAllStremioStreams();
-          _checkAndFetchNuvio();
         }
       }
     } catch (e) {
@@ -1684,31 +1684,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     }
   }
 
-  /// Probes installed Nuvio addons and exposes the "Nuvio Addons" tab if
-  /// any are enabled. Does NOT kick off scraping — that happens lazily
-  /// when the user actually clicks an addon → a scraper.
+  /// Probes Nuvio addons (installed + bundled virtual) for the Sources panel.
+  /// Does NOT kick off scraping — that happens when the user picks a scraper.
   Future<void> _checkAndFetchNuvio() async {
     try {
-      final addons = await NuvioService.instance.listUserAddons();
-      final hasEnabled = addons.any((a) => a.scrapers.any((s) => s.enabled));
+      final addons = await NuvioService.instance.listSourcesPanelAddons();
       if (!mounted) return;
       setState(() {
-        _hasNuvioAddons = hasEnabled;
-        _nuvioAddons = addons
-            .where((a) => a.scrapers.any((s) => s.enabled))
-            .toList();
+        _hasNuvioAddons = addons.isNotEmpty;
+        _nuvioAddons = addons;
       });
     } catch (_) {}
-  }
-
-  Future<void> _loadWebstreamingProviders() async {
-    try {
-      final entries = await NuvioService.instance.getProviderEntries();
-      if (!mounted || entries.isEmpty) return;
-      setState(() => _webstreamingProviders.addAll(entries));
-    } catch (e) {
-      debugPrint('[DetailsScreen] webstreaming provider load failed: $e');
-    }
   }
 
   Future<void> _loadWebstreamingProviderOrder() async {

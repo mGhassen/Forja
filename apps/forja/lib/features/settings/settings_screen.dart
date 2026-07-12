@@ -123,7 +123,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Stream provider order (webstreaming extractors)
   List<String> _streamProviderOrder = [];
-  Map<String, Map<String, dynamic>> _nuvioProviderEntries = {};
 
   // Anime stream provider order
   List<String> _animeProviderOrder = [];
@@ -269,12 +268,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SettingsService.maxPlaybackHeightLabel(maxPlaybackHeight);
       });
     }
-    // Pull dynamic Nuvio scrapers (one entry per enabled scraper) so they
-    // show up alongside the built-in providers in the priority list.
-    try {
-      final entries = await NuvioService.instance.getProviderEntries();
-      if (mounted) setState(() => _nuvioProviderEntries = entries);
-    } catch (_) {}
     if ((prowlarrUrl?.isNotEmpty ?? false) && (prowlarrKey?.isNotEmpty ?? false)) {
       _tryLoadProwlarrTags();
     }
@@ -424,7 +417,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 4),
                         _buildFocusableToggle(
                           'Direct torrent',
-                          'Search and play from built-in torrent indexers.',
+                          'Search Forja indexers and Nuvio scrapers in Sources.',
                           _playSourceTorrent,
                           (val) async {
                             await _settings.setPlaySourceTorrentEnabled(val);
@@ -433,7 +426,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         _buildFocusableToggle(
                           'Stremio',
-                          'Play from installed Stremio and Nuvio addon streams.',
+                          'Play from installed Stremio addon streams.',
                           _playSourceStremio,
                           (val) async {
                             await _settings.setPlaySourceStremioEnabled(val);
@@ -2874,10 +2867,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildProviderScoringSection() {
     final streamCatalog = <String, String>{
-      for (final entry in {
-        ...StreamProviders.providers,
-        ..._nuvioProviderEntries,
-      }.entries)
+      for (final entry in StreamProviders.providers.entries)
         entry.key: (entry.value['name'] as String?) ?? entry.key,
     };
     final streamOrder = <String>[

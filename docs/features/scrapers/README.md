@@ -14,7 +14,7 @@ You don't install most scrapers separately; they're built in. Exceptions: **Nuvi
 |------|----------------|--------------|
 | [Torrent](torrent.md) | Magnet/torrent results on details | Settings → Search & Torrents |
 | [Jackett](jackett.md) / [Prowlarr](prowlarr.md) | Extra indexer results | Settings → Providers & Addons |
-| [Nuvio](nuvio.md) | JS scraper stream links | Settings → Nuvio Addons |
+| [Nuvio](nuvio.md) | JS scraper links in **Sources** (Direct torrent) | Settings → Nuvio Addons |
 | [WebStreamr sources](webstreamr-sources.md) | Country streaming sites | WebStreamr Settings |
 | [WebStreamr extractors](webstreamr-extractors.md) | Embed host links | WebStreamr Settings |
 | [Subtitle scrapers](subtitle-scrapers.md) | Sub tracks in player | Automatic |
@@ -22,8 +22,8 @@ You don't install most scrapers separately; they're built in. Exceptions: **Nuvi
 
 ## Where results appear
 
-- **Movie/series details** — torrent scrapers, Jackett, Prowlarr, Stremio, Nuvio
-- **Direct streaming mode** — stream providers + WebStreamr + Nuvio
+- **Movie/series details** — torrent scrapers (Forja), Jackett, Prowlarr, Stremio, **Nuvio** (Sources panel)
+- **Webstreaming** (green **Play**) — VidLink, Videasy, WebStreamr, etc. — **not** Nuvio
 - **Player** — subtitle scrapers
 - **Hub tabs** — Anime, Arabic, Manga, Live Matches, etc.
 

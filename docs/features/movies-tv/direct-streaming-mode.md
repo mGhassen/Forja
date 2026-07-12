@@ -4,9 +4,9 @@
 
 ## What it is
 
-**Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Nuvio scrapers, …) and starts playback when one works (loading roulette overlay).
+**Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Videasy, …) and starts playback when one works (loading roulette overlay).
 
-The white **Play** / **Resume** with link icon opens **Sources** (torrent / Stremio). The **Sources** panel is only for those backends.
+The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent / Forja, **Nuvio**, Stremio). The **Sources** panel is not used for webstreaming.
 
 ## How to open it
 
@@ -23,13 +23,13 @@ The white **Play** / **Resume** with link icon opens **Sources** (torrent / Stre
 
 ## Setup (if needed)
 
-- [Stream providers](../sources/stream-providers.md) — reorder extractors in Settings → Playback
+- [Stream providers](../sources/stream-providers.md) — reorder webstreaming extractors in Settings → Playback
 - [WebStreamr settings](../scrapers/webstreamr-settings.md) — country sources and extractors
-- [Nuvio scrapers](../scrapers/nuvio.md) — install extra scraper manifests
+- [Nuvio scrapers](../scrapers/nuvio.md) — extra scrapers in **Sources** (Direct torrent), not webstreaming
 
 ## Tips
 
-- Keep torrent/Stremio enabled for the magnet **Play** / **Sources**; use green **Play** when you want a direct link
+- Keep **Direct torrent** / Stremio enabled for magnet **Sources**; use green **Play** when you want a direct HTTP/HLS link only
 - Provider order matters — put your most reliable extractor first
 
 ## Related

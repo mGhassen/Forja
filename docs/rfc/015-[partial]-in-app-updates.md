@@ -189,7 +189,7 @@ Add to `SettingsService` / `storage`:
 
 ## CI / release integration
 
-`.github/workflows/build.yml` is manual only (optional smoke builds, artifacts only). `.github/workflows/release-new.yml` bumps and tags; `.github/workflows/release-tag.yml` ships an existing tag; both publish GitHub Release with:
+`.github/workflows/build.yml` is manual only (optional smoke builds, artifacts only). `.github/workflows/release.yml` (**Release Forja**) — new version or existing tag; publish GitHub Release with:
 
 ```
 Forja-1.2.3-android-tv-arm64.apk

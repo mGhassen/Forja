@@ -152,10 +152,8 @@ class NuvioService {
   static const String _scriptCachePrefix = 'nuvio_script_';
   static const String _bundledCleanupKey = 'nuvio_bundled_autoinstall_cleanup_v1';
 
-  /// Manifest URLs that ship with the app and power Direct Streaming Mode.
-  /// In streaming mode they're surfaced virtually (without persisting to
-  /// the user's addon store) so they're always available. In torrent mode
-  /// they only run if the user explicitly installed them.
+  /// Manifest URLs that ship with the app. Scrapers are exposed in the
+  /// **Sources** panel (Direct torrent play source), not webstreaming.
   static const Set<String> bundledManifestUrls = {
     'https://raw.githubusercontent.com/D3adlyRocket/All-in-One-Nuvio/'
         'refs/heads/main/manifest.json',
@@ -207,12 +205,27 @@ class NuvioService {
   }
 
   /// User-facing addon list — currently identical to [listAddons]. The
-  /// bundled URL is treated like any other addon: it only appears here if
-  /// the user explicitly installed it. In streaming mode the bundled
-  /// scrapers are still surfaced through [getProviderEntries] / virtual
-  /// fallback even when not installed.
+  /// bundled URL only appears here if the user explicitly installed it.
   Future<List<NuvioAddon>> listUserAddons() async {
     return listAddons();
+  }
+
+  /// Installed addons plus the bundled manifest when it is not installed.
+  /// Used by the **Sources** panel (Direct torrent) and batch scraper runs.
+  Future<List<NuvioAddon>> listScrapingAddons() async {
+    final user = await listAddons();
+    if (user.any((a) => isBundled(a.manifestUrl))) return user;
+    final virt = await _getBundledVirtual();
+    if (virt == null) return user;
+    return [...user, virt];
+  }
+
+  /// Addons with at least one enabled scraper — for Sources panel chrome.
+  Future<List<NuvioAddon>> listSourcesPanelAddons() async {
+    final addons = await listScrapingAddons();
+    return addons
+        .where((a) => a.scrapers.any((s) => s.enabled))
+        .toList();
   }
 
   /// In-memory virtual copy of the bundled manifest, lazily fetched. Used
@@ -374,57 +387,6 @@ class NuvioService {
     return addon;
   }
 
-  /// Returns one provider entry per enabled scraper across every installed
-  /// addon. Keys are namespaced as `nuvio:<scraperId>` so they don't collide
-  /// with built-in StreamProviders. Values are shaped like a regular
-  /// StreamProviders entry (`name`, `movie:null`, `tv:null`) plus
-  /// `nuvio: true`, `scraperId`, `manifestUrl`, `logo`. Built-in providers
-  /// elsewhere can spread `...` over this map without conflict.
-  Future<Map<String, Map<String, dynamic>>> getProviderEntries() async {
-    final out = <String, Map<String, dynamic>>{};
-    final addons = await listAddons();
-    for (final a in addons) {
-      for (final s in a.scrapers) {
-        if (!s.enabled) continue;
-        out['nuvio:${s.id}'] = {
-          'name': s.name,
-          'movie': null,
-          'tv': null,
-          'nuvio': true,
-          'scraperId': s.id,
-          'manifestUrl': a.manifestUrl,
-          'supportedTypes': s.supportedTypes,
-          'contentLanguage': s.contentLanguage,
-        };
-      }
-    }
-    // Always surface bundled scrapers in the provider list (even if the
-    // user hasn't installed them) so they appear in Settings → Provider
-    // Priority and can be reordered against built-in providers. They're
-    // only actually executed in streaming mode (via runOneScraper, which
-    // also resolves them virtually) — torrent-mode batch uses listAddons
-    // directly, so virtual entries are inert there.
-    if (!addons.any((a) => isBundled(a.manifestUrl))) {
-      final virt = await _getBundledVirtual();
-      if (virt != null) {
-        for (final s in virt.scrapers) {
-          if (!s.enabled) continue;
-          out.putIfAbsent('nuvio:${s.id}', () => {
-                'name': s.name,
-                'movie': null,
-                'tv': null,
-                'nuvio': true,
-                'scraperId': s.id,
-                'manifestUrl': virt.manifestUrl,
-                'supportedTypes': s.supportedTypes,
-                'contentLanguage': s.contentLanguage,
-              });
-        }
-      }
-    }
-    return out;
-  }
-
   Future<void> remove(String manifestUrl) async {
     final all = await listAddons();
     final removed = all.where((a) => a.manifestUrl == manifestUrl).toList();
@@ -515,7 +477,7 @@ class NuvioService {
     int? season,
     int? episode,
   }) async {
-    final addons = await listAddons();
+    final addons = await listScrapingAddons();
     if (addons.isEmpty) return [];
     final futures = <Future<List<Map<String, dynamic>>>>[];
     for (final addon in addons) {
@@ -549,7 +511,7 @@ class NuvioService {
     final ctrl = StreamController<NuvioScraperResult>();
     () async {
       try {
-        final addons = await listAddons();
+        final addons = await listScrapingAddons();
         final tasks = <Future<void>>[];
         for (final addon in addons) {
           for (final s in addon.scrapers) {
@@ -652,7 +614,7 @@ class NuvioService {
     int? episode,
   }) async {
     final gen = _scraperGeneration;
-    final addons = await listAddons();
+    final addons = await listScrapingAddons();
     if (gen != _scraperGeneration) return const [];
     NuvioAddon? owner;
     NuvioScraper? target;
@@ -665,21 +627,6 @@ class NuvioService {
         }
       }
       if (owner != null) break;
-    }
-    // Fallback: in streaming mode the bundled scrapers are surfaced
-    // virtually even when the bundled URL isn't installed — resolve them
-    // through the in-memory copy.
-    if (owner == null) {
-      final virt = await _getBundledVirtual();
-      if (virt != null) {
-        for (final s in virt.scrapers) {
-          if (s.id == scraperId) {
-            owner = virt;
-            target = s;
-            break;
-          }
-        }
-      }
     }
     if (owner == null || target == null) return const [];
     if (gen != _scraperGeneration) return const [];
