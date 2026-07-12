@@ -2587,7 +2587,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           _notifySourceMenuChanged();
         }
       }
-      await _probeAllSourcesInBackground();
+      // Source validity is checked on click — not eagerly in the background.
     } finally {
       if (mounted) _isReloadingStreams.value = false;
     }
@@ -2616,33 +2616,11 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
     setState(() => _currentSources = merged);
     _notifySourceMenuChanged();
-    unawaited(_probeAllSourcesInBackground());
   }
 
   Future<void> _probeAllSourcesInBackground() async {
-    final sources = _currentSources;
-    if (sources == null || sources.isEmpty) return;
-
-    final toCheck = <int>[];
-    for (var i = 0; i < sources.length; i++) {
-      if (_isCurrentSourceIndex(i) && _playbackConfirmed) continue;
-      toCheck.add(i);
-    }
-    if (toCheck.isEmpty) return;
-
-    _failedSourceIndices.removeAll(toCheck);
-    _checkingSourceIndices.addAll(toCheck);
-    _notifySourceMenuChanged();
-
-    for (final i in toCheck) {
-      if (!mounted) return;
-      final source = sources[i];
-      final ok = await probeStreamSourceUrl(source.url, source.headers);
-      if (!mounted) return;
-      _checkingSourceIndices.remove(i);
-      if (!ok) _failedSourceIndices.add(i);
-      _notifySourceMenuChanged();
-    }
+    // Intentionally no-op: probing every source on open lagged playback.
+    // Validation runs in [_switchToStreamSource] when the user picks one.
   }
 
   List<PlayerSourceStatus> _buildSourceStatuses() {
@@ -2836,6 +2814,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
 
     _sourcePinned = true;
+    final switchGen = ++_fallbackGen;
     _markSourceChecking(index);
 
     final currentPos = _positionNotifier.value;
@@ -2846,98 +2825,133 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       kind: StatusRouletteKind.loading,
     );
 
-    if (_currentProvider == 'service111477') {
-      try {
+    try {
+      var openUrl = source.url;
+      Map<String, String>? headers = source.headers ?? widget.headers;
+      var resolved = source;
+
+      if (_currentProvider == 'service111477') {
+        final ok = await probeStreamSourceUrl(source.url, headers);
+        if (!mounted || _fallbackAborted(switchGen)) return;
+        if (!ok) {
+          _statusController.upsert(
+            statusId,
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
+          );
+          _markSourceFailed(index);
+          return;
+        }
         if (site111477_proxy.is111477ProxyRunning) {
           await site111477_proxy.stop111477Proxy();
         }
-        final newProxied = await site111477_proxy.start111477Proxy(source.url);
-        if (!mounted) return;
-        await _player.open(Media(newProxied));
+        openUrl = await site111477_proxy.start111477Proxy(source.url);
+        headers = null;
+      } else if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
+        final result = await ArabicService.extractStreamUrl(source.url);
+        if (!mounted || _fallbackAborted(switchGen)) return;
+        if (result == null) {
+          _statusController.upsert(
+            statusId,
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
+          );
+          _markSourceFailed(index);
+          return;
+        }
+        openUrl = result.url;
+        headers = result.headers;
+        resolved = StreamSource(
+          url: result.url,
+          title: source.title,
+          type: result.url.contains('.m3u8')
+              ? 'hls'
+              : result.url.contains('.mpd')
+                  ? 'dash'
+                  : 'mp4',
+        );
+        final ok = await probeStreamSourceUrl(openUrl, headers);
+        if (!mounted || _fallbackAborted(switchGen)) return;
+        if (!ok) {
+          _statusController.upsert(
+            statusId,
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
+          );
+          _markSourceFailed(index);
+          return;
+        }
+      } else {
+        final ok = await probeStreamSourceUrl(openUrl, headers);
+        if (!mounted || _fallbackAborted(switchGen)) return;
+        if (!ok) {
+          _statusController.upsert(
+            statusId,
+            source.title,
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
+          );
+          _markSourceFailed(index);
+          return;
+        }
+      }
+
+      if (!mounted || _fallbackAborted(switchGen)) return;
+
+      if (_player.platform is NativePlayer) {
+        final ref = headers?['Referer'] ?? headers?['referer'] ?? '';
+        await (_player.platform as NativePlayer).setProperty('referrer', ref);
+      }
+      await _player.open(Media(openUrl, httpHeaders: headers));
+      if (!mounted || _fallbackAborted(switchGen)) return;
+
+      if (_currentProvider == 'service111477') {
         setState(() {
-          _currentUrl = newProxied;
+          _currentUrl = openUrl;
           _current111477FileUrl = source.url;
           _currentFallbackSourceIndex = 0;
           _hasError = false;
           _errorMessage = '';
         });
-        _detectHlsQualities(newProxied, null);
-        if (currentPos.inSeconds > 0) await _player.seek(currentPos);
-        _playbackConfirmed = true;
-        _statusController.complete();
-        _markSourceActive(index);
-      } catch (e) {
-        if (!mounted) return;
-        _statusController.upsert(
-          statusId,
-          source.title,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        _markSourceFailed(index);
-      }
-      return;
-    }
-
-    if (_currentProvider == 'arabic' && source.type == 'arabic_embed') {
-      final result = await ArabicService.extractStreamUrl(source.url);
-      if (!mounted) return;
-      if (result == null) {
-        _statusController.upsert(
-          statusId,
-          source.title,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        _markSourceFailed(index);
-        return;
-      }
-      await _player.open(Media(result.url, httpHeaders: result.headers));
-      _currentSources![index] = StreamSource(
-        url: result.url,
-        title: source.title,
-        type: result.url.contains('.m3u8')
-            ? 'hls'
-            : result.url.contains('.mpd')
-                ? 'dash'
-                : 'mp4',
-      );
-      setState(() {
-        _currentUrl = result.url;
-        _currentFallbackSourceIndex = 0;
-        _hasError = false;
-        _errorMessage = '';
-      });
-      _detectHlsQualities(result.url, result.headers);
-    } else {
-      final srcHeaders = source.headers ?? widget.headers;
-      if (source.headers != null && _player.platform is NativePlayer) {
-        final ref = source.headers!['Referer'] ?? source.headers!['referer'];
-        if (ref != null) {
-          await (_player.platform as NativePlayer).setProperty('referrer', ref);
+      } else {
+        if (_currentSources != null &&
+            index >= 0 &&
+            index < _currentSources!.length) {
+          _currentSources![index] = resolved;
         }
+        setState(() {
+          _currentUrl = openUrl;
+          _currentFallbackSourceIndex = 0;
+          _hasError = false;
+          _errorMessage = '';
+        });
       }
-      await _player.open(Media(source.url, httpHeaders: srcHeaders));
-      setState(() {
-        _currentUrl = source.url;
-        _currentFallbackSourceIndex = 0;
-        _hasError = false;
-        _errorMessage = '';
-      });
-      _detectHlsQualities(source.url, srcHeaders);
-    }
 
-    if (currentPos.inSeconds > 0) await _player.seek(currentPos);
-    syncPlayerProgressNotifiers(
-      _player,
-      duration: _durationNotifier,
-      position: _positionNotifier,
-      buffered: _bufferedNotifier,
-    );
-    _playbackConfirmed = true;
-    _statusController.complete();
-    _markSourceActive(index);
-    unawaited(widget.onSourcePinned?.call(source.url, source.title));
+      _detectHlsQualities(openUrl, headers);
+      if (currentPos.inSeconds > 0) await _player.seek(currentPos);
+      syncPlayerProgressNotifiers(
+        _player,
+        duration: _durationNotifier,
+        position: _positionNotifier,
+        buffered: _bufferedNotifier,
+      );
+      _playbackConfirmed = true;
+      _statusController.complete();
+      _markSourceActive(index);
+      unawaited(widget.onSourcePinned?.call(source.url, source.title));
+    } catch (_) {
+      if (!mounted || _fallbackAborted(switchGen)) return;
+      _statusController.upsert(
+        statusId,
+        source.title,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      _markSourceFailed(index);
+    }
   }
 
   Future<({int season, int episode})?> _computeNextEpisode() async {

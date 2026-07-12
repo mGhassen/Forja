@@ -470,10 +470,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
   Future<bool> _anyWebstreamingSourcePlayable(
     List<StreamSource> sources,
   ) async {
-    for (final s in sources) {
-      if (await probeStreamSourceUrl(s.url, s.headers)) return true;
-    }
-    return false;
+    if (sources.isEmpty) return false;
+    // Don't probe the whole list — open uses the first source and falls back
+    // inside the player. A single HEAD/GET is enough for cache freshness.
+    final first = sources.first;
+    return probeStreamSourceUrl(first.url, first.headers);
   }
 
   Future<void> _startWebstreamingOnlyPlayback() async {
@@ -573,18 +574,20 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     var found = false;
 
     try {
-      for (final key in SourceEngine.orderProviderIds(
+      // Only mark the first domain provider as trying — others resolve on click.
+      final orderedKeys = SourceEngine.orderProviderIds(
         domain: SourceDomain.fromMediaType(_movie.mediaType),
         candidateIds: providers.keys,
         settingsOrder: _webstreamingProviderOrder,
-      )) {
+      );
+      if (orderedKeys.isNotEmpty) {
+        final first = orderedKeys.first;
         probeNotifier.value = [
-          ...probeNotifier.value,
           StreamProviderProbe(
-            id: key,
-            label: _webstreamingProviderLabel(key),
+            id: first,
+            label: _webstreamingProviderLabel(first),
             status: StreamProviderProbeStatus.trying,
-            isPreferred: probeNotifier.value.isEmpty,
+            isPreferred: true,
           ),
         ];
       }
@@ -613,7 +616,25 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         onHitsUpdated: syncResolvedHits,
         onProgress: (providerId, status) {
           if (!mounted) return;
-          probeNotifier.value = probeNotifier.value
+          final existing = probeNotifier.value;
+          final idx = existing.indexWhere((p) => p.id == providerId);
+          if (idx < 0) {
+            probeNotifier.value = [
+              ...existing,
+              StreamProviderProbe(
+                id: providerId,
+                label: _webstreamingProviderLabel(providerId),
+                status: status == 'success'
+                    ? StreamProviderProbeStatus.success
+                    : status == 'failed'
+                        ? StreamProviderProbeStatus.failed
+                        : StreamProviderProbeStatus.trying,
+                isPreferred: existing.isEmpty,
+              ),
+            ];
+            return;
+          }
+          probeNotifier.value = existing
               .map(
                 (probe) => probe.id == providerId
                     ? probe.copyWith(

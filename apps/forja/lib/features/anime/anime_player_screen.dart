@@ -1,5 +1,4 @@
-// Anime player resolver: races every available source for the chosen
-// category (sub OR dub) until one returns a playable stream.
+// Anime player resolver: tries embeds in provider order until one works.
 
 import 'dart:async';
 
@@ -842,20 +841,20 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     setState(() => _statusLine = '');
   }
 
-  /// Probe Settings order with limited concurrency. Launch as soon as
-  /// [launchAfterUniqueServers] distinct sources work; remaining embeds keep
-  /// resolving and call [onHitsUpdated] so the player source menu fills in.
+  /// Try embeds in Settings order (one at a time). Launch on first success;
+  /// other embeds resolve only when the user picks them later.
   Future<List<({AnimeEmbed embed, ExtractedMedia media})>> _raceEmbeds(
     List<AnimeEmbed> embeds, {
     Duration fastGrace = const Duration(milliseconds: 800),
     Duration hardTimeout = const Duration(seconds: 14),
     Duration absoluteTimeout = const Duration(seconds: 75),
-    int maxInFlight = 6,
-    int launchAfterUniqueServers = 4,
+    int maxInFlight = 1,
+    int launchAfterUniqueServers = 1,
+    bool fillBackgroundHits = false,
     void Function(List<({AnimeEmbed embed, ExtractedMedia media})> hits)?
         onHitsUpdated,
   }) async {
-    _initProbes(embeds);
+    _initProbes(embeds.isEmpty ? embeds : embeds.take(1).toList());
 
     final completer =
         Completer<List<({AnimeEmbed embed, ExtractedMedia media})>>();
@@ -863,6 +862,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     var settled = 0;
     var inFlight = 0;
     var nextIndex = 0;
+    var stopLaunching = false;
     final total = embeds.length;
     Timer? graceTimer;
     late final Timer hardTimer;
@@ -886,7 +886,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     }
 
     void finishIfReady() {
-      if (settled < total) return;
+      if (!stopLaunching && settled < total) return;
+      if (inFlight > 0) return;
       hardTimer.cancel();
       absoluteTimer.cancel();
       graceTimer?.cancel();
@@ -914,6 +915,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
             : StreamProviderProbeStatus.failed,
       );
       if (_cancelled) {
+        stopLaunching = true;
         finishIfReady();
         pump();
         return;
@@ -924,6 +926,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         if (!completer.isCompleted) {
           if (uniqueServers() >= launchAfterUniqueServers) {
             completeIfOpen();
+            if (!fillBackgroundHits) {
+              stopLaunching = true;
+              nextIndex = total;
+            }
           } else if (successes.isNotEmpty) {
             scheduleGrace();
           }
@@ -935,16 +941,30 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     pump = () {
       while (!_cancelled &&
+          !stopLaunching &&
           inFlight < maxInFlight &&
           nextIndex < embeds.length) {
-        // Keep pumping after launch so the menu fills in the background.
         final embed = embeds[nextIndex++];
         inFlight++;
+        if (!_probeNotifier.value.any((p) => p.id == embed.sourceKey)) {
+          _probeNotifier.value = [
+            ..._probeNotifier.value,
+            StreamProviderProbe(
+              id: embed.sourceKey,
+              label: embed.displayName,
+              status: StreamProviderProbeStatus.trying,
+              isPreferred: _probeNotifier.value.isEmpty,
+            ),
+          ];
+        }
         _resolveEmbed(embed).then((batch) {
           onBatch(embed, batch);
         }).catchError((_) {
           onBatch(embed, const []);
         });
+      }
+      if ((nextIndex >= embeds.length || stopLaunching) && inFlight == 0) {
+        finishIfReady();
       }
     };
 
@@ -956,7 +976,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     pump();
 
     final hits = await completer.future;
-    // Don't cancel in-flight / queued work — onHitsUpdated keeps filling.
     return hits;
   }
 

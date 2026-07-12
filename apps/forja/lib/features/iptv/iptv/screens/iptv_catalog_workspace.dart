@@ -781,98 +781,154 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   Future<void> _showPortalDialog(
     BuildContext context, {
     VerifiedPortal? existing,
-  }) async {
-    final ctrl = widget.ctrl;
-    final urlCtrl = TextEditingController(text: existing?.portal.url ?? '');
-    final userCtrl =
-        TextEditingController(text: existing?.portal.username ?? '');
-    final passCtrl =
-        TextEditingController(text: existing?.portal.password ?? '');
-    final editing = existing != null;
-    ctrl.addError = null;
-    await showDialog(
+  }) {
+    widget.ctrl.addError = null;
+    return showDialog<void>(
       context: context,
       builder: (ctx) => ShellScope.rehost(
         context,
-        AnimatedBuilder(
-          animation: ctrl,
-          builder: (_, _) => AlertDialog(
-            backgroundColor: IptvShellStyle.surface,
-            title: Text(
-              editing ? 'Edit Portal' : 'Add Portal',
-              style: IptvShellStyle.pageTitle.copyWith(fontSize: 26),
-            ),
-            content: SizedBox(
-              width: 360,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _portalInput(urlCtrl, 'http://portal.example.com:8080', 'URL'),
-                  const SizedBox(height: 8),
-                  _portalInput(userCtrl, 'username', 'Username'),
-                  const SizedBox(height: 8),
-                  _portalInput(passCtrl, 'password', 'Password', obscure: true),
-                  if (ctrl.addError != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      ctrl.addError!,
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFFEF4444),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              IptvTextAction(
-                icon: Icons.close_rounded,
-                label: 'Cancel',
-                color: Colors.white70,
-                onPressed: ctrl.isAdding
-                    ? null
-                    : () {
-                        ctrl.dismissAddDialog();
-                        Navigator.of(ctx).pop();
-                      },
-              ),
-              IptvPrimaryButton(
-                icon: editing ? Icons.check_rounded : Icons.add_rounded,
-                label: ctrl.isAdding
-                    ? (editing ? 'Saving…' : 'Adding…')
-                    : (editing ? 'Save' : 'Add'),
-                busy: ctrl.isAdding,
-                onPressed: ctrl.isAdding
-                    ? null
-                    : () async {
-                        if (editing) {
-                          await ctrl.updatePortal(
-                            existing: existing,
-                            url: urlCtrl.text,
-                            username: userCtrl.text,
-                            password: passCtrl.text,
-                          );
-                        } else {
-                          await ctrl.addManual(
-                            url: urlCtrl.text,
-                            username: userCtrl.text,
-                            password: passCtrl.text,
-                          );
-                        }
-                        if (ctrl.addError == null && ctx.mounted) {
-                          Navigator.of(ctx).pop();
-                        }
-                      },
-              ),
-            ],
-          ),
+        _PortalFormDialog(
+          ctrl: widget.ctrl,
+          existing: existing,
         ),
       ),
     );
-    urlCtrl.dispose();
-    userCtrl.dispose();
-    passCtrl.dispose();
+  }
+}
+
+class _PortalFormDialog extends StatefulWidget {
+  const _PortalFormDialog({
+    required this.ctrl,
+    this.existing,
+  });
+
+  final IptvController ctrl;
+  final VerifiedPortal? existing;
+
+  @override
+  State<_PortalFormDialog> createState() => _PortalFormDialogState();
+}
+
+class _PortalFormDialogState extends State<_PortalFormDialog> {
+  late final TextEditingController _urlCtrl;
+  late final TextEditingController _userCtrl;
+  late final TextEditingController _passCtrl;
+  bool _obscurePassword = true;
+
+  bool get _editing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _urlCtrl = TextEditingController(text: e?.portal.url ?? '');
+    _userCtrl = TextEditingController(text: e?.portal.username ?? '');
+    _passCtrl = TextEditingController(text: e?.portal.password ?? '');
+  }
+
+  @override
+  void dispose() {
+    _urlCtrl.dispose();
+    _userCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final ctrl = widget.ctrl;
+    if (_editing) {
+      await ctrl.updatePortal(
+        existing: widget.existing!,
+        url: _urlCtrl.text,
+        username: _userCtrl.text,
+        password: _passCtrl.text,
+      );
+    } else {
+      await ctrl.addManual(
+        url: _urlCtrl.text,
+        username: _userCtrl.text,
+        password: _passCtrl.text,
+      );
+    }
+    if (ctrl.addError == null && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = widget.ctrl;
+    return AnimatedBuilder(
+      animation: ctrl,
+      builder: (_, _) => AlertDialog(
+        backgroundColor: IptvShellStyle.surface,
+        title: Text(
+          _editing ? 'Edit Portal' : 'Add Portal',
+          style: IptvShellStyle.pageTitle.copyWith(fontSize: 26),
+        ),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _portalInput(_urlCtrl, 'http://portal.example.com:8080', 'URL'),
+              const SizedBox(height: 8),
+              _portalInput(_userCtrl, 'username', 'Username'),
+              const SizedBox(height: 8),
+              _portalInput(
+                _passCtrl,
+                'password',
+                'Password',
+                obscure: _obscurePassword,
+                suffix: IconButton(
+                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    size: 20,
+                    color: Colors.white54,
+                  ),
+                ),
+              ),
+              if (ctrl.addError != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  ctrl.addError!,
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFFEF4444),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          IptvTextAction(
+            icon: Icons.close_rounded,
+            label: 'Cancel',
+            color: Colors.white70,
+            onPressed: ctrl.isAdding
+                ? null
+                : () {
+                    ctrl.dismissAddDialog();
+                    Navigator.of(context).pop();
+                  },
+          ),
+          IptvPrimaryButton(
+            icon: _editing ? Icons.check_rounded : Icons.add_rounded,
+            label: ctrl.isAdding
+                ? (_editing ? 'Saving…' : 'Adding…')
+                : (_editing ? 'Save' : 'Add'),
+            busy: ctrl.isAdding,
+            onPressed: ctrl.isAdding ? null : _submit,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _portalInput(
@@ -880,6 +936,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     String hint,
     String label, {
     bool obscure = false,
+    Widget? suffix,
   }) {
     return TextField(
       controller: c,
@@ -892,6 +949,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
         hintStyle: GoogleFonts.poppins(color: Colors.white24, fontSize: 12),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
+        suffixIcon: suffix,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
@@ -956,7 +1014,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
         final isFav = ctrl.isFavoritePortal(v.key);
         final health = ctrl.portalHealthFor(v.key);
         final checking = ctrl.isPortalHealthChecking(v.key);
-        final title = v.name.trim().isEmpty ? v.portal.url : v.name;
+        final title = v.name.trim().isEmpty
+            ? (v.portal.username.trim().isEmpty ? 'Portal' : v.portal.username)
+            : v.name.trim();
 
         return MouseRegion(
           onEnter: (_) {
@@ -972,7 +1032,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                 ? Colors.white.withValues(alpha: 0.04)
                 : Colors.transparent,
             child: SizedBox(
-              height: 40,
+              height: 48,
               child: Row(
                 children: [
                   Expanded(
@@ -1019,19 +1079,36 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                               ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  color: isActive
-                                      ? Colors.white
-                                      : Colors.white.withValues(alpha: 0.82),
-                                  fontSize: 13,
-                                  fontWeight: isActive
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      color: isActive
+                                          ? Colors.white
+                                          : Colors.white.withValues(alpha: 0.88),
+                                      fontSize: 13,
+                                      fontWeight: isActive
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                  Text(
+                                    v.portal.url,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white38,
+                                      fontSize: 11,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             iptvTap(
@@ -1060,7 +1137,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                     duration: const Duration(milliseconds: 160),
                     curve: Curves.easeOutCubic,
                     width: _reveal ? _actionW : 0,
-                    height: 40,
+                    height: 48,
                     child: ClipRect(
                       child: OverflowBox(
                         minWidth: _actionW,
@@ -1068,7 +1145,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                         alignment: Alignment.centerRight,
                         child: SizedBox(
                           width: _actionW,
-                          height: 40,
+                          height: 48,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [

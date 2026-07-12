@@ -39,10 +39,8 @@ abstract final class PlaybackService {
       isCancelled: isCancelled,
       onProgress: onProgress,
       onHitsUpdated: onHitsUpdated,
-      maxInFlight: maxInFlight ??
-          (SourceEngine.isAuto(preferredProvider)
-              ? PlaybackEngine.maxParallelProviders
-              : 1),
+      maxInFlight: maxInFlight ?? 1,
+      fillBackgroundHits: false,
     );
   }
 

@@ -16,10 +16,10 @@ Built-in movie/series providers include Videasy, VidLink, VixSrc, Vidnest, 11147
 
 ## What you can do
 
-- **Auto** — Source Engine orders providers for this content domain, races them, ranks streams for your device
+- **Auto** — Source Engine tries providers **one at a time** (stops after the first working hit). Other servers resolve when you pick them.
 - **Manual** — pick a server; Forja stays on it (strict — no silent cross-provider fallback)
+- Source links are **not** pre-checked on open — Forja validates a source when you tap it, while the current stream keeps playing, then swaps if it works
 - Reorder providers in Settings (bias only within the same domain)
-- Automatic failover across sources/URLs when Auto is selected
 - On decoder failure, try the next compatible source, then software decode once
 
 ## Domains

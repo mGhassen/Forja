@@ -8,9 +8,11 @@ import 'package:rust/rust.dart';
 abstract final class PlaybackEngine {
   static const maxParallelProviders = 6;
 
-  /// Race providers with limited concurrency. Returns the highest-priority hit
-  /// as soon as one works; remaining providers keep resolving and
-  /// [onHitsUpdated] fills the player source menu in the background.
+  /// Race providers with limited concurrency. Returns the first successful hit.
+  ///
+  /// By default stops launching more providers after the first success
+  /// ([fillBackgroundHits] = false) so open stays light — other servers resolve
+  /// only when the user picks them in the player menu.
   static Future<PlaybackResolveHit?> resolveStreamingRace({
     required Map<String, dynamic> providers,
     required Movie movie,
@@ -20,7 +22,8 @@ abstract final class PlaybackEngine {
     bool Function()? isCancelled,
     void Function(String providerId, String status)? onProgress,
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
-    int maxInFlight = maxParallelProviders,
+    int maxInFlight = 1,
+    bool fillBackgroundHits = false,
   }) async {
     final cancelled = isCancelled ?? (() => false);
     final keys = providers.keys.toList();
@@ -32,6 +35,7 @@ abstract final class PlaybackEngine {
     var settled = 0;
     var inFlight = 0;
     var nextIndex = 0;
+    var stopLaunching = false;
     final total = keys.length;
     late void Function() pump;
 
@@ -55,16 +59,24 @@ abstract final class PlaybackEngine {
         publishHits();
         if (!launchCompleter.isCompleted) {
           finishIfOpen();
+          if (!fillBackgroundHits) {
+            stopLaunching = true;
+            nextIndex = total;
+            r.cancelPending();
+          }
         }
       }
-      if (settled >= total) {
+      if (settled >= total || (stopLaunching && inFlight == 0)) {
         finishIfOpen();
       }
       pump();
     }
 
     pump = () {
-      while (!cancelled() && inFlight < maxInFlight && nextIndex < total) {
+      while (!cancelled() &&
+          !stopLaunching &&
+          inFlight < maxInFlight &&
+          nextIndex < total) {
         final key = keys[nextIndex];
         final rank = nextIndex;
         nextIndex++;
@@ -78,7 +90,7 @@ abstract final class PlaybackEngine {
           episode: episode,
           providers: providers,
           providerRank: rank,
-          isCancelled: cancelled,
+          isCancelled: () => cancelled() || stopLaunching,
           onProgress: onProgress,
         ).then((hit) {
           onResolved(key, hit);
@@ -87,6 +99,9 @@ abstract final class PlaybackEngine {
           onProgress?.call(key, 'failed');
           onResolved(key, null);
         });
+      }
+      if (nextIndex >= total && inFlight == 0) {
+        finishIfOpen();
       }
     };
 
