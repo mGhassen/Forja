@@ -9,6 +9,7 @@ import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
+import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
@@ -572,7 +573,11 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     var found = false;
 
     try {
-      for (final key in providers.keys) {
+      for (final key in SourceEngine.orderProviderIds(
+        domain: SourceDomain.fromMediaType(_movie.mediaType),
+        candidateIds: providers.keys,
+        settingsOrder: _webstreamingProviderOrder,
+      )) {
         probeNotifier.value = [
           ...probeNotifier.value,
           StreamProviderProbe(
@@ -597,11 +602,12 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         }
       }
 
-      final hit = await PlaybackEngine.resolveStreamingRace(
+      final hit = await PlaybackService.resolveWebstreaming(
         providers: providers,
         movie: _movie,
         season: _selectedSeason,
         episode: _selectedEpisode,
+        settingsOrder: _webstreamingProviderOrder,
         resolver: _streamProviderResolver,
         isCancelled: () => _webstreamingOnlyExtractionCancelled,
         onHitsUpdated: syncResolvedHits,
@@ -1415,12 +1421,17 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
   Map<String, dynamic> get _orderedWebstreamingProviders {
     final order = _webstreamingProviderOrder;
-    return <String, dynamic>{
+    final raw = <String, dynamic>{
       for (final k in order)
         if (_webstreamingProviders.containsKey(k)) k: _webstreamingProviders[k],
       for (final k in _webstreamingProviders.keys)
         if (!order.contains(k)) k: _webstreamingProviders[k],
     };
+    return SourceEngine.orderProvidersMap(
+      domain: SourceDomain.fromMediaType(_movie.mediaType),
+      providers: raw,
+      settingsOrder: order,
+    );
   }
 
   String _webstreamingProviderLabel(String key) {

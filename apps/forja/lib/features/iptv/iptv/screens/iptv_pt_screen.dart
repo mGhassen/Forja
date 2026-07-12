@@ -1434,9 +1434,10 @@ class _BrowserViewState extends State<_BrowserView> {
         final cats = _filteredCategories;
         iptvSyncRow(
           rowId: 'browser-categories',
-          sortOrder: 1,
+          sortOrder: 2,
           itemCount: cats.length,
           orientation: ShellTvRowOrientation.vertical,
+          onFocusUp: () => iptvFocusRowItem('iptv-sections'),
         );
         return ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1451,6 +1452,9 @@ class _BrowserViewState extends State<_BrowserView> {
             listIndex: i,
             tvRowId: 'browser-categories',
             tvItemIndex: i,
+            onUpEdge: i == 0
+                ? () => iptvFocusRowItem('iptv-sections')
+                : null,
             onRightEdge: () => iptvFocusRowItem('browser-streams'),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1493,8 +1497,9 @@ class _BrowserViewState extends State<_BrowserView> {
         final cats = _filteredCategories;
         iptvSyncRow(
           rowId: 'browser-category-chips',
-          sortOrder: 1,
+          sortOrder: 2,
           itemCount: cats.length,
+          onFocusUp: () => iptvFocusRowItem('iptv-sections'),
         );
         return ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -1512,6 +1517,7 @@ class _BrowserViewState extends State<_BrowserView> {
               listIndex: i,
               tvRowId: 'browser-category-chips',
               tvItemIndex: i,
+              onUpEdge: () => iptvFocusRowItem('iptv-sections'),
               onDownEdge: () => iptvFocusRowItem('browser-streams'),
               child: ChoiceChip(
                 label: Text(c.name.isEmpty ? 'Uncategorized' : c.name,
@@ -1579,8 +1585,15 @@ class _BrowserViewState extends State<_BrowserView> {
         final cross = (c.maxWidth ~/ 180).clamp(2, 8);
         iptvSyncRow(
           rowId: 'browser-streams',
-          sortOrder: 2,
+          sortOrder: 3,
           itemCount: list.length,
+          onFocusUp: () {
+            if (widget.wide) {
+              iptvFocusRowItem('browser-categories');
+            } else {
+              iptvFocusRowItem('browser-category-chips');
+            }
+          },
         );
         final cats = _filteredCategories;
         final selectedCatIdx = cats.indexWhere(
@@ -1600,6 +1613,18 @@ class _BrowserViewState extends State<_BrowserView> {
             ctrl: widget.ctrl,
             gridIndex: i,
             gridColumns: cross,
+            onUpEdge: i < cross
+                ? () {
+                    if (widget.wide) {
+                      iptvFocusRowItem(
+                        'browser-categories',
+                        selectedCatIdx >= 0 ? selectedCatIdx : 0,
+                      );
+                    } else {
+                      iptvFocusRowItem('browser-category-chips');
+                    }
+                  }
+                : null,
             onLeftEdge: widget.wide && i % cross == 0
                 ? () => iptvFocusRowItem(
                       'browser-categories',
@@ -1654,6 +1679,7 @@ class _StreamCard extends StatelessWidget {
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onLeftEdge;
+  final VoidCallback? onUpEdge;
   const _StreamCard({
     required this.stream,
     required this.ctrl,
@@ -1661,6 +1687,7 @@ class _StreamCard extends StatelessWidget {
     this.gridIndex,
     this.gridColumns,
     this.onLeftEdge,
+    this.onUpEdge,
   });
 
   Color _borderColor(bool? health) {
@@ -1773,6 +1800,7 @@ class _StreamCard extends StatelessWidget {
                     tvRowId: 'browser-streams',
                     tvZone: ShellTvZone.grid,
                     onLeftEdge: onLeftEdge,
+                    onUpEdge: onUpEdge,
                     onFocusChange: stream.kind == 'live'
                         ? (focused) {
                             if (focused) {

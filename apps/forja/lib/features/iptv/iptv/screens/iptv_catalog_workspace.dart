@@ -10,7 +10,45 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 
-/// Top bar for catalog-first IPTV: section chips + portal control.
+const _kShelfPillHeight = 40.0;
+
+/// Colored Live / Movies / Series shelf — same hues as the old section tiles.
+class _IptvSectionShelfSpec {
+  const _IptvSectionShelfSpec({
+    required this.section,
+    required this.label,
+    required this.icon,
+    required this.colors,
+  });
+
+  final IptvSection section;
+  final String label;
+  final IconData icon;
+  final List<Color> colors;
+}
+
+const _kSectionShelf = <_IptvSectionShelfSpec>[
+  _IptvSectionShelfSpec(
+    section: IptvSection.live,
+    label: 'Live',
+    icon: Icons.live_tv_rounded,
+    colors: [Color(0xFFEF4444), Color(0xFF7C2D12)],
+  ),
+  _IptvSectionShelfSpec(
+    section: IptvSection.vod,
+    label: 'Movies',
+    icon: Icons.movie_rounded,
+    colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
+  ),
+  _IptvSectionShelfSpec(
+    section: IptvSection.series,
+    label: 'Series',
+    icon: Icons.video_library_rounded,
+    colors: [Color(0xFF374151), Color(0xFF1CE783)],
+  ),
+];
+
+/// Top bar for catalog-first IPTV: colored shelf left, tools right.
 class IptvCatalogTopBar extends StatelessWidget {
   const IptvCatalogTopBar({
     super.key,
@@ -27,15 +65,6 @@ class IptvCatalogTopBar extends StatelessWidget {
   final VoidCallback onSearch;
   final VoidCallback onM3u;
 
-  String get _sectionTitle {
-    return switch (ctrl.activeSection) {
-      IptvSection.live => 'Live TV',
-      IptvSection.vod => 'Movies',
-      IptvSection.series => 'Series',
-      null => 'IPTV',
-    };
-  }
-
   String get _portalLabel {
     final p = ctrl.activePortal;
     if (p == null) return 'Choose portal';
@@ -44,172 +73,338 @@ class IptvCatalogTopBar extends StatelessWidget {
     return p.portal.url;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final hasPortal = ctrl.activePortal != null;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        ShellTokens.bodyHorizontalPadding,
-        10,
-        12,
-        10,
-      ),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _sectionTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 24),
-                ),
-                if (hasPortal)
-                  Text(
-                    _portalLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white60,
-                      fontSize: 12,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          _buildSectionChips(context, tvFocus),
-          const SizedBox(width: 8),
-          _buildPortalButton(context, tvFocus),
-          const SizedBox(width: 4),
-          IptvIconAction(
-            tooltip: 'M3U Playlists',
-            onPressed: onM3u,
-            icon: Icons.playlist_play_rounded,
-          ),
-          IptvIconAction(
-            tooltip: ctrl.browserSearchOpen ? 'Close search' : 'Search catalog',
-            onPressed: onSearch,
-            icon: ctrl.browserSearchOpen
-                ? Icons.close_rounded
-                : Icons.search_rounded,
-            color: ctrl.browserSearchOpen ? IptvShellStyle.accent : null,
-          ),
-          if (hasPortal && ctrl.activeSection == IptvSection.live) ...[
-            IptvIconAction(
-              tooltip: 'Reload channels',
-              onPressed: ctrl.isLoading
-                  ? null
-                  : () => ctrl.openSection(IptvSection.live),
-              icon: Icons.refresh_rounded,
-            ),
-            IptvIconAction(
-              tooltip: ctrl.isVerifyingAlive
-                  ? 'Stop alive check'
-                  : 'Re-check all streams',
-              onPressed: ctrl.isVerifyingAlive
-                  ? ctrl.stopAliveCheck
-                  : ctrl.recheckAlive,
-              icon: ctrl.isVerifyingAlive
-                  ? Icons.stop_circle_rounded
-                  : Icons.verified_outlined,
-            ),
-          ],
-        ],
-      ),
-    );
+  void _focusDownFromTopBar() {
+    if (!iptvFocusRowItem('browser-categories')) {
+      iptvFocusRowItem('browser-streams');
+    }
   }
 
-  Widget _buildSectionChips(BuildContext context, bool tvFocus) {
-    const sections = <(IptvSection, String, IconData)>[
-      (IptvSection.live, 'Live', Icons.live_tv_rounded),
-      (IptvSection.vod, 'Movies', Icons.movie_rounded),
-      (IptvSection.series, 'Series', Icons.video_library_rounded),
-    ];
+  @override
+  Widget build(BuildContext context) {
+    final hasPortal = ctrl.activePortal != null;
+    final toolCount = 2 +
+        (hasPortal && ctrl.activeSection == IptvSection.live ? 2 : 0);
+
     iptvSyncRow(
       rowId: 'iptv-sections',
       sortOrder: 0,
-      itemCount: sections.length,
+      itemCount: _kSectionShelf.length,
+      onFocusUp: null,
     );
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    iptvSyncRow(
+      rowId: 'iptv-top-tools',
+      sortOrder: 1,
+      itemCount: toolCount + 1, // + portal button
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        ShellTokens.bodyHorizontalPadding,
+        12,
+        12,
+        10,
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          for (var i = 0; i < sections.length; i++) ...[
-            ForjaShellChip(
-              label: sections[i].$2,
-              icon: sections[i].$3,
-              selected: ctrl.activeSection == sections[i].$1,
-              onTap: () => onSection(sections[i].$1),
-              tvTabId: 'iptv',
-              tvRowId: 'iptv-sections',
-              listIndex: i,
-              onDownEdge: tvFocus
-                  ? () => iptvFocusRowItem('browser-categories')
-                  : null,
+          _buildSectionShelf(context),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildPortalPill(context),
             ),
-            if (i < sections.length - 1) const SizedBox(width: 8),
-          ],
+          ),
+          _buildTopTools(context, hasPortal),
         ],
       ),
     );
   }
 
-  Widget _buildPortalButton(BuildContext context, bool tvFocus) {
+  Widget _buildSectionShelf(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < _kSectionShelf.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          _IptvSectionShelfPill(
+            spec: _kSectionShelf[i],
+            selected: ctrl.activeSection == _kSectionShelf[i].section,
+            listIndex: i,
+            onTap: () => onSection(_kSectionShelf[i].section),
+            onDownEdge: _focusDownFromTopBar,
+            onRightEdge: i == _kSectionShelf.length - 1
+                ? () => iptvFocusRowItem('iptv-top-tools', 0)
+                : null,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPortalPill(BuildContext context) {
     final selected = ctrl.portalPanelOpen;
     final hasPortal = ctrl.activePortal != null;
-    final label = hasPortal ? _portalLabel : 'Portals';
     return iptvTap(
       context: context,
       onTap: onTogglePanel,
-      borderRadius: 20,
+      borderRadius: _kShelfPillHeight / 2,
       tvZone: ShellTvZone.topBar,
-      tvRowId: 'iptv-sections',
-      tvItemIndex: 3,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: shellChipDecoration(
-          selected: selected || !hasPortal,
-          radius: 20,
+      tvRowId: 'iptv-top-tools',
+      tvItemIndex: 0,
+      onDownEdge: _focusDownFromTopBar,
+      onLeftEdge: () =>
+          iptvFocusRowItem('iptv-sections', _kSectionShelf.length - 1),
+      onRightEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        height: _kShelfPillHeight,
+        constraints: const BoxConstraints(maxWidth: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: selected
+              ? Colors.white.withValues(alpha: 0.16)
+              : Colors.black.withValues(alpha: 0.42),
+          borderRadius: BorderRadius.circular(_kShelfPillHeight / 2),
+          border: Border.all(
+            color: !hasPortal
+                ? IptvShellStyle.accent.withValues(alpha: 0.7)
+                : Colors.white.withValues(alpha: selected ? 0.35 : 0.24),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               hasPortal ? Icons.dns_rounded : Icons.add_link_rounded,
-              size: 16,
+              size: 18,
               color: hasPortal ? Colors.white : IptvShellStyle.accent,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Flexible(
               child: Text(
-                label,
+                hasPortal ? _portalLabel : 'Portals',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.inter(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
             const SizedBox(width: 4),
             Icon(
-              selected ? Icons.expand_less : Icons.expand_more,
-              size: 16,
+              selected ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+              size: 18,
               color: Colors.white70,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopTools(BuildContext context, bool hasPortal) {
+    var toolIndex = 1;
+    final tools = <Widget>[
+      _IptvTopTool(
+        tooltip: 'M3U Playlists',
+        icon: Icons.playlist_play_rounded,
+        onTap: onM3u,
+        tvItemIndex: toolIndex++,
+        onDownEdge: _focusDownFromTopBar,
+      ),
+      _IptvTopTool(
+        tooltip: ctrl.browserSearchOpen ? 'Close search' : 'Search catalog',
+        icon: ctrl.browserSearchOpen
+            ? Icons.close_rounded
+            : Icons.search_rounded,
+        active: ctrl.browserSearchOpen,
+        onTap: onSearch,
+        tvItemIndex: toolIndex++,
+        onDownEdge: _focusDownFromTopBar,
+      ),
+    ];
+    if (hasPortal && ctrl.activeSection == IptvSection.live) {
+      tools.add(
+        _IptvTopTool(
+          tooltip: 'Reload channels',
+          icon: Icons.refresh_rounded,
+          onTap: ctrl.isLoading
+              ? null
+              : () => ctrl.openSection(IptvSection.live),
+          tvItemIndex: toolIndex++,
+          onDownEdge: _focusDownFromTopBar,
+        ),
+      );
+      tools.add(
+        _IptvTopTool(
+          tooltip: ctrl.isVerifyingAlive
+              ? 'Stop alive check'
+              : 'Re-check all streams',
+          icon: ctrl.isVerifyingAlive
+              ? Icons.stop_circle_rounded
+              : Icons.verified_outlined,
+          active: ctrl.isVerifyingAlive,
+          onTap: ctrl.isVerifyingAlive
+              ? ctrl.stopAliveCheck
+              : ctrl.recheckAlive,
+          tvItemIndex: toolIndex,
+          onDownEdge: _focusDownFromTopBar,
+        ),
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final t in tools) ...[
+          const SizedBox(width: 4),
+          t,
+        ],
+      ],
+    );
+  }
+}
+
+class _IptvSectionShelfPill extends StatelessWidget {
+  const _IptvSectionShelfPill({
+    required this.spec,
+    required this.selected,
+    required this.listIndex,
+    required this.onTap,
+    this.onDownEdge,
+    this.onRightEdge,
+  });
+
+  final _IptvSectionShelfSpec spec;
+  final bool selected;
+  final int listIndex;
+  final VoidCallback onTap;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onRightEdge;
+
+  @override
+  Widget build(BuildContext context) {
+    return iptvTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: _kShelfPillHeight / 2,
+      tvZone: ShellTvZone.topBar,
+      tvRowId: 'iptv-sections',
+      listIndex: listIndex,
+      tvItemIndex: listIndex,
+      onDownEdge: onDownEdge,
+      onRightEdge: onRightEdge,
+      onLeftEdge: listIndex == 0
+          ? null
+          : () => iptvFocusRowItem('iptv-sections', listIndex - 1),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        height: _kShelfPillHeight,
+        padding: EdgeInsets.symmetric(
+          horizontal: selected ? 16 : 12,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: selected
+                ? spec.colors
+                : [
+                    spec.colors[0].withValues(alpha: 0.28),
+                    spec.colors[1].withValues(alpha: 0.18),
+                  ],
+          ),
+          borderRadius: BorderRadius.circular(_kShelfPillHeight / 2),
+          border: Border.all(
+            color: selected
+                ? Colors.white.withValues(alpha: 0.35)
+                : Colors.white.withValues(alpha: 0.12),
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: spec.colors[0].withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(spec.icon, color: Colors.white, size: 18),
+            const SizedBox(width: 7),
+            Text(
+              spec.label,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IptvTopTool extends StatelessWidget {
+  const _IptvTopTool({
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+    required this.tvItemIndex,
+    this.active = false,
+    this.onDownEdge,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onTap;
+  final int tvItemIndex;
+  final bool active;
+  final VoidCallback? onDownEdge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: iptvTap(
+        context: context,
+        onTap: onTap,
+        borderRadius: 20,
+        tvZone: ShellTvZone.topBar,
+        tvRowId: 'iptv-top-tools',
+        tvItemIndex: tvItemIndex,
+        onDownEdge: onDownEdge,
+        onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', tvItemIndex - 1),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: active
+                ? IptvShellStyle.accent.withValues(alpha: 0.22)
+                : Colors.white.withValues(alpha: 0.08),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: active
+                  ? IptvShellStyle.accent.withValues(alpha: 0.55)
+                  : Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: active ? IptvShellStyle.accent : Colors.white,
+          ),
         ),
       ),
     );
@@ -429,10 +624,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             Icon(Icons.satellite_alt_rounded,
                 size: 48, color: IptvShellStyle.accent),
             const SizedBox(height: 12),
-            Text(
-              'No portals yet',
-              style: IptvShellStyle.headerTitle,
-            ),
+            Text('No portals yet', style: IptvShellStyle.headerTitle),
             const SizedBox(height: 8),
             Text(
               'Scrape or add a portal to browse channels.',
@@ -448,7 +640,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   Widget _buildPortalList(List<VerifiedPortal> list, String? activeKey) {
     iptvSyncRow(
       rowId: 'portals',
-      sortOrder: 1,
+      sortOrder: 2,
       itemCount: list.length,
       orientation: ShellTvRowOrientation.vertical,
     );
@@ -473,9 +665,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           listIndex: i,
           tvRowId: 'portals',
           tvItemIndex: i,
-          onLeftEdge: widget.ctrl.portalPanelOpen
-              ? null
-              : () => iptvFocusRowItem('browser-categories'),
           child: Container(
             margin: const EdgeInsets.only(bottom: 4),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),

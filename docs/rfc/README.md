@@ -51,6 +51,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [028-[draft]-…](028-[draft]-adaptive-shell-profiles.md) | Adaptive shell profiles | v1.0.1 | draft | 6/6 · 10/10 · 4/4 · 4/4 · 3/4 · 0/4 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) — leanback blocks `[fixed]` |
 | [029-[open]-…](029-[open]-dual-built-in-playback-engines.md) | Dual built-in engines (MediaKit + ExoPlayer) | v1.0.2 | open | 4/4 · 0/8 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [030-[open]-…](030-[open]-playback-selection-engine.md) | Playback selection engine | v1.0.2 | open | 4/4 · 16/16 · 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [031-[open]-…](031-[open]-source-engine-middleware.md) | Source Engine middleware | v1.0.2 | open | 3/3 · 8/8 | [1.0.2](../backlog/1.0.2-[draft].md) |
 
 ## Related
 

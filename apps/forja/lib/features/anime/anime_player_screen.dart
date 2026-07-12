@@ -269,9 +269,13 @@ List<AnimeEmbed> _sortEmbedsByProviderOrder(
   List<AnimeEmbed> embeds,
   List<String> order,
 ) {
-  if (order.isEmpty) return embeds;
-  final keyed = embeds.map((e) => e.sourceKey).toList();
-  final sortedKeys = AnimeStreamProviders.sortKeys(keyed, order);
+  if (embeds.isEmpty) return embeds;
+  final keyed = embeds.map((e) => e.sourceKey).toSet().toList();
+  final sortedKeys = SourceEngine.orderProviderIds(
+    domain: SourceDomain.anime,
+    candidateIds: keyed,
+    settingsOrder: order.isEmpty ? AnimeStreamProviders.defaultOrder : order,
+  );
   final byKey = <String, List<AnimeEmbed>>{};
   for (final e in embeds) {
     byKey.putIfAbsent(e.sourceKey, () => []).add(e);
