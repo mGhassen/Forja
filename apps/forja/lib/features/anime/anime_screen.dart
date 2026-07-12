@@ -54,6 +54,7 @@ class _AnimeScreenState extends State<AnimeScreen>
 
   // Continue watching
   List<Map<String, dynamic>> _continueWatching = [];
+  int? _resumingAnimeId;
 
   int get _moodChipsOrder => _continueWatching.isNotEmpty ? 1 : 0;
   int get _moodResultsOrder => _moodChipsOrder + 1;
@@ -265,18 +266,45 @@ class _AnimeScreenState extends State<AnimeScreen>
   }
 
   Future<void> _resumeWatch(Map<String, dynamic> entry) async {
+    final animeId = entry['animeId'] as int?;
+    if (animeId == null || _resumingAnimeId != null) return;
+
+    setState(() => _resumingAnimeId = animeId);
     try {
-      final anime = AnimeCard.fromJson(
-          (entry['anime'] as Map).cast<String, dynamic>());
       final epNum = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
       final cat = (entry['category'] as String?) ?? 'sub';
+      final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
+      final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
+      Duration? startPosition;
+      if (posMs > 5000) {
+        final clamped = (durMs > 0 && posMs > durMs - 30000)
+            ? (durMs - 30000)
+            : posMs;
+        startPosition =
+            Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
+      }
+
+      // Same launch contract as details → Resume (fresh title + episode list).
+      final anime = await _service.getDetails(animeId);
+      if (!mounted) return;
+      final episodes = await _service.getEpisodes(anime);
+      if (!mounted) return;
+
       openAnimePlayer(
         context,
         anime: anime,
         episodeNumber: epNum,
         category: cat,
+        allEpisodes: episodes,
+        startPosition: startPosition,
+        freshResolve: true,
       ).then((_) => _refreshHistory());
-    } catch (_) {}
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('Resume failed: $e');
+    } finally {
+      if (mounted) setState(() => _resumingAnimeId = null);
+    }
   }
 
   Future<void> _removeFromHistory(Map<String, dynamic> entry) async {
@@ -627,9 +655,11 @@ class _AnimeScreenState extends State<AnimeScreen>
               final anime = AnimeCard.fromJson(
                 (entry['anime'] as Map).cast<String, dynamic>(),
               );
+              final resumeId = entry['animeId'] as int?;
               return _AnimeContinueWatchingCard(
                 listIndex: i,
                 entry: entry,
+                isLoading: resumeId != null && _resumingAnimeId == resumeId,
                 onTap: () => _resumeWatch(entry),
                 onRemove: () => _removeFromHistory(entry),
                 onInfo: () => _openDetails(anime),
@@ -820,6 +850,7 @@ class _AnimeContinueWatchingCard extends StatefulWidget {
   final VoidCallback onRemove;
   final VoidCallback onInfo;
   final int listIndex;
+  final bool isLoading;
 
   const _AnimeContinueWatchingCard({
     required this.entry,
@@ -827,6 +858,7 @@ class _AnimeContinueWatchingCard extends StatefulWidget {
     required this.onRemove,
     required this.onInfo,
     required this.listIndex,
+    this.isLoading = false,
   });
 
   static double cardWidth(BuildContext context) =>
@@ -874,7 +906,7 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
 
     return shellFocusableTap(
       context: context,
-      onTap: widget.onTap,
+      onTap: widget.isLoading ? null : widget.onTap,
       listIndex: widget.listIndex,
       tvTabId: 'anime',
       tvRowId: 'continue-watching',
@@ -1041,7 +1073,22 @@ class _AnimeContinueWatchingCardState extends State<_AnimeContinueWatchingCard> 
                         ],
                       ),
                     ),
-                    ShellCardPlayOverlay(active: _activeFor(policy)),
+                    ShellCardPlayOverlay(
+                      active: _activeFor(policy),
+                      visible: _activeFor(policy) && !widget.isLoading,
+                    ),
+                    if (widget.isLoading)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: ForjaShellColors.sectionAccent,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

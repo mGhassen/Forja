@@ -18,7 +18,7 @@ Tap **Anime** in the navigation bar.
 - Search anime catalog — **desktop / TV:** same layout as the Search tab (large search field, trending title suggestions on the left, poster grid on the right; **Select** a suggestion to run that search; on desktop, hover a result card to reveal the info button — click it or double-click the card to open details); **mobile:** search bar + results grid
 - Open details with episodes
 - Toggle **SUB** / **DUB** before playback
-- Resume from continue watching; clear progress with the trash icon next to **Resume** on details
+- Resume from continue watching — fetches fresh catalog data and scans all providers (not a stale one-source cache); clear progress with the trash icon next to **Resume** on details
 - Hover a continue watching card (desktop) to scale it and show a brand-green play button
 - Play in the anime player — launches once ~4 sources work (Settings order), then keeps finding more in the background so the in-player source menu fills while you watch
 - Track watch history per series (sub/dub preference)

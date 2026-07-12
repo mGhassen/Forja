@@ -91,7 +91,10 @@ class _HubSearchPageState extends State<HubSearchPage> {
     super.initState();
     _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
-    ShellBus.shellOverlayHasPage.addListener(_onShellOverlayChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ShellBus.shellOverlayHasPage.addListener(_onShellOverlayChanged);
+    });
     _loadRecommendations();
   }
 

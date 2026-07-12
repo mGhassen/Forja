@@ -317,6 +317,8 @@ Future<T?> openAnimePlayer<T>(
   required int episodeNumber,
   String category = 'sub',
   List<AnimeEpisode> allEpisodes = const [],
+  Duration? startPosition,
+  bool freshResolve = false,
 }) {
   return Navigator.of(context, rootNavigator: true).push<T>(
     AppRouter.fadeRoute(
@@ -325,6 +327,8 @@ Future<T?> openAnimePlayer<T>(
         episodeNumber: episodeNumber,
         category: category,
         allEpisodes: allEpisodes,
+        startPosition: startPosition,
+        freshResolve: freshResolve,
       ),
     ),
   );
@@ -335,6 +339,8 @@ class AnimePlayerScreen extends StatefulWidget {
   final int episodeNumber;
   final String category;
   final List<AnimeEpisode> allEpisodes;
+  final Duration? startPosition;
+  final bool freshResolve;
 
   const AnimePlayerScreen({
     super.key,
@@ -342,6 +348,8 @@ class AnimePlayerScreen extends StatefulWidget {
     required this.episodeNumber,
     this.category = 'sub',
     this.allEpisodes = const [],
+    this.startPosition,
+    this.freshResolve = false,
   });
 
   @override
@@ -622,12 +630,14 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     );
     final orderFuture = _settings.getAnimeProviderOrder();
 
-    var cached = _AnimeStreamSessionCache.read(
-      widget.anime.id,
-      widget.episodeNumber,
-      _category,
-    );
-    if (cached == null) {
+    var cached = widget.freshResolve
+        ? null
+        : _AnimeStreamSessionCache.read(
+            widget.anime.id,
+            widget.episodeNumber,
+            _category,
+          );
+    if (cached == null && !widget.freshResolve) {
       final disk = await _service.cachedResolvedStreamsJson(
         animeId: widget.anime.id,
         episode: widget.episodeNumber,
@@ -998,6 +1008,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       streamUrl: winner.media.url,
       title: title,
       headers: winnerHeaders,
+      startPosition: widget.startPosition,
       sources: sources,
       providers: _animeProviderMap(_allEmbeds),
       providerSourcesCache: liveProviderCache,
@@ -1066,7 +1077,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     await Future<void>.delayed(loadingOverlayFadeOutDuration);
     await playerFuture;
     final shouldRecheck = !playbackStarted && _launchedFromSavedOrCache;
-    _cancelled = true;
     sourcesListNotifier?.dispose();
     if (ownsProviderCache) {
       liveProviderCache.dispose();
@@ -1088,6 +1098,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     if (shouldRecheck && mounted) {
       await _handleStaleSavedStreams();
     }
+    _cancelled = true;
   }
 
   Widget _buildFailure(AppThemePreset theme) {
