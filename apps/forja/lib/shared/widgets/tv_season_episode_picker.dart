@@ -5,6 +5,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
+import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
@@ -667,14 +668,9 @@ class _EpisodeCard extends StatefulWidget {
 
 class _EpisodeCardState extends State<_EpisodeCard> {
   bool _hovered = false;
+  bool _focused = false;
 
-  double get _scale {
-    if (_hovered) return widget.selected ? 1.08 : 1.05;
-    if (widget.selected) return 1.05;
-    return 1.0;
-  }
-
-  bool get _showPlayOverlay => _hovered || widget.selected;
+  static const double _hoverScale = 1.05;
 
   @override
   Widget build(BuildContext context) {
@@ -682,14 +678,27 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     final showProgress =
         WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
     final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final scale = tvFocus ? 1.0 : _scale;
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
+    final showPlayOverlay = active || widget.selected;
+    final tvFocus = policy.useFocusableMoodChips;
+    final scale = tvFocus
+        ? 1.0
+        : (active || widget.selected ? _hoverScale : 1.0);
 
     return FocusableControl(
       onTap: widget.onTap,
       borderRadius: _EpisodeCard.thumbRadius,
       scaleOnFocus: 1.0,
-      onFocusChange: widget.onFocusChange,
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        widget.onFocusChange?.call(focused);
+      },
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
       onLeftEdge: widget.onLeftEdge,
       tvMeta: widget.tvTabId != null &&
               widget.tvRowId != null &&
@@ -701,124 +710,98 @@ class _EpisodeCardState extends State<_EpisodeCard> {
               itemIndex: widget.listIndex,
             )
           : null,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: AnimatedScale(
-          scale: scale,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          child: GestureDetector(
-            onSecondaryTap: widget.onToggleWatched,
-            behavior: HitTestBehavior.opaque,
-            child: SizedBox(
-              width: _EpisodeCard.cardWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: _EpisodeCard.cardWidth,
-                    height: thumbHeight,
-                    decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(_EpisodeCard.thumbRadius),
-                      border: widget.selected
-                          ? Border.all(color: Colors.white, width: 2)
-                          : null,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
+      child: AnimatedScale(
+        scale: scale,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: GestureDetector(
+          onSecondaryTap: widget.onToggleWatched,
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+            width: _EpisodeCard.cardWidth,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: _EpisodeCard.cardWidth,
+                  height: thumbHeight,
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        BorderRadius.circular(_EpisodeCard.thumbRadius),
+                    border: widget.selected
+                        ? Border.all(color: Colors.white, width: 2)
+                        : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius:
+                        BorderRadius.circular(_EpisodeCard.thumbRadius),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        widget.thumbnail != null
+                            ? CachedNetworkImage(
+                                imageUrl: widget.thumbnail
+                                        .toString()
+                                        .startsWith('http')
+                                    ? widget.thumbnail.toString()
+                                    : TmdbApi.getStillUrl(
+                                        widget.thumbnail.toString(),
+                                      ),
+                                fit: BoxFit.cover,
+                                errorWidget: (_, _, _) => _thumbFallback(),
+                              )
+                            : _thumbFallback(),
+                        if (showProgress)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: LinearProgressIndicator(
+                              value: (widget.positionMs / widget.durationMs)
+                                  .clamp(0.0, 1.0),
+                              minHeight: 3,
+                              backgroundColor: Colors.black54,
+                              valueColor: AlwaysStoppedAnimation(
+                                ForjaShellColors.progressFill,
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: _ThumbBadge(label: 'E${widget.episodeNumber}'),
+                        ),
+                        if (durationLabel != null)
+                          Positioned(
+                            right: 8,
+                            bottom: 8,
+                            child: _ThumbBadge(label: durationLabel),
+                          ),
+                        if (widget.watched)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Icon(
+                              Icons.check_circle_rounded,
+                              size: 16,
+                              color: Colors.white.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ShellCardPlayOverlay(
+                          active: active,
+                          visible: showPlayOverlay,
                         ),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius:
-                          BorderRadius.circular(_EpisodeCard.thumbRadius),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          widget.thumbnail != null
-                              ? CachedNetworkImage(
-                                  imageUrl: widget.thumbnail
-                                          .toString()
-                                          .startsWith('http')
-                                      ? widget.thumbnail.toString()
-                                      : TmdbApi.getStillUrl(
-                                          widget.thumbnail.toString(),
-                                        ),
-                                  fit: BoxFit.cover,
-                                  errorWidget: (_, _, _) => _thumbFallback(),
-                                )
-                              : _thumbFallback(),
-                          if (showProgress)
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              child: LinearProgressIndicator(
-                                value: (widget.positionMs / widget.durationMs)
-                                    .clamp(0.0, 1.0),
-                                minHeight: 3,
-                                backgroundColor: Colors.black54,
-                                valueColor: AlwaysStoppedAnimation(
-                                  ForjaShellColors.progressFill,
-                                ),
-                              ),
-                            ),
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child:
-                                _ThumbBadge(label: 'E${widget.episodeNumber}'),
-                          ),
-                          if (durationLabel != null)
-                            Positioned(
-                              right: 8,
-                              bottom: 8,
-                              child: _ThumbBadge(label: durationLabel),
-                            ),
-                          if (widget.watched)
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Icon(
-                                Icons.check_circle_rounded,
-                                size: 16,
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
-                            ),
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: AnimatedOpacity(
-                                opacity: _showPlayOverlay ? 1.0 : 0.0,
-                                duration: const Duration(milliseconds: 200),
-                                child: Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.5),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.2),
-                                      ),
-                                    ),
-                                    child: const Icon(
-                                      Icons.play_arrow_rounded,
-                                      color: Colors.white,
-                                      size: 28,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
+                ),
                   const SizedBox(height: 10),
                   Text(
                     widget.title,

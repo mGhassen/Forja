@@ -13,6 +13,7 @@ import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/stream_provider_resolver.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
+import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -567,6 +568,36 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
 
     if (_isWebstreamingOnlyExtracting) return;
     await _runWebstreamingOnlyExtraction(startPosition: startPosition);
+  }
+
+  Future<void> _resumeContinueWatchingWebStream(String providerId) async {
+    final progress = _lastProgress;
+    if (progress == null) {
+      _failAutoPlayFromRoute();
+      return;
+    }
+    final ok = await resumeSavedWebStreamProvider(
+      context: context,
+      movie: _movie,
+      progress: progress,
+      startPosition: _startPositionForAutoPlay(fromRoute: true),
+    );
+    if (!ok && mounted) _failAutoPlayFromRoute();
+  }
+
+  Future<void> _resumeContinueWatchingAmri() async {
+    final progress = _lastProgress;
+    if (progress == null) {
+      _failAutoPlayFromRoute();
+      return;
+    }
+    final ok = await resumeSavedAmriStream(
+      context: context,
+      movie: _movie,
+      progress: progress,
+      startPosition: _startPositionForAutoPlay(fromRoute: true),
+    );
+    if (!ok && mounted) _failAutoPlayFromRoute();
   }
 
   Future<void> _runWebstreamingOnlyExtraction({Duration? startPosition}) async {
@@ -1306,10 +1337,32 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (!fromRoute && !fromEpisode) return;
     if (!mounted || _isLoading) return;
 
-    // Home hero Play (and other route autoPlay) → webstreaming, not torrent.
-    if (fromRoute && _playSourceWebstreaming) {
+    final progress = _lastProgress;
+    final isContinueWatchingResume =
+        fromRoute && widget.startPosition != null && progress != null;
+    final savedMethod =
+        isContinueWatchingResume ? progress['method'] as String? : null;
+
+    // Home hero Play → webstreaming. Continue Watching keeps the saved method.
+    if (fromRoute && _playSourceWebstreaming && !isContinueWatchingResume) {
       _consumeAutoPlayFlags(fromRoute: true, fromEpisode: fromEpisode);
       unawaited(_startWebstreamingOnlyPlayback());
+      return;
+    }
+
+    if (isContinueWatchingResume && savedMethod == 'stream') {
+      final sourceId = progress['sourceId'] as String? ?? '';
+      if (isWebStreamProviderId(sourceId)) {
+        if (_isWebstreamingOnlyExtracting) return;
+        _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+        unawaited(_resumeContinueWatchingWebStream(sourceId));
+        return;
+      }
+    }
+
+    if (isContinueWatchingResume && savedMethod == 'amri') {
+      _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+      unawaited(_resumeContinueWatchingAmri());
       return;
     }
 

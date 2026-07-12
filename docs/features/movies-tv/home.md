@@ -32,7 +32,7 @@ Tap **Home** in the navigation bar (first tab by default).
 ## Tips
 
 - Continue watching updates automatically when you watch movies or series
-- Hover a continue watching card (desktop) to scale it and show a brand-green play button — click to resume
+- Hover a continue watching card (desktop) to scale it and show a brand-green play button — click to resume from the last torrent or web source
 - Dismiss an item from continue watching from the details screen or Home
 
 ## Related

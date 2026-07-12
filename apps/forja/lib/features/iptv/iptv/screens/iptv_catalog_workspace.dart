@@ -1093,13 +1093,13 @@ _PortalExpiryTone _portalExpiryTone(String expiry) {
 
   final Color color;
   if (days < 0) {
-    color = const Color(0xFFEF4444);
+    color = const Color(0xFF9E7A7A);
   } else if (days <= 7) {
-    color = const Color(0xFFF59E0B);
+    color = const Color(0xFF9A8F78);
   } else if (days <= 30) {
-    color = const Color(0xFFEAB308);
+    color = const Color(0xFF8F8F86);
   } else {
-    color = const Color(0xFF22C55E);
+    color = const Color(0xFF7A9185);
   }
 
   final prefix = days < 0 ? 'Expired' : 'Ends';
@@ -1421,15 +1421,14 @@ class _PortalHoverTile extends StatefulWidget {
 class _PortalHoverTileState extends State<_PortalHoverTile> {
   static const _actionW = 108.0;
   static const _statusSlot = 18.0;
-  static const _rowH = 48.0;
-  static const _rowHExpanded = 66.0;
+  static const _rowH = 66.0;
 
   bool _lineHover = false;
   bool _focused = false;
 
   bool get _reveal => _focused || _lineHover;
 
-  double get _rowHeight => _reveal ? _rowHExpanded : _rowH;
+  double get _rowHeight => _rowH;
 
   void _clearHover() {
     setState(() => _lineHover = false);
@@ -1604,19 +1603,15 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                             }
                           },
                           child: Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              10,
-                              _reveal ? 6 : 0,
-                              10,
-                              _reveal ? 4 : 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
                             ),
                             child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    top: _reveal ? 2 : 0,
-                                  ),
+                                Align(
+                                  alignment: Alignment.center,
                                   child: isActive
                                       ? _activePortalStatusGlyph(
                                           _activePortalStatus(
@@ -1634,14 +1629,11 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
-                                    mainAxisAlignment: _reveal
-                                        ? MainAxisAlignment.start
-                                        : MainAxisAlignment.center,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      if (_reveal) ...[
-                                        _expiryLine(v.expiry),
-                                        const SizedBox(height: 3),
-                                      ],
+                                      _expiryLine(v.expiry),
+                                      const SizedBox(height: 2),
                                       Row(
                                         children: [
                                           if (showNewChrome) ...[
@@ -1666,7 +1658,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                                         showNewChrome
                                                     ? FontWeight.w600
                                                     : FontWeight.w500,
-                                                height: 1.15,
+                                                height: 1.1,
                                               ),
                                             ),
                                           ),
@@ -1681,16 +1673,14 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                               ? Colors.white54
                                               : Colors.white38,
                                           fontSize: 11,
-                                          height: 1.2,
+                                          height: 1.1,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    top: _reveal ? 2 : 0,
-                                  ),
+                                Align(
+                                  alignment: Alignment.center,
                                   child: iptvTap(
                                     context: context,
                                     onTap: () =>
@@ -1782,7 +1772,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
             style: GoogleFonts.poppins(
               color: tone.color,
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w400,
               height: 1.1,
             ),
           ),

@@ -13,9 +13,9 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 
 ## What you can do
 
-- Resume from the saved timestamp
+- Resume from the saved timestamp using the **same source you last watched** — torrent magnet, web stream provider (e.g. Videasy), Amri, or Stremio Direct
 - See progress on continue watching cards
-- Hover a continue watching card (desktop) to scale it and show a brand-green play button
+- Hover a continue watching card (desktop) to scale it and show a brand-green play button — click to resume from the last torrent or web source
 - Dismiss entries from continue watching
 - Mark episodes watched from details screens (clears or updates progress)
 
