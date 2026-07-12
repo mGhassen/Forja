@@ -979,7 +979,6 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     );
 
     final panelPad = ShellTokens.playerSidePanelPadding;
-    final playingBleed = EdgeInsets.only(left: -panelPad.left, right: -panelPad.right);
     final rowPad = EdgeInsets.fromLTRB(
       panelPad.left + 2,
       6,
@@ -987,16 +986,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       4,
     );
 
-    return Container(
-      width: double.infinity,
-      margin: isPlaying ? playingBleed : EdgeInsets.zero,
-      decoration: isPlaying
-          ? BoxDecoration(
-              color: playerSourceStatusColor(PlayerSourceStatus.active)
-                  .withValues(alpha: 0.07),
-            )
-          : null,
-      child: Column(
+    final group = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
         Material(
@@ -1107,7 +1097,26 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
             ),
           ),
       ],
-      ),
+    );
+
+    if (!isPlaying) {
+      return SizedBox(width: double.infinity, child: group);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Transform.translate(
+          offset: Offset(-panelPad.left, 0),
+          child: Container(
+            width: constraints.maxWidth + panelPad.left + panelPad.right,
+            decoration: BoxDecoration(
+              color: playerSourceStatusColor(PlayerSourceStatus.active)
+                  .withValues(alpha: 0.07),
+            ),
+            child: group,
+          ),
+        );
+      },
     );
   }
 
@@ -1156,11 +1165,15 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
             .toList();
 
     if (orderedProviders.isEmpty) {
+      if (_frozenProviderOrder.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      final filterLabel = _audioFilter?.name.toUpperCase() ?? 'matching';
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            'No ${_audioFilter!.name.toUpperCase()} sources',
+            'No $filterLabel sources',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.45),
               fontSize: 13,

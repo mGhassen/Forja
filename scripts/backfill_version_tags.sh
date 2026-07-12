@@ -10,55 +10,91 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DRY_RUN=0
-if [[ "${1:-}" == "--dry-run" ]]; then
-  DRY_RUN=1
-fi
+CHECK_WORKFLOWS=0
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=1 ;;
+    --range-touches-workflows) CHECK_WORKFLOWS=1 ;;
+  esac
+done
 
 cd "$ROOT"
 git fetch origin --tags --force 2>/dev/null || true
 
+commit_has_v_tag() {
+  git tag --points-at "$1" | grep -q '^v[0-9]'
+}
+
 resolve_range() {
-  local highest second untagged_between
-  highest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
-  if [[ -z "$highest" ]]; then
-    base_semver="$(grep '^version:' apps/forja/pubspec.yaml | sed 's/version: *//' | cut -d+ -f1)"
-    range="HEAD"
+  local tag first_untagged latest_base
+  first_untagged=""
+  while IFS= read -r sha; do
+    [[ -z "$sha" ]] && continue
+    if ! commit_has_v_tag "$sha"; then
+      first_untagged="$sha"
+      break
+    fi
+  done < <(git rev-list --first-parent --reverse HEAD 2>/dev/null || true)
+
+  if [[ -z "$first_untagged" ]]; then
+    base_semver=""
+    range=""
     return
   fi
 
-  second="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | sed -n '2p')"
-  if [[ -n "$second" ]]; then
-    local highest_sha
-    highest_sha="$(git rev-parse "$highest^{commit}")"
-    untagged_between=0
-    while IFS= read -r sha; do
-      [[ -z "$sha" ]] && continue
-      if ! git tag --points-at "$sha" | grep -q '^v[0-9]'; then
-        untagged_between=$((untagged_between + 1))
-      fi
-    done < <(git rev-list "${second}..${highest_sha}" 2>/dev/null || true)
-
-    if [[ "$untagged_between" -gt 0 ]]; then
-      # Gap recovery: e.g. v1.2.38 pushed but v1.2.23–v1.2.37 failed.
-      base_semver="${second#v}"
-      range="${second}..HEAD"
-      echo "Gap detected after $second — backfilling from $range"
-      return
+  latest_base=""
+  while IFS= read -r tag; do
+    [[ -z "$tag" ]] && continue
+    if git merge-base --is-ancestor "$(git rev-parse "$tag^{commit}")" "$first_untagged"; then
+      latest_base="$tag"
     fi
+  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --merged HEAD --sort=v:refname 2>/dev/null || true)
+
+  if [[ -n "$latest_base" ]]; then
+    base_semver="${latest_base#v}"
+    range="${latest_base}..HEAD"
+    echo "Gap detected after $latest_base — backfilling from $range"
+    return
   fi
 
-  base_semver="${highest#v}"
-  range="${highest}..HEAD"
+  base_semver="$(grep '^version:' apps/forja/pubspec.yaml | sed 's/version: *//' | cut -d+ -f1)"
+  range="HEAD"
+}
+
+range_touches_workflows() {
+  local sha
+  for sha in $(git rev-list "$range"); do
+    commit_has_v_tag "$sha" && continue
+    if git diff-tree --no-commit-id --name-only -r "$sha" 2>/dev/null | grep -q '^\.github/workflows/'; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 resolve_range
+
+if [[ "$CHECK_WORKFLOWS" -eq 1 ]]; then
+  if [[ -z "$range" ]]; then
+    exit 1
+  fi
+  if range_touches_workflows; then
+    exit 0
+  fi
+  exit 1
+fi
+
+if [[ -z "$range" ]]; then
+  echo "No untagged commits to backfill."
+  exit 0
+fi
 
 IFS=. read -r major minor patch <<<"$base_semver"
 made=0
 NEW_TAGS=()
 
 for sha in $(git rev-list --reverse "$range"); do
-  if git tag --points-at "$sha" | grep -q '^v[0-9]'; then
+  if commit_has_v_tag "$sha"; then
     continue
   fi
   patch=$((patch + 1))

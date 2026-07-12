@@ -42,6 +42,25 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Require PAT when backfill touches workflows
+        if: inputs.dry_run != true
+        env:
+          HAS_PAT: ${{ secrets.BACKFILL_GITHUB_TOKEN != '' }}
+        run: |
+          chmod +x scripts/backfill_version_tags.sh
+          if [[ "$HAS_PAT" == "true" ]]; then
+            echo "BACKFILL_GITHUB_TOKEN is set."
+            exit 0
+          fi
+          if ./scripts/backfill_version_tags.sh --range-touches-workflows; then
+            echo "::error::BACKFILL_GITHUB_TOKEN is required for this backfill."
+            echo "Some untagged commits modify .github/workflows/*; GITHUB_TOKEN cannot push those tags."
+            echo "Add a fine-grained PAT (Contents: Read and write + Actions: Read and write) as repo secret BACKFILL_GITHUB_TOKEN,"
+            echo "or run locally: ./scripts/backfill_version_tags.sh"
+            exit 1
+          fi
+          echo "No workflow changes in backfill range; GITHUB_TOKEN is sufficient."
+
       - name: Backfill tags for untagged commits
         run: |
           chmod +x scripts/backfill_version_tags.sh
