@@ -36,13 +36,15 @@ class PlayerEpisodePanel {
     _completer = Completer<void>();
 
     _entry = OverlayEntry(
-      builder: (overlayContext) => _EpisodePanelOverlay(
-        movie: movie,
-        initialSeason: currentSeason,
-        currentSeason: currentSeason,
-        currentEpisode: currentEpisode,
-        onEpisodeSelected: onEpisodeSelected,
-        onClose: dismiss,
+      builder: (_) => ShellScopeBuilder(
+        builder: (context, _) => _EpisodePanelOverlay(
+          movie: movie,
+          initialSeason: currentSeason,
+          currentSeason: currentSeason,
+          currentEpisode: currentEpisode,
+          onEpisodeSelected: onEpisodeSelected,
+          onClose: dismiss,
+        ),
       ),
     );
 
@@ -484,11 +486,13 @@ class PlayerHubEpisodePanel {
     _completer = Completer<void>();
 
     _entry = OverlayEntry(
-      builder: (overlayContext) => _HubEpisodePanelOverlay(
-        episodes: episodes,
-        currentEpisode: currentEpisode,
-        onEpisodeSelected: onEpisodeSelected,
-        onClose: dismiss,
+      builder: (_) => ShellScopeBuilder(
+        builder: (context, _) => _HubEpisodePanelOverlay(
+          episodes: episodes,
+          currentEpisode: currentEpisode,
+          onEpisodeSelected: onEpisodeSelected,
+          onClose: dismiss,
+        ),
       ),
     );
 

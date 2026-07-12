@@ -293,14 +293,17 @@ class SplashOverlayContent extends StatelessWidget {
                             Padding(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 24),
-                              child: Text(
-                                slogan,
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  letterSpacing: 4,
-                                  color: logoColors.base,
-                                  decoration: TextDecoration.none,
+                              child: DefaultSelectionStyle.merge(
+                                selectionColor: Colors.transparent,
+                                child: Text(
+                                  slogan,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    letterSpacing: 4,
+                                    color: logoColors.base,
+                                    decoration: TextDecoration.none,
+                                  ),
                                 ),
                               ),
                             ),

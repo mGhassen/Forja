@@ -91,4 +91,27 @@ void main() {
     expect(nav, contains('iptv'));
     expect(nav.indexOf('home'), lessThan(nav.indexOf('iptv')));
   });
+
+  test('Android TV search-first nav migrates back to home-first', () async {
+    await kvSetStringList('navbar_config', const [
+      'search',
+      'home',
+      'anime',
+      'asian_drama',
+      'iptv',
+      'live_matches',
+      'mylist',
+    ]);
+    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetString('navbar_shell_080', '1');
+    await kvSetString('navbar_shell_081', '1');
+    await kvSetString('navbar_shell_084', '1');
+    await kvSetString('navbar_shell_085', '1');
+
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+    final service = SettingsService();
+    final nav = await service.getNavbarConfig();
+
+    expect(nav.take(2), ['home', 'search']);
+  });
 }

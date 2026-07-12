@@ -266,8 +266,21 @@ jobs:
       - name: Decode release keystore
         env:
           KEYSTORE_B64: ${{ secrets.FORJA_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.FORJA_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.FORJA_KEY_ALIAS }}
         run: |
           echo "$KEYSTORE_B64" | base64 -d > apps/forja/android/release.keystore
+          alias="${KEY_ALIAS:-forja}"
+          if ! keytool -list \
+            -keystore apps/forja/android/release.keystore \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$alias" >/dev/null 2>&1; then
+            echo "::error::No key with alias '$alias' in decoded keystore."
+            echo "Available aliases:"
+            keytool -list -keystore apps/forja/android/release.keystore \
+              -storepass "$KEYSTORE_PASSWORD" || true
+            exit 1
+          fi
 
       - name: Build Android TV APKs
         working-directory: ${{ env.APP_DIR }}

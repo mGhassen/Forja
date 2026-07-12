@@ -8,8 +8,8 @@ void main() {
       expect(
         tv.visibleNavIds,
         [
-          'search',
           'home',
+          'search',
           'anime',
           'asian_drama',
           'iptv',

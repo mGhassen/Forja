@@ -40,12 +40,14 @@ class PlayerTorrentFilePanel {
     _completer = Completer<void>();
 
     _entry = OverlayEntry(
-      builder: (_) => _TorrentFilePanelOverlay(
-        magnetLink: magnetLink,
-        currentFileIndex: currentFileIndex,
-        onFileSelected: onFileSelected,
-        onClose: dismiss,
-        frozenFrame: frozenFrame,
+      builder: (_) => ShellScopeBuilder(
+        builder: (context, _) => _TorrentFilePanelOverlay(
+          magnetLink: magnetLink,
+          currentFileIndex: currentFileIndex,
+          onFileSelected: onFileSelected,
+          onClose: dismiss,
+          frozenFrame: frozenFrame,
+        ),
       ),
     );
 

@@ -402,9 +402,11 @@ class SettingsService {
   Future<void> setTorrentConnectionsLimit(int limit) async =>
       kvSetInt(_torrentConnectionsLimitKey, limit);
 
-  Future<String> getThemePreset() async => 'forja';
+  Future<String> getThemePreset() async =>
+      await kvGetString(_themePresetKey) ?? 'forja';
 
-  Future<void> setThemePreset(String preset) async {}
+  Future<void> setThemePreset(String preset) async =>
+      kvSetString(_themePresetKey, preset);
 
   static const String _navbarConfigKey = 'navbar_config';
   static const String _navbarKnownIdsKey = 'navbar_known_ids';
@@ -412,6 +414,7 @@ class SettingsService {
   static const String _navbarShell081Key = 'navbar_shell_081';
   static const String _navbarShell084Key = 'navbar_shell_084';
   static const String _navbarShell085Key = 'navbar_shell_085';
+  static const String _navbarShell086Key = 'navbar_shell_086';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Default visible tabs (settings appended in MainScreen).
@@ -428,21 +431,19 @@ class SettingsService {
     'mylist',
   ];
 
-  static List<String> _migrateAndroidTvSearchFirstNav(List<String> ids) {
-    if (ids.length < 2 || ids[0] != 'home' || ids[1] != 'search') {
+  static List<String> _migrateAndroidTvHomeFirstNav(List<String> ids) {
+    if (ids.length < 2 || ids[0] != 'search' || ids[1] != 'home') {
       return ids;
     }
     final migrated = List<String>.from(ids);
-    migrated[0] = 'search';
-    migrated[1] = 'home';
+    migrated[0] = 'home';
+    migrated[1] = 'search';
     return migrated;
   }
 
   static int _initialShellTabIndex(List<String> visibleIds) {
-    if (platformProfile == PlatformProfile.androidTv) {
-      final homeIdx = visibleIds.indexOf('home');
-      if (homeIdx >= 0) return homeIdx;
-    }
+    final homeIdx = visibleIds.indexOf('home');
+    if (homeIdx >= 0) return homeIdx;
     return 0;
   }
 
@@ -516,6 +517,8 @@ class SettingsService {
       await kvSetString(_navbarShell080Key, '1');
       await kvSetString(_navbarShell081Key, '1');
       await kvSetString(_navbarShell084Key, '1');
+      await kvSetString(_navbarShell085Key, '1');
+      await kvSetString(_navbarShell086Key, '1');
     }
 
     await kvSetString(_platformDefaultsSeededKey, profile.name);
@@ -556,15 +559,22 @@ class SettingsService {
       await kvSetString(_navbarShell084Key, '1');
     }
     if (!await kvHasKey(_navbarShell085Key)) {
+      // Retired: shell 085 once moved TV nav to search-first. Home-first is
+      // the default now; shell 086 migrates legacy search-first configs back.
+      await kvSetString(_navbarShell085Key, '1');
+    }
+    if (!await kvHasKey(_navbarShell086Key)) {
       if (platformProfile == PlatformProfile.androidTv &&
           await kvHasKey(_navbarConfigKey)) {
         final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        final migrated = _migrateAndroidTvSearchFirstNav(raw);
-        if (raw.length >= 2 && raw[0] == 'home' && raw[1] == 'search') {
-          await kvSetStringList(_navbarConfigKey, migrated);
+        if (raw.length >= 2 && raw[0] == 'search' && raw[1] == 'home') {
+          await kvSetStringList(
+            _navbarConfigKey,
+            _migrateAndroidTvHomeFirstNav(raw),
+          );
         }
       }
-      await kvSetString(_navbarShell085Key, '1');
+      await kvSetString(_navbarShell086Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

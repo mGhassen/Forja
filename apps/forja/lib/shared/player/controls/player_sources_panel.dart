@@ -42,15 +42,18 @@ class PlayerSourcesPanel {
     final overlay = Overlay.of(context);
     _completer = Completer<void>();
 
+    // OverlayEntry is a sibling of the player route — not under ShellScope.
     _entry = OverlayEntry(
-      builder: (_) => _PlayerSourcesOverlay(
-        movie: movie,
-        season: season,
-        episode: episode,
-        currentMagnet: currentMagnet,
-        onTorrentSelected: onTorrentSelected,
-        onStremioSelected: onStremioSelected,
-        onClose: dismiss,
+      builder: (_) => ShellScopeBuilder(
+        builder: (context, _) => _PlayerSourcesOverlay(
+          movie: movie,
+          season: season,
+          episode: episode,
+          currentMagnet: currentMagnet,
+          onTorrentSelected: onTorrentSelected,
+          onStremioSelected: onStremioSelected,
+          onClose: dismiss,
+        ),
       ),
     );
 
