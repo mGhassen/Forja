@@ -1,14 +1,25 @@
-# Sole source of version bumps, git tags (v*), and GitHub Releases.
-# Per-push auto-tagging removed. On manual dispatch this workflow first
-# backfills a patch tag for every untagged commit on main (one tag per push,
-# oldest first), then bumps + commits + tags the release itself.
+# Sole source of git tags (v*), version bumps, and GitHub Releases.
+# Manual dispatch only. Use "Backfill version tags" workflow first if main has
+# untagged commits. Release from a new bump, the latest tag, or a specific tag.
 name: Release Forja
 
 on:
   workflow_dispatch:
     inputs:
+      release_mode:
+        description: New bump, latest tag, or pick a tag (see run summary for all tags)
+        type: choice
+        options:
+          - bump_new
+          - latest_tag
+          - specific_tag
+        default: bump_new
+      tag:
+        description: Tag to release (specific_tag only, e.g. v1.0.2)
+        type: string
+        default: ''
       bump:
-        description: Semver bump
+        description: Semver bump (bump_new only)
         type: choice
         options:
           - patch
@@ -48,11 +59,11 @@ env:
   APP_DIR: apps/forja
 
 jobs:
-  bump_version:
-    name: Bump version and tag
+  resolve_version:
+    name: Resolve version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.bump.outputs.version }}
+      version: ${{ steps.final.outputs.version }}
     steps:
       - name: Validate platform selection
         run: |
@@ -69,47 +80,27 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: List existing tags
+        run: |
+          git fetch origin --tags --force
+          {
+            echo "## Available release tags (newest first)"
+            echo "Use **latest_tag** to ship the top entry, or **specific_tag** with the \`tag\` input."
+            echo '```'
+            git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Existing tags:"
+          git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -20
+
       - name: Configure git
+        if: inputs.release_mode == 'bump_new'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Backfill tags for untagged commits
-        run: |
-          git fetch origin --tags --force
-          latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
-          if [[ -n "$latest" ]]; then
-            base_semver="${latest#v}"
-            range="${latest}..HEAD"
-          else
-            base_semver="$(grep '^version:' apps/forja/pubspec.yaml | sed 's/version: *//' | cut -d+ -f1)"
-            range="HEAD"
-          fi
-          IFS=. read -r major minor patch <<<"$base_semver"
-          made=0
-          # Oldest first so tag order matches commit order.
-          for sha in $(git rev-list --reverse "$range"); do
-            # Skip commits that already carry a v* tag.
-            if git tag --points-at "$sha" | grep -q '^v[0-9]'; then
-              continue
-            fi
-            patch=$((patch + 1))
-            tag="v${major}.${minor}.${patch}"
-            while git rev-parse "$tag" >/dev/null 2>&1; do
-              patch=$((patch + 1))
-              tag="v${major}.${minor}.${patch}"
-            done
-            git tag -a "$tag" -m "Forja ${major}.${minor}.${patch}" "$sha"
-            echo "Backfilled $tag -> $sha"
-            made=$((made + 1))
-          done
-          if [[ "$made" -gt 0 ]]; then
-            git push origin --tags
-          else
-            echo "No untagged commits to backfill."
-          fi
-
-      - name: Bump version
+      - name: Bump version and tag
+        if: inputs.release_mode == 'bump_new'
         id: bump
         run: |
           chmod +x scripts/bump_version.sh
@@ -117,28 +108,64 @@ jobs:
           echo "version=$NEW" >> "$GITHUB_OUTPUT"
           echo "Bumped to $NEW"
 
-      - name: Commit and tag
-        run: |
-          VERSION="${{ steps.bump.outputs.version }}"
-          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
-            echo "::error::Tag v${VERSION} already exists — sync pubspec to the latest tag, push, then re-run."
+          if git rev-parse "v${NEW}" >/dev/null 2>&1; then
+            echo "::error::Tag v${NEW} already exists — sync pubspec to the latest tag, push, then re-run."
             exit 1
           fi
           git add apps/forja/pubspec.yaml installer/windows/setup.iss
-          git commit -m "chore: release v${VERSION}"
-          git tag -a "v${VERSION}" -m "Forja ${VERSION}"
+          git commit -m "chore: release v${NEW}"
+          git tag -a "v${NEW}" -m "Forja ${NEW}"
           git push origin HEAD
-          git push origin "v${VERSION}"
+          git push origin "v${NEW}"
+
+      - name: Resolve existing tag
+        if: inputs.release_mode != 'bump_new'
+        id: existing
+        run: |
+          if [[ "${{ inputs.release_mode }}" == "latest_tag" ]]; then
+            tag="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
+            if [[ -z "$tag" ]]; then
+              echo "::error::No v* tags found. Run with bump_new or Backfill version tags first."
+              exit 1
+            fi
+          else
+            tag="${{ inputs.tag }}"
+            tag="${tag#"${tag%%[![:space:]]*}"}"
+            tag="${tag%"${tag##*[![:space:]]}"}"
+            if [[ -z "$tag" ]]; then
+              echo "::error::specific_tag requires the tag input (e.g. v1.0.2). See workflow summary for all tags."
+              exit 1
+            fi
+            if [[ "$tag" != v* ]]; then
+              tag="v${tag}"
+            fi
+            if ! git rev-parse "$tag" >/dev/null 2>&1; then
+              echo "::error::Tag $tag does not exist. See workflow summary for available tags."
+              exit 1
+            fi
+          fi
+          version="${tag#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing existing tag $tag ($version)"
+
+      - name: Set version output
+        id: final
+        run: |
+          if [[ "${{ inputs.release_mode }}" == "bump_new" ]]; then
+            echo "version=${{ steps.bump.outputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ steps.existing.outputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
 
   build_macos:
     name: macOS
     if: ${{ inputs.platform_macos }}
-    needs: bump_version
+    needs: resolve_version
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: v${{ needs.bump_version.outputs.version }}
+          ref: v${{ needs.resolve_version.outputs.version }}
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -159,22 +186,22 @@ jobs:
         run: ./scripts/verify_installer_payload.sh macos
 
       - name: Package DMG
-        run: ./scripts/package_macos_dmg.sh "${{ needs.bump_version.outputs.version }}"
+        run: ./scripts/package_macos_dmg.sh "${{ needs.resolve_version.outputs.version }}"
 
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-macOS-dmg
-          path: dist/Forja-${{ needs.bump_version.outputs.version }}-macos-arm64.dmg
+          path: dist/Forja-${{ needs.resolve_version.outputs.version }}-macos-arm64.dmg
 
   build_windows:
     name: Windows
     if: ${{ inputs.platform_windows }}
-    needs: bump_version
+    needs: resolve_version
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: v${{ needs.bump_version.outputs.version }}
+          ref: v${{ needs.resolve_version.outputs.version }}
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -206,7 +233,7 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: |
-          $version = "${{ needs.bump_version.outputs.version }}"
+          $version = "${{ needs.resolve_version.outputs.version }}"
           $outName = "Forja-$version-windows-setup"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             "/DMyAppVersion=$version" `
@@ -216,17 +243,17 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Windows-setup
-          path: installer/windows/Output/Forja-${{ needs.bump_version.outputs.version }}-windows-setup.exe
+          path: installer/windows/Output/Forja-${{ needs.resolve_version.outputs.version }}-windows-setup.exe
 
   build_linux:
     name: Linux
     if: ${{ inputs.platform_linux }}
-    needs: bump_version
+    needs: resolve_version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: v${{ needs.bump_version.outputs.version }}
+          ref: v${{ needs.resolve_version.outputs.version }}
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -259,22 +286,22 @@ jobs:
         run: ./scripts/verify_installer_payload.sh linux
 
       - name: Package AppImage
-        run: ./scripts/package_linux_appimage.sh "${{ needs.bump_version.outputs.version }}"
+        run: ./scripts/package_linux_appimage.sh "${{ needs.resolve_version.outputs.version }}"
 
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Linux-appimage
-          path: dist/Forja-${{ needs.bump_version.outputs.version }}-linux-x86_64.AppImage
+          path: dist/Forja-${{ needs.resolve_version.outputs.version }}-linux-x86_64.AppImage
 
   build_android_tv:
     name: Android TV
     if: ${{ inputs.platform_android_tv }}
-    needs: bump_version
+    needs: resolve_version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: v${{ needs.bump_version.outputs.version }}
+          ref: v${{ needs.resolve_version.outputs.version }}
 
       - name: Verify Android signing secrets
         env:
@@ -334,26 +361,26 @@ jobs:
             -PFORJA_KEY_PASSWORD="${{ secrets.FORJA_KEY_PASSWORD }}"
 
       - name: Package Android TV APKs
-        run: ./scripts/package_android_tv_apk.sh "${{ needs.bump_version.outputs.version }}"
+        run: ./scripts/package_android_tv_apk.sh "${{ needs.resolve_version.outputs.version }}"
 
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android-TV-apks
           path: |
-            dist/Forja-${{ needs.bump_version.outputs.version }}-android-tv-arm64.apk
-            dist/Forja-${{ needs.bump_version.outputs.version }}-android-tv-armeabi-v7a.apk
+            dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-arm64.apk
+            dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-armeabi-v7a.apk
 
   publish_release:
     name: Publish GitHub Release
     needs:
-      - bump_version
+      - resolve_version
       - build_macos
       - build_windows
       - build_linux
       - build_android_tv
     if: >
       !cancelled() &&
-      needs.bump_version.result == 'success' &&
+      needs.resolve_version.result == 'success' &&
       (needs.build_macos.result == 'success' || needs.build_macos.result == 'skipped') &&
       (needs.build_windows.result == 'success' || needs.build_windows.result == 'skipped') &&
       (needs.build_linux.result == 'success' || needs.build_linux.result == 'skipped') &&
@@ -378,8 +405,8 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.bump_version.outputs.version }}
-          name: Forja ${{ needs.bump_version.outputs.version }}
+          tag_name: v${{ needs.resolve_version.outputs.version }}
+          name: Forja ${{ needs.resolve_version.outputs.version }}
           prerelease: ${{ inputs.prerelease }}
           generate_release_notes: true
           files: release-flat/*

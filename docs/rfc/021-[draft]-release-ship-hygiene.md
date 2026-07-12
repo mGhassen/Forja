@@ -92,7 +92,7 @@ Output artifact name per [RFC-015](015-[partial]-in-app-updates.md): `Forja-{ver
 
 [`.github/workflows/build.yml`](../../.github/workflows/build.yml) manual dispatch only (optional smoke builds, artifacts only).
 
-[`.github/workflows/release.yml`](../../.github/workflows/release.yml) manual dispatch — bump version (patch/minor/major), tag `v*`, publish installers. Toggle platforms per run:
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml) manual dispatch — **bump_new** (patch/minor/major + tag), **latest_tag**, or **specific_tag**; lists all `v*` tags in the run summary. [`.github/workflows/backfill-tags.yml`](../../.github/workflows/backfill-tags.yml) tags untagged commits on main (dry-run optional). Toggle platforms per run:
 
 | Job | Output |
 |-----|--------|

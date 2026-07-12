@@ -28,6 +28,9 @@ scripts:
   rust:release-check:
     run: ../../scripts/check_rust_mobile_artifacts.sh
     description: Verify Android/iOS libffi artifacts exist after build_rust_mobile.sh
+  release:
+    run: ../../scripts/release_ci.sh
+    description: Interactive release menu — list tags, backfill, trigger GitHub Actions
   rust:mobile-integration:
     run: ../../scripts/run_mobile_magnet_e2e.sh
     description: Mobile magnet E2E on connected Android/iOS device (P2-14)

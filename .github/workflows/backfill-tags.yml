@@ -1,0 +1,48 @@
+# Tag old untagged commits on the default branch (one v* patch tag per push).
+# Run this before releasing if main has commits without tags.
+name: Backfill version tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview tags without creating or pushing
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    name: Backfill v* tags
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: List existing tags
+        run: |
+          git fetch origin --tags --force
+          {
+            echo "## Existing v* tags (newest first)"
+            echo '```'
+            git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Backfill tags for untagged commits
+        run: |
+          chmod +x scripts/backfill_version_tags.sh
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            ./scripts/backfill_version_tags.sh --dry-run
+          else
+            ./scripts/backfill_version_tags.sh
+          fi
