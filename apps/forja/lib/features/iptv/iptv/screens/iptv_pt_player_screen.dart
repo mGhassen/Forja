@@ -24,6 +24,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
+import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 
 /// Single source for the IPTV player.
@@ -936,17 +937,30 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         .setProperty('sub-visibility', on ? 'yes' : 'no');
   }
 
+  Future<void> _applyAutoAudio() async {
+    if (_audioPinned) return;
+    try {
+      final settings = SettingsService();
+      final audioLang = await settings.getPreferredAudioLanguage();
+      final avoidUnsupported = await settings.getAvoidUnsupportedAudio();
+      final best = pickBestAudioTrack(
+        audioTracks: _player.state.tracks.audio,
+        preferredAudioLang: audioLang,
+        avoidUnsupportedAudio: avoidUnsupported,
+      );
+      if (best == null) return;
+      await _player.setAudioTrack(best);
+    } catch (e) {
+      debugPrint('[IPTV] auto audio select failed: $e');
+    }
+  }
+
   void _showAudioMenu(BuildContext anchorContext) {
     _scheduleHideControls();
     PlayerAudioMenu.show(
       context,
       player: _player,
-      audioPinned: _audioPinned,
-      onSelectAuto: () async {
-        setState(() => _audioPinned = false);
-        await _player.setAudioTrack(AudioTrack.auto());
-      },
-      onManualSelect: () => setState(() => _audioPinned = true),
+      onTrackSelected: () => setState(() => _audioPinned = true),
       anchorContext: anchorContext,
       margin: EdgeInsets.only(
         left: 16,
@@ -985,18 +999,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
       externalSubtitles: const [],
       selectedExternalSubUrl: null,
       isFetchingSubs: false,
-      subtitlePinned: _subtitlePinned,
       updateSubVisibility: _updateSubVisibility,
       onExternalUrlChanged: (_) {},
       onNativeSubtitleChanged: (_) {},
       loadOnlineSubtitle: (_) async {},
       onSubtitleSettings: _showSubtitleSettings,
-      onSelectAuto: () async {
-        setState(() => _subtitlePinned = false);
-        await _player.setSubtitleTrack(SubtitleTrack.auto());
-        _updateSubVisibility(SubtitleTrack.auto());
-      },
-      onManualSelect: () => setState(() => _subtitlePinned = true),
+      onSubtitleSelected: () => setState(() => _subtitlePinned = true),
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 88,
@@ -1248,7 +1256,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
                     child: IptvFloatingEpg(
                       key: ValueKey(_currentChannelId),
                       future: epgFuture,
-                      maxWidth: compact ? 360 : 420,
+                      maxWidth: compact ? 440 : 540,
                     ),
                   ),
                 ),

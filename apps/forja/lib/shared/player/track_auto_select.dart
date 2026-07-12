@@ -179,6 +179,57 @@ bool _isUnsupportedAudio(AudioTrack t) {
   return false;
 }
 
+int _scoreAudioTrack(
+  AudioTrack t, {
+  required String preferredAudioLang,
+  required bool avoidUnsupportedAudio,
+}) {
+  var score = 0;
+  final isMatch = preferredAudioLang != 'None' &&
+      _matchesLanguage(preferredAudioLang, t.language, t.title);
+  if (isMatch) score += 1000;
+
+  final unsupported = _isUnsupportedAudio(t);
+  if (avoidUnsupportedAudio && unsupported) {
+    score -= 500;
+  }
+  final s = '${t.codec ?? ''} ${t.title ?? ''}'.toLowerCase();
+  if (s.contains('ac3') ||
+      s.contains('eac3') ||
+      s.contains('aac') ||
+      s.contains('opus') ||
+      s.contains('mp3')) {
+    score += 10;
+  }
+  return score;
+}
+
+/// Picks the best concrete audio track for auto mode — never returns `auto`/`no`.
+AudioTrack? pickBestAudioTrack({
+  required List<AudioTrack> audioTracks,
+  required String preferredAudioLang,
+  required bool avoidUnsupportedAudio,
+}) {
+  final realAudio =
+      audioTracks.where((t) => t.id != 'no' && t.id != 'auto').toList();
+  if (realAudio.isEmpty) return null;
+
+  var bestScore = -1;
+  AudioTrack? best;
+  for (final t in realAudio) {
+    final score = _scoreAudioTrack(
+      t,
+      preferredAudioLang: preferredAudioLang,
+      avoidUnsupportedAudio: avoidUnsupportedAudio,
+    );
+    if (score > bestScore) {
+      bestScore = score;
+      best = t;
+    }
+  }
+  return best;
+}
+
 class AutoSelectResult {
   final AudioTrack? audio;
   final SubtitleTrack? subtitle;
@@ -205,58 +256,31 @@ AutoSelectResult computeAutoSelect({
   bool clearSub = false;
 
   // ── AUDIO ───────────────────────────────────────────────────────────────
-  final realAudio =
-      audioTracks.where((t) => t.id != 'no' && t.id != 'auto').toList();
+  final best = pickBestAudioTrack(
+    audioTracks: audioTracks,
+    preferredAudioLang: preferredAudioLang,
+    avoidUnsupportedAudio: avoidUnsupportedAudio,
+  );
 
-  if (realAudio.isNotEmpty) {
-    int bestScore = -1;
-    AudioTrack? best;
-    for (final t in realAudio) {
-      int score = 0;
-      final isMatch = preferredAudioLang != 'None' &&
-          _matchesLanguage(preferredAudioLang, t.language, t.title);
-      if (isMatch) score += 1000;
+  if (best != null && best.id != currentAudio.id) {
+    final bool currentMatches = preferredAudioLang != 'None' &&
+        _matchesLanguage(
+            preferredAudioLang, currentAudio.language, currentAudio.title);
+    final bool currentIsBad =
+        avoidUnsupportedAudio && _isUnsupportedAudio(currentAudio);
+    final bool bestMatches = preferredAudioLang != 'None' &&
+        _matchesLanguage(preferredAudioLang, best.language, best.title);
+    final bool bestIsBad =
+        avoidUnsupportedAudio && _isUnsupportedAudio(best);
 
-      final unsupported = _isUnsupportedAudio(t);
-      if (avoidUnsupportedAudio && unsupported) {
-        score -= 500; // strong penalty but a matching unsupported track still
-                       // beats a non-matching one
-      }
-      // Mild boost for "mainstream" stereo/5.1 codecs we know work.
-      final s = '${t.codec ?? ''} ${t.title ?? ''}'.toLowerCase();
-      if (s.contains('ac3') || s.contains('eac3') || s.contains('aac') ||
-          s.contains('opus') || s.contains('mp3')) {
-        score += 10;
-      }
-      if (score > bestScore) {
-        bestScore = score;
-        best = t;
-      }
-    }
-
-    // Only switch if our pick is meaningfully better than what's already on:
-    // - language preference set + currently playing the wrong language → switch
-    // - avoid-unsupported on + currently on an unsupported track + we found a supported one → switch
-    if (best != null && best.id != currentAudio.id) {
-      final bool currentMatches = preferredAudioLang != 'None' &&
-          _matchesLanguage(
-              preferredAudioLang, currentAudio.language, currentAudio.title);
-      final bool currentIsBad =
-          avoidUnsupportedAudio && _isUnsupportedAudio(currentAudio);
-      final bool bestMatches = preferredAudioLang != 'None' &&
-          _matchesLanguage(preferredAudioLang, best.language, best.title);
-      final bool bestIsBad =
-          avoidUnsupportedAudio && _isUnsupportedAudio(best);
-
-      final shouldSwitch =
-          (preferredAudioLang != 'None' && bestMatches && !currentMatches) ||
-              (currentIsBad && !bestIsBad);
-      if (shouldSwitch) {
-        audioPick = best;
-        debugPrint(
-            '[TrackAutoSelect] audio → ${best.title ?? best.language ?? best.id} '
-            '(codec=${best.codec}, channels=${best.channels})');
-      }
+    final shouldSwitch =
+        (preferredAudioLang != 'None' && bestMatches && !currentMatches) ||
+            (currentIsBad && !bestIsBad);
+    if (shouldSwitch) {
+      audioPick = best;
+      debugPrint(
+          '[TrackAutoSelect] audio → ${best.title ?? best.language ?? best.id} '
+          '(codec=${best.codec}, channels=${best.channels})');
     }
   }
 

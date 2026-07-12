@@ -15,10 +15,6 @@ class PlayerStreamMenuState {
     required this.currentUrl,
     required this.current111477FileUrl,
     required this.is111477,
-    required this.providerAuto,
-    required this.sourceAuto,
-    this.activeProviderLabel,
-    this.activeSourceTitle,
     this.sourceStatuses = const [],
   });
 
@@ -27,10 +23,6 @@ class PlayerStreamMenuState {
   final String? currentUrl;
   final String? current111477FileUrl;
   final bool is111477;
-  final bool providerAuto;
-  final bool sourceAuto;
-  final String? activeProviderLabel;
-  final String? activeSourceTitle;
   final List<PlayerSourceStatus> sourceStatuses;
 }
 
@@ -77,8 +69,6 @@ class PlayerStreamMenu {
     required PlayerStreamMenuState Function() readState,
     required Future<List<StreamSource>?> Function(String providerId)
         onSelectProvider,
-    required Future<void> Function() onSelectAutoProvider,
-    required Future<void> Function() onSelectAutoSource,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     bool providersEnabled = true,
     bool sourcesOnly = false,
@@ -102,7 +92,6 @@ class PlayerStreamMenu {
       await _openSources(
         context,
         readState: readState,
-        onSelectAutoSource: onSelectAutoSource,
         onSelectSource: onSelectSource,
         margin: margin,
         anchorContext: anchorContext,
@@ -121,8 +110,6 @@ class PlayerStreamMenu {
         providerProbesNotifier: providerProbesNotifier,
         readState: readState,
         onSelectProvider: onSelectProvider,
-        onSelectAutoProvider: onSelectAutoProvider,
-        onSelectAutoSource: onSelectAutoSource,
         onSelectSource: onSelectSource,
         providersEnabled: providersEnabled,
         margin: margin,
@@ -135,7 +122,6 @@ class PlayerStreamMenu {
       await _openSources(
         context,
         readState: readState,
-        onSelectAutoSource: onSelectAutoSource,
         onSelectSource: onSelectSource,
         margin: margin,
         anchorContext: anchorContext,
@@ -154,8 +140,6 @@ class PlayerStreamMenu {
     required PlayerStreamMenuState Function() readState,
     required Future<List<StreamSource>?> Function(String providerId)
         onSelectProvider,
-    required Future<void> Function() onSelectAutoProvider,
-    required Future<void> Function() onSelectAutoSource,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     required bool providersEnabled,
     required EdgeInsets margin,
@@ -171,16 +155,6 @@ class PlayerStreamMenu {
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
         children: [
-          PlayerPopupListTile(
-            badge: 'AUTO',
-            label: 'Auto',
-            subtitle: state.providerAuto ? state.activeProviderLabel : null,
-            selected: state.providerAuto,
-            onTap: () async {
-              PlayerPopupPanel.dismiss();
-              await onSelectAutoProvider();
-            },
-          ),
           ...providers.entries.map((entry) {
             final key = entry.key;
             final provider = entry.value;
@@ -194,7 +168,7 @@ class PlayerStreamMenu {
             final status = _providerStatus(
               key,
               probes,
-              isCurrent: isCurrent && !state.providerAuto,
+              isCurrent: isCurrent,
             );
             return PlayerPopupListTile(
               badge: flags.isEmpty ? null : flags,
@@ -203,7 +177,7 @@ class PlayerStreamMenu {
                 fallbackName: fallbackName,
                 contentLanguage: contentLanguage,
               ),
-              selected: !state.providerAuto && isCurrent,
+              selected: isCurrent,
               status: status,
               trailing: const Icon(
                 Icons.chevron_right_rounded,
@@ -229,7 +203,6 @@ class PlayerStreamMenu {
                 await _openSources(
                   context,
                   readState: readState,
-                  onSelectAutoSource: onSelectAutoSource,
                   onSelectSource: onSelectSource,
                   margin: margin,
                   anchorContext: anchorContext,
@@ -242,8 +215,6 @@ class PlayerStreamMenu {
                     providerProbesNotifier: providerProbesNotifier,
                     readState: readState,
                     onSelectProvider: onSelectProvider,
-                    onSelectAutoProvider: onSelectAutoProvider,
-                    onSelectAutoSource: onSelectAutoSource,
                     onSelectSource: onSelectSource,
                     providersEnabled: providersEnabled,
                     margin: margin,
@@ -280,7 +251,6 @@ class PlayerStreamMenu {
   static Future<void> _openSources(
     BuildContext context, {
     required PlayerStreamMenuState Function() readState,
-    required Future<void> Function() onSelectAutoSource,
     required Future<void> Function(StreamSource source, int index) onSelectSource,
     required EdgeInsets margin,
     BuildContext? anchorContext,
@@ -298,17 +268,6 @@ class PlayerStreamMenu {
         padding: const EdgeInsets.all(8),
         shrinkWrap: true,
         children: [
-          PlayerPopupListTile(
-            badge: 'AUTO',
-            badgeColor: playerSourceBadgeColor('AUTO'),
-            label: 'Auto',
-            subtitle: state.sourceAuto ? state.activeSourceTitle : null,
-            selected: state.sourceAuto,
-            onTap: () async {
-              PlayerPopupPanel.dismiss();
-              await onSelectAutoSource();
-            },
-          ),
           ...sources.asMap().entries.map((entry) {
             final index = entry.key;
             final source = entry.value;
@@ -322,7 +281,7 @@ class PlayerStreamMenu {
               badge: source.type.toUpperCase(),
               badgeColor: playerSourceBadgeColor(source.type),
               label: source.title,
-              selected: !state.sourceAuto && isCurrent,
+              selected: isCurrent,
               status: status,
               onTap: () async {
                 PlayerPopupPanel.dismiss();
@@ -367,6 +326,7 @@ class PlayerStreamMenu {
     for (final probe in probes) {
       if (probe.id != providerId) continue;
       return switch (probe.status) {
+        StreamProviderProbeStatus.pending => null,
         StreamProviderProbeStatus.trying => PlayerSourceStatus.checking,
         StreamProviderProbeStatus.failed => PlayerSourceStatus.failed,
         StreamProviderProbeStatus.success => PlayerSourceStatus.ready,

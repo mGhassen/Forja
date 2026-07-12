@@ -32,7 +32,7 @@ class WebStreamrService {
     int? episode,
     int? tmdbId,
   }) async {
-    final generation = ++_resolveGeneration;
+    final generation = _resolveGeneration;
     try {
       await init();
       if (!Engine.isReady) {

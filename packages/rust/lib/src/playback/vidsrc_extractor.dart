@@ -45,7 +45,7 @@ class VidsrcExtractor {
       return null;
     }
 
-    final gen = ++_resolveGeneration;
+    final gen = _resolveGeneration;
 
     try {
       final req = jsonEncode({

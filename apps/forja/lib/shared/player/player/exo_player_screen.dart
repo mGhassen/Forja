@@ -455,8 +455,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                                 trailing: widget.onSwitchPlayer != null
                                     ? PlayerTopBarActions(
                                         showPlayer: true,
-                                        onPlayer: () => unawaited(
-                                          _showPlayerMenu(context),
+                                        onPlayer: (anchorContext) => unawaited(
+                                          _showPlayerMenu(anchorContext),
                                         ),
                                       )
                                     : null,
@@ -570,8 +570,8 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                       trailing: widget.onSwitchPlayer != null
                           ? PlayerTopBarActions(
                               showPlayer: true,
-                              onPlayer: () => unawaited(
-                                _showPlayerMenu(context),
+                              onPlayer: (anchorContext) => unawaited(
+                                _showPlayerMenu(anchorContext),
                               ),
                             )
                           : null,

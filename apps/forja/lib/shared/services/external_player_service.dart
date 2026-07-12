@@ -348,11 +348,14 @@ class ExternalPlayerService {
       return false;
     }
 
-    var args = player.desktopArgs?.call(url, title, headers) ?? [url];
+    final playerArgs = player.desktopArgs?.call(url, title, headers) ?? [url];
 
-    // macOS: when using 'open', prepend -a <AppPath> before user args
+    // macOS: `open` only accepts its own flags; player args need `--args`.
+    final List<String> args;
     if (Platform.isMacOS && executable == 'open' && player.macAppPath != null) {
-      args = ['-a', player.macAppPath!, ...args];
+      args = ['-a', player.macAppPath!, '--args', ...playerArgs];
+    } else {
+      args = playerArgs;
     }
 
     debugPrint('[ExternalPlayer] Launching: $executable ${args.join(' ')}');

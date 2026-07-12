@@ -1,3 +1,7 @@
+# Sole source of version bumps, git tags (v*), and GitHub Releases.
+# Per-push auto-tagging removed. On manual dispatch this workflow first
+# backfills a patch tag for every untagged commit on main (one tag per push,
+# oldest first), then bumps + commits + tags the release itself.
 name: Release Forja
 
 on:
@@ -69,6 +73,41 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Backfill tags for untagged commits
+        run: |
+          git fetch origin --tags --force
+          latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
+          if [[ -n "$latest" ]]; then
+            base_semver="${latest#v}"
+            range="${latest}..HEAD"
+          else
+            base_semver="$(grep '^version:' apps/forja/pubspec.yaml | sed 's/version: *//' | cut -d+ -f1)"
+            range="HEAD"
+          fi
+          IFS=. read -r major minor patch <<<"$base_semver"
+          made=0
+          # Oldest first so tag order matches commit order.
+          for sha in $(git rev-list --reverse "$range"); do
+            # Skip commits that already carry a v* tag.
+            if git tag --points-at "$sha" | grep -q '^v[0-9]'; then
+              continue
+            fi
+            patch=$((patch + 1))
+            tag="v${major}.${minor}.${patch}"
+            while git rev-parse "$tag" >/dev/null 2>&1; do
+              patch=$((patch + 1))
+              tag="v${major}.${minor}.${patch}"
+            done
+            git tag -a "$tag" -m "Forja ${major}.${minor}.${patch}" "$sha"
+            echo "Backfilled $tag -> $sha"
+            made=$((made + 1))
+          done
+          if [[ "$made" -gt 0 ]]; then
+            git push origin --tags
+          else
+            echo "No untagged commits to backfill."
+          fi
 
       - name: Bump version
         id: bump

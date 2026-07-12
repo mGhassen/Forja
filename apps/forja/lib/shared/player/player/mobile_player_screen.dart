@@ -572,6 +572,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // ── Provider initialization ──────────────────────────────────────────
     _currentProvider = widget.activeProvider;
     _sourcePinned = widget.pinSource;
+    unawaited(_loadPlayerAutoSettings());
     _currentSources = widget.sources == null
         ? null
         : dedupeStreamSources(widget.sources!);
@@ -1060,6 +1061,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       }
 
       try {
+        _autoTracksAppliedForSource = false;
         _durationNotifier.value = Duration.zero;
         _positionNotifier.value = Duration.zero;
         _bufferedNotifier.value = Duration.zero;
@@ -1446,6 +1448,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           if (_player.platform is! NativePlayer) return;
           await (_player.platform as NativePlayer).setProperty('hwdec', 'no');
         },
+        onRecoverAudio: _recoverAudioTrack,
       );
     }
 
@@ -1650,28 +1653,44 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   }
 
   Future<void> _applyTrackAutoSelect() async {
-    if (_disposed) return;
+    if (_disposed || _audioPinned) return;
     try {
       final settings = SettingsService();
       final audioLang = await settings.getPreferredAudioLanguage();
       final avoidUnsupported = await settings.getAvoidUnsupportedAudio();
-      if (audioLang == 'None' && !avoidUnsupported) return;
 
-      final result = computeAutoSelect(
+      final best = pickBestAudioTrack(
         audioTracks: _player.state.tracks.audio,
-        subtitleTracks: _player.state.tracks.subtitle,
-        currentAudio: _player.state.track.audio,
-        currentSubtitle: _player.state.track.subtitle,
         preferredAudioLang: audioLang,
-        preferredSubtitleLang: 'None',
         avoidUnsupportedAudio: avoidUnsupported,
       );
-      if (!result.hasAny) return;
-      if (result.audio != null) {
-        await _player.setAudioTrack(result.audio!);
+      if (best == null) return;
+
+      final current = _player.state.track.audio;
+      if (current.id == best.id &&
+          current.id != 'auto' &&
+          current.id != 'no') {
+        if (!_subtitlePinned) await _applyAutoSubtitle();
+        return;
       }
+
+      await _player.setAudioTrack(best);
+      debugPrint(
+        '[Player] auto audio → ${best.title ?? best.language ?? best.id}',
+      );
+      if (!_subtitlePinned) await _applyAutoSubtitle();
     } catch (e) {
       debugPrint('[Player] track auto-select failed: $e');
+    }
+  }
+
+  Future<void> _recoverAudioTrack() async {
+    if (_disposed || _audioPinned) return;
+    try {
+      _autoTracksAppliedForSource = false;
+      await _applyTrackAutoSelect();
+    } catch (e) {
+      debugPrint('[Player] audio recovery failed: $e');
     }
   }
 
@@ -2177,29 +2196,21 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       externalSubtitles: _externalSubtitles,
       selectedExternalSubUrl: _selectedExternalSubUrl,
       isFetchingSubs: _isFetchingSubs,
-      subtitlePinned: _subtitlePinned,
       updateSubVisibility: _updateSubVisibility,
       onExternalUrlChanged: (url) => setState(() => _selectedExternalSubUrl = url),
       onNativeSubtitleChanged: (v) => setState(() => _isNativeSubtitle = v),
       loadOnlineSubtitle: _loadOnlineSubtitle,
       onSubtitleSettings: _showSubtitleSettings,
-      onSelectAuto: _selectAutoSubtitle,
-      onManualSelect: () => setState(() => _subtitlePinned = true),
+      onSubtitleSelected: () async {
+        await SettingsService().setPlayerAutoSubtitle(false);
+        setState(() => _subtitlePinned = true);
+      },
       excludeKnownExternalEmbedded: true,
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 76,
       ),
     );
-  }
-
-  Future<void> _selectAutoSubtitle() async {
-    setState(() {
-      _subtitlePinned = false;
-      _selectedExternalSubUrl = null;
-    });
-    await _player.setSubtitleTrack(SubtitleTrack.auto());
-    _updateSubVisibility(SubtitleTrack.auto());
   }
 
   void _showSubtitleSettings() {
@@ -2448,21 +2459,16 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     PlayerAudioMenu.show(
       context,
       player: _player,
-      audioPinned: _audioPinned,
-      onSelectAuto: _selectAutoAudio,
-      onManualSelect: () => setState(() => _audioPinned = true),
+      onTrackSelected: () async {
+        await SettingsService().setPlayerAutoAudio(false);
+        setState(() => _audioPinned = true);
+      },
       anchorContext: anchorContext,
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 76,
       ),
     );
-  }
-
-  Future<void> _selectAutoAudio() async {
-    setState(() => _audioPinned = false);
-    await _player.setAudioTrack(AudioTrack.auto());
-    await _applyTrackAutoSelect();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -2639,40 +2645,12 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   }
 
   PlayerStreamMenuState _streamMenuState() {
-    String? activeSourceTitle;
-    final sources = _currentSources;
-    if (sources != null && sources.isNotEmpty) {
-      for (final source in sources) {
-        final isCurrent = _currentProvider == 'service111477'
-            ? source.url == _current111477FileUrl
-            : source.url == _currentUrl;
-        if (isCurrent) {
-          activeSourceTitle = source.title;
-          break;
-        }
-      }
-    }
-
-    String? activeProviderLabel;
-    final providerId = _currentProvider;
-    final providers = widget.providers;
-    if (providerId != null && providers != null && providers.containsKey(providerId)) {
-      activeProviderLabel = PlayerProviderMenu.snackbarLabel(
-        providerId,
-        providers[providerId],
-      );
-    }
-
     return PlayerStreamMenuState(
       currentProviderId: _currentProvider,
       sources: _currentSources,
       currentUrl: _currentUrl,
       current111477FileUrl: _current111477FileUrl,
       is111477: _currentProvider == 'service111477',
-      providerAuto: !_providerPinned,
-      sourceAuto: !_sourcePinned,
-      activeProviderLabel: activeProviderLabel,
-      activeSourceTitle: activeSourceTitle,
       sourceStatuses: _buildSourceStatuses(),
     );
   }
@@ -2695,8 +2673,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       context,
       readState: _streamMenuState,
       onSelectProvider: _switchProvider,
-      onSelectAutoProvider: _selectAutoProvider,
-      onSelectAutoSource: _selectAutoSource,
       onSelectSource: _switchToStreamSource,
       sourcesOnly: true,
       anchorContext: anchorContext,
@@ -2723,8 +2699,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
       providerProbesNotifier: widget.providerProbesNotifier,
       readState: _streamMenuState,
       onSelectProvider: _switchProvider,
-      onSelectAutoProvider: _selectAutoProvider,
-      onSelectAutoSource: _selectAutoSource,
       onSelectSource: _switchToStreamSource,
       providersEnabled: !_isSwitchingProvider,
       anchorContext: anchorContext,
@@ -2806,6 +2780,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     if (isCurrent && _sourcePinned) return;
 
     if (isCurrent && !_sourcePinned) {
+      await SettingsService().setPlayerAutoSource(false);
       setState(() => _sourcePinned = true);
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
       _startHideTimer();
@@ -2813,6 +2788,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     }
 
     _sourcePinned = true;
+    unawaited(SettingsService().setPlayerAutoSource(false));
     final switchGen = ++_fallbackGen;
     _markSourceChecking(index);
 
@@ -3317,7 +3293,41 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _startHideTimer();
   }
 
+  Future<void> _applyAutoSubtitle() async {
+    if (_disposed || _subtitlePinned) return;
+    final embedded = _player.state.tracks.subtitle
+        .where((t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'))
+        .toList();
+    if (embedded.isEmpty) return;
+    final track = embedded.first;
+    await _player.setSubtitleTrack(track);
+    _updateSubVisibility(track);
+    if (mounted) setState(() => _selectedExternalSubUrl = null);
+  }
+
+  Future<void> _loadPlayerAutoSettings() async {
+    final settings = SettingsService();
+    final autoServer = await settings.getPlayerAutoServer();
+    final autoSource = await settings.getPlayerAutoSource();
+    final autoAudio = await settings.getPlayerAutoAudio();
+    final autoSubtitle = await settings.getPlayerAutoSubtitle();
+    if (!mounted) return;
+    setState(() {
+      _providerPinned = !autoServer;
+      if (!widget.pinSource) _sourcePinned = !autoSource;
+      _audioPinned = !autoAudio;
+      _subtitlePinned = !autoSubtitle;
+    });
+  }
+
   void _showSettingsMenu(BuildContext anchorContext) {
+    final hasProviders = widget.providers != null &&
+        widget.providers!.isNotEmpty &&
+        widget.movie != null &&
+        widget.magnetLink == null &&
+        widget.activeProvider != 'stremio_direct';
+    final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
+
     PlayerPopupPanel.show(
       context: context,
       title: 'Settings',
@@ -3328,6 +3338,95 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
             padding: const EdgeInsets.all(8),
             shrinkWrap: true,
             children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
+                child: Text(
+                  'Auto selection',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+              if (hasProviders)
+                PlayerPopupListTile(
+                  label: 'Auto server',
+                  subtitle: !_providerPinned ? 'On' : 'Off',
+                  selected: !_providerPinned,
+                  onTap: () async {
+                    final settings = SettingsService();
+                    if (_providerPinned) {
+                      await settings.setPlayerAutoServer(true);
+                      setState(() => _providerPinned = false);
+                      setPanelState(() {});
+                      await _selectAutoProvider();
+                    } else {
+                      await settings.setPlayerAutoServer(false);
+                      setState(() => _providerPinned = true);
+                      setPanelState(() {});
+                    }
+                  },
+                ),
+              if (hasSources)
+                PlayerPopupListTile(
+                  label: 'Auto source',
+                  subtitle: !_sourcePinned ? 'On' : 'Off',
+                  selected: !_sourcePinned,
+                  onTap: () async {
+                    final settings = SettingsService();
+                    if (_sourcePinned) {
+                      await settings.setPlayerAutoSource(true);
+                      setState(() => _sourcePinned = false);
+                      setPanelState(() {});
+                      await _selectAutoSource();
+                    } else {
+                      await settings.setPlayerAutoSource(false);
+                      setState(() => _sourcePinned = true);
+                      setPanelState(() {});
+                    }
+                  },
+                ),
+              PlayerPopupListTile(
+                label: 'Auto audio',
+                subtitle: !_audioPinned ? 'On' : 'Off',
+                selected: !_audioPinned,
+                onTap: () async {
+                  final settings = SettingsService();
+                  if (_audioPinned) {
+                    await settings.setPlayerAutoAudio(true);
+                    setState(() => _audioPinned = false);
+                    setPanelState(() {});
+                    _autoTracksAppliedForSource = false;
+                    await _applyTrackAutoSelect();
+                  } else {
+                    await settings.setPlayerAutoAudio(false);
+                    setState(() => _audioPinned = true);
+                    setPanelState(() {});
+                  }
+                },
+              ),
+              PlayerPopupListTile(
+                label: 'Auto subtitles',
+                subtitle: !_subtitlePinned ? 'On' : 'Off',
+                selected: !_subtitlePinned,
+                onTap: () async {
+                  final settings = SettingsService();
+                  if (_subtitlePinned) {
+                    await settings.setPlayerAutoSubtitle(true);
+                    setState(() => _subtitlePinned = false);
+                    setPanelState(() {});
+                    await _applyAutoSubtitle();
+                  } else {
+                    await settings.setPlayerAutoSubtitle(false);
+                    setState(() => _subtitlePinned = true);
+                    setPanelState(() {});
+                  }
+                },
+              ),
+              const Divider(height: 1, color: Color(0xFF2A2A2A)),
+              const SizedBox(height: 4),
               Padding(
                 padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
                 child: Column(
@@ -3415,6 +3514,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     _providerPinned = true;
     _sourcePinned = false;
+    unawaited(SettingsService().setPlayerAutoServer(false));
 
     final gen = ++_fallbackGen;
     WebStreamrService().cancelPending();
@@ -3976,6 +4076,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
         ((_activeMagnet ?? widget.magnetLink)?.isNotEmpty ?? false);
     final btnSize = 38.0;
     final iconSz = 20.0;
+    final compact = MediaQuery.sizeOf(context).width < 700;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
       hasStatusMessage: _hasError,
@@ -4014,7 +4115,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
           trailing: PlayerTopBarActions(
             showPlayer: widget.onSwitchPlayer != null,
             onPlayer: widget.onSwitchPlayer != null
-                ? () => unawaited(_showPlayerMenu(context))
+                ? (anchorContext) => unawaited(_showPlayerMenu(anchorContext))
                 : null,
             showCast: CastingService.instance.isAirPlayAvailable ||
                 CastingService.instance.isChromecastAvailable,
@@ -4205,15 +4306,20 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                         _startHideTimer();
                       },
                     ),
-                    PlayerFlatIconButton(
-                      tvFocusable: tvFocus,
-                      icon: Icons.volume_up_rounded,
+                    PlayerVolumeControl(
+                      volume: _volume,
+                      maxVolume: 150,
                       size: btnSize,
                       iconSize: iconSz,
-                      onPressed: () {
-                        _player.setVolume(_volume > 0 ? 0.0 : 100.0);
-                        _startHideTimer();
+                      tvFocusable: tvFocus,
+                      compact: compact,
+                      onVolumeChanged: (v) {
+                        setState(() => _volume = v);
+                        _player.setVolume(v);
                       },
+                      onInteraction: _startHideTimer,
+                      onDragStart: () => _hideTimer?.cancel(),
+                      onDragEnd: _startHideTimer,
                     ),
                     const SizedBox(width: 6),
                     ValueListenableBuilder<Duration>(

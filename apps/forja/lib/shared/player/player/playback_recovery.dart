@@ -11,14 +11,17 @@ class PlaybackRecovery {
     required this.player,
     required this.onRetryNextSource,
     this.onForceSoftwareDecode,
+    this.onRecoverAudio,
   });
 
   final Player player;
   final VoidCallback onRetryNextSource;
   final Future<void> Function()? onForceSoftwareDecode;
+  final Future<void> Function()? onRecoverAudio;
 
   bool softwareDecodeForced = false;
   bool hwFallbackAttempted = false;
+  bool _audioRecoveryAttempted = false;
 
   void handleMpvLog(String text) {
     final lower = text.toLowerCase();
@@ -31,6 +34,13 @@ class PlaybackRecovery {
       debugPrint('[PlaybackRecovery] hw decode failed — falling back');
       hwFallbackAttempted = true;
       unawaited(_forceSoftwareDecode());
+    }
+    if (!_audioRecoveryAttempted &&
+        onRecoverAudio != null &&
+        isAudioDecoderLog(text)) {
+      debugPrint('[PlaybackRecovery] audio decode failed — recovering');
+      _audioRecoveryAttempted = true;
+      unawaited(onRecoverAudio!());
     }
   }
 

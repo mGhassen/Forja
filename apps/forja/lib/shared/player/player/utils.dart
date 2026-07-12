@@ -70,9 +70,22 @@ bool isVideoDecoderError(String err) {
 
 bool isAudioDecoderError(String err) {
   if (err.isEmpty) return false;
-  return err.contains('Error decoding audio') ||
-      (err.toLowerCase().contains('failed to initialize a decoder') &&
-          err.toLowerCase().contains('audio'));
+  return isAudioDecoderLog(err);
+}
+
+/// mpv log / error text that indicates the active audio track failed to decode.
+bool isAudioDecoderLog(String text) {
+  if (text.isEmpty) return false;
+  final lower = text.toLowerCase();
+  if (lower.contains('error decoding audio')) return true;
+  if (lower.contains('failed to initialize a decoder') &&
+      lower.contains('audio')) {
+    return true;
+  }
+  if (lower.contains('could not open codec') && lower.contains('audio')) {
+    return true;
+  }
+  return false;
 }
 
 bool isIgnorablePlayerError(String err) {

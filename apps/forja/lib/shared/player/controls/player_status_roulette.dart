@@ -104,6 +104,7 @@ class PlayerStatusController extends ChangeNotifier {
 
 List<StatusRouletteEntry> statusEntriesFromProbes(List<StreamProviderProbe> probes) {
   return probes
+      .where((probe) => probe.status != StreamProviderProbeStatus.pending)
       .map(
         (probe) => StatusRouletteEntry(
           id: probe.id,
@@ -112,6 +113,7 @@ List<StatusRouletteEntry> statusEntriesFromProbes(List<StreamProviderProbe> prob
             StreamProviderProbeStatus.trying => StatusRouletteKind.loading,
             StreamProviderProbeStatus.failed => StatusRouletteKind.failed,
             StreamProviderProbeStatus.success => StatusRouletteKind.success,
+            StreamProviderProbeStatus.pending => StatusRouletteKind.info,
           },
           highlight: probe.isPreferred,
         ),

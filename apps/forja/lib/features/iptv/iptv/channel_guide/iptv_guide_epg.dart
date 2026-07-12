@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
+import 'package:forja/shared/widgets/hero_overview_text.dart';
 
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
@@ -350,10 +351,9 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
           ],
           if (nowEntry.description.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              nowEntry.description,
+            HeroOverviewText(
+              overview: nowEntry.description,
               maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.poppins(
                 color: Colors.white54,
                 fontSize: 12,
@@ -466,22 +466,20 @@ class IptvFloatingEpg extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.45),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: IptvGuideEpgCard(future: future, floating: true),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
+        child: IptvGuideEpgCard(future: future, floating: true),
       ),
     );
   }

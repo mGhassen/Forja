@@ -1,4 +1,4 @@
-enum StreamProviderProbeStatus { trying, success, failed }
+enum StreamProviderProbeStatus { pending, trying, success, failed }
 
 class StreamProviderProbe {
   const StreamProviderProbe({

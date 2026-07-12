@@ -94,8 +94,13 @@ class PlayerPopupPanel {
     _entry = OverlayEntry(
       builder: (overlayContext) {
         final overlaySize = MediaQuery.sizeOf(overlayContext);
-        final anchorRect = anchorContext != null
+        final rawAnchorRect = anchorContext != null
             ? _anchorRectInOverlay(anchorContext, overlayContext)
+            : null;
+        // Mis-anchored to a full-screen context places the panel off-screen.
+        final anchorRect = rawAnchorRect != null &&
+                rawAnchorRect.height < overlaySize.height * 0.25
+            ? rawAnchorRect
             : null;
         final reserveAbove = anchorRect == null
             ? 0.0

@@ -574,22 +574,30 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     var found = false;
 
     try {
-      // Only mark the first domain provider as trying — others resolve on click.
       final orderedKeys = SourceEngine.orderProviderIds(
         domain: SourceDomain.fromMediaType(_movie.mediaType),
         candidateIds: providers.keys,
         settingsOrder: _webstreamingProviderOrder,
       );
       if (orderedKeys.isNotEmpty) {
-        final first = orderedKeys.first;
         probeNotifier.value = [
-          StreamProviderProbe(
-            id: first,
-            label: _webstreamingProviderLabel(first),
-            status: StreamProviderProbeStatus.trying,
-            isPreferred: true,
-          ),
+          for (var i = 0; i < orderedKeys.length; i++)
+            StreamProviderProbe(
+              id: orderedKeys[i],
+              label: _webstreamingProviderLabel(orderedKeys[i]),
+              status: StreamProviderProbeStatus.pending,
+              isPreferred: i == 0,
+            ),
         ];
+      }
+
+      StreamProviderProbeStatus probeStatusFromProgress(String status) {
+        return switch (status) {
+          'success' => StreamProviderProbeStatus.success,
+          'failed' => StreamProviderProbeStatus.failed,
+          'trying' => StreamProviderProbeStatus.trying,
+          _ => StreamProviderProbeStatus.pending,
+        };
       }
 
       void syncResolvedHits(List<PlaybackResolveHit> hits) {
@@ -616,6 +624,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
         onHitsUpdated: syncResolvedHits,
         onProgress: (providerId, status) {
           if (!mounted) return;
+          final nextStatus = probeStatusFromProgress(status);
           final existing = probeNotifier.value;
           final idx = existing.indexWhere((p) => p.id == providerId);
           if (idx < 0) {
@@ -624,11 +633,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
               StreamProviderProbe(
                 id: providerId,
                 label: _webstreamingProviderLabel(providerId),
-                status: status == 'success'
-                    ? StreamProviderProbeStatus.success
-                    : status == 'failed'
-                        ? StreamProviderProbeStatus.failed
-                        : StreamProviderProbeStatus.trying,
+                status: nextStatus,
                 isPreferred: existing.isEmpty,
               ),
             ];
@@ -637,13 +642,7 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
           probeNotifier.value = existing
               .map(
                 (probe) => probe.id == providerId
-                    ? probe.copyWith(
-                        status: status == 'success'
-                            ? StreamProviderProbeStatus.success
-                            : status == 'failed'
-                                ? StreamProviderProbeStatus.failed
-                                : StreamProviderProbeStatus.trying,
-                      )
+                    ? probe.copyWith(status: nextStatus)
                     : probe,
               )
               .toList();

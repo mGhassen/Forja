@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Bump apps/forja semver and increment build number.
-# Default: patch (used by auto-patch-tag.yml on push to main; release.yml on manual dispatch).
+# Default: patch (used by release.yml on manual dispatch).
 # Updates installer/windows/setup.iss MyAppVersion.
 # Prints new version to stdout (for CI: echo "version=$NEW" >> "$GITHUB_OUTPUT").
 

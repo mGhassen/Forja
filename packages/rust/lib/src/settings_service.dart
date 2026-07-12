@@ -56,6 +56,10 @@ class SettingsService {
   static const String _showTorrentStatsOverlayKey = 'show_torrent_stats_overlay';
   static const String _preferredAudioLangKey = 'preferred_audio_lang';
   static const String _avoidUnsupportedAudioKey = 'avoid_unsupported_audio';
+  static const String _playerAutoServerKey = 'player_auto_server';
+  static const String _playerAutoSourceKey = 'player_auto_source';
+  static const String _playerAutoAudioKey = 'player_auto_audio';
+  static const String _playerAutoSubtitleKey = 'player_auto_subtitle';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
 
@@ -90,6 +94,30 @@ class SettingsService {
 
   Future<void> setAvoidUnsupportedAudio(bool v) async =>
       kvSetBool(_avoidUnsupportedAudioKey, v);
+
+  Future<bool> getPlayerAutoServer() async =>
+      kvGetBool(_playerAutoServerKey, fallback: true);
+
+  Future<void> setPlayerAutoServer(bool v) async =>
+      kvSetBool(_playerAutoServerKey, v);
+
+  Future<bool> getPlayerAutoSource() async =>
+      kvGetBool(_playerAutoSourceKey, fallback: true);
+
+  Future<void> setPlayerAutoSource(bool v) async =>
+      kvSetBool(_playerAutoSourceKey, v);
+
+  Future<bool> getPlayerAutoAudio() async =>
+      kvGetBool(_playerAutoAudioKey, fallback: true);
+
+  Future<void> setPlayerAutoAudio(bool v) async =>
+      kvSetBool(_playerAutoAudioKey, v);
+
+  Future<bool> getPlayerAutoSubtitle() async =>
+      kvGetBool(_playerAutoSubtitleKey, fallback: false);
+
+  Future<void> setPlayerAutoSubtitle(bool v) async =>
+      kvSetBool(_playerAutoSubtitleKey, v);
 
   Future<bool> isIptvEpgEnabled() async =>
       kvGetBool(_iptvEpgEnabledKey, fallback: _defaults.iptvEpgEnabled);

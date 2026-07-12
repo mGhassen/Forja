@@ -651,7 +651,7 @@ class NuvioService {
     int? season,
     int? episode,
   }) async {
-    final gen = ++_scraperGeneration;
+    final gen = _scraperGeneration;
     final addons = await listAddons();
     if (gen != _scraperGeneration) return const [];
     NuvioAddon? owner;

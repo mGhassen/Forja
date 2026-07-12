@@ -39,7 +39,7 @@ abstract final class PlaybackService {
       isCancelled: isCancelled,
       onProgress: onProgress,
       onHitsUpdated: onHitsUpdated,
-      maxInFlight: maxInFlight ?? 1,
+      maxInFlight: maxInFlight ?? PlaybackEngine.playStartMaxInFlight,
       fillBackgroundHits: false,
     );
   }

@@ -6,7 +6,7 @@ import 'package:rust/rust.dart';
 
 /// Playback orchestrator — parallel resolve + ranked candidates.
 abstract final class PlaybackEngine {
-  static const maxParallelProviders = 6;
+  static const playStartMaxInFlight = 6;
 
   /// Race providers with limited concurrency. Returns the first successful hit.
   ///
@@ -29,6 +29,15 @@ abstract final class PlaybackEngine {
     final keys = providers.keys.toList();
     if (keys.isEmpty) return null;
     final r = resolver ?? StreamProviderResolver();
+    final taskResolvers = <StreamProviderResolver>[];
+
+    void cancelInFlightResolvers() {
+      for (final taskResolver in taskResolvers) {
+        taskResolver.cancelPending();
+      }
+      taskResolvers.clear();
+      r.cancelPending();
+    }
 
     final launchCompleter = Completer<PlaybackResolveHit?>();
     final hits = <PlaybackResolveHit>[];
@@ -62,7 +71,7 @@ abstract final class PlaybackEngine {
           if (!fillBackgroundHits) {
             stopLaunching = true;
             nextIndex = total;
-            r.cancelPending();
+            cancelInFlightResolvers();
           }
         }
       }
@@ -82,8 +91,17 @@ abstract final class PlaybackEngine {
         nextIndex++;
         inFlight++;
         onProgress?.call(key, 'trying');
+        final taskResolver =
+            maxInFlight > 1 ? StreamProviderResolver() : r;
+        if (maxInFlight > 1) taskResolvers.add(taskResolver);
+        if (kDebugMode && maxInFlight > 1) {
+          debugPrint(
+            '[PlaybackEngine] probing $key '
+            '($inFlight/$maxInFlight in flight, $nextIndex/$total queued)',
+          );
+        }
         _resolveOne(
-          resolver: r,
+          resolver: taskResolver,
           key: key,
           movie: movie,
           season: season,
@@ -93,6 +111,7 @@ abstract final class PlaybackEngine {
           isCancelled: () => cancelled() || stopLaunching,
           onProgress: onProgress,
         ).then((hit) {
+          if (maxInFlight > 1) taskResolvers.remove(taskResolver);
           onResolved(key, hit);
         }).catchError((Object e, StackTrace st) {
           debugPrint('[PlaybackEngine] $key failed: $e\n$st');

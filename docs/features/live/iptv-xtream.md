@@ -25,7 +25,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Play in the IPTV player screen
 - Change live channels from the in-player channel guide (groups + channel list overlay)
 - Search channels from the in-player search overlay (matches name or category) — dismiss with the borderless **Close** control in the header
-- View programme guide (NOW / NEXT with progress) as a floating card at the bottom-right of the player when your portal provides EPG
+- View programme guide (NOW / NEXT with progress) as a floating card at the bottom-right of the player when your portal provides EPG — tap **Read More** on the current programme description to expand it inline
 - Switch audio tracks and subtitles from the player controls when the stream provides them
 
 ## Setup

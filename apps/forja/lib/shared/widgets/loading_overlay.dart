@@ -150,7 +150,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   int get _probeTotal => _probes.length;
 
   int get _probeChecked => _probes
-      .where((p) => p.status != StreamProviderProbeStatus.trying)
+      .where(
+        (p) =>
+            p.status != StreamProviderProbeStatus.trying &&
+            p.status != StreamProviderProbeStatus.pending,
+      )
       .length;
 
   int get _probeReady => _probes
