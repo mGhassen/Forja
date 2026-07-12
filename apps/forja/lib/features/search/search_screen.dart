@@ -669,6 +669,29 @@ class SearchScreenState extends State<SearchScreen>
     }
   }
 
+  /// TV: OK / Enter after typing — run pending search and focus first result card.
+  void _submitSearchField() {
+    if (!_tvFocus(context)) return;
+    final query = _controller.text.trim();
+    if (query.isEmpty) return;
+
+    final hadPendingDebounce = _debounce?.isActive ?? false;
+    _debounce?.cancel();
+
+    if (_searchFieldEditing && mounted) {
+      setState(() => _searchFieldEditing = false);
+      ShellBus.notifyShellChromeChanged();
+    }
+
+    _pendingGridFocusIndex = 0;
+
+    if (hadPendingDebounce) {
+      _performUnifiedSearch(query);
+    }
+
+    _scheduleFocusOnResultCardIfPending();
+  }
+
   KeyEventResult _searchFieldKeyEvent(FocusNode node, KeyEvent event) {
     if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
@@ -680,6 +703,10 @@ class SearchScreenState extends State<SearchScreen>
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
+    }
+    if (shellTvIsActivateKey(event) && _searchFieldEditing) {
+      _submitSearchField();
+      return KeyEventResult.handled;
     }
     if (shellTvIsActivateKey(event) && !_searchFieldEditing) {
       _beginSearchFieldEditing();
@@ -702,6 +729,7 @@ class SearchScreenState extends State<SearchScreen>
         focusNode: _focusNode,
         autofocus: true,
         onChanged: _onSearchChanged,
+        onSubmitted: (_) => _submitSearchField(),
         textInputAction: TextInputAction.search,
         style: const TextStyle(
           color: Colors.white,
@@ -742,6 +770,7 @@ class SearchScreenState extends State<SearchScreen>
       focusNode: _focusNode,
       query: _query,
       onChanged: _onSearchChanged,
+      onSubmitted: (_) => _submitSearchField(),
       onClear: () {
         _controller.clear();
         _onSearchChanged('');
@@ -869,6 +898,8 @@ class SearchScreenState extends State<SearchScreen>
           showCursor: !browseOnly || _query.isNotEmpty,
           enableInteractiveSelection: !browseOnly,
           onChanged: _onSearchChanged,
+          onSubmitted: (_) => _submitSearchField(),
+          textInputAction: TextInputAction.search,
           style: TextStyle(
             color: ForjaShellColors.textPrimary,
             fontSize: 32,

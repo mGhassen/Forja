@@ -16,6 +16,8 @@ Forja routes all video playback through a unified player. Controls use a flat ov
 
 Seek bar on desktop supports hover frame preview (timestamp fallback when preview is unavailable). **Source** is one flat bottom-right control showing the active server name; tap it for the grouped list. The player handles torrent streams, direct HLS/MP4 links, debrid URLs, Jellyfin, and hub content.
 
+On **Android**, when **Settings → Playback → Built-in engine** is **ExoPlayer**, the same flat overlay chrome applies (top bar, paused hero, center actions, status roulette, bottom seek bar). Episodes, source picker, audio/subtitle/quality menus, PiP, and torrent playback still require **MediaKit** — those buttons show a hint to switch engines.
+
 ## How to open it
 
 Tap **Play** on any details screen, stream list, IPTV channel, or hub episode.

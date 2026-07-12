@@ -12,6 +12,7 @@ class ShellSearchBar extends StatelessWidget {
     required this.query,
     required this.onChanged,
     required this.onClear,
+    this.onSubmitted,
     this.hintText = 'Search movies, shows...',
     this.wrapSafeArea = true,
     this.clearSuffix,
@@ -23,6 +24,7 @@ class ShellSearchBar extends StatelessWidget {
   final String query;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
+  final ValueChanged<String>? onSubmitted;
   final String hintText;
   final bool wrapSafeArea;
   final Widget? clearSuffix;
@@ -47,6 +49,7 @@ class ShellSearchBar extends StatelessWidget {
           controller: controller,
           focusNode: focusNode,
           onChanged: onChanged,
+          onSubmitted: onSubmitted,
           onEscape: onEscape,
           browsePlaceholder: hintText,
           browseHintStyle: const TextStyle(color: Colors.white38),

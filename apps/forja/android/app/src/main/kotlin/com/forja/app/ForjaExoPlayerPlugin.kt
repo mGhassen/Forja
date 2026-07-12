@@ -139,6 +139,10 @@ class ExoPlayerHost(
         emitProgress()
     }
 
+    fun setVolume(volume: Float) {
+        player?.volume = volume.coerceIn(0f, 1f)
+    }
+
     fun stop() {
         stopInternal(releasePlayer = true)
     }
@@ -255,6 +259,12 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
                 val viewId = call.argument<Int>("viewId")!!
                 val ms = call.argument<Number>("positionMs")?.toLong() ?: 0L
                 hostFor(viewId).seekTo(ms)
+                result.success(null)
+            }
+            "setVolume" -> {
+                val viewId = call.argument<Int>("viewId")!!
+                val volume = call.argument<Number>("volume")?.toFloat() ?: 1f
+                hostFor(viewId).setVolume(volume)
                 result.success(null)
             }
             "stop" -> {
