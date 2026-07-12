@@ -27,39 +27,33 @@ commit_has_v_tag() {
 }
 
 resolve_range() {
-  local tag first_untagged latest_base
-  first_untagged=""
+  local sha latest_base untagged_count
+  latest_base=""
+  # Walk from HEAD: backfill only commits after the nearest v* tag on first-parent.
   while IFS= read -r sha; do
     [[ -z "$sha" ]] && continue
-    if ! commit_has_v_tag "$sha"; then
-      first_untagged="$sha"
+    if commit_has_v_tag "$sha"; then
+      latest_base="$(git tag --points-at "$sha" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
       break
     fi
-  done < <(git rev-list --first-parent --reverse HEAD 2>/dev/null || true)
+  done < <(git rev-list --first-parent HEAD 2>/dev/null || true)
 
-  if [[ -z "$first_untagged" ]]; then
+  if [[ -z "$latest_base" ]]; then
+    base_semver="$(grep '^version:' apps/forja/pubspec.yaml | sed 's/version: *//' | cut -d+ -f1)"
+    range="HEAD"
+    echo "No v* tag on branch — backfilling from pubspec base $base_semver over all commits"
+    return
+  fi
+
+  base_semver="${latest_base#v}"
+  range="${latest_base}..HEAD"
+  untagged_count="$(git rev-list --count "$range" 2>/dev/null || echo 0)"
+  if [[ "$untagged_count" -eq 0 ]]; then
     base_semver=""
     range=""
     return
   fi
-
-  latest_base=""
-  while IFS= read -r tag; do
-    [[ -z "$tag" ]] && continue
-    if git merge-base --is-ancestor "$(git rev-parse "$tag^{commit}")" "$first_untagged"; then
-      latest_base="$tag"
-    fi
-  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --merged HEAD --sort=v:refname 2>/dev/null || true)
-
-  if [[ -n "$latest_base" ]]; then
-    base_semver="${latest_base#v}"
-    range="${latest_base}..HEAD"
-    echo "Gap detected after $latest_base — backfilling from $range"
-    return
-  fi
-
-  base_semver="$(grep '^version:' apps/forja/pubspec.yaml | sed 's/version: *//' | cut -d+ -f1)"
-  range="HEAD"
+  echo "Gap detected after $latest_base — backfilling $untagged_count commit(s) from $range"
 }
 
 range_touches_workflows() {

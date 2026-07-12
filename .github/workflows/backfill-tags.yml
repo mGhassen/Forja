@@ -13,7 +13,7 @@ on:
 # GITHUB_TOKEN cannot push tags when commits in the backfill range touched
 # .github/workflows/* (GitHub requires workflows: write on the pusher identity).
 # Non-dry-run runs require repository secret BACKFILL_GITHUB_TOKEN — a fine-grained
-# PAT on this repo with Contents: Read and write + Actions: Read and write.
+# PAT on this repo with Contents: Read and write + Workflows: Read and write.
 permissions:
   contents: read
 
@@ -30,7 +30,7 @@ jobs:
           if [[ "$HAS_PAT" != "true" ]]; then
             echo "::error::Repository secret BACKFILL_GITHUB_TOKEN is not set."
             echo "Backfill cannot push tags from GitHub Actions using GITHUB_TOKEN alone."
-            echo "Add a fine-grained PAT (this repo: Contents Read and write + Actions Read and write)"
+            echo "Add a fine-grained PAT (this repo: Contents Read and write + Workflows Read and write)"
             echo "as Settings → Secrets and variables → Actions → BACKFILL_GITHUB_TOKEN, then re-run."
             exit 1
           fi
