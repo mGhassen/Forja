@@ -876,7 +876,7 @@ class IptvController extends ChangeNotifier {
 
       if (section == IptvSection.live) {
         final key = IptvAliveStore.portalKey(p.portal);
-        liveOnly = await IptvAliveStore.loadLiveOnly(key);
+        liveOnly = true;
         final snap = await IptvAliveStore.load(key);
         if (snap != null) {
           aliveStreamIds = snap.aliveIds;
@@ -894,6 +894,10 @@ class IptvController extends ChangeNotifier {
         await IptvStore.saveLastSection(section);
       }
       notifyListeners();
+      if (section == IptvSection.live && !isVerifyingAlive) {
+        // Catalog is alive-only; kick a full check when we have no cache yet.
+        unawaited(startAliveCheck());
+      }
     }
   }
 
@@ -1086,6 +1090,7 @@ class IptvController extends ChangeNotifier {
         aliveChecked = prog.checked;
         aliveTotal = prog.total;
         aliveCount = prog.alive;
+        aliveStreamIds = Set<String>.from(aliveSet);
         notifyListeners();
       },
       onDone: () async {

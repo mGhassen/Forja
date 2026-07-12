@@ -1205,8 +1205,7 @@ class _BrowserViewState extends State<_BrowserView> {
       s = s.where((x) => x.categoryId == cat).toList();
     }
 
-    if (        ctrl.activeSection == IptvSection.live &&
-        ctrl.aliveStreamIds.isNotEmpty) {
+    if (ctrl.activeSection == IptvSection.live) {
       s = s.where((x) => ctrl.aliveStreamIds.contains(x.streamId)).toList();
     }
     return s;
@@ -1505,7 +1504,7 @@ class _BrowserViewState extends State<_BrowserView> {
           ),
         );
       }
-      if (ctrl.activeSection == IptvSection.live && ctrl.liveOnly) {
+      if (ctrl.activeSection == IptvSection.live) {
         final msg = ctrl.isVerifyingAlive
             ? 'Checking streams…'
             : 'No alive streams found';
