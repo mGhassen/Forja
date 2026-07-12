@@ -18,7 +18,8 @@ class ShellTabHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: padding ??
+      padding:
+          padding ??
           EdgeInsets.fromLTRB(
             ShellTokens.compactChromeLeadingInset(context),
             ShellTokens.tabHeaderTopPadding,

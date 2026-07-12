@@ -40,13 +40,18 @@ abstract final class ShellTokens {
     if (!usesCompactNavDrawer(context)) return bodyHorizontalPadding;
     return compactMenuLeadingInset(context) + shellNavMenuButtonWidth;
   }
+
   static const double navRailIconSize = 30;
+
   /// Resting rail icon scale (below [navRailIconSize]).
   static const double navRailIconIdleScale = 0.82;
+
   /// Immediate hover / focus grow for rail icons (and compact ☰).
   static const double navRailIconHoverScale = 1.28;
+
   /// Gap between icon and selection underline in the nav rail.
   static const double navRailIconUnderlineGap = 2;
+
   /// D-pad / TV focus scale.
   static const double focusActiveScale = 1.08;
   static const double navRailIconRevealedScale = 0.78;
@@ -57,7 +62,9 @@ abstract final class ShellTokens {
   static const Duration navRailLabelRevealDelay = Duration(seconds: 3);
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
   static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
-  static const Duration navRailLabelRevealAnimation = Duration(milliseconds: 520);
+  static const Duration navRailLabelRevealAnimation = Duration(
+    milliseconds: 520,
+  );
 
   static const double shellButtonHeight = 40;
   static const double shellButtonRadius = 6;
@@ -83,14 +90,18 @@ abstract final class ShellTokens {
   static double get shellProviderRowViewportWidth {
     final cardSlots =
         shellProviderVisibleCount + shellProviderEdgePeekFraction * 2;
-    return cardSlots * shellProviderCardWidth + (cardSlots - 1) * shellProviderCardGap;
+    return cardSlots * shellProviderCardWidth +
+        (cardSlots - 1) * shellProviderCardGap;
   }
 
   static const double shellTopBarHeight = shellProviderStripHeight + 20;
 
   /// Home Films / TV / Categories text menu (not provider strip).
   static const double homeTopBarHeight =
-      shellHeaderTopPadding + 34 + shellCategoryUnderlineGap + shellNavUnderlineHeight;
+      shellHeaderTopPadding +
+      34 +
+      shellCategoryUnderlineGap +
+      shellNavUnderlineHeight;
 
   /// Extra inset before the Films tab in [HomeTopBar].
   static const double homeTopBarMenuLeadingInset = 28;
@@ -162,6 +173,7 @@ abstract final class ShellTokens {
 
   /// Top inset for hero text: clears [homeTopBarHeight] plus breathing room.
   static double get heroTextColumnTopInsetDesktop => homeTopBarHeight + 16;
+
   /// Vertical align for hero text within the hero band (-1 top … 1 bottom).
   static const double heroTextColumnVerticalAlign = -0.82;
   static const double heroTitleSlotHeightDesktop = 196;
@@ -192,6 +204,7 @@ abstract final class ShellTokens {
 
   /// Media details — body below full-bleed hero (hero stays edge-to-edge).
   static const double detailsHeroBodyOverlap = 120;
+
   /// Extra pull-up when the TV episode rail sits in the first viewport.
   static const double detailsHeroBodyOverlapWithEpisodes = 168;
   static const double detailsHeroContentTopInset = 88;
@@ -200,8 +213,10 @@ abstract final class ShellTokens {
   static const double detailsBodyTopSpacingWithEpisodes = 12;
   static const double detailsSectionSpacing = 48;
   static const double detailsBodyBottomSpacing = 80;
-  static const double detailsContentPaddingDesktop = homeSectionHorizontalPadding;
-  static const double detailsContentPaddingCompact = homeSectionHorizontalPadding;
+  static const double detailsContentPaddingDesktop =
+      homeSectionHorizontalPadding;
+  static const double detailsContentPaddingCompact =
+      homeSectionHorizontalPadding;
 
   static double detailsContentHorizontalPadding(double viewportWidth) {
     if (viewportWidth >= shellNavCompactMaxWidth) {
@@ -212,8 +227,9 @@ abstract final class ShellTokens {
 
   static double detailsContentLeftInset(double viewportWidth) {
     final padding = detailsContentHorizontalPadding(viewportWidth);
-    final columnWidth =
-        viewportWidth < bodyMaxWidthDesktop ? viewportWidth : bodyMaxWidthDesktop;
+    final columnWidth = viewportWidth < bodyMaxWidthDesktop
+        ? viewportWidth
+        : bodyMaxWidthDesktop;
     final sideGutter = (viewportWidth - columnWidth) / 2;
     return sideGutter + padding;
   }
@@ -257,6 +273,7 @@ abstract final class ShellTokens {
 
   /// Vertical gap between Home content rows (not hero → first row).
   static const double homeRowSpacing = 24;
+
   /// TV catalog spacing — aligned with desktop/detail rhythm (cards stay 90px).
   static const double tvHomeRowSpacing = 20;
   static const double tvHomeSectionHorizontalPadding = 0;
@@ -267,6 +284,7 @@ abstract final class ShellTokens {
   static const double tvHomeSectionHeaderHeight = 26;
   static const double tvHomeSectionBottomGap = 14;
   static const double tvMovieCardRowGap = 12;
+
   /// Floor for TV typography/chrome — cards scale down, text/spacing does not crush.
   static const double tvLayoutScaleFloor = 0.75;
 
@@ -279,6 +297,7 @@ abstract final class ShellTokens {
 
   /// Netflix-style search: input column on desktop.
   static const double searchPageInset = 32;
+
   /// Top inset for desktop search — aligns with Home hero text clearance.
   static double get searchPageTopInset => homeTopBarHeight + 24;
   static const double searchColumnGap = 32;

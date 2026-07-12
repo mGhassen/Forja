@@ -6,7 +6,7 @@
 
 Forja routes all video playback through a unified player. Controls use a flat overlay (no glass chrome):
 
-- **Top bar** — back arrow, centered title, **S# E#** for TV episodes, and **Cast** and **PiP** on the top right (platform-gated)
+- **Top bar** — back arrow, centered title, **S# E#** for TV episodes, and **Player**, **Cast**, and **PiP** on the top right (platform-gated)
 - **Paused overlay** — show logo, rating/year meta, and synopsis on the left when playback is paused (when TMDB metadata is available)
 - **Center actions** — large play/pause and ±10s buttons in the middle while controls are visible; hidden while checking sources or buffering (status roulette takes the center instead)
 - **Status roulette** — center-right slide-up indicator when checking sources, switching servers, buffering, or auto-fallback (no bottom snackbars)
@@ -25,7 +25,7 @@ On desktop, playback opens in a **full-window layer** above the app shell — th
 ## What you can do
 
 - Play, pause, seek (with hover preview on desktop when supported), and adjust volume
-- Double-click the video (desktop) to enter/exit fullscreen — same as **F** or the fullscreen button
+- Double-click the video (desktop) to enter/exit fullscreen — films also support **F** or the fullscreen button; IPTV / Live Matches use the fullscreen button or double-click
 - Skip ±10 seconds from the bottom bar or large center controls
 - Open **Servers** (bottom right, cloud icon) to switch provider by real name (e.g. Vidsrc, WebStreamr); open **Sources** (bottom right, list icon) to pick a stream from the current server
 - Open **Episodes** from the bottom bar — a right-side panel lists the season’s episodes with thumbnail, title, runtime, and synopsis; switch season from the header when the show has multiple seasons; use numbered range chips beside the season control when there are more than 50 episodes. Picking another episode resolves the stream and reloads in-player (you stay in the player)

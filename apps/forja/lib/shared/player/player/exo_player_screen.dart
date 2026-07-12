@@ -542,16 +542,6 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                                         ),
                                       ),
                                     ),
-                                    if (widget.onSwitchPlayer != null) ...[
-                                      const SizedBox(width: 16),
-                                      PlayerFlatIconButton(
-                                        tvFocusable: true,
-                                        icon: Icons.smart_display_outlined,
-                                        tooltip: 'Player',
-                                        onPressedWithContext: (ctx) =>
-                                            unawaited(_showPlayerMenu(ctx)),
-                                      ),
-                                    ],
                                   ],
                                 ),
                               ),
@@ -645,15 +635,6 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                             onPressed: () =>
                                 unawaited(_seekRelative(const Duration(seconds: 10))),
                           ),
-                          if (widget.onSwitchPlayer != null) ...[
-                            const SizedBox(width: 16),
-                            PlayerFlatIconButton(
-                              icon: Icons.smart_display_outlined,
-                              tooltip: 'Player',
-                              onPressedWithContext: (ctx) =>
-                                  unawaited(_showPlayerMenu(ctx)),
-                            ),
-                          ],
                         ],
                       ),
                     ),

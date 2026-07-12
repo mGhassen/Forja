@@ -1216,6 +1216,11 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
         child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _toggleControls,
+        // Double-click / double-tap video → toggle fullscreen (same as films).
+        onDoubleTap: () {
+          if (_guideVisible || _searchVisible) return;
+          unawaited(_toggleFullscreen());
+        },
         child: Stack(
           fit: StackFit.expand,
           children: [

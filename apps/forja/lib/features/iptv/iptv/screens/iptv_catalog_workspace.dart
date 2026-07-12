@@ -8,6 +8,7 @@ import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 
@@ -202,10 +203,9 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
-        final leftPadding = ShellTokens.compactChromeLeadingInset(context).clamp(
-          ShellTokens.bodyHorizontalPadding,
-          constraints.maxWidth * 0.28,
-        );
+        final leftPadding = ShellTokens.compactChromeLeadingInset(
+          context,
+        ).clamp(ShellTokens.bodyHorizontalPadding, constraints.maxWidth * 0.28);
 
         return Padding(
           padding: EdgeInsets.fromLTRB(leftPadding, 10, 12, 8),
@@ -1355,6 +1355,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   static const _actionW = 108.0;
   static const _revealDelay = Duration(seconds: 3);
   static const _rightHotFraction = 0.10;
+  static const _statusSlot = 18.0;
 
   bool _lineHover = false;
   bool _focused = false;
@@ -1405,6 +1406,85 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     );
   }
 
+  PlayerSourceStatus _activePortalStatus({
+    required bool checking,
+    required bool? health,
+  }) {
+    if (checking) return PlayerSourceStatus.checking;
+    if (health == false) return PlayerSourceStatus.failed;
+    return PlayerSourceStatus.active;
+  }
+
+  Widget _activePortalStatusGlyph(PlayerSourceStatus status) {
+    final color = playerSourceStatusColor(status);
+    final Widget glyph = switch (status) {
+      PlayerSourceStatus.active => Icon(
+          Icons.play_circle_filled_rounded,
+          color: color,
+          size: _statusSlot,
+        ),
+      PlayerSourceStatus.failed => Icon(
+          Icons.cancel_rounded,
+          color: color,
+          size: _statusSlot,
+        ),
+      PlayerSourceStatus.checking => SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: color,
+          ),
+        ),
+      PlayerSourceStatus.ready => Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+    };
+    return SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Center(child: glyph),
+    );
+  }
+
+  Widget _idlePortalHealthDot({
+    required bool checking,
+    required bool? health,
+  }) {
+    return SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Center(
+        child: checking
+            ? const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: Colors.white54,
+                ),
+              )
+            : Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: health == true
+                      ? playerSourceStatusColor(PlayerSourceStatus.active)
+                      : health == false
+                      ? playerSourceStatusColor(PlayerSourceStatus.failed)
+                      : playerSourceStatusColor(PlayerSourceStatus.ready),
+                ),
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
@@ -1441,7 +1521,11 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                 }
               },
               child: ColoredBox(
-                color: (_lineHover || _focused)
+                color: isActive
+                    ? playerSourceStatusColor(
+                        PlayerSourceStatus.active,
+                      ).withValues(alpha: 0.07)
+                    : (_lineHover || _focused)
                     ? Colors.white.withValues(alpha: 0.04)
                     : Colors.transparent,
                 child: SizedBox(
@@ -1475,34 +1559,18 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Row(
                               children: [
-                                SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: Center(
-                                    child: checking
-                                        ? const SizedBox(
-                                            width: 12,
-                                            height: 12,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 1.5,
-                                              color: Colors.white54,
-                                            ),
-                                          )
-                                        : Container(
-                                            width: 7,
-                                            height: 7,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: health == true
-                                                  ? const Color(0xFF22C55E)
-                                                  : health == false
-                                                  ? const Color(0xFFEF4444)
-                                                  : Colors.white24,
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
+                                isActive
+                                    ? _activePortalStatusGlyph(
+                                        _activePortalStatus(
+                                          checking: checking,
+                                          health: health,
+                                        ),
+                                      )
+                                    : _idlePortalHealthDot(
+                                        checking: checking,
+                                        health: health,
+                                      ),
+                                const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:

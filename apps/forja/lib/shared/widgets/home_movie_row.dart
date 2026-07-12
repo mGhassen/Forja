@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
@@ -46,8 +47,6 @@ class HomeMovieRow extends StatefulWidget {
 }
 
 class _HomeMovieRowState extends State<HomeMovieRow> {
-  final ScrollController _scrollController = ScrollController();
-
   @override
   void dispose() {
     final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
@@ -55,7 +54,6 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
     if (tabId != null) {
       shellTvUnregisterRow(tabId: tabId, rowId: rowId);
     }
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -109,32 +107,27 @@ class _HomeMovieRowState extends State<HomeMovieRow> {
             padding: widget.titlePadding ?? shellSectionTitlePadding(context),
           ),
         if (titleGap > 0) SizedBox(height: titleGap),
-        SizedBox(
-          height: HomeMovieCard.cardHeight(context),
-          child: FocusTraversalGroup(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: shellAbsorbHorizontalScroll,
-              child: ListView.separated(
-            clipBehavior: Clip.none,
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
+        FocusTraversalGroup(
+          child: HorizontalScroller(
+            height: HomeMovieCard.cardHeight(context),
             padding: listPadding,
             itemCount: widget.movies.length,
-            separatorBuilder: (_, _) =>
-                SizedBox(width: widget.showRank ? shellScaled(context, 6).clamp(3.0, 6.0) : shellMovieCardRowGap(context)),
+            separatorBuilder: (_, _) => SizedBox(
+              width: widget.showRank
+                  ? shellScaled(context, 6).clamp(3.0, 6.0)
+                  : shellMovieCardRowGap(context),
+            ),
             itemBuilder: (context, index) {
               return HomeMovieCard(
                 movie: widget.movies[index],
                 onTap: () => widget.onMovieTap(widget.movies[index]),
                 rank: widget.showRank ? index + 1 : null,
                 listIndex: index,
-                tvTabId: widget.tvTabId ?? ShellTvFocus.currentNavTabId ?? 'home',
+                tvTabId:
+                    widget.tvTabId ?? ShellTvFocus.currentNavTabId ?? 'home',
                 tvRowId: widget.tvRowId ?? widget.title,
               );
             },
-          ),
-            ),
           ),
         ),
       ],

@@ -8,6 +8,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/tv_search_browse_overlay.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -65,7 +66,8 @@ class SearchScreen extends StatefulWidget {
   State<SearchScreen> createState() => SearchScreenState();
 }
 
-class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClientMixin {
+class SearchScreenState extends State<SearchScreen>
+    with AutomaticKeepAliveClientMixin {
   final TextEditingController _controller = TextEditingController();
   final TmdbApi _api = TmdbApi();
   final StremioService _stremio = StremioService();
@@ -206,7 +208,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         _sections.clear();
         _isSearching = false;
         _helperFocusedIndex = null;
-      _gridFocusedIndex = 0;
+        _gridFocusedIndex = 0;
         _pendingGridFocusIndex = null;
       });
       if (_tvFocus(context) && _focusNode.hasFocus) {
@@ -258,22 +260,28 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
       setState(() {
         if (movies.isNotEmpty) {
-          _sections.insert(0, _SearchSection(
-            key: 'tmdb_movies',
-            title: 'TMDB Movies',
-            isTmdb: true,
-            results: movies,
-          ));
+          _sections.insert(
+            0,
+            _SearchSection(
+              key: 'tmdb_movies',
+              title: 'TMDB Movies',
+              isTmdb: true,
+              results: movies,
+            ),
+          );
         }
         if (shows.isNotEmpty) {
           // Insert after tmdb_movies if it exists, else at 0
           final idx = _sections.indexWhere((s) => s.key == 'tmdb_movies');
-          _sections.insert(idx >= 0 ? idx + 1 : 0, _SearchSection(
-            key: 'tmdb_shows',
-            title: 'TMDB Shows',
-            isTmdb: true,
-            results: shows,
-          ));
+          _sections.insert(
+            idx >= 0 ? idx + 1 : 0,
+            _SearchSection(
+              key: 'tmdb_shows',
+              title: 'TMDB Shows',
+              isTmdb: true,
+              results: shows,
+            ),
+          );
         }
       });
       _scheduleFocusOnResultCardIfPending();
@@ -282,7 +290,11 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     }
   }
 
-  Future<void> _searchAddon(String query, Map<String, dynamic> provider, int gen) async {
+  Future<void> _searchAddon(
+    String query,
+    Map<String, dynamic> provider,
+    int gen,
+  ) async {
     final providerBaseUrl = provider['baseUrl'] as String;
     final providerName = provider['name'] as String;
     final providerIcon = provider['icon']?.toString() ?? '';
@@ -291,23 +303,25 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     // Group results by type (movie / series)
     final Map<String, List<Map<String, dynamic>>> byType = {};
 
-    await Future.wait(catalogs.map((cat) async {
-      try {
-        final results = await _stremio.getCatalog(
-          baseUrl: cat['addonBaseUrl'],
-          type: cat['catalogType'],
-          id: cat['catalogId'],
-          search: query,
-        );
-        for (final r in results) {
-          r['_addonBaseUrl'] = providerBaseUrl;
-          r['_addonName'] = providerName;
-        }
-        final type = cat['catalogType']?.toString() ?? 'other';
-        byType.putIfAbsent(type, () => []);
-        byType[type]!.addAll(results);
-      } catch (_) {}
-    }));
+    await Future.wait(
+      catalogs.map((cat) async {
+        try {
+          final results = await _stremio.getCatalog(
+            baseUrl: cat['addonBaseUrl'],
+            type: cat['catalogType'],
+            id: cat['catalogId'],
+            search: query,
+          );
+          for (final r in results) {
+            r['_addonBaseUrl'] = providerBaseUrl;
+            r['_addonName'] = providerName;
+          }
+          final type = cat['catalogType']?.toString() ?? 'other';
+          byType.putIfAbsent(type, () => []);
+          byType[type]!.addAll(results);
+        } catch (_) {}
+      }),
+    );
 
     if (gen != _searchGeneration || !mounted) return;
 
@@ -324,13 +338,17 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
         if (deduped.isEmpty) continue;
 
-        final typeLabel = entry.key == 'series' ? 'Shows' : (entry.key == 'movie' ? 'Movies' : entry.key);
-        _sections.add(_SearchSection(
-          key: '${providerBaseUrl}_${entry.key}',
-          title: '$providerName $typeLabel',
-          icon: providerIcon,
-          results: deduped,
-        ));
+        final typeLabel = entry.key == 'series'
+            ? 'Shows'
+            : (entry.key == 'movie' ? 'Movies' : entry.key);
+        _sections.add(
+          _SearchSection(
+            key: '${providerBaseUrl}_${entry.key}',
+            title: '$providerName $typeLabel',
+            icon: providerIcon,
+            results: deduped,
+          ),
+        );
       }
     });
     _scheduleFocusOnResultCardIfPending();
@@ -355,7 +373,10 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
     if (!isCustomId && !isCollection) {
       try {
-        final movie = await _api.findByImdbId(id, mediaType: type == 'series' ? 'tv' : 'movie');
+        final movie = await _api.findByImdbId(
+          id,
+          mediaType: type == 'series' ? 'tv' : 'movie',
+        );
         if (movie != null && mounted) {
           await AppRouter.openDetails(context, movie: movie, stremioItem: item);
           return;
@@ -378,7 +399,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     }
 
     if (mounted) {
-      final actualType = isCollection ? 'collections' : (type == 'series' ? 'tv' : 'movie');
+      final actualType = isCollection
+          ? 'collections'
+          : (type == 'series' ? 'tv' : 'movie');
       final movie = Movie(
         id: id.hashCode,
         imdbId: id.startsWith('tt') ? id : null,
@@ -392,7 +415,11 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       );
       final updatedItem = Map<String, dynamic>.from(item);
       if (isCollection) updatedItem['type'] = 'collections';
-      await AppRouter.openDetails(context, movie: movie, stremioItem: updatedItem);
+      await AppRouter.openDetails(
+        context,
+        movie: movie,
+        stremioItem: updatedItem,
+      );
     }
   }
 
@@ -421,17 +448,25 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         if (item is Movie) {
           final key = 'tmdb:${item.id}:${item.mediaType}';
           if (!seen.add(key)) continue;
-          out.add(_FlatSearchResult(
-            key: key,
-            title: item.title,
-            overview: item.overview,
-            posterUrl: item.posterPath.isNotEmpty ? TmdbApi.getImageUrl(item.posterPath) : '',
-            backdropUrl: item.backdropPath.isNotEmpty ? TmdbApi.getImageUrl(item.backdropPath) : null,
-            year: item.releaseDate.length >= 4 ? item.releaseDate.substring(0, 4) : null,
-            rating: item.voteAverage > 0 ? item.voteAverage : null,
-            isTmdb: true,
-            raw: item,
-          ));
+          out.add(
+            _FlatSearchResult(
+              key: key,
+              title: item.title,
+              overview: item.overview,
+              posterUrl: item.posterPath.isNotEmpty
+                  ? TmdbApi.getImageUrl(item.posterPath)
+                  : '',
+              backdropUrl: item.backdropPath.isNotEmpty
+                  ? TmdbApi.getImageUrl(item.backdropPath)
+                  : null,
+              year: item.releaseDate.length >= 4
+                  ? item.releaseDate.substring(0, 4)
+                  : null,
+              rating: item.voteAverage > 0 ? item.voteAverage : null,
+              isTmdb: true,
+              raw: item,
+            ),
+          );
         } else {
           final map = item as Map<String, dynamic>;
           final id = map['id']?.toString() ?? map['name']?.toString() ?? '';
@@ -439,17 +474,19 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           if (id.isEmpty || !seen.add(key)) continue;
           final poster = map['poster']?.toString() ?? '';
           final ratingStr = map['imdbRating']?.toString() ?? '';
-          out.add(_FlatSearchResult(
-            key: key,
-            title: map['name']?.toString() ?? 'Unknown',
-            overview: map['description']?.toString() ?? '',
-            posterUrl: poster,
-            backdropUrl: map['background']?.toString() ?? poster,
-            year: map['releaseInfo']?.toString(),
-            rating: double.tryParse(ratingStr),
-            isTmdb: false,
-            raw: map,
-          ));
+          out.add(
+            _FlatSearchResult(
+              key: key,
+              title: map['name']?.toString() ?? 'Unknown',
+              overview: map['description']?.toString() ?? '',
+              posterUrl: poster,
+              backdropUrl: map['background']?.toString() ?? poster,
+              year: map['releaseInfo']?.toString(),
+              rating: double.tryParse(ratingStr),
+              isTmdb: false,
+              raw: map,
+            ),
+          );
         }
       }
     }
@@ -651,7 +688,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     return KeyEventResult.ignored;
   }
 
-  double _searchPageTopInset(BuildContext context) => ShellTokens.searchPageInset;
+  double _searchPageTopInset(BuildContext context) =>
+      ShellTokens.searchPageInset;
 
   PreferredSizeWidget _buildOverlayAppBar() {
     return AppBar(
@@ -674,8 +712,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
         decoration: InputDecoration(
           hintText: 'Search movies, shows…',
           hintStyle: TextStyle(
-            color: ForjaShellColors.cinematic.textSecondary
-                .withValues(alpha: 0.7),
+            color: ForjaShellColors.cinematic.textSecondary.withValues(
+              alpha: 0.7,
+            ),
             fontWeight: FontWeight.w400,
           ),
           border: InputBorder.none,
@@ -790,10 +829,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      flex: 3,
-                      child: _buildHelpersList(context),
-                    ),
+                    Expanded(flex: 3, child: _buildHelpersList(context)),
                     const SizedBox(width: ShellTokens.searchColumnGap),
                     Expanded(
                       flex: 7,
@@ -906,48 +942,48 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     return FocusTraversalGroup(
       policy: OrderedTraversalPolicy(),
       child: ListView.separated(
-      controller: _helpersScrollController,
-      clipBehavior: Clip.none,
-      padding: const EdgeInsets.only(right: 8, bottom: 8),
-      physics: const ClampingScrollPhysics(),
-      itemCount: _trendingHelperTitles.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 1),
-      itemBuilder: (context, index) {
-        final title = _trendingHelperTitles[index];
-        final count = _trendingHelperTitles.length;
-        return FocusTraversalOrder(
-          order: NumericFocusOrder(index.toDouble()),
-          child: shellFocusableTap(
-          context: context,
-          onTap: () => _applyHelperQuery(title),
-          borderRadius: 4,
-          scaleOnFocus: 1.0,
-          navLeftAlways: true,
-          listIndex: index,
-          tvTabId: 'search',
-          tvRowId: 'helpers',
-          tvZone: ShellTvZone.chipStrip,
-          tvItemIndex: index,
-          focusNode: index == 0 ? _firstHelperFocusNode : null,
-          onUpEdge: _helperUpEdge(index),
-          onDownEdge: _helperDownEdge(index, count),
-          onRightEdge: _helperRightEdge(),
-          ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-          onFocusChange: (focused) {
-            if (focused) {
-              _setHelperFocusedIndex(index);
-            } else {
-              _clearHelperFocusedIndex(index);
-            }
-          },
-          child: _buildHelperTitle(
-            title,
-            selected: _helperFocusedIndex == index,
-          ),
-        ),
-        );
-      },
-    ),
+        controller: _helpersScrollController,
+        clipBehavior: Clip.none,
+        padding: const EdgeInsets.only(right: 8, bottom: 8),
+        physics: const ClampingScrollPhysics(),
+        itemCount: _trendingHelperTitles.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 1),
+        itemBuilder: (context, index) {
+          final title = _trendingHelperTitles[index];
+          final count = _trendingHelperTitles.length;
+          return FocusTraversalOrder(
+            order: NumericFocusOrder(index.toDouble()),
+            child: shellFocusableTap(
+              context: context,
+              onTap: () => _applyHelperQuery(title),
+              borderRadius: 4,
+              scaleOnFocus: 1.0,
+              navLeftAlways: true,
+              listIndex: index,
+              tvTabId: 'search',
+              tvRowId: 'helpers',
+              tvZone: ShellTvZone.chipStrip,
+              tvItemIndex: index,
+              focusNode: index == 0 ? _firstHelperFocusNode : null,
+              onUpEdge: _helperUpEdge(index),
+              onDownEdge: _helperDownEdge(index, count),
+              onRightEdge: _helperRightEdge(),
+              ensureVisibleMode: ShellTvEnsureVisibleMode.row,
+              onFocusChange: (focused) {
+                if (focused) {
+                  _setHelperFocusedIndex(index);
+                } else {
+                  _clearHelperFocusedIndex(index);
+                }
+              },
+              child: _buildHelperTitle(
+                title,
+                selected: _helperFocusedIndex == index,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -1028,7 +1064,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     if (_query.isEmpty) {
       body = _buildEmpty();
     } else if (_sections.isEmpty && _isSearching) {
-      body = Center(child: CircularProgressIndicator(color: AppTheme.current.primaryColor));
+      body = Center(
+        child: CircularProgressIndicator(color: AppTheme.current.primaryColor),
+      );
     } else if (_sections.isEmpty && !_isSearching) {
       body = _buildEmpty(hint: 'No results found');
     } else {
@@ -1040,7 +1078,16 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
           if (index >= _sections.length) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24))),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white24,
+                  ),
+                ),
+              ),
             );
           }
           final section = _sections[index];
@@ -1050,7 +1097,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: ShellTokens.bodyHorizontalPadding),
+      padding: const EdgeInsets.symmetric(
+        horizontal: ShellTokens.bodyHorizontalPadding,
+      ),
       child: body,
     );
   }
@@ -1074,8 +1123,13 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                   borderRadius: BorderRadius.circular(4),
                   child: CachedNetworkImage(
                     imageUrl: section.icon!,
-                    width: 20, height: 20,
-                    errorWidget: (_, _, _) => const Icon(Icons.extension, size: 16, color: Colors.white38),
+                    width: 20,
+                    height: 20,
+                    errorWidget: (_, _, _) => const Icon(
+                      Icons.extension,
+                      size: 16,
+                      color: Colors.white38,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1099,15 +1153,19 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
               const SizedBox(width: 8),
               Text(
                 '${section.results.length}',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 13),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          _ScrollableSlider(
+          HorizontalScroller(
             height: cardHeight + 32,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: section.results.length,
-            cardWidth: cardWidth,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final item = section.results[index];
               if (item is Movie) {
@@ -1142,10 +1200,17 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search, size: 80, color: Colors.white.withValues(alpha: 0.05)),
+          Icon(
+            Icons.search,
+            size: 80,
+            color: Colors.white.withValues(alpha: 0.05),
+          ),
           const SizedBox(height: 16),
           Text(
-            hint ?? (_query.isEmpty ? 'Search for your favorite content' : 'No results found'),
+            hint ??
+                (_query.isEmpty
+                    ? 'Search for your favorite content'
+                    : 'No results found'),
             style: const TextStyle(color: Colors.white38),
           ),
         ],
@@ -1176,8 +1241,9 @@ class _SearchFilmCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final titleSize = shellHubCardTitleFontSize(context);
-    final tvActivateOpens =
-        ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tvActivateOpens = ShellScope.inputPolicyOf(
+      context,
+    ).useFocusableMoodChips;
 
     return shellFocusableTap(
       context: context,
@@ -1210,291 +1276,164 @@ class _SearchFilmCard extends StatelessWidget {
               ],
             ),
             child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(
-                  color: AppTheme.bgDark,
-                  child: result.posterUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: result.posterUrl,
-                          fit: BoxFit.cover,
-                          filterQuality: FilterQuality.medium,
-                          placeholder: (_, _) => ColoredBox(color: AppTheme.bgDark),
-                          errorWidget: (_, _, _) => Center(
+              borderRadius: BorderRadius.circular(14),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColoredBox(
+                    color: AppTheme.bgDark,
+                    child: result.posterUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: result.posterUrl,
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.medium,
+                            placeholder: (_, _) =>
+                                ColoredBox(color: AppTheme.bgDark),
+                            errorWidget: (_, _, _) => Center(
+                              child: Text(
+                                result.title,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white24,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Center(
                             child: Text(
                               result.title,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 10, color: Colors.white24),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white24,
+                              ),
                             ),
                           ),
-                        )
-                      : Center(
-                          child: Text(
-                            result.title,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 10, color: Colors.white24),
-                          ),
-                        ),
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.7),
-                        Colors.black.withValues(alpha: 0.95),
-                      ],
-                      stops: const [0.0, 0.45, 0.8, 1.0],
+                  ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.7),
+                          Colors.black.withValues(alpha: 0.95),
+                        ],
+                        stops: const [0.0, 0.45, 0.8, 1.0],
+                      ),
                     ),
                   ),
-                ),
-                if (selected)
-                  Positioned.fill(
-                    child: ColoredBox(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      child: Center(
-                        child: Material(
-                          color: Colors.transparent,
-                          shape: const CircleBorder(),
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            hoverColor: ForjaShellColors.inkHover,
-                            splashColor: ForjaShellColors.inkSplash,
-                            highlightColor: ForjaShellColors.inkSplash,
-                            onTap: onOpen,
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.55),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2),
+                  if (selected)
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        child: Center(
+                          child: Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              hoverColor: ForjaShellColors.inkHover,
+                              splashColor: ForjaShellColors.inkSplash,
+                              highlightColor: ForjaShellColors.inkSplash,
+                              onTap: onOpen,
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.info_outline_rounded,
+                                  color: Colors.white,
+                                  size: 28,
                                 ),
                               ),
-                              child: const Icon(
-                                Icons.info_outline_rounded,
-                                color: Colors.white,
-                                size: 28,
-                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                if (result.rating != null)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  if (result.rating != null)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 12,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              result.rating!.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
-                          const SizedBox(width: 3),
+                    ),
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    right: 10,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          result.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: titleSize,
+                            height: 1.2,
+                          ),
+                        ),
+                        if (result.year != null && result.year!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
                           Text(
-                            result.rating!.toStringAsFixed(1),
-                            style: const TextStyle(
+                            result.year!,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
                               fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
                             ),
                           ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
-                Positioned(
-                  bottom: 10,
-                  left: 10,
-                  right: 10,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        result.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: titleSize,
-                          height: 1.2,
-                        ),
-                      ),
-                      if (result.year != null && result.year!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          result.year!,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        ),
-      ),
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Scrollable slider with left/right arrows
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _ScrollableSlider extends StatefulWidget {
-  final double height;
-  final int itemCount;
-  final double cardWidth;
-  final IndexedWidgetBuilder itemBuilder;
-
-  const _ScrollableSlider({
-    required this.height,
-    required this.itemCount,
-    required this.cardWidth,
-    required this.itemBuilder,
-  });
-
-  @override
-  State<_ScrollableSlider> createState() => _ScrollableSliderState();
-}
-
-class _ScrollableSliderState extends State<_ScrollableSlider> {
-  final ScrollController _scrollController = ScrollController();
-  bool _showLeft = false;
-  bool _showRight = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_updateArrows);
-  }
-
-  void _updateArrows() {
-    if (!mounted) return;
-    final pos = _scrollController.position;
-    final newLeft = pos.pixels > 10;
-    final newRight = pos.pixels < pos.maxScrollExtent - 10;
-    if (newLeft != _showLeft || newRight != _showRight) {
-      setState(() {
-        _showLeft = newLeft;
-        _showRight = newRight;
-      });
-    }
-  }
-
-  void _scroll(double direction) {
-    final target = _scrollController.offset + direction * (widget.cardWidth + 12) * 3;
-    _scrollController.animateTo(
-      target.clamp(0.0, _scrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: widget.height,
-      child: Stack(
-        children: [
-          ListView.separated(
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: widget.itemCount,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: widget.itemBuilder,
-          ),
-          // Left arrow
-          if (_showLeft)
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: _ArrowButton(
-                icon: Icons.chevron_left,
-                onTap: () => _scroll(-1),
-                alignment: Alignment.centerLeft,
+                ],
               ),
             ),
-          // Right arrow
-          if (_showRight && widget.itemCount > 2)
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              child: _ArrowButton(
-                icon: Icons.chevron_right,
-                onTap: () => _scroll(1),
-                alignment: Alignment.centerRight,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ArrowButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final Alignment alignment;
-
-  const _ArrowButton({required this.icon, required this.onTap, required this.alignment});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 32,
-        alignment: alignment,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: alignment == Alignment.centerLeft ? Alignment.centerLeft : Alignment.centerRight,
-            end: alignment == Alignment.centerLeft ? Alignment.centerRight : Alignment.centerLeft,
-            colors: [
-              AppTheme.bgDark.withValues(alpha: 0.9),
-              AppTheme.bgDark.withValues(alpha: 0.0),
-            ],
           ),
-        ),
-        child: Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.white70, size: 18),
         ),
       ),
     );
@@ -1510,15 +1449,13 @@ class _SearchCard extends StatelessWidget {
   final VoidCallback onTap;
   final int? listIndex;
 
-  const _SearchCard({
-    required this.movie,
-    required this.onTap,
-    this.listIndex,
-  });
+  const _SearchCard({required this.movie, required this.onTap, this.listIndex});
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = movie.posterPath.isNotEmpty ? TmdbApi.getImageUrl(movie.posterPath) : '';
+    final imageUrl = movie.posterPath.isNotEmpty
+        ? TmdbApi.getImageUrl(movie.posterPath)
+        : '';
 
     return shellFocusableTap(
       context: context,
@@ -1530,7 +1467,13 @@ class _SearchCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.bgCard,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -1541,29 +1484,50 @@ class _SearchCard extends StatelessWidget {
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
                 placeholder: (_, _) => Container(color: AppTheme.bgCard),
-                errorWidget: (_, _, _) => const Center(child: Icon(Icons.broken_image, color: Colors.white24)),
+                errorWidget: (_, _, _) => const Center(
+                  child: Icon(Icons.broken_image, color: Colors.white24),
+                ),
               )
             else
-              Center(child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(movie.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
-              )),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    movie.title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
 
             if (movie.voteAverage > 0)
               Positioned(
-                top: 6, right: 6,
+                top: 6,
+                right: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text(movie.voteAverage.toStringAsFixed(1), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber)),
+                  child: Text(
+                    movie.voteAverage.toStringAsFixed(1),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber,
+                    ),
+                  ),
                 ),
               ),
 
             Positioned(
-              bottom: 0, left: 0, right: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: const BoxDecoration(
@@ -1583,7 +1547,8 @@ class _SearchCard extends StatelessWidget {
             ),
 
             Positioned(
-              top: 6, left: 6,
+              top: 6,
+              left: 6,
               child: _AddToMyListButton(movie: movie),
             ),
           ],
@@ -1641,34 +1606,64 @@ class _StremioSearchCard extends StatelessWidget {
                 errorWidget: (_, _, _) => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.white38)),
+                    child: Text(
+                      name,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white38,
+                      ),
+                    ),
                   ),
                 ),
               )
             else
-              Center(child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.white38)),
-              )),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11, color: Colors.white38),
+                  ),
+                ),
+              ),
 
             if (type.isNotEmpty)
               Positioned(
-                top: 5, left: 5,
+                top: 5,
+                left: 5,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
-                    color: type == 'series' ? Colors.blue.withValues(alpha: 0.7) : AppTheme.current.primaryColor.withValues(alpha: 0.7),
+                    color: type == 'series'
+                        ? Colors.blue.withValues(alpha: 0.7)
+                        : AppTheme.current.primaryColor.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(3),
                   ),
-                  child: Text(type.toUpperCase(), style: const TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: Text(
+                    type.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 7,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
 
             if (rating.isNotEmpty)
               Positioned(
-                top: 5, right: 5,
+                top: 5,
+                right: 5,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(4),
@@ -1678,14 +1673,23 @@ class _StremioSearchCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.star, size: 9, color: Colors.amber),
                       const SizedBox(width: 2),
-                      Text(rating, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber)),
+                      Text(
+                        rating,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
 
             Positioned(
-              bottom: 0, left: 0, right: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: const BoxDecoration(
@@ -1705,7 +1709,8 @@ class _StremioSearchCard extends StatelessWidget {
             ),
 
             Positioned(
-              bottom: 30, right: 5,
+              bottom: 30,
+              right: 5,
               child: _AddToMyListStremioButton(item: item),
             ),
           ],
@@ -1742,7 +1747,10 @@ class _AddToMyListButton extends StatelessWidget {
               releaseDate: movie.releaseDate,
             );
             if (context.mounted) {
-              ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
+              ForjaToast.success(
+                added ? 'Added to My List' : 'Removed from My List',
+                duration: const Duration(seconds: 1),
+              );
             }
           },
           child: Container(
@@ -1778,7 +1786,10 @@ class _AddToMyListStremioButton extends StatelessWidget {
           onTap: () async {
             final added = await MyListService().toggleStremioItem(item);
             if (context.mounted) {
-              ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
+              ForjaToast.success(
+                added ? 'Added to My List' : 'Removed from My List',
+                duration: const Duration(seconds: 1),
+              );
             }
           },
           child: Container(

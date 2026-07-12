@@ -1,12 +1,17 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Horizontal scrollable strip with overlaid left/right arrow buttons.
 /// Arrows appear on desktop/wide screens and on hover; they paginate the
 /// list by roughly one viewport width per click. Touch-only / narrow
 /// layouts get plain swipe scrolling with no overlay.
+///
+/// On desktop, vertical mouse wheel / trackpad scroll over the row moves
+/// the strip horizontally instead of scrolling the parent page.
 class HorizontalScroller extends StatefulWidget {
   final double height;
   final EdgeInsetsGeometry padding;
@@ -14,6 +19,9 @@ class HorizontalScroller extends StatefulWidget {
   final IndexedWidgetBuilder itemBuilder;
   final IndexedWidgetBuilder? separatorBuilder;
   final double arrowOffset;
+  final ScrollController? controller;
+  final Clip clipBehavior;
+  final ScrollPhysics? physics;
 
   const HorizontalScroller({
     super.key,
@@ -23,6 +31,9 @@ class HorizontalScroller extends StatefulWidget {
     this.separatorBuilder,
     this.padding = EdgeInsets.zero,
     this.arrowOffset = 8,
+    this.controller,
+    this.clipBehavior = Clip.none,
+    this.physics,
   });
 
   @override
@@ -30,7 +41,8 @@ class HorizontalScroller extends StatefulWidget {
 }
 
 class _HorizontalScrollerState extends State<HorizontalScroller> {
-  final ScrollController _ctrl = ScrollController();
+  ScrollController? _ownedController;
+  late ScrollController _ctrl;
   bool _hovering = false;
   bool _canLeft = false;
   bool _canRight = false;
@@ -38,6 +50,19 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
   @override
   void initState() {
     super.initState();
+    _ctrl = widget.controller ?? (_ownedController = ScrollController());
+    _ctrl.addListener(_updateEdges);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateEdges());
+  }
+
+  @override
+  void didUpdateWidget(covariant HorizontalScroller oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) return;
+    _ctrl.removeListener(_updateEdges);
+    _ownedController?.dispose();
+    _ownedController = null;
+    _ctrl = widget.controller ?? (_ownedController = ScrollController());
     _ctrl.addListener(_updateEdges);
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateEdges());
   }
@@ -45,7 +70,7 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
   @override
   void dispose() {
     _ctrl.removeListener(_updateEdges);
-    _ctrl.dispose();
+    _ownedController?.dispose();
     super.dispose();
   }
 
@@ -72,58 +97,99 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
     );
   }
 
+  void _onPointerSignal(PointerSignalEvent event) {
+    if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
+    if (event is! PointerScrollEvent) return;
+
+    final dy = event.scrollDelta.dy;
+    if (dy == 0.0) return;
+    if (!_ctrl.hasClients) return;
+
+    final pos = _ctrl.position;
+    if (pos.maxScrollExtent <= 0) return;
+
+    final atMin = pos.pixels <= pos.minScrollExtent + 0.5;
+    final atMax = pos.pixels >= pos.maxScrollExtent - 0.5;
+    final canScrollRow = (dy > 0 && !atMin) || (dy < 0 && !atMax);
+    if (!canScrollRow) return;
+
+    GestureBinding.instance.pointerSignalResolver.register(event, (resolved) {
+      if (resolved is! PointerScrollEvent) return;
+      final delta = resolved.scrollDelta.dy;
+      if (delta == 0.0) return;
+      if (!_ctrl.hasClients) return;
+
+      final position = _ctrl.position;
+      final atStart = position.pixels <= position.minScrollExtent + 0.5;
+      final atEnd = position.pixels >= position.maxScrollExtent - 0.5;
+      if ((atStart && delta > 0) || (atEnd && delta < 0)) return;
+
+      final target = (position.pixels + delta)
+          .clamp(position.minScrollExtent, position.maxScrollExtent);
+      if (target != position.pixels) {
+        _ctrl.jumpTo(target);
+        _updateEdges();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
+    final physics = widget.physics ?? const BouncingScrollPhysics();
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
-      child: SizedBox(
-        height: widget.height,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            NotificationListener<ScrollNotification>(
-              onNotification: (_) {
-                _updateEdges();
-                return false;
-              },
-              child: widget.separatorBuilder != null
-                  ? ListView.separated(
-                      controller: _ctrl,
-                      clipBehavior: Clip.none,
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      padding: widget.padding,
-                      itemCount: widget.itemCount,
-                      separatorBuilder: widget.separatorBuilder!,
-                      itemBuilder: widget.itemBuilder,
-                    )
-                  : ListView.builder(
-                      controller: _ctrl,
-                      clipBehavior: Clip.none,
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      padding: widget.padding,
-                      itemCount: widget.itemCount,
-                      itemBuilder: widget.itemBuilder,
-                    ),
-            ),
-            if (showArrows) ...[
-              _ArrowButton(
-                visible: _hovering && _canLeft,
-                left: true,
-                offset: widget.arrowOffset,
-                onTap: () => _scrollBy(-_pageStep(context)),
+      child: Listener(
+        onPointerSignal: _onPointerSignal,
+        child: SizedBox(
+          height: widget.height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  _updateEdges();
+                  return shellAbsorbHorizontalScroll(notification);
+                },
+                child: widget.separatorBuilder != null
+                    ? ListView.separated(
+                        controller: _ctrl,
+                        clipBehavior: widget.clipBehavior,
+                        scrollDirection: Axis.horizontal,
+                        physics: physics,
+                        padding: widget.padding,
+                        itemCount: widget.itemCount,
+                        separatorBuilder: widget.separatorBuilder!,
+                        itemBuilder: widget.itemBuilder,
+                      )
+                    : ListView.builder(
+                        controller: _ctrl,
+                        clipBehavior: widget.clipBehavior,
+                        scrollDirection: Axis.horizontal,
+                        physics: physics,
+                        padding: widget.padding,
+                        itemCount: widget.itemCount,
+                        itemBuilder: widget.itemBuilder,
+                      ),
               ),
-              _ArrowButton(
-                visible: _hovering && _canRight,
-                left: false,
-                offset: widget.arrowOffset,
-                onTap: () => _scrollBy(_pageStep(context)),
-              ),
+              if (showArrows) ...[
+                _ArrowButton(
+                  visible: _hovering && _canLeft,
+                  left: true,
+                  offset: widget.arrowOffset,
+                  onTap: () => _scrollBy(-_pageStep(context)),
+                ),
+                _ArrowButton(
+                  visible: _hovering && _canRight,
+                  left: false,
+                  offset: widget.arrowOffset,
+                  onTap: () => _scrollBy(_pageStep(context)),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

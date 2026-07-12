@@ -4205,12 +4205,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
                       ],
                     ),
                   ),
-                  if (widget.onSwitchPlayer != null)
-                    PlayerFlatIconButton(
-                      icon: Icons.smart_display_outlined,
-                      tooltip: 'Player',
-                      onPressedWithContext: _showPlayerMenu,
-                    ),
                   PlayerFlatIconButton(
                     icon: Icons.settings_outlined,
                     tooltip: 'Settings',

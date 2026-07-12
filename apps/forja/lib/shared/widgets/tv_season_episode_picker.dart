@@ -4,6 +4,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
@@ -226,8 +227,103 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     );
   }
 
-  bool _absorbHorizontalScroll(ScrollNotification notification) {
-    return notification.metrics.axis == Axis.horizontal;
+
+  Widget _buildSeasonRow(String? tabId) {
+    return HorizontalScroller(
+      height: _SeasonCard.cardHeight,
+      controller: _seasonScrollController,
+      clipBehavior: Clip.hardEdge,
+      itemCount: widget.seasonCount,
+      separatorBuilder: (_, _) => const SizedBox(width: 12),
+      itemBuilder: (_, i) {
+        final season = i + 1;
+        return _SeasonCard(
+          key: ValueKey('season-$season'),
+          seasonNumber: season,
+          selected: widget.selectedSeason == season,
+          posterUrl: _seasonPosterUrl(season),
+          onTap: () {
+            if (season == widget.selectedSeason) {
+              if (tabId != null &&
+                  widget.tvEpisodeRowId != null &&
+                  _visibleEpisodes.isNotEmpty) {
+                ShellTvFocusCoordinator.focusRowItem(
+                  tabId,
+                  _episodeRowId,
+                  0,
+                );
+              }
+              return;
+            }
+            setState(() => _episodeChunk = 0);
+            widget.onSeasonSelected(season);
+          },
+          onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+          tvTabId: tabId,
+          tvRowId: widget.tvSeasonRowId != null ? _seasonRowId : null,
+          listIndex: i,
+        );
+      },
+    );
+  }
+
+  Widget _buildEpisodeRow(String? tabId) {
+    return HorizontalScroller(
+      height: 240,
+      controller: _episodeScrollController,
+      clipBehavior: Clip.hardEdge,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      itemCount: _visibleEpisodes.length,
+      separatorBuilder: (_, _) => const SizedBox(width: 16),
+      itemBuilder: (_, i) {
+        final ep = _visibleEpisodes[i];
+        final epNum = (ep['episode_number'] ?? ep['episode']) as int;
+        final title =
+            (ep['name'] ?? ep['title'] ?? 'Episode $epNum').toString();
+        final overview = (ep['overview'] ?? '').toString();
+        final runtime = ep['runtime'] as int? ?? 0;
+        final thumbnail = _resolveThumbnail(
+          ep['still_path'] ?? ep['thumbnail'],
+          widget.fallbackPosterPath,
+        );
+        final watched = _watchedKey(widget.selectedSeason, epNum);
+        final progKey = 'S${widget.selectedSeason}_E$epNum';
+        final prog = widget.episodeProgress[progKey];
+        final pos = prog?['position'] as int? ?? 0;
+        final dur = prog?['duration'] as int? ??
+            (runtime > 0 ? runtime * 60000 : 0);
+
+        return _EpisodeCard(
+          key: ValueKey('ep-${widget.selectedSeason}-$epNum'),
+          episodeNumber: epNum,
+          title: title,
+          overview: overview,
+          runtime: runtime,
+          thumbnail: thumbnail,
+          selected: widget.selectedEpisode == epNum,
+          watched: watched,
+          positionMs: pos,
+          durationMs: dur,
+          onTap: () {
+            widget.onEpisodeSelected(epNum);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToSelectedEpisode();
+            });
+          },
+          onFocusChange: widget.onEpisodeFocused == null
+              ? null
+              : (focused) {
+                  if (focused) widget.onEpisodeFocused!(epNum);
+                },
+          onToggleWatched: () =>
+              widget.onToggleWatched(widget.selectedSeason, epNum),
+          onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
+          tvTabId: tabId,
+          tvRowId: widget.tvEpisodeRowId != null ? _episodeRowId : null,
+          listIndex: i,
+        );
+      },
+    );
   }
 
   String? _resolveThumbnail(dynamic thumb, String fallback) {
@@ -323,48 +419,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
         ),
         if (widget.seasonCount > 1) ...[
           const SizedBox(height: 16),
-          SizedBox(
-            height: _SeasonCard.cardHeight,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: _absorbHorizontalScroll,
-              child: ListView.separated(
-                controller: _seasonScrollController,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.hardEdge,
-                itemCount: widget.seasonCount,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (_, i) {
-                  final season = i + 1;
-                  return _SeasonCard(
-                    key: ValueKey('season-$season'),
-                    seasonNumber: season,
-                    selected: widget.selectedSeason == season,
-                    posterUrl: _seasonPosterUrl(season),
-                    onTap: () {
-                      if (season == widget.selectedSeason) {
-                        if (tabId != null &&
-                            widget.tvEpisodeRowId != null &&
-                            _visibleEpisodes.isNotEmpty) {
-                          ShellTvFocusCoordinator.focusRowItem(
-                            tabId,
-                            _episodeRowId,
-                            0,
-                          );
-                        }
-                        return;
-                      }
-                      setState(() => _episodeChunk = 0);
-                      widget.onSeasonSelected(season);
-                    },
-                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
-                    tvTabId: tabId,
-                    tvRowId: widget.tvSeasonRowId != null ? _seasonRowId : null,
-                    listIndex: i,
-                  );
-                },
-              ),
-            ),
-          ),
+          _buildSeasonRow(tabId),
         ],
         if (showEpisodeRangeBar(_episodeNumbers)) ...[
           const SizedBox(height: 12),
@@ -388,68 +443,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
         else if (_visibleEpisodes.isEmpty)
           const SizedBox.shrink()
         else
-          SizedBox(
-            height: 240,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: _absorbHorizontalScroll,
-              child: ListView.separated(
-                controller: _episodeScrollController,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.hardEdge,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                itemCount: _visibleEpisodes.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 16),
-                itemBuilder: (_, i) {
-                  final ep = _visibleEpisodes[i];
-                  final epNum = (ep['episode_number'] ?? ep['episode']) as int;
-                  final title =
-                      (ep['name'] ?? ep['title'] ?? 'Episode $epNum').toString();
-                  final overview = (ep['overview'] ?? '').toString();
-                  final runtime = ep['runtime'] as int? ?? 0;
-                  final thumbnail = _resolveThumbnail(
-                    ep['still_path'] ?? ep['thumbnail'],
-                    widget.fallbackPosterPath,
-                  );
-                  final watched = _watchedKey(widget.selectedSeason, epNum);
-                  final progKey = 'S${widget.selectedSeason}_E$epNum';
-                  final prog = widget.episodeProgress[progKey];
-                  final pos = prog?['position'] as int? ?? 0;
-                  final dur = prog?['duration'] as int? ??
-                      (runtime > 0 ? runtime * 60000 : 0);
-
-                  return _EpisodeCard(
-                    key: ValueKey('ep-${widget.selectedSeason}-$epNum'),
-                    episodeNumber: epNum,
-                    title: title,
-                    overview: overview,
-                    runtime: runtime,
-                    thumbnail: thumbnail,
-                    selected: widget.selectedEpisode == epNum,
-                    watched: watched,
-                    positionMs: pos,
-                    durationMs: dur,
-                    onTap: () {
-                      widget.onEpisodeSelected(epNum);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _scrollToSelectedEpisode();
-                      });
-                    },
-                    onFocusChange: widget.onEpisodeFocused == null
-                        ? null
-                        : (focused) {
-                            if (focused) widget.onEpisodeFocused!(epNum);
-                          },
-                    onToggleWatched: () =>
-                        widget.onToggleWatched(widget.selectedSeason, epNum),
-                    onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
-                    tvTabId: tabId,
-                    tvRowId: widget.tvEpisodeRowId != null ? _episodeRowId : null,
-                    listIndex: i,
-                  );
-                },
-              ),
-            ),
-          ),
+          _buildEpisodeRow(tabId),
       ],
     );
   }

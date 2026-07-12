@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
@@ -43,7 +44,6 @@ class MediaDetailsCastSection extends StatefulWidget {
 }
 
 class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
-  final ScrollController _scrollController = ScrollController();
   String get _rowId => widget.tvRowId ?? 'cast';
 
   @override
@@ -52,7 +52,6 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
     if (tabId != null && widget.tvRowId != null) {
       shellTvUnregisterRow(tabId: tabId, rowId: _rowId);
     }
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -87,22 +86,16 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
           Text(widget.title, style: ShellSectionTitle.titleStyle),
           const SizedBox(height: MediaDetailsCastSection._titleGap),
         ],
-        SizedBox(
-          height: MediaDetailsCastSection._rowHeight,
-          child: FocusTraversalGroup(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: shellAbsorbHorizontalScroll,
-              child: ListView.separated(
-            clipBehavior: Clip.none,
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
+        FocusTraversalGroup(
+          child: HorizontalScroller(
+            height: MediaDetailsCastSection._rowHeight,
             padding: useHomeInsets
                 ? EdgeInsets.only(left: homePad)
                 : EdgeInsets.zero,
             itemCount: widget.cast.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(width: MediaDetailsCastSection._horizontalGap),
+            separatorBuilder: (_, _) => const SizedBox(
+              width: MediaDetailsCastSection._horizontalGap,
+            ),
             itemBuilder: (_, i) {
               final m = widget.cast[i];
               final profilePath = m['profilePath'] ?? '';
@@ -174,8 +167,6 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
                 ),
               );
             },
-          ),
-            ),
           ),
         ),
       ],

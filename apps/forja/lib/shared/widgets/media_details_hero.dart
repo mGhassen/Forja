@@ -17,8 +17,6 @@ import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
-const _kYoutubeEmbedOrigin = 'https://com.forja.app';
-
 class MediaDetailsHero extends StatefulWidget {
   const MediaDetailsHero({
     super.key,
@@ -168,11 +166,28 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
   static String _trailerEmbedHtml(String videoKey, {String? languageCode}) {
     final lang = languageCode?.trim();
     final hasLang = lang != null && lang.isNotEmpty;
-    final langPlayerVars = hasLang
-        ? '''
-          hl: '$lang',
-          cc_lang_pref: '$lang','''
-        : '';
+    final playerVars = <String, Object>{
+      'autoplay': 1,
+      'mute': 1,
+      'controls': 0,
+      'modestbranding': 1,
+      'rel': 0,
+      'loop': 0,
+      'playsinline': 1,
+      'fs': 0,
+      'iv_load_policy': 3,
+      'disablekb': 1,
+      'cc_load_policy': 3,
+      'enablejsapi': 1,
+    };
+    if (hasLang) {
+      playerVars['hl'] = lang;
+      playerVars['cc_lang_pref'] = lang;
+    }
+    final embedSrc = youtubeNocookieEmbedSrc(
+      videoId: videoKey,
+      playerVars: playerVars,
+    );
     return '''
 <!DOCTYPE html>
 <html>
@@ -223,11 +238,13 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
 </head>
 <body>
   <div id="viewport">
-    <div id="player"></div>
+    ${youtubeEmbedIframeHtml(embedSrc: embedSrc)}
     <div id="center-shield"></div>
     <div id="end-shield"></div>
   </div>
   <script>
+    $youtubeIframeReferrerPatchJs
+
     var tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
     document.head.appendChild(tag);
@@ -243,26 +260,8 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
     var playGuardTimer = null;
 
     function onYouTubeIframeAPIReady() {
+      patchYoutubeIframeReferrer(document.getElementById('player'));
       player = new YT.Player('player', {
-        videoId: '$videoKey',
-        width: '100%',
-        height: '100%',
-        playerVars: {
-          autoplay: 1,
-          mute: 1,
-          controls: 0,
-          modestbranding: 1,
-          rel: 0,
-          loop: 0,
-          playsinline: 1,
-          fs: 0,
-          iv_load_policy: 3,
-          disablekb: 1,
-          cc_load_policy: 3,
-          enablejsapi: 1,$langPlayerVars
-          origin: '$_kYoutubeEmbedOrigin',
-          widget_referrer: '$_kYoutubeEmbedOrigin'
-        },
         events: {
           onReady: onPlayerReady,
           onStateChange: onPlayerStateChange
@@ -676,7 +675,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                                 widget.trailerYoutubeKey!,
                                 languageCode: widget.trailerLanguageCode,
                               ),
-                              baseUrl: WebUri(_kYoutubeEmbedOrigin),
+                              baseUrl: WebUri(kYoutubeEmbedOrigin),
                             ),
                             initialSettings: InAppWebViewSettings(
                               mediaPlaybackRequiresUserGesture: false,

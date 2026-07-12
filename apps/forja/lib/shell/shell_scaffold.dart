@@ -71,8 +71,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
     final compactNav = _compactNav(context);
     final tvSafeLeft = shellTvSafeHorizontalInset(context);
     final tvSafeRight = shellTvSafeHorizontalInsetRight(context);
-    final railWidth =
-        showRail && !compactNav ? metrics.navRailWidth : 0.0;
+    final railWidth = showRail && !compactNav ? metrics.navRailWidth : 0.0;
     final contentLeftInset = tvSafeLeft + railWidth;
 
     Widget body = Stack(
@@ -96,9 +95,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                         mountedTabIds: widget.mountedTabIds,
                         tabFor: widget.tabFor,
                       ),
-                      const Positioned.fill(
-                        child: ShellOverlayNavigator(),
-                      ),
+                      const Positioned.fill(child: ShellOverlayNavigator()),
                     ],
                   ),
                 ),

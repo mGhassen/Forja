@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
@@ -38,7 +39,6 @@ class MediaDetailsTrailersSection extends StatefulWidget {
 
 class _MediaDetailsTrailersSectionState
     extends State<MediaDetailsTrailersSection> {
-  final ScrollController _scrollController = ScrollController();
   String get _rowId => widget.tvRowId ?? 'trailers';
 
   @override
@@ -47,7 +47,6 @@ class _MediaDetailsTrailersSectionState
     if (tabId != null && widget.tvRowId != null) {
       shellTvUnregisterRow(tabId: tabId, rowId: _rowId);
     }
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -82,28 +81,19 @@ class _MediaDetailsTrailersSectionState
           Text('Trailers', style: ShellSectionTitle.titleStyle),
           const SizedBox(height: 12),
         ],
-        SizedBox(
-          height: 156,
-          child: FocusTraversalGroup(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: shellAbsorbHorizontalScroll,
-              child: ListView.separated(
-                clipBehavior: Clip.none,
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: useHomeInsets ? EdgeInsets.only(left: homePad) : null,
-                itemCount: widget.trailers.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (context, index) => _TrailerCard(
-                  trailers: widget.trailers,
-                  index: index,
-                  movie: widget.movie,
-                  languageCode: widget.languageCode,
-                  tvTabId: tabId,
-                  tvRowId: widget.tvRowId != null ? _rowId : null,
-                ),
-              ),
+        FocusTraversalGroup(
+          child: HorizontalScroller(
+            height: 156,
+            padding: useHomeInsets ? EdgeInsets.only(left: homePad) : EdgeInsets.zero,
+            itemCount: widget.trailers.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, index) => _TrailerCard(
+              trailers: widget.trailers,
+              index: index,
+              movie: widget.movie,
+              languageCode: widget.languageCode,
+              tvTabId: tabId,
+              tvRowId: widget.tvRowId != null ? _rowId : null,
             ),
           ),
         ),

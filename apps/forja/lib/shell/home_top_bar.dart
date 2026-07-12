@@ -32,10 +32,12 @@ class _HomeTopBarState extends State<HomeTopBar> {
   bool _categoriesOpen = false;
   final FocusNode _menuFocus = FocusNode(debugLabel: 'home-menu');
   final FocusNode _searchFocus = FocusNode(debugLabel: 'home-search');
-  final FocusNode _categoriesTabFocus =
-      FocusNode(debugLabel: 'home-categories-tab');
-  final FocusNode _categoriesMenuFocus =
-      FocusNode(debugLabel: 'home-categories-menu');
+  final FocusNode _categoriesTabFocus = FocusNode(
+    debugLabel: 'home-categories-tab',
+  );
+  final FocusNode _categoriesMenuFocus = FocusNode(
+    debugLabel: 'home-categories-menu',
+  );
 
   @override
   void initState() {
@@ -93,7 +95,8 @@ class _HomeTopBarState extends State<HomeTopBar> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: ForjaShellColors.cinematic.borderSubtle),
+                      color: ForjaShellColors.cinematic.borderSubtle,
+                    ),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
@@ -121,21 +124,25 @@ class _HomeTopBarState extends State<HomeTopBar> {
                                       : null,
                                   onUpEdge: tvFocus ? dismissMenu : null,
                                   onLeftEdge: tvFocus ? dismissMenu : null,
-                                  onTap: () => Navigator.of(dialogContext)
-                                      .pop(_allGenresSentinel),
+                                  onTap: () => Navigator.of(
+                                    dialogContext,
+                                  ).pop(_allGenresSentinel),
                                 ),
-                                for (var i = 0;
-                                    i < homeGenreCategories.length;
-                                    i++)
+                                for (
+                                  var i = 0;
+                                  i < homeGenreCategories.length;
+                                  i++
+                                )
                                   _FlatMenuRow(
                                     label: homeGenreCategories[i].label,
-                                    selected: homeGenreCategories[i].id ==
-                                        selectedId,
+                                    selected:
+                                        homeGenreCategories[i].id == selectedId,
                                     listIndex: i + 1,
                                     tvFocus: tvFocus,
                                     onLeftEdge: tvFocus ? dismissMenu : null,
-                                    onTap: () => Navigator.of(dialogContext)
-                                        .pop(homeGenreCategories[i].id),
+                                    onTap: () => Navigator.of(
+                                      dialogContext,
+                                    ).pop(homeGenreCategories[i].id),
                                   ),
                               ],
                             ),
@@ -169,11 +176,11 @@ class _HomeTopBarState extends State<HomeTopBar> {
                 actions: {
                   _DismissCategoriesIntent:
                       CallbackAction<_DismissCategoriesIntent>(
-                    onInvoke: (_) {
-                      dismissMenu();
-                      return null;
-                    },
-                  ),
+                        onInvoke: (_) {
+                          dismissMenu();
+                          return null;
+                        },
+                      ),
                 },
                 child: menu,
               ),
@@ -232,7 +239,11 @@ class _HomeTopBarState extends State<HomeTopBar> {
           height: searchH,
           width: searchW,
           child: Center(
-            child: Icon(Icons.search_rounded, color: Colors.white, size: iconSize),
+            child: Icon(
+              Icons.search_rounded,
+              color: Colors.white,
+              size: iconSize,
+            ),
           ),
         ),
       );
@@ -280,7 +291,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
             final hideProgress = heroHeight <= 0
                 ? 0.0
                 : ((scrollOffset - hideStart) / HomeTopBar._hideSlideDistance)
-                    .clamp(0.0, 1.0);
+                      .clamp(0.0, 1.0);
 
             return Transform.translate(
               offset: Offset(0, -barHeight * hideProgress),
@@ -300,7 +311,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
               compactNav
                   ? ShellTokens.compactMenuLeadingInset(context)
                   : ShellTokens.bodyHorizontalPadding +
-                      ShellTokens.homeTopBarMenuLeadingInset,
+                        ShellTokens.homeTopBarMenuLeadingInset,
               ShellTokens.shellHeaderTopPadding,
               ShellTokens.bodyHorizontalPadding,
               0,
@@ -313,14 +324,13 @@ class _HomeTopBarState extends State<HomeTopBar> {
                   builder: (context, genreId, _) {
                     final categoriesLabel =
                         homeGenreLabel(genreId) ?? 'Categories';
-                    final categoriesActive =
-                        _categoriesOpen || genreId != null;
+                    final categoriesActive = _categoriesOpen || genreId != null;
                     final usesTv = ShellScope.metricsOf(context).usesTvDensity;
                     final tabGap = usesTv
                         ? 28.0
                         : MediaQuery.sizeOf(context).width < 560
-                            ? 20.0
-                            : 36.0;
+                        ? 20.0
+                        : 36.0;
 
                     if (tvFocus) {
                       shellTvRegisterRow(
@@ -334,48 +344,48 @@ class _HomeTopBarState extends State<HomeTopBar> {
                     final tabs = FocusTraversalGroup(
                       policy: OrderedTraversalPolicy(),
                       child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _CategoryTab(
-                          label: 'Films',
-                          isActive: mediaFilter == ShellHomeCategory.films,
-                          onTap: () =>
-                              _toggleMediaFilter(ShellHomeCategory.films),
-                          tvFocus: tvFocus,
-                          listIndex: 0,
-                          focusNode: tvFocus ? _menuFocus : null,
-                          onDownEdge: tvFocus
-                              ? ShellTvFocus.focusHomeSearch
-                              : null,
-                        ),
-                        SizedBox(width: tabGap),
-                        _CategoryTab(
-                          label: 'TV Shows',
-                          isActive: mediaFilter == ShellHomeCategory.tvShows,
-                          onTap: () =>
-                              _toggleMediaFilter(ShellHomeCategory.tvShows),
-                          tvFocus: tvFocus,
-                          listIndex: 1,
-                          onDownEdge: tvFocus
-                              ? () => ShellTvFocus.focusHomeHeroPlay()
-                              : null,
-                        ),
-                        SizedBox(width: tabGap),
-                        _CategoryTab(
-                          key: _categoriesKey,
-                          label: categoriesLabel,
-                          isActive: categoriesActive,
-                          showChevron: true,
-                          onTap: _openCategoriesMenu,
-                          tvFocus: tvFocus,
-                          listIndex: 2,
-                          focusNode: tvFocus ? _categoriesTabFocus : null,
-                          onDownEdge: tvFocus
-                              ? () => ShellTvFocus.focusHomeHeroPlay()
-                              : null,
-                        ),
-                      ],
-                    ),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _CategoryTab(
+                            label: 'Films',
+                            isActive: mediaFilter == ShellHomeCategory.films,
+                            onTap: () =>
+                                _toggleMediaFilter(ShellHomeCategory.films),
+                            tvFocus: tvFocus,
+                            listIndex: 0,
+                            focusNode: tvFocus ? _menuFocus : null,
+                            onDownEdge: tvFocus
+                                ? ShellTvFocus.focusHomeSearch
+                                : null,
+                          ),
+                          SizedBox(width: tabGap),
+                          _CategoryTab(
+                            label: 'TV Shows',
+                            isActive: mediaFilter == ShellHomeCategory.tvShows,
+                            onTap: () =>
+                                _toggleMediaFilter(ShellHomeCategory.tvShows),
+                            tvFocus: tvFocus,
+                            listIndex: 1,
+                            onDownEdge: tvFocus
+                                ? () => ShellTvFocus.focusHomeHeroPlay()
+                                : null,
+                          ),
+                          SizedBox(width: tabGap),
+                          _CategoryTab(
+                            key: _categoriesKey,
+                            label: categoriesLabel,
+                            isActive: categoriesActive,
+                            showChevron: true,
+                            onTap: _openCategoriesMenu,
+                            tvFocus: tvFocus,
+                            listIndex: 2,
+                            focusNode: tvFocus ? _categoriesTabFocus : null,
+                            onDownEdge: tvFocus
+                                ? () => ShellTvFocus.focusHomeHeroPlay()
+                                : null,
+                          ),
+                        ],
+                      ),
                     );
 
                     if (!compactNav || tvFocus) {
@@ -472,7 +482,11 @@ class _CategoryTabState extends State<_CategoryTab> {
     if (t < _hoverT) {
       return Color.lerp(idle, hoverWhite, t / _hoverT)!;
     }
-    return Color.lerp(hoverWhite, white, (t - _hoverT) / (_selectedT - _hoverT))!;
+    return Color.lerp(
+      hoverWhite,
+      white,
+      (t - _hoverT) / (_selectedT - _hoverT),
+    )!;
   }
 
   double _underlineWidth(double t, BuildContext context) {
@@ -490,7 +504,11 @@ class _CategoryTabState extends State<_CategoryTab> {
       curve: _animCurve,
       builder: (context, t, _) {
         final textColor = _lerpTabColor(t);
-        final fontWeight = FontWeight.lerp(FontWeight.w500, FontWeight.w700, t)!;
+        final fontWeight = FontWeight.lerp(
+          FontWeight.w500,
+          FontWeight.w700,
+          t,
+        )!;
         final underlineWidth = _underlineWidth(t, context);
         final tabHeight = shellScaled(context, 34).clamp(28.0, 34.0);
         final tabFont = shellScaled(context, 17).clamp(14.0, 17.0);
@@ -529,19 +547,21 @@ class _CategoryTabState extends State<_CategoryTab> {
               ),
             ),
             SizedBox(
-              height: shellScaled(context, ShellTokens.shellCategoryUnderlineGap)
-                  .clamp(2.0, ShellTokens.shellCategoryUnderlineGap),
+              height: shellScaled(
+                context,
+                ShellTokens.shellCategoryUnderlineGap,
+              ).clamp(2.0, ShellTokens.shellCategoryUnderlineGap),
             ),
             Align(
               alignment: Alignment.centerLeft,
               child: Container(
-                height: shellScaled(context, ShellTokens.shellNavUnderlineHeight)
-                    .clamp(1.0, ShellTokens.shellNavUnderlineHeight),
+                height: shellScaled(
+                  context,
+                  ShellTokens.shellNavUnderlineHeight,
+                ).clamp(1.0, ShellTokens.shellNavUnderlineHeight),
                 width: underlineWidth,
                 decoration: BoxDecoration(
-                  color: underlineWidth > 0
-                      ? textColor
-                      : Colors.transparent,
+                  color: underlineWidth > 0 ? textColor : Colors.transparent,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -617,9 +637,7 @@ class _FlatMenuRow extends StatelessWidget {
         style: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-          color: selected
-              ? cinematic.textPrimary
-              : cinematic.textSecondary,
+          color: selected ? cinematic.textPrimary : cinematic.textSecondary,
         ),
       ),
     );

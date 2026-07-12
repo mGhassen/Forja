@@ -20,6 +20,7 @@ Besides Xtream portals, Forja supports plain **M3U/M3U8 playlists**. Import from
 - Search channels from the in-player search overlay — dismiss the overlay with the borderless **Close** control in the header (circular hover highlight, no box border)
 - Switch audio tracks and load subtitle files when the stream supports them
 - Manage multiple playlists
+- Double-click the video (desktop) to enter/exit fullscreen — same as the fullscreen button
 
 ## Setup
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
@@ -48,15 +49,12 @@ class HubCatalogSection<T> extends StatefulWidget {
 }
 
 class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
-  final ScrollController _scrollController = ScrollController();
-
   @override
   void dispose() {
     final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
     if (tabId != null && widget.tvRowId != null) {
       shellTvUnregisterRow(tabId: tabId, rowId: widget.tvRowId!);
     }
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -98,27 +96,18 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
             shellHomeSectionBottomGap(context),
           ),
         ),
-        SizedBox(
-          height: HubPosterCard.cardHeight(context),
-          child: FocusTraversalGroup(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: shellAbsorbHorizontalScroll,
-              child: ListView.separated(
-              clipBehavior: Clip.none,
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: horizontalPad),
-              itemCount: list.length,
-              separatorBuilder: (_, _) => SizedBox(
-                width: widget.showRank
-                    ? shellScaled(context, 6).clamp(3.0, 6.0)
-                    : shellMovieCardRowGap(context),
-              ),
-              itemBuilder: (context, index) =>
-                  widget.cardBuilder(context, list[index], index),
+        FocusTraversalGroup(
+          child: HorizontalScroller(
+            height: HubPosterCard.cardHeight(context),
+            padding: EdgeInsets.symmetric(horizontal: horizontalPad),
+            itemCount: list.length,
+            separatorBuilder: (_, _) => SizedBox(
+              width: widget.showRank
+                  ? shellScaled(context, 6).clamp(3.0, 6.0)
+                  : shellMovieCardRowGap(context),
             ),
-            ),
+            itemBuilder: (context, index) =>
+                widget.cardBuilder(context, list[index], index),
           ),
         ),
       ],

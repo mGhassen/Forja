@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
+import 'package:window_manager/window_manager.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
@@ -42,13 +44,13 @@ class _CdnChannel {
   });
 
   factory _CdnChannel.fromJson(Map<String, dynamic> j) => _CdnChannel(
-        name:    (j['name'] ?? '').toString(),
-        code:    (j['code'] ?? '').toString(),
-        url:     (j['url'] ?? '').toString(),
-        image:   (j['image'] ?? '').toString(),
-        status:  (j['status'] ?? 'offline').toString(),
-        viewers: (j['viewers'] as num?)?.toInt() ?? 0,
-      );
+    name: (j['name'] ?? '').toString(),
+    code: (j['code'] ?? '').toString(),
+    url: (j['url'] ?? '').toString(),
+    image: (j['image'] ?? '').toString(),
+    status: (j['status'] ?? 'offline').toString(),
+    viewers: (j['viewers'] as num?)?.toInt() ?? 0,
+  );
 }
 
 class _CdnSportEvent {
@@ -83,22 +85,22 @@ class _CdnSportEvent {
   });
 
   factory _CdnSportEvent.fromJson(Map<String, dynamic> j) => _CdnSportEvent(
-        gameID:      (j['gameID'] ?? '').toString(),
-        homeTeam:    (j['homeTeam'] ?? '').toString(),
-        awayTeam:    (j['awayTeam'] ?? '').toString(),
-        homeTeamIMG: (j['homeTeamIMG'] ?? '').toString(),
-        awayTeamIMG: (j['awayTeamIMG'] ?? '').toString(),
-        time:        (j['time'] ?? '').toString(),
-        tournament:  (j['tournament'] ?? '').toString(),
-        country:     (j['country'] ?? '').toString(),
-        countryIMG:  (j['countryIMG'] ?? '').toString(),
-        status:      (j['status'] ?? '').toString(),
-        start:       (j['start'] ?? '').toString(),
-        end:         (j['end'] ?? '').toString(),
-        channels:    (j['channels'] as List? ?? [])
-            .map((c) => _CdnChannel.fromJson(c as Map<String, dynamic>))
-            .toList(),
-      );
+    gameID: (j['gameID'] ?? '').toString(),
+    homeTeam: (j['homeTeam'] ?? '').toString(),
+    awayTeam: (j['awayTeam'] ?? '').toString(),
+    homeTeamIMG: (j['homeTeamIMG'] ?? '').toString(),
+    awayTeamIMG: (j['awayTeamIMG'] ?? '').toString(),
+    time: (j['time'] ?? '').toString(),
+    tournament: (j['tournament'] ?? '').toString(),
+    country: (j['country'] ?? '').toString(),
+    countryIMG: (j['countryIMG'] ?? '').toString(),
+    status: (j['status'] ?? '').toString(),
+    start: (j['start'] ?? '').toString(),
+    end: (j['end'] ?? '').toString(),
+    channels: (j['channels'] as List? ?? [])
+        .map((c) => _CdnChannel.fromJson(c as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 class _DamiTvStream {
@@ -144,7 +146,8 @@ class _DamiTvStream {
       return path;
     }
 
-    final league = (j['league'] ?? j['tag'] ?? j['source_tag'] ?? '').toString();
+    final league = (j['league'] ?? j['tag'] ?? j['source_tag'] ?? '')
+        .toString();
     final viewersRaw = j['viewers'];
     final viewers = viewersRaw is num
         ? viewersRaw.toInt()
@@ -173,7 +176,7 @@ class _DamiTvStream {
     if (now >= startsAt && now <= endsAt) return '🔴 Live Now';
     if (startsAt > now) {
       final dt = DateTime.fromMillisecondsSinceEpoch(startsAt * 1000);
-      return '⏰ ${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}';
+      return '⏰ ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
     return '';
   }
@@ -236,23 +239,36 @@ const _autoplayJs = r'''
 })();
 ''';
 
+/// Double-click the embed surface → toggle host fullscreen (films / IPTV parity).
+const _dblclickFullscreenJs = r'''
+(function () {
+  if (window.__forjaDblFs) return;
+  window.__forjaDblFs = true;
+  document.addEventListener('dblclick', function () {
+    try {
+      window.flutter_inappwebview.callHandler('toggleFullscreen');
+    } catch (_) {}
+  }, true);
+})();
+''';
+
 const _ppvReferer = 'https://ppv.is/';
 
-Map<String, String> get _ppvStreamHeaders => {
-      'User-Agent': _ua['User-Agent']!,
-      'Referer': _ppvReferer,
-      'Origin': 'https://ppv.is',
-    };
+/// embedindia JW Player resolves tokenised HLS inside the embed browsing
+/// context. The sniffed m3u8 403s in mpv — same as copying the URL into VLC.
+bool _ppvEmbedRequiresWebView(String embedUrl) {
+  final host = Uri.tryParse(embedUrl)?.host.toLowerCase() ?? '';
+  return host.contains('embedindia.st');
+}
 
-String _buildPpvIframeWrapper(String embedUrl) => '''<!doctype html>
-<html><head>
-<meta charset="utf-8">
-<meta name="referrer" content="unsafe-url">
-<title>player</title>
-<style>html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style>
-</head><body>
-<iframe id="p" src="$embedUrl" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="unsafe-url"></iframe>
-</body></html>''';
+Map<String, String> _ppvEmbedStreamHeaders(String embedUrl) {
+  final origin = Uri.tryParse(embedUrl)?.origin ?? 'https://embedindia.st';
+  return {
+    'User-Agent': _ua['User-Agent']!,
+    'Referer': embedUrl,
+    'Origin': origin,
+  };
+}
 
 /// Sniff the direct HLS/MP4 URL from a PPV embed, proxied so Referer applies
 /// to every segment request.
@@ -270,8 +286,7 @@ Future<String?> _resolvePpvPlayUrl(String embedUrl) async {
   }
 
   debugPrint('[LiveMatches] PPV extracted: ${extracted.url}');
-  final headers =
-      extracted.headers.isNotEmpty ? extracted.headers : _ppvStreamHeaders;
+  final headers = _ppvEmbedStreamHeaders(embedUrl);
 
   final proxy = LocalServerService();
   await proxy.start();
@@ -310,7 +325,13 @@ Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
 }
 
 Future<List<_CdnChannel>> _fetchCdnChannels() async {
-  final resp = await http.get(Uri.parse('https://api.cdn-live.tv/api/v1/channels/?user=cdnlivetv&plan=free'), headers: _ua)
+  final resp = await http
+      .get(
+        Uri.parse(
+          'https://api.cdn-live.tv/api/v1/channels/?user=cdnlivetv&plan=free',
+        ),
+        headers: _ua,
+      )
       .timeout(const Duration(seconds: 12));
   if (resp.statusCode != 200) return [];
   final body = jsonDecode(resp.body) as Map<String, dynamic>;
@@ -320,18 +341,26 @@ Future<List<_CdnChannel>> _fetchCdnChannels() async {
 }
 
 Future<List<_CdnSportEvent>> _fetchCdnSports() async {
-  final resp = await http.get(Uri.parse('https://api.cdn-live.tv/api/v1/events/sports/?user=cdnlivetv&plan=free'), headers: _ua)
+  final resp = await http
+      .get(
+        Uri.parse(
+          'https://api.cdn-live.tv/api/v1/events/sports/?user=cdnlivetv&plan=free',
+        ),
+        headers: _ua,
+      )
       .timeout(const Duration(seconds: 12));
   if (resp.statusCode != 200) return [];
   final body = jsonDecode(resp.body) as Map<String, dynamic>;
   final cdnData = body['cdn-live-tv'] as Map<String, dynamic>?;
   if (cdnData == null) return [];
-  
+
   final result = <_CdnSportEvent>[];
   for (final key in ['Soccer', 'NFL', 'NBA', 'NHL']) {
     final events = (cdnData[key] as List?) ?? [];
     for (final e in events) {
-      try { result.add(_CdnSportEvent.fromJson(e as Map<String, dynamic>)); } catch (_) {}
+      try {
+        result.add(_CdnSportEvent.fromJson(e as Map<String, dynamic>));
+      } catch (_) {}
     }
   }
   return result;
@@ -379,7 +408,11 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; _sportFilter = 'all'; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _sportFilter = 'all';
+    });
     if (_provider == _DataProvider.damiTv) {
       await _loadDamiTv();
       return;
@@ -419,7 +452,11 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         if (mounted) setState(() => _tabController = newCtrl);
       }
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
     }
   }
 
@@ -431,7 +468,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       ]);
       final channels = results[0] as List<_CdnChannel>;
       final sports = results[1] as List<_CdnSportEvent>;
-      
+
       // Build categories from sports
       final seenCats = <String>{};
       final cats = <_Sport>[];
@@ -440,7 +477,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
           cats.add(_Sport(id: s.tournament, name: s.tournament));
         }
       }
-      
+
       if (mounted) {
         final oldCtrl = _tabController;
         setState(() {
@@ -461,7 +498,11 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
         if (mounted) setState(() => _tabController = newCtrl);
       }
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
     }
   }
 
@@ -494,11 +535,19 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       ),
       child: Row(
         children: [
-          Icon(Icons.sports_soccer_rounded, color: ForjaShellColors.sectionAccent, size: 28),
+          Icon(
+            Icons.sports_soccer_rounded,
+            color: ForjaShellColors.sectionAccent,
+            size: 28,
+          ),
           const SizedBox(width: 10),
           const Text(
             'Live Matches',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const Spacer(),
           IconButton(
@@ -514,10 +563,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   Widget _buildSportTabs() {
     final policy = ShellScope.inputPolicyOf(context);
     if (policy.useFocusableMoodChips && _tabController != null) {
-      final labels = [
-        'All',
-        ..._sports.map((s) => s.name),
-      ];
+      final labels = ['All', ..._sports.map((s) => s.name)];
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.fromLTRB(
@@ -566,7 +612,9 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
 
   Widget _buildBody() {
     if (_loading) {
-      return Center(child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent));
+      return Center(
+        child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
+      );
     }
     if (_error != null) {
       return ShellErrorRetryPanel(
@@ -591,30 +639,35 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
           children: [
             Icon(Icons.sports_rounded, color: Colors.white24, size: 64),
             SizedBox(height: 16),
-            Text('No streams available', style: TextStyle(color: Colors.white38, fontSize: 16)),
+            Text(
+              'No streams available',
+              style: TextStyle(color: Colors.white38, fontSize: 16),
+            ),
           ],
         ),
       );
     }
-    return LayoutBuilder(builder: (context, constraints) {
-      final crossCount = (constraints.maxWidth / 300).floor().clamp(1, 6);
-      return GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossCount,
-          mainAxisExtent: 200,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: streams.length,
-        itemBuilder: (context, i) => _DamiTvMatchCard(
-          stream: streams[i],
-          gridIndex: i,
-          gridColumns: crossCount,
-          onTap: () => _openDamiTvStream(streams[i]),
-        ),
-      );
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossCount = (constraints.maxWidth / 300).floor().clamp(1, 6);
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossCount,
+            mainAxisExtent: 200,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: streams.length,
+          itemBuilder: (context, i) => _DamiTvMatchCard(
+            stream: streams[i],
+            gridIndex: i,
+            gridColumns: crossCount,
+            onTap: () => _openDamiTvStream(streams[i]),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildCdnBody() {
@@ -627,7 +680,10 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             children: [
               Icon(Icons.tv_rounded, color: Colors.white24, size: 64),
               SizedBox(height: 16),
-              Text('No channels available', style: TextStyle(color: Colors.white38, fontSize: 16)),
+              Text(
+                'No channels available',
+                style: TextStyle(color: Colors.white38, fontSize: 16),
+              ),
             ],
           ),
         );
@@ -653,25 +709,30 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             ),
           ),
           Expanded(
-            child: LayoutBuilder(builder: (context, constraints) {
-              final crossCount = (constraints.maxWidth / 280).floor().clamp(1, 6);
-              return GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossCount,
-                  mainAxisExtent: 160,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-                itemCount: channels.length,
-                itemBuilder: (context, i) => _CdnChannelCard(
-                  channel: channels[i],
-                  gridIndex: i,
-                  gridColumns: crossCount,
-                  onTap: () => _openCdnChannel(channels[i]),
-                ),
-              );
-            }),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final crossCount = (constraints.maxWidth / 280).floor().clamp(
+                  1,
+                  6,
+                );
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossCount,
+                    mainAxisExtent: 160,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: channels.length,
+                  itemBuilder: (context, i) => _CdnChannelCard(
+                    channel: channels[i],
+                    gridIndex: i,
+                    gridColumns: crossCount,
+                    onTap: () => _openCdnChannel(channels[i]),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       );
@@ -686,7 +747,10 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             children: [
               Icon(Icons.sports_rounded, color: Colors.white24, size: 64),
               SizedBox(height: 16),
-              Text('No sports events available', style: TextStyle(color: Colors.white38, fontSize: 16)),
+              Text(
+                'No sports events available',
+                style: TextStyle(color: Colors.white38, fontSize: 16),
+              ),
             ],
           ),
         );
@@ -712,25 +776,30 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             ),
           ),
           Expanded(
-            child: LayoutBuilder(builder: (context, constraints) {
-              final crossCount = (constraints.maxWidth / 300).floor().clamp(1, 6);
-              return GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossCount,
-                  mainAxisExtent: 200,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-                itemCount: sports.length,
-                itemBuilder: (context, i) => _CdnSportCard(
-                  event: sports[i],
-                  gridIndex: i,
-                  gridColumns: crossCount,
-                  onTap: () => _openCdnSportEvent(sports[i]),
-                ),
-              );
-            }),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final crossCount = (constraints.maxWidth / 300).floor().clamp(
+                  1,
+                  6,
+                );
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossCount,
+                    mainAxisExtent: 200,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: sports.length,
+                  itemBuilder: (context, i) => _CdnSportCard(
+                    event: sports[i],
+                    gridIndex: i,
+                    gridColumns: crossCount,
+                    onTap: () => _openCdnSportEvent(sports[i]),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       );
@@ -744,6 +813,23 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     }
     if (!mounted) return;
 
+    // embedindia feeds only play inside their embed page (ppv.is uses the same
+    // iframe). Native mpv cannot reuse the sniffed m3u8 token.
+    if (_ppvEmbedRequiresWebView(s.iframe)) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => _LiveMatchesEmbedPlayerScreen(
+            embedUrl: s.iframe,
+            title: s.name,
+            subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
+            badgeLabel: 'PPV',
+          ),
+        ),
+      );
+      return;
+    }
+
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -755,12 +841,16 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
             decoration: BoxDecoration(
               color: ForjaShellColors.surfaceElevated,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
+              border: Border.all(
+                color: ForjaShellColors.cinematic.borderSubtle,
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
+                CircularProgressIndicator(
+                  color: ForjaShellColors.sectionAccent,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Connecting to stream…',
@@ -813,13 +903,16 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   }
 
   void _openCdnChannel(_CdnChannel channel) {
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => _LiveMatchesEmbedPlayerScreen(
-        embedUrl: channel.url,
-        title: channel.name,
-        badgeLabel: 'CDN Live',
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _LiveMatchesEmbedPlayerScreen(
+          embedUrl: channel.url,
+          title: channel.name,
+          badgeLabel: 'CDN Live',
+        ),
       ),
-    ));
+    );
   }
 
   void _openCdnSportEvent(_CdnSportEvent event) {
@@ -836,7 +929,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
       context: context,
       backgroundColor: const Color(0xFF141414),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => _CdnChannelSheet(
         event: event,
         onChannelSelected: (ch) {
@@ -852,7 +946,6 @@ enum _DataProvider { damiTv, cdnLive }
 
 // ─── Chips ────────────────────────────────────────────────────────────────────
 
- 
 class _TeamBadge extends StatelessWidget {
   final String? badge;
   final String name;
@@ -868,23 +961,35 @@ class _TeamBadge extends StatelessWidget {
           child: badge != null && badge!.isNotEmpty
               ? CachedNetworkImage(
                   imageUrl: badge!,
-                  width: 38, height: 38, fit: BoxFit.contain,
+                  width: 38,
+                  height: 38,
+                  fit: BoxFit.contain,
                   errorWidget: (_, _, _) => Text(
                     name.isNotEmpty ? name[0] : '?',
-                    style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 )
-              : Text(name.isNotEmpty ? name[0] : '?',
-                  style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+              : Text(
+                  name.isNotEmpty ? name[0] : '?',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
         ),
         const SizedBox(height: 4),
         SizedBox(
           width: 60,
-          child: Text(name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 9.5)),
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 9.5),
+          ),
         ),
       ],
     );
@@ -934,85 +1039,123 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: active ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
-            border: Border.all(
-              color: active
-                  ? ForjaShellColors.chipSelectedBorder
-                  : ForjaShellColors.cinematic.borderSubtle,
-              width: 1.5,
-            ),
-            boxShadow: active
-                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
-                : null,
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: active
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.06),
+          border: Border.all(
+            color: active
+                ? ForjaShellColors.chipSelectedBorder
+                : ForjaShellColors.cinematic.borderSubtle,
+            width: 1.5,
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (c.image.isNotEmpty)
-                        CachedNetworkImage(
-                          imageUrl: c.image,
-                          height: 60,
-                          fit: BoxFit.contain,
-                          errorWidget: (_, _, _) => const Icon(Icons.tv_rounded, color: Colors.white38, size: 48),
-                        )
-                      else
-                        const Icon(Icons.tv_rounded, color: Colors.white38, size: 48),
-                      const SizedBox(height: 12),
-                      Text(
-                        c.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                      if (c.viewers > 0) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          '${c.viewers} viewers',
-                          style: const TextStyle(color: Colors.white54, fontSize: 10),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (c.image.isNotEmpty)
+                      CachedNetworkImage(
+                        imageUrl: c.image,
+                        height: 60,
+                        fit: BoxFit.contain,
+                        errorWidget: (_, _, _) => const Icon(
+                          Icons.tv_rounded,
+                          color: Colors.white38,
+                          size: 48,
                         ),
-                      ],
-                    ],
-                  ),
-                ),
-                Positioned(
-                  top: 10, right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade700,
-                      borderRadius: BorderRadius.circular(6),
+                      )
+                    else
+                      const Icon(
+                        Icons.tv_rounded,
+                        color: Colors.white38,
+                        size: 48,
+                      ),
+                    const SizedBox(height: 12),
+                    Text(
+                      c.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    child: const Text('● LIVE',
-                        style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    if (c.viewers > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${c.viewers} viewers',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade700,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    '● LIVE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                if (active)
-                  Positioned.fill(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 28),
+              ),
+              if (active)
+                Positioned.fill(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.black,
+                        size: 28,
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
+      ),
     );
   }
 }
@@ -1060,120 +1203,184 @@ class _CdnSportCardState extends State<_CdnSportCard> {
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: active ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
-            border: Border.all(
-              color: active
-                  ? ForjaShellColors.chipSelectedBorder
-                  : ForjaShellColors.cinematic.borderSubtle,
-              width: 1.5,
-            ),
-            boxShadow: active
-                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
-                : null,
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: active
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.06),
+          border: Border.all(
+            color: active
+                ? ForjaShellColors.chipSelectedBorder
+                : ForjaShellColors.cinematic.borderSubtle,
+            width: 1.5,
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Column(
-                            children: [
-                              if (e.homeTeamIMG.isNotEmpty)
-                                CachedNetworkImage(
-                                  imageUrl: e.homeTeamIMG,
-                                  width: 40, height: 40,
-                                  errorWidget: (_, _, _) => const Icon(Icons.sports_rounded, color: Colors.white38, size: 32),
-                                )
-                              else
-                                const Icon(Icons.sports_rounded, color: Colors.white38, size: 32),
-                              const SizedBox(height: 4),
-                              SizedBox(
-                                width: 60,
-                                child: Text(e.homeTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(color: Colors.white70, fontSize: 10)),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Column(
+                          children: [
+                            if (e.homeTeamIMG.isNotEmpty)
+                              CachedNetworkImage(
+                                imageUrl: e.homeTeamIMG,
+                                width: 40,
+                                height: 40,
+                                errorWidget: (_, _, _) => const Icon(
+                                  Icons.sports_rounded,
+                                  color: Colors.white38,
+                                  size: 32,
+                                ),
+                              )
+                            else
+                              const Icon(
+                                Icons.sports_rounded,
+                                color: Colors.white38,
+                                size: 32,
                               ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text('VS',
-                                style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.7),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800)),
-                          ),
-                          Column(
-                            children: [
-                              if (e.awayTeamIMG.isNotEmpty)
-                                CachedNetworkImage(
-                                  imageUrl: e.awayTeamIMG,
-                                  width: 40, height: 40,
-                                  errorWidget: (_, _, _) => const Icon(Icons.sports_rounded, color: Colors.white38, size: 32),
-                                )
-                              else
-                                const Icon(Icons.sports_rounded, color: Colors.white38, size: 32),
-                              const SizedBox(height: 4),
-                              SizedBox(
-                                width: 60,
-                                child: Text(e.awayTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                            const SizedBox(height: 4),
+                            SizedBox(
+                              width: 60,
+                              child: Text(
+                                e.homeTeam,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10,
+                                ),
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'VS',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ],
+                        ),
+                        Column(
+                          children: [
+                            if (e.awayTeamIMG.isNotEmpty)
+                              CachedNetworkImage(
+                                imageUrl: e.awayTeamIMG,
+                                width: 40,
+                                height: 40,
+                                errorWidget: (_, _, _) => const Icon(
+                                  Icons.sports_rounded,
+                                  color: Colors.white38,
+                                  size: 32,
+                                ),
+                              )
+                            else
+                              const Icon(
+                                Icons.sports_rounded,
+                                color: Colors.white38,
+                                size: 32,
+                              ),
+                            const SizedBox(height: 4),
+                            SizedBox(
+                              width: 60,
+                              child: Text(
+                                e.awayTeam,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      e.tournament,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        e.tournament,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: e.status == 'live'
+                        ? Colors.red.shade700
+                        : Colors.orange.shade700,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    e.status == 'live' ? '● LIVE' : e.status.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                Positioned(
-                  top: 10, right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: e.status == 'live' ? Colors.red.shade700 : Colors.orange.shade700,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(e.status == 'live' ? '● LIVE' : e.status.toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                if (active)
-                  Positioned.fill(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 28),
+              ),
+              if (active)
+                Positioned.fill(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.black,
+                        size: 28,
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
+      ),
     );
   }
 }
@@ -1183,7 +1390,10 @@ class _CdnSportCardState extends State<_CdnSportCard> {
 class _CdnChannelSheet extends StatelessWidget {
   final _CdnSportEvent event;
   final void Function(_CdnChannel) onChannelSelected;
-  const _CdnChannelSheet({required this.event, required this.onChannelSelected});
+  const _CdnChannelSheet({
+    required this.event,
+    required this.onChannelSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1193,33 +1403,78 @@ class _CdnChannelSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(child: Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
-          Text('${event.homeTeam} vs ${event.awayTeam}',
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            '${event.homeTeam} vs ${event.awayTeam}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 6),
-          const Text('Choose a channel:', style: TextStyle(color: Colors.white54, fontSize: 13)),
+          const Text(
+            'Choose a channel:',
+            style: TextStyle(color: Colors.white54, fontSize: 13),
+          ),
           const SizedBox(height: 16),
-          ...event.channels.map((ch) => shellFocusableTap(
-            context: context,
-            onTap: () => onChannelSelected(ch),
-            borderRadius: 12,
-            navLeftAlways: true,
-            tvTabId: 'live_matches',
-            tvZone: ShellTvZone.row,
-            child: ListTile(
-            leading: ch.image.isNotEmpty
-                ? CachedNetworkImage(imageUrl: ch.image, width: 32, height: 32, fit: BoxFit.contain,
-                    errorWidget: (_, _, _) => Icon(Icons.tv_rounded, color: ForjaShellColors.sectionAccent))
-                : Icon(Icons.tv_rounded, color: ForjaShellColors.sectionAccent),
-            title: Text(ch.name,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            subtitle: ch.viewers > 0
-                ? Text('${ch.viewers} viewers', style: const TextStyle(color: Colors.white38, fontSize: 11))
-                : null,
-            trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-          ))),
+          ...event.channels.map(
+            (ch) => shellFocusableTap(
+              context: context,
+              onTap: () => onChannelSelected(ch),
+              borderRadius: 12,
+              navLeftAlways: true,
+              tvTabId: 'live_matches',
+              tvZone: ShellTvZone.row,
+              child: ListTile(
+                leading: ch.image.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: ch.image,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.contain,
+                        errorWidget: (_, _, _) => Icon(
+                          Icons.tv_rounded,
+                          color: ForjaShellColors.sectionAccent,
+                        ),
+                      )
+                    : Icon(
+                        Icons.tv_rounded,
+                        color: ForjaShellColors.sectionAccent,
+                      ),
+                title: Text(
+                  ch.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: ch.viewers > 0
+                    ? Text(
+                        '${ch.viewers} viewers',
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11,
+                        ),
+                      )
+                    : null,
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white38,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1251,24 +1506,80 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _loading = true;
   bool _isFullscreen = false;
 
-  void _enterFullscreen() async {
-    setState(() => _isFullscreen = true);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-    ]);
+  Future<void> _enterFullscreen() async {
+    if (DesktopWindowChrome.isDesktop) {
+      try {
+        if (await windowManager.isMaximized()) {
+          await windowManager.unmaximize();
+        }
+        await windowManager.setFullScreen(true);
+      } catch (_) {}
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+      ]);
+    }
+    if (mounted) setState(() => _isFullscreen = true);
   }
 
-  void _exitFullscreen() async {
-    setState(() => _isFullscreen = false);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    await SystemChrome.setPreferredOrientations([]);
+  Future<void> _exitFullscreen() async {
+    if (DesktopWindowChrome.isDesktop) {
+      try {
+        await windowManager.setFullScreen(false);
+        if (await windowManager.isMaximized()) {
+          await windowManager.unmaximize();
+        }
+      } catch (_) {}
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      await SystemChrome.setPreferredOrientations([]);
+    }
+    if (mounted) setState(() => _isFullscreen = false);
+  }
+
+  Future<void> _toggleFullscreen() async {
+    if (DesktopWindowChrome.isDesktop) {
+      try {
+        final isFull = await windowManager.isFullScreen();
+        if (isFull) {
+          await _exitFullscreen();
+        } else {
+          await _enterFullscreen();
+        }
+      } catch (_) {
+        if (_isFullscreen) {
+          await _exitFullscreen();
+        } else {
+          await _enterFullscreen();
+        }
+      }
+      return;
+    }
+    if (_isFullscreen) {
+      await _exitFullscreen();
+    } else {
+      await _enterFullscreen();
+    }
   }
 
   @override
   void dispose() {
-    SystemChrome.setPreferredOrientations([]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    if (DesktopWindowChrome.isDesktop) {
+      Future.microtask(() async {
+        try {
+          if (await windowManager.isFullScreen()) {
+            await windowManager.setFullScreen(false);
+          }
+          if (await windowManager.isMaximized()) {
+            await windowManager.unmaximize();
+          }
+        } catch (_) {}
+      });
+    } else {
+      SystemChrome.setPreferredOrientations([]);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
     super.dispose();
   }
 
@@ -1342,15 +1653,17 @@ class _LiveMatchesEmbedPlayerScreenState
         fit: StackFit.expand,
         children: [
           ForjaInAppWebView(
-            initialData: InAppWebViewInitialData(
-              data: _buildPpvIframeWrapper(embedUrl),
-              baseUrl: WebUri(_ppvReferer),
-              historyUrl: WebUri(_ppvReferer),
-              mimeType: 'text/html',
-              encoding: 'utf-8',
+            initialUrlRequest: URLRequest(
+              url: WebUri(embedUrl),
+              headers: {
+                'User-Agent': _ua['User-Agent']!,
+                'Referer': _ppvReferer,
+                'Origin': 'https://ppv.is',
+              },
             ),
             initialSettings: InAppWebViewSettings(
               userAgent: _ua['User-Agent'],
+              domStorageEnabled: true,
               mediaPlaybackRequiresUserGesture: false,
               allowsInlineMediaPlayback: true,
               javaScriptEnabled: true,
@@ -1359,25 +1672,40 @@ class _LiveMatchesEmbedPlayerScreenState
               allowsAirPlayForMediaPlayback: true,
               allowsPictureInPictureMediaPlayback: true,
             ),
+            onWebViewCreated: (controller) {
+              controller.addJavaScriptHandler(
+                handlerName: 'toggleFullscreen',
+                callback: (_) {
+                  unawaited(_toggleFullscreen());
+                },
+              );
+            },
             onLoadStart: (_, _) => setState(() => _loading = true),
             onLoadStop: (ctrl, _) async {
               setState(() => _loading = false);
               try {
                 await ctrl.evaluateJavascript(source: _autoplayJs);
+                await ctrl.evaluateJavascript(source: _dblclickFullscreenJs);
               } catch (_) {}
             },
-            onEnterFullscreen: (_) => _enterFullscreen(),
-            onExitFullscreen: (_) => _exitFullscreen(),
+            onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
+            onExitFullscreen: (_) => unawaited(_exitFullscreen()),
             shouldOverrideUrlLoading: (ctrl, action) async {
               final url = action.request.url?.toString() ?? '';
               final embedHost = Uri.tryParse(embedUrl)?.host ?? '';
               if (embedHost.isNotEmpty && !url.contains(embedHost)) {
-                http.get(Uri.parse(url), headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                      'AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/122.0.0.0 Safari/537.36',
-                  'Referer': embedUrl,
-                }).catchError((_) => http.Response('', 200));
+                http
+                    .get(
+                      Uri.parse(url),
+                      headers: {
+                        'User-Agent':
+                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                            'AppleWebKit/537.36 (KHTML, like Gecko) '
+                            'Chrome/122.0.0.0 Safari/537.36',
+                        'Referer': embedUrl,
+                      },
+                    )
+                    .catchError((_) => http.Response('', 200));
                 return NavigationActionPolicy.CANCEL;
               }
               return NavigationActionPolicy.ALLOW;
@@ -1457,152 +1785,210 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: active ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.06),
-            border: Border.all(
-              color: active
-                  ? ForjaShellColors.chipSelectedBorder
-                  : ForjaShellColors.cinematic.borderSubtle,
-              width: 1.5,
-            ),
-            boxShadow: active
-                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, spreadRadius: 1)]
-                : null,
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: active
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.06),
+          border: Border.all(
+            color: active
+                ? ForjaShellColors.chipSelectedBorder
+                : ForjaShellColors.cinematic.borderSubtle,
+            width: 1.5,
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Stack(
-              children: [
-                // poster background
-                if (s.poster.isNotEmpty)
-                  Positioned.fill(
-                    child: CachedNetworkImage(
-                      imageUrl: s.poster,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) => const SizedBox.shrink(),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            children: [
+              // poster background
+              if (s.poster.isNotEmpty)
+                Positioned.fill(
+                  child: CachedNetworkImage(
+                    imageUrl: s.poster,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ),
+              // dark gradient overlay
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.45),
+                        Colors.black.withValues(alpha: 0.90),
+                      ],
                     ),
                   ),
-                // dark gradient overlay
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.45),
-                          Colors.black.withValues(alpha: 0.90),
+                ),
+              ),
+              // content
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (hasTeams) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _TeamBadge(badge: s.homeBadge, name: s.homeTeam!),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'VS',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ),
+                          _TeamBadge(badge: s.awayBadge, name: s.awayTeam!),
                         ],
                       ),
+                      const SizedBox(height: 10),
+                    ],
+                    Text(
+                      s.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ),
-                // content
-                Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (hasTeams) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _TeamBadge(badge: s.homeBadge, name: s.homeTeam!),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text('VS',
-                                  style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.7),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 2)),
-                            ),
-                            _TeamBadge(badge: s.awayBadge, name: s.awayTeam!),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                      ],
+                    if (s.league.isNotEmpty) ...[
+                      const SizedBox(height: 6),
                       Text(
-                        s.name,
-                        maxLines: 2,
+                        s.league,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 10.5,
+                        ),
                       ),
-                      if (s.league.isNotEmpty) ...[  
-                        const SizedBox(height: 6),
-                        Text(s.league,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white54, fontSize: 10.5)),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
-                // time label top-right
-                if (s.timeLabel.isNotEmpty)
-                  Positioned(
-                    top: 10, right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: s.timeLabel.contains('Live') ? Colors.red.shade700 : Colors.black54,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(s.timeLabel,
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                // category top-left
+              ),
+              // time label top-right
+              if (s.timeLabel.isNotEmpty)
                 Positioned(
-                  top: 10, left: 10,
+                  top: 10,
+                  right: 10,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.black54,
+                      color: s.timeLabel.contains('Live')
+                          ? Colors.red.shade700
+                          : Colors.black54,
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(s.categoryName.toUpperCase(),
-                        style: const TextStyle(color: Colors.white60, fontSize: 9, letterSpacing: 0.8)),
+                    child: Text(
+                      s.timeLabel,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
-                // no iframe warning bottom
-                if (!hasIframe)
-                  Positioned(
-                    bottom: 8, left: 0, right: 0,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(6),
+              // category top-left
+              Positioned(
+                top: 10,
+                left: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    s.categoryName.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white60,
+                      fontSize: 9,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ),
+              // no iframe warning bottom
+              if (!hasIframe)
+                Positioned(
+                  bottom: 8,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'Not yet available',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
                         ),
-                        child: const Text('Not yet available',
-                            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ),
-                // play overlay on hover
-                if (active && hasIframe)
-                  Positioned.fill(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 28),
+                ),
+              // play overlay on hover
+              if (active && hasIframe)
+                Positioned.fill(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.black,
+                        size: 28,
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
+      ),
     );
   }
 }

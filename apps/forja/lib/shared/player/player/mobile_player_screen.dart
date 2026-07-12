@@ -4420,14 +4420,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
                       tooltip: 'Quality',
                       onPressedWithContext: _showQualityMenu,
                     ),
-                    if (widget.onSwitchPlayer != null)
-                      PlayerFlatIconButton(
-                        icon: Icons.smart_display_outlined,
-                        size: btnSize,
-                        iconSize: iconSz,
-                        tooltip: 'Player',
-                        onPressedWithContext: _showPlayerMenu,
-                      ),
                     PlayerFlatIconButton(
                       tvFocusable: tvFocus,
                       icon: Icons.settings_outlined,

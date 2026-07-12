@@ -114,4 +114,20 @@ void main() {
 
     expect(nav.take(2), ['home', 'search']);
   });
+
+  test('desktop search-first nav migrates back to home-first', () async {
+    await kvSetStringList('navbar_config', const ['search', 'home', 'mylist']);
+    await kvSetStringList('navbar_known_ids', List.from(SettingsService.allNavIds));
+    await kvSetString('navbar_shell_080', '1');
+    await kvSetString('navbar_shell_081', '1');
+    await kvSetString('navbar_shell_084', '1');
+    await kvSetString('navbar_shell_085', '1');
+    await kvSetString('navbar_shell_086', '1');
+
+    SettingsService.configurePlatformProfile(PlatformProfile.desktop);
+    final service = SettingsService();
+    final nav = await service.getNavbarConfig();
+
+    expect(nav.take(2), ['home', 'search']);
+  });
 }

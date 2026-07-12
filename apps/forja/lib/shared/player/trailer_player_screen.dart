@@ -12,8 +12,6 @@ import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:rust/rust.dart';
 
-const _kYoutubeEmbedOrigin = 'https://com.forja.app';
-
 class TrailerPlayerScreen extends StatefulWidget {
   const TrailerPlayerScreen({
     super.key,
@@ -83,11 +81,28 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   String _embedHtml() {
     final lang = widget.languageCode?.trim();
     final hasLang = lang != null && lang.isNotEmpty;
-    final langPlayerVars = hasLang
-        ? '''
-          hl: '$lang',
-          cc_lang_pref: '$lang','''
-        : '';
+    final playerVars = <String, Object>{
+      'autoplay': 1,
+      'mute': 0,
+      'controls': 0,
+      'modestbranding': 1,
+      'rel': 0,
+      'loop': 0,
+      'playsinline': 1,
+      'fs': 0,
+      'iv_load_policy': 3,
+      'disablekb': 1,
+      'cc_load_policy': 0,
+      'enablejsapi': 1,
+    };
+    if (hasLang) {
+      playerVars['hl'] = lang;
+      playerVars['cc_lang_pref'] = lang;
+    }
+    final embedSrc = youtubeNocookieEmbedSrc(
+      videoId: _trailer.key,
+      playerVars: playerVars,
+    );
     final captionProbeLangs = hasLang
         ? "'$lang','en','es','fr','de','ar','pt','it','ja','ko','zh','ru'"
         : "'en','es','fr','de','ar','pt','it','ja','ko','zh','ru'";
@@ -124,11 +139,13 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
 </head>
 <body>
   <div id="viewport">
-    <div id="player"></div>
+    ${youtubeEmbedIframeHtml(embedSrc: embedSrc)}
     <div id="center-shield"></div>
     <div id="end-shield"></div>
   </div>
   <script>
+    $youtubeIframeReferrerPatchJs
+
     var tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
     document.head.appendChild(tag);
@@ -286,26 +303,8 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
     }
 
     function onYouTubeIframeAPIReady() {
+      patchYoutubeIframeReferrer(document.getElementById('player'));
       player = new YT.Player('player', {
-        videoId: '${_trailer.key}',
-        width: '100%',
-        height: '100%',
-        playerVars: {
-          autoplay: 1,
-          mute: 0,
-          controls: 0,
-          modestbranding: 1,
-          rel: 0,
-          loop: 0,
-          playsinline: 1,
-          fs: 0,
-          iv_load_policy: 3,
-          disablekb: 1,
-          cc_load_policy: 0,
-          enablejsapi: 1,$langPlayerVars
-          origin: '$_kYoutubeEmbedOrigin',
-          widget_referrer: '$_kYoutubeEmbedOrigin'
-        },
         events: {
           onReady: function(e) {
             cropYoutubeChrome(e.target);
@@ -844,7 +843,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
             key: ValueKey('trailer-player-${_trailer.key}'),
             initialData: InAppWebViewInitialData(
               data: _embedHtml(),
-              baseUrl: WebUri(_kYoutubeEmbedOrigin),
+              baseUrl: WebUri(kYoutubeEmbedOrigin),
             ),
             initialSettings: InAppWebViewSettings(
               mediaPlaybackRequiresUserGesture: false,
