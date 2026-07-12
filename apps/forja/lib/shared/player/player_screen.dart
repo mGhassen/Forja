@@ -12,6 +12,7 @@ import 'package:forja/shared/player/player/desktop_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 
 class PlayerScreen extends StatefulWidget {
@@ -161,8 +162,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     site111477_proxy.retainForExternalHandoff = false;
+    TorrentStreamService().retainForExternalHandoff = false;
     if (site111477_proxy.is111477ProxyRunning) {
       unawaited(site111477_proxy.stop111477Proxy(force: true));
+    }
+    final torrentId = widget.magnetLink ?? _sessionStreamUrl;
+    if (widget.magnetLink != null || isLocalTorrentStreamUrl(_sessionStreamUrl)) {
+      TorrentStreamService().removeTorrent(torrentId);
     }
     super.dispose();
   }
@@ -240,15 +246,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
 
     if (externalPlayer != null) {
+      final handoffUrl = streamUrl ?? _sessionStreamUrl;
+      if (widget.magnetLink != null || isLocalTorrentStreamUrl(handoffUrl)) {
+        TorrentStreamService().retainForExternalHandoff = true;
+      }
+      site111477_proxy.retainForExternalHandoff = true;
       if (!mounted) return;
       setState(() {
         _useExternalPlayer = true;
         _externalPlayerName = externalPlayer;
         _externalLaunched = false;
-        _externalStreamUrl = streamUrl ?? _sessionStreamUrl;
+        _externalStreamUrl = handoffUrl;
         _externalHeaders = headers ?? _sessionHeaders;
       });
-      site111477_proxy.retainForExternalHandoff = true;
       final launched = await _launchExternal();
       if (launched) {
         await _persistHandoffProgress(
@@ -261,6 +271,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
 
     site111477_proxy.retainForExternalHandoff = false;
+    TorrentStreamService().retainForExternalHandoff = false;
     if (site111477_proxy.is111477ProxyRunning) {
       await site111477_proxy.stop111477Proxy(force: true);
     }
@@ -299,6 +310,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onRelaunch: _launchExternal,
         onSwitchBuiltIn: () async {
           site111477_proxy.retainForExternalHandoff = false;
+          TorrentStreamService().retainForExternalHandoff = false;
           if (site111477_proxy.is111477ProxyRunning) {
             unawaited(site111477_proxy.stop111477Proxy(force: true));
           }

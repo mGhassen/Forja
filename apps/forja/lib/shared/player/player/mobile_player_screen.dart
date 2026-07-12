@@ -852,8 +852,10 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     // Remove torrent from engine on player exit (use magnetLink for hash,
     // fall back to mediaPath which may be a stream URL).
-    final torrentId = widget.magnetLink ?? widget.mediaPath;
-    TorrentStreamService().removeTorrent(torrentId);
+    if (!TorrentStreamService().retainForExternalHandoff) {
+      final torrentId = widget.magnetLink ?? widget.mediaPath;
+      TorrentStreamService().removeTorrent(torrentId);
+    }
 
     // Tear down the 111477 proxy and delete its on-disk cache.
     if (site111477_proxy.is111477ProxyRunning) {

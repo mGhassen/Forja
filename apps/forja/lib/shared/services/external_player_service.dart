@@ -381,34 +381,76 @@ class ExternalPlayerService {
         uri.path.contains('/comic-proxy');
   }
 
-  /// IINA mpv flags — mirror [_vlcHeaderArgs] (proven on vixsrc HLS). Avoid
-  /// `--mpv-include` from the app sandbox: IINA cannot read files under
-  /// `Library/Containers/com.forja.app/`.
-  static List<String> _iinaHeaderArgs(Map<String, String>? headers) {
-    if (headers == null || headers.isEmpty) return [];
-    final args = <String>[];
+  /// Shared temp path — sandboxed Forja cannot pass configs under
+  /// `Library/Containers/com.forja.app/` to IINA; `/tmp` is world-readable.
+  static const String _iinaMpvConfigDir = '/tmp';
+
+  /// mpv include config for IINA — mirrors built-in [applyMediaHttpHeaders].
+  static Future<File> _writeIinaMpvConfig(Map<String, String> headers) async {
+    final buf = StringBuffer();
+    for (final line in _mpvStreamConfigLines()) {
+      buf.writeln(line);
+    }
+
     final referer = headers['Referer'] ?? headers['referer'];
-    if (referer != null) args.add('--mpv-referrer=$referer');
     final ua = headers['User-Agent'] ?? headers['user-agent'];
-    if (ua != null) args.add('--mpv-user-agent=$ua');
     final origin = headers['Origin'] ?? headers['origin'];
-    if (origin != null) args.add('--mpv-http-header-fields=Origin: $origin');
-    return args;
+    if (referer != null) {
+      _mpvConfigLine(buf, 'referrer', referer);
+    }
+    if (ua != null) {
+      _mpvConfigLine(buf, 'user-agent', ua);
+    }
+
+    final headerFields = <String>[];
+    if (referer != null) headerFields.add('Referer: $referer');
+    if (origin != null) headerFields.add('Origin: $origin');
+    if (ua != null) headerFields.add('User-Agent: $ua');
+    if (headerFields.isNotEmpty) {
+      _mpvConfigLine(buf, 'http-header-fields', headerFields.join(','));
+    }
+
+    final file = File(
+      '$_iinaMpvConfigDir/forja_external_'
+      '${DateTime.now().microsecondsSinceEpoch}.conf',
+    );
+    await file.writeAsString(buf.toString());
+    return file;
   }
 
-  static List<String> _desktopLaunchArgs({
+  static void _mpvConfigLine(StringBuffer buf, String key, String value) {
+    buf.writeln('$key="${_mpvConfigEscape(value)}"');
+  }
+
+  static String _mpvConfigEscape(String value) =>
+      value.replaceAll('\\', r'\\').replaceAll('"', r'\"');
+
+  static List<String> _mpvStreamConfigLines() => [
+        'network-timeout=30',
+        'tls-verify=no',
+        'hls-bitrate=no',
+        'cache=yes',
+        'demuxer-readahead-secs=120',
+        'ytdl=no',
+      ];
+
+  static Future<List<String>> _desktopLaunchArgs({
     required ExternalPlayer player,
     required String url,
     required String title,
     Map<String, String>? headers,
-  }) {
+  }) async {
     if (Platform.isMacOS && player.displayName == 'IINA') {
-      return [
+      final args = <String>[
         if (title.isNotEmpty) '--mpv-force-media-title=$title',
-        ..._mpvStreamArgs(prefix: '--mpv-'),
-        ..._iinaHeaderArgs(headers),
-        url,
       ];
+      if (headers != null && headers.isNotEmpty) {
+        final config = await _writeIinaMpvConfig(headers);
+        debugPrint('[ExternalPlayer] IINA mpv include → ${config.path}');
+        args.insert(0, '--mpv-include=${config.path}');
+      }
+      args.add(url);
+      return args;
     }
 
     return player.desktopArgs?.call(url, title, headers) ?? [url];
@@ -523,7 +565,7 @@ class ExternalPlayerService {
       return false;
     }
 
-    final playerArgs = _desktopLaunchArgs(
+    final playerArgs = await _desktopLaunchArgs(
       player: player,
       url: url,
       title: title,

@@ -530,6 +530,24 @@ class KdramaDetails {
         year: year,
         type: type.isEmpty ? null : type,
       );
+
+  /// Match a watch-history entry to a live episode row (number first — stable
+  /// across kisskh API id churn; id is a secondary hint).
+  KdramaEpisode? episodeForResume({
+    required double episodeNumber,
+    int? episodeId,
+  }) {
+    if (episodes.isEmpty) return null;
+    for (final e in episodes) {
+      if (e.number == episodeNumber) return e;
+    }
+    if (episodeId != null && episodeId > 0) {
+      try {
+        return episodes.firstWhere((e) => e.id == episodeId);
+      } catch (_) {}
+    }
+    return episodes.first;
+  }
 }
 
 class KdramaEpisode {

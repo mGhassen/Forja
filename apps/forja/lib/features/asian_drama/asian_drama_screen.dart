@@ -42,6 +42,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   int _loadGen = 0;
 
   List<Map<String, dynamic>> _continueWatching = [];
+  int? _resumingDramaId;
 
   int get _catalogRowBase => _continueWatching.isNotEmpty ? 1 : 0;
 
@@ -158,13 +159,13 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   }
 
   Future<void> _resumeWatch(Map<String, dynamic> entry) async {
+    final id = (entry['id'] as num?)?.toInt();
+    if (id == null || _resumingDramaId != null) return;
+
+    setState(() => _resumingDramaId = id);
     try {
-      final id = (entry['id'] as num?)?.toInt();
-      if (id == null) return;
       final epNum = (entry['episodeNumber'] as num?)?.toDouble() ?? 1.0;
-      final epId = (entry['episodeId'] as num?)?.toInt() ?? 0;
-      final title = entry['title'] as String? ?? '';
-      final cover = entry['cover'] as String? ?? '';
+      final epId = (entry['episodeId'] as num?)?.toInt();
       final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
       final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
       Duration? startPosition;
@@ -176,17 +177,30 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
       }
 
-      // Open the resolver immediately — episode/drama lookup runs inside the
-      // player loading screen (same pattern as Anime continue watching).
+      // Same launch contract as details → Resume (fresh title + episode ids).
+      final details = await _service.getDetails(id);
+      if (!mounted) return;
+      final ep = details.episodeForResume(
+        episodeNumber: epNum,
+        episodeId: epId,
+      );
+      if (ep == null) {
+        openAsianDramaDetails(context, details.toCard());
+        return;
+      }
+
       openAsianDramaPlayer(
         context,
-        drama: KdramaCard(id: id, title: title, cover: cover),
-        episode: KdramaEpisode(id: epId, number: epNum),
+        drama: details.toCard(),
+        episode: ep,
+        allEpisodes: details.episodes,
         startPosition: startPosition,
       ).then((_) => _refreshHistory());
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('Resume failed: $e');
+    } finally {
+      if (mounted) setState(() => _resumingDramaId = null);
     }
   }
 
@@ -458,9 +472,11 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             itemBuilder: (_, i) {
               final entry = _continueWatching[i];
               final card = _cardFromHistoryEntry(entry);
+              final dramaId = (entry['id'] as num?)?.toInt();
               return _AsianDramaContinueWatchingCard(
                 listIndex: i,
                 entry: entry,
+                isLoading: dramaId != null && _resumingDramaId == dramaId,
                 onTap: () => _resumeWatch(entry),
                 onRemove: () => _removeFromHistory(entry),
                 onInfo: () => _openDetails(card),
@@ -481,6 +497,7 @@ class _AsianDramaContinueWatchingCard extends StatefulWidget {
   final VoidCallback onRemove;
   final VoidCallback onInfo;
   final int listIndex;
+  final bool isLoading;
 
   const _AsianDramaContinueWatchingCard({
     required this.entry,
@@ -488,6 +505,7 @@ class _AsianDramaContinueWatchingCard extends StatefulWidget {
     required this.onRemove,
     required this.onInfo,
     required this.listIndex,
+    this.isLoading = false,
   });
 
   static double cardWidth(BuildContext context) =>
@@ -540,7 +558,7 @@ class _AsianDramaContinueWatchingCardState
 
     return shellFocusableTap(
       context: context,
-      onTap: widget.onTap,
+      onTap: widget.isLoading ? null : widget.onTap,
       listIndex: widget.listIndex,
       tvTabId: 'asian_drama',
       tvRowId: 'continue-watching',
@@ -707,7 +725,22 @@ class _AsianDramaContinueWatchingCardState
                         ],
                       ),
                     ),
-                    ShellCardPlayOverlay(active: _activeFor(policy)),
+                    ShellCardPlayOverlay(
+                      active: _activeFor(policy),
+                      visible: _activeFor(policy) && !widget.isLoading,
+                    ),
+                    if (widget.isLoading)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: ForjaShellColors.sectionAccent,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

@@ -3,9 +3,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
+import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
+import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
+import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
@@ -30,10 +34,19 @@ class PlayerStreamMenuState {
   final bool playbackConfirmed;
 }
 
-/// Unified server + source picker — flat grouped list, no cards.
+/// Unified server + source picker — right-side panel with grouped providers.
 class PlayerStreamMenu {
-  static const _panelWidth = 320.0;
-  static const _panelMaxHeight = 420.0;
+  static OverlayEntry? _entry;
+  static Completer<void>? _completer;
+
+  static bool get isShowing => _entry != null;
+
+  static void dismiss() {
+    _entry?.remove();
+    _entry = null;
+    _completer?.complete();
+    _completer = null;
+  }
 
   static Widget? reloadTrailing({
     required Future<void> Function()? onReload,
@@ -99,69 +112,39 @@ class PlayerStreamMenu {
       return;
     }
 
-    Widget buildList() {
-      final state = readState();
-      final probes = providerProbesNotifier?.value ?? const [];
-      final cache = providerSourcesCache?.value ?? const {};
+    dismiss();
+    PlayerPopupPanel.dismiss();
+    PlayerEpisodePanel.dismiss();
+    PlayerHubEpisodePanel.dismiss();
+    PlayerSourcesPanel.dismiss();
+    PlayerTorrentFilePanel.dismiss();
 
-      if (!hasProviders) {
-        return _sourcesList(
-          sources: state.sources ?? const [],
-          state: state,
+    final overlay = Overlay.of(context);
+    _completer = Completer<void>();
+
+    void close() => dismiss();
+
+    _entry = OverlayEntry(
+      builder: (_) => ShellScopeBuilder(
+        builder: (context, _) => _StreamMenuOverlay(
+          providers: providers,
+          providerSourcesCache: providerSourcesCache,
+          providerProbesNotifier: providerProbesNotifier,
+          statusController: statusController,
+          readState: readState,
+          onSelectProvider: onSelectProvider,
           onSelectSource: onSelectSource,
-          useIndexedStatuses: true,
-        );
-      }
-
-      final orderedProviders =
-          _orderedProviderEntries(providers, state.currentProviderId);
-
-      return ListView(
-        padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
-        shrinkWrap: true,
-        children: [
-          for (var i = 0; i < orderedProviders.length; i++) ...[
-            if (i > 0)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Divider(
-                  height: 1,
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
-              ),
-            _buildServerGroup(
-              providerId: orderedProviders[i].key,
-              provider: orderedProviders[i].value,
-              state: state,
-              probes: probes,
-              statusController: statusController,
-              cachedSources: cache[orderedProviders[i].key],
-              providersEnabled: providersEnabled,
-              onSelectProvider: onSelectProvider,
-              onSelectSource: onSelectSource,
-            ),
-          ],
-        ],
-      );
-    }
-
-    await PlayerPopupPanel.show(
-      context: context,
-      title: 'Source',
-      leadingIcon: Icons.layers_outlined,
-      alignment: Alignment.bottomLeft,
-      margin: margin,
-      anchorContext: anchorContext,
-      width: _panelWidth,
-      maxHeight: _panelMaxHeight,
-      trailing: reloadTrailing(onReload: onReload, isReloading: isReloading),
-      child: refreshListenable == null
-          ? buildList()
-          : ListenableBuilder(
-              listenable: refreshListenable,
-              builder: (context, _) => buildList(),
-            ),
+          providersEnabled: providersEnabled,
+          refreshListenable: refreshListenable,
+          onReload: onReload,
+          isReloading: isReloading,
+          onClose: close,
+        ),
+      ),
     );
+
+    overlay.insert(_entry!);
+    return _completer!.future;
   }
 
   static Widget _buildServerGroup({
@@ -216,10 +199,7 @@ class PlayerStreamMenu {
             selected: false,
             status: status ?? PlayerSourceStatus.ready,
             onTap: providersEnabled
-                ? () async {
-                    PlayerPopupPanel.dismiss();
-                    await onSelectProvider(providerId);
-                  }
+                ? () => unawaited(onSelectProvider(providerId))
                 : null,
           )
         else
@@ -228,7 +208,7 @@ class PlayerStreamMenu {
             state: state,
             useIndexedStatuses: isCurrent,
             onSelectSource: (source, index) async {
-              PlayerPopupPanel.dismiss();
+              dismiss();
               if (!isCurrent) {
                 final loaded = await onSelectProvider(providerId);
                 final pool = loaded ?? sectionSources;
@@ -265,7 +245,10 @@ class PlayerStreamMenu {
             status: useIndexedStatuses && entry.key < statuses.length
                 ? statuses[entry.key]
                 : PlayerSourceStatus.ready,
-            onTap: () => onSelectSource(entry.value, entry.key),
+            onTap: () async {
+              dismiss();
+              await onSelectSource(entry.value, entry.key);
+            },
           ),
       ],
     );
@@ -383,6 +366,169 @@ class PlayerStreamMenu {
       PlayerSourceStatus.active => 'Playing now',
       null => providersEnabled ? 'Not loaded' : 'Unavailable',
     };
+  }
+}
+
+class _StreamMenuOverlay extends StatefulWidget {
+  const _StreamMenuOverlay({
+    required this.readState,
+    required this.onSelectProvider,
+    required this.onSelectSource,
+    required this.onClose,
+    this.providers,
+    this.providerSourcesCache,
+    this.providerProbesNotifier,
+    this.statusController,
+    this.providersEnabled = true,
+    this.refreshListenable,
+    this.onReload,
+    this.isReloading,
+  });
+
+  final Map<String, dynamic>? providers;
+  final ValueListenable<Map<String, List<StreamSource>>>? providerSourcesCache;
+  final ValueListenable<List<StreamProviderProbe>>? providerProbesNotifier;
+  final PlayerStatusController? statusController;
+  final PlayerStreamMenuState Function() readState;
+  final Future<List<StreamSource>?> Function(String providerId) onSelectProvider;
+  final Future<void> Function(StreamSource source, int index) onSelectSource;
+  final bool providersEnabled;
+  final Listenable? refreshListenable;
+  final Future<void> Function()? onReload;
+  final ValueListenable<bool>? isReloading;
+  final VoidCallback onClose;
+
+  @override
+  State<_StreamMenuOverlay> createState() => _StreamMenuOverlayState();
+}
+
+class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
+  bool _open = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _open = true);
+    });
+  }
+
+  bool get _hasProviders =>
+      widget.providers != null && widget.providers!.isNotEmpty;
+
+  Widget _buildList() {
+    final state = widget.readState();
+    final probes = widget.providerProbesNotifier?.value ?? const [];
+    final cache = widget.providerSourcesCache?.value ?? const {};
+
+    if (!_hasProviders) {
+      return PlayerStreamMenu._sourcesList(
+        sources: state.sources ?? const [],
+        state: state,
+        onSelectSource: widget.onSelectSource,
+        useIndexedStatuses: true,
+      );
+    }
+
+    final orderedProviders = PlayerStreamMenu._orderedProviderEntries(
+      widget.providers!,
+      state.currentProviderId,
+    );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 16),
+      children: [
+        for (var i = 0; i < orderedProviders.length; i++) ...[
+          if (i > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Divider(
+                height: 1,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          PlayerStreamMenu._buildServerGroup(
+            providerId: orderedProviders[i].key,
+            provider: orderedProviders[i].value,
+            state: state,
+            probes: probes,
+            statusController: widget.statusController,
+            cachedSources: cache[orderedProviders[i].key],
+            providersEnabled: widget.providersEnabled,
+            onSelectProvider: widget.onSelectProvider,
+            onSelectSource: widget.onSelectSource,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildBody() {
+    final list = widget.refreshListenable == null
+        ? _buildList()
+        : ListenableBuilder(
+            listenable: widget.refreshListenable!,
+            builder: (context, _) => _buildList(),
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          child: Row(
+            children: [
+              Icon(
+                Icons.layers_outlined,
+                color: ForjaShellColors.cinematic.textSecondary,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Source',
+                  style: TextStyle(
+                    color: ForjaShellColors.cinematic.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              Builder(
+                builder: (context) {
+                  final trailing = PlayerStreamMenu.reloadTrailing(
+                    onReload: widget.onReload,
+                    isReloading: widget.isReloading,
+                  );
+                  if (trailing == null) return const SizedBox.shrink();
+                  return trailing;
+                },
+              ),
+              ForjaCloseButton(
+                color: ForjaShellColors.cinematic.textSecondary,
+                onTap: widget.onClose,
+              ),
+            ],
+          ),
+        ),
+        Divider(
+          height: 1,
+          color: ForjaShellColors.cinematic.borderSubtle,
+        ),
+        const SizedBox(height: 4),
+        Expanded(child: list),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TorrentSourcesPanel(
+      isOpen: _open,
+      onClose: widget.onClose,
+      enableBlur: false,
+      child: _buildBody(),
+    );
   }
 }
 

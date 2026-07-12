@@ -133,32 +133,43 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     var episodes = widget.allEpisodes;
     var episode = widget.episode;
 
-    final needsDetails = episodes.isEmpty ||
-        episode.id <= 0 ||
-        drama.title.trim().isEmpty;
-
-    if (needsDetails) {
+    if (episodes.isEmpty || drama.title.trim().isEmpty) {
       if (!mounted) return false;
       setState(() => _setPhase('Loading drama…'));
       final det = await _service.getDetails(drama.id);
       episodes = det.episodes;
       drama = det.toCard();
       _resolvedOverview = det.description;
-    }
-
-    if (episode.id > 0) {
+      final matched = det.episodeForResume(
+        episodeNumber: episode.number,
+        episodeId: episode.id > 0 ? episode.id : null,
+      );
+      if (matched != null) episode = matched;
+    } else if (episode.id > 0) {
       try {
         episode = episodes.firstWhere((e) => e.id == episode.id);
       } catch (_) {
         final byNumber = _episodeByNumber(episodes, episode.number);
-        if (byNumber != null) episode = byNumber;
+        if (byNumber != null) {
+          episode = byNumber;
+        } else if (episodes.length == 1) {
+          episode = episodes.first;
+        } else {
+          return false;
+        }
       }
     } else {
-      episode = _episodeByNumber(episodes, episode.number) ??
-          (episodes.isNotEmpty ? episodes.first : episode);
+      final byNumber = _episodeByNumber(episodes, episode.number);
+      if (byNumber != null) {
+        episode = byNumber;
+      } else if (episodes.length == 1) {
+        episode = episodes.first;
+      } else {
+        return false;
+      }
     }
 
-    if (episode.id <= 0) return false;
+    if (episode.id <= 0 || episodes.isEmpty) return false;
 
     _resolvedDrama = drama;
     _resolvedEpisode = episode;

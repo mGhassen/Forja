@@ -85,6 +85,10 @@ class TorrentStreamService {
   int _rustEnginePort = 0;
   String? _rustActiveHash;
 
+  /// When true, [removeTorrent] is a no-op so an external player can keep
+  /// reading the localhost librqbit URL after the built-in player disposes.
+  bool retainForExternalHandoff = false;
+
   final SettingsService _settings = SettingsService();
 
   bool get _rustReady => RustLib.isInitialized && _rustEnginePort > 0;
@@ -210,6 +214,7 @@ class TorrentStreamService {
   }
 
   void removeTorrent(String magnetOrHash) {
+    if (retainForExternalHandoff) return;
     final hash = _extractHash(magnetOrHash);
     if (hash == null || hash != _rustActiveHash) return;
     if (RustLib.isInitialized) RustLib.instance.torrentStop();

@@ -164,13 +164,13 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     final p = _progress;
     if (det == null || p == null) return;
     final epNum = (p['episodeNumber'] as num?)?.toDouble() ?? 1.0;
+    final epId = (p['episodeId'] as num?)?.toInt();
     final posMs = (p['positionMs'] as num?)?.toInt() ?? 0;
     final durMs = (p['durationMs'] as num?)?.toInt() ?? 0;
-    KdramaEpisode? ep;
-    try {
-      ep = det.episodes.firstWhere((e) => e.number == epNum);
-    } catch (_) {}
-    ep ??= det.episodes.isNotEmpty ? det.episodes.first : null;
+    final ep = det.episodeForResume(
+      episodeNumber: epNum,
+      episodeId: epId,
+    );
     if (ep == null) return;
     Duration? start;
     if (posMs > 5000) {
