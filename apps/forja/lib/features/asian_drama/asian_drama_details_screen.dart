@@ -98,7 +98,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     } catch (_) {}
   }
 
-  Future<void> _load() async {
+  Future<void> _load({int attempt = 0}) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -119,12 +119,27 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
         if (ep != null && ep > 0) _selectedEpisode = ep;
       });
     } catch (e) {
+      if (attempt == 0) {
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (mounted) return _load(attempt: 1);
+      }
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = '$e';
+        _error = _friendlyLoadError(e);
       });
     }
+  }
+
+  String _friendlyLoadError(Object e) {
+    final raw = '$e';
+    if (raw.contains('→ 429')) {
+      return 'kisskh is busy — wait a moment and tap Retry.';
+    }
+    if (RegExp(r'→ 5\d\d').hasMatch(raw)) {
+      return 'kisskh is temporarily unavailable — tap Retry.';
+    }
+    return raw;
   }
 
   void _play(KdramaEpisode ep, {Duration? startPosition}) {

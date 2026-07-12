@@ -1465,6 +1465,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       listenable: ctrl,
       builder: (context, _) {
         final isFav = ctrl.isFavoritePortal(v.key);
+        final isNew = ctrl.isNewPortal(v.key);
+        final showNewChrome = isNew && !_reveal;
         final health = ctrl.portalHealthFor(v.key);
         final checking = ctrl.isPortalHealthChecking(v.key);
         final title = v.name.trim().isEmpty
@@ -1474,20 +1476,33 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
         return MouseRegion(
           onEnter: (_) {
             setState(() => _lineHover = true);
+            if (isNew) ctrl.markPortalSeen(v.key);
             ctrl.schedulePortalHealthCheck(v);
           },
           onExit: (_) {
             _clearHover();
             ctrl.cancelPortalHealthCheck(v.key);
           },
-          child: ColoredBox(
-                color: isActive
-                    ? playerSourceStatusColor(
-                        PlayerSourceStatus.active,
-                      ).withValues(alpha: 0.07)
-                    : (_lineHover || _focused)
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.transparent,
+          child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? playerSourceStatusColor(
+                          PlayerSourceStatus.active,
+                        ).withValues(alpha: 0.07)
+                      : showNewChrome
+                      ? IptvShellStyle.accent.withValues(alpha: 0.1)
+                      : (_lineHover || _focused)
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.transparent,
+                  border: showNewChrome
+                      ? Border(
+                          left: BorderSide(
+                            color: IptvShellStyle.accent,
+                            width: 3,
+                          ),
+                        )
+                      : null,
+                ),
                 child: SizedBox(
                   height: 48,
                   child: Row(
@@ -1503,6 +1518,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                           onFocusChange: (focused) {
                             setState(() => _focused = focused);
                             if (focused) {
+                              if (ctrl.isNewPortal(v.key)) {
+                                ctrl.markPortalSeen(v.key);
+                              }
                               ctrl.schedulePortalHealthCheck(v);
                             } else {
                               ctrl.cancelPortalHealthCheck(v.key);
@@ -1530,29 +1548,44 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                         CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.poppins(
-                                          color: isActive
-                                              ? Colors.white
-                                              : Colors.white.withValues(
-                                                  alpha: 0.88,
-                                                ),
-                                          fontSize: 13,
-                                          fontWeight: isActive
-                                              ? FontWeight.w600
-                                              : FontWeight.w500,
-                                          height: 1.15,
-                                        ),
+                                      Row(
+                                        children: [
+                                          if (showNewChrome) ...[
+                                            _newPortalBadge(),
+                                            const SizedBox(width: 6),
+                                          ],
+                                          Expanded(
+                                            child: Text(
+                                              title,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.poppins(
+                                                color: isActive
+                                                    ? Colors.white
+                                                    : showNewChrome
+                                                    ? IptvShellStyle.accent
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.88,
+                                                      ),
+                                                fontSize: 13,
+                                                fontWeight: isActive ||
+                                                        showNewChrome
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w500,
+                                                height: 1.15,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       Text(
                                         v.portal.url,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.poppins(
-                                          color: Colors.white38,
+                                          color: showNewChrome
+                                              ? Colors.white54
+                                              : Colors.white38,
                                           fontSize: 11,
                                           height: 1.2,
                                         ),
@@ -1628,6 +1661,29 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
               ),
             );
       },
+    );
+  }
+
+  Widget _newPortalBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: IptvShellStyle.accent.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: IptvShellStyle.accent.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Text(
+        'NEW',
+        style: GoogleFonts.poppins(
+          color: IptvShellStyle.accent,
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          height: 1,
+        ),
+      ),
     );
   }
 

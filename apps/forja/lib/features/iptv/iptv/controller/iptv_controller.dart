@@ -55,7 +55,26 @@ class IptvController extends ChangeNotifier {
 
   /// Favorite portal keys — pinned to the top of the list.
   final Set<String> _favoritePortals = {};
+
+  /// Session-new portals (scrape / add / import) — below favorites until seen.
+  final List<String> _newPortalKeys = [];
+
   bool isFavoritePortal(String key) => _favoritePortals.contains(key);
+
+  bool isNewPortal(String key) => _newPortalKeys.contains(key);
+
+  /// Dismisses the "new" highlight (e.g. first hover/focus on the row).
+  void markPortalSeen(String key) {
+    if (_newPortalKeys.remove(key)) {
+      verified = _sortPortals(verified);
+      notifyListeners();
+    }
+  }
+
+  void _markPortalNew(String key) {
+    _newPortalKeys.remove(key);
+    _newPortalKeys.insert(0, key);
+  }
 
   // Manual edit
   bool editMode = false;
@@ -252,7 +271,7 @@ class IptvController extends ChangeNotifier {
     _favoritePortals
       ..clear()
       ..addAll(await IptvStore.loadFavorites());
-    verified = _sortFavoritesFirst(stored);
+    verified = _sortPortals(stored);
     _verifiedKeys
       ..clear()
       ..addAll(stored.map((v) => v.credKey));
@@ -333,17 +352,27 @@ class IptvController extends ChangeNotifier {
     await openSection(IptvSection.live);
   }
 
-  List<VerifiedPortal> _sortFavoritesFirst(List<VerifiedPortal> list) {
-    final favs = <VerifiedPortal>[];
-    final rest = <VerifiedPortal>[];
-    for (final v in list) {
-      if (_favoritePortals.contains(v.key)) {
-        favs.add(v);
-      } else {
-        rest.add(v);
-      }
+  List<VerifiedPortal> _sortPortals(List<VerifiedPortal> list) {
+    final byKey = {for (final v in list) v.key: v};
+    final seen = <String>{};
+    final out = <VerifiedPortal>[];
+
+    void addUnique(VerifiedPortal v) {
+      if (seen.add(v.key)) out.add(v);
     }
-    return [...favs, ...rest];
+
+    for (final v in list) {
+      if (_favoritePortals.contains(v.key)) addUnique(v);
+    }
+    for (final key in _newPortalKeys) {
+      if (_favoritePortals.contains(key)) continue;
+      final v = byKey[key];
+      if (v != null) addUnique(v);
+    }
+    for (final v in list) {
+      if (!seen.contains(v.key)) addUnique(v);
+    }
+    return out;
   }
 
   List<ChannelHit> _sortHitsFavoritesFirst(
@@ -368,7 +397,7 @@ class IptvController extends ChangeNotifier {
     } else {
       _favoritePortals.add(key);
     }
-    verified = _sortFavoritesFirst(verified);
+    verified = _sortPortals(verified);
     await IptvStore.saveFavorites(_favoritePortals);
     notifyListeners();
   }
@@ -509,7 +538,8 @@ class IptvController extends ChangeNotifier {
           onAlive: (v) {
             if (_verifiedKeys.add(v.credKey)) {
               newAlive.add(v);
-              verified = _sortFavoritesFirst([...verified, v]);
+              _markPortalNew(v.key);
+              verified = _sortPortals([...verified, v]);
               notifyListeners();
             }
           },
@@ -573,7 +603,7 @@ class IptvController extends ChangeNotifier {
       final fresh = await IptvClient.verifyOrNull(v.portal);
       if (fresh != null) freshManual.add(fresh);
     }
-    verified = _sortFavoritesFirst([...freshManual, ...scrapedKept]);
+    verified = _sortPortals([...freshManual, ...scrapedKept]);
     _verifiedKeys
       ..clear()
       ..addAll(verified.map((v) => v.credKey));
@@ -615,6 +645,7 @@ class IptvController extends ChangeNotifier {
     if (selected.isEmpty) return;
     for (final k in selected) {
       _invalidatePortalCatalogCache(k);
+      _newPortalKeys.remove(k);
     }
     final keep = verified.where((v) => !selected.contains(v.key)).toList();
     verified = keep;
@@ -681,7 +712,7 @@ class IptvController extends ChangeNotifier {
     final next = verified
         .where((x) => x.key != existing.key)
         .toList();
-    verified = _sortFavoritesFirst([v, ...next]);
+    verified = _sortPortals([v, ...next]);
     _verifiedKeys
       ..clear()
       ..addAll(verified.map((x) => x.credKey));
@@ -742,7 +773,8 @@ class IptvController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    verified = _sortFavoritesFirst([v, ...verified]);
+    _markPortalNew(v.key);
+    verified = _sortPortals([v, ...verified]);
     _verifiedKeys.add(v.credKey);
     await IptvStore.save(verified);
     showAddDialog = false;
@@ -899,7 +931,10 @@ class IptvController extends ChangeNotifier {
     await Future.wait(List.generate(concurrency, (_) => worker()));
 
     if (newAlive.isNotEmpty) {
-      verified = _sortFavoritesFirst([...newAlive, ...verified]);
+      for (final v in newAlive) {
+        _markPortalNew(v.key);
+      }
+      verified = _sortPortals([...newAlive, ...verified]);
       await IptvStore.save(verified);
     }
 
@@ -1509,7 +1544,8 @@ class IptvController extends ChangeNotifier {
           },
           onAlive: (v) async {
             if (_verifiedKeys.add(v.credKey)) {
-              verified = _sortFavoritesFirst([...verified, v]);
+              _markPortalNew(v.key);
+              verified = _sortPortals([...verified, v]);
               await IptvStore.save(verified);
               if (!attempted.contains(v.key) &&
                   !pool.any((p) => p.key == v.key)) {

@@ -92,8 +92,11 @@ abstract final class PlaybackEngine {
         nextIndex++;
         inFlight++;
         onProgress?.call(key, 'trying');
-        final taskResolver =
-            maxInFlight > 1 ? StreamProviderResolver() : r;
+        // Domain resolvers (KissKH, anime embeds) must not be replaced with a
+        // plain resolver when only one provider is racing or concurrency is 1.
+        final taskResolver = (maxInFlight > 1 && total > 1)
+            ? StreamProviderResolver()
+            : r;
         if (maxInFlight > 1) taskResolvers.add(taskResolver);
         if (kDebugMode && maxInFlight > 1) {
           debugPrint(

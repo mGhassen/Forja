@@ -9,10 +9,11 @@ typedef AnimeResolvedHit = ({AnimeEmbed embed, ExtractedMedia media});
 
 /// Shared anime resolve/scoring — same pipeline as movies via [DomainPlaybackResolve].
 abstract final class AnimePlaybackBridge {
+  /// Keys are [AnimeEmbed.sourceKey] so Rust [SourceEngine] can order and pin providers.
   static Map<String, dynamic> embedsToProviders(List<AnimeEmbed> embeds) {
     final out = <String, dynamic>{};
-    for (var i = 0; i < embeds.length; i++) {
-      out['embed_$i'] = embeds[i];
+    for (final embed in embeds) {
+      out.putIfAbsent(embed.sourceKey, () => embed);
     }
     return out;
   }
@@ -25,12 +26,12 @@ abstract final class AnimePlaybackBridge {
     String preferredProvider = SourceEngine.auto,
     bool Function()? isCancelled,
     void Function(List<AnimeResolvedHit> hits)? onHitsUpdated,
+    void Function(String providerId, String status)? onProgress,
     int maxInFlight = 1,
   }) async {
     if (embeds.isEmpty) return const [];
 
     final providers = embedsToProviders(embeds);
-    final preserveOrder = providers.keys.toList();
     var latestHits = <PlaybackResolveHit>[];
 
     final first = await DomainPlaybackResolve.resolve(
@@ -38,9 +39,10 @@ abstract final class AnimePlaybackBridge {
       providers: providers,
       movie: hubMovie,
       preferredProvider: preferredProvider,
-      settingsOrder: preserveOrder,
+      settingsOrder: settingsOrder,
       animeService: animeService,
       isCancelled: isCancelled,
+      onProgress: onProgress,
       maxInFlight: maxInFlight,
       fillBackgroundHits: true,
       onHitsUpdated: (batch) {

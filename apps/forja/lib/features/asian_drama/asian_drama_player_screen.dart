@@ -136,6 +136,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         settingsOrder: const ['kisskh'],
         kissKhExtractor: _extractor,
         isCancelled: () => _cancelled,
+        maxInFlight: 1,
         onProgress: (providerId, status) {
           if (!mounted) return;
           setState(() {

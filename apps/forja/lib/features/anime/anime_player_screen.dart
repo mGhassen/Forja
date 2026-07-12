@@ -453,29 +453,74 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   }
 
   void _initProbes(List<AnimeEmbed> embeds) {
-    _probeNotifier.value = embeds
-        .map(
-          (e) => StreamProviderProbe(
-            id: e.sourceKey,
-            label: e.label,
-            status: StreamProviderProbeStatus.trying,
-            isPreferred: e.sourceKey == _preferredSourceKey,
-          ),
-        )
-        .toList(growable: false);
+    final seen = <String>{};
+    final probes = <StreamProviderProbe>[];
+    for (final e in embeds) {
+      if (!seen.add(e.sourceKey)) continue;
+      probes.add(
+        StreamProviderProbe(
+          id: e.sourceKey,
+          label: e.label,
+          status: StreamProviderProbeStatus.pending,
+          isPreferred: e.sourceKey == _preferredSourceKey,
+        ),
+      );
+    }
+    _probeNotifier.value = probes;
     if (mounted) setState(() {});
   }
 
-  void _setProbeStatus(AnimeEmbed embed, StreamProviderProbeStatus status) {
-    if (!mounted || _cancelled) return;
-    final id = embed.sourceKey;
-    final probes = _probeNotifier.value;
-    final idx = probes.indexWhere((p) => p.id == id);
-    if (idx < 0) return;
-    if (probes[idx].status == status) return;
-    final next = List<StreamProviderProbe>.from(probes);
-    next[idx] = next[idx].copyWith(status: status);
-    _probeNotifier.value = next;
+  StreamProviderProbeStatus _probeStatusFromProgress(String status) {
+    return switch (status) {
+      'success' => StreamProviderProbeStatus.success,
+      'failed' => StreamProviderProbeStatus.failed,
+      'trying' => StreamProviderProbeStatus.trying,
+      _ => StreamProviderProbeStatus.pending,
+    };
+  }
+
+  void Function(String providerId, String status) _animeResolveProgress(
+    List<AnimeEmbed> embeds,
+  ) {
+    final providers = AnimePlaybackBridge.embedsToProviders(embeds);
+    return (providerId, status) {
+      if (!mounted || _cancelled) return;
+      final embed = providers[providerId];
+      if (embed is! AnimeEmbed) return;
+      final nextStatus = _probeStatusFromProgress(status);
+      final id = embed.sourceKey;
+      final probes = _probeNotifier.value;
+      final idx = probes.indexWhere((p) => p.id == id);
+      if (idx < 0) {
+        _probeNotifier.value = [
+          ...probes,
+          StreamProviderProbe(
+            id: id,
+            label: embed.label,
+            status: nextStatus,
+            isPreferred: id == _preferredSourceKey,
+          ),
+        ];
+      } else if (probes[idx].status != nextStatus) {
+        final next = List<StreamProviderProbe>.from(probes);
+        next[idx] = next[idx].copyWith(status: nextStatus);
+        _probeNotifier.value = next;
+      }
+      final current = _probeNotifier.value;
+      final total = current.length;
+      final checked = current
+          .where(
+            (p) =>
+                p.status != StreamProviderProbeStatus.trying &&
+                p.status != StreamProviderProbeStatus.pending,
+          )
+          .length;
+      final ready =
+          current.where((p) => p.status == StreamProviderProbeStatus.success).length;
+      if (total > 0) {
+        _setStatusLine('$checked / $total checked · $ready up');
+      }
+    };
   }
 
   Future<void> _dropAllStreamCaches() async {
@@ -687,15 +732,17 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           pair.where((e) => e.sourceKey == _preferredSourceKey).toList();
       if (preferredEmbeds.isNotEmpty) {
         _setPhase('Using saved source…');
+        _initProbes(preferredEmbeds);
         _setStatusLine('Trying pinned source');
         _launchedFromSavedOrCache = true;
-          final prefHits = await AnimePlaybackBridge.raceEmbeds(
+        final prefHits = await AnimePlaybackBridge.raceEmbeds(
           embeds: preferredEmbeds,
           hubMovie: _hubMovieFromAnime(widget.anime),
           settingsOrder: _providerOrder,
           animeService: _service,
           preferredProvider: _preferredSourceKey!,
           isCancelled: () => _cancelled || _resolverStopped,
+          onProgress: _animeResolveProgress(preferredEmbeds),
           maxInFlight: 1,
         );
         if (!mounted || _cancelled || _resolverStopped) return;
@@ -717,7 +764,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     _launchedFromSavedOrCache = false;
     _setPhase('Finding a stream…');
-    _setStatusLine('Starting source scan…');
+    _initProbes(pair);
+    _setStatusLine('${pair.map((e) => e.sourceKey).toSet().length} sources · scanning…');
 
     final sourcesListNotifier = ValueNotifier<List<StreamSource>>(const []);
     final urlToSourceKey = <String, String>{};
@@ -751,6 +799,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       settingsOrder: _providerOrder,
       animeService: _service,
       isCancelled: () => _cancelled || _resolverStopped,
+      onProgress: _animeResolveProgress(pair),
       maxInFlight: 1,
       onHitsUpdated: syncLiveHits,
     );

@@ -23,6 +23,12 @@ class KissKhService {
   static final Map<String, _CacheEntry> _httpCache = {};
   static const _cacheTtl = Duration(minutes: 10);
 
+  /// Coalesce concurrent GETs to the same URL (hub enrich + details open).
+  static final Map<String, Future<String>> _inflightGets = {};
+
+  static bool _isTransientHttpStatus(int status) =>
+      status == 429 || status == 502 || status == 503 || status == 504;
+
   // ─── HTTP helper ────────────────────────────────────────────────
   Future<String> _get(String url, {bool useCache = true}) async {
     if (useCache) {
@@ -31,18 +37,49 @@ class KissKhService {
         return cached.body;
       }
     }
-    final res = await animeHttp('GET', url, headers: {
-      'User-Agent': _userAgent,
-      'Accept': 'application/json,text/plain,*/*',
-      'Referer': '$baseUrl/',
-    });
-    if (res.status >= 400) {
-      throw Exception('GET $url → ${res.status}');
+
+    final existing = _inflightGets[url];
+    if (existing != null) return existing;
+
+    final future = _fetchGet(url, useCache: useCache);
+    _inflightGets[url] = future;
+    try {
+      return await future;
+    } finally {
+      _inflightGets.remove(url);
     }
-    if (useCache) {
-      _httpCache[url] = _CacheEntry(res.body, DateTime.now().add(_cacheTtl));
+  }
+
+  Future<String> _fetchGet(String url, {required bool useCache}) async {
+    const maxAttempts = 3;
+    Object? lastError;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        await Future.delayed(Duration(milliseconds: 400 * attempt));
+      }
+      try {
+        final res = await animeHttp('GET', url, headers: {
+          'User-Agent': _userAgent,
+          'Accept': 'application/json,text/plain,*/*',
+          'Referer': '$baseUrl/',
+        });
+        if (res.status >= 400) {
+          if (_isTransientHttpStatus(res.status) && attempt < maxAttempts - 1) {
+            continue;
+          }
+          throw Exception('GET $url → ${res.status}');
+        }
+        if (useCache) {
+          _httpCache[url] =
+              _CacheEntry(res.body, DateTime.now().add(_cacheTtl));
+        }
+        return res.body;
+      } catch (e) {
+        lastError = e;
+        if (attempt < maxAttempts - 1) continue;
+      }
     }
-    return res.body;
+    throw lastError ?? Exception('GET $url failed');
   }
 
   List<KdramaCard> _parseCardList(String body) {
@@ -88,7 +125,7 @@ class KissKhService {
   Future<List<KdramaCard>> enrichCards(List<KdramaCard> cards) async {
     if (cards.isEmpty) return cards;
     final out = List<KdramaCard>.from(cards);
-    const chunk = 12;
+    const chunk = 4;
     for (var i = 0; i < out.length; i += chunk) {
       final end = (i + chunk).clamp(0, out.length);
       await Future.wait([
@@ -108,6 +145,9 @@ class KissKhService {
             } catch (_) {}
           }(),
       ]);
+      if (end < out.length) {
+        await Future.delayed(const Duration(milliseconds: 120));
+      }
     }
     return out;
   }
