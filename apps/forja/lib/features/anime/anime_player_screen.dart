@@ -184,9 +184,7 @@ List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) {
 }
 
 Map<String, dynamic> _animeProviderMap(Iterable<AnimeEmbed> embeds) {
-  return {
-    for (final embed in embeds) embed.sourceKey: {'name': embed.displayName},
-  };
+  return AnimePlaybackBridge.embedsToPanelProviders(embeds.toList());
 }
 
 Map<String, List<StreamSource>> _hitsToProviderCache(
@@ -194,7 +192,7 @@ Map<String, List<StreamSource>> _hitsToProviderCache(
 ) {
   final cache = <String, List<StreamSource>>{};
   for (final hit in hits) {
-    cache[hit.embed.sourceKey] = _hitsToStreamSources([hit]);
+    cache[hit.embed.panelKey] = _hitsToStreamSources([hit]);
   }
   return cache;
 }
@@ -484,21 +482,30 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   }
 
   void _initProbes(List<AnimeEmbed> embeds) {
-    final seen = <String>{};
     final probes = <StreamProviderProbe>[];
     for (final e in embeds) {
-      if (!seen.add(e.sourceKey)) continue;
       probes.add(
         StreamProviderProbe(
-          id: e.sourceKey,
-          label: e.label,
+          id: e.panelKey,
+          label: e.displayName,
           status: StreamProviderProbeStatus.pending,
-          isPreferred: e.sourceKey == _preferredSourceKey,
+          isPreferred:
+              e.sourceKey == _preferredSourceKey && e.category == _category,
         ),
       );
     }
     _probeNotifier.value = probes;
     if (mounted) setState(() {});
+  }
+
+  void _markProbeStatus(String panelKey, StreamProviderProbeStatus status) {
+    final probes = _probeNotifier.value;
+    final idx = probes.indexWhere((p) => p.id == panelKey);
+    if (idx < 0) return;
+    if (probes[idx].status == status) return;
+    final next = List<StreamProviderProbe>.from(probes);
+    next[idx] = next[idx].copyWith(status: status);
+    _probeNotifier.value = next;
   }
 
   StreamProviderProbeStatus _probeStatusFromProgress(String status) {
@@ -513,30 +520,40 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   void Function(String providerId, String status) _animeResolveProgress(
     List<AnimeEmbed> embeds,
   ) {
-    final providers = AnimePlaybackBridge.embedsToProviders(embeds);
     return (providerId, status) {
       if (!mounted || _cancelled) return;
-      final embed = providers[providerId];
-      if (embed is! AnimeEmbed) return;
       final nextStatus = _probeStatusFromProgress(status);
-      final id = embed.sourceKey;
-      final probes = _probeNotifier.value;
-      final idx = probes.indexWhere((p) => p.id == id);
-      if (idx < 0) {
-        _probeNotifier.value = [
-          ...probes,
-          StreamProviderProbe(
-            id: id,
-            label: embed.label,
-            status: nextStatus,
-            isPreferred: id == _preferredSourceKey,
-          ),
-        ];
-      } else if (probes[idx].status != nextStatus) {
-        final next = List<StreamProviderProbe>.from(probes);
-        next[idx] = next[idx].copyWith(status: nextStatus);
-        _probeNotifier.value = next;
+      final targets = embeds
+          .where((e) => e.sourceKey == providerId || e.panelKey == providerId)
+          .map((e) => e.panelKey)
+          .toSet();
+      if (targets.isEmpty) return;
+
+      var probes = _probeNotifier.value;
+      for (final panelKey in targets) {
+        final idx = probes.indexWhere((p) => p.id == panelKey);
+        if (idx < 0) {
+          final embed = embeds.firstWhere(
+            (e) => e.panelKey == panelKey,
+            orElse: () => embeds.first,
+          );
+          probes = [
+            ...probes,
+            StreamProviderProbe(
+              id: panelKey,
+              label: embed.displayName,
+              status: nextStatus,
+              isPreferred: embed.sourceKey == _preferredSourceKey &&
+                  embed.category == _category,
+            ),
+          ];
+        } else if (probes[idx].status != nextStatus) {
+          final next = List<StreamProviderProbe>.from(probes);
+          next[idx] = next[idx].copyWith(status: nextStatus);
+          probes = next;
+        }
       }
+      _probeNotifier.value = probes;
       final current = _probeNotifier.value;
       final total = current.length;
       final checked = current
@@ -812,6 +829,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         urlToSourceKey[h.media.url] = h.embed.sourceKey;
         final t = h.media.sources?.first.title ?? h.embed.displayName;
         titleToSourceKey[t] = h.embed.sourceKey;
+        _markProbeStatus(
+          h.embed.panelKey,
+          StreamProviderProbeStatus.success,
+        );
       }
       sourcesListNotifier.value = _hitsToStreamSources(all);
       providerSourcesCache.value = {
@@ -1008,6 +1029,13 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
 
     _fadeOutNotifier.value = true;
     var playbackStarted = false;
+    _initProbes(_sortEmbedsByProviderOrder(_allEmbeds, _providerOrder));
+    for (final h in hits) {
+      _markProbeStatus(
+        h.embed.panelKey,
+        StreamProviderProbeStatus.success,
+      );
+    }
     final ownsProviderCache = providerSourcesCache == null;
     final liveProviderCache = providerSourcesCache ??
         ValueNotifier<Map<String, List<StreamSource>>>(
@@ -1022,7 +1050,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       sources: sources,
       providers: _animeProviderMap(_allEmbeds),
       providerSourcesCache: liveProviderCache,
-      activeProvider: winner.embed.sourceKey,
+      providerProbesNotifier: _probeNotifier,
+      activeProvider: winner.embed.panelKey,
       externalSubtitles: allSubs.isNotEmpty ? allSubs : null,
       movie: _hubMovieFromAnime(widget.anime),
       hubEpisodes: hubEpisodes,

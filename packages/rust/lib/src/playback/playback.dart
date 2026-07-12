@@ -6,6 +6,7 @@ export 'local_server_service.dart';
 export 'playback_profile.dart';
 export 'provider_profiles.dart';
 export 'provider_registry.dart';
+export 'provider_score_memory.dart';
 export 'source_domain.dart';
 export 'source_engine.dart';
 export 'source_order_engine.dart';

@@ -221,7 +221,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     );
     if (index < 0) return;
 
-    const rowHeight = 112.0;
+    const rowHeight = 88.0;
     final target = (index * rowHeight).clamp(
       0.0,
       _scrollController.position.maxScrollExtent,
@@ -268,38 +268,20 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Episodes',
-                  style: TextStyle(
-                    color: ForjaShellColors.cinematic.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              if ((_seasonCount ?? 0) > 1) ...[
-                _SeasonDropdown(
+        PlayerSidePanelHeader(
+          title: 'Episodes',
+          onClose: widget.onClose,
+          trailing: (_seasonCount ?? 0) > 1
+              ? _SeasonDropdown(
                   seasonCount: _seasonCount!,
                   selectedSeason: _selectedSeason,
                   onSelected: _selectSeason,
-                ),
-                const SizedBox(width: 8),
-              ],
-              ForjaCloseButton(
-                color: ForjaShellColors.cinematic.textSecondary,
-                onTap: widget.onClose,
-              ),
-            ],
-          ),
+                )
+              : null,
         ),
         if (!_loading && showEpisodeRangeBar(_episodeNumbers))
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.only(top: 6, bottom: 6),
             child: EpisodeRangeBar(
               ranges: _episodeRanges,
               selectedIndex: _episodeChunk,
@@ -307,10 +289,6 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
               compact: true,
             ),
           ),
-        Divider(
-          height: 1,
-          color: ForjaShellColors.cinematic.borderSubtle,
-        ),
         Expanded(
           child: _loading
               ? Center(
@@ -330,9 +308,9 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                     )
                   : ListView.separated(
                       controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                      padding: const EdgeInsets.only(top: 4, bottom: 8),
                       itemCount: _visibleEpisodes.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 4),
+                      separatorBuilder: (_, _) => const SizedBox(height: 2),
                       itemBuilder: (_, i) {
                         final ep = _visibleEpisodes[i];
                         final num = ep['episode_number'] as int? ?? 0;
@@ -622,7 +600,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
       (e) => e.number == widget.currentEpisode,
     );
     if (index < 0 || !_scrollController.hasClients) return;
-    const rowHeight = 96.0;
+    const rowHeight = 84.0;
     final offset = (index * rowHeight).clamp(0.0, _scrollController.position.maxScrollExtent);
     _scrollController.animateTo(
       offset,
@@ -657,30 +635,13 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Episodes',
-                  style: TextStyle(
-                    color: ForjaShellColors.cinematic.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              ForjaCloseButton(
-                color: ForjaShellColors.cinematic.textSecondary,
-                onTap: widget.onClose,
-              ),
-            ],
-          ),
+        PlayerSidePanelHeader(
+          title: 'Episodes',
+          onClose: widget.onClose,
         ),
         if (showEpisodeRangeBar(_episodeNumbers))
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.only(top: 6, bottom: 6),
             child: EpisodeRangeBar(
               ranges: _episodeRanges,
               selectedIndex: _episodeChunk,
@@ -688,10 +649,6 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
               compact: true,
             ),
           ),
-        Divider(
-          height: 1,
-          color: ForjaShellColors.cinematic.borderSubtle,
-        ),
         Expanded(
           child: widget.episodes.isEmpty
               ? Center(
@@ -706,9 +663,9 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
                   ? const SizedBox.shrink()
                   : ListView.separated(
                       controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                      padding: const EdgeInsets.only(top: 4, bottom: 8),
                       itemCount: _visibleEpisodes.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 4),
+                      separatorBuilder: (_, _) => const SizedBox(height: 2),
                       itemBuilder: (_, i) {
                         final ep = _visibleEpisodes[i];
                     final selected = ep.number == widget.currentEpisode;
@@ -759,8 +716,8 @@ class _EpisodeRow extends StatelessWidget {
   final int durationMs;
   final VoidCallback onTap;
 
-  static const _thumbWidth = 128.0;
-  static const _thumbRadius = 8.0;
+  static const _thumbWidth = 112.0;
+  static const _thumbRadius = 6.0;
 
   @override
   Widget build(BuildContext context) {
@@ -781,7 +738,7 @@ class _EpisodeRow extends StatelessWidget {
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -213,6 +213,12 @@ abstract final class ShellTokens {
   static const double detailsBodyTopSpacingWithEpisodes = 12;
   static const double detailsSectionSpacing = 48;
   static const double detailsBodyBottomSpacing = 80;
+
+  /// Right-side sliding panels — player overlays vs media-details Sources.
+  static const EdgeInsets playerSidePanelPadding =
+      EdgeInsets.fromLTRB(12, 4, 8, 8);
+  static const EdgeInsets mediaDetailsSourcesPanelPadding =
+      EdgeInsets.fromLTRB(16, 8, 12, 12);
   static const double detailsContentPaddingDesktop =
       homeSectionHorizontalPadding;
   static const double detailsContentPaddingCompact =

@@ -20,7 +20,7 @@ Tap **Anime** in the navigation bar.
 - Toggle **SUB** / **DUB** before playback
 - Resume from continue watching — fetches fresh catalog data and scans all providers (not a stale one-source cache); clear progress with the trash icon next to **Resume** on details
 - Hover a continue watching card (desktop) to scale it and show a brand-green play button
-- Play in the anime player — launches once ~4 sources work (Settings order), then keeps finding more in the background so the in-player source menu fills while you watch
+- Play in the anime player — launches once ~4 sources work (Settings order), then keeps finding more in the background so the in-player **Source** panel fills while you watch. Each server row shows **SUB** or **DUB** (purple / amber badge), IPTV-style status glyphs (**...** / spinner / dot / play / failed), and you can tap several unloaded servers in parallel to fetch streams without leaving the panel
 - Track watch history per series (sub/dub preference)
 
 ## Tips

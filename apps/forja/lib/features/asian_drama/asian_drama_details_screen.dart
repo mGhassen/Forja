@@ -165,20 +165,12 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     if (det == null || p == null) return;
     final epNum = (p['episodeNumber'] as num?)?.toDouble() ?? 1.0;
     final epId = (p['episodeId'] as num?)?.toInt();
-    final posMs = (p['positionMs'] as num?)?.toInt() ?? 0;
-    final durMs = (p['durationMs'] as num?)?.toInt() ?? 0;
     final ep = det.episodeForResume(
       episodeNumber: epNum,
       episodeId: epId,
     );
     if (ep == null) return;
-    Duration? start;
-    if (posMs > 5000) {
-      final clamped =
-          (durMs > 0 && posMs > durMs - 30000) ? (durMs - 30000) : posMs;
-      start = Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
-    }
-    _play(ep, startPosition: start);
+    _play(ep, startPosition: KissKhService.startPositionFromHistory(p));
   }
 
   Future<void> _clearProgress() async {

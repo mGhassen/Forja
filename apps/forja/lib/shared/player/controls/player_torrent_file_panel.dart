@@ -210,35 +210,11 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Text(
-              'Torrent files',
-              style: TextStyle(
-                color: ForjaShellColors.cinematic.textPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-            if (count != null) ...[
-              const SizedBox(width: 8),
-              Text(
-                '$count',
-                style: TextStyle(
-                  color: ForjaShellColors.cinematic.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-            const Spacer(),
-            ForjaCloseButton(
-              color: ForjaShellColors.cinematic.textSecondary,
-              onTap: widget.onClose,
-            ),
-          ],
+        PlayerSidePanelHeader(
+          title: 'Torrent files',
+          onClose: widget.onClose,
+          badge: count?.toString(),
         ),
-        const SizedBox(height: 8),
         Expanded(child: _buildBody()),
       ],
     );
@@ -283,8 +259,9 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
     final files = _files!;
     return ListView.separated(
       controller: _scrollController,
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
       itemCount: files.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, i) {
         final file = files[i];
         final isCurrent = file.index == widget.currentFileIndex;

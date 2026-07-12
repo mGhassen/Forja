@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:rust/rust.dart';
 
@@ -53,6 +54,9 @@ class PlayerProviderMenu {
   }
 
   static String snackbarLabel(String providerId, dynamic provider) {
+    if (provider is AnimeEmbed) {
+      return provider.label;
+    }
     final fallbackName = switch (provider) {
       final Map<String, dynamic> map => map['name']?.toString(),
       _ => null,

@@ -22,8 +22,7 @@ While already handed off: **Change player** on the handoff screen.
 
 ## Tips
 
-- On macOS, **VLC** opens the direct stream URL with `--http-referrer` / `--http-user-agent`
-- On macOS, **IINA** opens the **same direct URL** but loads Referer/User-Agent/Origin from a temp mpv config in `/tmp` (`--mpv-include`) — iina-cli breaks when those values contain `&` in CLI flags
+- On macOS, **VLC** and **IINA** both open the same direct stream URL; headers are passed as CLI flags (`--http-referrer` / `--mpv-referrer`, etc.) — no temp config files (the app sandbox cannot write `/tmp`)
 - **Android** may still use Forja's local hls-proxy when the player cannot accept headers
 - **111477 CDN** direct file links use Forja's seek cache proxy (signed redirects)
 - External players receive the same mpv network settings as the built-in player (`tls-verify`, HLS cache, timeouts)

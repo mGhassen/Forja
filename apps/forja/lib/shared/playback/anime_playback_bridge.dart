@@ -18,6 +18,11 @@ abstract final class AnimePlaybackBridge {
     return out;
   }
 
+  /// One map entry per embed — sub and dub rows stay separate in the player panel.
+  static Map<String, dynamic> embedsToPanelProviders(List<AnimeEmbed> embeds) {
+    return {for (final embed in embeds) embed.panelKey: embed};
+  }
+
   static Future<List<AnimeResolvedHit>> raceEmbeds({
     required List<AnimeEmbed> embeds,
     required Movie hubMovie,

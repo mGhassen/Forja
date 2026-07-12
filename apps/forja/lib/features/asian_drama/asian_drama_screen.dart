@@ -166,61 +166,59 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     try {
       final epNum = (entry['episodeNumber'] as num?)?.toDouble() ?? 1.0;
       final epId = (entry['episodeId'] as num?)?.toInt();
-      final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
-      final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
-      Duration? startPosition;
-      if (posMs > 5000) {
-        final clamped = (durMs > 0 && posMs > durMs - 30000)
-            ? (durMs - 30000)
-            : posMs;
-        startPosition =
-            Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
-      }
-
+      final startPosition = KissKhService.startPositionFromHistory(entry);
       final card = _cardFromHistoryEntry(entry);
+      var episodes = KissKhService.episodesFromHistory(entry);
 
-      // Fast path — same launch contract as details → Resume after load:
-      // history already stores kisskh episode id + number; player only
-      // calls getDetails when the episode list is empty (not here).
-      if (epId != null && epId > 0) {
-        final ep = KdramaEpisode(id: epId, number: epNum);
+      // Legacy rows: no episode snapshot — fetch live list (details screen path).
+      if (episodes.isEmpty) {
+        KdramaDetails details;
+        try {
+          details = await _service.getDetails(id);
+        } catch (e) {
+          if ('$e'.contains('→ 429')) {
+            await Future.delayed(const Duration(milliseconds: 800));
+            details = await _service.getDetails(id);
+          } else {
+            rethrow;
+          }
+        }
+        if (!mounted) return;
+        episodes = details.episodes;
+        final ep = details.episodeForResume(
+          episodeNumber: epNum,
+          episodeId: epId,
+        );
+        if (ep == null) {
+          openAsianDramaDetails(context, details.toCard());
+          return;
+        }
         openAsianDramaPlayer(
           context,
-          drama: card,
+          drama: details.toCard(),
           episode: ep,
-          allEpisodes: [ep],
+          allEpisodes: episodes,
           startPosition: startPosition,
         ).then((_) => _refreshHistory());
         return;
       }
 
-      // Slow path — legacy history rows without episodeId need live episode list.
-      KdramaDetails details;
-      try {
-        details = await _service.getDetails(id);
-      } catch (e) {
-        if ('$e'.contains('→ 429')) {
-          await Future.delayed(const Duration(milliseconds: 800));
-          details = await _service.getDetails(id);
-        } else {
-          rethrow;
-        }
-      }
-      if (!mounted) return;
-      final ep = details.episodeForResume(
+      // Identical launch args to details → Resume.
+      final ep = KissKhService.matchResumeEpisode(
+        episodes: episodes,
         episodeNumber: epNum,
         episodeId: epId,
       );
       if (ep == null) {
-        openAsianDramaDetails(context, details.toCard());
+        openAsianDramaDetails(context, card);
         return;
       }
 
       openAsianDramaPlayer(
         context,
-        drama: details.toCard(),
+        drama: card,
         episode: ep,
-        allEpisodes: details.episodes,
+        allEpisodes: episodes,
         startPosition: startPosition,
       ).then((_) => _refreshHistory());
     } catch (e) {

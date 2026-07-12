@@ -323,6 +323,7 @@ class KissKhService {
     required double episodeNumber,
     required int totalEpisodes,
     int? episodeId,
+    List<KdramaEpisode> episodes = const [],
     Duration? position,
     Duration? duration,
   }) async {
@@ -344,6 +345,16 @@ class KissKhService {
         'episodeNumber': episodeNumber,
         if (episodeId != null && episodeId > 0) 'episodeId': episodeId,
         'totalEpisodes': totalEpisodes,
+        if (episodes.isNotEmpty)
+          'episodes': episodes
+              .map(
+                (e) => {
+                  'id': e.id,
+                  'number': e.number,
+                  if (e.sub != 0) 'sub': e.sub,
+                },
+              )
+              .toList(),
         'positionMs': position?.inMilliseconds ?? 0,
         'durationMs': duration?.inMilliseconds ?? 0,
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
@@ -352,6 +363,57 @@ class KissKhService {
     if (list.length > 50) list.removeRange(50, list.length);
     await p.setStringList(_historyKey, list);
     watchHistoryRevision.value++;
+  }
+
+  /// Reconstruct kisskh episode rows saved with [recordWatch].
+  static List<KdramaEpisode> episodesFromHistory(Map<String, dynamic> entry) {
+    final raw = entry['episodes'] as List?;
+    if (raw == null || raw.isEmpty) return const [];
+    final out = <KdramaEpisode>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final id = (item['id'] as num?)?.toInt();
+      final number = (item['number'] as num?)?.toDouble();
+      if (id == null || number == null) continue;
+      out.add(
+        KdramaEpisode(
+          id: id,
+          number: number,
+          sub: (item['sub'] as num?)?.toInt() ?? 0,
+        ),
+      );
+    }
+    out.sort((a, b) => a.number.compareTo(b.number));
+    return out;
+  }
+
+  /// Same seek math as details → Resume.
+  static Duration? startPositionFromHistory(Map<String, dynamic> entry) {
+    final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
+    final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
+    if (posMs <= 5000) return null;
+    final clamped =
+        (durMs > 0 && posMs > durMs - 30000) ? (durMs - 30000) : posMs;
+    return Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
+  }
+
+  /// Match watch-history entry to a live episode row (number first — stable
+  /// across kisskh API id churn; id is a secondary hint).
+  static KdramaEpisode? matchResumeEpisode({
+    required List<KdramaEpisode> episodes,
+    required double episodeNumber,
+    int? episodeId,
+  }) {
+    if (episodes.isEmpty) return null;
+    for (final e in episodes) {
+      if (e.number == episodeNumber) return e;
+    }
+    if (episodeId != null && episodeId > 0) {
+      try {
+        return episodes.firstWhere((e) => e.id == episodeId);
+      } catch (_) {}
+    }
+    return episodes.first;
   }
 
   Future<List<Map<String, dynamic>>> getWatchHistory() async {
@@ -537,16 +599,11 @@ class KdramaDetails {
     required double episodeNumber,
     int? episodeId,
   }) {
-    if (episodes.isEmpty) return null;
-    for (final e in episodes) {
-      if (e.number == episodeNumber) return e;
-    }
-    if (episodeId != null && episodeId > 0) {
-      try {
-        return episodes.firstWhere((e) => e.id == episodeId);
-      } catch (_) {}
-    }
-    return episodes.first;
+    return KissKhService.matchResumeEpisode(
+      episodes: episodes,
+      episodeNumber: episodeNumber,
+      episodeId: episodeId,
+    );
   }
 }
 

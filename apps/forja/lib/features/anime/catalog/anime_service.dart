@@ -1539,6 +1539,9 @@ class AnimeEmbed {
 
   String get displayName => '$label · ${category.toUpperCase()}';
 
+  /// Unique player-panel id — [sourceKey] alone collides across sub/dub pairs.
+  String get panelKey => '$sourceKey:$category';
+
   /// Stable id for saved stream preference (e.g. `megaplay`, `miruro:zoro`).
   String get sourceKey {
     switch (server) {

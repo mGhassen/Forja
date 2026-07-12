@@ -841,7 +841,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
               Object.hash(_openToken, _results.length, _searching),
           filterEnableBlur: false,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Expanded(child: _buildList(torrents, stremio)),
       ],
     );
@@ -919,8 +919,9 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
     return ListView.separated(
       controller: _listScrollController,
+      padding: const EdgeInsets.only(top: 2, bottom: 8),
       itemCount: count,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, i) {
         if (i < torrents.length) {
           final r = torrents[i];

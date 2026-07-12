@@ -320,7 +320,10 @@ class ExternalPlayerService {
     } catch (e) {
       debugPrint('[ExternalPlayer] Error launching ${player.displayName}: $e');
       if (context != null && context.mounted) {
-        ForjaToast.error('${player.displayName} could not be launched. Is it installed?');
+        final hint = e is IOException || e is FileSystemException
+            ? 'Launch failed (${e.runtimeType}). See console for details.'
+            : '${player.displayName} could not be launched. Is it installed?';
+        ForjaToast.error(hint);
       }
       return false;
     }
@@ -403,61 +406,25 @@ class ExternalPlayerService {
         uri.path.contains('/comic-proxy');
   }
 
-  /// iina-cli mangles `--mpv-referrer=…&…` (Referer query strings). VLC's
-  /// `--http-referrer` does not. Write headers to `/tmp` and use the same
-  /// direct stream URL VLC opens.
-  static const String _iinaMpvConfigDir = '/tmp';
-
-  static Future<File> _writeIinaMpvConfig(Map<String, String> headers) async {
-    final buf = StringBuffer();
-    final referer = headers['Referer'] ?? headers['referer'];
-    if (referer != null) {
-      _mpvConfigLine(buf, 'referrer', referer);
-    }
-    final ua = headers['User-Agent'] ?? headers['user-agent'];
-    if (ua != null) {
-      _mpvConfigLine(buf, 'user-agent', ua);
-    }
-    final headerFields = <String>[];
-    if (referer != null) headerFields.add('Referer: $referer');
-    final origin = headers['Origin'] ?? headers['origin'];
-    if (origin != null) headerFields.add('Origin: $origin');
-    if (ua != null) headerFields.add('User-Agent: $ua');
-    if (headerFields.isNotEmpty) {
-      _mpvConfigLine(buf, 'http-header-fields', headerFields.join(','));
-    }
-    final file = File(
-      '$_iinaMpvConfigDir/forja_iina_'
-      '${DateTime.now().microsecondsSinceEpoch}.conf',
-    );
-    await file.writeAsString(buf.toString());
-    return file;
+  /// IINA headers via discrete `iina-cli` argv entries (sandbox cannot write
+  /// `/tmp`). [Process.start] passes each value as one arg — `&` in Referer is
+  /// safe (unlike shell). Mirrors VLC's direct URL + header flags.
+  static List<String> _iinaHeaderArgs(Map<String, String>? headers) {
+    return _mpvHeaderArgs(headers, prefix: '--mpv-');
   }
 
-  static void _mpvConfigLine(StringBuffer buf, String key, String value) {
-    buf.writeln('$key="${_mpvConfigEscape(value)}"');
-  }
-
-  static String _mpvConfigEscape(String value) =>
-      value.replaceAll('\\', r'\\').replaceAll('"', r'\"');
-
-  static Future<List<String>> _desktopLaunchArgs({
+  static List<String> _desktopLaunchArgs({
     required ExternalPlayer player,
     required String url,
     required String title,
     Map<String, String>? headers,
-  }) async {
+  }) {
     if (Platform.isMacOS && player.displayName == 'IINA') {
-      final args = <String>[
+      return [
         if (title.isNotEmpty) '--mpv-force-media-title=$title',
+        ..._iinaHeaderArgs(headers),
+        url,
       ];
-      if (headers != null && headers.isNotEmpty) {
-        final config = await _writeIinaMpvConfig(headers);
-        debugPrint('[ExternalPlayer] IINA mpv config → ${config.path}');
-        args.insert(0, '--mpv-include=${config.path}');
-      }
-      args.add(url);
-      return args;
     }
 
     return player.desktopArgs?.call(url, title, headers) ?? [url];
@@ -572,7 +539,7 @@ class ExternalPlayerService {
       return false;
     }
 
-    final playerArgs = await _desktopLaunchArgs(
+    final playerArgs = _desktopLaunchArgs(
       player: player,
       url: url,
       title: title,

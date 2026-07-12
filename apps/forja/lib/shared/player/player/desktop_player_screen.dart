@@ -2631,13 +2631,18 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       ..._providerLoadFailures.value,
       providerId,
     };
+    unawaited(ProviderScoreMemory.recordServerFailure(providerId));
     _notifySourceMenuChanged();
   }
 
   void _markProviderLoadSucceeded(String providerId) {
-    if (!_providerLoadFailures.value.contains(providerId)) return;
+    if (!_providerLoadFailures.value.contains(providerId)) {
+      unawaited(ProviderScoreMemory.recordSuccess(providerId));
+      return;
+    }
     final next = {..._providerLoadFailures.value}..remove(providerId);
     _providerLoadFailures.value = next;
+    unawaited(ProviderScoreMemory.recordSuccess(providerId));
     _notifySourceMenuChanged();
   }
 
@@ -2697,6 +2702,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       onLoadProvider: _loadProvider,
       onSelectProvider: _switchProvider,
       onSelectSource: _switchToStreamSource,
+      onCheckSource: _checkStreamSource,
       anchorContext: anchorContext,
       refreshListenable: _streamMenuRefreshListenable(),
       onReload: _reloadStreamMenu,
@@ -2772,6 +2778,87 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     await _initPlayback();
   }
 
+  Future<
+      ({
+        String openUrl,
+        Map<String, String>? headers,
+        StreamSource resolved,
+      })?> _resolveValidatedStream(
+    StreamSource source, {
+    String? providerId,
+  }) async {
+    final pid = providerId ?? _currentProvider;
+    var openUrl = source.url;
+    Map<String, String>? headers = source.headers ?? widget.headers;
+    var resolved = source;
+
+    if (pid == 'service111477') {
+      final ok = await probeStreamSourceUrl(source.url, headers);
+      if (!ok) return null;
+      return (openUrl: source.url, headers: headers, resolved: source);
+    }
+
+    if (pid == 'arabic' && source.type == 'arabic_embed') {
+      final result = await ArabicService.extractStreamUrl(source.url);
+      if (result == null) return null;
+      openUrl = result.url;
+      headers = result.headers;
+      resolved = StreamSource(
+        url: result.url,
+        title: source.title,
+        type: result.url.contains('.m3u8')
+            ? 'hls'
+            : result.url.contains('.mpd')
+                ? 'dash'
+                : 'mp4',
+      );
+    }
+
+    final ok = await probeStreamSourceUrl(openUrl, headers);
+    if (!ok) return null;
+    return (openUrl: openUrl, headers: headers, resolved: resolved);
+  }
+
+  Future<bool> _checkStreamSource(
+    StreamSource source,
+    int index, [
+    String? providerId,
+  ]) async {
+    final pid = providerId ?? _currentProvider ?? '';
+    final affectsCurrent =
+        providerId == null || providerId == _currentProvider;
+    if (affectsCurrent) {
+      if (_isCurrentSourceIndex(index) && _playbackConfirmed) {
+        _markSourceActive(index);
+        unawaited(ProviderScoreMemory.recordSuccess(pid));
+        return true;
+      }
+      _markSourceChecking(index);
+    }
+
+    final validated = await _resolveValidatedStream(
+      source,
+      providerId: providerId,
+    );
+    if (!mounted) return false;
+
+    if (validated != null) {
+      if (affectsCurrent) {
+        _failedSourceIndices.remove(index);
+        _checkingSourceIndices.remove(index);
+        _notifySourceMenuChanged();
+      }
+      unawaited(ProviderScoreMemory.recordSuccess(pid));
+      return true;
+    }
+
+    if (affectsCurrent) {
+      _markSourceFailed(index);
+    }
+    unawaited(ProviderScoreMemory.recordStreamFailure(pid));
+    return false;
+  }
+
   Future<void> _switchToStreamSource(StreamSource source, int index) async {
     final isCurrent = _currentProvider == 'service111477'
         ? source.url == _current111477FileUrl
@@ -2788,12 +2875,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _sourcePinned = true;
     unawaited(SettingsService().setPlayerAutoSource(false));
     final switchGen = ++_fallbackGen;
-    WebStreamrService().cancelPending();
-    VidsrcExtractor.cancelPending();
-    VideasyExtractor.cancelPending();
-    NuvioService.instance.cancelPending();
-    _statusController.clear();
-    _playbackConfirmed = false;
     _markSourceChecking(index);
 
     final currentPos = _positionNotifier.value;
@@ -2805,82 +2886,42 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     );
 
     try {
-      var openUrl = source.url;
-      Map<String, String>? headers = source.headers ?? widget.headers;
-      var resolved = source;
+      final validated = await _resolveValidatedStream(source);
+      if (!mounted || _fallbackAborted(switchGen)) return;
+      if (validated == null) {
+        _statusController.upsert(
+          statusId,
+          source.title,
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        _markSourceFailed(index);
+        unawaited(
+          ProviderScoreMemory.recordStreamFailure(_currentProvider ?? ''),
+        );
+        return;
+      }
+
+      var openUrl = validated.openUrl;
+      Map<String, String>? headers = validated.headers;
+      var resolved = validated.resolved;
 
       if (_currentProvider == 'service111477') {
-        // Probe upstream file URL first — keep the current proxy/playback alive.
-        final ok = await probeStreamSourceUrl(source.url, headers);
-        if (!mounted || _fallbackAborted(switchGen)) return;
-        if (!ok) {
-          _statusController.upsert(
-            statusId,
-            source.title,
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(seconds: 2),
-          );
-          _markSourceFailed(index);
-          return;
-        }
         if (site111477_proxy.is111477ProxyRunning) {
           await site111477_proxy.stop111477Proxy();
         }
         openUrl = await site111477_proxy.start111477Proxy(source.url);
         headers = null;
-      } else if (_currentProvider == 'arabic' &&
-          source.type == 'arabic_embed') {
-        final result = await ArabicService.extractStreamUrl(source.url);
-        if (!mounted || _fallbackAborted(switchGen)) return;
-        if (result == null) {
-          _statusController.upsert(
-            statusId,
-            source.title,
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(seconds: 2),
-          );
-          _markSourceFailed(index);
-          return;
-        }
-        openUrl = result.url;
-        headers = result.headers;
-        resolved = StreamSource(
-          url: result.url,
-          title: source.title,
-          type: result.url.contains('.m3u8')
-              ? 'hls'
-              : result.url.contains('.mpd')
-              ? 'dash'
-              : 'mp4',
-        );
-        final ok = await probeStreamSourceUrl(openUrl, headers);
-        if (!mounted || _fallbackAborted(switchGen)) return;
-        if (!ok) {
-          _statusController.upsert(
-            statusId,
-            source.title,
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(seconds: 2),
-          );
-          _markSourceFailed(index);
-          return;
-        }
-      } else {
-        final ok = await probeStreamSourceUrl(openUrl, headers);
-        if (!mounted || _fallbackAborted(switchGen)) return;
-        if (!ok) {
-          _statusController.upsert(
-            statusId,
-            source.title,
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(seconds: 2),
-          );
-          _markSourceFailed(index);
-          return;
-        }
       }
 
       if (!mounted || _fallbackAborted(switchGen)) return;
+
+      WebStreamrService().cancelPending();
+      VidsrcExtractor.cancelPending();
+      VideasyExtractor.cancelPending();
+      NuvioService.instance.cancelPending();
+      _statusController.clear();
+      _playbackConfirmed = false;
 
       // Validated — now swap.
       if (_player.platform is NativePlayer) {
@@ -2923,6 +2964,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
       _playbackConfirmed = true;
       _statusController.complete();
       _markSourceActive(index);
+      unawaited(ProviderScoreMemory.recordSuccess(_currentProvider ?? ''));
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
     } catch (_) {
       if (!mounted || _fallbackAborted(switchGen)) return;
@@ -2933,6 +2975,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
         dismissAfter: const Duration(seconds: 2),
       );
       _markSourceFailed(index);
+      unawaited(
+        ProviderScoreMemory.recordStreamFailure(_currentProvider ?? ''),
+      );
     }
   }
 

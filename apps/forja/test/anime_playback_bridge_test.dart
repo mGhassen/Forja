@@ -9,6 +9,28 @@ void main() {
     await initRustForAppTests();
   });
 
+  group('AnimePlaybackBridge.embedsToPanelProviders', () {
+    test('keeps sub and dub as separate panel rows', () {
+      const embeds = [
+        AnimeEmbed(
+          label: 'Megaplay',
+          server: 'megaplay',
+          category: 'sub',
+          url: 'https://megaplay.buzz/stream/s-2/abc/sub',
+        ),
+        AnimeEmbed(
+          label: 'Megaplay',
+          server: 'megaplay',
+          category: 'dub',
+          url: 'https://megaplay.buzz/stream/s-2/abc/dub',
+        ),
+      ];
+      final map = AnimePlaybackBridge.embedsToPanelProviders(embeds);
+      expect(map.keys, containsAll(['megaplay:sub', 'megaplay:dub']));
+      expect(map.length, 2);
+    });
+  });
+
   group('AnimePlaybackBridge.embedsToProviders', () {
     test('uses sourceKey ids for engine ordering', () {
       const embeds = [

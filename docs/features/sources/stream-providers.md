@@ -18,7 +18,8 @@ Built-in movie/series providers include Videasy, VidLink, VixSrc, Vidnest, 11147
 
 - **Auto** — Source Engine races providers (up to six at once) and opens the first working hit. Other servers resolve when you pick them in the player menu.
 - **Manual** — pick a server; Forja stays on it (strict — no silent cross-provider fallback)
-- Source links are **not** pre-checked on open — Forja validates a source when you tap it, while the current stream keeps playing, then swaps if it works
+- Source links are **not** pre-checked on open — tap a stream to probe it (status on the left). Use the hover **play** arrow to switch. The current stream keeps playing until a play succeeds
+- Failed server/stream checks lower that provider’s **live score badge** (persisted reliability penalty). Sort order updates the next time you open the Source panel
 - Reorder providers in Settings (baseline per domain; effective order preview in table)
 - On decoder failure, try the next compatible source, then software decode once
 

@@ -250,6 +250,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       drama: drama,
       episodeNumber: episode.number,
       episodeId: episode.id,
+      episodes: episodes,
       totalEpisodes: episodes.isNotEmpty
           ? episodes.length
           : episode.number.toInt(),
@@ -338,6 +339,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           drama: drama,
           episodeNumber: episode.number,
           episodeId: episode.id,
+          episodes: episodes,
           totalEpisodes: episodes.isNotEmpty
               ? episodes.length
               : episode.number.toInt(),

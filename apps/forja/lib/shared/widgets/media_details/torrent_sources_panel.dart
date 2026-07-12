@@ -13,6 +13,7 @@ class TorrentSourcesPanel extends StatelessWidget {
     /// Details: true → BackdropFilter. Player: false + [frozenFrame].
     this.enableBlur = true,
     this.frozenFrame,
+    this.contentPadding,
   });
 
   final bool isOpen;
@@ -20,6 +21,7 @@ class TorrentSourcesPanel extends StatelessWidget {
   final Widget child;
   final bool enableBlur;
   final Uint8List? frozenFrame;
+  final EdgeInsets? contentPadding;
 
   static double panelWidthOf(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -34,10 +36,16 @@ class TorrentSourcesPanel extends StatelessWidget {
     return remaining.clamp(300.0, 420.0);
   }
 
+  static EdgeInsets defaultContentPadding({required bool playerOverlay}) {
+    return playerOverlay
+        ? ShellTokens.playerSidePanelPadding
+        : ShellTokens.mediaDetailsSourcesPanelPadding;
+  }
+
   @override
   Widget build(BuildContext context) {
     final panelWidth = panelWidthOf(context);
-    const padding = EdgeInsets.fromLTRB(20, 8, 12, 16);
+    final padding = contentPadding ?? defaultContentPadding(playerOverlay: !enableBlur);
     final playerFrost = !enableBlur;
 
     return Stack(
@@ -108,6 +116,79 @@ class TorrentSourcesPanelHeader extends StatelessWidget {
           color: ForjaShellColors.cinematic.textSecondary,
           onTap: onClose,
         ),
+      ],
+    );
+  }
+}
+
+/// Compact title row + divider for player side panels (episodes, servers, torrent).
+class PlayerSidePanelHeader extends StatelessWidget {
+  const PlayerSidePanelHeader({
+    super.key,
+    required this.title,
+    required this.onClose,
+    this.leading,
+    this.trailing,
+    this.badge,
+  });
+
+  final String title;
+  final VoidCallback onClose;
+  final Widget? leading;
+  final Widget? trailing;
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            if (leading != null) ...[
+              leading!,
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      title,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: cinematic.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                  if (badge != null) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      badge!,
+                      style: TextStyle(
+                        color: cinematic.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            ?trailing,
+            ForjaCloseButton(
+              color: cinematic.textSecondary,
+              onTap: onClose,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Divider(height: 1, color: cinematic.borderSubtle),
       ],
     );
   }
