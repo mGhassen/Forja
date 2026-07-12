@@ -5,6 +5,31 @@ bool isInProgressResume(int position, int duration) {
   return progress >= 0.02 && progress < 0.9;
 }
 
+/// After this age, episode picks show the source panel instead of auto-launch.
+const watchHistoryStaleResumeThreshold = Duration(days: 7);
+
+/// True when saved progress is older than [threshold] (missing timestamp = stale).
+bool isStaleResume(
+  Map<String, dynamic>? progress, {
+  Duration threshold = watchHistoryStaleResumeThreshold,
+}) {
+  if (progress == null) return false;
+  final pos = (progress['position'] as int?) ?? 0;
+  if (pos <= 0) return false;
+  final ts = progress['updatedAt'] as int?;
+  if (ts == null || ts <= 0) return true;
+  return DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(ts)) >
+      threshold;
+}
+
+/// Episode has meaningful in-progress watch history (2–90% watched).
+bool hasResumableEpisodeProgress(Map<String, dynamic>? progress) {
+  if (progress == null) return false;
+  final pos = (progress['position'] as int?) ?? 0;
+  final dur = (progress['duration'] as int?) ?? 0;
+  return isInProgressResume(pos, dur);
+}
+
 /// Latest in-progress history entry for a TV show (by [updatedAt]).
 Map<String, dynamic>? latestInProgressForShow(
   int tmdbId,

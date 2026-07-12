@@ -29,6 +29,7 @@ Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper sea
 - Scraper scripts are cached locally after first install
 - Refreshing an addon merges new scrapers while keeping your enabled/disabled choices
 - Nuvio runs in direct streaming mode — not on the torrent details screen
+- **Direct streaming is direct links only.** Scrapers that return torrent/magnet links (e.g. Torrentio) are ignored by the green **Play** race — those belong in the **Sources** panel, which routes magnets through the torrent engine
 
 ## Related
 

@@ -260,12 +260,14 @@ class PlayerStreamMenu {
       return probeIndex[providerId] ?? 999;
     }
 
-    int sortScore(String providerId) =>
-        scoreRows[providerId]?.domainScore ?? 0;
+    int sortScore(String providerId) {
+      return _effectiveSortScore(scoreRows[providerId], providerId);
+    }
 
     int tier(String providerId) {
       final isCurrent = providerId == state.currentProviderId;
       if (isCurrent && state.playbackConfirmed) return 0;
+      if (isCurrent) return 1;
 
       final status = _resolveProviderStatus(
         providerId,
@@ -283,21 +285,21 @@ class PlayerStreamMenu {
       if (sectionSources.isNotEmpty ||
           status == PlayerSourceStatus.ready ||
           status == PlayerSourceStatus.active) {
-        return 1;
+        return 2;
       }
-      if (status == PlayerSourceStatus.checking) return 2;
-      if (status == PlayerSourceStatus.failed) return 4;
-      return 3;
+      if (status == PlayerSourceStatus.checking) return 3;
+      if (status == PlayerSourceStatus.failed) return 5;
+      return 4;
     }
 
     entries.sort((a, b) {
       final tierDiff = tier(a.key).compareTo(tier(b.key));
       if (tierDiff != 0) return tierDiff;
-      // Live reliability (penalties) first within a tier, then engine rank.
-      final scoreDiff = sortScore(b.key).compareTo(sortScore(a.key));
-      if (scoreDiff != 0) return scoreDiff;
+      // Settings scoring order first within a tier, then live reliability.
       final rankDiff = sortRank(a.key).compareTo(sortRank(b.key));
       if (rankDiff != 0) return rankDiff;
+      final scoreDiff = sortScore(b.key).compareTo(sortScore(a.key));
+      if (scoreDiff != 0) return scoreDiff;
       final aCat = a.key.toLowerCase();
       final bCat = b.key.toLowerCase();
       final aSub = aCat.endsWith(':sub') ? 0 : aCat.endsWith(':dub') ? 1 : 2;
@@ -369,10 +371,9 @@ class PlayerStreamMenu {
       candidateIds: engineIds,
       settingsOrder: settingsOrder,
     ).rowById;
-    final applied = ProviderScoreMemory.applyToRows(base);
     return {
       for (final entry in providers.entries)
-        entry.key: applied[_engineScoringId(entry.key, entry.value)] ??
+        entry.key: base[_engineScoringId(entry.key, entry.value)] ??
             ProviderOrderRow(
               id: entry.key,
               settingsRank: 999,
@@ -384,16 +385,30 @@ class PlayerStreamMenu {
     };
   }
 
-  static Widget _scoreBadge(ProviderOrderRow? row) {
+  /// Runtime reliability adjusts sort order only — badge shows configured tier.
+  static int _effectiveSortScore(ProviderOrderRow? row, String providerId) {
+    if (row == null || !row.supported || row.domainScore <= 0) return 0;
+    return ProviderScoreMemory.effectiveScore(row.domainScore, providerId);
+  }
+
+  static Widget _scoreBadge(
+    ProviderOrderRow? row, {
+    required String providerId,
+    bool isPlaying = false,
+  }) {
     if (row == null || !row.supported || row.domainScore <= 0) {
       return const SizedBox(width: _scoreColWidth, height: _badgeHeight);
     }
     final score = row.domainScore;
-    final color = score >= 90
-        ? playerSourceStatusColor(PlayerSourceStatus.active)
-        : score >= 75
-            ? Colors.white.withValues(alpha: 0.82)
-            : Colors.white.withValues(alpha: 0.52);
+    final penalized = !isPlaying &&
+        ProviderScoreMemory.effectiveScore(score, providerId) < score;
+    final color = penalized
+        ? Colors.white.withValues(alpha: 0.38)
+        : score >= 90
+            ? playerSourceStatusColor(PlayerSourceStatus.active)
+            : score >= 75
+                ? Colors.white.withValues(alpha: 0.82)
+                : Colors.white.withValues(alpha: 0.52);
     return Container(
       width: _scoreColWidth,
       height: _badgeHeight,
@@ -447,6 +462,8 @@ class PlayerStreamMenu {
   static Widget _serverTrailingBadges({
     required String? categoryBadge,
     required ProviderOrderRow? scoreRow,
+    required String providerId,
+    bool isPlaying = false,
     bool hideCategoryBadge = false,
   }) {
     return Row(
@@ -460,7 +477,11 @@ class PlayerStreamMenu {
             const SizedBox(width: _categoryColWidth, height: _badgeHeight),
           const SizedBox(width: 6),
         ],
-        _scoreBadge(scoreRow),
+        _scoreBadge(
+          scoreRow,
+          providerId: providerId,
+          isPlaying: isPlaying,
+        ),
       ],
     );
   }
@@ -813,7 +834,6 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   final Set<String> _loadingProviders = {};
   final Map<String, int> _loadGens = {};
   final Map<String, PlayerSourceStatus> _urlStatuses = {};
-  List<MapEntry<String, dynamic>> _frozenProviderOrder = const [];
   _StreamAudioFilter? _audioFilter;
 
   Set<String> get _failedProviders =>
@@ -830,7 +850,6 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     await ProviderScoreMemory.ensureLoaded();
     if (!mounted) return;
     setState(() {
-      _frozenProviderOrder = _computeInitialProviderOrder();
       _initAudioFilterDefault();
       _open = true;
     });
@@ -872,7 +891,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     setState(() => _urlStatuses[url] = status);
   }
 
-  List<MapEntry<String, dynamic>> _computeInitialProviderOrder() {
+  List<MapEntry<String, dynamic>> _computeProviderOrder() {
     if (widget.providers == null || widget.providers!.isEmpty) {
       return const [];
     }
@@ -888,7 +907,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       state: state,
       probes: probes,
       cache: cache,
-      loadingProviders: const {},
+      loadingProviders: _loadingProviders,
       failedProviders: _failedProviders,
       statusController: widget.statusController,
       scoreRows: scoreRows,
@@ -978,14 +997,6 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       widget.providers,
     );
 
-    final panelPad = ShellTokens.playerSidePanelPadding;
-    final rowPad = EdgeInsets.fromLTRB(
-      panelPad.left + 2,
-      6,
-      panelPad.right + 2,
-      4,
-    );
-
     final group = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1004,7 +1015,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
             hoverColor: ForjaShellColors.inkHover,
             splashColor: ForjaShellColors.inkSplash,
             child: Padding(
-              padding: isPlaying ? rowPad : const EdgeInsets.fromLTRB(2, 6, 2, 4),
+              padding: const EdgeInsets.fromLTRB(2, 6, 2, 4),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -1046,11 +1057,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                             child: Text(
                               subtitle,
                               style: TextStyle(
-                                color: isPlaying
-                                    ? playerSourceStatusColor(
-                                        PlayerSourceStatus.active,
-                                      )
-                                    : Colors.white.withValues(alpha: 0.42),
+                                color: Colors.white.withValues(alpha: 0.42),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1062,6 +1069,8 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                   PlayerStreamMenu._serverTrailingBadges(
                     categoryBadge: presentation.categoryBadge,
                     scoreRow: scoreById[providerId],
+                    providerId: providerId,
+                    isPlaying: isPlaying,
                     hideCategoryBadge: hideCategoryBadge,
                   ),
                 ],
@@ -1071,7 +1080,6 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
         ),
         if (isLoaded)
           _ServerStreamBranch(
-            padRight: isPlaying ? panelPad.right + 2 : 0,
             child: PlayerStreamMenu._sourcesList(
               sources: sectionSources,
               state: state,
@@ -1099,25 +1107,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       ],
     );
 
-    if (!isPlaying) {
-      return SizedBox(width: double.infinity, child: group);
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Transform.translate(
-          offset: Offset(-panelPad.left, 0),
-          child: Container(
-            width: constraints.maxWidth + panelPad.left + panelPad.right,
-            decoration: BoxDecoration(
-              color: playerSourceStatusColor(PlayerSourceStatus.active)
-                  .withValues(alpha: 0.07),
-            ),
-            child: group,
-          ),
-        );
-      },
-    );
+    return SizedBox(width: double.infinity, child: group);
   }
 
   Widget _buildList() {
@@ -1152,9 +1142,10 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       );
     }
 
+    final providerOrder = _computeProviderOrder();
     final orderedProviders = _audioFilter == null
-        ? _frozenProviderOrder
-        : _frozenProviderOrder
+        ? providerOrder
+        : providerOrder
             .where(
               (e) => _matchesAudioFilter(
                 e.key,
@@ -1165,7 +1156,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
             .toList();
 
     if (orderedProviders.isEmpty) {
-      if (_frozenProviderOrder.isEmpty) {
+      if (providerOrder.isEmpty) {
         return const SizedBox.shrink();
       }
       final filterLabel = _audioFilter?.name.toUpperCase() ?? 'matching';
@@ -1294,11 +1285,9 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
 class _ServerStreamBranch extends StatelessWidget {
   const _ServerStreamBranch({
     required this.child,
-    this.padRight = 0,
   });
 
   final Widget child;
-  final double padRight;
 
   static const _padLeft = 4.0;
   static const _gapAfterLine = 8.0;
@@ -1306,7 +1295,7 @@ class _ServerStreamBranch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(left: _padLeft, right: padRight, bottom: 2),
+      padding: const EdgeInsets.only(left: _padLeft, bottom: 2),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1355,7 +1344,13 @@ class _FlatMenuRow extends StatelessWidget {
           ? Colors.white.withValues(alpha: 0.1)
           : Colors.transparent,
       child: InkWell(
-        onTap: onCheck,
+        onTap: () {
+          if (onPlay != null) {
+            onPlay!();
+          } else {
+            onCheck?.call();
+          }
+        },
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
         child: Padding(
@@ -1422,9 +1417,7 @@ class _FlatMenuRow extends StatelessWidget {
                           child: Icon(
                             Icons.play_arrow_rounded,
                             size: 22,
-                            color: playerSourceStatusColor(
-                              PlayerSourceStatus.active,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.72),
                           ),
                         ),
                       )

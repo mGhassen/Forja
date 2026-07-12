@@ -322,20 +322,117 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     _autoSearch();
   }
 
-  void _onEpisodeSelected(int episode) {
+  void _applyPanelFilterForSavedMethod(String? method) {
+    switch (method) {
+      case 'torrent':
+        if (_panelShowTorrent) {
+          _panelKindFilter = _panelShowStremio ? 'torrents' : 'torrents';
+        }
+      case 'stremio_direct':
+        if (_panelShowStremio) {
+          _panelKindFilter = _panelShowTorrent ? 'stremio' : 'stremio';
+        }
+      default:
+        break;
+    }
+  }
+
+  Future<bool> _tryDirectEpisodeResumeFromHistory(
+    Map<String, dynamic> progress,
+  ) async {
+    final method = progress['method'] as String?;
+    final startPosition = Duration(
+      milliseconds: progress['position'] as int? ?? 0,
+    );
+
+    switch (method) {
+      case 'stream':
+        final sourceId = progress['sourceId'] as String? ?? '';
+        if (!isWebStreamProviderId(sourceId)) return false;
+        if (_playSourceWebstreaming && !_hasPanelPlaySources) {
+          await _startWebstreamingOnlyPlayback();
+          return mounted;
+        }
+        if (_playSourceWebstreaming) {
+          return resumeSavedWebStreamProvider(
+            context: context,
+            movie: _movie,
+            progress: progress,
+            startPosition: startPosition,
+          );
+        }
+        return false;
+      case 'amri':
+        if (!_playSourceWebstreaming) return false;
+        return resumeSavedAmriStream(
+          context: context,
+          movie: _movie,
+          progress: progress,
+          startPosition: startPosition,
+        );
+      case 'stremio_direct':
+        if (!_playSourceStremio) return false;
+        return resumeSavedStremioDirectStream(
+          context: context,
+          movie: _movie,
+          progress: progress,
+          startPosition: startPosition,
+        );
+      case 'torrent':
+        if (!_playSourceTorrent) return false;
+        return resumeSavedTorrentStream(
+          context: context,
+          movie: _movie,
+          progress: progress,
+          startPosition: startPosition,
+        );
+      default:
+        return false;
+    }
+  }
+
+  void _beginEpisodePanelAutoPlay() {
+    setState(() {
+      _sourcesPanelOpen = true;
+      _episodePlayPending = true;
+    });
+    _refreshSourcesForEpisode();
+  }
+
+  Future<void> _onEpisodeSelected(int episode) async {
     setState(() {
       _selectedEpisode = episode;
       _webstreamingStreams = [];
       _webstreamingActiveProviderId = null;
       _syncSelectedSourceToPlaySources();
-      if (_hasPanelPlaySources) {
-        _sourcesPanelOpen = true;
-        _episodePlayPending = true;
-      }
     });
-    _checkHistory();
+    await _checkHistory();
+    if (!mounted) return;
+
+    final progress = _lastProgress;
+    final resumable = hasResumableEpisodeProgress(progress);
+    final stale = isStaleResume(progress);
+
+    if (stale) {
+      if (_hasPanelPlaySources) {
+        setState(() {
+          _sourcesPanelOpen = true;
+          _episodePlayPending = false;
+          _applyPanelFilterForSavedMethod(progress?['method'] as String?);
+        });
+        _refreshSourcesForEpisode();
+      }
+      return;
+    }
+
+    if (resumable && progress != null && !stale) {
+      final launched = await _tryDirectEpisodeResumeFromHistory(progress);
+      if (!mounted) return;
+      if (launched) return;
+    }
+
     if (_hasPanelPlaySources) {
-      _refreshSourcesForEpisode();
+      _beginEpisodePanelAutoPlay();
     } else if (_playSourceWebstreaming) {
       unawaited(_startWebstreamingOnlyPlayback());
     }
@@ -598,7 +695,10 @@ class _DetailsScreenState extends State<DetailsScreen> with AtmosphereMixin {
     if (progress == null || progress['method'] != 'stream') return false;
     final savedUrl = progress['streamUrl'] as String?;
     final sourceId = progress['sourceId'] as String? ?? '';
-    if (savedUrl == null || savedUrl.trim().isEmpty || !isWebStreamProviderId(sourceId)) {
+    if (savedUrl == null ||
+        savedUrl.trim().isEmpty ||
+        isTorrentStreamUrl(savedUrl) ||
+        !isWebStreamProviderId(sourceId)) {
       return false;
     }
     final source = StreamSource(

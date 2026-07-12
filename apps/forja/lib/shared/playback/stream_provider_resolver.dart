@@ -6,6 +6,18 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 
+/// A magnet / torrent link — NOT a direct HTTP(S) stream.
+///
+/// Direct Streaming (green Play) must only ever play direct URLs. Some Nuvio
+/// scrapers (e.g. Torrentio) return magnets; those belong in the torrent
+/// Sources panel + local torrent engine, never in the direct-streaming race.
+bool isTorrentStreamUrl(String url) {
+  final u = url.trim().toLowerCase();
+  return u.startsWith('magnet:') ||
+      u.contains('urn:btih:') ||
+      u.endsWith('.torrent');
+}
+
 class StreamProviderResolveResult {
   const StreamProviderResolveResult({
     required this.streamUrl,
@@ -128,8 +140,15 @@ class StreamProviderResolver {
         episode: isTv ? episode : null,
       );
       if (cancelled() || results.isEmpty) return null;
-      final first = results.first;
-      final sources = results
+      // Direct Streaming is direct HTTP(S) only. Drop any magnet/torrent
+      // links a scraper returns (e.g. Torrentio) so the green Play path never
+      // hands a torrent to the direct player. Torrent links stay available in
+      // the Sources panel, which routes them through the torrent engine.
+      final directResults =
+          results.where((r) => !isTorrentStreamUrl(r.url)).toList();
+      if (directResults.isEmpty) return null;
+      final first = directResults.first;
+      final sources = directResults
           .map(
             (r) => StreamSource(
               url: r.url,

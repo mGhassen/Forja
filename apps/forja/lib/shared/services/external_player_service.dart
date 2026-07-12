@@ -290,6 +290,13 @@ class ExternalPlayerService {
       orElse: () => players.first,
     );
 
+    if (player.displayName == 'IINA') {
+      debugPrint(
+        '[ExternalPlayer] IINA handoff input url (${url.length} chars): $url',
+      );
+      _logHeaderMap('IINA handoff input', headers);
+    }
+
     final target = await _resolveLaunchTarget(
       url: url,
       headers: headers,
@@ -300,6 +307,9 @@ class ExternalPlayerService {
       '[ExternalPlayer] target url=${target.url} '
       'headers=${target.headers?.length ?? 0}',
     );
+    if (player.displayName == 'IINA') {
+      _logHeaderMap('IINA pre-launch target', target.headers);
+    }
 
     try {
       if (Platform.isAndroid || Platform.isIOS) {
@@ -409,6 +419,57 @@ class ExternalPlayerService {
   /// IINA headers via discrete `iina-cli` argv entries (sandbox cannot write
   /// `/tmp`). [Process.start] passes each value as one arg — `&` in Referer is
   /// safe (unlike shell). Mirrors VLC's direct URL + header flags.
+  static void _logHeaderMap(String label, Map<String, String>? headers) {
+    if (headers == null || headers.isEmpty) {
+      debugPrint('[ExternalPlayer] $label headers: (none)');
+      return;
+    }
+    debugPrint('[ExternalPlayer] $label headers (${headers.length}):');
+    for (final entry in headers.entries) {
+      debugPrint(
+        '[ExternalPlayer]   ${entry.key} (${entry.value.length} chars): '
+        '${entry.value}',
+      );
+    }
+  }
+
+  /// Full argv dump for IINA debugging (no truncation).
+  static void _logIinaLaunch({
+    required String executable,
+    required List<String> args,
+    required String streamUrl,
+    required Map<String, String>? headers,
+    required String title,
+  }) {
+    debugPrint('[ExternalPlayer] ── IINA launch payload ──');
+    debugPrint('[ExternalPlayer] IINA executable: $executable');
+    debugPrint('[ExternalPlayer] IINA title: $title');
+    debugPrint(
+      '[ExternalPlayer] IINA stream url (${streamUrl.length} chars): $streamUrl',
+    );
+    _logHeaderMap('IINA', headers);
+    debugPrint('[ExternalPlayer] IINA argv count: ${args.length}');
+    for (var i = 0; i < args.length; i++) {
+      final arg = args[i];
+      debugPrint(
+        '[ExternalPlayer] IINA argv[$i] (${arg.length} chars): $arg',
+      );
+    }
+    final quoted = args.map(_quoteForShellLog).join(' ');
+    debugPrint(
+      '[ExternalPlayer] IINA shell (manual test): $executable $quoted',
+    );
+    debugPrint('[ExternalPlayer] ── end IINA payload ──');
+  }
+
+  static String _quoteForShellLog(String value) {
+    if (value.isEmpty) return "''";
+    if (!RegExp(r'''[\s'"\\$`!&|;<>(){}[\]*?~#]''').hasMatch(value)) {
+      return value;
+    }
+    return "'${value.replaceAll("'", r"'\''")}'";
+  }
+
   static List<String> _iinaHeaderArgs(Map<String, String>? headers) {
     return _mpvHeaderArgs(headers, prefix: '--mpv-');
   }
@@ -558,11 +619,21 @@ class ExternalPlayerService {
       '[ExternalPlayer] Launching ${player.displayName}: $executable '
       '(${args.length} args) → $url',
     );
-    for (var i = 0; i < args.length; i++) {
-      final arg = args[i];
-      debugPrint(
-        '[ExternalPlayer] argv[$i]=${arg.length > 120 ? '${arg.substring(0, 120)}…' : arg}',
+    if (player.displayName == 'IINA') {
+      _logIinaLaunch(
+        executable: executable,
+        args: args,
+        streamUrl: url,
+        headers: headers,
+        title: title,
       );
+    } else {
+      for (var i = 0; i < args.length; i++) {
+        final arg = args[i];
+        debugPrint(
+          '[ExternalPlayer] argv[$i]=${arg.length > 120 ? '${arg.substring(0, 120)}…' : arg}',
+        );
+      }
     }
     await Process.start(executable, args, mode: ProcessStartMode.detached);
     return true;

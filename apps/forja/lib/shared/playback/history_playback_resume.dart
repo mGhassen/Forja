@@ -94,7 +94,9 @@ Future<bool> _resumeWebStreamProvider(
   );
 
   final cached = await WebstreamingStreamCache.read(cacheKey);
-  if (cached != null && cached.sources.isNotEmpty) {
+  if (cached != null &&
+      cached.sources.isNotEmpty &&
+      !isTorrentStreamUrl(cached.sources.first.url)) {
     if (!context.mounted) return false;
     final activeProvider = cached.providerId.isNotEmpty
         ? cached.providerId
@@ -122,7 +124,9 @@ Future<bool> _resumeWebStreamProvider(
   }
 
   final savedStreamUrl = item['streamUrl'] as String?;
-  if (savedStreamUrl != null && savedStreamUrl.trim().isNotEmpty) {
+  if (savedStreamUrl != null &&
+      savedStreamUrl.trim().isNotEmpty &&
+      !isTorrentStreamUrl(savedStreamUrl)) {
     if (!context.mounted) return false;
     debugPrint('[Resume] watch-history streamUrl hit $cacheKey');
     await AppRouter.openPlayer(
@@ -411,6 +415,40 @@ Future<bool> resumeSavedAmriStream({
   final pos = startPosition ??
       Duration(milliseconds: progress['position'] as int? ?? 0);
   return _resumeAmriStream(
+    context,
+    item: progress,
+    movie: movie,
+    startPosition: pos,
+  );
+}
+
+/// Details-screen direct resume for a saved torrent magnet.
+Future<bool> resumeSavedTorrentStream({
+  required BuildContext context,
+  required Movie movie,
+  required Map<String, dynamic> progress,
+  Duration? startPosition,
+}) {
+  final pos = startPosition ??
+      Duration(milliseconds: progress['position'] as int? ?? 0);
+  return _resumeTorrentStream(
+    context,
+    item: progress,
+    movie: movie,
+    startPosition: pos,
+  );
+}
+
+/// Details-screen direct resume for a saved Stremio direct stream.
+Future<bool> resumeSavedStremioDirectStream({
+  required BuildContext context,
+  required Movie movie,
+  required Map<String, dynamic> progress,
+  Duration? startPosition,
+}) {
+  final pos = startPosition ??
+      Duration(milliseconds: progress['position'] as int? ?? 0);
+  return _resumeStremioDirectStream(
     context,
     item: progress,
     movie: movie,
