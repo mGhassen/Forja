@@ -12,6 +12,8 @@ on:
 
 permissions:
   contents: write
+  # Required when tagging commits that modified .github/workflows/*
+  workflows: write
 
 jobs:
   backfill:

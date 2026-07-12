@@ -17,17 +17,45 @@ fi
 cd "$ROOT"
 git fetch origin --tags --force 2>/dev/null || true
 
-latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
-if [[ -n "$latest" ]]; then
-  base_semver="${latest#v}"
-  range="${latest}..HEAD"
-else
-  base_semver="$(grep '^version:' apps/forja/pubspec.yaml | sed 's/version: *//' | cut -d+ -f1)"
-  range="HEAD"
-fi
+resolve_range() {
+  local highest second untagged_between
+  highest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
+  if [[ -z "$highest" ]]; then
+    base_semver="$(grep '^version:' apps/forja/pubspec.yaml | sed 's/version: *//' | cut -d+ -f1)"
+    range="HEAD"
+    return
+  fi
+
+  second="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | sed -n '2p')"
+  if [[ -n "$second" ]]; then
+    local highest_sha
+    highest_sha="$(git rev-parse "$highest^{commit}")"
+    untagged_between=0
+    while IFS= read -r sha; do
+      [[ -z "$sha" ]] && continue
+      if ! git tag --points-at "$sha" | grep -q '^v[0-9]'; then
+        untagged_between=$((untagged_between + 1))
+      fi
+    done < <(git rev-list "${second}..${highest_sha}" 2>/dev/null || true)
+
+    if [[ "$untagged_between" -gt 0 ]]; then
+      # Gap recovery: e.g. v1.2.38 pushed but v1.2.23–v1.2.37 failed.
+      base_semver="${second#v}"
+      range="${second}..HEAD"
+      echo "Gap detected after $second — backfilling from $range"
+      return
+    fi
+  fi
+
+  base_semver="${highest#v}"
+  range="${highest}..HEAD"
+}
+
+resolve_range
 
 IFS=. read -r major minor patch <<<"$base_semver"
 made=0
+NEW_TAGS=()
 
 for sha in $(git rev-list --reverse "$range"); do
   if git tag --points-at "$sha" | grep -q '^v[0-9]'; then
@@ -44,6 +72,7 @@ for sha in $(git rev-list --reverse "$range"); do
   else
     git tag -a "$tag" -m "Forja ${major}.${minor}.${patch}" "$sha"
     echo "Tagged $tag -> $sha"
+    NEW_TAGS+=("$tag")
   fi
   made=$((made + 1))
 done
@@ -55,7 +84,26 @@ fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo "Dry run: $made tag(s) would be created."
-else
-  git push origin --tags
-  echo "Pushed $made tag(s)."
+  exit 0
 fi
+
+failed=0
+for tag in "${NEW_TAGS[@]}"; do
+  if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+    echo "Skip $tag (already on origin)"
+    continue
+  fi
+  if git push origin "$tag"; then
+    echo "Pushed $tag"
+  else
+    echo "::error::Failed to push $tag" >&2
+    failed=$((failed + 1))
+  fi
+done
+
+if [[ "$failed" -gt 0 ]]; then
+  echo "::error::$failed tag(s) failed to push."
+  exit 1
+fi
+
+echo "Pushed ${#NEW_TAGS[@]} tag(s)."

@@ -53,6 +53,7 @@ concurrency:
 
 permissions:
   contents: write
+  workflows: write
 
 env:
   FLUTTER_CHANNEL: stable
